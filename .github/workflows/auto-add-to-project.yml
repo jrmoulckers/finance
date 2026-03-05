@@ -1,0 +1,22 @@
+name: "Auto-add issues to project"
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      repository-projects: write
+    steps:
+      - name: Add to project
+        uses: actions/add-to-project@v1
+        with:
+          # Update this URL if the GitHub Project is recreated
+          project-url: https://github.com/users/jrmoulckers/projects/1
+          github-token: ${{ secrets.GITHUB_TOKEN }}

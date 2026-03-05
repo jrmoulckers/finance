@@ -1,0 +1,99 @@
+name: Task
+description: Internal task for refactoring, infrastructure, tooling, documentation, or tech debt
+labels: ["task", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Internal Task
+
+        Use this template for refactoring, infrastructure, tooling, documentation, tech debt, and other internal work items.
+
+  - type: textarea
+    id: task-description
+    attributes:
+      label: Task Description
+      description: What needs to be done?
+      placeholder: Describe the task and its motivation.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: What kind of task is this?
+      options:
+        - Refactoring
+        - Infrastructure
+        - Tooling
+        - Documentation
+        - Tech Debt
+        - CI/CD
+        - Testing
+        - Security
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component does this task relate to?
+      options:
+        - core
+        - models
+        - sync
+        - api
+        - ios-app
+        - android-app
+        - web-app
+        - windows-app
+        - docs
+        - tools
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Define the conditions that must be met for this task to be considered complete.
+      placeholder: |
+        - [ ] Condition one is met
+        - [ ] Condition two is met
+        - [ ] Tests pass
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-notes
+    attributes:
+      label: Implementation Notes
+      description: Any specific files, approaches, or constraints to be aware of?
+      placeholder: Describe implementation details, relevant files, or technical constraints.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: effort-estimate
+    attributes:
+      label: Effort Estimate
+      description: Roughly how much effort is this task?
+      options:
+        - "XS (< 1 day)"
+        - "S (1-2 days)"
+        - "M (3-5 days)"
+        - "L (1-2 weeks)"
+        - "XL (2+ weeks)"
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Are there any blocking issues or PRs?
+      placeholder: "List any issues or PRs that must be resolved first, e.g. #123."
+    validations:
+      required: false

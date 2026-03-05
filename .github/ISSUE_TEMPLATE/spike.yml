@@ -1,0 +1,62 @@
+name: Spike
+description: Time-boxed research or exploration to answer a technical question or reduce risk
+labels: ["spike", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Spike / Research
+
+        Use this template for time-boxed research to answer a technical question or reduce project risk. Spikes should have a clear question, a time box, and defined deliverables.
+
+  - type: textarea
+    id: question-to-answer
+    attributes:
+      label: Question to Answer
+      description: What specific question should this spike answer?
+      placeholder: State the question clearly and concisely.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why do we need to know this?
+      placeholder: Explain the background and why this question is important right now.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: time-box
+    attributes:
+      label: Time Box
+      description: How long should this spike take at most?
+      options:
+        - 2 hours
+        - 4 hours
+        - 1 day
+        - 2 days
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected-outputs
+    attributes:
+      label: Expected Outputs
+      description: What deliverables should come out of this spike?
+      placeholder: |
+        - ADR documenting the decision
+        - Prototype in a feature branch
+        - Comparison document of options evaluated
+    validations:
+      required: true
+
+  - type: textarea
+    id: success-criteria
+    attributes:
+      label: Success Criteria
+      description: How do we know the question is answered?
+      placeholder: Describe how we will know the spike is complete and the question is resolved.
+    validations:
+      required: true

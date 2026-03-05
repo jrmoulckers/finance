@@ -1,0 +1,88 @@
+# .gitignore — Finance Monorepo
+
+# === OS ===
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# === IDEs ===
+.idea/
+*.iml
+*.xcworkspace/
+*.xcuserdata/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# === Node.js ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+build/
+.cache/
+.parcel-cache/
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# === Swift / Xcode ===
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+Pods/
+
+# === Android / Gradle ===
+*.apk
+*.aab
+*.ap_
+*.dex
+.gradle/
+local.properties
+*.log
+
+# === .NET / Windows ===
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.nupkg
+
+# === Environment & Secrets ===
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.p12
+secrets/
+
+# === Build artifacts ===
+coverage/
+.nyc_output/
+*.tsbuildinfo
+.next/
+.nuxt/
+.output/
+
+# === Copilot / AI (session state is local) ===
+.copilot/session-state/

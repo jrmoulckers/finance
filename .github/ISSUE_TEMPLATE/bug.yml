@@ -1,0 +1,122 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug Report
+
+        Thank you for reporting a bug! Please provide enough detail so that we can reproduce and fix it.
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: What is broken?
+      placeholder: Describe what went wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Provide numbered steps to reproduce the issue.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Observe error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+      placeholder: Describe the expected outcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: Describe the actual outcome.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: affected-platforms
+    attributes:
+      label: Affected Platforms
+      description: Which platforms are affected?
+      options:
+        - label: iOS
+        - label: Android
+        - label: Web
+        - label: Windows
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - "Critical (data loss/security)"
+        - "High (feature broken)"
+        - "Medium (degraded experience)"
+        - "Low (cosmetic/minor)"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component is affected?
+      options:
+        - core
+        - models
+        - sync
+        - api
+        - ios-app
+        - android-app
+        - web-app
+        - windows-app
+        - docs
+        - tools
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Provide details about your environment.
+      placeholder: |
+        - OS: e.g. iOS 17.2, Windows 11
+        - App Version: e.g. 1.2.3
+        - Device: e.g. iPhone 15, Surface Pro
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots-logs
+    attributes:
+      label: Screenshots / Logs
+      description: Attach screenshots or paste relevant log output.
+      placeholder: Drag and drop images or paste log output here.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: Verification
+      description: Please confirm the following before submitting.
+      options:
+        - label: I have searched for existing issues
+        - label: I can reproduce this consistently

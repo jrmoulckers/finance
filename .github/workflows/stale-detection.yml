@@ -1,0 +1,26 @@
+name: "Stale issue detection"
+
+on:
+  schedule:
+    - cron: "0 9 * * 1-5"  # 9am UTC, weekdays
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Flag stale issues
+        uses: actions/stale@v9
+        with:
+          stale-issue-message: >
+            This issue has been inactive for 7 days. If it's still in progress,
+            please provide a status update. If it's blocked, add the `blocked`
+            label and describe the blocker.
+          stale-issue-label: "stale"
+          days-before-stale: 7
+          days-before-close: -1  # Never auto-close
+          exempt-issue-labels: "blocked,spike"
+          operations-per-run: 30
