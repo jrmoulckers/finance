@@ -42,7 +42,8 @@ Finance is developed with AI agents as first-class contributors. This means:
 ├── skills/                           # Reusable domain knowledge
 │   ├── edge-sync/SKILL.md
 │   ├── financial-modeling/SKILL.md
-│   └── privacy-compliance/SKILL.md
+│   ├── privacy-compliance/SKILL.md
+│   └── dev-onboarding/SKILL.md
 └── workflows/
     └── copilot-setup-steps.yml       # CI environment for coding agent
 
@@ -59,9 +60,9 @@ AGENTS.md                             # Root-level agent guidance (all AI tools)
 | Tool | Usage |
 |------|-------|
 | GitHub Copilot (VS Code) | In-editor completions, chat, agent mode |
-| GitHub Copilot CLI | Terminal-based AI assistance |
+| GitHub Copilot CLI | Terminal-based AI assistance, `/fleet` for parallel agents |
 | GitHub Copilot Coding Agent | Autonomous issue-to-PR workflow on GitHub |
-| MCP Servers | Extended tool access for Copilot Chat |
+| MCP Servers | Extended tool access (5 servers: GitHub, sequential-thinking, memory, filesystem, context7) |
 
 ## Getting Started with AI Development
 

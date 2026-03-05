@@ -1,0 +1,25 @@
+{
+  "name": "finance",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Multi-platform, native-first financial tracking application",
+  "scripts": {
+    "lint": "echo \"No linters configured yet\"",
+    "test": "echo \"No tests configured yet\"",
+    "build": "echo \"No build configured yet\""
+  },
+  "keywords": [
+    "finance",
+    "budgeting",
+    "personal-finance",
+    "monorepo"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jrmoulckers/finance.git"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

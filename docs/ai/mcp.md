@@ -8,31 +8,39 @@ MCP (Model Context Protocol) is a standard that allows AI agents to interact wit
 
 ## Current Configuration
 
-### GitHub MCP Server
+### Servers
 
-**File:** `.vscode/mcp.json`
+The following MCP servers are configured in `.vscode/mcp.json`:
 
-```json
-{
-  "servers": {
-    "github": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "headers": {
-        "Authorization": "Bearer ${input:github_mcp_pat}"
-      }
-    }
-  }
-}
-```
+#### 1. GitHub (`github`)
+- **Type:** HTTP
+- **Purpose:** GitHub API access — issue/PR management, code search, Actions inspection
+- **Auth:** GitHub Personal Access Token (prompted on first use)
+- **PAT scopes needed:** `repo`, `read:org`
 
-This connects Copilot to GitHub's API, enabling:
-- Issue and PR management from Copilot Chat
-- Repository search and file browsing
-- Actions workflow inspection
-- Code search across GitHub
+#### 2. Sequential Thinking (`sequential-thinking`)
+- **Type:** stdio (runs locally via npx)
+- **Purpose:** Enables step-by-step chain-of-thought reasoning for complex tasks
+- **Why:** Dramatically improves accuracy for debugging, architecture analysis, and multi-step problem solving
+- **No auth required**
 
-**Setup:** When first used, VS Code will prompt for a GitHub Personal Access Token.
+#### 3. Memory (`memory`)
+- **Type:** stdio (runs locally via npx)
+- **Purpose:** Persistent memory across Copilot Chat sessions
+- **Why:** Maintains context about ongoing work, decisions, and patterns even after session resets
+- **No auth required**
+
+#### 4. Filesystem (`filesystem`)
+- **Type:** stdio (runs locally via npx)
+- **Purpose:** Sandboxed file system access scoped to the workspace
+- **Why:** Enables Copilot to read, write, and search files directly during agent mode
+- **No auth required**
+
+#### 5. Context7 (`context7`)
+- **Type:** stdio (runs locally via npx)
+- **Purpose:** Injects up-to-date library/framework documentation into prompts
+- **Why:** Ensures Copilot uses current API signatures instead of outdated training data
+- **No auth required**
 
 ## Adding MCP Servers
 
@@ -81,9 +89,12 @@ As the project develops, we may add MCP servers for:
 | Server | Purpose | Status |
 |--------|---------|--------|
 | GitHub | GitHub API access | ✅ Configured |
+| Sequential Thinking | Step-by-step reasoning | ✅ Configured |
+| Memory | Persistent context | ✅ Configured |
+| Filesystem | Sandboxed file access | ✅ Configured |
+| Context7 | Live docs injection | ✅ Configured |
 | Database | Local dev database queries | 📋 Planned |
-| Design System | Component library reference | 📋 Planned |
-| Analytics | Usage data queries (anonymized) | 📋 Planned |
+| Playwright | Browser automation & E2E testing | 📋 Planned |
 
 ## Security Notes
 

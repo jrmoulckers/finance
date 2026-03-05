@@ -69,6 +69,27 @@ Autonomous agent that runs on GitHub's infrastructure:
 3. Review for accuracy
 ```
 
+### 5. Fleet Mode (Parallel Agent Execution)
+
+For complex, multi-faceted tasks, use Copilot CLI's `/fleet` command:
+
+```bash
+# Break a large task into parallel subtasks
+/fleet implement transaction categorization with tests and documentation
+
+# Fleet orchestrator will:
+# 1. Analyze the task and identify subtasks
+# 2. Dispatch subtasks to specialized agents in parallel
+# 3. Manage dependencies between subtasks
+# 4. Aggregate results
+```
+
+**Best practices for fleet mode:**
+- Describe the full scope so the orchestrator can partition effectively
+- Works best for tasks with naturally separable concerns (code + tests + docs)
+- Monitor progress — intervene if agents drift or conflict
+- Review all PRs before merging, especially when agents touch overlapping files
+
 ## Using Custom Agents
 
 ### In VS Code Copilot Chat

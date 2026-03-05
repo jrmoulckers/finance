@@ -5,6 +5,9 @@ on:
   push:
     paths:
       - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
 
 jobs:
   copilot-setup-steps:
@@ -20,8 +23,28 @@ jobs:
         with:
           node-version: "22"
 
-      # Add additional setup steps as the project evolves:
-      # - Platform SDKs (Swift, Kotlin, .NET)
-      # - Package managers (npm, pip, gradle, etc.)
-      # - Database tools
-      # - Linters and formatters
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate workspace
+        run: |
+          echo "✅ Node.js $(node --version)"
+          echo "✅ npm $(npm --version)"
+          echo "✅ Workspace ready for Copilot coding agent"
+
+      # Future setup steps (uncomment as platforms are added):
+      # - name: Setup Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: "3.12"
+      #
+      # - name: Setup .NET
+      #   uses: actions/setup-dotnet@v4
+      #   with:
+      #     dotnet-version: "9.0.x"
+      #
+      # - name: Setup Java/Kotlin
+      #   uses: actions/setup-java@v4
+      #   with:
+      #     distribution: "temurin"
+      #     java-version: "21"

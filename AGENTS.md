@@ -52,4 +52,17 @@ Custom agents are defined in `.github/agents/`. Each agent has a specific role:
 Agent skills are in `.github/skills/` and provide reusable domain knowledge.
 Path-specific instructions are in `.github/instructions/`.
 
+## Fleet / Swarm Workflows
+
+This project supports Copilot CLI's `/fleet` command for parallel agent execution. For complex tasks, `/fleet` breaks down work and dispatches subtasks to specialized agents concurrently:
+
+```bash
+# In Copilot CLI
+/fleet implement budget rollover with tests, docs, and security review
+```
+
+This is especially powerful with our custom agents — the fleet orchestrator can delegate architecture to `@architect`, implementation to domain agents, security review to `@security-reviewer`, and documentation to `@docs-writer`, all in parallel.
+
+**Requirements:** Copilot CLI with Pro+ subscription. No special repo configuration needed.
+
 See `docs/ai/` for complete AI development documentation.

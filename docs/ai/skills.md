@@ -73,6 +73,24 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 ---
 
+### `dev-onboarding` — Developer Environment Setup
+
+**File:** `.github/skills/dev-onboarding/SKILL.md`
+
+**Trigger keywords:** setup, install, onboarding, getting started, prerequisites, environment, new developer
+
+**Knowledge areas:**
+- Prerequisites checklist (Git, Node.js, VS Code, Copilot)
+- First-time setup steps
+- MCP server verification
+- GitHub PAT configuration
+- Common onboarding issues and fixes
+- Platform-specific tool requirements
+
+**When activated:** Whenever an agent helps with environment setup, onboarding, or troubleshooting developer tooling.
+
+---
+
 ## Adding a New Skill
 
 1. Create a directory: `.github/skills/<skill-name>/`

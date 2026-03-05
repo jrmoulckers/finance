@@ -6,13 +6,37 @@
       "headers": {
         "Authorization": "Bearer ${input:github_mcp_pat}"
       }
+    },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${workspaceFolder}"
+      ]
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
     }
   },
   "inputs": [
     {
       "type": "promptString",
       "id": "github_mcp_pat",
-      "description": "GitHub Personal Access Token for MCP",
+      "description": "GitHub Personal Access Token for MCP (scopes: repo, read:org)",
       "password": true
     }
   ]
