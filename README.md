@@ -4,13 +4,7 @@ A multi-platform, native-first financial tracking application for personal, fami
 
 ## Vision
 
-Finance aspires to re-think and re-vitalize the desire to track every financial aspect of one's life — from daily habits to long-term impacts of financial goals. It draws inspiration from cutting-edge, award-winning applications that lead their sectors:
-
-- **[Bevel](https://www.bfrnd.com/)** — fitness experience design
-- **[YNAB](https://www.ynab.com/)** — budgeting methodology
-- **[TickTick](https://ticktick.com/)** — planning and task management
-- **[Strava](https://www.strava.com/)** — social fitness and community
-- **[Tiimo](https://www.tiimo.dk/)** — accessible, disability-inclusive design
+Finance aspires to re-think and re-vitalize the desire to track every financial aspect of one's life — from daily habits to long-term impacts of financial goals. 
 
 ## Principles
 
