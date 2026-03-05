@@ -1,0 +1,112 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+labels: ["feature", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request
+
+        Thank you for suggesting a feature! Please fill out the details below so that Copilot coding agent or a contributor can pick this up efficiently.
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: What does this feature do from the user's perspective?
+      placeholder: Describe the feature and the problem it solves.
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User Story
+      description: Describe the feature as a user story.
+      placeholder: "As a [role], I want [capability] so that [benefit]."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: platform-scope
+    attributes:
+      label: Platform Scope
+      description: Which platforms does this feature apply to?
+      options:
+        - label: iOS
+        - label: Android
+        - label: Web
+        - label: Windows
+        - label: All Platforms
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component is this feature for?
+      options:
+        - core
+        - models
+        - sync
+        - api
+        - ios-app
+        - android-app
+        - web-app
+        - windows-app
+        - docs
+        - tools
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Define the conditions that must be met for this feature to be considered complete.
+      placeholder: |
+        - [ ] `packages/core/src/feature.ts` — implementation complete
+        - [ ] `packages/core/src/feature.test.ts` — unit tests pass
+        - [ ] `docs/features/feature.md` — documentation updated
+    validations:
+      required: true
+
+  - type: textarea
+    id: design-ux-notes
+    attributes:
+      label: Design & UX Notes
+      description: Include mockups, wireframes, or accessibility requirements.
+      placeholder: Attach images or describe the expected UI/UX behavior.
+    validations:
+      required: false
+
+  - type: textarea
+    id: technical-constraints
+    attributes:
+      label: Technical Constraints
+      description: Any performance, security, or privacy requirements?
+      placeholder: Describe technical constraints or non-functional requirements.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: effort-estimate
+    attributes:
+      label: Effort Estimate
+      description: Roughly how much effort is this feature?
+      options:
+        - "XS (< 1 day)"
+        - "S (1-2 days)"
+        - "M (3-5 days)"
+        - "L (1-2 weeks)"
+        - "XL (2+ weeks)"
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Are there any blocking issues or PRs?
+      placeholder: "List any issues or PRs that must be resolved first, e.g. #123."
+    validations:
+      required: false
