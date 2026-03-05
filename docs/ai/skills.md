@@ -1,0 +1,106 @@
+# Agent Skills — Finance
+
+Agent skills are reusable bundles of domain knowledge that AI agents can activate when working on relevant tasks. They live in `.github/skills/` and follow the open [Agent Skills specification](https://agentskills.io/specification).
+
+## How Skills Work
+
+1. Each skill is a directory under `.github/skills/` containing a `SKILL.md` file
+2. The `SKILL.md` has YAML frontmatter (name, description) and a Markdown body with detailed knowledge
+3. Copilot reads only the frontmatter for discovery — the full body loads only when the skill is relevant
+4. Skills are activated automatically based on keyword matching in the description
+5. Skills are compatible with GitHub Copilot, VS Code Copilot Chat, and other MCP-compatible agents
+
+## Available Skills
+
+### `edge-sync` — Edge Computing & Data Synchronization
+
+**File:** `.github/skills/edge-sync/SKILL.md`
+
+**Trigger keywords:** sync, offline, conflict resolution, CRDT, delta sync, replication, edge computing
+
+**Knowledge areas:**
+- Offline-first architecture patterns
+- Conflict resolution strategies (LWW with vector clocks, CRDTs, operational transforms)
+- Delta sync protocol design
+- Sync queue management with retry and deduplication
+- Platform-specific background sync APIs
+- Testing strategies for sync scenarios
+
+**When activated:** Whenever an agent works on data synchronization, offline functionality, or the sync engine in `packages/sync/`.
+
+---
+
+### `financial-modeling` — Financial Calculations & Domain Modeling
+
+**File:** `.github/skills/financial-modeling/SKILL.md`
+
+**Trigger keywords:** money, budget, transaction, currency, financial calculation, balance, accounting
+
+**Knowledge areas:**
+- Money representation (integer cents, no floating point)
+- Currency handling (ISO 4217, exchange rates)
+- Budgeting models (envelope/zero-based, 50/30/20)
+- Transaction processing (income, expense, transfer, split)
+- Recurring transaction handling
+- Goal tracking and projections
+- Net worth calculation and reporting
+- Rounding rules (banker's rounding)
+- Financial domain entity model
+
+**When activated:** Whenever an agent works on business logic in `packages/core/`, `packages/models/`, or financial calculations anywhere in the codebase.
+
+---
+
+### `privacy-compliance` — Privacy Regulation & Data Protection
+
+**File:** `.github/skills/privacy-compliance/SKILL.md`
+
+**Trigger keywords:** GDPR, CCPA, privacy, data protection, consent, data deletion, encryption, PII, regulatory compliance
+
+**Knowledge areas:**
+- GDPR requirements (lawful basis, data minimization, rights)
+- CCPA/CPRA requirements
+- Data inventory and classification
+- Consent management patterns
+- Data export/portability implementation
+- Data deletion and crypto-shredding
+- Encryption requirements (at rest, in transit)
+- Data minimization checklist
+- Privacy by Design principles
+- Privacy review triggers
+
+**When activated:** Whenever an agent works on data handling, storage, transmission, or third-party integrations.
+
+---
+
+## Adding a New Skill
+
+1. Create a directory: `.github/skills/<skill-name>/`
+2. Create `SKILL.md` with YAML frontmatter:
+   ```yaml
+   ---
+   name: skill-name
+   description: >
+     Clear description with trigger keywords for when the skill should activate.
+   ---
+   ```
+3. Write comprehensive Markdown body with domain knowledge, patterns, examples, and guidelines
+4. Optionally add supporting files (scripts, templates, reference docs) in the skill directory
+5. Update this document (`docs/ai/skills.md`) with the new skill's details
+
+## Skill Naming Convention
+
+- Lowercase, hyphen-delimited (e.g., `edge-sync`, `financial-modeling`)
+- Maximum 64 characters
+- Must match the directory name
+- No leading/trailing hyphens or consecutive hyphens
+
+## Future Skills (Planned)
+
+As the project grows, additional skills may include:
+- `platform-ios` — iOS/SwiftUI development patterns
+- `platform-android` — Android/Kotlin development patterns
+- `platform-web` — PWA/TypeScript development patterns
+- `platform-windows` — Windows/WinUI development patterns
+- `testing-strategy` — Testing patterns and best practices
+- `ci-cd-pipeline` — CI/CD configuration and debugging

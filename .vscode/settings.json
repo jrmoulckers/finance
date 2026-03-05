@@ -1,0 +1,21 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": null,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.eol": "\n",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.gradle": true,
+    "**/DerivedData": true
+  },
+  "github.copilot.chat.agent.enabled": true,
+  "github.copilot.chat.agent.thinkingProcess": true,
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "files.trimTrailingWhitespace": false
+  }
+}
