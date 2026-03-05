@@ -36,17 +36,27 @@ Finance is developed with AI agents as first-class contributors. This means:
 │   ├── packages.instructions.md
 │   ├── services.instructions.md
 │   └── docs.instructions.md
-├── agents/                           # Custom agent definitions
-│   ├── architect.agent.md
-│   ├── docs-writer.agent.md
-│   ├── security-reviewer.agent.md
+├── agents/                           # Custom agent definitions (13 agents)
 │   ├── accessibility-reviewer.agent.md
-│   └── finance-domain.agent.md
-├── skills/                           # Reusable domain knowledge
+│   ├── android-engineer.agent.md
+│   ├── architect.agent.md
+│   ├── backend-engineer.agent.md
+│   ├── design-engineer.agent.md
+│   ├── devops-engineer.agent.md
+│   ├── docs-writer.agent.md
+│   ├── finance-domain.agent.md
+│   ├── ios-engineer.agent.md
+│   ├── kmp-engineer.agent.md
+│   ├── security-reviewer.agent.md
+│   ├── web-engineer.agent.md
+│   └── windows-engineer.agent.md
+├── skills/                           # Reusable domain knowledge (6 skills)
+│   ├── dev-onboarding/SKILL.md
 │   ├── edge-sync/SKILL.md
 │   ├── financial-modeling/SKILL.md
+│   ├── kmp-development/SKILL.md
 │   ├── privacy-compliance/SKILL.md
-│   └── dev-onboarding/SKILL.md
+│   └── supabase-powersync/SKILL.md
 └── workflows/                        # CI/CD workflows
     └── copilot-setup-steps.yml       # CI environment for coding agent
 
