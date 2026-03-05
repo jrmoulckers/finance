@@ -20,6 +20,7 @@ Finance is developed with AI agents as first-class contributors. This means:
 | [Instructions](instructions.md) | Copilot instruction files and how they work |
 | [MCP](mcp.md) | Model Context Protocol server configuration |
 | [Workflow](workflow.md) | Day-to-day AI development workflow guide |
+| [Restrictions](restrictions.md) | Human-gated operations and AI safety guardrails |
 
 ## Quick Reference
 

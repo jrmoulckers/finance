@@ -57,3 +57,18 @@ When making architectural decisions:
 - Do NOT bypass security or privacy requirements for convenience
 - Do NOT add complexity without documenting the trade-off in an ADR
 - Always consider all target platforms (iOS, Android, Web, Windows) in decisions
+- NEVER execute shell commands that modify remote state, publish packages, or access resources outside the project directory
+
+## Human-Gated Operations (applies to ALL agents)
+
+You MUST NOT perform any of the following without explicit human approval:
+- Git remote operations (push, pull, fetch, merge from remote, rebase onto remote)
+- PR/review operations (create, merge, close, approve PRs or reviews)
+- Remote platform mutations (GitHub API writes, deployments, releases)
+- File operations outside the repository root
+- Destructive file operations (rm -rf, bulk deletion)
+- Package publishing (npm publish or equivalent)
+- Secret/credential access (creating/reading .env with real credentials, keychain access)
+- Database destructive operations (DROP, TRUNCATE, bulk DELETE)
+
+If you encounter a task requiring any gated operation, STOP and request human approval.

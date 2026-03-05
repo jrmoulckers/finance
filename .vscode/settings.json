@@ -17,5 +17,32 @@
   "[markdown]": {
     "editor.wordWrap": "on",
     "files.trimTrailingWhitespace": false
-  }
+  },
+  "github.copilot.chat.tools.autoApprove": false,
+  "github.copilot.chat.tools.terminal.allowlist": [
+    "^git (status|log|diff|show|branch|stash list)( .*)?",
+    "^(ls|dir|Get-ChildItem|cat|type|head|tail|wc|find|grep|rg)( .*)?",
+    "^(node|npm run|npx) (--version|--help)",
+    "^echo ",
+    "^pwd$",
+    "^npm (test|run lint|run build)( .*)?"
+  ],
+  "github.copilot.chat.tools.terminal.denylist": [
+    "git (push|pull|fetch|remote|clone|merge|rebase)",
+    "git branch -[dD]",
+    "git checkout -b .* origin",
+    "gh pr (create|merge|review|close|approve)",
+    "gh issue (close|delete|transfer)",
+    "gh repo",
+    "rm -rf|del /[sS]|Remove-Item.*-Recurse.*-Force",
+    "sudo|runas|Start-Process.*-Verb RunAs",
+    "npm publish|yarn publish|pnpm publish",
+    "curl|wget|Invoke-WebRequest|Invoke-RestMethod",
+    "DROP|TRUNCATE|DELETE FROM|ALTER TABLE",
+    "format |diskpart|fdisk",
+    "ssh |scp |rsync",
+    "docker (push|rm|rmi|system prune)",
+    "chmod|chown|icacls|takeown",
+    "Set-ExecutionPolicy|reg add|regedit"
+  ]
 }
