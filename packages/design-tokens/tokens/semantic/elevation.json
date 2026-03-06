@@ -1,0 +1,8 @@
+{
+  "elevation": {
+    "none": { "$value": "{shadow.none}", "$type": "shadow" },
+    "low": { "$value": "{shadow.sm}", "$type": "shadow" },
+    "medium": { "$value": "{shadow.md}", "$type": "shadow" },
+    "high": { "$value": "{shadow.lg}", "$type": "shadow" }
+  }
+}

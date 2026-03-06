@@ -1,0 +1,36 @@
+{
+  "semantic": {
+    "background": {
+      "primary": { "$value": "{color.neutral.950}", "$type": "color" },
+      "secondary": { "$value": "{color.neutral.900}", "$type": "color" },
+      "elevated": { "$value": "{color.neutral.800}", "$type": "color" }
+    },
+    "text": {
+      "primary": { "$value": "{color.neutral.50}", "$type": "color" },
+      "secondary": { "$value": "{color.neutral.400}", "$type": "color" },
+      "disabled": { "$value": "{color.neutral.600}", "$type": "color" },
+      "inverse": { "$value": "{color.neutral.900}", "$type": "color" }
+    },
+    "border": {
+      "default": { "$value": "{color.neutral.700}", "$type": "color" },
+      "focus": { "$value": "{color.blue.400}", "$type": "color" },
+      "error": { "$value": "{color.red.400}", "$type": "color" }
+    },
+    "interactive": {
+      "default": { "$value": "{color.blue.400}", "$type": "color" },
+      "hover": { "$value": "{color.blue.300}", "$type": "color" },
+      "pressed": { "$value": "{color.blue.200}", "$type": "color" },
+      "disabled": { "$value": "{color.neutral.700}", "$type": "color" }
+    },
+    "status": {
+      "positive": { "$value": "{color.green.500}", "$type": "color" },
+      "negative": { "$value": "{color.red.500}", "$type": "color" },
+      "warning": { "$value": "{color.amber.500}", "$type": "color" },
+      "info": { "$value": "{color.blue.400}", "$type": "color" }
+    },
+    "amount": {
+      "positive": { "$value": "{color.green.500}", "$type": "color" },
+      "negative": { "$value": "{color.red.500}", "$type": "color" }
+    }
+  }
+}
