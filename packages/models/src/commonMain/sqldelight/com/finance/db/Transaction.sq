@@ -1,0 +1,116 @@
+-- Transaction entity
+-- "transaction" is a SQL reserved keyword so the table name is always quoted.
+
+CREATE TABLE IF NOT EXISTS "transaction" (
+    id TEXT NOT NULL PRIMARY KEY,
+    household_id TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    category_id TEXT,
+    type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'CLEARED',
+    amount INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    payee TEXT,
+    note TEXT,
+    date TEXT NOT NULL,
+    transfer_account_id TEXT,
+    transfer_transaction_id TEXT,
+    is_recurring INTEGER NOT NULL DEFAULT 0,
+    recurring_rule_id TEXT,
+    tags TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    sync_version INTEGER NOT NULL DEFAULT 0,
+    is_synced INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (household_id) REFERENCES household(id),
+    FOREIGN KEY (account_id) REFERENCES account(id),
+    FOREIGN KEY (category_id) REFERENCES category(id),
+    FOREIGN KEY (transfer_account_id) REFERENCES account(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_transaction_household ON "transaction" (household_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_account ON "transaction" (account_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_category ON "transaction" (category_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_date ON "transaction" (date);
+CREATE INDEX IF NOT EXISTS idx_transaction_sync ON "transaction" (is_synced);
+CREATE INDEX IF NOT EXISTS idx_transaction_type ON "transaction" (type);
+CREATE INDEX IF NOT EXISTS idx_transaction_status ON "transaction" (status);
+
+-- Queries -------------------------------------------------------------------
+
+selectAll:
+SELECT * FROM "transaction" WHERE deleted_at IS NULL;
+
+selectById:
+SELECT * FROM "transaction" WHERE id = ? AND deleted_at IS NULL;
+
+selectByHousehold:
+SELECT * FROM "transaction" WHERE household_id = ? AND deleted_at IS NULL ORDER BY date DESC;
+
+selectByAccount:
+SELECT * FROM "transaction" WHERE account_id = ? AND deleted_at IS NULL ORDER BY date DESC;
+
+selectByCategory:
+SELECT * FROM "transaction" WHERE category_id = ? AND deleted_at IS NULL ORDER BY date DESC;
+
+selectByDateRange:
+SELECT * FROM "transaction"
+WHERE household_id = ? AND date >= ? AND date <= ? AND deleted_at IS NULL
+ORDER BY date DESC;
+
+selectByAccountAndDateRange:
+SELECT * FROM "transaction"
+WHERE account_id = ? AND date >= ? AND date <= ? AND deleted_at IS NULL
+ORDER BY date DESC;
+
+selectByType:
+SELECT * FROM "transaction"
+WHERE household_id = ? AND type = ? AND deleted_at IS NULL
+ORDER BY date DESC;
+
+sumByCategory:
+SELECT category_id, SUM(amount) AS total
+FROM "transaction"
+WHERE household_id = ? AND date >= ? AND date <= ? AND deleted_at IS NULL AND type = ?
+GROUP BY category_id;
+
+sumByAccount:
+SELECT account_id, SUM(amount) AS total
+FROM "transaction"
+WHERE household_id = ? AND date >= ? AND date <= ? AND deleted_at IS NULL
+GROUP BY account_id;
+
+insert:
+INSERT INTO "transaction" (id, household_id, account_id, category_id, type, status, amount, currency, payee, note, date, transfer_account_id, transfer_transaction_id, is_recurring, recurring_rule_id, tags, created_at, updated_at, sync_version, is_synced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE "transaction" SET
+    account_id = ?,
+    category_id = ?,
+    type = ?,
+    status = ?,
+    amount = ?,
+    currency = ?,
+    payee = ?,
+    note = ?,
+    date = ?,
+    transfer_account_id = ?,
+    transfer_transaction_id = ?,
+    is_recurring = ?,
+    recurring_rule_id = ?,
+    tags = ?,
+    updated_at = ?,
+    sync_version = ?,
+    is_synced = ?
+WHERE id = ?;
+
+softDelete:
+UPDATE "transaction" SET deleted_at = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+selectUnsynced:
+SELECT * FROM "transaction" WHERE is_synced = 0;
+
+markSynced:
+UPDATE "transaction" SET is_synced = 1, sync_version = ? WHERE id = ?;

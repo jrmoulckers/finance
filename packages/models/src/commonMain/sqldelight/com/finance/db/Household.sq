@@ -1,0 +1,50 @@
+-- Household entity
+-- A household groups users who share finances together.
+
+CREATE TABLE IF NOT EXISTS household (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    sync_version INTEGER NOT NULL DEFAULT 0,
+    is_synced INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (owner_id) REFERENCES user(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_household_owner ON household (owner_id);
+CREATE INDEX IF NOT EXISTS idx_household_sync ON household (is_synced);
+
+-- Queries -------------------------------------------------------------------
+
+selectAll:
+SELECT * FROM household WHERE deleted_at IS NULL;
+
+selectById:
+SELECT * FROM household WHERE id = ? AND deleted_at IS NULL;
+
+selectByOwner:
+SELECT * FROM household WHERE owner_id = ? AND deleted_at IS NULL;
+
+insert:
+INSERT INTO household (id, name, owner_id, created_at, updated_at, sync_version, is_synced)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE household SET
+    name = ?,
+    owner_id = ?,
+    updated_at = ?,
+    sync_version = ?,
+    is_synced = ?
+WHERE id = ?;
+
+softDelete:
+UPDATE household SET deleted_at = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+selectUnsynced:
+SELECT * FROM household WHERE is_synced = 0;
+
+markSynced:
+UPDATE household SET is_synced = 1, sync_version = ? WHERE id = ?;
