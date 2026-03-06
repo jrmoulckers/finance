@@ -1,0 +1,14 @@
+package com.finance.db
+
+/**
+ * Android actual interface for EncryptionKeyProvider.
+ * App-layer implementations should use Android Keystore for key management.
+ */
+actual interface EncryptionKeyProvider {
+    /** Retrieves existing key or generates a new one via Android Keystore. */
+    actual fun getOrCreateKey(): String
+    /** Checks if a key already exists in Android Keystore. */
+    actual fun hasKey(): Boolean
+    /** Deletes the stored key (for crypto-shredding / account deletion). */
+    actual fun deleteKey()
+}
