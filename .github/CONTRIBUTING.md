@@ -109,6 +109,16 @@ Scope: the app/package/service being changed
 When AI agents create commits, include the trailer:
 `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
 
+### Issue References (Required)
+
+Every commit must reference a GitHub issue number. Include `(#N)` at the end of the commit subject line:
+
+```
+feat(core): implement savings rate calculation (#137)
+```
+
+If no issue exists for your change, create one first with `gh issue create`.
+
 ### Security Rules (Financial App)
 
 - **NEVER** hardcode secrets, API keys, or credentials

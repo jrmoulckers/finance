@@ -24,6 +24,8 @@ const config = {
     "subject-case": [2, "never", ["start-case", "pascal-case", "upper-case"]],
     // Max header length
     "header-max-length": [2, "always", 100],
+    // Warn if no issue reference (e.g., #123) in commit message
+    "references-empty": [1, "never"],
   },
 };
 
