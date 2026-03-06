@@ -1,0 +1,25 @@
+{
+  "button": {
+    "primary": {
+      "background": { "$value": "{semantic.interactive.default}", "$type": "color" },
+      "text": { "$value": "{semantic.text.inverse}", "$type": "color" },
+      "borderRadius": { "$value": "{borderRadius.md}", "$type": "dimension" },
+      "paddingX": { "$value": "{spacing.4}", "$type": "dimension" },
+      "paddingY": { "$value": "{spacing.2}", "$type": "dimension" }
+    },
+    "secondary": {
+      "background": { "$value": "transparent", "$type": "color" },
+      "text": { "$value": "{semantic.interactive.default}", "$type": "color" },
+      "borderRadius": { "$value": "{borderRadius.md}", "$type": "dimension" },
+      "paddingX": { "$value": "{spacing.4}", "$type": "dimension" },
+      "paddingY": { "$value": "{spacing.2}", "$type": "dimension" }
+    },
+    "destructive": {
+      "background": { "$value": "{semantic.status.negative}", "$type": "color" },
+      "text": { "$value": "{semantic.text.inverse}", "$type": "color" },
+      "borderRadius": { "$value": "{borderRadius.md}", "$type": "dimension" },
+      "paddingX": { "$value": "{spacing.4}", "$type": "dimension" },
+      "paddingY": { "$value": "{spacing.2}", "$type": "dimension" }
+    }
+  }
+}
