@@ -1,6 +1,6 @@
 # ADR-0006: CI/CD Strategy
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2025-07-15
 **Author:** AI agent (Copilot), with human review pending
 **Reviewers:** TBD

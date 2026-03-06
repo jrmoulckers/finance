@@ -1,6 +1,6 @@
 # ADR-0002: Backend & Sync Architecture
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2025-07-17
 **Author:** Copilot (AI agent), based on backend/sync research
 **Reviewers:** Pending human review
