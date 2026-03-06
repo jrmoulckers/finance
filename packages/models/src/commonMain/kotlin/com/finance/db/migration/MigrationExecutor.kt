@@ -94,10 +94,8 @@ class MigrationExecutor(
         sqlExecutor.executeInTransaction {
             migration.up.forEach { sql -> execute(sql) }
             execute(
-                """
-                INSERT INTO $VERSION_TABLE (version, description, applied_at)
-                VALUES (${migration.version}, '${migration.description}', datetime('now'))
-                """.trimIndent()
+                "INSERT INTO $VERSION_TABLE (version, description, applied_at) VALUES (?, ?, datetime('now'))",
+                listOf(migration.version, migration.description),
             )
         }
     }
@@ -105,7 +103,10 @@ class MigrationExecutor(
     private fun rollbackMigration(migration: Migration) {
         sqlExecutor.executeInTransaction {
             migration.down.forEach { sql -> execute(sql) }
-            execute("DELETE FROM $VERSION_TABLE WHERE version = ${migration.version}")
+            execute(
+                "DELETE FROM $VERSION_TABLE WHERE version = ?",
+                listOf(migration.version),
+            )
         }
     }
 }
