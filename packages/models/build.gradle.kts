@@ -17,6 +17,11 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
         }
+        val jvmMain by getting {
+            dependencies {
+                implementation(libs.sqldelight.jvm.driver)
+            }
+        }
     }
 }
 

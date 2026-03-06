@@ -1,0 +1,83 @@
+-- Goal entity
+-- Savings goals with progress tracking, optionally linked to a savings account.
+
+CREATE TABLE IF NOT EXISTS goal (
+    id TEXT NOT NULL PRIMARY KEY,
+    household_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    target_amount INTEGER NOT NULL,
+    current_amount INTEGER NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    target_date TEXT,
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
+    icon TEXT,
+    color TEXT,
+    account_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    sync_version INTEGER NOT NULL DEFAULT 0,
+    is_synced INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (household_id) REFERENCES household(id),
+    FOREIGN KEY (account_id) REFERENCES account(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_goal_household ON goal (household_id);
+CREATE INDEX IF NOT EXISTS idx_goal_status ON goal (status);
+CREATE INDEX IF NOT EXISTS idx_goal_account ON goal (account_id);
+CREATE INDEX IF NOT EXISTS idx_goal_sync ON goal (is_synced);
+
+-- Queries -------------------------------------------------------------------
+
+selectAll:
+SELECT * FROM goal WHERE deleted_at IS NULL;
+
+selectById:
+SELECT * FROM goal WHERE id = ? AND deleted_at IS NULL;
+
+selectByHousehold:
+SELECT * FROM goal WHERE household_id = ? AND deleted_at IS NULL ORDER BY name ASC;
+
+selectByStatus:
+SELECT * FROM goal WHERE household_id = ? AND status = ? AND deleted_at IS NULL ORDER BY name ASC;
+
+selectActive:
+SELECT * FROM goal WHERE household_id = ? AND status = 'ACTIVE' AND deleted_at IS NULL ORDER BY name ASC;
+
+selectByAccount:
+SELECT * FROM goal WHERE account_id = ? AND deleted_at IS NULL;
+
+insert:
+INSERT INTO goal (id, household_id, name, target_amount, current_amount, currency, target_date, status, icon, color, account_id, created_at, updated_at, sync_version, is_synced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE goal SET
+    name = ?,
+    target_amount = ?,
+    current_amount = ?,
+    currency = ?,
+    target_date = ?,
+    status = ?,
+    icon = ?,
+    color = ?,
+    account_id = ?,
+    updated_at = ?,
+    sync_version = ?,
+    is_synced = ?
+WHERE id = ?;
+
+updateProgress:
+UPDATE goal SET current_amount = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+updateStatus:
+UPDATE goal SET status = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+softDelete:
+UPDATE goal SET deleted_at = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+selectUnsynced:
+SELECT * FROM goal WHERE is_synced = 0;
+
+markSynced:
+UPDATE goal SET is_synced = 1, sync_version = ? WHERE id = ?;
