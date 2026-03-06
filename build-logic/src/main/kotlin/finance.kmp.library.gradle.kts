@@ -3,6 +3,9 @@ plugins {
 }
 
 kotlin {
+    // Auto-provision JDK 21 — no manual JAVA_HOME setup needed
+    jvmToolchain(21)
+
     // JVM target (Desktop / server)
     jvm()
 

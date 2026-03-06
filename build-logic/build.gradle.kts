@@ -3,7 +3,5 @@ plugins {
 }
 
 dependencies {
-    compileOnly(libs.plugins.kotlin.multiplatform.get().let {
-        "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}"
-    })
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:${libs.versions.kotlin.get()}")
 }
