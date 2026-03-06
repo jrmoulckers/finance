@@ -1,5 +1,6 @@
 package com.finance.models.types
 
+import kotlin.jvm.JvmInline
 import kotlinx.serialization.Serializable
 
 /**

@@ -21,8 +21,8 @@ actual class DatabaseFactory(
         val driver = JdbcSqliteDriver(
             url = "jdbc:sqlite:$dbPath",
             properties = properties,
-            schema = FinanceDatabase.Schema,
         )
+        // Schema creation handled by MigrationExecutor
         return FinanceDatabase(driver)
     }
 }
