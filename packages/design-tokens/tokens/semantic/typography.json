@@ -1,0 +1,10 @@
+{
+  "typeScale": {
+    "display": { "fontSize": { "$value": "{fontSize.5xl}", "$type": "dimension" }, "fontWeight": { "$value": "{fontWeight.bold}", "$type": "fontWeight" }, "lineHeight": { "$value": "{lineHeight.tight}", "$type": "number" } },
+    "headline": { "fontSize": { "$value": "{fontSize.3xl}", "$type": "dimension" }, "fontWeight": { "$value": "{fontWeight.semibold}", "$type": "fontWeight" }, "lineHeight": { "$value": "{lineHeight.tight}", "$type": "number" } },
+    "title": { "fontSize": { "$value": "{fontSize.xl}", "$type": "dimension" }, "fontWeight": { "$value": "{fontWeight.semibold}", "$type": "fontWeight" }, "lineHeight": { "$value": "{lineHeight.normal}", "$type": "number" } },
+    "body": { "fontSize": { "$value": "{fontSize.base}", "$type": "dimension" }, "fontWeight": { "$value": "{fontWeight.regular}", "$type": "fontWeight" }, "lineHeight": { "$value": "{lineHeight.normal}", "$type": "number" } },
+    "label": { "fontSize": { "$value": "{fontSize.sm}", "$type": "dimension" }, "fontWeight": { "$value": "{fontWeight.medium}", "$type": "fontWeight" }, "lineHeight": { "$value": "{lineHeight.normal}", "$type": "number" } },
+    "caption": { "fontSize": { "$value": "{fontSize.xs}", "$type": "dimension" }, "fontWeight": { "$value": "{fontWeight.regular}", "$type": "fontWeight" }, "lineHeight": { "$value": "{lineHeight.normal}", "$type": "number" } }
+  }
+}
