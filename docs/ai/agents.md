@@ -107,6 +107,142 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 ---
 
+### `@kmp-engineer` — KMP Engineer
+
+**File:** `.github/agents/kmp-engineer.agent.md`
+
+**Purpose:** Expert on all Kotlin Multiplatform shared code in `packages/` — business logic, SQLDelight database schemas, Ktor client networking, kotlinx libraries, and Gradle KMP configuration across all targets.
+
+**When to use:**
+- Writing or modifying shared KMP code in `packages/`
+- Creating SQLDelight schemas (`.sq` files) and migrations
+- Configuring Gradle for KMP targets (iOS, Android, JVM, JS, Wasm)
+- Implementing expect/actual declarations for platform-specific APIs
+- Reviewing shared code for platform compatibility
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@backend-engineer` — Backend Engineer
+
+**File:** `.github/agents/backend-engineer.agent.md`
+
+**Purpose:** Owns the Supabase project (PostgreSQL, Auth, Edge Functions, RLS) and PowerSync sync engine, ensuring secure data flow between edge clients and the cloud.
+
+**When to use:**
+- Designing or modifying PostgreSQL schemas
+- Writing or reviewing Row-Level Security (RLS) policies
+- Configuring PowerSync sync rules
+- Implementing Supabase Edge Functions
+- Managing database migrations
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@ios-engineer` — iOS Engineer
+
+**File:** `.github/agents/ios-engineer.agent.md`
+
+**Purpose:** Builds and maintains the native Apple platform experience (iPhone, iPad, Mac, Apple Watch, App Clips) using SwiftUI, with KMP integration via Swift Export.
+
+**When to use:**
+- Building or modifying SwiftUI views in `apps/ios/`
+- Integrating KMP shared logic via Swift Export or SKIE
+- Implementing Apple Keychain, Face ID, or Touch ID features
+- Ensuring VoiceOver and Dynamic Type accessibility
+- Configuring Xcode project settings or watchOS companion app
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@android-engineer` — Android Engineer
+
+**File:** `.github/agents/android-engineer.agent.md`
+
+**Purpose:** Builds and maintains the Android and Wear OS clients using Jetpack Compose with Material 3, integrating shared KMP business logic with native security and accessibility.
+
+**When to use:**
+- Building or modifying Jetpack Compose UI
+- Integrating KMP modules as direct Kotlin dependencies
+- Implementing BiometricPrompt and Android Keystore
+- Ensuring TalkBack and Switch Access compatibility
+- Building the Wear OS companion app
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@web-engineer` — Web Engineer
+
+**File:** `.github/agents/web-engineer.agent.md`
+
+**Purpose:** Builds and maintains the Progressive Web App with offline-first capability, integrating KMP shared logic via Kotlin/JS or WASM bindings, with SQLite-WASM for local storage.
+
+**When to use:**
+- Building or modifying the PWA in `apps/web/`
+- Configuring service workers and offline caching
+- Setting up SQLite-WASM with OPFS storage
+- Implementing ARIA accessibility and keyboard navigation
+- Configuring Web Crypto API for client-side encryption
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@windows-engineer` — Windows Engineer
+
+**File:** `.github/agents/windows-engineer.agent.md`
+
+**Purpose:** Builds and maintains the Windows desktop client using Compose Desktop (JVM target) with Windows Hello authentication, DPAPI secure storage, and Narrator accessibility.
+
+**When to use:**
+- Building or modifying Compose Desktop UI for Windows
+- Implementing Windows Hello biometric authentication
+- Using DPAPI for secure credential storage
+- Ensuring Narrator and UI Automation accessibility
+- Packaging MSIX for Microsoft Store distribution
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@devops-engineer` — DevOps Engineer
+
+**File:** `.github/agents/devops-engineer.agent.md`
+
+**Purpose:** Designs and maintains CI/CD pipelines using GitHub Actions, Turborepo monorepo builds, Fastlane mobile deployment, Changesets versioning, and release automation.
+
+**When to use:**
+- Authoring or modifying GitHub Actions workflows
+- Configuring Turborepo pipelines and caching
+- Setting up Fastlane lanes for iOS/Android
+- Managing Changesets for versioning and changelogs
+- Configuring dependency scanning (Dependabot, CodeQL)
+
+**Tools:** read, edit, search, shell
+
+---
+
+### `@design-engineer` — Design Engineer
+
+**File:** `.github/agents/design-engineer.agent.md`
+
+**Purpose:** Defines and maintains the design token system (DTCG spec), Style Dictionary pipeline, color systems, typography scales, and accessibility-first component specifications across all platforms.
+
+**When to use:**
+- Defining or modifying design tokens (primitives, semantic, component)
+- Configuring Style Dictionary transforms for platform outputs
+- Designing color systems with WCAG AA compliance
+- Creating component specifications with accessibility contracts
+- Establishing financial data visualization patterns
+
+**Tools:** read, edit, search
+
+---
+
 ## Adding a New Agent
 
 1. Create `.github/agents/<name>.agent.md` with YAML frontmatter:

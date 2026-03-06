@@ -3,10 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "description": "Multi-platform, native-first financial tracking application",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*",
+    "tools/*"
+  ],
   "scripts": {
-    "lint": "echo \"No linters configured yet\"",
-    "test": "echo \"No tests configured yet\"",
-    "build": "echo \"No build configured yet\""
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "format": "turbo run format",
+    "prepare": "husky"
   },
   "keywords": [
     "finance",
@@ -21,5 +30,11 @@
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.3",
+    "@commitlint/config-conventional": "^20.4.3",
+    "husky": "^9.1.7",
+    "turbo": "^2.8.13"
   }
 }
