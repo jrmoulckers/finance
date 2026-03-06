@@ -7,7 +7,7 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Thread-safe, in-memory implementation of [MutationQueue].
  *
- * Uses a [Mutex] for coroutine-safe access — no platform-specific concurrency
+ * Uses a [Mutex] for coroutine-safe access -- no platform-specific concurrency
  * primitives required.
  *
  * When a mutation with a duplicate [SyncMutation.entityKey] is enqueued,
@@ -18,13 +18,13 @@ class InMemoryMutationQueue : MutationQueue {
     private val mutex = Mutex()
 
     /**
-     * Insertion-ordered map of mutation ID → mutation.
+     * Insertion-ordered map of mutation ID -> mutation.
      * LinkedHashMap preserves insertion order for FIFO semantics.
      */
     private val queue = LinkedHashMap<String, SyncMutation>()
 
     /**
-     * Reverse index: entity key → mutation ID.
+     * Reverse index: entity key -> mutation ID.
      * Used for O(1) deduplication lookups.
      */
     private val entityIndex = mutableMapOf<String, String>()
