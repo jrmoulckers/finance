@@ -1,6 +1,6 @@
 # System Architecture Roadmap — Finance
 
-> **Status:** DRAFT — Pending human review of technology decisions
+> **Status:** ACTIVE — Technology decisions confirmed (app name pending)
 > **Last Updated:** 2026-03-05
 > **Purpose:** Source-of-truth for issue creation and development planning
 
@@ -16,7 +16,7 @@ The development is organized into eight phases, from foundational infrastructure
 
 ---
 
-## Technology Decisions (PROPOSED)
+## Technology Decisions
 
 All technology choices below are **proposals** based on research. Each requires explicit human confirmation before implementation begins. Confirmed decisions will be documented as ADRs in `docs/architecture/`.
 
@@ -36,7 +36,7 @@ All technology choices below are **proposals** based on research. Each requires 
 | iOS UI framework | SwiftUI | UIKit, Compose Multiplatform iOS | ✅ Confirmed |
 | Android UI framework | Jetpack Compose | XML Views, Compose Multiplatform | ✅ Confirmed |
 | Web approach | TypeScript + React consuming KMP logic via JS bindings | Compose for Web (Wasm), Kobweb, Kotlin/JS | ✅ Confirmed |
-| Windows approach | Compose Desktop (JVM) | WinUI 3, Compose Multiplatform Desktop | ⏳ Proposed |
+| Windows approach | Compose Desktop (JVM) | WinUI 3, Compose Multiplatform Desktop | ✅ Confirmed |
 | First platform priority | iOS first, Android in parallel | Android first | ✅ Confirmed |
 | Budgeting methodology | Both envelope/zero-based AND category budgets | Single methodology | ✅ Confirmed |
 | Transaction entry | Manual + CSV import + Plaid bank connections at launch | Manual only, Plaid later | ✅ Confirmed |
@@ -281,7 +281,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 - ✅ Research — cross-platform, backend/sync, local storage, auth/security, design system, CI/CD
 
 **What remains in Phase 0:**
-- Confirm all technology decisions in the table above (human approval required)
+- ✅ Technology decisions confirmed (except app name — pending workshop)
 - Write ADRs for each confirmed decision (`docs/architecture/adr-001-*.md` through `adr-007-*.md`)
 - Set up Turborepo workspace configuration (`turbo.json`)
 - Configure Dependabot for all package ecosystems
