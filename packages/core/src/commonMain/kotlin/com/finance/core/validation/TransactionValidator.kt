@@ -33,17 +33,19 @@ object TransactionValidator {
         }
 
         // Category must exist (if provided)
-        if (transaction.categoryId != null && transaction.categoryId !in existingCategories) {
-            errors.add(ValidationError.CategoryNotFound(transaction.categoryId))
+        val categoryId = transaction.categoryId
+        if (categoryId != null && categoryId !in existingCategories) {
+            errors.add(ValidationError.CategoryNotFound(categoryId))
         }
 
         // Transfer validation
         if (transaction.type == TransactionType.TRANSFER) {
-            if (transaction.transferAccountId == null) {
+            val transferAccountId = transaction.transferAccountId
+            if (transferAccountId == null) {
                 errors.add(ValidationError.TransferMissingDestination)
-            } else if (transaction.transferAccountId !in existingAccounts) {
-                errors.add(ValidationError.AccountNotFound(transaction.transferAccountId))
-            } else if (transaction.transferAccountId == transaction.accountId) {
+            } else if (transferAccountId !in existingAccounts) {
+                errors.add(ValidationError.AccountNotFound(transferAccountId))
+            } else if (transferAccountId == transaction.accountId) {
                 errors.add(ValidationError.TransferSameAccount)
             }
         }
@@ -57,13 +59,15 @@ object TransactionValidator {
         }
 
         // Payee length check
-        if (transaction.payee != null && transaction.payee.length > 200) {
-            errors.add(ValidationError.PayeeTooLong(transaction.payee.length))
+        val payee = transaction.payee
+        if (payee != null && payee.length > 200) {
+            errors.add(ValidationError.PayeeTooLong(payee.length))
         }
 
         // Note length check
-        if (transaction.note != null && transaction.note.length > 1000) {
-            errors.add(ValidationError.NoteTooLong(transaction.note.length))
+        val note = transaction.note
+        if (note != null && note.length > 1000) {
+            errors.add(ValidationError.NoteTooLong(note.length))
         }
 
         return errors
