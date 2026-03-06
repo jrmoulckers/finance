@@ -1,10 +1,11 @@
-import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
 }
 
 kotlin {
+    // Auto-provision JDK 21 — no manual JAVA_HOME setup needed
+    jvmToolchain(21)
+
     // JVM target (Desktop / server)
     jvm()
 
