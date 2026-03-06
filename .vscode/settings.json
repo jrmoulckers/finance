@@ -28,7 +28,8 @@
     "^npm (test|run lint|run build)( .*)?"
   ],
   "github.copilot.chat.tools.terminal.denylist": [
-    "git (push|pull|fetch|remote|clone|merge|rebase)",
+    "git push.*(main|master|--force(?!-with-lease))",
+    "git (pull|fetch|remote|clone|merge|rebase)",
     "git branch -[dD]",
     "git checkout -b .* origin",
     "gh pr (create|merge|review|close|approve)",

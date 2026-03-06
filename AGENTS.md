@@ -23,6 +23,17 @@ Finance is a multi-platform, native-first financial tracking application for per
 4. **Security** — Follow OWASP guidelines. Never hardcode secrets. Always validate and sanitize inputs. Use parameterized queries.
 5. **Transparency** — Document all significant decisions, trade-offs, and AI-generated code rationale in commit messages and PR descriptions.
 
+## Issue-First Development
+
+All work in this repository follows an issue-first workflow:
+
+1. **Every code change must reference a GitHub issue.** If no issue exists for the work you're about to do, create one first.
+2. **Commit messages must include issue references** in the format `type(scope): description (#N)`.
+3. **PRs must link to issues** using `Closes #N` or `Refs #N` in the description.
+4. **Planning happens in issues, not in code.** Decompose work into issues before starting implementation.
+
+AI agents that skip issue creation or fail to reference issues in commits are not following the project workflow. If you discover work was done without an issue, create a retroactive issue to track it.
+
 ## Coding Standards
 
 - Write clear, self-documenting code. Comment only when intent isn't obvious from the code itself.
@@ -57,15 +68,18 @@ Path-specific instructions are in `.github/instructions/`.
 The following operations MUST NEVER be performed by AI agents without explicit human approval. These restrictions apply to ALL AI tools working in this repository — GitHub Copilot, Codex, Claude, and any other agent.
 
 ### Category 1: Git Remote Operations
-AI agents MUST NOT execute:
-- `git push`, `git force-push`, `git push --force-with-lease`
+AI agents MAY push feature branches (never `main`, `master`, or release branches).
+AI agents MAY use `git push --force-with-lease` on their own feature branches.
+
+AI agents MUST NOT:
+- Push to `main`, `master`, or release branches (protected by GitHub branch protection requiring PR review)
+- Use `git push --force` (without `--force-with-lease`)
 - `git pull`, `git fetch` from untrusted remotes
 - `git remote add`, `git remote remove`, `git remote set-url`
 - `git merge` from remote branches
 - `git rebase` onto remote branches
-- Any operation that sends data to or receives data from a remote Git server
 
-**Why:** Remote operations affect shared state and can introduce untrusted code or expose local work prematurely.
+**Why:** Feature-branch pushes are safe because `main` is protected by GitHub branch protection requiring PR review. Force-push without `--force-with-lease` is dangerous because it can overwrite others' work.
 
 ### Category 2: Pull Request & Review Operations
 AI agents MUST NOT execute:
