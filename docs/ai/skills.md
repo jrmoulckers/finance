@@ -91,6 +91,49 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 
 ---
 
+### `kmp-development` — Kotlin Multiplatform Development
+
+**File:** `.github/skills/kmp-development/SKILL.md`
+
+**Trigger keywords:** KMP, Kotlin, multiplatform, commonMain, expect actual, SQLDelight, Ktor, Gradle, shared code
+
+**Knowledge areas:**
+- KMP project structure and source-set hierarchy (commonMain, androidMain, iosMain, jvmMain, jsMain, wasmJsMain)
+- Gradle configuration patterns (version catalogs, composite builds, convention plugins)
+- Expect/actual declaration patterns for platform-specific APIs
+- SQLDelight setup, `.sq` files, platform drivers, and migration strategy
+- kotlinx libraries usage (serialization, datetime, coroutines)
+- Swift Export and SKIE configuration for iOS
+- Kotlin/JS and Kotlin/Wasm configuration for web
+- Testing patterns (kotlin.test, Turbine for Flow testing)
+- Financial-specific patterns (value classes for IDs, Long for cents)
+- Common pitfalls (java.* in commonMain, dispatcher misuse, K/N memory model)
+
+**When activated:** Whenever an agent works on KMP shared modules in `packages/`, Gradle build configuration, or cross-platform code patterns.
+
+---
+
+### `supabase-powersync` — Supabase & PowerSync Backend
+
+**File:** `.github/skills/supabase-powersync/SKILL.md`
+
+**Trigger keywords:** Supabase, PostgreSQL, RLS, Edge Functions, PowerSync, sync rules, migration, database schema
+
+**Knowledge areas:**
+- Supabase project setup and configuration
+- PostgreSQL schema design for financial data
+- Row-Level Security (RLS) policies for multi-tenant isolation
+- Supabase Auth configuration (Passkeys, OAuth, JWT)
+- Edge Functions development (Deno runtime, TypeScript)
+- PowerSync sync rules and selective replication
+- Database migration patterns (versioned, reversible)
+- CRDT-based conflict resolution
+- Data export/deletion for GDPR/CCPA compliance
+
+**When activated:** Whenever an agent works on the backend in `services/supabase/`, sync engine configuration, database schema changes, or RLS policies.
+
+---
+
 ## Adding a New Skill
 
 1. Create a directory: `.github/skills/<skill-name>/`
