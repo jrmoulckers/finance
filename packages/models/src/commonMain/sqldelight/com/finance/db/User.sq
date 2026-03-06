@@ -1,0 +1,53 @@
+-- User entity
+-- Stores user profiles with sync metadata.
+
+CREATE TABLE IF NOT EXISTS user (
+    id TEXT NOT NULL PRIMARY KEY,
+    email TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    avatar_url TEXT,
+    default_currency TEXT NOT NULL DEFAULT 'USD',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    sync_version INTEGER NOT NULL DEFAULT 0,
+    is_synced INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_email ON user (email);
+CREATE INDEX IF NOT EXISTS idx_user_sync ON user (is_synced);
+
+-- Queries -------------------------------------------------------------------
+
+selectAll:
+SELECT * FROM user WHERE deleted_at IS NULL;
+
+selectById:
+SELECT * FROM user WHERE id = ? AND deleted_at IS NULL;
+
+selectByEmail:
+SELECT * FROM user WHERE email = ? AND deleted_at IS NULL;
+
+insert:
+INSERT INTO user (id, email, display_name, avatar_url, default_currency, created_at, updated_at, sync_version, is_synced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE user SET
+    email = ?,
+    display_name = ?,
+    avatar_url = ?,
+    default_currency = ?,
+    updated_at = ?,
+    sync_version = ?,
+    is_synced = ?
+WHERE id = ?;
+
+softDelete:
+UPDATE user SET deleted_at = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+selectUnsynced:
+SELECT * FROM user WHERE is_synced = 0;
+
+markSynced:
+UPDATE user SET is_synced = 1, sync_version = ? WHERE id = ?;

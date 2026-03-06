@@ -1,0 +1,77 @@
+-- Budget entity
+-- Recurring spending limits linked to a category and household.
+
+CREATE TABLE IF NOT EXISTS budget (
+    id TEXT NOT NULL PRIMARY KEY,
+    household_id TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    period TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    is_rollover INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    sync_version INTEGER NOT NULL DEFAULT 0,
+    is_synced INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (household_id) REFERENCES household(id),
+    FOREIGN KEY (category_id) REFERENCES category(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_budget_household ON budget (household_id);
+CREATE INDEX IF NOT EXISTS idx_budget_category ON budget (category_id);
+CREATE INDEX IF NOT EXISTS idx_budget_period ON budget (period);
+CREATE INDEX IF NOT EXISTS idx_budget_sync ON budget (is_synced);
+
+-- Queries -------------------------------------------------------------------
+
+selectAll:
+SELECT * FROM budget WHERE deleted_at IS NULL;
+
+selectById:
+SELECT * FROM budget WHERE id = ? AND deleted_at IS NULL;
+
+selectByHousehold:
+SELECT * FROM budget WHERE household_id = ? AND deleted_at IS NULL ORDER BY name ASC;
+
+selectByCategory:
+SELECT * FROM budget WHERE category_id = ? AND deleted_at IS NULL;
+
+selectByPeriod:
+SELECT * FROM budget WHERE household_id = ? AND period = ? AND deleted_at IS NULL ORDER BY name ASC;
+
+selectActive:
+SELECT * FROM budget
+WHERE household_id = ? AND (end_date IS NULL OR end_date >= ?) AND deleted_at IS NULL
+ORDER BY name ASC;
+
+insert:
+INSERT INTO budget (id, household_id, category_id, name, amount, currency, period, start_date, end_date, is_rollover, created_at, updated_at, sync_version, is_synced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE budget SET
+    category_id = ?,
+    name = ?,
+    amount = ?,
+    currency = ?,
+    period = ?,
+    start_date = ?,
+    end_date = ?,
+    is_rollover = ?,
+    updated_at = ?,
+    sync_version = ?,
+    is_synced = ?
+WHERE id = ?;
+
+softDelete:
+UPDATE budget SET deleted_at = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+selectUnsynced:
+SELECT * FROM budget WHERE is_synced = 0;
+
+markSynced:
+UPDATE budget SET is_synced = 1, sync_version = ? WHERE id = ?;
