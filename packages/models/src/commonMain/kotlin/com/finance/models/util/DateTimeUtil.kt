@@ -25,7 +25,7 @@ object DateTimeUtil {
         val nextMonth = if (month == Month.DECEMBER) {
             LocalDate(year + 1, Month.JANUARY, 1)
         } else {
-            LocalDate(year, month.plus(1), 1)
+            LocalDate(year, Month.entries[month.ordinal + 1], 1)
         }
         return nextMonth.minus(1, DateTimeUnit.DAY)
     }
