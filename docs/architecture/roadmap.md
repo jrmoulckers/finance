@@ -22,20 +22,28 @@ All technology choices below are **proposals** based on research. Each requires 
 
 | Decision | Proposed Choice | Alternatives Considered | Status |
 |----------|----------------|------------------------|--------|
-| Cross-platform framework | KMP (Kotlin Multiplatform) | React Native/Expo, Flutter, .NET MAUI | ⏳ Proposed |
-| Backend database & auth | Supabase (PostgreSQL + Auth + Edge Functions) | Firebase, Custom Node.js, PocketBase | ⏳ Proposed |
-| Sync engine | PowerSync | ElectricSQL, Custom sync, WatermelonDB sync | ⏳ Proposed |
-| Local database | SQLite via SQLDelight (KMP) + SQLCipher encryption | Room KMP, Drift (Flutter), WatermelonDB | ⏳ Proposed |
-| Key-value store | Multiplatform Settings (KMP) / MMKV | SharedPreferences, UserDefaults, AsyncStorage | ⏳ Proposed |
-| Primary auth method | Passkeys (WebAuthn/FIDO2) + OAuth 2.0/PKCE fallback | Magic links, Social-only, Email/password-only | ⏳ Proposed |
-| Design system approach | Design tokens (DTCG JSON) + native UI per platform | Shared cross-platform UI components, Compose Multiplatform everywhere | ⏳ Proposed |
-| Token pipeline | Style Dictionary | Manual per-platform, Tokens Studio only | ⏳ Proposed |
-| CI/CD platform | GitHub Actions + Turborepo (affected-only builds) | CircleCI, GitLab CI, Xcode Cloud, Nx | ⏳ Proposed |
-| Versioning | Per-package semver with Changesets | Unified version, Nx Release | ⏳ Proposed |
-| iOS UI framework | SwiftUI | UIKit, Compose Multiplatform iOS | ⏳ Proposed |
-| Android UI framework | Jetpack Compose | XML Views, Compose Multiplatform | ⏳ Proposed |
-| Web approach | Kotlin/JS or TypeScript + React with KMP logic | Compose for Web (Wasm), Kobweb | ⏳ Proposed |
+| Cross-platform framework | KMP (Kotlin Multiplatform) | React Native/Expo, Flutter, .NET MAUI | ✅ Confirmed |
+| Backend database & auth | Supabase (PostgreSQL + Auth + Edge Functions) | Firebase, Custom Node.js, PocketBase | ✅ Confirmed |
+| Sync engine | PowerSync | ElectricSQL, Custom sync, WatermelonDB sync | ✅ Confirmed |
+| Hosting | Self-hosted (Supabase + PowerSync on VPS, ~$10-20/mo) | Managed cloud (~$74/mo) | ✅ Confirmed |
+| Local database | SQLite via SQLDelight (KMP) + SQLCipher encryption | Room KMP, Drift (Flutter), WatermelonDB | ✅ Confirmed |
+| Key-value store | Multiplatform Settings (KMP) / MMKV | SharedPreferences, UserDefaults, AsyncStorage | ✅ Confirmed |
+| Primary auth method | Passkeys (WebAuthn/FIDO2) + OAuth 2.0/PKCE fallback | Magic links, Social-only, Email/password-only | ✅ Confirmed |
+| Design system approach | Design tokens (DTCG JSON) + native UI per platform | Shared cross-platform UI components, Compose Multiplatform everywhere | ✅ Confirmed |
+| Token pipeline | Style Dictionary | Manual per-platform, Tokens Studio only | ✅ Confirmed |
+| CI/CD platform | GitHub Actions + Turborepo (affected-only builds) | CircleCI, GitLab CI, Xcode Cloud, Nx | ✅ Confirmed |
+| Versioning | Per-package semver with Changesets | Unified version, Nx Release | ✅ Confirmed |
+| iOS UI framework | SwiftUI | UIKit, Compose Multiplatform iOS | ✅ Confirmed |
+| Android UI framework | Jetpack Compose | XML Views, Compose Multiplatform | ✅ Confirmed |
+| Web approach | TypeScript + React consuming KMP logic via JS bindings | Compose for Web (Wasm), Kobweb, Kotlin/JS | ✅ Confirmed |
 | Windows approach | Compose Desktop (JVM) | WinUI 3, Compose Multiplatform Desktop | ⏳ Proposed |
+| First platform priority | iOS first, Android in parallel | Android first | ✅ Confirmed |
+| Budgeting methodology | Both envelope/zero-based AND category budgets | Single methodology | ✅ Confirmed |
+| Transaction entry | Manual + CSV import + Plaid bank connections at launch | Manual only, Plaid later | ✅ Confirmed |
+| Encryption scope | Hybrid E2E (encrypt sensitive fields, metadata readable) + GDPR baseline globally | Full E2E, Standard only | ✅ Confirmed |
+| Monetization | Freemium + donations (premium: AI analysis, extra connections, sharing) | Subscription-only, Free forever | ✅ Confirmed |
+| Wearables | Deferred post-launch (user stories created, deprioritized) | In initial platform phases | ✅ Confirmed |
+| App name | "Finance" (working title, workshop later) | — | ⏳ Pending |
 
 ### Rationale Summary
 
