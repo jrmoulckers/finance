@@ -30,6 +30,21 @@
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp@latest"]
+    },
+    "supabase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@nicepkg/supabase-mcp@latest",
+        "--supabase-url=${input:supabase_url}",
+        "--supabase-key=${input:supabase_key}"
+      ]
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-playwright"]
     }
   },
   "inputs": [
@@ -37,6 +52,18 @@
       "type": "promptString",
       "id": "github_mcp_pat",
       "description": "GitHub PAT for MCP — use a READ-ONLY fine-grained token (see CONTRIBUTING.md)",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "supabase_url",
+      "description": "Supabase project URL (e.g., https://xxxxx.supabase.co) — needed for Phase 2+",
+      "password": false
+    },
+    {
+      "type": "promptString",
+      "id": "supabase_key",
+      "description": "Supabase service_role key — needed for Phase 2+",
       "password": true
     }
   ]
