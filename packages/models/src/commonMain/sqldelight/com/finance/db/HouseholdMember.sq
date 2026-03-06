@@ -1,0 +1,60 @@
+-- HouseholdMember entity
+-- Join table linking users to households with a role.
+
+CREATE TABLE IF NOT EXISTS household_member (
+    id TEXT NOT NULL PRIMARY KEY,
+    household_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    joined_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    sync_version INTEGER NOT NULL DEFAULT 0,
+    is_synced INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (household_id) REFERENCES household(id),
+    FOREIGN KEY (user_id) REFERENCES user(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_household_member_household ON household_member (household_id);
+CREATE INDEX IF NOT EXISTS idx_household_member_user ON household_member (user_id);
+CREATE INDEX IF NOT EXISTS idx_household_member_sync ON household_member (is_synced);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_household_member_unique ON household_member (household_id, user_id);
+
+-- Queries -------------------------------------------------------------------
+
+selectAll:
+SELECT * FROM household_member WHERE deleted_at IS NULL;
+
+selectById:
+SELECT * FROM household_member WHERE id = ? AND deleted_at IS NULL;
+
+selectByHousehold:
+SELECT * FROM household_member WHERE household_id = ? AND deleted_at IS NULL;
+
+selectByUser:
+SELECT * FROM household_member WHERE user_id = ? AND deleted_at IS NULL;
+
+selectByHouseholdAndUser:
+SELECT * FROM household_member WHERE household_id = ? AND user_id = ? AND deleted_at IS NULL;
+
+insert:
+INSERT INTO household_member (id, household_id, user_id, role, joined_at, created_at, updated_at, sync_version, is_synced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE household_member SET
+    role = ?,
+    updated_at = ?,
+    sync_version = ?,
+    is_synced = ?
+WHERE id = ?;
+
+softDelete:
+UPDATE household_member SET deleted_at = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+selectUnsynced:
+SELECT * FROM household_member WHERE is_synced = 0;
+
+markSynced:
+UPDATE household_member SET is_synced = 1, sync_version = ? WHERE id = ?;
