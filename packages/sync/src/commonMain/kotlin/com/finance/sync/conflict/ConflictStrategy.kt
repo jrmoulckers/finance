@@ -1,5 +1,7 @@
 package com.finance.sync.conflict
 
+import com.finance.sync.SyncChange
+
 /**
  * Determines which [ConflictResolver] to use for a given table.
  *
