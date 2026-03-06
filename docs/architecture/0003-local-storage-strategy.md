@@ -1,6 +1,6 @@
 # ADR-0003: Local Storage Strategy
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2025-07-17
 **Author:** Copilot (AI agent), based on local storage research
 **Reviewers:** Pending human review

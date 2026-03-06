@@ -1,6 +1,6 @@
 # ADR-0001: Cross-Platform Framework Selection
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2025-07-17
 **Author:** Copilot (AI agent), based on cross-platform research
 **Reviewers:** Pending human review

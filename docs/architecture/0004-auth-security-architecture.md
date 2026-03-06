@@ -1,6 +1,6 @@
 # ADR-0004: Authentication & Security Architecture
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2025-07-15
 **Author:** AI agent (Copilot), with human review pending
 **Reviewers:** TBD
