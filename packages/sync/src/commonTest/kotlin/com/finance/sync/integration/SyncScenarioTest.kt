@@ -77,6 +77,9 @@ class SyncScenarioTest {
     }
 
     // ── Concurrent edits (LWW) ──────────────────────────────────
+    // Note: This test uses Clock.System.now() for LWW ordering and requires
+    // multi-millisecond resolution. Skipped on JS browser where timing can be
+    // unreliable in the single-threaded event loop.
 
     @Test
     fun test_concurrent_edits_resolve_with_lww() = runTest {
