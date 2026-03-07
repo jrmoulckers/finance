@@ -18,7 +18,10 @@ compose-bom = "2024.12.01"
 activity-compose = "1.9.3"
 navigation-compose = "2.8.5"
 core-ktx = "1.15.0"
+work-runtime = "2.10.0"
 lifecycle = "2.8.7"
+biometric = "1.1.0"
+security-crypto = "1.0.0"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
@@ -54,9 +57,12 @@ compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
+work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work-runtime" }
 lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
+biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
+security-crypto = { module = "androidx.security:security-crypto", version.ref = "security-crypto" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

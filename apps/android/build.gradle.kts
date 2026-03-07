@@ -58,6 +58,13 @@ dependencies {
     // AndroidX Core
     implementation(libs.core.ktx)
 
+    // Security & Biometric
+    implementation(libs.biometric)
+    implementation(libs.security.crypto)
+
+    // WorkManager — scheduled notifications
+    implementation(libs.work.runtime)
+
     // Debug tooling
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
