@@ -1,0 +1,12 @@
+{
+  "name": "@finance/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node config/style-dictionary.config.mjs",
+    "clean": "rimraf build/"
+  },
+  "devDependencies": {
+    "style-dictionary": "^4.3.0"
+  }
+}

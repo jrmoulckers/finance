@@ -1,0 +1,9 @@
+{
+  "navigation": {
+    "background": { "$value": "{semantic.background.elevated}", "$type": "color" },
+    "text": { "$value": "{semantic.text.secondary}", "$type": "color" },
+    "textActive": { "$value": "{semantic.interactive.default}", "$type": "color" },
+    "indicator": { "$value": "{semantic.interactive.default}", "$type": "color" },
+    "border": { "$value": "{semantic.border.default}", "$type": "color" }
+  }
+}

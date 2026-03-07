@@ -1,0 +1,69 @@
+{
+  "color": {
+    "blue": {
+      "50": { "$value": "#EFF6FF", "$type": "color" },
+      "100": { "$value": "#DBEAFE", "$type": "color" },
+      "200": { "$value": "#BFDBFE", "$type": "color" },
+      "300": { "$value": "#93C5FD", "$type": "color" },
+      "400": { "$value": "#60A5FA", "$type": "color" },
+      "500": { "$value": "#3B82F6", "$type": "color" },
+      "600": { "$value": "#2563EB", "$type": "color" },
+      "700": { "$value": "#1D4ED8", "$type": "color" },
+      "800": { "$value": "#1E40AF", "$type": "color" },
+      "900": { "$value": "#1E3A8A", "$type": "color" }
+    },
+    "teal": {
+      "50": { "$value": "#F0FDFA", "$type": "color" },
+      "100": { "$value": "#CCFBF1", "$type": "color" },
+      "200": { "$value": "#99F6E4", "$type": "color" },
+      "300": { "$value": "#5EEAD4", "$type": "color" },
+      "400": { "$value": "#2DD4BF", "$type": "color" },
+      "500": { "$value": "#14B8A6", "$type": "color" },
+      "600": { "$value": "#0D9488", "$type": "color" },
+      "700": { "$value": "#0F766E", "$type": "color" },
+      "800": { "$value": "#115E59", "$type": "color" },
+      "900": { "$value": "#134E4A", "$type": "color" }
+    },
+    "green": {
+      "50": { "$value": "#F0FDF4", "$type": "color" },
+      "500": { "$value": "#22C55E", "$type": "color" },
+      "600": { "$value": "#16A34A", "$type": "color" },
+      "700": { "$value": "#15803D", "$type": "color" }
+    },
+    "amber": {
+      "50": { "$value": "#FFFBEB", "$type": "color" },
+      "500": { "$value": "#F59E0B", "$type": "color" },
+      "600": { "$value": "#D97706", "$type": "color" },
+      "700": { "$value": "#B45309", "$type": "color" }
+    },
+    "red": {
+      "50": { "$value": "#FEF2F2", "$type": "color" },
+      "400": { "$value": "#F87171", "$type": "color" },
+      "500": { "$value": "#EF4444", "$type": "color" },
+      "600": { "$value": "#DC2626", "$type": "color" },
+      "700": { "$value": "#B91C1C", "$type": "color" }
+    },
+    "neutral": {
+      "0": { "$value": "#FFFFFF", "$type": "color" },
+      "50": { "$value": "#F9FAFB", "$type": "color" },
+      "100": { "$value": "#F3F4F6", "$type": "color" },
+      "200": { "$value": "#E5E7EB", "$type": "color" },
+      "300": { "$value": "#D1D5DB", "$type": "color" },
+      "400": { "$value": "#9CA3AF", "$type": "color" },
+      "500": { "$value": "#6B7280", "$type": "color" },
+      "600": { "$value": "#4B5563", "$type": "color" },
+      "700": { "$value": "#374151", "$type": "color" },
+      "800": { "$value": "#1F2937", "$type": "color" },
+      "900": { "$value": "#111827", "$type": "color" },
+      "950": { "$value": "#030712", "$type": "color" }
+    },
+    "chart": {
+      "1": { "$value": "#648FFF", "$type": "color", "$description": "IBM CVD-safe blue" },
+      "2": { "$value": "#785EF0", "$type": "color", "$description": "IBM CVD-safe purple" },
+      "3": { "$value": "#DC267F", "$type": "color", "$description": "IBM CVD-safe magenta" },
+      "4": { "$value": "#FE6100", "$type": "color", "$description": "IBM CVD-safe orange" },
+      "5": { "$value": "#FFB000", "$type": "color", "$description": "IBM CVD-safe gold" },
+      "6": { "$value": "#009E73", "$type": "color", "$description": "CVD-safe teal" }
+    }
+  }
+}

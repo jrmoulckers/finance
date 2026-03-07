@@ -1,0 +1,13 @@
+{
+  "input": {
+    "background": { "$value": "{semantic.background.primary}", "$type": "color" },
+    "border": { "$value": "{semantic.border.default}", "$type": "color" },
+    "borderFocus": { "$value": "{semantic.border.focus}", "$type": "color" },
+    "borderError": { "$value": "{semantic.border.error}", "$type": "color" },
+    "text": { "$value": "{semantic.text.primary}", "$type": "color" },
+    "placeholder": { "$value": "{semantic.text.disabled}", "$type": "color" },
+    "borderRadius": { "$value": "{borderRadius.md}", "$type": "dimension" },
+    "paddingX": { "$value": "{spacing.3}", "$type": "dimension" },
+    "paddingY": { "$value": "{spacing.2}", "$type": "dimension" }
+  }
+}
