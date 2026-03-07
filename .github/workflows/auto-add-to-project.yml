@@ -17,6 +17,5 @@ jobs:
       - name: Add to project
         uses: actions/add-to-project@v1.0.2
         with:
-          # Update this URL if the GitHub Project is recreated
-          project-url: https://github.com/users/jrmoulckers/projects/1
+          project-url: https://github.com/users/jrmoulckers/projects/2
           github-token: ${{ secrets.GITHUB_TOKEN }}
