@@ -1,0 +1,67 @@
+name: Troubleshooting
+description: Report a build, CI, or development environment issue
+title: "[Troubleshooting] "
+labels: ["bug", "infrastructure"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for build failures, CI issues, or development environment problems.
+        Check docs/guides/workflow-cheatsheet.md for common solutions first.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Problem Area
+      options:
+        - Gradle/KMP build
+        - Android compilation
+        - iOS/Xcode build
+        - Web/TypeScript build
+        - CI pipeline
+        - Local development setup
+        - Git/branch issues
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the error you're seeing
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error output
+      description: Paste the relevant error message or log
+      render: shell
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1. 
+        2. 
+        3. 
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Windows
+        - macOS
+        - Linux
+  - type: input
+    id: jdk
+    attributes:
+      label: JDK Version
+      placeholder: "e.g., Temurin 21.0.10"
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Troubleshooting checklist
+      options:
+        - label: "I checked docs/guides/workflow-cheatsheet.md"
+        - label: "I ran `npm run setup --check` to verify my environment"
+        - label: "I tried `git pull origin main && git rebase origin/main`"
+        - label: "I checked if JAVA_HOME points to JDK 21"

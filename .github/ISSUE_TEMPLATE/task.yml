@@ -18,6 +18,18 @@ body:
     validations:
       required: true
 
+  - type: checkboxes
+    id: kmp-checklist
+    attributes:
+      label: KMP Checklist (if applicable)
+      description: Check any that apply to this task
+      options:
+        - label: "Uses @JvmInline — need `import kotlin.jvm.JvmInline` in commonMain"
+        - label: "Uses Clock — inject Clock parameter for testability"
+        - label: "Creates platform driver — needs NoOpSchema for sync schema"
+        - label: "Uses concurrency — use Mutex, not @Volatile (JVM-only)"
+        - label: "Needs browser compatibility — no require('crypto'), use pure Kotlin"
+
   - type: dropdown
     id: category
     attributes:
