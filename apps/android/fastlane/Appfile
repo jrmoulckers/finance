@@ -1,0 +1,6 @@
+# Path to the Google Play service account JSON key file.
+# Store this securely — never commit the actual key to version control.
+# In CI, set via SUPPLY_JSON_KEY or GOOGLE_PLAY_JSON_KEY secret.
+json_key_file("") # Set via environment variable or local override
+
+package_name("com.finance.android")

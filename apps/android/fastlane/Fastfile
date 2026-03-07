@@ -1,0 +1,29 @@
+default_platform(:android)
+
+platform :android do
+  desc "Build debug APK"
+  lane :build_debug do
+    gradle(task: "assembleDebug", project_dir: "../../")
+  end
+
+  desc "Build release bundle (AAB)"
+  lane :build_release do
+    gradle(task: "bundleRelease", project_dir: "../../")
+  end
+
+  desc "Run unit tests"
+  lane :test do
+    gradle(task: "testDebugUnitTest", project_dir: "../../")
+  end
+
+  desc "Deploy to Google Play internal track"
+  lane :deploy_internal do
+    gradle(task: "bundleRelease", project_dir: "../../")
+    upload_to_play_store(
+      track: "internal",
+      aab: "../build/outputs/bundle/release/android-release.aab",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+    )
+  end
+end

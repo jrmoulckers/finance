@@ -53,6 +53,9 @@ dependencies {
     // AndroidX Core
     implementation(libs.core.ktx)
 
+    // WorkManager — scheduled notifications
+    implementation(libs.work.runtime)
+
     // Debug tooling
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
