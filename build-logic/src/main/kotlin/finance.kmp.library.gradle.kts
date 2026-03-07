@@ -1,5 +1,8 @@
+import com.android.build.gradle.LibraryExtension
+
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
+    id("com.android.library")
 }
 
 kotlin {
@@ -8,6 +11,9 @@ kotlin {
 
     // JVM target (Desktop / server)
     jvm()
+
+    // Android target
+    androidTarget()
 
     // iOS targets
     iosArm64()
@@ -30,6 +36,23 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.findLibrary("kotlin-test").get())
         }
+    }
+}
+
+extensions.configure<LibraryExtension> {
+    val androidCompileSdk = libs.findVersion("android-compileSdk").get().toString().toInt()
+    val androidMinSdk = libs.findVersion("android-minSdk").get().toString().toInt()
+
+    compileSdk = androidCompileSdk
+    namespace = "com.finance.${project.name}"
+
+    defaultConfig {
+        minSdk = androidMinSdk
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 }
 

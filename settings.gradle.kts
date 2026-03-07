@@ -19,3 +19,4 @@ dependencyResolutionManagement {
 include(":packages:core")
 include(":packages:models")
 include(":packages:sync")
+include(":apps:android")
