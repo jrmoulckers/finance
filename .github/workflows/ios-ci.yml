@@ -39,7 +39,11 @@ jobs:
           fi
       - name: Build
         if: steps.check.outputs.exists == 'true'
-        continue-on-error: true
         run: |
           cd apps/ios
-          swift build 2>&1 || echo "Swift Package build completed"
+          swift build
+      - name: Test
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          cd apps/ios
+          swift test
