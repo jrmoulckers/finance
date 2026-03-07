@@ -1,0 +1,50 @@
+name: Accessibility Audit
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/web/**']
+  pull_request:
+    branches: [main]
+    paths: ['apps/web/**']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Accessibility Scan (axe-core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit
+
+      - name: Build web app
+        run: npm run build -w apps/web
+
+      - name: Run axe-core accessibility audit
+        run: npx @axe-core/cli apps/web/dist/index.html --exit
+        continue-on-error: true
+
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-audit-results
+          path: apps/web/dist/
+          retention-days: 14
