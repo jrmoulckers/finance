@@ -6,7 +6,7 @@ You are working in the Finance monorepo — a multi-platform, native-first finan
 
 The following operations require EXPLICIT human approval. NEVER perform these autonomously:
 
-- **Git remote operations** — No `git push`, `pull`, `fetch`, `remote`, `merge` from remote, `rebase` onto remote
+- **Git remote operations** — May push feature branches; no pushing to `main`/`master`/release branches; no `git push --force` (use `--force-with-lease` on feature branches only); no `pull`, `fetch`, `remote`, `merge` from remote, `rebase` onto remote
 - **PR/review operations** — No creating, merging, closing, or approving PRs or reviews
 - **Remote platform mutations** — No GitHub API writes (issue close, label changes, repo settings, releases, deployments)
 - **Outside project boundary** — No file access outside the repository root; no system config changes; no global package installs

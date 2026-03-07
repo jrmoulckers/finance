@@ -1,14 +1,37 @@
 {
   "recommendations": [
+    // --- AI & Copilot ---
     "github.copilot",
     "github.copilot-chat",
+
+    // --- Kotlin / JVM ---
+    "mathiasfrohlich.Kotlin",
+    "fwcd.kotlin",
+    "vscjava.vscode-gradle",
+
+    // --- Swift / iOS (macOS only) ---
+    "sswg.swift-lang",
+
+    // --- Web / TypeScript ---
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+
+    // --- Editor quality ---
     "editorconfig.editorconfig",
-    "ms-vscode.vscode-github-issue-notebooks",
     "eamodio.gitlens",
     "streetsidesoftware.code-spell-checker",
+
+    // --- Documentation ---
     "yzhang.markdown-all-in-one",
     "bierner.markdown-mermaid",
-    "ms-vscode.live-server"
+
+    // --- Data & Config ---
+    "redhat.vscode-yaml",
+    "tamasfe.even-better-toml",
+
+    // --- GitHub integration ---
+    "github.vscode-github-actions",
+    "GitHub.vscode-pull-request-github"
   ],
   "unwantedRecommendations": []
 }
