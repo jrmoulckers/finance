@@ -115,7 +115,7 @@ These apply to both Android (Jetpack Compose) and Windows (Compose Desktop).
 Compose skips recomposition for stable parameters. Ensure data classes used in composables are stable:
 
 ```kotlin
-// ✅ Stable — all properties are immutable primitives or stable types
+// Stable — all properties are immutable primitives or stable types
 data class TransactionItem(
     val id: String,
     val amount: Long,
@@ -123,7 +123,7 @@ data class TransactionItem(
     val date: String,
 )
 
-// ❌ Unstable — mutable list triggers recomposition every time
+// Unstable — mutable list triggers recomposition every time
 data class TransactionList(
     val items: MutableList<TransactionItem>, // use List<> instead
 )

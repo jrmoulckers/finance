@@ -5,17 +5,17 @@
 # at runtime by serialization, reflection, or the SQLDelight database layer.
 # ============================================================================
 
-# ── Data Models ───────────────────────────────────────────────────────────────
+# ── Data Models ───────────────────────────────────────────────────────────────────
 # Keep all model classes and their members — kotlinx-serialization and
 # PowerSync use reflection or generated serializers that reference fields
 # by name.
 -keepclassmembers class com.finance.models.** { *; }
 
-# ── Database Layer ────────────────────────────────────────────────────────────
+# ── Database Layer ────────────────────────────────────────────────────────────────
 # Keep SQLDelight-generated database classes and query interfaces intact.
 -keep class com.finance.db.** { *; }
 
-# ── kotlinx-serialization ────────────────────────────────────────────────────
+# ── kotlinx-serialization ────────────────────────────────────────────────────────
 # Keep serializer companion objects and generated serializer classes.
 -keepclassmembers class * {
     kotlinx.serialization.KSerializer serializer(...);
@@ -28,7 +28,7 @@
 # JSON field names remain consistent with server expectations.
 -keep @kotlinx.serialization.Serializable class * { *; }
 
-# ── Kotlin Metadata ───────────────────────────────────────────────────────────
+# ── Kotlin Metadata ─────────────────────────────────────────────────────────────
 # Required for kotlin-reflect and serialization to read class metadata.
 -keep class kotlin.Metadata { *; }
 
