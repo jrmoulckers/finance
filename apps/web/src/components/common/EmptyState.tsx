@@ -1,0 +1,4 @@
+import React from 'react';
+export interface EmptyStateProps { icon?: React.ReactNode; title: string; description?: string; action?: React.ReactNode; className?: string; }
+export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description, action, className = '' }) => (<section className={`empty-state ${className}`.trim()} role="status" aria-label={title} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: 'var(--spacing-10) var(--spacing-4)', gap: 'var(--spacing-4)' }}>{icon && <div aria-hidden="true" style={{ width: '64px', height: '64px', color: 'var(--semantic-text-disabled)' }}>{icon}</div>}<h2 style={{ fontSize: 'var(--type-scale-title-font-size)', fontWeight: 'var(--type-scale-title-font-weight)' }}>{title}</h2>{description && <p style={{ color: 'var(--semantic-text-secondary)', maxWidth: '360px' }}>{description}</p>}{action && <div>{action}</div>}</section>);
+export default EmptyState;
