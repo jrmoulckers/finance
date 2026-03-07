@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AppxManifest.xml — MSIX packaging manifest template for Finance Windows app.
+
+  This template is used during CI/CD to produce a signed MSIX package for
+  Microsoft Store submission. Replace placeholder values (marked with ${...})
+  with actual values during the build pipeline.
+
+  References:
+    - https://learn.microsoft.com/windows/msix/
+    - https://learn.microsoft.com/uwp/schemas/appxpackage/uapmanifestschema/schema-root
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="${MSIX_PACKAGE_IDENTITY}"
+    Publisher="${MSIX_PUBLISHER_IDENTITY}"
+    Version="${MSIX_PACKAGE_VERSION}"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Finance</DisplayName>
+    <PublisherDisplayName>${MSIX_PUBLISHER_DISPLAY_NAME}</PublisherDisplayName>
+    <Logo>assets\StoreLogo.png</Logo>
+    <Description>Personal finance tracker — budgets, accounts, and investments in one place.</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily
+      Name="Windows.Desktop"
+      MinVersion="10.0.17763.0"
+      MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application
+      Id="Finance"
+      Executable="Finance.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Finance"
+        Description="Personal finance tracker"
+        BackgroundColor="transparent"
+        Square150x150Logo="assets\Square150x150Logo.png"
+        Square44x44Logo="assets\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="assets\Wide310x150Logo.png"
+          Square310x310Logo="assets\Square310x310Logo.png"
+          Square71x71Logo="assets\Square71x71Logo.png"
+          ShortName="Finance" />
+        <uap:SplashScreen Image="assets\SplashScreen.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
