@@ -77,30 +77,31 @@ class SyncScenarioTest {
     }
 
     // ── Concurrent edits (LWW) ──────────────────────────────────
-    // Note: This test uses Clock.System.now() for LWW ordering and requires
-    // multi-millisecond resolution. Skipped on JS browser where timing can be
-    // unreliable in the single-threaded event loop.
 
     @Test
     fun test_concurrent_edits_resolve_with_lww() = runTest {
+        // Use a controllable clock so LWW ordering is deterministic
+        // and does not depend on wall-clock resolution (fixes ChromeHeadless flakes).
+        val testClock = TestClock()
+        val lwwHarness = SyncIntegrationTestHarness(clock = testClock)
+
         // Both devices go offline
-        harness.networkA.goOffline()
-        harness.networkB.goOffline()
+        lwwHarness.networkA.goOffline()
+        lwwHarness.networkB.goOffline()
 
         // Device A edits the transaction first (earlier timestamp)
-        harness.deviceA.put(
+        lwwHarness.deviceA.put(
             entityType = "transaction",
             entityId = "txn-conflict",
             payload = """{"amount":1000,"payee":"Device A Edit"}""",
             operation = MutationOperation.UPDATE,
         )
 
-        // Small delay to ensure Device B's timestamp is strictly later
-        // (Clock.System.now() has at least millisecond resolution)
-        kotlinx.coroutines.delay(50)
+        // Advance the test clock by 1 second to guarantee LWW ordering.
+        testClock.advanceBy(1000)
 
         // Device B edits the same transaction (later timestamp → wins LWW)
-        harness.deviceB.put(
+        lwwHarness.deviceB.put(
             entityType = "transaction",
             entityId = "txn-conflict",
             payload = """{"amount":2000,"payee":"Device B Edit"}""",
@@ -108,17 +109,17 @@ class SyncScenarioTest {
         )
 
         // Both come online and push
-        harness.networkA.goOnline()
-        harness.networkB.goOnline()
+        lwwHarness.networkA.goOnline()
+        lwwHarness.networkB.goOnline()
 
-        harness.deviceA.pushPendingMutations()
-        harness.deviceB.pushPendingMutations()
+        lwwHarness.deviceA.pushPendingMutations()
+        lwwHarness.deviceB.pushPendingMutations()
 
         // Device A pulls — should get Device B's version (later timestamp)
-        val appliedOnA = harness.deviceA.pullRemoteChanges()
+        val appliedOnA = lwwHarness.deviceA.pullRemoteChanges()
         assertEquals(1, appliedOnA.size, "Device A should receive Device B's mutation")
 
-        val recordOnA = harness.deviceA.database.get("transaction", "txn-conflict")
+        val recordOnA = lwwHarness.deviceA.database.get("transaction", "txn-conflict")
         assertNotNull(recordOnA)
         assertTrue(
             recordOnA.payload.contains("Device B Edit"),
@@ -126,10 +127,10 @@ class SyncScenarioTest {
         )
 
         // Device B pulls — Device A's mutation should NOT overwrite (older timestamp)
-        val appliedOnB = harness.deviceB.pullRemoteChanges()
+        val appliedOnB = lwwHarness.deviceB.pullRemoteChanges()
         assertEquals(0, appliedOnB.size, "Device B should ignore Device A's older mutation")
 
-        val recordOnB = harness.deviceB.database.get("transaction", "txn-conflict")
+        val recordOnB = lwwHarness.deviceB.database.get("transaction", "txn-conflict")
         assertNotNull(recordOnB)
         assertTrue(
             recordOnB.payload.contains("Device B Edit"),
@@ -141,28 +142,36 @@ class SyncScenarioTest {
 
     @Test
     fun test_delete_syncs_as_soft_delete() = runTest {
+        // Use a controllable clock so the delete timestamp is guaranteed
+        // to be strictly later than the insert (fixes potential ChromeHeadless flakes).
+        val testClock = TestClock()
+        val deleteHarness = SyncIntegrationTestHarness(clock = testClock)
+
         // Device A creates a transaction
-        harness.deviceA.put(
+        deleteHarness.deviceA.put(
             entityType = "transaction",
             entityId = "txn-delete",
             payload = """{"amount":500,"payee":"To Be Deleted"}""",
         )
 
         // Device B receives it
-        harness.deviceB.pullRemoteChanges()
-        val beforeDelete = harness.deviceB.database.get("transaction", "txn-delete")
+        deleteHarness.deviceB.pullRemoteChanges()
+        val beforeDelete = deleteHarness.deviceB.database.get("transaction", "txn-delete")
         assertNotNull(beforeDelete, "Device B should have the transaction")
 
+        // Advance clock so the soft-delete timestamp is strictly later than the insert
+        testClock.advanceBy(1000)
+
         // Device A soft-deletes
-        harness.deviceA.softDelete("transaction", "txn-delete")
+        deleteHarness.deviceA.softDelete("transaction", "txn-delete")
 
         // Device B pulls the delete
-        val applied = harness.deviceB.pullRemoteChanges()
+        val applied = deleteHarness.deviceB.pullRemoteChanges()
         assertEquals(1, applied.size, "Device B should receive the delete mutation")
         assertEquals(MutationOperation.DELETE, applied.first().operation)
 
         // Verify soft-delete on Device B
-        val afterDelete = harness.deviceB.database.get("transaction", "txn-delete")
+        val afterDelete = deleteHarness.deviceB.database.get("transaction", "txn-delete")
         assertNotNull(afterDelete, "Record should still exist (soft delete)")
         assertTrue(afterDelete.isDeleted, "Record should be marked as deleted")
     }
