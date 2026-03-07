@@ -3,18 +3,28 @@ package com.finance.sync.auth
 /**
  * JS actual for [PlatformSHA256].
  *
- * Stub — real implementation will use Web Crypto API
- * (crypto.subtle.digest + crypto.getRandomValues) when the web
- * app module is built. Note: Web Crypto digest is async, so the
- * production version may need a coroutine-based API or a
- * synchronous wasm fallback.
+ * Uses Node.js `crypto` module (available in Karma/Node test runners).
  */
 actual object PlatformSHA256 {
+    @Suppress("UnsafeCastFromDynamic")
     actual fun sha256(input: ByteArray): ByteArray {
-        throw NotImplementedError("Platform crypto not yet implemented — JS WebCrypto SHA-256 binding required")
+        val crypto: dynamic = js("require('crypto')")
+        val hash: dynamic = crypto.createHash("sha256")
+        val jsArray = js("[]")
+        for (b in input) {
+            jsArray.push(b)
+        }
+        hash.update(js("Buffer.from(jsArray)"))
+        val resultBuffer: dynamic = hash.digest()
+        val len: Int = resultBuffer.length
+        return ByteArray(len) { i: Int -> (resultBuffer[i] as Number).toByte() }
     }
 
+    @Suppress("UnsafeCastFromDynamic")
     actual fun randomBytes(size: Int): ByteArray {
-        throw NotImplementedError("Platform crypto not yet implemented — JS crypto.getRandomValues binding required")
+        val crypto: dynamic = js("require('crypto')")
+        val buf: dynamic = crypto.randomBytes(size)
+        val len: Int = buf.length
+        return ByteArray(len) { i: Int -> (buf[i] as Number).toByte() }
     }
 }
