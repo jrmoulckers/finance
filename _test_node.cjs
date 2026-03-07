@@ -1,0 +1,1 @@
+const fs = require("fs"); fs.writeFileSync("_test3.txt", "it works"); console.log("ok");
