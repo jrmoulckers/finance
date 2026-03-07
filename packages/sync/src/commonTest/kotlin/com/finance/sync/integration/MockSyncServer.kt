@@ -30,15 +30,12 @@ class MockSyncServer {
     val mutations: List<SyncMutation> get() = _mutations.toList()
 
     /** Configurable latency injected before each response. */
-    @Volatile
     var responseLatencyMs: Long = 0L
 
     /** When true, the next server call throws [ServerErrorException]. */
-    @Volatile
     var shouldFailNext: Boolean = false
 
     /** Counter tracking how many times a failure was triggered. */
-    @Volatile
     var failureCount: Int = 0
         private set
 
