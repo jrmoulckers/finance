@@ -86,3 +86,7 @@ coverage/
 
 # === Copilot / AI (session state is local) ===
 .copilot/session-state/
+
+# === Build caches ===
+.turbo/
+kotlin-js-store/

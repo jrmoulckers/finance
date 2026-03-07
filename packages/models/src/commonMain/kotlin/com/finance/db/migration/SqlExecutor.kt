@@ -6,6 +6,7 @@ package com.finance.db.migration
  */
 interface SqlExecutor {
     fun execute(sql: String)
+    fun execute(sql: String, bindArgs: List<Any?>)
     fun queryInt(sql: String): Int
     fun executeInTransaction(block: SqlExecutor.() -> Unit)
 }
