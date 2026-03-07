@@ -3,7 +3,7 @@ package com.finance.sync.delta
 /**
  * Persists the last-synced sequence number for each table.
  *
- * Backed by an interface so the storage mechanism is pluggable —
+ * Backed by an interface so the storage mechanism is pluggable --
  * in-memory for tests, SQLite or MMKV in production.
  */
 interface SequenceTracker {
