@@ -17,11 +17,9 @@ class NetworkSimulator {
 
     private val mutex = Mutex()
 
-    @Volatile
     var state: State = State.ONLINE
         private set
 
-    @Volatile
     var latencyMs: Long = 0L
         private set
 
