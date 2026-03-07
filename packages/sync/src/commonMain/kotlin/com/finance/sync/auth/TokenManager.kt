@@ -121,12 +121,12 @@ class TokenManager(
  * Each platform must provide an `actual` implementation backed by
  * its native secure storage mechanism.
  */
-expect class TokenStorage() {
+expect open class TokenStorage() {
 
     /**
      * Persist token data to secure storage.
      */
-    fun save(
+    open fun save(
         accessToken: String,
         refreshToken: String,
         expiresAt: Long,
@@ -138,12 +138,12 @@ expect class TokenStorage() {
      *
      * @return The stored data, or `null` if nothing is stored.
      */
-    fun load(): StoredTokenData?
+    open fun load(): StoredTokenData?
 
     /**
      * Remove all token data from secure storage.
      */
-    fun clear()
+    open fun clear()
 }
 
 /**

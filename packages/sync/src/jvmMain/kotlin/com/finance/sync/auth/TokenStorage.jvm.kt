@@ -7,10 +7,10 @@ package com.finance.sync.auth
  * Production Android builds should use EncryptedSharedPreferences;
  * Desktop builds should use the OS credential store.
  */
-actual class TokenStorage actual constructor() {
+actual open class TokenStorage actual constructor() {
     private var stored: StoredTokenData? = null
 
-    actual fun save(
+    actual open fun save(
         accessToken: String,
         refreshToken: String,
         expiresAt: Long,
@@ -24,9 +24,9 @@ actual class TokenStorage actual constructor() {
         )
     }
 
-    actual fun load(): StoredTokenData? = stored
+    actual open fun load(): StoredTokenData? = stored
 
-    actual fun clear() {
+    actual open fun clear() {
         stored = null
     }
 }
