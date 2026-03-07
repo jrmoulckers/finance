@@ -1,0 +1,112 @@
+/**
+ * Design token CSS imports.
+ *
+ * Imports the auto-generated CSS custom properties from the design-tokens
+ * package. These tokens are the single source of truth for colors, spacing,
+ * typography, shadows, and component styles across all platforms.
+ *
+ * Light theme tokens are applied to :root by default.
+ * Dark theme tokens activate via [data-theme="dark"] attribute on <html>.
+ *
+ * Usage in components:
+ *   color: var(--semantic-text-primary);
+ *   padding: var(--spacing-4);
+ *   border-radius: var(--card-border-radius);
+ *
+ * @see packages/design-tokens/build/web/tokens.css
+ */
+
+/* Light theme (default) */
+@import "../../../../packages/design-tokens/build/web/tokens.css";
+
+/* Dark theme override */
+@import "../../../../packages/design-tokens/build/web/tokens-dark.css";
+
+/*
+ * System preference: auto-apply dark theme when the OS prefers dark mode.
+ * Users can still override by toggling [data-theme] on <html>.
+ */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --semantic-background-primary: var(--color-neutral-950);
+    --semantic-background-secondary: var(--color-neutral-900);
+    --semantic-background-elevated: var(--color-neutral-800);
+    --semantic-text-primary: var(--color-neutral-50);
+    --semantic-text-secondary: var(--color-neutral-400);
+    --semantic-text-disabled: var(--color-neutral-600);
+    --semantic-text-inverse: var(--color-neutral-900);
+    --semantic-border-default: var(--color-neutral-700);
+    --semantic-border-focus: var(--color-blue-400);
+    --semantic-border-error: var(--color-red-400);
+    --semantic-interactive-default: var(--color-blue-400);
+    --semantic-interactive-hover: var(--color-blue-300);
+    --semantic-interactive-pressed: var(--color-blue-200);
+    --semantic-interactive-disabled: var(--color-neutral-700);
+    --semantic-status-positive: var(--color-green-500);
+    --semantic-status-negative: var(--color-red-500);
+    --semantic-status-warning: var(--color-amber-500);
+    --semantic-status-info: var(--color-blue-400);
+    --semantic-amount-positive: var(--color-green-500);
+    --semantic-amount-negative: var(--color-red-500);
+  }
+}
+
+/*
+ * Reduced motion: disable transitions / animations for users who prefer it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * High contrast: increase border visibility when the user prefers more contrast.
+ */
+@media (prefers-contrast: more) {
+  :root {
+    --semantic-border-default: var(--color-neutral-900);
+    --card-border: var(--color-neutral-900);
+    --input-border: var(--color-neutral-900);
+    --navigation-border: var(--color-neutral-900);
+  }
+}
+
+/*
+ * Base reset - minimal, non-opinionated defaults.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--semantic-text-primary);
+  background-color: var(--semantic-background-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+}
+
+/*
+ * Focus styles - visible outline for keyboard navigation (WCAG 2.4.7).
+ */
+:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
