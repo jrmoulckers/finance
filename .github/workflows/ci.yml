@@ -73,6 +73,12 @@ jobs:
           ./gradlew :packages:core:jvmTest :packages:models:jvmTest :packages:sync:jvmTest \
             --parallel --build-cache --stacktrace
 
+      - name: Run JS Node tests
+        run: |
+          ./gradlew :packages:core:jsNodeTest :packages:sync:jsNodeTest \
+            --parallel --build-cache --stacktrace
+        continue-on-error: true
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
