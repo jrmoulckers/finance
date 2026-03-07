@@ -6,10 +6,10 @@ package com.finance.sync.auth
  * Stub — real implementation should use in-memory storage or
  * HttpOnly cookies. NEVER use localStorage for tokens.
  */
-actual class TokenStorage actual constructor() {
+actual open class TokenStorage actual constructor() {
     private var stored: StoredTokenData? = null
 
-    actual fun save(
+    actual open fun save(
         accessToken: String,
         refreshToken: String,
         expiresAt: Long,
@@ -23,9 +23,9 @@ actual class TokenStorage actual constructor() {
         )
     }
 
-    actual fun load(): StoredTokenData? = stored
+    actual open fun load(): StoredTokenData? = stored
 
-    actual fun clear() {
+    actual open fun clear() {
         stored = null
     }
 }
