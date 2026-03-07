@@ -1,0 +1,19 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build for testing"
+  lane :build do
+    build_app(scheme: "Finance", skip_archive: true, destination: "generic/platform=iOS Simulator")
+  end
+
+  desc "Run tests"
+  lane :test do
+    run_tests(scheme: "Finance", device: "iPhone 16")
+  end
+
+  desc "Deploy to TestFlight"
+  lane :deploy_testflight do
+    build_app(scheme: "Finance", export_method: "app-store")
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+end
