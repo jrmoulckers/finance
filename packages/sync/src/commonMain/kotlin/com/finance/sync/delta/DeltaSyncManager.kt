@@ -91,7 +91,7 @@ class DeltaSyncManager(
         val expectedFirstSeq = if (lastKnownSeq != null) lastKnownSeq + 1 else firstSeq
 
         if (firstSeq != expectedFirstSeq) {
-            // Gap detected — trigger a full resync for this table.
+            // Gap detected -- trigger a full resync for this table.
             sequenceTracker.resetTable(tableName)
             return DeltaSyncResult.SequenceGap(
                 tableName = tableName,

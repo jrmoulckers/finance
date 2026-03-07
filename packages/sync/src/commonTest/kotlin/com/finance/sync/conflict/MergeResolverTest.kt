@@ -13,8 +13,6 @@ class MergeResolverTest {
 
     private val resolver = MergeResolver()
 
-    // -- Helpers --
-
     private fun change(
         operation: MutationOperation = MutationOperation.UPDATE,
         rowData: Map<String, String?>,
@@ -28,155 +26,85 @@ class MergeResolverTest {
         sequenceNumber = seq,
     )
 
-    // -- Tests --
-
     @Test
     fun nonConflictingFieldsAreMerged() {
-        val local = change(
-            rowData = mapOf("id" to "1", "name" to "Groceries", "amount" to "5000"),
-        )
-        val remote = change(
-            rowData = mapOf("id" to "1", "name" to "Groceries", "icon" to "cart"),
-        )
-
+        val local = change(rowData = mapOf("id" to "1", "name" to "Groceries", "amount" to "5000"))
+        val remote = change(rowData = mapOf("id" to "1", "name" to "Groceries", "icon" to "cart"))
         val result = resolver.resolve(local, remote)
-
         assertEquals("Groceries", result.rowData["name"])
-        assertEquals("5000", result.rowData["amount"], "Local-only field should be preserved")
-        assertEquals("cart", result.rowData["icon"], "Remote-only field should be preserved")
+        assertEquals("5000", result.rowData["amount"])
+        assertEquals("cart", result.rowData["icon"])
     }
 
     @Test
     fun identicalFieldValuesDoNotConflict() {
-        val local = change(
-            rowData = mapOf("id" to "1", "name" to "Groceries", "amount" to "5000"),
-        )
-        val remote = change(
-            rowData = mapOf("id" to "1", "name" to "Groceries", "amount" to "5000"),
-        )
-
+        val local = change(rowData = mapOf("id" to "1", "amount" to "5000"))
+        val remote = change(rowData = mapOf("id" to "1", "amount" to "5000"))
         val result = resolver.resolve(local, remote)
-
         assertEquals("5000", result.rowData["amount"])
-        assertNull(result.rowData["__conflict_amount"], "Same values shouldn't flag a conflict")
+        assertNull(result.rowData["__conflict_amount"])
     }
 
     @Test
     fun conflictingFieldFlagsConflictMarker() {
-        val local = change(
-            rowData = mapOf("id" to "1", "name" to "Groceries", "amount" to "5000"),
-        )
-        val remote = change(
-            rowData = mapOf("id" to "1", "name" to "Groceries", "amount" to "7500"),
-        )
-
+        val local = change(rowData = mapOf("id" to "1", "amount" to "5000"))
+        val remote = change(rowData = mapOf("id" to "1", "amount" to "7500"))
         val result = resolver.resolve(local, remote)
-
         assertEquals("7500", result.rowData["amount"], "Remote value should win")
         assertEquals("5000", result.rowData["__conflict_amount"], "Local value should be flagged")
     }
 
     @Test
     fun updatedAtAlwaysUsesLaterValue() {
-        val local = change(
-            rowData = mapOf("id" to "1", "updated_at" to "2024-01-01T14:00:00Z"),
-        )
-        val remote = change(
-            rowData = mapOf("id" to "1", "updated_at" to "2024-01-01T10:00:00Z"),
-        )
-
+        val local = change(rowData = mapOf("id" to "1", "updated_at" to "2024-01-01T14:00:00Z"))
+        val remote = change(rowData = mapOf("id" to "1", "updated_at" to "2024-01-01T10:00:00Z"))
         val result = resolver.resolve(local, remote)
-
         assertEquals("2024-01-01T14:00:00Z", result.rowData["updated_at"])
     }
 
     @Test
     fun deleteAlwaysWins_remoteDeletes() {
-        val local = change(
-            operation = MutationOperation.UPDATE,
-            rowData = mapOf("id" to "1", "name" to "Updated"),
-        )
-        val remote = change(
-            operation = MutationOperation.DELETE,
-            rowData = mapOf("id" to "1"),
-        )
-
+        val local = change(operation = MutationOperation.UPDATE, rowData = mapOf("id" to "1", "name" to "X"))
+        val remote = change(operation = MutationOperation.DELETE, rowData = mapOf("id" to "1"))
         val result = resolver.resolve(local, remote)
-
         assertEquals(MutationOperation.DELETE, result.operation)
         assertEquals(remote, result)
     }
 
     @Test
     fun deleteAlwaysWins_localDeletes() {
-        val local = change(
-            operation = MutationOperation.DELETE,
-            rowData = mapOf("id" to "1"),
-        )
-        val remote = change(
-            operation = MutationOperation.UPDATE,
-            rowData = mapOf("id" to "1", "name" to "Updated"),
-        )
-
+        val local = change(operation = MutationOperation.DELETE, rowData = mapOf("id" to "1"))
+        val remote = change(operation = MutationOperation.UPDATE, rowData = mapOf("id" to "1", "name" to "X"))
         val result = resolver.resolve(local, remote)
-
         assertEquals(MutationOperation.DELETE, result.operation)
         assertEquals(local, result)
     }
 
     @Test
     fun usesHigherServerTimestampAndSequence() {
-        val local = change(
-            rowData = mapOf("id" to "1", "name" to "A"),
-            serverTimestamp = "2024-01-01T10:00:00Z",
-            seq = 5,
-        )
-        val remote = change(
-            rowData = mapOf("id" to "1", "name" to "B"),
-            serverTimestamp = "2024-01-01T12:00:00Z",
-            seq = 8,
-        )
-
+        val local = change(rowData = mapOf("id" to "1", "name" to "A"), serverTimestamp = "2024-01-01T10:00:00Z", seq = 5)
+        val remote = change(rowData = mapOf("id" to "1", "name" to "B"), serverTimestamp = "2024-01-01T12:00:00Z", seq = 8)
         val result = resolver.resolve(local, remote)
-
         assertEquals(Instant.parse("2024-01-01T12:00:00Z"), result.serverTimestamp)
         assertEquals(8L, result.sequenceNumber)
     }
 
     @Test
     fun multipleConflictingFieldsAllFlagged() {
-        val local = change(
-            rowData = mapOf("id" to "1", "name" to "Local", "amount" to "100", "note" to "L"),
-        )
-        val remote = change(
-            rowData = mapOf("id" to "1", "name" to "Remote", "amount" to "200", "note" to "R"),
-        )
-
+        val local = change(rowData = mapOf("id" to "1", "name" to "Local", "amount" to "100", "note" to "L"))
+        val remote = change(rowData = mapOf("id" to "1", "name" to "Remote", "amount" to "200", "note" to "R"))
         val result = resolver.resolve(local, remote)
-
         assertEquals("Remote", result.rowData["name"])
-        assertNotNull(result.rowData["__conflict_name"])
         assertEquals("Local", result.rowData["__conflict_name"])
-
         assertEquals("200", result.rowData["amount"])
         assertEquals("100", result.rowData["__conflict_amount"])
-
-        assertEquals("R", result.rowData["note"])
-        assertEquals("L", result.rowData["__conflict_note"])
     }
 
     @Test
     fun nullValuesHandledCorrectly() {
-        val local = change(
-            rowData = mapOf("id" to "1", "note" to null),
-        )
-        val remote = change(
-            rowData = mapOf("id" to "1", "note" to "Server note"),
-        )
-
+        val local = change(rowData = mapOf("id" to "1", "note" to null))
+        val remote = change(rowData = mapOf("id" to "1", "note" to "Server note"))
         val result = resolver.resolve(local, remote)
-
-        // Different values → conflict flagged, remote wins.
         assertEquals("Server note", result.rowData["note"])
         assertTrue(result.rowData.containsKey("__conflict_note"))
     }

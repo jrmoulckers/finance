@@ -5,7 +5,7 @@ package com.finance.sync.delta
  *
  * Uses a simple CRC-style hash of the serialised row data to detect
  * data corruption during sync. This is intentionally *not* a cryptographic
- * hash — it only needs to catch accidental corruption, not adversarial
+ * hash -- it only needs to catch accidental corruption, not adversarial
  * tampering (TLS handles that).
  *
  * The algorithm is a Kotlin-multiplatform-friendly implementation that
@@ -43,9 +43,9 @@ object SyncChecksum {
     }
 
     /**
-     * Compute a checksum for a row represented as a map of column → value.
+     * Compute a checksum for a row represented as a map of column -> value.
      *
-     * The map is sorted by key to ensure deterministic ordering, then each
+     * The map keys are sorted to ensure deterministic ordering, then each
      * `key=value` pair is joined with `\n` and encoded to UTF-8 before
      * computing CRC-32.
      */
