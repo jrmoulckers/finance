@@ -118,16 +118,23 @@ These are only needed if you are building or testing for a specific platform:
 git clone https://github.com/jrmoulckers/finance.git
 cd finance
 
-# 2. Enable git hooks (enforces commit-lint and blocks unsafe operations)
+# 2. One-command setup (validates prerequisites, installs deps, configures hooks, builds)
+npm run setup
+```
+
+Or, if you prefer doing it step by step:
+
+```bash
+# Enable git hooks (enforces commit-lint and blocks unsafe operations)
 git config core.hooksPath tools/git-hooks
 
-# 3. Install dependencies
+# Install dependencies
 npm install
 
-# 4. Build everything
+# Build everything
 npm run build
 
-# 5. Run all tests
+# Run all tests
 npm test
 ```
 
