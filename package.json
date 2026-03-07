@@ -19,6 +19,7 @@
     "type-check": "turbo run type-check",
     "format": "turbo run format",
     "clean": "node tools/gradle.js clean && turbo run clean",
+    "setup": "node tools/setup.js",
     "prepare": "husky"
   },
   "keywords": [
