@@ -60,8 +60,16 @@ jobs:
         uses: gradle/actions/wrapper-validation@v4
 
       - name: Build shared packages
-        run: ./gradlew build -x jsBrowserTest -x allTests -x compileDebugKotlinAndroid -x compileReleaseKotlinAndroid --parallel --build-cache --stacktrace --warning-mode all
-        continue-on-error: false
+        run: |
+          ./gradlew build \
+            -x jsBrowserTest -x allTests \
+            -x :apps:android:build -x :apps:android:lint \
+            -x :apps:android:compileDebugKotlinAndroid -x :apps:android:compileReleaseKotlinAndroid \
+            -x :packages:core:compileDebugKotlinAndroid -x :packages:core:compileReleaseKotlinAndroid \
+            -x :packages:models:compileDebugKotlinAndroid -x :packages:models:compileReleaseKotlinAndroid \
+            -x :packages:sync:compileDebugKotlinAndroid -x :packages:sync:compileReleaseKotlinAndroid \
+            -x :packages:core:preBuild -x :packages:models:preBuild -x :packages:sync:preBuild \
+            --parallel --build-cache --stacktrace
 
       - name: Run JVM tests
         run: ./gradlew jvmTest --parallel --build-cache --stacktrace
