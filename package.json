@@ -15,9 +15,11 @@
     "build:tokens": "npm run build -w packages/design-tokens",
     "test": "npm run test:kmp && turbo run test",
     "test:kmp": "node tools/gradle.js :packages:core:jvmTest",
-    "lint": "turbo run lint",
+    "lint": "turbo run lint && npx eslint .",
+    "lint:fix": "npx eslint . --fix",
     "type-check": "turbo run type-check",
-    "format": "turbo run format",
+    "format": "npx prettier --write .",
+    "format:check": "npx prettier --check .",
     "clean": "node tools/gradle.js clean && turbo run clean",
     "setup": "node tools/setup.js",
     "prepare": "husky",
@@ -43,7 +45,11 @@
     "@changesets/cli": "^2.30.0",
     "@commitlint/cli": "^20.4.3",
     "@commitlint/config-conventional": "^20.4.3",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.3",
     "husky": "^9.1.7",
-    "turbo": "^2.8.14"
+    "prettier": "^3.8.1",
+    "turbo": "^2.8.13",
+    "typescript-eslint": "^8.56.1"
   }
 }

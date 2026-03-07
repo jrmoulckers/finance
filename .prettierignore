@@ -1,0 +1,8 @@
+build/
+dist/
+node_modules/
+.gradle/
+*.jar
+*.apk
+*.aab
+packages/design-tokens/build/
