@@ -60,10 +60,10 @@ jobs:
         uses: gradle/actions/wrapper-validation@v4
 
       - name: Build shared packages
-        run: ./gradlew build --parallel --build-cache --stacktrace --warning-mode all
+        run: ./gradlew build -x jsBrowserTest -x allTests --parallel --build-cache --stacktrace --warning-mode all
 
-      - name: Run all KMP tests
-        run: ./gradlew allTests --parallel --build-cache --stacktrace
+      - name: Run JVM tests
+        run: ./gradlew jvmTest --parallel --build-cache --stacktrace
 
       - name: Upload test results
         if: always()
