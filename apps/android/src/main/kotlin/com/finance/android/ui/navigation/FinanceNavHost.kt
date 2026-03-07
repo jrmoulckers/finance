@@ -12,6 +12,7 @@ import com.finance.android.ui.screens.BudgetsScreen
 import com.finance.android.ui.screens.DashboardScreen
 import com.finance.android.ui.screens.GoalsScreen
 import com.finance.android.ui.screens.SettingsScreen
+import com.finance.android.ui.screens.TransactionCreateScreen
 import com.finance.android.ui.screens.TransactionsScreen
 
 /**
@@ -58,7 +59,18 @@ fun FinanceNavHost(
     ) {
         // ── Top-level tabs ──────────────────────────────────────────
         composable(Route.Dashboard.route) {
-            DashboardScreen()
+            DashboardScreen(
+                onAddTransaction = {
+                    navController.navigate(Route.TransactionCreate.createRoute()) {
+                        launchSingleTop = true
+                    }
+                },
+                onViewAllTransactions = {
+                    navController.navigate(Route.Transactions.route) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
 
         composable(Route.Accounts.route) {
@@ -91,7 +103,7 @@ fun FinanceNavHost(
             arguments = listOf(navArgument("id") { type = NavType.StringType }),
         ) { backStackEntry ->
             val accountId = backStackEntry.arguments?.getString("id").orEmpty()
-            // TODO: Replace with real AccountDetailScreen
+            // Account detail is handled within AccountsScreen via ViewModel state
             AccountsScreen(
                 onAccountClick = {},
             )
@@ -107,8 +119,10 @@ fun FinanceNavHost(
                 },
             ),
         ) {
-            // TODO: Replace with real TransactionCreateScreen
-            TransactionsScreen()
+            TransactionCreateScreen(
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 }
