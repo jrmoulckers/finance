@@ -22,6 +22,12 @@ kotlin {
                 implementation(libs.sqldelight.jvm.driver)
             }
         }
+        val androidMain by getting {
+            dependencies {
+                implementation(libs.sqldelight.android.driver)
+                implementation(libs.sqlcipher.android)
+            }
+        }
     }
 }
 
