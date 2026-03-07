@@ -16,11 +16,11 @@ actual class DatabaseFactory(
         val key = keyProvider.getOrCreateKey()
         val factory = SupportOpenHelperFactory(key.toByteArray())
         val driver = AndroidSqliteDriver(
-            schema = FinanceDatabase.Schema,
             context = context,
             name = "finance.db",
             factory = factory,
         )
+        // Schema creation handled by MigrationExecutor
         return FinanceDatabase(driver)
     }
 }
