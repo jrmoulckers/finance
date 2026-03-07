@@ -45,10 +45,15 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.compose.material.icons.extended)
 
     // Activity & Navigation
     implementation(libs.activity.compose)
     implementation(libs.navigation.compose)
+
+    // Lifecycle (ViewModel + runtime for Compose)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
 
     // AndroidX Core
     implementation(libs.core.ktx)
