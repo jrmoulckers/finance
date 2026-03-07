@@ -51,6 +51,9 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -61,18 +64,14 @@ jobs:
 
       - name: Build shared packages
         run: |
-          ./gradlew build \
+          ./gradlew :packages:core:build :packages:models:build :packages:sync:build \
             -x jsBrowserTest -x allTests \
-            -x :apps:android:build -x :apps:android:lint \
-            -x :apps:android:compileDebugKotlinAndroid -x :apps:android:compileReleaseKotlinAndroid \
-            -x :packages:core:compileDebugKotlinAndroid -x :packages:core:compileReleaseKotlinAndroid \
-            -x :packages:models:compileDebugKotlinAndroid -x :packages:models:compileReleaseKotlinAndroid \
-            -x :packages:sync:compileDebugKotlinAndroid -x :packages:sync:compileReleaseKotlinAndroid \
-            -x :packages:core:preBuild -x :packages:models:preBuild -x :packages:sync:preBuild \
             --parallel --build-cache --stacktrace
 
       - name: Run JVM tests
-        run: ./gradlew jvmTest --parallel --build-cache --stacktrace
+        run: |
+          ./gradlew :packages:core:jvmTest :packages:models:jvmTest :packages:sync:jvmTest \
+            --parallel --build-cache --stacktrace
 
       - name: Upload test results
         if: always()
