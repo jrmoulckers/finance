@@ -1,0 +1,4 @@
+import React from 'react';
+export interface CurrencyDisplayProps { amount: number; currency?: string; locale?: string; colorize?: boolean; showSign?: boolean; className?: string; }
+export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({ amount, currency = 'USD', locale = 'en-US', colorize = false, showSign = false, className = '' }) => { const f = new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: showSign ? 'exceptZero' : 'auto' }); let cc = ''; if (colorize) { if (amount > 0) cc = 'amount--positive'; else if (amount < 0) cc = 'amount--negative'; } return <span className={`currency-display ${cc} ${className}`.trim()} aria-label={f.format(Math.abs(amount))}>{f.format(amount)}</span>; };
+export default CurrencyDisplay;
