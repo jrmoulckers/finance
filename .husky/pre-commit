@@ -1,0 +1,2 @@
+#!/bin/sh
+npx prettier --check --cache $(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|json|css|md)$' | tr '\n' ' ') 2>/dev/null || true

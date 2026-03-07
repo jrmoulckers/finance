@@ -79,6 +79,18 @@ jobs:
             --parallel --build-cache --stacktrace
         continue-on-error: true
 
+      - name: Generate coverage report
+        run: ./gradlew :packages:core:koverXmlReport :packages:sync:koverXmlReport --parallel --build-cache
+        continue-on-error: true
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: '**/build/reports/kover/**'
+          retention-days: 14
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
