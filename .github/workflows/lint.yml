@@ -1,0 +1,35 @@
+name: Lint & Format
+
+on:
+  push:
+    branches: [main]
+    paths: ['**.ts', '**.tsx', '**.js', '**.mjs', '**.json', '**.css', '**.md']
+  pull_request:
+    branches: [main]
+    paths: ['**.ts', '**.tsx', '**.js', '**.mjs', '**.json', '**.css', '**.md']
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-format:
+    name: ESLint & Prettier
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install --no-audit
+      - name: ESLint
+        run: npx eslint . --max-warnings 0
+        continue-on-error: true
+      - name: Prettier check
+        run: npx prettier --check .
+        continue-on-error: true
