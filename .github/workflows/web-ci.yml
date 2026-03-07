@@ -3,10 +3,10 @@ name: Web CI
 on:
   push:
     branches: [main]
-    paths: ['apps/web/**']
+    paths: ['apps/web/**', 'packages/design-tokens/**']
   pull_request:
     branches: [main]
-    paths: ['apps/web/**']
+    paths: ['apps/web/**', 'packages/design-tokens/**']
 
 concurrency:
   group: web-${{ github.ref }}
@@ -29,7 +29,9 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm install --no-audit
+      - run: npm ci
+
+      - run: npm run build -w packages/design-tokens
 
       - run: npm run build -w apps/web
 
@@ -49,7 +51,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm install --no-audit && npm run build -w apps/web
+      - run: npm ci && npm run build -w packages/design-tokens && npm run build -w apps/web
 
       - uses: treosh/lighthouse-ci-action@v12
         with:
