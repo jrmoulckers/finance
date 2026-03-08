@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: BUSL-1.1
+
 // Usage: node tools/gradle.js <gradle-args...>
 // Cross-platform Gradle wrapper — picks gradlew vs gradlew.bat automatically
 // and resolves JDK 21 if available.

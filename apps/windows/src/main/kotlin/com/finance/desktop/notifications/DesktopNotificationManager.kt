@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 package com.finance.desktop.notifications
 
 import com.finance.models.types.Cents

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * Auth Webhook Edge Function (#68)
  *

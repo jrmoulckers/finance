@@ -193,4 +193,14 @@ This project is developed with AI agents as first-class contributors. See [`docs
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+This project is source-available under the [Business Source License 1.1](LICENSE).
+
+**What this means:**
+- ✅ You can view, fork, modify, and learn from the source code
+- ✅ Personal, non-commercial, and educational use is always permitted
+- ✅ Non-production use (development, testing, evaluation) is permitted
+- ❌ You may not offer this as a competing hosted/managed service
+- ❌ You may not embed this in a commercial product with substantially similar functionality
+- 🔄 On 2030-03-08, the code converts to [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) (fully open source)
+
+See [LICENSE](LICENSE) for full terms.

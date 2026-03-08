@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import React from 'react';
 export interface NavItem { path: string; label: string; icon: React.ReactNode; }
 export const NAV_ITEMS: NavItem[] = [

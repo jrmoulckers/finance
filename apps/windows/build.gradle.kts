@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.compose)

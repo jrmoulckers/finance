@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- Migration: 20260306000001_initial_schema
 -- Description: Create all tables for the Finance app
 -- Issues: #66

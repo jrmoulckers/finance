@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * React hook for detecting online / offline network status.
  *

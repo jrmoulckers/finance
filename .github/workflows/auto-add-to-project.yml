@@ -9,13 +9,14 @@ on:
 jobs:
   add-to-project:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       issues: write
       pull-requests: write
       repository-projects: write
     steps:
       - name: Add to project
-        uses: actions/add-to-project@v1.0.2
+        uses: actions/add-to-project@244f685bbc3b7adfa8466e08b698b5577571133e # v1.0.2
         with:
           project-url: https://github.com/users/jrmoulckers/projects/2
           github-token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 @file:OptIn(ExperimentalAnimationApi::class)
 
 package com.finance.android.ui.onboarding

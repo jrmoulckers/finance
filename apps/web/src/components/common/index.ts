@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 export { CurrencyDisplay } from './CurrencyDisplay';
 export type { CurrencyDisplayProps } from './CurrencyDisplay';
 export { EmptyState } from './EmptyState';

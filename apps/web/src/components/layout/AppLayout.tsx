@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import React, { useCallback } from 'react';
 import { BottomNavigation, SidebarNavigation } from './Navigation';
 export interface AppLayoutProps { activePath: string; onNavigate: (path: string) => void; pageTitle: string; children: React.ReactNode; }

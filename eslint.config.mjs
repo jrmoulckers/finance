@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 

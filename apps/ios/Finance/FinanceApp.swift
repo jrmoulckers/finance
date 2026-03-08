@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import SwiftUI
 
 /// Finance — a cross-platform financial tracking application.

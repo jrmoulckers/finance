@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * Standard JSON response helpers for Supabase Edge Functions (#98).
  *

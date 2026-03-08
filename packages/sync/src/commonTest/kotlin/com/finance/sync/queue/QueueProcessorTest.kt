@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 package com.finance.sync.queue
 
 import com.finance.sync.MutationOperation

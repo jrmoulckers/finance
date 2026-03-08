@@ -2,6 +2,22 @@
 
 Thank you for contributing to Finance! This project uses AI agents as first-class development tools alongside human contributors. This guide will get you set up.
 
+> **AI tools are not required to contribute.** GitHub Copilot and the project's AI agents enhance the workflow, but every contribution — from typo fixes to new features — is welcome without them. You can contribute using any editor and workflow you prefer.
+
+## Code of Conduct
+
+All contributors are expected to follow our [Code of Conduct](../CODE_OF_CONDUCT.md). Please read it before participating.
+
+## Quick Contributions
+
+For small changes like fixing a typo, improving docs, or correcting a comment:
+
+1. [Fork the repository](https://github.com/jrmoulckers/finance/fork)
+2. Edit the file directly on GitHub or in your local clone
+3. Submit a pull request with a clear description of the change
+
+No local build setup is needed for documentation-only changes. Look for issues labeled [`good first issue`](https://github.com/jrmoulckers/finance/labels/good-first-issue) or [`help wanted`](https://github.com/jrmoulckers/finance/labels/help%20wanted) if you're looking for a place to start.
+
 ## Prerequisites
 
 Before cloning, ensure you have:
@@ -10,8 +26,8 @@ Before cloning, ensure you have:
 |------|---------|---------|
 | [Git](https://git-scm.com/) | 2.40+ | Version control |
 | [Node.js](https://nodejs.org/) | 22+ | Build tools, MCP servers |
-| [VS Code](https://code.visualstudio.com/) | 1.99+ | Primary editor |
-| [GitHub Copilot](https://github.com/features/copilot) | Pro+ recommended | AI development |
+| [VS Code](https://code.visualstudio.com/) | 1.99+ | Primary editor (or use your preferred editor) |
+| [GitHub Copilot](https://github.com/features/copilot) | Pro+ recommended | AI development *(optional)* |
 
 ### VS Code Extensions (Required)
 

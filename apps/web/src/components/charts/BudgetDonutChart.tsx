@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * BudgetDonutChart — Recharts donut chart for budget allocation.
  * @module components/charts/BudgetDonutChart

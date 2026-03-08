@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * CategoryPieChart — custom D3.js pie chart for category breakdowns.
  * @module components/charts/CategoryPieChart

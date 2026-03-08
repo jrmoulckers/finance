@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 // swift-tools-version: 5.10
 // Package.swift
 //

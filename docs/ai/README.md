@@ -21,6 +21,8 @@ Finance is developed with AI agents as first-class contributors. This means:
 | [MCP](mcp.md) | Model Context Protocol server configuration |
 | [Workflow](workflow.md) | Day-to-day AI development workflow guide |
 | [Restrictions](restrictions.md) | Human-gated operations and AI safety guardrails |
+| [Responsible AI](responsible-ai.md) | Ethical AI principles, commitments, and product AI guidelines |
+| [AI Code Policy](ai-code-policy.md) | Code ownership, copyright, and contributor responsibilities |
 
 ## Quick Reference
 

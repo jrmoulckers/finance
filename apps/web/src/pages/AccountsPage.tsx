@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import React, { useState } from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
 interface Acct { id:string; name:string; type:'checking'|'savings'|'credit'|'investment'; balance:number; inst:string; }

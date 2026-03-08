@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import type { Meta, StoryObj } from '@storybook/react';
 import { CurrencyDisplay } from '../common/CurrencyDisplay';
 

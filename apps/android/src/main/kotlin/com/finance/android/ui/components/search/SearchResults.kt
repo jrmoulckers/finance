@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 package com.finance.android.ui.components.search
 
 import androidx.compose.foundation.layout.Arrangement

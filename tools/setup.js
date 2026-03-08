@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: BUSL-1.1
+
 // Usage: node tools/setup.js [--help] [--check]
 // One-command setup for the Finance monorepo — validates prerequisites,
 // installs dependencies, configures git hooks, and runs the first build.

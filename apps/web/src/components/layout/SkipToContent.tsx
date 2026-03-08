@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import { type FC, type KeyboardEvent, useCallback } from 'react';
 import { moveFocusTo } from '../../accessibility/aria';
 

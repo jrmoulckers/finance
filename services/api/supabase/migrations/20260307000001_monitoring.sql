@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- Monitoring: server-side sync health logging
 -- Refs: #84, #85
 -- Records sync health metrics reported by clients, enabling server-side

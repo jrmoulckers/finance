@@ -11,9 +11,10 @@ permissions:
 jobs:
   stale:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Flag stale issues
-        uses: actions/stale@v10
+        uses: actions/stale@b5d41d4e1d5dceea10e7104786b73624c18a190f # v10.2.0
         with:
           stale-issue-message: >
             This issue has been inactive for 7 days. If it's still in progress,

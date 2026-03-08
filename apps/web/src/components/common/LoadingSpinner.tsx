@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import React from 'react';
 export interface LoadingSpinnerProps { size?: number; label?: string; className?: string; }
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ size = 40, label = 'Loading', className = '' }) => (<div className={`loading-spinner ${className}`.trim()} role="status" aria-label={label} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ animation: 'spinner-rotate 1s linear infinite' }}><circle cx="12" cy="12" r="10" stroke="var(--semantic-border-default)" strokeWidth="3" fill="none" /><path d="M12 2a10 10 0 0 1 10 10" stroke="var(--semantic-interactive-default)" strokeWidth="3" strokeLinecap="round" fill="none" /></svg><span style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>{label}</span></div>);

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import StyleDictionary from 'style-dictionary';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';

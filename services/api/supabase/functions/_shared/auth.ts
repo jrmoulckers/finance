@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * Auth helper for Supabase Edge Functions (#98).
  *

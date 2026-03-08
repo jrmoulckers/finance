@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- Migration: 20260306000002_rls_policies
 -- Description: Enable RLS on all tables and create tenant-isolation policies
 -- Issues: #67

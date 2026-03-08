@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 export { SpendingBarChart } from './SpendingBarChart';
 export type { SpendingBarChartProps, SpendingCategory } from './SpendingBarChart';
 export { TrendLineChart } from './TrendLineChart';

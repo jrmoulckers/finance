@@ -17,7 +17,7 @@ Android Studio is the recommended IDE for debugging KMP shared code. Because the
 
 ### Setting Breakpoints
 
-1. Open the project root (`G:\personal\finance`) in Android Studio
+1. Open the project root (e.g., `C:\dev\finance`) in Android Studio
 2. Navigate to any file under `packages/core/src/commonMain/`, `packages/models/src/commonMain/`, or `packages/sync/src/commonMain/`
 3. Click the gutter (left margin) next to a line to set a breakpoint — a red dot appears
 4. Select the `apps:android` run configuration and click **Debug** (bug icon, or **Shift+F9**)
@@ -147,7 +147,7 @@ Add this to `.vscode/launch.json`:
 
 ### "Source not found" when hitting a breakpoint
 
-The debugger cannot locate `commonMain` sources. Ensure you opened the **root project** (`G:\personal\finance`) in Android Studio, not a submodule. The Gradle composite build must resolve all `:packages:*` modules.
+The debugger cannot locate `commonMain` sources. Ensure you opened the **root project** (e.g., `C:\dev\finance`) in Android Studio, not a submodule. The Gradle composite build must resolve all `:packages:*` modules.
 
 ### Breakpoint shows as grey / unresolved
 

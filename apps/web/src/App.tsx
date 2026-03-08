@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import type { FC } from "react";
 import { AppRoutes } from "./routes";
 

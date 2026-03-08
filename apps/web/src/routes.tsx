@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import { lazy, Suspense } from "react";
 import type { FC } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * CORS headers helper for Supabase Edge Functions (#98).
  *

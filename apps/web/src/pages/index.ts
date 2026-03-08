@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 export { DashboardPage } from './DashboardPage';
 export { AccountsPage } from './AccountsPage';
 export { TransactionsPage } from './TransactionsPage';

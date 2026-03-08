@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import React from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
 interface Goal { id:string; name:string; target:number; current:number; date:string; icon:string; }

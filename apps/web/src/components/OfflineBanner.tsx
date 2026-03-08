@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * OfflineBanner ΓÇö displays a non-intrusive banner when the browser
  * loses network connectivity.

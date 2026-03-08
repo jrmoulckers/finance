@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)

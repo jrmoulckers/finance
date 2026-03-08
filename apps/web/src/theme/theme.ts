@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * TypeScript theme object for programmatic access to design tokens.
  *

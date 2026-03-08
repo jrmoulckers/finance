@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import SwiftUI
 
 /// Root view of the Finance application.

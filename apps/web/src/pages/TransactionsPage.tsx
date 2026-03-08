@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import React, { useState, useMemo } from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
 interface Txn { id:string; desc:string; cat:string; amount:number; date:string; acct:string; }

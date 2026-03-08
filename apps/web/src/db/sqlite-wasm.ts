@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * SQLite-WASM setup for the Finance PWA.
  *

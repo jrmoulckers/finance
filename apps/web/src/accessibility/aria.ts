@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * ARIA accessibility utilities for the Finance PWA.
  *

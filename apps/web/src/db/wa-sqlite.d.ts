@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 declare module 'wa-sqlite/src/examples/OriginPrivateFileSystemVFS.js' {
   export class OriginPrivateFileSystemVFS {
     static create(name: string, module: unknown): Promise<OriginPrivateFileSystemVFS>;

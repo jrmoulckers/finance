@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 package com.finance.desktop.navigation
 
 import androidx.compose.animation.AnimatedVisibility

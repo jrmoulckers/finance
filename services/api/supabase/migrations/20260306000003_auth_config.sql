@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: BUSL-1.1
+
 -- Migration: 20260306000003_auth_config
 -- Description: Auth configuration, custom claims hook, and passkey credentials table
 -- Issues: #68, #69, #70, #71

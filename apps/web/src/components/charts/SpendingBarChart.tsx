@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * SpendingBarChart — Recharts bar chart for spending by category.
  * CVD-safe palette, aria-label on SVG, keyboard navigable, prefers-reduced-motion.

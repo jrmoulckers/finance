@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * Color-blind safe chart palette and shared chart utilities.
  * Uses the IBM Design Language CVD-safe palette from design tokens.

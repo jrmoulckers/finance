@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import type { StorybookConfig } from '@storybook/react-vite';
 
 const config: StorybookConfig = {

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 /**
  * TrendLineChart — Recharts line chart for financial trends over time.
  * CVD-safe palette, aria-label on SVG, keyboard navigable, prefers-reduced-motion.

@@ -65,6 +65,7 @@ Labels are the primary mechanism for categorizing, filtering, and routing work i
 | `blocked` | `#b60205` | Cannot proceed — dependency or decision needed |
 | `needs-shaping` | `#d876e3` | Needs scope/criteria before work can begin |
 | `good-first-issue` | `#7057ff` | Good for new contributors or AI agents learning the codebase |
+| `help wanted` | `#008672` | Extra attention needed — open to community contributions |
 
 ### Special Labels
 

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import type { FC } from "react";
 
 /** Settings page - app preferences, theme, currency, and account management. */

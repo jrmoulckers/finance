@@ -2,6 +2,8 @@ name: Security Scanning
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   schedule:
     - cron: '0 6 * * 1'  # Weekly Monday 6 AM UTC
 
@@ -14,37 +16,39 @@ jobs:
   codeql:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       matrix:
         language: [java-kotlin, javascript-typescript]
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: github/codeql-action/init@820e3160e279568db735cee8ed8f8e77a6da7818 # v3.32.6
         with:
           languages: ${{ matrix.language }}
           queries: +security-and-quality
       - if: matrix.language == 'java-kotlin'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
         with:
           distribution: temurin
           java-version: '21'
       - if: matrix.language == 'java-kotlin'
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
       - if: matrix.language == 'java-kotlin'
         run: ./gradlew build -x test -x jsBrowserTest -x allTests --no-daemon
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@820e3160e279568db735cee8ed8f8e77a6da7818 # v3.32.6
         with:
           category: "/language:${{ matrix.language }}"
 
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'pull_request'
     # Requires Dependency Graph enabled in repo settings (GitHub Advanced Security)
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
         with:
           fail-on-severity: high
           deny-licenses: GPL-3.0, AGPL-3.0
@@ -52,10 +56,11 @@ jobs:
   secret-scanning:
     name: Secret Detection
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - uses: trufflesecurity/trufflehog@main
+      - uses: trufflesecurity/trufflehog@c3e599b7163e8198a55467f3133db0e7b2a492cb # v3.93.7
         with:
           extra_args: --only-verified

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 import React from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
 interface Bud { id:string; name:string; budgeted:number; spent:number; icon:string; }
