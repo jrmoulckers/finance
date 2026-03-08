@@ -57,3 +57,4 @@ jobs:
         with:
           configPath: apps/web/lighthouserc.json
           uploadArtifacts: true
+          runs: 3
