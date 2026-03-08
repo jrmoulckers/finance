@@ -1,0 +1,3 @@
+app_identifier("com.finance.app")
+# apple_id("") # Your Apple ID
+# team_id("") # Developer Portal Team ID
