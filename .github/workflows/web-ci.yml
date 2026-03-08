@@ -38,23 +38,9 @@ jobs:
       - run: npm test -w apps/web
         continue-on-error: true
 
-  lighthouse:
-    name: Lighthouse Audit
-    runs-on: ubuntu-latest
-    needs: build-test
-    continue-on-error: true
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci && npm run build -w packages/design-tokens && npm run build -w apps/web
-
-      - uses: treosh/lighthouse-ci-action@v12
+      - name: Lighthouse Audit
+        uses: treosh/lighthouse-ci-action@v12
+        continue-on-error: true
         with:
           configPath: apps/web/lighthouserc.json
           uploadArtifacts: true
