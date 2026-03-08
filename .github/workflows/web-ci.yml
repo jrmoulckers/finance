@@ -1,0 +1,47 @@
+name: Web CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/web/**', 'packages/design-tokens/**']
+  pull_request:
+    branches: [main]
+    paths: ['apps/web/**', 'packages/design-tokens/**']
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build -w packages/design-tokens
+
+      - run: npm run build -w apps/web
+
+      - run: npm test -w apps/web
+        continue-on-error: true
+
+      - name: Lighthouse Audit
+        uses: treosh/lighthouse-ci-action@v12
+        continue-on-error: true
+        with:
+          configPath: apps/web/lighthouserc.json
+          uploadArtifacts: true
+          runs: 3
