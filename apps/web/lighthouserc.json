@@ -1,7 +1,7 @@
 {
   "ci": {
     "collect": {
-      "staticDistDir": "dist"
+      "staticDistDir": "apps/web/dist"
     },
     "assert": {
       "preset": "lighthouse:recommended",
