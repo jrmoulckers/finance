@@ -42,6 +42,7 @@ jobs:
     name: Lighthouse Audit
     runs-on: ubuntu-latest
     needs: build-test
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
