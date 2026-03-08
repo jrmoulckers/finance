@@ -16,11 +16,14 @@
   "dependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.1"
+    "react-router-dom": "^7.6.1",
+    "sql.js": "^1.14.1",
+    "wa-sqlite": "^1.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
+    "@types/sql.js": "^1.4.9",
     "@vitejs/plugin-react": "^4.5.2",
     "nanoid": "^3.3.11",
     "source-map-js": "^1.2.1",
