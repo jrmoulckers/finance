@@ -20,15 +20,15 @@ import kotlinx.datetime.Instant
  * - A [SyncClient] that reads/writes to the local DB and communicates with the
  *   shared [MockSyncServer].
  */
-class SyncIntegrationTestHarness {
+class SyncIntegrationTestHarness(clock: Clock = Clock.System) {
 
     val server = MockSyncServer()
 
     val networkA = NetworkSimulator()
     val networkB = NetworkSimulator()
 
-    val deviceA = SyncClient(clientId = "device-a", database = InMemoryDatabase(), network = networkA, server = server)
-    val deviceB = SyncClient(clientId = "device-b", database = InMemoryDatabase(), network = networkB, server = server)
+    val deviceA = SyncClient(clientId = "device-a", database = InMemoryDatabase(clock), network = networkA, server = server, clock = clock)
+    val deviceB = SyncClient(clientId = "device-b", database = InMemoryDatabase(clock), network = networkB, server = server, clock = clock)
 
     /** Reset all components to a clean state. */
     suspend fun reset() {
@@ -49,7 +49,7 @@ class SyncIntegrationTestHarness {
  * so that these integration tests run on all KMP targets without native
  * database dependencies.
  */
-class InMemoryDatabase {
+class InMemoryDatabase(private val clock: Clock = Clock.System) {
 
     private val mutex = Mutex()
 
@@ -86,7 +86,7 @@ class InMemoryDatabase {
         if (existing != null) {
             store[key(entityType, entityId)] = existing.copy(
                 isDeleted = true,
-                updatedAt = Clock.System.now(),
+                updatedAt = clock.now(),
             )
         }
     }
@@ -115,6 +115,7 @@ class SyncClient(
     val database: InMemoryDatabase,
     private val network: NetworkSimulator,
     private val server: MockSyncServer,
+    private val clock: Clock = Clock.System,
 ) {
     private val mutex = Mutex()
 
@@ -141,7 +142,7 @@ class SyncClient(
         payload: String,
         operation: MutationOperation = MutationOperation.INSERT,
     ) {
-        val now = Clock.System.now()
+        val now = clock.now()
 
         database.upsert(
             InMemoryDatabase.EntityRecord(
@@ -168,7 +169,7 @@ class SyncClient(
      * Soft-delete an entity locally and queue the delete mutation.
      */
     suspend fun softDelete(entityType: String, entityId: String) {
-        val now = Clock.System.now()
+        val now = clock.now()
         database.delete(entityType, entityId)
 
         val mutation = SyncMutation(
