@@ -1,0 +1,25 @@
+# Default
+* @jrmoulckers
+
+# Shared packages
+packages/core/ @jrmoulckers
+packages/models/ @jrmoulckers
+packages/sync/ @jrmoulckers
+packages/design-tokens/ @jrmoulckers
+
+# Platform apps
+apps/android/ @jrmoulckers
+apps/ios/ @jrmoulckers
+apps/web/ @jrmoulckers
+apps/windows/ @jrmoulckers
+
+# Backend
+services/api/ @jrmoulckers
+
+# Infrastructure
+.github/ @jrmoulckers
+build-logic/ @jrmoulckers
+gradle/ @jrmoulckers
+
+# Documentation
+docs/ @jrmoulckers
