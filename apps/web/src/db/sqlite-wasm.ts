@@ -275,7 +275,6 @@ export async function detectBackend(): Promise<StorageBackend> {
     ) {
       const root = await navigator.storage.getDirectory();
       const probe = await root.getFileHandle('.__opfs_probe', { create: true });
-      // @ts-expect-error ΓÇö createSyncAccessHandle is not yet in all TS libs
       const handle = await probe.createSyncAccessHandle();
       handle.close();
       await root.removeEntry('.__opfs_probe');
@@ -317,16 +316,16 @@ export async function initDatabase(): Promise<SqliteDb> {
 
   if (backend === 'opfs') {
     const { default: SQLiteESMFactory } = await import(
-      /* webpackChunkName: "wa-sqlite" */ '@aspect-build/wa-sqlite'
+      /* webpackChunkName: "wa-sqlite" */ 'wa-sqlite'
     );
-    const { OPFSCoopSyncVFS } = await import(
-      /* webpackChunkName: "wa-sqlite-vfs" */ '@aspect-build/wa-sqlite/src/examples/OPFSCoopSyncVFS.js'
+    const { OriginPrivateFileSystemVFS } = await import(
+      /* webpackChunkName: "wa-sqlite-vfs" */ 'wa-sqlite/src/examples/OriginPrivateFileSystemVFS.js'
     );
 
     const module = await SQLiteESMFactory();
     sqlite3 = module;
 
-    const vfs = await OPFSCoopSyncVFS.create(DB_NAME, module);
+    const vfs = await OriginPrivateFileSystemVFS.create(DB_NAME, module);
     module.vfs_register(vfs, /* makeDefault */ true);
     db = await module.open_v2(DB_NAME);
   } else {
@@ -412,7 +411,10 @@ function selectRaw(
       while (driver.step(stmt) === /* SQLITE_ROW */ 100) {
         const row: Row = {};
         for (let i = 0; i < colCount; i++) {
-          row[columns[i]] = driver.column(stmt, i);
+          const col = columns[i];
+          if (col !== undefined) {
+            row[col] = driver.column(stmt, i);
+          }
         }
         rows.push(row);
       }
@@ -576,7 +578,7 @@ function createDbWrapper(
 
     selectOne(sql: string, params?: unknown[]): Row | null {
       const rows = selectRaw(driver, db, sql, backend, params).rows;
-      return rows.length > 0 ? rows[0] : null;
+      return rows[0] ?? null;
     },
 
     async close(): Promise<void> {
