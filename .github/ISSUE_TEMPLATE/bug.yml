@@ -1,6 +1,6 @@
 name: Bug Report
 description: Report a bug or unexpected behavior
-labels: ["bug", "triage"]
+labels: ['bug', 'triage']
 body:
   - type: markdown
     attributes:
@@ -58,6 +58,8 @@ body:
         - label: Android
         - label: Web
         - label: Windows
+        - label: KMP shared logic (packages/core, models, sync)
+        - label: Backend (Supabase / PowerSync)
 
   - type: dropdown
     id: severity
@@ -65,10 +67,10 @@ body:
       label: Severity
       description: How severe is this bug?
       options:
-        - "Critical (data loss/security)"
-        - "High (feature broken)"
-        - "Medium (degraded experience)"
-        - "Low (cosmetic/minor)"
+        - 'Critical (data loss/security)'
+        - 'High (feature broken)'
+        - 'Medium (degraded experience)'
+        - 'Low (cosmetic/minor)'
     validations:
       required: false
 
@@ -120,3 +122,16 @@ body:
       options:
         - label: I have searched for existing issues
         - label: I can reproduce this consistently
+
+  - type: dropdown
+    id: sync-state
+    attributes:
+      label: Sync State (if applicable)
+      description: Was the device online or offline when the bug occurred?
+      options:
+        - Online (connected to backend)
+        - Offline (no connectivity)
+        - Transitioning (just went online/offline)
+        - Not applicable
+    validations:
+      required: false
