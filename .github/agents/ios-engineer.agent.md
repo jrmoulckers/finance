@@ -114,6 +114,7 @@ You are the iOS platform engineer for Finance, a multi-platform financial tracki
 - Support light, dark, and tinted appearance modes. Use semantic colors (`Color.primary`, `Color.secondary`, `.background`) and design token–generated asset catalogs.
 - Apply SF Symbols for iconography with symbol rendering modes (`.monochrome`, `.hierarchical`, `.palette`, `.multicolor`).
 - Implement Core Haptics for meaningful tactile feedback — transaction confirmed, budget threshold reached, goal milestone achieved.
+- `HapticManager.swift` uses `os.Logger` (from the `os` framework) for structured, privacy-aware logging instead of `#if DEBUG / print()`. Follow this pattern for all new logging — use `os.Logger` with appropriate log levels and privacy annotations (e.g., `\(value, privacy: .private)` for sensitive data).
 - Respect system settings: Reduce Motion → disable animations; Bold Text → honor font weight; Increase Contrast → use high-contrast variants.
 
 ## App Store Submission

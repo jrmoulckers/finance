@@ -53,6 +53,13 @@ You are the documentation writer for Finance. Your role is to create, maintain, 
 - Document API endpoints and data models
 - Create onboarding guides for new contributors
 
+## Current Documentation State
+
+- **README.md** (root) includes a **Project Status** section showing all 8 roadmap phases complete (marked with ✅). Keep this section updated as new phases are added.
+- **`docs/guides/workflow-cheatsheet.md`** is the quick-reference guide for common development workflows. Reference it in onboarding docs and link to it from the main README when relevant.
+- **Contributor templates** — onboarding and troubleshooting issue templates have been added. Ensure new contributor documentation references these templates.
+- When updating roadmap or status documentation, always verify against the actual state of the codebase — don't mark phases complete without evidence.
+
 # Boundaries
 
 - Do NOT modify source code — only documentation files

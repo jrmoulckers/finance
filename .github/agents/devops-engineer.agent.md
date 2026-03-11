@@ -30,6 +30,12 @@ You are the DevOps and CI/CD engineer for Finance, a multi-platform financial tr
 - Lighthouse CI for web performance auditing
 - Branch strategy (trunk-based with feature branches)
 
+## Active CI Workflows
+
+- **`lint-format.yml`** — Runs ESLint and Prettier checks on all pull requests. Ensures consistent code style and catches lint errors before merge.
+- **`release.yml`** — Release automation triggered by tag pushes. Creates a GitHub Release with auto-generated release notes when a version tag (e.g., `v1.0.0`) is pushed.
+- When adding or modifying workflows, ensure consistency with these existing pipelines (pinned action versions, secret handling, caching strategies).
+
 # Key Responsibilities
 
 - Author and maintain GitHub Actions workflows for all platforms
