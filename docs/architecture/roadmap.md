@@ -16,6 +16,24 @@ The development is organized into eight phases, from foundational infrastructure
 
 ---
 
+## Product Identity
+
+**Core Promise:** "See your money clearly. Keep it private. No expertise required."
+
+**Differentiators:**
+
+1. Expertise-tiered UI — adapts to user's financial comfort level
+2. Offline-first, encrypted-at-rest privacy — Signal-like data practices
+3. 30-second daily interaction — 3-tap transaction entry, widget-first habit loop
+4. Contextual financial education — learn by using, not by studying
+5. Non-judgmental design — facts + encouragement, never guilt
+
+**Target Users:** People who want to understand their money without needing a finance degree. Inclusive of users with cognitive differences (ADHD-friendly design).
+
+See [Product Identity](../design/product-identity.md) for the complete specification.
+
+---
+
 ## Technology Decisions
 
 All technology choices below are **proposals** based on research. Each requires explicit human confirmation before implementation begins. Confirmed decisions will be documented as ADRs in `docs/architecture/`.
@@ -64,6 +82,44 @@ The native-first principle demands that each platform uses its own UI framework.
 
 **GitHub Actions + Turborepo over alternatives:**
 GitHub Actions provides a unified CI platform for all four target platforms (macOS for iOS, Linux for Android/Web, Windows for desktop) with native Copilot coding agent integration. Turborepo adds lightweight affected-only builds with automatic dependency graph detection and remote caching, reducing CI costs by 50-80%. Estimated CI cost: ~$143/mo.
+
+---
+
+## Freemium Model
+
+The app follows a "complete free tracker + premium intelligence" model.
+
+### Free Tier — Complete Financial Tracker
+
+All core functionality is free with no artificial limitations:
+
+- Accounts, transactions, budgets, goals, categories, rules
+- Expertise-tiered UI (Getting Started / Comfortable / Advanced)
+- Contextual financial education tooltips
+- Offline-first single-device operation
+- Data export (JSON/CSV)
+- Basic reports (spending by category, monthly trends)
+- "Can I Afford This?" budget check widget
+- Non-manipulative streak tracking
+- Full accessibility features
+
+### Premium Tier — AI Intelligence Layer
+
+Premium adds intelligence and collaboration (target: ~$4.99/mo or ~$39.99/yr):
+
+- AI auto-categorization with trend marking
+- Suggested budgets based on spending history
+- Holistic portfolio and goal analysis
+- Spending forecasts with confidence intervals
+- Structured financial learning paths
+- Multi-device cloud sync (Supabase + PowerSync)
+- Household/partner sharing with role-based access
+- Advanced reports and custom visualizations
+
+### Design Principle
+
+> Free users never feel limited — the core app is genuinely complete.
+> Premium feels like a superpower, not a paywall — you're adding intelligence, not removing features.
 
 ---
 
@@ -421,6 +477,18 @@ Implement the Windows desktop app.
 ### Phase 7: Advanced Features ✅
 
 Cross-platform features that build on the core platform implementations.
+
+#### Pre-Launch Features (Freemium Foundation)
+
+- Implement expertise tier system — Getting Started / Comfortable / Advanced UI modes with progressive feature disclosure
+- Implement contextual financial education tooltips — in-context definitions, tips, and explanations that appear at point-of-need
+- Implement "Can I Afford This?" affordability check widget — quick budget check for discretionary spending decisions
+- Implement iOS/Android platform widgets — at-a-glance balance, budget status, and quick transaction entry from home screen
+- Implement two-path onboarding — "Quick Start" (minimal setup, start tracking immediately) and "Full Setup" (accounts, budgets, goals)
+- Implement opt-in notification system — budget alerts, bill reminders, and streak nudges with user-controlled frequency and channels
+- Implement non-manipulative streak tracking — celebrate consistency without guilt; streaks pause gracefully, never punish
+
+#### Cross-Platform Advanced Features
 
 - Implement household/family/partner account sharing — invite flow, role assignment (Owner, Partner, Member, Viewer)
 - Implement RBAC permission enforcement — per-role access to transactions, budgets, member management
