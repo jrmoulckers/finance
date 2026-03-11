@@ -12,22 +12,22 @@ This skill provides knowledge for setting up the Finance development environment
 
 ## Prerequisites Checklist
 
-| Tool | Minimum Version | Install Guide | Purpose |
-|------|----------------|---------------|---------|
-| Git | 2.40+ | https://git-scm.com/ | Version control |
-| Node.js | 22+ | https://nodejs.org/ | Build tools, MCP servers |
-| VS Code | 1.99+ | https://code.visualstudio.com/ | Primary editor |
-| GitHub Copilot | Latest | VS Code Marketplace | AI completions + chat |
-| GitHub Copilot Chat | Latest | VS Code Marketplace | Agent mode, custom agents |
+| Tool                | Minimum Version | Install Guide                  | Purpose                   |
+| ------------------- | --------------- | ------------------------------ | ------------------------- |
+| Git                 | 2.40+           | https://git-scm.com/           | Version control           |
+| Node.js             | 22+             | https://nodejs.org/            | Build tools, MCP servers  |
+| VS Code             | 1.99+           | https://code.visualstudio.com/ | Primary editor            |
+| GitHub Copilot      | Latest          | VS Code Marketplace            | AI completions + chat     |
+| GitHub Copilot Chat | Latest          | VS Code Marketplace            | Agent mode, custom agents |
 
 ### Platform-Specific Prerequisites (Add as needed)
 
-| Platform | Tools | Status |
-|----------|-------|--------|
-| iOS/macOS | Xcode 16+, Swift 6+ | 📋 Not yet configured |
-| Android | Android Studio, Kotlin 2+ | 📋 Not yet configured |
-| Web | Already covered by Node.js | ✅ Ready |
-| Windows | Visual Studio 2022+, .NET 9+ | 📋 Not yet configured |
+| Platform  | Tools                        | Status                |
+| --------- | ---------------------------- | --------------------- |
+| iOS/macOS | Xcode 16+, Swift 6+          | 📋 Not yet configured |
+| Android   | Android Studio, Kotlin 2+    | 📋 Not yet configured |
+| Web       | Already covered by Node.js   | ✅ Ready              |
+| Windows   | Visual Studio 2022+, .NET 9+ | 📋 Not yet configured |
 
 ## First-Time Setup Steps
 
@@ -77,6 +77,7 @@ When prompted for a Personal Access Token for the GitHub MCP server, create a **
 ### Recommended: Fine-Grained Personal Access Token
 
 For maximum safety, use a [fine-grained PAT](https://github.com/settings/personal-access-tokens/new) scoped to the `jrmoulckers/finance` repository with:
+
 - **Repository access:** Only `jrmoulckers/finance`
 - **Contents:** Read-only
 - **Issues:** Read-only
@@ -88,18 +89,22 @@ This ensures the MCP server can search and read but **cannot mutate** any remote
 ## Common Onboarding Issues
 
 ### MCP servers won't start
+
 - **Cause:** Node.js not installed or wrong version
 - **Fix:** Install Node.js 22+ and restart VS Code
 
 ### Copilot Chat doesn't show agent mode
+
 - **Cause:** Extension outdated or setting disabled
 - **Fix:** Update Copilot Chat extension, ensure `github.copilot.chat.agent.enabled` is `true` in settings
 
 ### Extensions not auto-installing
+
 - **Cause:** VS Code didn't detect `.vscode/extensions.json`
 - **Fix:** Open Command Palette → `Extensions: Show Recommended Extensions` → Install All
 
 ### `npm ci` fails in CI
+
 - **Cause:** No `package-lock.json` in repo
 - **Fix:** Run `npm install` locally and commit the generated `package-lock.json`
 

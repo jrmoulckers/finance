@@ -8,7 +8,13 @@
 
 import { type FC, useId, useMemo, useRef } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import { CHART_COLORS, formatChartCurrency } from './chart-palette';
@@ -38,7 +44,11 @@ function prefersReducedMotion(): boolean {
 }
 
 export const TrendLineChart: FC<TrendLineChartProps> = ({
-  data, series, currency = 'USD', height = 320, title = 'Trend over time',
+  data,
+  series,
+  currency = 'USD',
+  height = 320,
+  title = 'Trend over time',
 }) => {
   const chartId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,8 +81,12 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
       aria-roledescription="line chart"
       onKeyDown={handleKeyDown}
     >
-      <h3 id={`${chartId}-title`} className="chart-title">{title}</h3>
-      <p id={`${chartId}-desc`} className="sr-only">{description}</p>
+      <h3 id={`${chartId}-title`} className="chart-title">
+        {title}
+      </h3>
+      <p id={`${chartId}-desc`} className="sr-only">
+        {description}
+      </p>
       <ResponsiveContainer width="100%" height={height}>
         <LineChart
           data={data}
@@ -82,7 +96,10 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
           aria-describedby={`${chartId}-desc`}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-default, #E5E7EB)" />
-          <XAxis dataKey="label" tick={{ fill: 'var(--color-text-secondary, #6B7280)', fontSize: 12 }} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: 'var(--color-text-secondary, #6B7280)', fontSize: 12 }}
+          />
           <YAxis
             tickFormatter={(v: number) => formatChartCurrency(v, currency)}
             tick={{ fill: 'var(--color-text-secondary, #6B7280)', fontSize: 12 }}

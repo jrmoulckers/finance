@@ -13,16 +13,16 @@ Finance is developed with AI agents as first-class contributors. This means:
 
 ## Documentation Index
 
-| Document | Description |
-|----------|-------------|
-| [Agents](agents.md) | Custom Copilot agent definitions and their roles |
-| [Skills](skills.md) | Reusable agent skills for domain knowledge |
-| [Instructions](instructions.md) | Copilot instruction files and how they work |
-| [MCP](mcp.md) | Model Context Protocol server configuration |
-| [Workflow](workflow.md) | Day-to-day AI development workflow guide |
-| [Restrictions](restrictions.md) | Human-gated operations and AI safety guardrails |
+| Document                            | Description                                                   |
+| ----------------------------------- | ------------------------------------------------------------- |
+| [Agents](agents.md)                 | Custom Copilot agent definitions and their roles              |
+| [Skills](skills.md)                 | Reusable agent skills for domain knowledge                    |
+| [Instructions](instructions.md)     | Copilot instruction files and how they work                   |
+| [MCP](mcp.md)                       | Model Context Protocol server configuration                   |
+| [Workflow](workflow.md)             | Day-to-day AI development workflow guide                      |
+| [Restrictions](restrictions.md)     | Human-gated operations and AI safety guardrails               |
 | [Responsible AI](responsible-ai.md) | Ethical AI principles, commitments, and product AI guidelines |
-| [AI Code Policy](ai-code-policy.md) | Code ownership, copyright, and contributor responsibilities |
+| [AI Code Policy](ai-code-policy.md) | Code ownership, copyright, and contributor responsibilities   |
 
 ## Quick Reference
 
@@ -72,12 +72,12 @@ AGENTS.md                             # Root-level agent guidance (all AI tools)
 
 ### Supported AI Tools
 
-| Tool | Usage |
-|------|-------|
-| GitHub Copilot (VS Code) | In-editor completions, chat, agent mode |
-| GitHub Copilot CLI | Terminal-based AI assistance, `/fleet` for parallel agents |
-| GitHub Copilot Coding Agent | Autonomous issue-to-PR workflow on GitHub |
-| MCP Servers | Extended tool access (5 servers: GitHub, sequential-thinking, memory, filesystem, context7) |
+| Tool                        | Usage                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------- |
+| GitHub Copilot (VS Code)    | In-editor completions, chat, agent mode                                                     |
+| GitHub Copilot CLI          | Terminal-based AI assistance, `/fleet` for parallel agents                                  |
+| GitHub Copilot Coding Agent | Autonomous issue-to-PR workflow on GitHub                                                   |
+| MCP Servers                 | Extended tool access (5 servers: GitHub, sequential-thinking, memory, filesystem, context7) |
 
 ## Getting Started with AI Development
 

@@ -1,6 +1,6 @@
 name: Task
 description: Internal task for refactoring, infrastructure, tooling, documentation, or tech debt
-labels: ["task", "triage"]
+labels: ['task', 'triage']
 body:
   - type: markdown
     attributes:
@@ -81,11 +81,11 @@ body:
       label: Effort Estimate
       description: Roughly how much effort is this task?
       options:
-        - "XS (< 1 day)"
-        - "S (1-2 days)"
-        - "M (3-5 days)"
-        - "L (1-2 weeks)"
-        - "XL (2+ weeks)"
+        - 'XS (< 1 day)'
+        - 'S (1-2 days)'
+        - 'M (3-5 days)'
+        - 'L (1-2 weeks)'
+        - 'XL (2+ weeks)'
     validations:
       required: false
 
@@ -94,6 +94,6 @@ body:
     attributes:
       label: Dependencies
       description: Are there any blocking issues or PRs?
-      placeholder: "List any issues or PRs that must be resolved first, e.g. #123."
+      placeholder: 'List any issues or PRs that must be resolved first, e.g. #123.'
     validations:
       required: false

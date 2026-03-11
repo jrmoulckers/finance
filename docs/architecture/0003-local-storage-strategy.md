@@ -20,10 +20,10 @@ The Finance app requires a local storage strategy that meets the demands of an o
 
 The app has two distinct storage needs:
 
-| Category | Examples | Requirements |
-|----------|----------|-------------|
-| **Relational/transactional data** | Transactions, accounts, categories, budgets, recurring rules | SQL queries, JOINs, aggregations, encryption, sync, migrations |
-| **Key-value preferences** | Auth tokens, feature flags, onboarding state, theme, last sync timestamp, UI state | Fast read/write, encryption, no sync needed, simple get/set |
+| Category                          | Examples                                                                           | Requirements                                                   |
+| --------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Relational/transactional data** | Transactions, accounts, categories, budgets, recurring rules                       | SQL queries, JOINs, aggregations, encryption, sync, migrations |
+| **Key-value preferences**         | Auth tokens, feature flags, onboarding state, theme, last sync timestamp, UI state | Fast read/write, encryption, no sync needed, simple get/set    |
 
 These two categories have fundamentally different access patterns and should use different storage engines.
 
@@ -454,13 +454,13 @@ Use each platform's native database abstraction: Room (Android), Core Data/Swift
 
 ### Risks
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| SQLite WASM web persistence | Medium | Use OPFS backend (supported in Chrome, Firefox, Safari). Fall back to IndexedDB persistence. PowerSync's web SDK handles this abstraction. Test persistence across browsers in CI. |
-| SQLCipher key loss | High | Store encryption keys in platform keystores (not in the database). Document recovery procedures. On first launch, generate a random 256-bit key and store it securely. Never hardcode keys. |
-| Schema migration errors | Medium | Test migrations against real data in CI. SQLDelight validates SQL at compile time. Use a versioned migration strategy: `1.sqm`, `2.sqm`, etc. Never alter existing migration files. |
-| MMKV web fallback inconsistency | Low | Abstract key-value storage behind a `Settings` interface in `commonMain`. Use `multiplatform-settings` library which provides platform-appropriate backends. |
-| SQLite concurrent write contention | Low | SQLite uses WAL mode by default, supporting concurrent reads with serialized writes. For a single-user app, write contention is not a concern. Batch writes in transactions for performance. |
+| Risk                               | Severity | Mitigation                                                                                                                                                                                   |
+| ---------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SQLite WASM web persistence        | Medium   | Use OPFS backend (supported in Chrome, Firefox, Safari). Fall back to IndexedDB persistence. PowerSync's web SDK handles this abstraction. Test persistence across browsers in CI.           |
+| SQLCipher key loss                 | High     | Store encryption keys in platform keystores (not in the database). Document recovery procedures. On first launch, generate a random 256-bit key and store it securely. Never hardcode keys.  |
+| Schema migration errors            | Medium   | Test migrations against real data in CI. SQLDelight validates SQL at compile time. Use a versioned migration strategy: `1.sqm`, `2.sqm`, etc. Never alter existing migration files.          |
+| MMKV web fallback inconsistency    | Low      | Abstract key-value storage behind a `Settings` interface in `commonMain`. Use `multiplatform-settings` library which provides platform-appropriate backends.                                 |
+| SQLite concurrent write contention | Low      | SQLite uses WAL mode by default, supporting concurrent reads with serialized writes. For a single-user app, write contention is not a concern. Batch writes in transactions for performance. |
 
 ## Implementation Notes
 

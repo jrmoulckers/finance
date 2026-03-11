@@ -1,6 +1,7 @@
 ---
-applyTo: "packages/**"
+applyTo: 'packages/**'
 ---
+
 # Instructions for Shared Packages
 
 You are working in the `packages/` directory, which contains shared libraries consumed by all platform apps.

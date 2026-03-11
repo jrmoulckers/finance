@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { FC } from "react";
+import type { FC } from 'react';
 
 /** Dashboard page - financial overview with balances, recent activity, and charts. */
 const Dashboard: FC = () => (

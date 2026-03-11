@@ -73,13 +73,13 @@ xcodebuild -scheme Finance \
 
 ### Useful Simulator Shortcuts
 
-| Shortcut | Action                         |
-| -------- | ------------------------------ |
-| ⌘R       | Build & Run                    |
-| ⌘.       | Stop running app               |
-| ⌃⌘Z      | Shake gesture (debug menu)     |
-| ⌘1–⌘3   | Scale simulator window         |
-| ⌘⇧A     | Toggle light/dark appearance   |
+| Shortcut | Action                       |
+| -------- | ---------------------------- |
+| ⌘R       | Build & Run                  |
+| ⌘.       | Stop running app             |
+| ⌃⌘Z      | Shake gesture (debug menu)   |
+| ⌘1–⌘3    | Scale simulator window       |
+| ⌘⇧A      | Toggle light/dark appearance |
 
 ## KMP Integration (Swift Export)
 
@@ -88,11 +88,11 @@ xcodebuild -scheme Finance \
 The Finance app shares business logic with Android and other platforms via
 **Kotlin Multiplatform (KMP)**. The shared code lives in:
 
-| KMP Module        | Purpose                              |
-| ----------------- | ------------------------------------ |
-| `packages/core`   | Domain logic, use cases, DI          |
-| `packages/models` | Data models, SQLDelight entities     |
-| `packages/sync`   | Supabase sync engine                 |
+| KMP Module        | Purpose                          |
+| ----------------- | -------------------------------- |
+| `packages/core`   | Domain logic, use cases, DI      |
+| `packages/models` | Data models, SQLDelight entities |
+| `packages/sync`   | Supabase sync engine             |
 
 KMP compiles Kotlin code to a native Apple framework (`.xcframework`) that
 Swift imports directly — no bridging headers, no Objective-C interop needed.
@@ -121,6 +121,7 @@ Swift imports directly — no bridging headers, no Objective-C interop needed.
 ```
 
 The output framework is placed in:
+
 ```
 packages/core/build/bin/iosArm64/releaseFramework/core.framework
 ```
@@ -131,17 +132,20 @@ When the `.xcodeproj` is set up, the following build settings will be configured
 
 1. **Run Script Build Phase** — Invokes Gradle to build the KMP framework before
    Swift compilation:
+
    ```bash
    cd "$SRCROOT/../../"
    ./gradlew :packages:core:linkDebugFrameworkIosSimulatorArm64
    ```
 
 2. **Framework Search Paths** — Points to the Gradle build output:
+
    ```
    FRAMEWORK_SEARCH_PATHS = $(SRCROOT)/../../packages/core/build/bin/iosSimulatorArm64/debugFramework
    ```
 
 3. **Linker Flags** — Links system SQLite for SQLDelight:
+
    ```
    OTHER_LINKER_FLAGS = -lsqlite3
    ```
@@ -232,6 +236,7 @@ The app is designed to be fully accessible. Test with:
 ### "No such module 'Core'"
 
 The KMP framework hasn't been built yet. Run:
+
 ```bash
 ./gradlew :packages:core:linkDebugFrameworkIosSimulatorArm64
 ```
@@ -239,6 +244,7 @@ The KMP framework hasn't been built yet. Run:
 ### Build fails with "Unsupported Swift version"
 
 Ensure you're using Xcode 16+ with Swift 5.9+:
+
 ```bash
 swift --version   # Should show 5.9 or later
 xcodebuild -version  # Should show Xcode 16.0 or later
@@ -247,6 +253,7 @@ xcodebuild -version  # Should show Xcode 16.0 or later
 ### Simulator won't boot
 
 Reset the simulator:
+
 ```bash
 xcrun simctl shutdown all
 xcrun simctl erase all

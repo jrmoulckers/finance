@@ -135,13 +135,13 @@ Add this to `.vscode/launch.json`:
 
 ## Known Limitations
 
-| Scenario | Limitation | Workaround |
-|----------|-----------|------------|
-| **iOS debugging** | Requires Xcode with LLDB; Android Studio cannot debug Kotlin/Native on iOS | Use Xcode to debug the iOS framework — see [iOS setup guide](./ios-setup.md) |
-| **JS target debugging** | Kotlin/JS generates JavaScript; breakpoints must be set in browser DevTools | Use Chrome DevTools with source maps (`--source-map` enabled by default in IR compiler) |
-| **Wasm target** | DWARF debugging for Kotlin/Wasm is experimental | Use `println` / logging; browser DevTools Wasm debugging is evolving |
-| **`expect`/`actual` stepping** | Debugger cannot step from `commonMain` into a different target's `actual` in one session | Debug each platform's `actual` in its native toolchain |
-| **Compose Preview** | Compose Multiplatform previews are not debuggable | Use `@Preview` in `androidMain` with Android Studio's interactive preview |
+| Scenario                       | Limitation                                                                               | Workaround                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **iOS debugging**              | Requires Xcode with LLDB; Android Studio cannot debug Kotlin/Native on iOS               | Use Xcode to debug the iOS framework — see [iOS setup guide](./ios-setup.md)            |
+| **JS target debugging**        | Kotlin/JS generates JavaScript; breakpoints must be set in browser DevTools              | Use Chrome DevTools with source maps (`--source-map` enabled by default in IR compiler) |
+| **Wasm target**                | DWARF debugging for Kotlin/Wasm is experimental                                          | Use `println` / logging; browser DevTools Wasm debugging is evolving                    |
+| **`expect`/`actual` stepping** | Debugger cannot step from `commonMain` into a different target's `actual` in one session | Debug each platform's `actual` in its native toolchain                                  |
+| **Compose Preview**            | Compose Multiplatform previews are not debuggable                                        | Use `@Preview` in `androidMain` with Android Studio's interactive preview               |
 
 ## Troubleshooting
 

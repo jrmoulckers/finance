@@ -81,17 +81,17 @@ This is a **layered architecture** where each component handles what it does bes
 
 Supabase and PowerSync solve **different problems**:
 
-| Responsibility | Supabase | PowerSync |
-|---|---|---|
-| Database (PostgreSQL) | ✅ Managed PostgreSQL with extensions | — |
-| Authentication | ✅ Email, social, phone OTP, JWT | — (integrates with Supabase Auth) |
-| Offline-first sync | ❌ No offline support | ✅ Purpose-built sync engine |
-| Delta sync & reconnection | ❌ | ✅ Automatic, battle-tested |
-| Selective replication | ❌ | ✅ Sync only authorized data subsets |
-| Conflict resolution | ❌ | ✅ Developer-defined handlers |
-| Row-level security | ✅ PostgreSQL RLS | — (enforced at DB level) |
-| Serverless functions | ✅ Edge Functions (Deno) | — |
-| File storage | ✅ S3-compatible | — |
+| Responsibility            | Supabase                              | PowerSync                            |
+| ------------------------- | ------------------------------------- | ------------------------------------ |
+| Database (PostgreSQL)     | ✅ Managed PostgreSQL with extensions | —                                    |
+| Authentication            | ✅ Email, social, phone OTP, JWT      | — (integrates with Supabase Auth)    |
+| Offline-first sync        | ❌ No offline support                 | ✅ Purpose-built sync engine         |
+| Delta sync & reconnection | ❌                                    | ✅ Automatic, battle-tested          |
+| Selective replication     | ❌                                    | ✅ Sync only authorized data subsets |
+| Conflict resolution       | ❌                                    | ✅ Developer-defined handlers        |
+| Row-level security        | ✅ PostgreSQL RLS                     | — (enforced at DB level)             |
+| Serverless functions      | ✅ Edge Functions (Deno)              | —                                    |
+| File storage              | ✅ S3-compatible                      | —                                    |
 
 Neither service alone meets all requirements. Together, they provide a complete backend with minimal custom code.
 
@@ -206,13 +206,13 @@ Open-source (Apache 2.0) active-active sync engine using PostgreSQL logical repl
 
 ### Risks
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| PowerSync vendor lock-in | Medium | Abstract the sync interface behind a `SyncEngine` protocol in `packages/sync`. If PowerSync becomes untenable, swap to ElectricSQL or custom sync without changing business logic. |
-| Supabase service outage | Low | App is offline-first — a Supabase outage means sync stops but the app continues working locally. PowerSync also buffers changes. No data loss. |
-| Cost overrun at scale | Low | Monitor sync volume closely. At 50K+ users, evaluate self-hosting both services. PowerSync overages are $1/GB synced — optimize sync payload size and selective sync rules. |
-| PowerSync deprecation | Low | PowerSync is well-funded and growing. The sync interface abstraction (above) provides a migration path. ElectricSQL is the ready fallback. |
-| E2E encryption complexity | Medium | Encrypt sensitive fields (amounts, descriptions, account names) on-device before sync. Server stores ciphertext. Key management via platform keystores. Accept that encrypted fields cannot be queried server-side (server queries only metadata). |
+| Risk                      | Severity | Mitigation                                                                                                                                                                                                                                         |
+| ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PowerSync vendor lock-in  | Medium   | Abstract the sync interface behind a `SyncEngine` protocol in `packages/sync`. If PowerSync becomes untenable, swap to ElectricSQL or custom sync without changing business logic.                                                                 |
+| Supabase service outage   | Low      | App is offline-first — a Supabase outage means sync stops but the app continues working locally. PowerSync also buffers changes. No data loss.                                                                                                     |
+| Cost overrun at scale     | Low      | Monitor sync volume closely. At 50K+ users, evaluate self-hosting both services. PowerSync overages are $1/GB synced — optimize sync payload size and selective sync rules.                                                                        |
+| PowerSync deprecation     | Low      | PowerSync is well-funded and growing. The sync interface abstraction (above) provides a migration path. ElectricSQL is the ready fallback.                                                                                                         |
+| E2E encryption complexity | Medium   | Encrypt sensitive fields (amounts, descriptions, account names) on-device before sync. Server stores ciphertext. Key management via platform keystores. Accept that encrypted fields cannot be queried server-side (server queries only metadata). |
 
 ## Implementation Notes
 
@@ -411,11 +411,11 @@ bucket_definitions:
 
 ### Implementation Phases
 
-| Phase | Scope | Timeline |
-|-------|-------|----------|
-| **Phase 1: MVP** | Supabase managed (free tier) + PowerSync managed (free tier). Single-user, core sync with encrypted local SQLite. | Months 1–3 |
-| **Phase 2: Growth** | Upgrade to Supabase Pro ($25/mo) + PowerSync Pro ($49/mo). Add household sharing via RLS. Implement E2E encryption for sensitive fields. | Months 4–6 |
-| **Phase 3: Scale** | Evaluate self-hosting Supabase + PowerSync Open Edition to reduce costs. Monitor ElectricSQL SDK maturity for potential migration. Add push notifications via Edge Functions. | Months 7–12 |
+| Phase               | Scope                                                                                                                                                                         | Timeline    |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| **Phase 1: MVP**    | Supabase managed (free tier) + PowerSync managed (free tier). Single-user, core sync with encrypted local SQLite.                                                             | Months 1–3  |
+| **Phase 2: Growth** | Upgrade to Supabase Pro ($25/mo) + PowerSync Pro ($49/mo). Add household sharing via RLS. Implement E2E encryption for sensitive fields.                                      | Months 4–6  |
+| **Phase 3: Scale**  | Evaluate self-hosting Supabase + PowerSync Open Edition to reduce costs. Monitor ElectricSQL SDK maturity for potential migration. Add push notifications via Edge Functions. | Months 7–12 |
 
 ### Package Structure
 

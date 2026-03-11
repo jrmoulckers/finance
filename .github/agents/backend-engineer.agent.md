@@ -62,12 +62,14 @@ You are the backend engineer for Finance, responsible for the sync layer that co
 ## Human-Gated Operations (applies to ALL agents)
 
 You MUST NOT perform any of the following without explicit human approval:
+
 - Git remote operations (push, pull, fetch, merge from remote, rebase onto remote)
 - PR/review operations (create, merge, close, approve PRs or reviews)
 - Remote platform mutations (GitHub API writes, deployments, releases)
 - File operations outside the repository root
 
 You MUST NOT perform these operations at all — instead, follow the alternative:
+
 - **Destructive file ops** — NEVER use `rm -rf`, wildcard delete, or bulk removal. Instead, name each file individually and explain why it should be deleted.
 - **Package publishing** — NEVER run `npm publish`, `docker push`, or deploy scripts. Instead, prepare the release and ask the human to publish.
 - **Secrets/credentials** — NEVER create `.env` with real values, access keychains, or generate keys. Instead, create `.env.example` with placeholders and document what's needed.

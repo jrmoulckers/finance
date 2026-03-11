@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { FC } from "react";
-import { AppRoutes } from "./routes";
+import type { FC } from 'react';
+import { AppRoutes } from './routes';
 
 /**
  * Root application component.
@@ -18,27 +18,27 @@ export const App: FC = () => {
         href="#main-content"
         className="skip-link"
         style={{
-          position: "absolute",
-          left: "-9999px",
-          top: "auto",
-          width: "1px",
-          height: "1px",
-          overflow: "hidden",
+          position: 'absolute',
+          left: '-9999px',
+          top: 'auto',
+          width: '1px',
+          height: '1px',
+          overflow: 'hidden',
         }}
         onFocus={(e) => {
           const el = e.currentTarget;
-          el.style.position = "static";
-          el.style.width = "auto";
-          el.style.height = "auto";
-          el.style.overflow = "visible";
+          el.style.position = 'static';
+          el.style.width = 'auto';
+          el.style.height = 'auto';
+          el.style.overflow = 'visible';
         }}
         onBlur={(e) => {
           const el = e.currentTarget;
-          el.style.position = "absolute";
-          el.style.left = "-9999px";
-          el.style.width = "1px";
-          el.style.height = "1px";
-          el.style.overflow = "hidden";
+          el.style.position = 'absolute';
+          el.style.left = '-9999px';
+          el.style.width = '1px';
+          el.style.height = '1px';
+          el.style.overflow = 'hidden';
         }}
       >
         Skip to main content

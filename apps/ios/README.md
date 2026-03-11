@@ -4,14 +4,14 @@ Native Apple platform experience for the Finance multi-platform financial tracki
 
 ## Requirements
 
-| Tool        | Version  | Notes                                      |
-| ----------- | -------- | ------------------------------------------ |
-| Xcode       | 16.0+    | Required for iOS 17 SDK and Swift 5.9+     |
-| macOS       | 14.0+    | Sonoma or later                            |
-| iOS Target  | 17.0+    | Minimum deployment target                  |
-| watchOS     | 10.0+    | Companion app target                       |
-| Swift       | 5.9+     | Required for `@Observable`, Swift macros   |
-| JDK         | 17+      | Required for KMP / Gradle builds           |
+| Tool       | Version | Notes                                    |
+| ---------- | ------- | ---------------------------------------- |
+| Xcode      | 16.0+   | Required for iOS 17 SDK and Swift 5.9+   |
+| macOS      | 14.0+   | Sonoma or later                          |
+| iOS Target | 17.0+   | Minimum deployment target                |
+| watchOS    | 10.0+   | Companion app target                     |
+| Swift      | 5.9+    | Required for `@Observable`, Swift macros |
+| JDK        | 17+     | Required for KMP / Gradle builds         |
 
 ## Project Structure
 
@@ -59,11 +59,11 @@ and press **⌘R** to run.
 The theme files (`FinanceColors`, `FinanceTypography`, `FinanceSpacing`) are
 hand-mapped from the generated design tokens in `packages/design-tokens/`.
 
-| Theme File              | Token Source                                          |
-| ----------------------- | ----------------------------------------------------- |
-| `FinanceColors.swift`   | `tokens/primitive/colors.json` + `tokens/semantic/`   |
-| `FinanceTypography.swift` | `tokens/primitive/typography.json` + `tokens/semantic/typography.json` |
-| `FinanceSpacing.swift`  | `tokens/primitive/spacing.json` + `tokens/primitive/border-radius.json` |
+| Theme File                | Token Source                                                            |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `FinanceColors.swift`     | `tokens/primitive/colors.json` + `tokens/semantic/`                     |
+| `FinanceTypography.swift` | `tokens/primitive/typography.json` + `tokens/semantic/typography.json`  |
+| `FinanceSpacing.swift`    | `tokens/primitive/spacing.json` + `tokens/primitive/border-radius.json` |
 
 Colors support **light and dark mode** automatically using adaptive `UIColor` /
 `NSColor` resolution.

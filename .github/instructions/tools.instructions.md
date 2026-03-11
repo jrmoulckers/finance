@@ -1,6 +1,7 @@
 ---
-applyTo: "tools/**"
+applyTo: 'tools/**'
 ---
+
 # Instructions for Development Tools
 
 You are working in the `tools/` directory, which contains development tooling, scripts, and automation for the Finance monorepo.

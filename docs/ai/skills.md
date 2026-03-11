@@ -19,6 +19,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 **Trigger keywords:** sync, offline, conflict resolution, CRDT, delta sync, replication, edge computing
 
 **Knowledge areas:**
+
 - Offline-first architecture patterns
 - Conflict resolution strategies (LWW with vector clocks, CRDTs, operational transforms)
 - Delta sync protocol design
@@ -37,6 +38,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 **Trigger keywords:** money, budget, transaction, currency, financial calculation, balance, accounting
 
 **Knowledge areas:**
+
 - Money representation (integer cents, no floating point)
 - Currency handling (ISO 4217, exchange rates)
 - Budgeting models (envelope/zero-based, 50/30/20)
@@ -58,6 +60,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 **Trigger keywords:** GDPR, CCPA, privacy, data protection, consent, data deletion, encryption, PII, regulatory compliance
 
 **Knowledge areas:**
+
 - GDPR requirements (lawful basis, data minimization, rights)
 - CCPA/CPRA requirements
 - Data inventory and classification
@@ -80,6 +83,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 **Trigger keywords:** setup, install, onboarding, getting started, prerequisites, environment, new developer
 
 **Knowledge areas:**
+
 - Prerequisites checklist (Git, Node.js, VS Code, Copilot)
 - First-time setup steps
 - MCP server verification
@@ -98,6 +102,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 **Trigger keywords:** KMP, Kotlin, multiplatform, commonMain, expect actual, SQLDelight, Ktor, Gradle, shared code
 
 **Knowledge areas:**
+
 - KMP project structure and source-set hierarchy (commonMain, androidMain, iosMain, jvmMain, jsMain, wasmJsMain)
 - Gradle configuration patterns (version catalogs, composite builds, convention plugins)
 - Expect/actual declaration patterns for platform-specific APIs
@@ -107,7 +112,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 - Kotlin/JS and Kotlin/Wasm configuration for web
 - Testing patterns (kotlin.test, Turbine for Flow testing)
 - Financial-specific patterns (value classes for IDs, Long for cents)
-- Common pitfalls (java.* in commonMain, dispatcher misuse, K/N memory model)
+- Common pitfalls (java.\* in commonMain, dispatcher misuse, K/N memory model)
 
 **When activated:** Whenever an agent works on KMP shared modules in `packages/`, Gradle build configuration, or cross-platform code patterns.
 
@@ -120,6 +125,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 **Trigger keywords:** Supabase, PostgreSQL, RLS, Edge Functions, PowerSync, sync rules, migration, database schema
 
 **Knowledge areas:**
+
 - Supabase project setup and configuration
 - PostgreSQL schema design for financial data
 - Row-Level Security (RLS) policies for multi-tenant isolation
@@ -159,6 +165,7 @@ Agent skills are reusable bundles of domain knowledge that AI agents can activat
 ## Future Skills (Planned)
 
 As the project grows, additional skills may include:
+
 - `platform-ios` — iOS/SwiftUI development patterns
 - `platform-android` — Android/Kotlin development patterns
 - `platform-web` — PWA/TypeScript development patterns

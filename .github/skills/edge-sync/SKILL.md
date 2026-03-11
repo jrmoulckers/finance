@@ -30,24 +30,28 @@ Finance follows an edge-first / offline-first architecture:
 ## Key Patterns
 
 ### Offline-First
+
 - The app must be fully functional without network connectivity
 - All CRUD operations happen against the local database first
 - Sync is opportunistic — happens when connectivity is available
 - User should never be blocked by network state
 
 ### Conflict Resolution Strategy
+
 - Use **last-write-wins (LWW) with vector clocks** for simple fields
 - Use **operational transforms or CRDTs** for complex data (budgets, shared items)
 - Present merge conflicts to the user only when automatic resolution isn't possible
 - Always preserve both versions in conflict — never silently discard data
 
 ### Delta Sync Protocol
+
 - Track changes with monotonic sequence numbers per client
 - Sync only changed records since last successful sync
 - Use checksum verification to detect data corruption
 - Support full re-sync as a recovery mechanism
 
 ### Sync Queue
+
 - Maintain an ordered queue of pending changes
 - Retry with exponential backoff on failure
 - Deduplicate operations before sending

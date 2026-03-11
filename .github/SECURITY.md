@@ -6,11 +6,11 @@ Finance is a financial tracking application that handles sensitive personal and 
 
 Finance is currently in **pre-release development** (`0.x`). All code on the `main` branch receives security updates.
 
-| Version | Supported |
-|---------|-----------|
-| `main` branch (development) | :white_check_mark: Active |
-| Pre-release tags (`0.x.x`) | :white_check_mark: Latest only |
-| Older pre-release tags | :x: Upgrade to latest |
+| Version                     | Supported                      |
+| --------------------------- | ------------------------------ |
+| `main` branch (development) | :white_check_mark: Active      |
+| Pre-release tags (`0.x.x`)  | :white_check_mark: Latest only |
+| Older pre-release tags      | :x: Upgrade to latest          |
 
 Once Finance reaches `1.0`, this table will be updated with a formal support window.
 
@@ -66,12 +66,12 @@ A good vulnerability report helps us understand and fix the issue quickly. Pleas
 
 We are committed to addressing security issues promptly. As a bootstrapped open-source project with a sole maintainer, these are our target SLAs:
 
-| Stage | Target Timeline |
-|-------|----------------|
-| **Acknowledgment** | Within **48 hours** of report |
-| **Initial assessment** | Within **1 week** of report |
-| **Critical severity fix** | Within **72 hours** of confirmation |
-| **High severity fix** | Within **2 weeks** of confirmation |
+| Stage                         | Target Timeline                         |
+| ----------------------------- | --------------------------------------- |
+| **Acknowledgment**            | Within **48 hours** of report           |
+| **Initial assessment**        | Within **1 week** of report             |
+| **Critical severity fix**     | Within **72 hours** of confirmation     |
+| **High severity fix**         | Within **2 weeks** of confirmation      |
 | **Medium / Low severity fix** | Addressed in the **next release cycle** |
 
 You will be kept informed throughout the process. If we need more information, we will reach out through the same channel you used to report.
@@ -93,17 +93,17 @@ We ask that reporters allow up to **90 days** from the initial report before any
 
 The following are considered valid security concerns for this project:
 
-| Category | Examples |
-|----------|----------|
-| **Authentication & authorization bypasses** | Accessing another user's data, skipping auth flows, token manipulation |
-| **Financial data exposure** | Unencrypted PII or financial data, leaking account balances or transaction details |
-| **Injection vulnerabilities** | SQL injection, cross-site scripting (XSS), command injection, template injection |
-| **Cryptographic weaknesses** | Weak encryption algorithms, improper key management, insufficient entropy |
-| **Sync protocol vulnerabilities** | Data corruption during sync, unauthorized data access via PowerSync, replay attacks |
-| **Row-Level Security (RLS) bypasses** | Circumventing Supabase RLS policies to access unauthorized rows |
-| **Insecure data storage** | Sensitive data stored in plain text, credentials outside of platform-native secure storage |
-| **Sensitive data in logs** | Financial data, PII, or credentials appearing in application logs or error messages |
-| **Dependency vulnerabilities** | Known CVEs in direct dependencies that are exploitable in our usage context |
+| Category                                    | Examples                                                                                   |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **Authentication & authorization bypasses** | Accessing another user's data, skipping auth flows, token manipulation                     |
+| **Financial data exposure**                 | Unencrypted PII or financial data, leaking account balances or transaction details         |
+| **Injection vulnerabilities**               | SQL injection, cross-site scripting (XSS), command injection, template injection           |
+| **Cryptographic weaknesses**                | Weak encryption algorithms, improper key management, insufficient entropy                  |
+| **Sync protocol vulnerabilities**           | Data corruption during sync, unauthorized data access via PowerSync, replay attacks        |
+| **Row-Level Security (RLS) bypasses**       | Circumventing Supabase RLS policies to access unauthorized rows                            |
+| **Insecure data storage**                   | Sensitive data stored in plain text, credentials outside of platform-native secure storage |
+| **Sensitive data in logs**                  | Financial data, PII, or credentials appearing in application logs or error messages        |
+| **Dependency vulnerabilities**              | Known CVEs in direct dependencies that are exploitable in our usage context                |
 
 ### Out of Scope
 
@@ -111,7 +111,7 @@ The following are **not** considered security vulnerabilities for this project:
 
 - **Social engineering** — Phishing, pretexting, or other attacks targeting users or maintainers directly
 - **Denial-of-service (DoS)** — Resource exhaustion on local development setups or CI infrastructure
-- **Issues in upstream dependencies** — Report these to the relevant upstream project (e.g., Supabase, PowerSync, SQLCipher); let us know if our *usage* of the dependency is insecure
+- **Issues in upstream dependencies** — Report these to the relevant upstream project (e.g., Supabase, PowerSync, SQLCipher); let us know if our _usage_ of the dependency is insecure
 - **UI/UX issues** — Cosmetic bugs or usability concerns without security impact
 - **Best-practice suggestions** — General hardening recommendations without a demonstrated exploit (welcome as regular issues)
 - **Attacks requiring physical access** — To a user's unlocked, authenticated device
@@ -172,7 +172,7 @@ If the project grows to a point where a formal bug bounty program is feasible, t
 
 ### Security Hall of Fame
 
-*No entries yet. Be the first to help secure Finance!*
+_No entries yet. Be the first to help secure Finance!_
 
 ## Safe Harbor
 
@@ -190,8 +190,8 @@ We consider security research conducted in accordance with this policy to be:
 - **Exempt** from DMCA restrictions on circumvention, to the extent the research is limited to the security of this application
 - **Lawful** and conducted in the public interest
 
-If at any point you are uncertain whether your research complies with this policy, please reach out to us *before* proceeding. We are happy to clarify.
+If at any point you are uncertain whether your research complies with this policy, please reach out to us _before_ proceeding. We are happy to clarify.
 
 ---
 
-*This security policy is based on industry best practices and is reviewed periodically. Last updated: 2025.*
+_This security policy is based on industry best practices and is reviewed periodically. Last updated: 2025._

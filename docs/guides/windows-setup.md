@@ -4,11 +4,11 @@ This guide walks you through setting up the Finance app for Windows desktop deve
 
 ## Prerequisites
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| JDK | 21 | [Adoptium Temurin](https://adoptium.net/) recommended |
+| Tool          | Version       | Notes                                                                                          |
+| ------------- | ------------- | ---------------------------------------------------------------------------------------------- |
+| JDK           | 21            | [Adoptium Temurin](https://adoptium.net/) recommended                                          |
 | IntelliJ IDEA | Latest stable | Community or Ultimate; [VS Code](https://code.visualstudio.com/) with Kotlin plugin also works |
-| Git | 2.40+ | [Download](https://git-scm.com/download/win) |
+| Git           | 2.40+         | [Download](https://git-scm.com/download/win)                                                   |
 
 Ensure `JAVA_HOME` is set and on your `PATH`:
 

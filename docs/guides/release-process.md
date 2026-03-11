@@ -64,8 +64,8 @@ This creates a Markdown file in the `.changeset/` directory (e.g., `.changeset/f
 
 ```markdown
 ---
-"@finance/android": minor
-"@finance/core": patch
+'@finance/android': minor
+'@finance/core': patch
 ---
 
 Add monthly budget rollover feature. Unspent amounts now carry forward
@@ -102,21 +102,21 @@ Finance uses **semantic versioning (semver)** with **independent versions per pl
 
 ### Version Format by Platform
 
-| Component | Version Format | Where Stored | Example |
-|-----------|---------------|--------------|---------|
-| `packages/*` | npm semver | `package.json` → `version` | `1.2.3` |
-| `apps/ios` | `CFBundleShortVersionString` + build number | `Info.plist` | `1.3.0` (build 42) |
-| `apps/android` | `versionName` + `versionCode` | `build.gradle.kts` | `1.3.0` (code 10300) |
-| `apps/web` | npm semver | `package.json` → `version` | `2.1.0` |
-| `apps/windows` | MSIX four-part version | `.csproj` / `Package.appxmanifest` | `1.3.0.0` |
+| Component      | Version Format                              | Where Stored                       | Example              |
+| -------------- | ------------------------------------------- | ---------------------------------- | -------------------- |
+| `packages/*`   | npm semver                                  | `package.json` → `version`         | `1.2.3`              |
+| `apps/ios`     | `CFBundleShortVersionString` + build number | `Info.plist`                       | `1.3.0` (build 42)   |
+| `apps/android` | `versionName` + `versionCode`               | `build.gradle.kts`                 | `1.3.0` (code 10300) |
+| `apps/web`     | npm semver                                  | `package.json` → `version`         | `2.1.0`              |
+| `apps/windows` | MSIX four-part version                      | `.csproj` / `Package.appxmanifest` | `1.3.0.0`            |
 
 ### Semver Rules
 
-| Change Type | Bump | Example |
-|-------------|------|---------|
+| Change Type                            | Bump    | Example           |
+| -------------------------------------- | ------- | ----------------- |
 | Bug fix, performance improvement, docs | `patch` | `1.2.3` → `1.2.4` |
 | New feature, non-breaking API addition | `minor` | `1.2.3` → `1.3.0` |
-| Breaking change, major redesign | `major` | `1.2.3` → `2.0.0` |
+| Breaking change, major redesign        | `major` | `1.2.3` → `2.0.0` |
 
 ### Build Numbers
 
@@ -268,6 +268,7 @@ Use the hotfix process when:
 ### Hotfix Steps
 
 1. **Create a hotfix branch** from the release tag:
+
    ```bash
    git checkout -b hotfix/android-v1.3.1 android/v1.3.0
    ```
@@ -281,6 +282,7 @@ Use the hotfix process when:
 5. **Expedited review** — hotfix PRs require at least one reviewer, but skip the normal Changesets flow. The version bump is manual.
 
 6. **Merge and tag** — after review, merge to `main` and push the platform tag:
+
    ```bash
    git tag android/v1.3.1
    git push origin android/v1.3.1

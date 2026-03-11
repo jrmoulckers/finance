@@ -105,47 +105,47 @@ erDiagram
 
 ### User
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| email | TEXT | UNIQUE, NOT NULL | Login identifier |
-| display_name | TEXT | NOT NULL, max 100 | Shown in household member list |
-| avatar_url | TEXT | | Profile image URL or local path |
-| auth_provider | TEXT | NOT NULL | `email`, `google`, `apple` |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field         | Type      | Constraints         | Notes                           |
+| ------------- | --------- | ------------------- | ------------------------------- |
+| id            | UUID      | PK                  | Generated client-side           |
+| email         | TEXT      | UNIQUE, NOT NULL    | Login identifier                |
+| display_name  | TEXT      | NOT NULL, max 100   | Shown in household member list  |
+| avatar_url    | TEXT      |                     | Profile image URL or local path |
+| auth_provider | TEXT      | NOT NULL            | `email`, `google`, `apple`      |
+| created_at    | TIMESTAMP | NOT NULL            | Auto-set                        |
+| updated_at    | TIMESTAMP | NOT NULL            | Auto-set on mutation            |
+| deleted_at    | TIMESTAMP | NULL                | Soft delete for sync            |
+| sync_version  | BIGINT    | NOT NULL, default 0 | Monotonic, for delta sync       |
 
 ---
 
 ### Household
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| name | TEXT | NOT NULL, max 100 | e.g. "Smith Family" |
-| default_currency | TEXT | NOT NULL, default 'USD' | ISO 4217 — used as fallback |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field            | Type      | Constraints             | Notes                       |
+| ---------------- | --------- | ----------------------- | --------------------------- |
+| id               | UUID      | PK                      | Generated client-side       |
+| name             | TEXT      | NOT NULL, max 100       | e.g. "Smith Family"         |
+| default_currency | TEXT      | NOT NULL, default 'USD' | ISO 4217 — used as fallback |
+| created_at       | TIMESTAMP | NOT NULL                | Auto-set                    |
+| updated_at       | TIMESTAMP | NOT NULL                | Auto-set on mutation        |
+| deleted_at       | TIMESTAMP | NULL                    | Soft delete for sync        |
+| sync_version     | BIGINT    | NOT NULL, default 0     | Monotonic, for delta sync   |
 
 ---
 
 ### HouseholdMember
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| household_id | UUID | FK → Household, NOT NULL | Tenant scope |
-| user_id | UUID | FK → User, NOT NULL | The member |
-| role | TEXT | NOT NULL, enum | `owner`, `editor`, `viewer` |
-| joined_at | TIMESTAMP | NOT NULL | When the user joined the household |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field        | Type      | Constraints              | Notes                              |
+| ------------ | --------- | ------------------------ | ---------------------------------- |
+| id           | UUID      | PK                       | Generated client-side              |
+| household_id | UUID      | FK → Household, NOT NULL | Tenant scope                       |
+| user_id      | UUID      | FK → User, NOT NULL      | The member                         |
+| role         | TEXT      | NOT NULL, enum           | `owner`, `editor`, `viewer`        |
+| joined_at    | TIMESTAMP | NOT NULL                 | When the user joined the household |
+| created_at   | TIMESTAMP | NOT NULL                 | Auto-set                           |
+| updated_at   | TIMESTAMP | NOT NULL                 | Auto-set on mutation               |
+| deleted_at   | TIMESTAMP | NULL                     | Soft delete for sync               |
+| sync_version | BIGINT    | NOT NULL, default 0      | Monotonic, for delta sync          |
 
 > UNIQUE constraint on (`household_id`, `user_id`) — a user appears in a household at most once.
 
@@ -153,43 +153,43 @@ erDiagram
 
 ### Account
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| household_id | UUID | FK → Household, NOT NULL | Tenant isolation |
-| name | TEXT | NOT NULL, max 50 | Display name |
-| type | TEXT | NOT NULL, enum | `checking`, `savings`, `credit_card`, `cash`, `investment`, `loan`, `other` |
-| balance_cents | BIGINT | NOT NULL, default 0 | Current balance in smallest currency unit |
-| currency | TEXT | NOT NULL, default 'USD' | ISO 4217 |
-| icon | TEXT | | Platform icon identifier |
-| is_archived | BOOLEAN | NOT NULL, default false | Soft archive — hides from main list |
-| sort_order | INTEGER | NOT NULL, default 0 | User-defined ordering |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field         | Type      | Constraints              | Notes                                                                       |
+| ------------- | --------- | ------------------------ | --------------------------------------------------------------------------- |
+| id            | UUID      | PK                       | Generated client-side                                                       |
+| household_id  | UUID      | FK → Household, NOT NULL | Tenant isolation                                                            |
+| name          | TEXT      | NOT NULL, max 50         | Display name                                                                |
+| type          | TEXT      | NOT NULL, enum           | `checking`, `savings`, `credit_card`, `cash`, `investment`, `loan`, `other` |
+| balance_cents | BIGINT    | NOT NULL, default 0      | Current balance in smallest currency unit                                   |
+| currency      | TEXT      | NOT NULL, default 'USD'  | ISO 4217                                                                    |
+| icon          | TEXT      |                          | Platform icon identifier                                                    |
+| is_archived   | BOOLEAN   | NOT NULL, default false  | Soft archive — hides from main list                                         |
+| sort_order    | INTEGER   | NOT NULL, default 0      | User-defined ordering                                                       |
+| created_at    | TIMESTAMP | NOT NULL                 | Auto-set                                                                    |
+| updated_at    | TIMESTAMP | NOT NULL                 | Auto-set on mutation                                                        |
+| deleted_at    | TIMESTAMP | NULL                     | Soft delete for sync                                                        |
+| sync_version  | BIGINT    | NOT NULL, default 0      | Monotonic, for delta sync                                                   |
 
 ---
 
 ### Transaction
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| household_id | UUID | FK → Household, NOT NULL | Tenant isolation |
-| account_id | UUID | FK → Account, NOT NULL | Owning account |
-| type | TEXT | NOT NULL, enum | `income`, `expense`, `transfer` |
-| amount_cents | BIGINT | NOT NULL | Always positive; sign derived from `type` |
-| currency | TEXT | NOT NULL | ISO 4217 — matches account currency |
-| date | TEXT | NOT NULL | ISO 8601 date (`YYYY-MM-DD`) |
-| payee | TEXT | max 100 | Merchant / source name |
-| notes | TEXT | max 500 | User notes |
-| is_split | BOOLEAN | NOT NULL, default false | True when splits exist |
-| transfer_pair_id | UUID | FK → Transaction, NULL | Links the other half of a transfer |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field            | Type      | Constraints              | Notes                                     |
+| ---------------- | --------- | ------------------------ | ----------------------------------------- |
+| id               | UUID      | PK                       | Generated client-side                     |
+| household_id     | UUID      | FK → Household, NOT NULL | Tenant isolation                          |
+| account_id       | UUID      | FK → Account, NOT NULL   | Owning account                            |
+| type             | TEXT      | NOT NULL, enum           | `income`, `expense`, `transfer`           |
+| amount_cents     | BIGINT    | NOT NULL                 | Always positive; sign derived from `type` |
+| currency         | TEXT      | NOT NULL                 | ISO 4217 — matches account currency       |
+| date             | TEXT      | NOT NULL                 | ISO 8601 date (`YYYY-MM-DD`)              |
+| payee            | TEXT      | max 100                  | Merchant / source name                    |
+| notes            | TEXT      | max 500                  | User notes                                |
+| is_split         | BOOLEAN   | NOT NULL, default false  | True when splits exist                    |
+| transfer_pair_id | UUID      | FK → Transaction, NULL   | Links the other half of a transfer        |
+| created_at       | TIMESTAMP | NOT NULL                 | Auto-set                                  |
+| updated_at       | TIMESTAMP | NOT NULL                 | Auto-set on mutation                      |
+| deleted_at       | TIMESTAMP | NULL                     | Soft delete for sync                      |
+| sync_version     | BIGINT    | NOT NULL, default 0      | Monotonic, for delta sync                 |
 
 > For transfers, two `Transaction` rows are created — one debit, one credit — linked by `transfer_pair_id`.
 
@@ -197,18 +197,18 @@ erDiagram
 
 ### TransactionSplit
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| transaction_id | UUID | FK → Transaction, NOT NULL | Parent transaction |
-| category_id | UUID | FK → Category, NOT NULL | Budget category for this portion |
-| amount_cents | BIGINT | NOT NULL | Portion in smallest currency unit |
-| currency | TEXT | NOT NULL | ISO 4217 — must match parent |
-| notes | TEXT | max 200 | Optional per-split note |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field          | Type      | Constraints                | Notes                             |
+| -------------- | --------- | -------------------------- | --------------------------------- |
+| id             | UUID      | PK                         | Generated client-side             |
+| transaction_id | UUID      | FK → Transaction, NOT NULL | Parent transaction                |
+| category_id    | UUID      | FK → Category, NOT NULL    | Budget category for this portion  |
+| amount_cents   | BIGINT    | NOT NULL                   | Portion in smallest currency unit |
+| currency       | TEXT      | NOT NULL                   | ISO 4217 — must match parent      |
+| notes          | TEXT      | max 200                    | Optional per-split note           |
+| created_at     | TIMESTAMP | NOT NULL                   | Auto-set                          |
+| updated_at     | TIMESTAMP | NOT NULL                   | Auto-set on mutation              |
+| deleted_at     | TIMESTAMP | NULL                       | Soft delete for sync              |
+| sync_version   | BIGINT    | NOT NULL, default 0        | Monotonic, for delta sync         |
 
 > **Invariant:** `SUM(splits.amount_cents) == transaction.amount_cents`. Remainder allocated to last split (banker's rounding).
 >
@@ -218,20 +218,20 @@ erDiagram
 
 ### Category
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| household_id | UUID | FK → Household, NOT NULL | Tenant isolation |
-| parent_id | UUID | FK → Category, NULL | NULL = top-level; max 3 levels deep |
-| name | TEXT | NOT NULL, max 50 | Unique within parent scope |
-| icon | TEXT | | Platform icon identifier |
-| color | TEXT | | Hex color for charts (e.g. `#4CAF50`) |
-| is_income | BOOLEAN | NOT NULL, default false | Income vs expense category |
-| sort_order | INTEGER | NOT NULL, default 0 | User-defined ordering |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field        | Type      | Constraints              | Notes                                 |
+| ------------ | --------- | ------------------------ | ------------------------------------- |
+| id           | UUID      | PK                       | Generated client-side                 |
+| household_id | UUID      | FK → Household, NOT NULL | Tenant isolation                      |
+| parent_id    | UUID      | FK → Category, NULL      | NULL = top-level; max 3 levels deep   |
+| name         | TEXT      | NOT NULL, max 50         | Unique within parent scope            |
+| icon         | TEXT      |                          | Platform icon identifier              |
+| color        | TEXT      |                          | Hex color for charts (e.g. `#4CAF50`) |
+| is_income    | BOOLEAN   | NOT NULL, default false  | Income vs expense category            |
+| sort_order   | INTEGER   | NOT NULL, default 0      | User-defined ordering                 |
+| created_at   | TIMESTAMP | NOT NULL                 | Auto-set                              |
+| updated_at   | TIMESTAMP | NOT NULL                 | Auto-set on mutation                  |
+| deleted_at   | TIMESTAMP | NULL                     | Soft delete for sync                  |
+| sync_version | BIGINT    | NOT NULL, default 0      | Monotonic, for delta sync             |
 
 > UNIQUE constraint on (`household_id`, `parent_id`, `name`).
 
@@ -239,16 +239,16 @@ erDiagram
 
 ### Budget
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| household_id | UUID | FK → Household, NOT NULL | Tenant isolation |
-| period_start | TEXT | NOT NULL | ISO 8601 date — first day of period |
-| period_end | TEXT | NOT NULL | ISO 8601 date — last day of period |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field        | Type      | Constraints              | Notes                               |
+| ------------ | --------- | ------------------------ | ----------------------------------- |
+| id           | UUID      | PK                       | Generated client-side               |
+| household_id | UUID      | FK → Household, NOT NULL | Tenant isolation                    |
+| period_start | TEXT      | NOT NULL                 | ISO 8601 date — first day of period |
+| period_end   | TEXT      | NOT NULL                 | ISO 8601 date — last day of period  |
+| created_at   | TIMESTAMP | NOT NULL                 | Auto-set                            |
+| updated_at   | TIMESTAMP | NOT NULL                 | Auto-set on mutation                |
+| deleted_at   | TIMESTAMP | NULL                     | Soft delete for sync                |
+| sync_version | BIGINT    | NOT NULL, default 0      | Monotonic, for delta sync           |
 
 > UNIQUE constraint on (`household_id`, `period_start`) — one budget per household per period.
 
@@ -256,19 +256,19 @@ erDiagram
 
 ### BudgetAllocation
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| budget_id | UUID | FK → Budget, NOT NULL | Parent budget period |
-| category_id | UUID | FK → Category, NOT NULL | Target category |
-| allocated_cents | BIGINT | NOT NULL, default 0 | Amount budgeted for this period |
-| currency | TEXT | NOT NULL | ISO 4217 |
-| rollover_cents | BIGINT | NOT NULL, default 0 | Carried from previous period |
-| carry_forward | BOOLEAN | NOT NULL, default true | Whether unspent rolls to next period |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field           | Type      | Constraints             | Notes                                |
+| --------------- | --------- | ----------------------- | ------------------------------------ |
+| id              | UUID      | PK                      | Generated client-side                |
+| budget_id       | UUID      | FK → Budget, NOT NULL   | Parent budget period                 |
+| category_id     | UUID      | FK → Category, NOT NULL | Target category                      |
+| allocated_cents | BIGINT    | NOT NULL, default 0     | Amount budgeted for this period      |
+| currency        | TEXT      | NOT NULL                | ISO 4217                             |
+| rollover_cents  | BIGINT    | NOT NULL, default 0     | Carried from previous period         |
+| carry_forward   | BOOLEAN   | NOT NULL, default true  | Whether unspent rolls to next period |
+| created_at      | TIMESTAMP | NOT NULL                | Auto-set                             |
+| updated_at      | TIMESTAMP | NOT NULL                | Auto-set on mutation                 |
+| deleted_at      | TIMESTAMP | NULL                    | Soft delete for sync                 |
+| sync_version    | BIGINT    | NOT NULL, default 0     | Monotonic, for delta sync            |
 
 > Computed at read time: `available = allocated_cents + rollover_cents - spent`, where `spent = SUM(TransactionSplit.amount_cents)` for the category in the budget period.
 
@@ -276,22 +276,22 @@ erDiagram
 
 ### Goal
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| household_id | UUID | FK → Household, NOT NULL | Tenant isolation |
-| name | TEXT | NOT NULL, max 100 | e.g. "House Down Payment" |
-| target_amount_cents | BIGINT | NOT NULL | Goal target in smallest currency unit |
-| current_amount_cents | BIGINT | NOT NULL, default 0 | Running total of contributions |
-| currency | TEXT | NOT NULL | ISO 4217 |
-| deadline | TEXT | NULL | ISO 8601 date; NULL = no deadline |
-| icon | TEXT | | Platform icon identifier |
-| color | TEXT | | Hex color for progress UI |
-| is_completed | BOOLEAN | NOT NULL, default false | Set when target reached |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field                | Type      | Constraints              | Notes                                 |
+| -------------------- | --------- | ------------------------ | ------------------------------------- |
+| id                   | UUID      | PK                       | Generated client-side                 |
+| household_id         | UUID      | FK → Household, NOT NULL | Tenant isolation                      |
+| name                 | TEXT      | NOT NULL, max 100        | e.g. "House Down Payment"             |
+| target_amount_cents  | BIGINT    | NOT NULL                 | Goal target in smallest currency unit |
+| current_amount_cents | BIGINT    | NOT NULL, default 0      | Running total of contributions        |
+| currency             | TEXT      | NOT NULL                 | ISO 4217                              |
+| deadline             | TEXT      | NULL                     | ISO 8601 date; NULL = no deadline     |
+| icon                 | TEXT      |                          | Platform icon identifier              |
+| color                | TEXT      |                          | Hex color for progress UI             |
+| is_completed         | BOOLEAN   | NOT NULL, default false  | Set when target reached               |
+| created_at           | TIMESTAMP | NOT NULL                 | Auto-set                              |
+| updated_at           | TIMESTAMP | NOT NULL                 | Auto-set on mutation                  |
+| deleted_at           | TIMESTAMP | NULL                     | Soft delete for sync                  |
+| sync_version         | BIGINT    | NOT NULL, default 0      | Monotonic, for delta sync             |
 
 > Computed at read time: `monthly_target = (target - current) / months_remaining`.
 
@@ -299,35 +299,35 @@ erDiagram
 
 ### GoalContribution
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| goal_id | UUID | FK → Goal, NOT NULL | Target goal |
-| amount_cents | BIGINT | NOT NULL | Contribution in smallest currency unit |
-| currency | TEXT | NOT NULL | ISO 4217 |
-| date | TEXT | NOT NULL | ISO 8601 date of contribution |
-| notes | TEXT | max 200 | Optional memo |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field        | Type      | Constraints         | Notes                                  |
+| ------------ | --------- | ------------------- | -------------------------------------- |
+| id           | UUID      | PK                  | Generated client-side                  |
+| goal_id      | UUID      | FK → Goal, NOT NULL | Target goal                            |
+| amount_cents | BIGINT    | NOT NULL            | Contribution in smallest currency unit |
+| currency     | TEXT      | NOT NULL            | ISO 4217                               |
+| date         | TEXT      | NOT NULL            | ISO 8601 date of contribution          |
+| notes        | TEXT      | max 200             | Optional memo                          |
+| created_at   | TIMESTAMP | NOT NULL            | Auto-set                               |
+| updated_at   | TIMESTAMP | NOT NULL            | Auto-set on mutation                   |
+| deleted_at   | TIMESTAMP | NULL                | Soft delete for sync                   |
+| sync_version | BIGINT    | NOT NULL, default 0 | Monotonic, for delta sync              |
 
 ---
 
 ### SyncMetadata
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Generated client-side |
-| household_id | UUID | FK → Household, NOT NULL | Tenant scope |
-| table_name | TEXT | NOT NULL | Entity table being tracked |
-| last_synced_version | BIGINT | NOT NULL, default 0 | Highest sync_version pulled from server |
-| last_synced_at | TIMESTAMP | NULL | Wall-clock time of last successful sync |
-| device_id | TEXT | NOT NULL | Identifies the syncing device |
-| created_at | TIMESTAMP | NOT NULL | Auto-set |
-| updated_at | TIMESTAMP | NOT NULL | Auto-set on mutation |
-| deleted_at | TIMESTAMP | NULL | Soft delete for sync |
-| sync_version | BIGINT | NOT NULL, default 0 | Monotonic, for delta sync |
+| Field               | Type      | Constraints              | Notes                                   |
+| ------------------- | --------- | ------------------------ | --------------------------------------- |
+| id                  | UUID      | PK                       | Generated client-side                   |
+| household_id        | UUID      | FK → Household, NOT NULL | Tenant scope                            |
+| table_name          | TEXT      | NOT NULL                 | Entity table being tracked              |
+| last_synced_version | BIGINT    | NOT NULL, default 0      | Highest sync_version pulled from server |
+| last_synced_at      | TIMESTAMP | NULL                     | Wall-clock time of last successful sync |
+| device_id           | TEXT      | NOT NULL                 | Identifies the syncing device           |
+| created_at          | TIMESTAMP | NOT NULL                 | Auto-set                                |
+| updated_at          | TIMESTAMP | NOT NULL                 | Auto-set on mutation                    |
+| deleted_at          | TIMESTAMP | NULL                     | Soft delete for sync                    |
+| sync_version        | BIGINT    | NOT NULL, default 0      | Monotonic, for delta sync               |
 
 > UNIQUE constraint on (`household_id`, `table_name`, `device_id`).
 

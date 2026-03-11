@@ -10,13 +10,17 @@ export interface FocusManagerProps {
 }
 
 export const FocusManager: FC<FocusManagerProps> = ({
-  targetSelector = '#main-content', resolveTitle,
+  targetSelector = '#main-content',
+  resolveTitle,
 }) => {
   const { pathname } = useLocation();
   const isFirstRender = useRef(true);
 
   useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     const timer = window.setTimeout(() => {
       const target = document.querySelector<HTMLElement>(targetSelector);
       moveFocusTo(target);

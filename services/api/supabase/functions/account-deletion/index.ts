@@ -23,15 +23,15 @@
  *   SUPABASE_SERVICE_ROLE_KEY — Service role key
  */
 
-import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import { createAdminClient, requireAuth } from "../_shared/auth.ts";
-import { handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { createAdminClient, requireAuth } from '../_shared/auth.ts';
+import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import {
   errorResponse,
   internalErrorResponse,
   jsonResponse,
   methodNotAllowedResponse,
-} from "../_shared/response.ts";
+} from '../_shared/response.ts';
 
 /** Generate a unique deletion certificate ID. */
 function generateCertificateId(): string {
@@ -39,17 +39,17 @@ function generateCertificateId(): string {
   const randomBytes = new Uint8Array(8);
   crypto.getRandomValues(randomBytes);
   const random = Array.from(randomBytes)
-    .map((b) => b.toString(36).padStart(2, "0"))
-    .join("");
+    .map((b) => b.toString(36).padStart(2, '0'))
+    .join('');
   return `cert-${timestamp}-${random}`;
 }
 
 serve(async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return handleCorsPreflightRequest();
   }
 
-  if (req.method !== "DELETE") {
+  if (req.method !== 'DELETE') {
     return methodNotAllowedResponse();
   }
 
@@ -72,7 +72,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // Require explicit confirmation to prevent accidental deletion
-    if (body.confirm !== true && body.confirm !== "DELETE_MY_ACCOUNT") {
+    if (body.confirm !== true && body.confirm !== 'DELETE_MY_ACCOUNT') {
       return errorResponse(
         'Account deletion requires confirmation. Send { "confirm": "DELETE_MY_ACCOUNT" } in the request body.',
         400,
@@ -86,10 +86,10 @@ serve(async (req: Request): Promise<Response> => {
     // ===================================================================
     // Step 1: Audit log the deletion request BEFORE any data changes
     // ===================================================================
-    await supabase.from("audit_log").insert({
+    await supabase.from('audit_log').insert({
       user_id: user.id,
-      action: "ACCOUNT_DELETION_REQUESTED",
-      table_name: "users",
+      action: 'ACCOUNT_DELETION_REQUESTED',
+      table_name: 'users',
       record_id: user.id,
       new_values: {
         certificate_id: certificateId,
@@ -101,19 +101,17 @@ serve(async (req: Request): Promise<Response> => {
     // Step 2: Get user's household memberships
     // ===================================================================
     const { data: memberships, error: memberError } = await supabase
-      .from("household_members")
-      .select("id, household_id, role")
-      .eq("user_id", user.id)
-      .is("deleted_at", null);
+      .from('household_members')
+      .select('id, household_id, role')
+      .eq('user_id', user.id)
+      .is('deleted_at', null);
 
     if (memberError) {
-      console.error("Failed to fetch memberships:", memberError.message);
+      console.error('Failed to fetch memberships:', memberError.message);
       return internalErrorResponse();
     }
 
-    const householdIds = (memberships ?? []).map(
-      (m: { household_id: string }) => m.household_id,
-    );
+    const householdIds = (memberships ?? []).map((m: { household_id: string }) => m.household_id);
 
     // ===================================================================
     // Step 3: Trigger crypto-shredding for each household
@@ -124,11 +122,11 @@ serve(async (req: Request): Promise<Response> => {
     for (const householdId of householdIds) {
       // Check if user is the sole member
       const { data: otherMembers } = await supabase
-        .from("household_members")
-        .select("id")
-        .eq("household_id", householdId)
-        .neq("user_id", user.id)
-        .is("deleted_at", null);
+        .from('household_members')
+        .select('id')
+        .eq('household_id', householdId)
+        .neq('user_id', user.id)
+        .is('deleted_at', null);
 
       const isSoleMember = !otherMembers || otherMembers.length === 0;
 
@@ -139,27 +137,27 @@ serve(async (req: Request): Promise<Response> => {
 
         // Soft-delete the household and all its data
         const tables = [
-          "transactions",
-          "budgets",
-          "goals",
-          "accounts",
-          "categories",
-          "household_invitations",
+          'transactions',
+          'budgets',
+          'goals',
+          'accounts',
+          'categories',
+          'household_invitations',
         ];
 
         for (const table of tables) {
           await supabase
             .from(table)
             .update({ deleted_at: deletionTimestamp })
-            .eq("household_id", householdId)
-            .is("deleted_at", null);
+            .eq('household_id', householdId)
+            .is('deleted_at', null);
         }
 
         // Soft-delete the household itself
         await supabase
-          .from("households")
+          .from('households')
           .update({ deleted_at: deletionTimestamp })
-          .eq("id", householdId);
+          .eq('id', householdId);
       } else {
         // Other members exist — only revoke user's key access
         const keyFingerprint = `revoked:user-key:${householdId}:${user.id}:${Date.now().toString(36)}`;
@@ -175,14 +173,12 @@ serve(async (req: Request): Promise<Response> => {
     // Step 4: Remove user from all households (soft-delete memberships)
     // ===================================================================
     if (memberships && memberships.length > 0) {
-      const membershipIds = memberships.map(
-        (m: { id: string }) => m.id,
-      );
+      const membershipIds = memberships.map((m: { id: string }) => m.id);
       for (const membershipId of membershipIds) {
         await supabase
-          .from("household_members")
+          .from('household_members')
           .update({ deleted_at: deletionTimestamp })
-          .eq("id", membershipId);
+          .eq('id', membershipId);
       }
     }
 
@@ -190,31 +186,31 @@ serve(async (req: Request): Promise<Response> => {
     // Step 5: Soft-delete passkey credentials
     // ===================================================================
     await supabase
-      .from("passkey_credentials")
+      .from('passkey_credentials')
       .update({ deleted_at: deletionTimestamp })
-      .eq("user_id", user.id)
-      .is("deleted_at", null);
+      .eq('user_id', user.id)
+      .is('deleted_at', null);
 
     // ===================================================================
     // Step 6: Soft-delete the user record
     // ===================================================================
     const { error: userDeleteError } = await supabase
-      .from("users")
+      .from('users')
       .update({ deleted_at: deletionTimestamp })
-      .eq("id", user.id);
+      .eq('id', user.id);
 
     if (userDeleteError) {
-      console.error("Failed to soft-delete user:", userDeleteError.message);
+      console.error('Failed to soft-delete user:', userDeleteError.message);
       return internalErrorResponse();
     }
 
     // ===================================================================
     // Step 7: Audit log the completed deletion
     // ===================================================================
-    await supabase.from("audit_log").insert({
+    await supabase.from('audit_log').insert({
       user_id: user.id,
-      action: "ACCOUNT_DELETED",
-      table_name: "users",
+      action: 'ACCOUNT_DELETED',
+      table_name: 'users',
       record_id: user.id,
       new_values: {
         certificate_id: certificateId,
@@ -231,10 +227,7 @@ serve(async (req: Request): Promise<Response> => {
       await supabase.auth.admin.deleteUser(user.id);
     } catch (authErr) {
       // Log but don't fail — the user data is already deleted
-      console.error(
-        "Failed to delete auth user (non-fatal):",
-        (authErr as Error).message,
-      );
+      console.error('Failed to delete auth user (non-fatal):', (authErr as Error).message);
     }
 
     // ===================================================================
@@ -243,7 +236,7 @@ serve(async (req: Request): Promise<Response> => {
     return jsonResponse({
       deletion_certificate: {
         certificate_id: certificateId,
-        subject_type: "USER",
+        subject_type: 'USER',
         subject_id: user.id,
         deleted_at: deletionTimestamp,
         households_affected: householdIds.length,
@@ -251,13 +244,13 @@ serve(async (req: Request): Promise<Response> => {
         key_fingerprints: shreddedKeys,
         verified: true,
         message:
-          "Your account and associated data have been permanently deleted. " +
-          "Encrypted data has been rendered unrecoverable via crypto-shredding. " +
-          "This certificate serves as proof of deletion per GDPR Article 17.",
+          'Your account and associated data have been permanently deleted. ' +
+          'Encrypted data has been rendered unrecoverable via crypto-shredding. ' +
+          'This certificate serves as proof of deletion per GDPR Article 17.',
       },
     });
   } catch (err) {
-    console.error("Account deletion error:", (err as Error).message);
+    console.error('Account deletion error:', (err as Error).message);
     return internalErrorResponse();
   }
 });

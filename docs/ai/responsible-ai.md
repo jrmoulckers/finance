@@ -32,13 +32,13 @@ Finance does not use AI in its product features today. All financial calculation
 
 If AI-powered features are introduced (for example, transaction categorization or spending insights), the following requirements apply:
 
-| Requirement | Description |
-|-------------|-------------|
-| **Algorithmic transparency** | Users must understand how AI-driven categorizations or recommendations are made. No black-box decisions on financial data. |
-| **No discriminatory outcomes** | Financial recommendations and categorizations must not produce biased or discriminatory results based on user demographics. |
-| **User control** | Users can review, override, and correct any AI-generated suggestion. AI features augment human decisions; they do not replace them. |
-| **Data privacy** | AI features must not transmit financial data to third-party AI services. All inference must run locally or on infrastructure the project controls. |
-| **Explainability** | Any AI decision that affects financial data must include a human-readable explanation of why that decision was made. |
+| Requirement                    | Description                                                                                                                                        |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Algorithmic transparency**   | Users must understand how AI-driven categorizations or recommendations are made. No black-box decisions on financial data.                         |
+| **No discriminatory outcomes** | Financial recommendations and categorizations must not produce biased or discriminatory results based on user demographics.                        |
+| **User control**               | Users can review, override, and correct any AI-generated suggestion. AI features augment human decisions; they do not replace them.                |
+| **Data privacy**               | AI features must not transmit financial data to third-party AI services. All inference must run locally or on infrastructure the project controls. |
+| **Explainability**             | Any AI decision that affects financial data must include a human-readable explanation of why that decision was made.                               |
 
 ## Ethical AI Principles
 
@@ -87,4 +87,4 @@ This project is transparent about its use of AI in development:
 
 ---
 
-*This document is reviewed and updated as the project's AI practices evolve. Last updated: 2025.*
+_This document is reviewed and updated as the project's AI practices evolve. Last updated: 2025._

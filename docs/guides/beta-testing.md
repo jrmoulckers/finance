@@ -20,8 +20,8 @@
 
 **Tester groups:**
 
-| Group          | Purpose                          | Max Testers |
-|----------------|----------------------------------|-------------|
+| Group          | Purpose                           | Max Testers |
+| -------------- | --------------------------------- | ----------- |
 | `core-team`    | Internal developers and designers | 20          |
 | `alpha-circle` | Trusted external volunteers       | 50          |
 | `beta-public`  | Open beta (promoted later)        | 1,000       |
@@ -57,7 +57,7 @@
 
 1. Create a **beta group** (e.g., `Finance Beta`).
 2. Add testers by email (any Apple ID).
-3. Fill in the *Beta App Description* and *What to Test* fields.
+3. Fill in the _Beta App Description_ and _What to Test_ fields.
 4. Submit for **Beta App Review** (first build only; subsequent builds to the
    same group auto-approve unless metadata changes).
 5. Testers receive a TestFlight invite email and install via the TestFlight app.
@@ -118,12 +118,12 @@ What to Test:
 
 **Microsoft Store flight rings (future):**
 
-| Ring             | Audience             | Purpose                   |
-|------------------|----------------------|---------------------------|
-| `Dev`            | Core team            | Daily builds              |
-| `Beta`           | Invited testers      | Feature-complete previews |
-| `Release Preview`| Broader audience     | Final validation          |
-| `Production`     | All users            | General availability      |
+| Ring              | Audience         | Purpose                   |
+| ----------------- | ---------------- | ------------------------- |
+| `Dev`             | Core team        | Daily builds              |
+| `Beta`            | Invited testers  | Feature-complete previews |
+| `Release Preview` | Broader audience | Final validation          |
+| `Production`      | All users        | General availability      |
 
 **Flight ring configuration (when Store-published):**
 
@@ -141,36 +141,36 @@ What to Test:
 Every beta tester should exercise these flows. Detailed scenarios are in
 [`beta-test-plan.md`](./beta-test-plan.md).
 
-| #  | Journey                                  | Priority |
-|----|------------------------------------------|----------|
-| 1  | Account creation and sign-in             | P0       |
-| 2  | Transaction CRUD (create, edit, delete)  | P0       |
-| 3  | Transaction search and filter            | P1       |
-| 4  | Budget creation and tracking             | P0       |
-| 5  | Goal setting and milestone celebrations  | P1       |
-| 6  | Offline usage → reconnect → sync         | P0       |
-| 7  | Multi-device sync                        | P1       |
-| 8  | Data export (JSON, CSV)                  | P1       |
-| 9  | Settings persistence across sessions     | P1       |
-| 10 | Accessibility — screen reader full flow  | P0       |
+| #   | Journey                                 | Priority |
+| --- | --------------------------------------- | -------- |
+| 1   | Account creation and sign-in            | P0       |
+| 2   | Transaction CRUD (create, edit, delete) | P0       |
+| 3   | Transaction search and filter           | P1       |
+| 4   | Budget creation and tracking            | P0       |
+| 5   | Goal setting and milestone celebrations | P1       |
+| 6   | Offline usage → reconnect → sync        | P0       |
+| 7   | Multi-device sync                       | P1       |
+| 8   | Data export (JSON, CSV)                 | P1       |
+| 9   | Settings persistence across sessions    | P1       |
+| 10  | Accessibility — screen reader full flow | P0       |
 
 ### 2.2 Device Matrix
 
 | Platform | Primary Device         | Secondary Device       |
-|----------|------------------------|------------------------|
+| -------- | ---------------------- | ---------------------- |
 | Android  | Pixel 7 (API 34)       | Samsung Galaxy S23     |
-| iOS      | iPhone 15 (iOS 17)     | iPhone SE 3 (iOS 16)  |
-| Web      | Chrome 120+ (desktop)  | Safari 17 (mobile)    |
+| iOS      | iPhone 15 (iOS 17)     | iPhone SE 3 (iOS 16)   |
+| Web      | Chrome 120+ (desktop)  | Safari 17 (mobile)     |
 | Windows  | Surface Pro 9 (Win 11) | Budget laptop (Win 10) |
 
 ### 2.3 Bug Severity Definitions
 
-| Severity | Label | Definition                                             | SLA        |
-|----------|-------|--------------------------------------------------------|------------|
-| P0       | 🔴    | App crash, data loss, security vulnerability           | Fix before release |
-| P1       | 🟠    | Feature broken, no workaround                          | Fix before release |
-| P2       | 🟡    | Feature broken, workaround exists                      | Fix within next release |
-| P3       | 🟢    | Cosmetic issue, minor UX friction                      | Backlog    |
+| Severity | Label | Definition                                   | SLA                     |
+| -------- | ----- | -------------------------------------------- | ----------------------- |
+| P0       | 🔴    | App crash, data loss, security vulnerability | Fix before release      |
+| P1       | 🟠    | Feature broken, no workaround                | Fix before release      |
+| P2       | 🟡    | Feature broken, workaround exists            | Fix within next release |
+| P3       | 🟢    | Cosmetic issue, minor UX friction            | Backlog                 |
 
 ---
 
@@ -178,17 +178,17 @@ Every beta tester should exercise these flows. Detailed scenarios are in
 
 All of the following must be met before promoting a beta build to production:
 
-| Criterion                          | Target                         |
-|------------------------------------|--------------------------------|
-| Crash-free rate                    | ≥ 99.5%                       |
-| P0 bugs open                       | 0                              |
-| P1 bugs open                       | 0                              |
-| P2 bugs open                       | ≤ 3 (with workarounds documented) |
-| Unique testers per platform        | ≥ 10                           |
-| All 10 critical journeys passed    | ✅ on every platform            |
-| Performance benchmarks met         | See § 2.1 #10 in test plan     |
-| Accessibility audit passed         | No P0/P1 a11y issues           |
-| Beta duration                      | ≥ 5 business days              |
+| Criterion                       | Target                            |
+| ------------------------------- | --------------------------------- |
+| Crash-free rate                 | ≥ 99.5%                           |
+| P0 bugs open                    | 0                                 |
+| P1 bugs open                    | 0                                 |
+| P2 bugs open                    | ≤ 3 (with workarounds documented) |
+| Unique testers per platform     | ≥ 10                              |
+| All 10 critical journeys passed | ✅ on every platform              |
+| Performance benchmarks met      | See § 2.1 #10 in test plan        |
+| Accessibility audit passed      | No P0/P1 a11y issues              |
+| Beta duration                   | ≥ 5 business days                 |
 
 **Sign-off process:**
 
@@ -209,14 +209,14 @@ screen and a persistent **shake-to-report** gesture (mobile) or
 
 **Form fields:**
 
-| Field           | Type          | Required |
-|-----------------|---------------|----------|
-| Category        | Dropdown      | Yes      |
-| Description     | Text area     | Yes      |
-| Screenshot      | Auto-attached | No       |
-| Device info     | Auto-collected| Yes      |
-| App version     | Auto-collected| Yes      |
-| Contact email   | Text          | No       |
+| Field         | Type           | Required |
+| ------------- | -------------- | -------- |
+| Category      | Dropdown       | Yes      |
+| Description   | Text area      | Yes      |
+| Screenshot    | Auto-attached  | No       |
+| Device info   | Auto-collected | Yes      |
+| App version   | Auto-collected | Yes      |
+| Contact email | Text           | No       |
 
 **Categories:** Bug, Feature Request, Performance, Accessibility, Other.
 
@@ -242,12 +242,12 @@ In-app form  →  Backend API  →  GitHub Discussions (via GitHub API)
 
 ### 4.3 Crash Reporting
 
-| Platform | Tool                | Dashboard                     |
-|----------|---------------------|-------------------------------|
-| Android  | Firebase Crashlytics| Firebase Console              |
-| iOS      | Firebase Crashlytics| Firebase Console              |
-| Web      | Sentry              | Sentry Dashboard              |
-| Windows  | Sentry              | Sentry Dashboard              |
+| Platform | Tool                 | Dashboard        |
+| -------- | -------------------- | ---------------- |
+| Android  | Firebase Crashlytics | Firebase Console |
+| iOS      | Firebase Crashlytics | Firebase Console |
+| Web      | Sentry               | Sentry Dashboard |
+| Windows  | Sentry               | Sentry Dashboard |
 
 Crash-free rate is monitored continuously and included in the beta exit
 criteria check.

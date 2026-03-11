@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { FC } from "react";
+import type { FC } from 'react';
 
 /** Budgets page - create and track budget allocations by category. */
 const Budgets: FC = () => (

@@ -36,11 +36,11 @@ export interface Currency {
 
 /** Pre-defined currency constants matching KMP companions. */
 export const Currencies = {
-  USD: { code: "USD", decimalPlaces: 2 } as Currency,
-  EUR: { code: "EUR", decimalPlaces: 2 } as Currency,
-  GBP: { code: "GBP", decimalPlaces: 2 } as Currency,
-  JPY: { code: "JPY", decimalPlaces: 0 } as Currency,
-  CAD: { code: "CAD", decimalPlaces: 2 } as Currency,
+  USD: { code: 'USD', decimalPlaces: 2 } as Currency,
+  EUR: { code: 'EUR', decimalPlaces: 2 } as Currency,
+  GBP: { code: 'GBP', decimalPlaces: 2 } as Currency,
+  JPY: { code: 'JPY', decimalPlaces: 0 } as Currency,
+  CAD: { code: 'CAD', decimalPlaces: 2 } as Currency,
 } as const;
 
 /**
@@ -73,13 +73,13 @@ export interface SyncMetadata {
 
 /** Maps to KMP `com.finance.models.AccountType`. */
 export type AccountType =
-  | "CHECKING"
-  | "SAVINGS"
-  | "CREDIT_CARD"
-  | "CASH"
-  | "INVESTMENT"
-  | "LOAN"
-  | "OTHER";
+  | 'CHECKING'
+  | 'SAVINGS'
+  | 'CREDIT_CARD'
+  | 'CASH'
+  | 'INVESTMENT'
+  | 'LOAN'
+  | 'OTHER';
 
 /** Maps to KMP `com.finance.models.Account`. */
 export interface Account extends SyncMetadata {
@@ -96,10 +96,10 @@ export interface Account extends SyncMetadata {
 }
 
 /** Maps to KMP `com.finance.models.TransactionType`. */
-export type TransactionType = "EXPENSE" | "INCOME" | "TRANSFER";
+export type TransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 
 /** Maps to KMP `com.finance.models.TransactionStatus`. */
-export type TransactionStatus = "PENDING" | "CLEARED" | "RECONCILED" | "VOID";
+export type TransactionStatus = 'PENDING' | 'CLEARED' | 'RECONCILED' | 'VOID';
 
 /** Maps to KMP `com.finance.models.Transaction`. */
 export interface Transaction extends SyncMetadata {
@@ -122,12 +122,7 @@ export interface Transaction extends SyncMetadata {
 }
 
 /** Maps to KMP `com.finance.models.BudgetPeriod`. */
-export type BudgetPeriod =
-  | "WEEKLY"
-  | "BIWEEKLY"
-  | "MONTHLY"
-  | "QUARTERLY"
-  | "YEARLY";
+export type BudgetPeriod = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
 
 /** Maps to KMP `com.finance.models.Budget`. */
 export interface Budget extends SyncMetadata {
@@ -144,7 +139,7 @@ export interface Budget extends SyncMetadata {
 }
 
 /** Maps to KMP `com.finance.models.GoalStatus`. */
-export type GoalStatus = "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
+export type GoalStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
 
 /** Maps to KMP `com.finance.models.Goal`. */
 export interface Goal extends SyncMetadata {
@@ -191,7 +186,7 @@ export interface Household extends SyncMetadata {
 }
 
 /** Maps to KMP `com.finance.models.HouseholdRole`. */
-export type HouseholdRole = "OWNER" | "PARTNER" | "MEMBER" | "VIEWER";
+export type HouseholdRole = 'OWNER' | 'PARTNER' | 'MEMBER' | 'VIEWER';
 
 /** Maps to KMP `com.finance.models.HouseholdMember`. */
 export interface HouseholdMember extends SyncMetadata {

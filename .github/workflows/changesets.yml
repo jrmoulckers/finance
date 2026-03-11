@@ -33,8 +33,8 @@ jobs:
       - name: Create Release PR or Publish
         uses: changesets/action@6a0a831ff30acef54f2c6aa1cbbc1096b066edaf # v1.7.0
         with:
-          title: "chore: version packages"
-          commit: "chore: version packages"
+          title: 'chore: version packages'
+          commit: 'chore: version packages'
           publish: echo "No publish step yet"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

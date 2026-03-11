@@ -8,8 +8,14 @@
 
 import { type FC, useCallback, useId, useMemo, useRef } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
 } from 'recharts';
 import { CHART_COLORS, buildChartDescription, formatChartCurrency } from './chart-palette';
 import { useArrowKeyNavigation } from '../../accessibility/aria';
@@ -41,11 +47,12 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const description = useMemo(
-    () => buildChartDescription(
-      'Bar chart',
-      data.map((d) => ({ label: d.name, value: d.amount })),
-      currency,
-    ),
+    () =>
+      buildChartDescription(
+        'Bar chart',
+        data.map((d) => ({ label: d.name, value: d.amount })),
+        currency,
+      ),
     [data, currency],
   );
 
@@ -64,8 +71,12 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
       aria-roledescription="bar chart"
       onKeyDown={handleKeyDown}
     >
-      <h3 id={`${chartId}-title`} className="chart-title">{title}</h3>
-      <p id={`${chartId}-desc`} className="sr-only">{description}</p>
+      <h3 id={`${chartId}-title`} className="chart-title">
+        {title}
+      </h3>
+      <p id={`${chartId}-desc`} className="sr-only">
+        {description}
+      </p>
       <ResponsiveContainer width="100%" height={height}>
         <BarChart
           data={data}
@@ -75,7 +86,10 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
           role="img"
         >
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-default, #E5E7EB)" />
-          <XAxis dataKey="name" tick={{ fill: 'var(--color-text-secondary, #6B7280)', fontSize: 12 }} />
+          <XAxis
+            dataKey="name"
+            tick={{ fill: 'var(--color-text-secondary, #6B7280)', fontSize: 12 }}
+          />
           <YAxis
             tickFormatter={(v: number) => formatChartCurrency(v, currency)}
             tick={{ fill: 'var(--color-text-secondary, #6B7280)', fontSize: 12 }}

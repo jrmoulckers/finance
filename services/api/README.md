@@ -42,11 +42,11 @@ supabase migration up # Apply pending migrations only
 
 ### 3. Access local services
 
-| Service       | URL                          |
-|---------------|------------------------------|
-| API (PostgREST) | `http://localhost:54321`    |
-| Studio (UI)   | `http://localhost:54323`      |
-| Database       | `postgresql://postgres:postgres@localhost:54322/postgres` |
+| Service         | URL                                                       |
+| --------------- | --------------------------------------------------------- |
+| API (PostgREST) | `http://localhost:54321`                                  |
+| Studio (UI)     | `http://localhost:54323`                                  |
+| Database        | `postgresql://postgres:postgres@localhost:54322/postgres` |
 
 ### 4. Create a new migration
 
@@ -60,16 +60,16 @@ This creates a timestamped `.sql` file in `supabase/migrations/`.
 
 The schema mirrors the SQLDelight definitions in `packages/models/` with PostgreSQL-native types:
 
-| Table               | Description                                        |
-|---------------------|----------------------------------------------------|
-| `users`             | User profiles (linked to Supabase Auth)            |
-| `households`        | Groups of users sharing finances                   |
-| `household_members` | Join table: user ↔ household with role             |
-| `accounts`          | Financial accounts (checking, savings, credit, etc.)|
-| `categories`        | Transaction categories (hierarchical via parent_id)|
-| `transactions`      | Financial transactions                             |
-| `budgets`           | Spending limits per category/period                |
-| `goals`             | Savings goals with progress tracking               |
+| Table               | Description                                          |
+| ------------------- | ---------------------------------------------------- |
+| `users`             | User profiles (linked to Supabase Auth)              |
+| `households`        | Groups of users sharing finances                     |
+| `household_members` | Join table: user ↔ household with role               |
+| `accounts`          | Financial accounts (checking, savings, credit, etc.) |
+| `categories`        | Transaction categories (hierarchical via parent_id)  |
+| `transactions`      | Financial transactions                               |
+| `budgets`           | Spending limits per category/period                  |
+| `goals`             | Savings goals with progress tracking                 |
 
 ### Key design decisions
 
@@ -87,16 +87,16 @@ The schema mirrors the SQLDelight definitions in `packages/models/` with Postgre
 
 ### Security model
 
-| Table               | SELECT                     | INSERT                | UPDATE                | DELETE (soft)         |
-|---------------------|----------------------------|-----------------------|-----------------------|-----------------------|
-| `users`             | Own row only (`auth.uid()`)| Own row only          | Own row only          | Own row only          |
-| `households`        | Members only               | Creator only          | Creator only          | Creator only          |
-| `household_members` | Co-members can see         | Household owner only  | Household owner only  | Household owner only  |
-| `accounts`          | Household members          | Household members     | Household members     | Household members     |
-| `categories`        | Household members          | Household members     | Household members     | Household members     |
-| `transactions`      | Household members          | Household members     | Household members     | Household members     |
-| `budgets`           | Household members          | Household members     | Household members     | Household members     |
-| `goals`             | Household members          | Household members     | Household members     | Household members     |
+| Table               | SELECT                      | INSERT               | UPDATE               | DELETE (soft)        |
+| ------------------- | --------------------------- | -------------------- | -------------------- | -------------------- |
+| `users`             | Own row only (`auth.uid()`) | Own row only         | Own row only         | Own row only         |
+| `households`        | Members only                | Creator only         | Creator only         | Creator only         |
+| `household_members` | Co-members can see          | Household owner only | Household owner only | Household owner only |
+| `accounts`          | Household members           | Household members    | Household members    | Household members    |
+| `categories`        | Household members           | Household members    | Household members    | Household members    |
+| `transactions`      | Household members           | Household members    | Household members    | Household members    |
+| `budgets`           | Household members           | Household members    | Household members    | Household members    |
+| `goals`             | Household members           | Household members    | Household members    | Household members    |
 
 ### Helper function
 
@@ -118,10 +118,10 @@ Returns an array of household IDs the current authenticated user belongs to. Use
 
 For production deployment, set these in your Supabase project dashboard:
 
-| Variable            | Description                          |
-|---------------------|--------------------------------------|
-| `PROJECT_REF`       | Supabase project reference ID        |
-| `SUPABASE_DB_PASSWORD` | Database password                 |
-| `JWT_SECRET`        | JWT signing secret for Auth          |
+| Variable               | Description                   |
+| ---------------------- | ----------------------------- |
+| `PROJECT_REF`          | Supabase project reference ID |
+| `SUPABASE_DB_PASSWORD` | Database password             |
+| `JWT_SECRET`           | JWT signing secret for Auth   |
 
 > **Note**: Never commit real credentials. Use `supabase/config.toml` for local dev only.

@@ -45,10 +45,7 @@ export function ariaLabel(
 }
 
 /** Set aria-describedby on an element, pointing at a description node. */
-export function ariaDescribe(
-  element: HTMLElement | SVGElement,
-  descriptionId: string,
-): void {
+export function ariaDescribe(element: HTMLElement | SVGElement, descriptionId: string): void {
   element.setAttribute('aria-describedby', descriptionId);
 }
 
@@ -187,22 +184,24 @@ export function useFocusTrap(
     const container = containerRef.current;
 
     const initialTarget =
-      initialFocusRef?.current ??
-      container.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      initialFocusRef?.current ?? container.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
     initialTarget?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
-      const focusable = Array.from(
-        container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-      );
-      if (focusable.length === 0) { e.preventDefault(); return; }
+      const focusable = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault(); last.focus();
+        e.preventDefault();
+        last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault(); first.focus();
+        e.preventDefault();
+        first.focus();
       }
     };
 
@@ -236,23 +235,28 @@ export function getFirstFocusable(container: HTMLElement): HTMLElement | null {
 /** Announce a message to screen readers via a visually-hidden live region. */
 let liveRegion: HTMLElement | null = null;
 
-export function announce(
-  message: string,
-  politeness: 'polite' | 'assertive' = 'polite',
-): void {
+export function announce(message: string, politeness: 'polite' | 'assertive' = 'polite'): void {
   if (!liveRegion) {
     liveRegion = document.createElement('div');
     liveRegion.setAttribute('aria-live', politeness);
     liveRegion.setAttribute('aria-atomic', 'true');
     liveRegion.setAttribute('role', 'status');
     Object.assign(liveRegion.style, {
-      position: 'absolute', width: '1px', height: '1px', padding: '0',
-      margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)',
-      whiteSpace: 'nowrap', border: '0',
+      position: 'absolute',
+      width: '1px',
+      height: '1px',
+      padding: '0',
+      margin: '-1px',
+      overflow: 'hidden',
+      clip: 'rect(0, 0, 0, 0)',
+      whiteSpace: 'nowrap',
+      border: '0',
     });
     document.body.appendChild(liveRegion);
   }
   liveRegion.setAttribute('aria-live', politeness);
   liveRegion.textContent = '';
-  requestAnimationFrame(() => { if (liveRegion) liveRegion.textContent = message; });
+  requestAnimationFrame(() => {
+    if (liveRegion) liveRegion.textContent = message;
+  });
 }

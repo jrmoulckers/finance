@@ -34,12 +34,12 @@ Sensitive financial data must be encrypted at rest on every platform.
 
 ### 1.2 Credential & Token Storage
 
-| Platform | Required Storage | Verification |
-|----------|-----------------|--------------|
-| Android  | Android Keystore + `EncryptedSharedPreferences` | Tokens not in `SharedPreferences`, logs, or `/data/data/` plaintext files |
-| iOS      | Keychain Services with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` | Tokens not in `UserDefaults`, plist files, or NSCoder archives |
-| Windows  | DPAPI / `PasswordVault` / TPM-backed credential storage | Tokens not in registry, AppData plaintext files, or localStorage |
-| Web      | `HttpOnly` + `Secure` + `SameSite=Strict` cookies | Tokens **never** in `localStorage`, `sessionStorage`, or JS-accessible cookies |
+| Platform | Required Storage                                                      | Verification                                                                   |
+| -------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Android  | Android Keystore + `EncryptedSharedPreferences`                       | Tokens not in `SharedPreferences`, logs, or `/data/data/` plaintext files      |
+| iOS      | Keychain Services with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` | Tokens not in `UserDefaults`, plist files, or NSCoder archives                 |
+| Windows  | DPAPI / `PasswordVault` / TPM-backed credential storage               | Tokens not in registry, AppData plaintext files, or localStorage               |
+| Web      | `HttpOnly` + `Secure` + `SameSite=Strict` cookies                     | Tokens **never** in `localStorage`, `sessionStorage`, or JS-accessible cookies |
 
 ### 1.3 Token Storage Verification Steps
 
@@ -91,9 +91,11 @@ man-in-the-middle attacks.
 ### 2.3 API Security Headers (Web)
 
 - [ ] **Content-Security-Policy** — strict CSP with no `unsafe-inline`, no `unsafe-eval`
+
 ```
 default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.finance.app; frame-ancestors 'none';
 ```
+
 - [ ] **X-Content-Type-Options: nosniff**
 - [ ] **X-Frame-Options: DENY** (or CSP `frame-ancestors 'none'`)
 - [ ] **Referrer-Policy: strict-origin-when-cross-origin**
@@ -234,22 +236,22 @@ This section verifies the implementation matches the architecture.
 
 ### 6.1 Automated Scanning
 
-| Tool | Scope | Frequency | Configuration |
-|------|-------|-----------|--------------|
-| [Dependabot](https://docs.github.com/en/code-security/dependabot) | npm, Gradle, GitHub Actions | Daily | `.github/dependabot.yml` |
-| [CodeQL](https://codeql.github.com/) | Java/Kotlin, TypeScript | Every push to `main` + weekly | `.github/workflows/security.yml` |
-| [TruffleHog](https://github.com/trufflesecurity/trufflehog) | Secret detection | Every push to `main` | `.github/workflows/security.yml` |
-| `npm audit` | npm packages | Every CI run | `npm audit --audit-level=high` |
-| OWASP Dependency-Check | Gradle/JVM | Per release | `./gradlew dependencyCheckAnalyze` |
+| Tool                                                              | Scope                       | Frequency                     | Configuration                      |
+| ----------------------------------------------------------------- | --------------------------- | ----------------------------- | ---------------------------------- |
+| [Dependabot](https://docs.github.com/en/code-security/dependabot) | npm, Gradle, GitHub Actions | Daily                         | `.github/dependabot.yml`           |
+| [CodeQL](https://codeql.github.com/)                              | Java/Kotlin, TypeScript     | Every push to `main` + weekly | `.github/workflows/security.yml`   |
+| [TruffleHog](https://github.com/trufflesecurity/trufflehog)       | Secret detection            | Every push to `main`          | `.github/workflows/security.yml`   |
+| `npm audit`                                                       | npm packages                | Every CI run                  | `npm audit --audit-level=high`     |
+| OWASP Dependency-Check                                            | Gradle/JVM                  | Per release                   | `./gradlew dependencyCheckAnalyze` |
 
 ### 6.2 Vulnerability Response SLA
 
-| Severity | Response Time | Fix Deadline | Escalation |
-|----------|--------------|--------------|-----------|
-| Critical (CVSS >= 9.0) | 4 hours | 24 hours | Immediate hotfix release |
-| High (CVSS 7.0–8.9) | 24 hours | 7 days | Next scheduled release |
-| Medium (CVSS 4.0–6.9) | 7 days | 30 days | Address in sprint |
-| Low (CVSS < 4.0) | 30 days | 90 days | Address when convenient |
+| Severity               | Response Time | Fix Deadline | Escalation               |
+| ---------------------- | ------------- | ------------ | ------------------------ |
+| Critical (CVSS >= 9.0) | 4 hours       | 24 hours     | Immediate hotfix release |
+| High (CVSS 7.0–8.9)    | 24 hours      | 7 days       | Next scheduled release   |
+| Medium (CVSS 4.0–6.9)  | 7 days        | 30 days      | Address in sprint        |
+| Low (CVSS < 4.0)       | 30 days       | 90 days      | Address when convenient  |
 
 ### 6.3 Review Process
 
@@ -263,9 +265,9 @@ This section verifies the implementation matches the architecture.
 
 ## 7. Audit Sign-Off
 
-| Date | Auditor | Scope | Result | Critical Issues | Risk Accepted |
-|------|---------|-------|--------|----------------|---------------|
-| _YYYY-MM-DD_ | _Name_ | _Full / Targeted_ | _Pass / Fail_ | _#N, #M_ | _None / #X (justification)_ |
+| Date         | Auditor | Scope             | Result        | Critical Issues | Risk Accepted               |
+| ------------ | ------- | ----------------- | ------------- | --------------- | --------------------------- |
+| _YYYY-MM-DD_ | _Name_  | _Full / Targeted_ | _Pass / Fail_ | _#N, #M_        | _None / #X (justification)_ |
 
 **Sign-off criteria:** All CRITICAL and HIGH items must pass. MEDIUM items
 may be risk-accepted with documented justification. LOW items are tracked

@@ -21,42 +21,40 @@
  *   SUPABASE_SERVICE_ROLE_KEY — Service role key
  */
 
-import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import { createAdminClient, requireAuth } from "../_shared/auth.ts";
-import { handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { createAdminClient, requireAuth } from '../_shared/auth.ts';
+import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import {
   errorResponse,
   internalErrorResponse,
   methodNotAllowedResponse,
   streamingResponse,
-} from "../_shared/response.ts";
+} from '../_shared/response.ts';
 
 /** Tables to export and their household-scoped query configuration. */
 const EXPORTABLE_TABLES = [
-  { name: "users", filterBy: "id", isUserScoped: true },
-  { name: "households", filterBy: "id", isHouseholdScoped: true },
-  { name: "household_members", filterBy: "household_id", isHouseholdScoped: true },
-  { name: "accounts", filterBy: "household_id", isHouseholdScoped: true },
-  { name: "categories", filterBy: "household_id", isHouseholdScoped: true },
-  { name: "transactions", filterBy: "household_id", isHouseholdScoped: true },
-  { name: "budgets", filterBy: "household_id", isHouseholdScoped: true },
-  { name: "goals", filterBy: "household_id", isHouseholdScoped: true },
-  { name: "passkey_credentials", filterBy: "user_id", isUserScoped: true },
+  { name: 'users', filterBy: 'id', isUserScoped: true },
+  { name: 'households', filterBy: 'id', isHouseholdScoped: true },
+  { name: 'household_members', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'accounts', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'categories', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'transactions', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'budgets', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'goals', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'passkey_credentials', filterBy: 'user_id', isUserScoped: true },
 ] as const;
 
 /** Sensitive columns to redact from export. */
-const REDACTED_COLUMNS = new Set(["public_key"]);
+const REDACTED_COLUMNS = new Set(['public_key']);
 
 /**
  * Redact sensitive columns from a record.
  */
-function redactRecord(
-  record: Record<string, unknown>,
-): Record<string, unknown> {
+function redactRecord(record: Record<string, unknown>): Record<string, unknown> {
   const redacted = { ...record };
   for (const col of REDACTED_COLUMNS) {
     if (col in redacted) {
-      redacted[col] = "[REDACTED]";
+      redacted[col] = '[REDACTED]';
     }
   }
   return redacted;
@@ -66,34 +64,34 @@ function redactRecord(
  * Convert an array of records to CSV format.
  */
 function recordsToCsv(records: Record<string, unknown>[]): string {
-  if (records.length === 0) return "";
+  if (records.length === 0) return '';
 
   const headers = Object.keys(records[0]);
-  const lines = [headers.join(",")];
+  const lines = [headers.join(',')];
 
   for (const record of records) {
     const values = headers.map((h) => {
       const val = record[h];
-      if (val === null || val === undefined) return "";
+      if (val === null || val === undefined) return '';
       const str = String(val);
       // Escape CSV values containing commas, quotes, or newlines
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
         return `"${str.replace(/"/g, '""')}"`;
       }
       return str;
     });
-    lines.push(values.join(","));
+    lines.push(values.join(','));
   }
 
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 serve(async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return handleCorsPreflightRequest();
   }
 
-  if (req.method !== "GET") {
+  if (req.method !== 'GET') {
     return methodNotAllowedResponse();
   }
 
@@ -108,34 +106,32 @@ serve(async (req: Request): Promise<Response> => {
     const supabase = createAdminClient();
 
     // Determine export format from Accept header
-    const acceptHeader = req.headers.get("Accept") ?? "application/json";
-    const wantsCsv = acceptHeader.includes("text/csv");
+    const acceptHeader = req.headers.get('Accept') ?? 'application/json';
+    const wantsCsv = acceptHeader.includes('text/csv');
 
     // Get user's household memberships
     const { data: memberships, error: memberError } = await supabase
-      .from("household_members")
-      .select("household_id")
-      .eq("user_id", user.id)
-      .is("deleted_at", null);
+      .from('household_members')
+      .select('household_id')
+      .eq('user_id', user.id)
+      .is('deleted_at', null);
 
     if (memberError) {
-      console.error("Failed to fetch memberships:", memberError.message);
+      console.error('Failed to fetch memberships:', memberError.message);
       return internalErrorResponse();
     }
 
-    const householdIds = (memberships ?? []).map(
-      (m: { household_id: string }) => m.household_id,
-    );
+    const householdIds = (memberships ?? []).map((m: { household_id: string }) => m.household_id);
 
     // Collect all data
     const exportData: Record<string, Record<string, unknown>[]> = {};
 
     for (const table of EXPORTABLE_TABLES) {
-      let query = supabase.from(table.name).select("*");
+      let query = supabase.from(table.name).select('*');
 
-      if ("isUserScoped" in table && table.isUserScoped) {
+      if ('isUserScoped' in table && table.isUserScoped) {
         query = query.eq(table.filterBy, user.id);
-      } else if ("isHouseholdScoped" in table && table.isHouseholdScoped) {
+      } else if ('isHouseholdScoped' in table && table.isHouseholdScoped) {
         if (householdIds.length === 0) {
           exportData[table.name] = [];
           continue;
@@ -156,22 +152,19 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // Audit log the export
-    await supabase.from("audit_log").insert({
+    await supabase.from('audit_log').insert({
       user_id: user.id,
-      action: "DATA_EXPORT",
-      table_name: "users",
+      action: 'DATA_EXPORT',
+      table_name: 'users',
       record_id: user.id,
       new_values: {
-        format: wantsCsv ? "csv" : "json",
+        format: wantsCsv ? 'csv' : 'json',
         tables_exported: Object.keys(exportData),
-        total_records: Object.values(exportData).reduce(
-          (sum, records) => sum + records.length,
-          0,
-        ),
+        total_records: Object.values(exportData).reduce((sum, records) => sum + records.length, 0),
       },
     });
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
     if (wantsCsv) {
       // Stream CSV — each table as a separate section
@@ -183,10 +176,10 @@ serve(async (req: Request): Promise<Response> => {
         if (records.length > 0) {
           csvParts.push(recordsToCsv(records));
         }
-        csvParts.push(""); // blank line between tables
+        csvParts.push(''); // blank line between tables
       }
 
-      const csvContent = csvParts.join("\n");
+      const csvContent = csvParts.join('\n');
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         start(controller) {
@@ -197,7 +190,7 @@ serve(async (req: Request): Promise<Response> => {
 
       return streamingResponse(
         stream,
-        "text/csv; charset=utf-8",
+        'text/csv; charset=utf-8',
         `finance-export-${timestamp}.csv`,
       );
     } else {
@@ -206,7 +199,7 @@ serve(async (req: Request): Promise<Response> => {
         {
           export_date: new Date().toISOString(),
           user_id: user.id,
-          format_version: "1.0",
+          format_version: '1.0',
           data: exportData,
         },
         null,
@@ -232,12 +225,12 @@ serve(async (req: Request): Promise<Response> => {
 
       return streamingResponse(
         stream,
-        "application/json; charset=utf-8",
+        'application/json; charset=utf-8',
         `finance-export-${timestamp}.json`,
       );
     }
   } catch (err) {
-    console.error("Data export error:", (err as Error).message);
+    console.error('Data export error:', (err as Error).message);
     return internalErrorResponse();
   }
 });

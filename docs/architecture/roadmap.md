@@ -20,30 +20,30 @@ The development is organized into eight phases, from foundational infrastructure
 
 All technology choices below are **proposals** based on research. Each requires explicit human confirmation before implementation begins. Confirmed decisions will be documented as ADRs in `docs/architecture/`.
 
-| Decision | Proposed Choice | Alternatives Considered | Status |
-|----------|----------------|------------------------|--------|
-| Cross-platform framework | KMP (Kotlin Multiplatform) | React Native/Expo, Flutter, .NET MAUI | ✅ Confirmed |
-| Backend database & auth | Supabase (PostgreSQL + Auth + Edge Functions) | Firebase, Custom Node.js, PocketBase | ✅ Confirmed |
-| Sync engine | PowerSync | ElectricSQL, Custom sync, WatermelonDB sync | ✅ Confirmed |
-| Hosting | Self-hosted (Supabase + PowerSync on VPS, ~$10-20/mo) | Managed cloud (~$74/mo) | ✅ Confirmed |
-| Local database | SQLite via SQLDelight (KMP) + SQLCipher encryption | Room KMP, Drift (Flutter), WatermelonDB | ✅ Confirmed |
-| Key-value store | Multiplatform Settings (KMP) / MMKV | SharedPreferences, UserDefaults, AsyncStorage | ✅ Confirmed |
-| Primary auth method | Passkeys (WebAuthn/FIDO2) + OAuth 2.0/PKCE fallback | Magic links, Social-only, Email/password-only | ✅ Confirmed |
-| Design system approach | Design tokens (DTCG JSON) + native UI per platform | Shared cross-platform UI components, Compose Multiplatform everywhere | ✅ Confirmed |
-| Token pipeline | Style Dictionary | Manual per-platform, Tokens Studio only | ✅ Confirmed |
-| CI/CD platform | GitHub Actions + Turborepo (affected-only builds) | CircleCI, GitLab CI, Xcode Cloud, Nx | ✅ Confirmed |
-| Versioning | Per-package semver with Changesets | Unified version, Nx Release | ✅ Confirmed |
-| iOS UI framework | SwiftUI | UIKit, Compose Multiplatform iOS | ✅ Confirmed |
-| Android UI framework | Jetpack Compose | XML Views, Compose Multiplatform | ✅ Confirmed |
-| Web approach | TypeScript + React consuming KMP logic via JS bindings | Compose for Web (Wasm), Kobweb, Kotlin/JS | ✅ Confirmed |
-| Windows approach | Compose Desktop (JVM) | WinUI 3, Compose Multiplatform Desktop | ✅ Confirmed |
-| First platform priority | iOS first, Android in parallel | Android first | ✅ Confirmed |
-| Budgeting methodology | Both envelope/zero-based AND category budgets | Single methodology | ✅ Confirmed |
-| Transaction entry | Manual + CSV import + Plaid bank connections at launch | Manual only, Plaid later | ✅ Confirmed |
-| Encryption scope | Hybrid E2E (encrypt sensitive fields, metadata readable) + GDPR baseline globally | Full E2E, Standard only | ✅ Confirmed |
-| Monetization | Freemium + donations (premium: AI analysis, extra connections, sharing) | Subscription-only, Free forever | ✅ Confirmed |
-| Wearables | Deferred post-launch (user stories created, deprioritized) | In initial platform phases | ✅ Confirmed |
-| App name | "Finance" (working title, workshop later) | — | ⏳ Pending |
+| Decision                 | Proposed Choice                                                                   | Alternatives Considered                                               | Status       |
+| ------------------------ | --------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------ |
+| Cross-platform framework | KMP (Kotlin Multiplatform)                                                        | React Native/Expo, Flutter, .NET MAUI                                 | ✅ Confirmed |
+| Backend database & auth  | Supabase (PostgreSQL + Auth + Edge Functions)                                     | Firebase, Custom Node.js, PocketBase                                  | ✅ Confirmed |
+| Sync engine              | PowerSync                                                                         | ElectricSQL, Custom sync, WatermelonDB sync                           | ✅ Confirmed |
+| Hosting                  | Self-hosted (Supabase + PowerSync on VPS, ~$10-20/mo)                             | Managed cloud (~$74/mo)                                               | ✅ Confirmed |
+| Local database           | SQLite via SQLDelight (KMP) + SQLCipher encryption                                | Room KMP, Drift (Flutter), WatermelonDB                               | ✅ Confirmed |
+| Key-value store          | Multiplatform Settings (KMP) / MMKV                                               | SharedPreferences, UserDefaults, AsyncStorage                         | ✅ Confirmed |
+| Primary auth method      | Passkeys (WebAuthn/FIDO2) + OAuth 2.0/PKCE fallback                               | Magic links, Social-only, Email/password-only                         | ✅ Confirmed |
+| Design system approach   | Design tokens (DTCG JSON) + native UI per platform                                | Shared cross-platform UI components, Compose Multiplatform everywhere | ✅ Confirmed |
+| Token pipeline           | Style Dictionary                                                                  | Manual per-platform, Tokens Studio only                               | ✅ Confirmed |
+| CI/CD platform           | GitHub Actions + Turborepo (affected-only builds)                                 | CircleCI, GitLab CI, Xcode Cloud, Nx                                  | ✅ Confirmed |
+| Versioning               | Per-package semver with Changesets                                                | Unified version, Nx Release                                           | ✅ Confirmed |
+| iOS UI framework         | SwiftUI                                                                           | UIKit, Compose Multiplatform iOS                                      | ✅ Confirmed |
+| Android UI framework     | Jetpack Compose                                                                   | XML Views, Compose Multiplatform                                      | ✅ Confirmed |
+| Web approach             | TypeScript + React consuming KMP logic via JS bindings                            | Compose for Web (Wasm), Kobweb, Kotlin/JS                             | ✅ Confirmed |
+| Windows approach         | Compose Desktop (JVM)                                                             | WinUI 3, Compose Multiplatform Desktop                                | ✅ Confirmed |
+| First platform priority  | iOS first, Android in parallel                                                    | Android first                                                         | ✅ Confirmed |
+| Budgeting methodology    | Both envelope/zero-based AND category budgets                                     | Single methodology                                                    | ✅ Confirmed |
+| Transaction entry        | Manual + CSV import + Plaid bank connections at launch                            | Manual only, Plaid later                                              | ✅ Confirmed |
+| Encryption scope         | Hybrid E2E (encrypt sensitive fields, metadata readable) + GDPR baseline globally | Full E2E, Standard only                                               | ✅ Confirmed |
+| Monetization             | Freemium + donations (premium: AI analysis, extra connections, sharing)           | Subscription-only, Free forever                                       | ✅ Confirmed |
+| Wearables                | Deferred post-launch (user stories created, deprioritized)                        | In initial platform phases                                            | ✅ Confirmed |
+| App name                 | "Finance" (working title, workshop later)                                         | —                                                                     | ⏳ Pending   |
 
 ### Rationale Summary
 
@@ -151,6 +151,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 ### Shared Packages (`packages/`)
 
 #### `packages/core` — Business Logic
+
 - **Purpose:** Core financial logic shared across all platforms
 - **Technology:** Kotlin Multiplatform (`commonMain`), kotlinx-datetime, kotlinx-serialization
 - **Responsibilities:**
@@ -163,6 +164,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 - **Dependencies:** `packages/models`
 
 #### `packages/models` — Data Models & Schemas
+
 - **Purpose:** Shared data model definitions and database schema
 - **Technology:** Kotlin Multiplatform, SQLDelight (`.sq` files), kotlinx-serialization
 - **Responsibilities:**
@@ -174,6 +176,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 - **Dependencies:** None (leaf package)
 
 #### `packages/sync` — Sync Engine
+
 - **Purpose:** PowerSync integration and offline-first sync infrastructure
 - **Technology:** Kotlin Multiplatform, PowerSync SDK, kotlinx-coroutines
 - **Responsibilities:**
@@ -189,6 +192,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 ### Platform Apps (`apps/`)
 
 #### `apps/ios` — iOS / macOS / watchOS
+
 - **Purpose:** Native Apple platform app
 - **Technology:** SwiftUI, Swift, KMP shared logic (via Swift Export)
 - **Key Components:**
@@ -202,6 +206,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
   - Universal Links for OAuth redirect handling
 
 #### `apps/android` — Android / Wear OS
+
 - **Purpose:** Native Android platform app
 - **Technology:** Jetpack Compose, Kotlin, KMP shared logic (direct)
 - **Key Components:**
@@ -215,6 +220,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
   - App Links for OAuth redirect handling
 
 #### `apps/web` — Progressive Web App
+
 - **Purpose:** Web-based access with offline PWA support
 - **Technology:** Kotlin/JS or TypeScript + React with KMP logic via compiled JS/WASM (decision pending)
 - **Key Components:**
@@ -228,6 +234,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
   - Lighthouse CI performance and accessibility budgets
 
 #### `apps/windows` — Windows 11 Desktop
+
 - **Purpose:** Native Windows desktop app
 - **Technology:** Compose Desktop (JVM) or WinUI 3 (decision pending)
 - **Key Components:**
@@ -242,6 +249,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 ### Backend (`services/`)
 
 #### `services/api` — Supabase Project
+
 - **Purpose:** Backend coordination, auth, and sync relay
 - **Technology:** Supabase (managed or self-hosted), PostgreSQL, Deno (Edge Functions)
 - **Key Components:**
@@ -281,6 +289,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 - ✅ Research — cross-platform, backend/sync, local storage, auth/security, design system, CI/CD
 
 **What remains in Phase 0:**
+
 - ✅ Technology decisions confirmed (except app name — pending workshop)
 - Write ADRs for each confirmed decision (`docs/architecture/adr-001-*.md` through `adr-007-*.md`)
 - Set up Turborepo workspace configuration (`turbo.json`)
@@ -451,17 +460,18 @@ Final optimization, auditing, and release preparation.
 
 Estimated monthly costs for a production deployment at moderate scale (~1K users):
 
-| Item | Monthly Cost | Notes |
-|------|-------------|-------|
-| Supabase (Pro) | ~$25 | PostgreSQL, Auth, Edge Functions, 8 GB DB, 100K MAUs |
-| PowerSync (Pro) | ~$49 | Sync layer, 30 GB synced/mo, 1K connections |
-| GitHub Actions (CI/CD) | ~$143 | Affected-only builds; iOS builds are the primary cost driver (~$64 of total) |
-| Apple Developer Program | ~$8 | $99/year for App Store + TestFlight distribution |
-| Google Play Console | ~$2 | $25 one-time fee amortized |
-| Domain + web hosting | ~$10 | Vercel/Cloudflare Pages for PWA hosting |
-| **Total** | **~$237/mo** | **Before scale optimization** |
+| Item                    | Monthly Cost | Notes                                                                        |
+| ----------------------- | ------------ | ---------------------------------------------------------------------------- |
+| Supabase (Pro)          | ~$25         | PostgreSQL, Auth, Edge Functions, 8 GB DB, 100K MAUs                         |
+| PowerSync (Pro)         | ~$49         | Sync layer, 30 GB synced/mo, 1K connections                                  |
+| GitHub Actions (CI/CD)  | ~$143        | Affected-only builds; iOS builds are the primary cost driver (~$64 of total) |
+| Apple Developer Program | ~$8          | $99/year for App Store + TestFlight distribution                             |
+| Google Play Console     | ~$2          | $25 one-time fee amortized                                                   |
+| Domain + web hosting    | ~$10         | Vercel/Cloudflare Pages for PWA hosting                                      |
+| **Total**               | **~$237/mo** | **Before scale optimization**                                                |
 
 **Scale projections:**
+
 - At 10K users: ~$400–$600/mo (PowerSync + Supabase compute scaling)
 - At 100K users: ~$1,000–$1,500/mo — consider self-hosting Supabase + PowerSync Open Edition to reduce to $200–$500/mo infrastructure-only
 - ElectricSQL (Apache 2.0, self-hosted, CRDT-based) should be re-evaluated in 6–12 months as a potential cost-reducing migration if SDK maturity improves
@@ -488,6 +498,7 @@ The following items require human decision before development can proceed past P
 ## References
 
 ### Research Documents
+
 - [Cross-Platform Framework Research](../../.github/research/cross-platform.md) — KMP, React Native, Flutter, .NET MAUI evaluation
 - [Backend & Sync Architecture Research](../../.github/research/backend-sync.md) — Supabase, Firebase, PowerSync, ElectricSQL, Custom, PocketBase
 - [Local Database & Storage Research](../../.github/research/local-storage.md) — SQLite, Realm, WatermelonDB, MMKV, IndexedDB, Drift
@@ -496,11 +507,13 @@ The following items require human decision before development can proceed past P
 - [CI/CD & Release Strategy Research](../../.github/research/cicd.md) — GitHub Actions, Turborepo, Fastlane, testing strategy, cost optimization
 
 ### Project Documents
+
 - [README.md](../../README.md) — Project vision, principles, repository structure
 - [AGENTS.md](../../AGENTS.md) — AI agent guidance, restrictions, human-gated operations
 - [SDLC](sdlc.md) — Agentic Kanban methodology, lifecycle stages, definitions of ready/done
 
 ### External Resources
+
 - [JetBrains KMP Documentation](https://kotlinlang.org/docs/multiplatform.html)
 - [SQLDelight](https://cashapp.github.io/sqldelight/)
 - [Supabase Documentation](https://supabase.com/docs)

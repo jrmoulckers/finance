@@ -30,14 +30,14 @@ Finance aspires to re-think and re-vitalize the desire to track every financial 
 
 ## Platforms
 
-| Platform | Target |
-|----------|--------|
-| iOS | iPhone, iPad, Mac (native) |
-| watchOS | Apple Watch (companion) |
-| Android | Phones, tablets |
-| Wear OS | Android accessories (companion) |
-| Web | PWA on modern browsers |
-| Windows | Windows 11 native |
+| Platform | Target                          |
+| -------- | ------------------------------- |
+| iOS      | iPhone, iPad, Mac (native)      |
+| watchOS  | Apple Watch (companion)         |
+| Android  | Phones, tablets                 |
+| Wear OS  | Android accessories (companion) |
+| Web      | PWA on modern browsers          |
+| Windows  | Windows 11 native               |
 
 ## Architecture
 
@@ -50,18 +50,18 @@ This is a **monorepo** with a consolidated backend designed to minimize server c
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Shared logic | Kotlin Multiplatform (KMP) |
-| iOS UI | SwiftUI |
-| Android UI | Jetpack Compose |
-| Web UI | React + TypeScript |
-| Windows UI | Compose Desktop |
-| Backend | Supabase (PostgreSQL + Auth) |
-| Offline sync | PowerSync |
-| Local storage | SQLite + SQLCipher (encrypted) |
+| Layer         | Technology                                               |
+| ------------- | -------------------------------------------------------- |
+| Shared logic  | Kotlin Multiplatform (KMP)                               |
+| iOS UI        | SwiftUI                                                  |
+| Android UI    | Jetpack Compose                                          |
+| Web UI        | React + TypeScript                                       |
+| Windows UI    | Compose Desktop                                          |
+| Backend       | Supabase (PostgreSQL + Auth)                             |
+| Offline sync  | PowerSync                                                |
+| Local storage | SQLite + SQLCipher (encrypted)                           |
 | Design tokens | Style Dictionary (DTCG format) → Swift, CSS, Android XML |
-| CI/CD | GitHub Actions + Turborepo |
+| CI/CD         | GitHub Actions + Turborepo                               |
 
 ## Repository Structure
 
@@ -93,10 +93,10 @@ finance/
 
 You need the following installed before building:
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| [Git](https://git-scm.com/) | 2.40+ | Version control |
-| [Node.js](https://nodejs.org/) | 22+ | Build tooling, npm workspaces, MCP servers |
+| Tool                            | Version  | Notes                                                                                   |
+| ------------------------------- | -------- | --------------------------------------------------------------------------------------- |
+| [Git](https://git-scm.com/)     | 2.40+    | Version control                                                                         |
+| [Node.js](https://nodejs.org/)  | 22+      | Build tooling, npm workspaces, MCP servers                                              |
 | [JDK 21](https://adoptium.net/) | 21 (LTS) | Kotlin Multiplatform compilation — [Eclipse Temurin](https://adoptium.net/) recommended |
 
 > **JDK auto-detection:** The build script `tools/gradle.js` automatically locates a JDK 21 installation on your system. Install Temurin to a standard location and the build will find it — no need to set `JAVA_HOME` manually.
@@ -105,11 +105,11 @@ You need the following installed before building:
 
 These are only needed if you are building or testing for a specific platform:
 
-| SDK | Platform | Purpose |
-|-----|----------|---------|
-| [Xcode](https://developer.apple.com/xcode/) 16+ | macOS only | iOS, macOS, and watchOS builds |
-| [Android Studio](https://developer.android.com/studio) | All | Android and Wear OS builds |
-| [Chrome](https://www.google.com/chrome/) | All | Kotlin/JS browser tests |
+| SDK                                                    | Platform   | Purpose                        |
+| ------------------------------------------------------ | ---------- | ------------------------------ |
+| [Xcode](https://developer.apple.com/xcode/) 16+        | macOS only | iOS, macOS, and watchOS builds |
+| [Android Studio](https://developer.android.com/studio) | All        | Android and Wear OS builds     |
+| [Chrome](https://www.google.com/chrome/)               | All        | Kotlin/JS browser tests        |
 
 ### Clone and build
 
@@ -148,17 +148,17 @@ For VS Code configuration, Copilot agent setup, MCP servers, and commit conventi
 
 All commands are run from the repository root.
 
-| Command | Description |
-|---------|-------------|
-| `npm run build` | Build everything — KMP packages first, then Turborepo tasks (design tokens, apps) |
-| `npm test` | Run all tests — KMP JVM unit tests, then Turborepo test tasks |
-| `npm run build:kmp` | Build only the Kotlin Multiplatform packages (skips JS browser tests) |
-| `npm run test:kmp` | Run KMP JVM tests only |
-| `npm run build:tokens` | Build design tokens — generates Swift, CSS, and Android XML outputs |
-| `npm run lint` | Run linters across all workspaces via Turborepo |
-| `npm run type-check` | Run TypeScript type checking across all workspaces |
-| `npm run format` | Run formatters across all workspaces |
-| `npm run clean` | Clean all build artifacts (Gradle + Turborepo) |
+| Command                | Description                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| `npm run build`        | Build everything — KMP packages first, then Turborepo tasks (design tokens, apps) |
+| `npm test`             | Run all tests — KMP JVM unit tests, then Turborepo test tasks                     |
+| `npm run build:kmp`    | Build only the Kotlin Multiplatform packages (skips JS browser tests)             |
+| `npm run test:kmp`     | Run KMP JVM tests only                                                            |
+| `npm run build:tokens` | Build design tokens — generates Swift, CSS, and Android XML outputs               |
+| `npm run lint`         | Run linters across all workspaces via Turborepo                                   |
+| `npm run type-check`   | Run TypeScript type checking across all workspaces                                |
+| `npm run format`       | Run formatters across all workspaces                                              |
+| `npm run clean`        | Clean all build artifacts (Gradle + Turborepo)                                    |
 
 ### Running Gradle directly
 
@@ -196,6 +196,7 @@ This project is developed with AI agents as first-class contributors. See [`docs
 This project is source-available under the [Business Source License 1.1](LICENSE).
 
 **What this means:**
+
 - ✅ You can view, fork, modify, and learn from the source code
 - ✅ Personal, non-commercial, and educational use is always permitted
 - ✅ Non-production use (development, testing, evaluation) is permitted

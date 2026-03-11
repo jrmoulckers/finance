@@ -54,6 +54,7 @@ AI agents that skip issue creation or fail to reference issues in commits are no
 ## AI Agent Configuration
 
 Custom agents are defined in `.github/agents/`. Each agent has a specific role:
+
 - `architect` — System design and architecture decisions
 - `docs-writer` — Documentation authoring and maintenance
 - `security-reviewer` — Security and privacy code review
@@ -68,10 +69,12 @@ Path-specific instructions are in `.github/instructions/`.
 The following operations MUST NEVER be performed by AI agents without explicit human approval. These restrictions apply to ALL AI tools working in this repository — GitHub Copilot, Codex, Claude, and any other agent.
 
 ### Category 1: Git Remote Operations
+
 AI agents MAY push feature branches (never `main`, `master`, or release branches).
 AI agents MAY use `git push --force-with-lease` on their own feature branches.
 
 AI agents MUST NOT:
+
 - Push to `main`, `master`, or release branches (protected by GitHub branch protection requiring PR review)
 - Use `git push --force` (without `--force-with-lease`)
 - `git pull`, `git fetch` from untrusted remotes
@@ -82,7 +85,9 @@ AI agents MUST NOT:
 **Why:** Feature-branch pushes are safe because `main` is protected by GitHub branch protection requiring PR review. Force-push without `--force-with-lease` is dangerous because it can overwrite others' work.
 
 ### Category 2: Pull Request & Review Operations
+
 AI agents MUST NOT execute:
+
 - Creating pull requests
 - Merging or closing pull requests
 - Approving or dismissing PR reviews
@@ -92,7 +97,9 @@ AI agents MUST NOT execute:
 **Why:** Code review is a critical human responsibility, especially for a financial application handling sensitive data.
 
 ### Category 3: Remote Platform Operations
+
 AI agents MUST NOT execute:
+
 - GitHub API writes (closing issues, changing labels, modifying repo settings)
 - Deployment triggers or release publishing
 - Hosting/infrastructure configuration changes
@@ -102,7 +109,9 @@ AI agents MUST NOT execute:
 **Why:** Remote platform changes can affect production systems, billing, and user data.
 
 ### Category 4: Operations Outside Project Boundary
+
 AI agents MUST NOT:
+
 - Read, write, or execute files outside the repository root
 - Access system directories, user home directories, or other projects
 - Modify system configuration (PATH, env vars, registry, etc.)
@@ -111,7 +120,9 @@ AI agents MUST NOT:
 **Why:** This repository's agents should only affect this repository. System-level changes can break other projects or compromise security.
 
 ### Category 5: Destructive File Operations
+
 AI agents MUST NOT execute:
+
 - `rm -rf`, `del /S`, `Remove-Item -Recurse -Force` on directories
 - Disk formatting, partitioning, or system-level file operations
 - Bulk file deletion (more than one file per command without naming each explicitly)
@@ -123,7 +134,9 @@ AI agents MUST NOT execute:
 **Why:** Destructive operations are irreversible and can cause data loss.
 
 ### Category 6: Package Publishing & Distribution
+
 AI agents MUST NOT execute:
+
 - `npm publish`, `yarn publish`, `pnpm publish` or any publish command
 - `docker push`, `docker buildx push` or container image pushes
 - App store submission, CDN upload, or release distribution commands
@@ -135,7 +148,9 @@ AI agents MUST NOT execute:
 **Why:** Publishing affects downstream consumers, app store users, and production systems. It cannot be easily reversed.
 
 ### Category 7: Secret & Credential Operations
+
 AI agents MUST NOT:
+
 - Create or edit `.env` files containing actual API keys, passwords, tokens, or connection strings
 - Read files in `secrets/`, `.secrets/`, or `credentials/` directories
 - Access the system keychain, Windows Credential Manager, macOS Keychain, or Linux secret-service
@@ -148,7 +163,9 @@ AI agents MUST NOT:
 **Why:** Credential operations in a financial app carry extreme risk. A leaked key or token could expose every user's financial data.
 
 ### Category 8: Database Destructive Operations
+
 AI agents MUST NOT execute:
+
 - `DROP TABLE`, `DROP DATABASE`, `DROP INDEX`, or any `DROP` statement
 - `TRUNCATE TABLE` or `TRUNCATE`
 - `DELETE FROM` without a `WHERE` clause (full table deletion)
@@ -164,6 +181,7 @@ AI agents MUST NOT execute:
 ### Enforcement
 
 These restrictions are enforced through multiple layers:
+
 1. **Git hooks** — `pre-push` hook blocks non-interactive sessions (AI agents) from pushing
 2. **GitHub branch protection** — Server-side rules requiring PR review before merging to `main`
 3. **VS Code settings** — Terminal allowlist/denylist in `.vscode/settings.json`
@@ -174,6 +192,7 @@ These restrictions are enforced through multiple layers:
 ⚠️ **Important:** Categories 1-4 have hard enforcement (git hooks + branch protection). Categories 5-8 rely on advisory enforcement — the directives above tell agents what to do instead, but there is no technical mechanism that prevents a misbehaving agent from running a destructive command. The pre-push hook ensures that even if mistakes happen locally, they cannot propagate to the remote repository.
 
 If an AI agent encounters a task requiring a gated operation, it MUST:
+
 1. Stop and clearly state what operation it needs to perform
 2. Explain why the operation is necessary
 3. Wait for explicit human approval before proceeding

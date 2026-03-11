@@ -36,8 +36,8 @@ git config core.hooksPath tools/git-hooks
 
 **Available hooks:**
 
-| Hook | Purpose |
-|---|---|
+| Hook       | Purpose                                                                                                                   |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `pre-push` | Requires interactive human confirmation before `git push`. Blocks non-interactive sessions (AI agents, CI) automatically. |
 
 ## Adding New Tools

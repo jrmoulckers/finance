@@ -5,10 +5,10 @@ All data stays on your machine — no cloud account required.
 
 ## Prerequisites
 
-| Tool | Purpose |
-|------|---------|
-| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Container runtime for Supabase services |
-| [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started) | `npm install -g supabase` |
+| Tool                                                                 | Purpose                                 |
+| -------------------------------------------------------------------- | --------------------------------------- |
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/)    | Container runtime for Supabase services |
+| [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started) | `npm install -g supabase`               |
 
 Verify both are available:
 
@@ -28,11 +28,11 @@ supabase start
 
 This starts all Supabase services in Docker containers:
 
-| Service | URL |
-|---------|-----|
-| Studio (dashboard) | <http://localhost:54323> |
-| API (PostgREST) | <http://localhost:54321> |
-| Auth (GoTrue) | <http://localhost:54321/auth/v1> |
+| Service               | URL                                                       |
+| --------------------- | --------------------------------------------------------- |
+| Studio (dashboard)    | <http://localhost:54323>                                  |
+| API (PostgREST)       | <http://localhost:54321>                                  |
+| Auth (GoTrue)         | <http://localhost:54321/auth/v1>                          |
 | Database (PostgreSQL) | `postgresql://postgres:postgres@localhost:54322/postgres` |
 
 On first run this pulls the required Docker images, which may take a few minutes.
@@ -105,10 +105,10 @@ Add `--no-backup` to also remove the Docker volumes (full reset on next start).
 
 ## Common Issues
 
-| Problem | Fix |
-|---------|-----|
-| Port conflict on 54321–54323 | Stop the conflicting process or change ports in `supabase/config.toml` |
-| Docker not running | Start Docker Desktop before running `supabase start` |
-| Migrations fail | Check the SQL syntax in `supabase/migrations/` — run `supabase db reset` after fixing |
-| Slow first start | Normal — Docker needs to pull ~2 GB of images on the first run |
-| Auth not working | Ensure the `anon` key matches the one shown by `supabase status` |
+| Problem                      | Fix                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------- |
+| Port conflict on 54321–54323 | Stop the conflicting process or change ports in `supabase/config.toml`                |
+| Docker not running           | Start Docker Desktop before running `supabase start`                                  |
+| Migrations fail              | Check the SQL syntax in `supabase/migrations/` — run `supabase db reset` after fixing |
+| Slow first start             | Normal — Docker needs to pull ~2 GB of images on the first run                        |
+| Auth not working             | Ensure the `anon` key matches the one shown by `supabase status`                      |

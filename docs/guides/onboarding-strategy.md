@@ -33,7 +33,7 @@ Onboarding in Finance follows three core UX principles:
 2. **Non-Judgmental Finance** (Principle 3) — Warm, encouraging language. No pressure. No shame about current financial state.
 3. **Accessibility as Foundation** (Principle 4) — Every onboarding screen is fully accessible from day one, not retrofitted later.
 
-**Anti-pattern from UX Principles:** ❌ *"Complex onboarding (no 'enter all your accounts before you can start')"* — Finance explicitly rejects onboarding that blocks the user from exploring the app.
+**Anti-pattern from UX Principles:** ❌ _"Complex onboarding (no 'enter all your accounts before you can start')"_ — Finance explicitly rejects onboarding that blocks the user from exploring the app.
 
 ### Core Constraints
 
@@ -57,12 +57,12 @@ flowchart TD
     F --> G[Step 4: First Budget Intro]
     G --> H[Step 5: Ready!]
     H --> C
-    
+
     D -->|Skip| C
     E -->|Skip| C
     F -->|Skip| C
     G -->|Skip| C
-    
+
     style A fill:#e8f4f8
     style C fill:#d4edda
     style D fill:#fff3cd
@@ -74,13 +74,13 @@ flowchart TD
 
 ### Step Definitions
 
-| Step | Screen | Purpose | Required Input | Skippable |
-|------|--------|---------|----------------|-----------|
-| 1 | Welcome | Set tone, explain value proposition | None | ✅ |
-| 2 | Currency Selection | Set default currency for display and accounts | Currency picker (default: device locale) | ✅ (defaults to locale) |
-| 3 | First Account | Create first tracking account | Name + initial balance (minimal) | ✅ |
-| 4 | First Budget Intro | Explain envelope budgeting concept, offer guided setup | Goal selection (save more / track spending / budget / reduce debt) | ✅ |
-| 5 | Ready | Celebrate, show quick tips, transition to dashboard | None (tap to continue) | Auto-advances |
+| Step | Screen             | Purpose                                                | Required Input                                                     | Skippable               |
+| ---- | ------------------ | ------------------------------------------------------ | ------------------------------------------------------------------ | ----------------------- |
+| 1    | Welcome            | Set tone, explain value proposition                    | None                                                               | ✅                      |
+| 2    | Currency Selection | Set default currency for display and accounts          | Currency picker (default: device locale)                           | ✅ (defaults to locale) |
+| 3    | First Account      | Create first tracking account                          | Name + initial balance (minimal)                                   | ✅                      |
+| 4    | First Budget Intro | Explain envelope budgeting concept, offer guided setup | Goal selection (save more / track spending / budget / reduce debt) | ✅                      |
+| 5    | Ready              | Celebrate, show quick tips, transition to dashboard    | None (tap to continue)                                             | Auto-advances           |
 
 ---
 
@@ -115,7 +115,7 @@ enum class OnboardingStep(val index: Int) {
     FIRST_ACCOUNT(2),
     FIRST_BUDGET(3),
     READY(4);
-    
+
     fun next(): OnboardingStep? = entries.getOrNull(index + 1)
     fun previous(): OnboardingStep? = entries.getOrNull(index - 1)
 }
@@ -187,13 +187,13 @@ fun defaultCurrencyForLocale(localeTag: String): String {
 
 The first account is created locally in SQLite via the existing account model. Minimal required fields:
 
-| Field | Required | Default |
-|-------|----------|---------|
-| Name | ✅ | "Checking" (suggestion, editable) |
-| Type | ✅ | `CHECKING` (pre-selected, changeable) |
-| Initial balance | ✅ | `0` (user enters amount) |
-| Currency | Auto | From Step 2 selection |
-| Icon | Auto | Based on account type |
+| Field           | Required | Default                               |
+| --------------- | -------- | ------------------------------------- |
+| Name            | ✅       | "Checking" (suggestion, editable)     |
+| Type            | ✅       | `CHECKING` (pre-selected, changeable) |
+| Initial balance | ✅       | `0` (user enters amount)              |
+| Currency        | Auto     | From Step 2 selection                 |
+| Icon            | Auto     | Based on account type                 |
 
 ### First Budget Introduction
 
@@ -201,12 +201,12 @@ Step 4 does **not** create a full budget — it introduces the concept and captu
 
 **Goal selection drives personalization:**
 
-| Selected Goal | Impact on App |
-|--------------|---------------|
-| Save more | Highlight savings rate on dashboard, suggest savings goal |
-| Track spending | Emphasize transaction entry, show category breakdown |
-| Budget | Prompt for budget setup sooner, show "To Budget" prominently |
-| Reduce debt | Show debt payoff projections, suggest debt account type |
+| Selected Goal  | Impact on App                                                |
+| -------------- | ------------------------------------------------------------ |
+| Save more      | Highlight savings rate on dashboard, suggest savings goal    |
+| Track spending | Emphasize transaction entry, show category breakdown         |
+| Budget         | Prompt for budget setup sooner, show "To Budget" prominently |
+| Reduce debt    | Show debt payoff projections, suggest debt account type      |
 
 ---
 
@@ -241,17 +241,17 @@ Android onboarding uses a `ViewPager2` (horizontal paging) styled with Material 
 
 ### Implementation Details
 
-| Component | Material 3 Element |
-|-----------|-------------------|
-| Container | `ViewPager2` with `FragmentStateAdapter` (or Compose `HorizontalPager`) |
-| Page indicators | `TabLayout` with dot indicators, or Compose `HorizontalPagerIndicator` |
-| Primary action | `FilledButton` ("Next" / "Get Started" / "Done") |
-| Skip action | `TextButton` ("Skip") — always visible, top-right or bottom |
-| Currency picker | `ExposedDropdownMenu` with search/filter |
-| Account name input | `OutlinedTextField` with character counter |
-| Balance input | Custom numeric keypad or `OutlinedTextField` with `inputType=numberDecimal` |
-| Goal selection | `FilterChip` group (multi-select) |
-| Illustrations | Vector drawables, respect `reducedMotion` accessibility setting |
+| Component          | Material 3 Element                                                          |
+| ------------------ | --------------------------------------------------------------------------- |
+| Container          | `ViewPager2` with `FragmentStateAdapter` (or Compose `HorizontalPager`)     |
+| Page indicators    | `TabLayout` with dot indicators, or Compose `HorizontalPagerIndicator`      |
+| Primary action     | `FilledButton` ("Next" / "Get Started" / "Done")                            |
+| Skip action        | `TextButton` ("Skip") — always visible, top-right or bottom                 |
+| Currency picker    | `ExposedDropdownMenu` with search/filter                                    |
+| Account name input | `OutlinedTextField` with character counter                                  |
+| Balance input      | Custom numeric keypad or `OutlinedTextField` with `inputType=numberDecimal` |
+| Goal selection     | `FilterChip` group (multi-select)                                           |
+| Illustrations      | Vector drawables, respect `reducedMotion` accessibility setting             |
 
 ### Compose Implementation (Preferred)
 
@@ -270,7 +270,7 @@ fun OnboardingScreen(
         initialPage = state.currentStep.index,
         pageCount = { OnboardingStep.entries.size }
     )
-    
+
     Column(modifier = Modifier.fillMaxSize()) {
         // Skip button — top right
         Row(
@@ -281,7 +281,7 @@ fun OnboardingScreen(
                 Text("Skip")
             }
         }
-        
+
         // Pager content
         HorizontalPager(
             state = pagerState,
@@ -295,7 +295,7 @@ fun OnboardingScreen(
                 OnboardingStep.READY -> ReadyPage()
             }
         }
-        
+
         // Page indicators
         HorizontalPagerIndicator(
             pagerState = pagerState,
@@ -303,7 +303,7 @@ fun OnboardingScreen(
             activeColor = MaterialTheme.colorScheme.primary,
             inactiveColor = MaterialTheme.colorScheme.outlineVariant
         )
-        
+
         // Primary action button
         FilledButton(
             onClick = onAdvance,
@@ -363,7 +363,7 @@ iOS onboarding uses SwiftUI's `TabView` with `.tabViewStyle(.page)` for native p
 struct OnboardingView: View {
     @StateObject private var viewModel: OnboardingViewModel
     @State private var currentPage: Int = 0
-    
+
     var body: some View {
         VStack {
             // Skip button
@@ -376,7 +376,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
                 .padding()
             }
-            
+
             // Paged content
             TabView(selection: $currentPage) {
                 WelcomePageView()
@@ -392,7 +392,7 @@ struct OnboardingView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
             .indexViewStyle(.page(backgroundDisplayMode: .always))
-            
+
             // Primary action
             Button(action: {
                 withAnimation {
@@ -430,24 +430,24 @@ struct OnboardingView: View {
 @MainActor
 final class OnboardingViewModel: ObservableObject {
     @Published var state: OnboardingState
-    
+
     private let manager: OnboardingManager  // KMP shared instance
-    
+
     init(manager: OnboardingManager) {
         self.manager = manager
         self.state = manager.state
     }
-    
+
     func advanceStep() {
         manager.advanceStep()
         state = manager.state
     }
-    
+
     func skip() {
         manager.skip()
         state = manager.state
     }
-    
+
     func selectCurrency(_ code: String) {
         manager.completeStepAction(
             step: .currencySelection,
@@ -495,14 +495,14 @@ The web onboarding uses a progressive disclosure pattern — steps are revealed 
 
 ### Implementation Details
 
-| Aspect | Implementation |
-|--------|---------------|
-| State storage | `localStorage` key: `finance_onboarding_state` (JSON) |
-| Step rendering | React component per step, conditional rendering based on state |
-| Navigation | Back/Next buttons + keyboard shortcuts (← → arrows, Enter, Esc) |
-| Progress indicator | Step dots or progress bar at top |
-| Animation | CSS transitions (`opacity`, `transform`) — respects `prefers-reduced-motion` |
-| Responsive | Mobile: full-screen steps; Desktop: centered card (max-width 560px) |
+| Aspect             | Implementation                                                               |
+| ------------------ | ---------------------------------------------------------------------------- |
+| State storage      | `localStorage` key: `finance_onboarding_state` (JSON)                        |
+| Step rendering     | React component per step, conditional rendering based on state               |
+| Navigation         | Back/Next buttons + keyboard shortcuts (← → arrows, Enter, Esc)              |
+| Progress indicator | Step dots or progress bar at top                                             |
+| Animation          | CSS transitions (`opacity`, `transform`) — respects `prefers-reduced-motion` |
+| Responsive         | Mobile: full-screen steps; Desktop: centered card (max-width 560px)          |
 
 ### React Component Structure
 
@@ -548,14 +548,9 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
       <div className="onboarding__actions">
         {state.currentStep !== 'welcome' && (
-          <button onClick={() => dispatch({ type: 'BACK' })}>
-            ← Back
-          </button>
+          <button onClick={() => dispatch({ type: 'BACK' })}>← Back</button>
         )}
-        <button
-          className="onboarding__next"
-          onClick={() => dispatch({ type: 'NEXT' })}
-        >
+        <button className="onboarding__next" onClick={() => dispatch({ type: 'NEXT' })}>
           {state.currentStep === 'ready' ? "Let's Go!" : 'Next →'}
         </button>
       </div>
@@ -679,9 +674,9 @@ fun OnboardingWizard(
             onSkip = onSkip,
             modifier = Modifier.width(220.dp).fillMaxHeight()
         )
-        
+
         Divider(modifier = Modifier.fillMaxHeight().width(1.dp))
-        
+
         // Main content area
         Column(
             modifier = Modifier.weight(1f).fillMaxHeight().padding(32.dp),
@@ -697,7 +692,7 @@ fun OnboardingWizard(
                     OnboardingStep.READY -> ReadyContent()
                 }
             }
-            
+
             // Navigation buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -735,7 +730,7 @@ private fun OnboardingSidebar(
         Column {
             Text("Steps", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             OnboardingStep.entries.forEach { step ->
                 StepItem(
                     label = step.displayName(),
@@ -747,7 +742,7 @@ private fun OnboardingSidebar(
                 )
             }
         }
-        
+
         TextButton(onClick = onSkip) {
             Text("Skip Setup")
         }
@@ -784,13 +779,13 @@ flowchart LR
 
 **Defaults applied on skip:**
 
-| Skipped Step | Default Applied |
-|-------------|-----------------|
-| Welcome | (No default needed) |
-| Currency Selection | Device locale currency (e.g., `USD` for `en-US`) |
-| First Account | No account created — "Add your first account" card shown on Dashboard |
-| First Budget | No budget created — "Set up your budget" card shown on Budget tab |
-| Ready | (No default needed) |
+| Skipped Step       | Default Applied                                                       |
+| ------------------ | --------------------------------------------------------------------- |
+| Welcome            | (No default needed)                                                   |
+| Currency Selection | Device locale currency (e.g., `USD` for `en-US`)                      |
+| First Account      | No account created — "Add your first account" card shown on Dashboard |
+| First Budget       | No budget created — "Set up your budget" card shown on Budget tab     |
+| Ready              | (No default needed)                                                   |
 
 ### Resume Behavior
 
@@ -807,12 +802,12 @@ flowchart TD
 
 **State persistence by platform:**
 
-| Platform | Storage Mechanism | Key |
-|----------|------------------|-----|
-| Android | Multiplatform Settings (SharedPreferences backend) | `onboarding_state` |
-| iOS | Multiplatform Settings (UserDefaults backend) | `onboarding_state` |
-| Web | `localStorage` | `finance_onboarding_state` |
-| Windows | Multiplatform Settings (Properties file or Registry backend) | `onboarding_state` |
+| Platform | Storage Mechanism                                            | Key                        |
+| -------- | ------------------------------------------------------------ | -------------------------- |
+| Android  | Multiplatform Settings (SharedPreferences backend)           | `onboarding_state`         |
+| iOS      | Multiplatform Settings (UserDefaults backend)                | `onboarding_state`         |
+| Web      | `localStorage`                                               | `finance_onboarding_state` |
+| Windows  | Multiplatform Settings (Properties file or Registry backend) | `onboarding_state`         |
 
 ### Re-Onboarding
 
@@ -832,31 +827,31 @@ All analytics events follow the project's privacy-respecting analytics approach:
 
 Every onboarding analytics event includes these base fields:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `event_name` | string | Event identifier (see table below) |
-| `timestamp` | ISO 8601 | When the event occurred |
-| `platform` | enum | `android`, `ios`, `web`, `windows` |
-| `onboarding_step` | enum | Current step when event fired |
-| `session_id` | UUID | Anonymous session identifier (not tied to user identity) |
+| Field             | Type     | Description                                              |
+| ----------------- | -------- | -------------------------------------------------------- |
+| `event_name`      | string   | Event identifier (see table below)                       |
+| `timestamp`       | ISO 8601 | When the event occurred                                  |
+| `platform`        | enum     | `android`, `ios`, `web`, `windows`                       |
+| `onboarding_step` | enum     | Current step when event fired                            |
+| `session_id`      | UUID     | Anonymous session identifier (not tied to user identity) |
 
 **No PII is collected:** No user ID, no email, no financial data, no device identifiers.
 
 ### Event Catalog
 
-| Event Name | Fired When | Properties |
-|------------|-----------|------------|
-| `onboarding_started` | Onboarding flow begins (first app launch) | `platform` |
-| `onboarding_step_viewed` | A step screen is displayed | `step`, `step_index` |
-| `onboarding_step_completed` | A step's action is completed (e.g., currency selected) | `step`, `step_index`, `duration_ms` |
-| `onboarding_step_skipped` | User explicitly skips a step | `step`, `step_index` |
-| `onboarding_back_pressed` | User navigates back to a previous step | `from_step`, `to_step` |
-| `onboarding_skipped` | User skips entire onboarding ("Skip" button) | `skipped_at_step`, `steps_completed` |
-| `onboarding_completed` | User completes the full onboarding flow | `total_duration_ms`, `steps_skipped_count` |
-| `onboarding_currency_selected` | Currency chosen in Step 2 | `currency_code`, `is_default` (whether locale matched) |
-| `onboarding_account_created` | First account created in Step 3 | `account_type` |
-| `onboarding_goals_selected` | Financial goals chosen in Step 4 | `goals` (array of goal enums), `goal_count` |
-| `onboarding_resumed` | Onboarding resumed after app close/reopen | `resumed_at_step` |
+| Event Name                     | Fired When                                             | Properties                                             |
+| ------------------------------ | ------------------------------------------------------ | ------------------------------------------------------ |
+| `onboarding_started`           | Onboarding flow begins (first app launch)              | `platform`                                             |
+| `onboarding_step_viewed`       | A step screen is displayed                             | `step`, `step_index`                                   |
+| `onboarding_step_completed`    | A step's action is completed (e.g., currency selected) | `step`, `step_index`, `duration_ms`                    |
+| `onboarding_step_skipped`      | User explicitly skips a step                           | `step`, `step_index`                                   |
+| `onboarding_back_pressed`      | User navigates back to a previous step                 | `from_step`, `to_step`                                 |
+| `onboarding_skipped`           | User skips entire onboarding ("Skip" button)           | `skipped_at_step`, `steps_completed`                   |
+| `onboarding_completed`         | User completes the full onboarding flow                | `total_duration_ms`, `steps_skipped_count`             |
+| `onboarding_currency_selected` | Currency chosen in Step 2                              | `currency_code`, `is_default` (whether locale matched) |
+| `onboarding_account_created`   | First account created in Step 3                        | `account_type`                                         |
+| `onboarding_goals_selected`    | Financial goals chosen in Step 4                       | `goals` (array of goal enums), `goal_count`            |
+| `onboarding_resumed`           | Onboarding resumed after app close/reopen              | `resumed_at_step`                                      |
 
 ### Funnel Visualization
 
@@ -873,14 +868,14 @@ Step 5: Ready (Complete)   █████████████████  
 
 **Key metrics to monitor:**
 
-| Metric | Target | Action if Below |
-|--------|--------|-----------------|
-| Completion rate (end-to-end) | ≥ 70% | Simplify steps, reduce friction |
-| Drop-off at Step 3 (Account) | ≤ 15% | Make balance field optional, improve UX |
-| Drop-off at Step 4 (Budget) | ≤ 15% | Simplify budget intro, defer to later |
-| Skip rate | ≤ 30% | Acceptable — skipping is by design |
-| Average duration | ≤ 60s | If too long, reduce step content |
-| Resume rate | Monitor | High resume rate indicates users close app mid-flow — investigate why |
+| Metric                       | Target  | Action if Below                                                       |
+| ---------------------------- | ------- | --------------------------------------------------------------------- |
+| Completion rate (end-to-end) | ≥ 70%   | Simplify steps, reduce friction                                       |
+| Drop-off at Step 3 (Account) | ≤ 15%   | Make balance field optional, improve UX                               |
+| Drop-off at Step 4 (Budget)  | ≤ 15%   | Simplify budget intro, defer to later                                 |
+| Skip rate                    | ≤ 30%   | Acceptable — skipping is by design                                    |
+| Average duration             | ≤ 60s   | If too long, reduce step content                                      |
+| Resume rate                  | Monitor | High resume rate indicates users close app mid-flow — investigate why |
 
 ### Analytics Implementation
 
@@ -948,30 +943,30 @@ Every onboarding screen must meet these requirements on all platforms:
 
 ### Unit Tests (KMP — packages/core)
 
-| Test Area | Test Cases |
-|-----------|-----------|
-| `OnboardingState` | Default values, step transitions, skip logic, completion |
-| `OnboardingManager` | Advance, go back, skip, reset, resume from persisted state |
-| `defaultCurrencyForLocale()` | Known locales, unknown locales, fallback to USD |
-| `OnboardingEvent` | Correct event names, property serialization |
+| Test Area                    | Test Cases                                                 |
+| ---------------------------- | ---------------------------------------------------------- |
+| `OnboardingState`            | Default values, step transitions, skip logic, completion   |
+| `OnboardingManager`          | Advance, go back, skip, reset, resume from persisted state |
+| `defaultCurrencyForLocale()` | Known locales, unknown locales, fallback to USD            |
+| `OnboardingEvent`            | Correct event names, property serialization                |
 
 ### UI Tests (Per Platform)
 
-| Platform | Tool | Scenarios |
-|----------|------|-----------|
-| Android | Compose UI Test / Espresso | Full flow, skip at each step, resume after process death, landscape rotation |
-| iOS | XCUITest | Full flow, skip, VoiceOver navigation, Dynamic Type extremes, iPad layout |
-| Web | Playwright / Cypress | Full flow, keyboard-only completion, localStorage persistence, `prefers-reduced-motion`, responsive breakpoints |
-| Windows | Compose Desktop Test | Full flow, keyboard shortcuts, Narrator, High Contrast mode, DPI scaling |
+| Platform | Tool                       | Scenarios                                                                                                       |
+| -------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Android  | Compose UI Test / Espresso | Full flow, skip at each step, resume after process death, landscape rotation                                    |
+| iOS      | XCUITest                   | Full flow, skip, VoiceOver navigation, Dynamic Type extremes, iPad layout                                       |
+| Web      | Playwright / Cypress       | Full flow, keyboard-only completion, localStorage persistence, `prefers-reduced-motion`, responsive breakpoints |
+| Windows  | Compose Desktop Test       | Full flow, keyboard shortcuts, Narrator, High Contrast mode, DPI scaling                                        |
 
 ### Accessibility Tests
 
-| Platform | Tool | What It Checks |
-|----------|------|---------------|
-| Android | Accessibility Scanner, Espresso `AccessibilityChecks` | Touch targets, labels, contrast |
-| iOS | Xcode Accessibility Inspector, XCUITest | VoiceOver, Dynamic Type, contrast |
-| Web | axe-core, Lighthouse Accessibility | ARIA, labels, contrast, focus management |
-| Windows | Accessibility Insights for Windows | UI Automation tree, Narrator, contrast |
+| Platform | Tool                                                  | What It Checks                           |
+| -------- | ----------------------------------------------------- | ---------------------------------------- |
+| Android  | Accessibility Scanner, Espresso `AccessibilityChecks` | Touch targets, labels, contrast          |
+| iOS      | Xcode Accessibility Inspector, XCUITest               | VoiceOver, Dynamic Type, contrast        |
+| Web      | axe-core, Lighthouse Accessibility                    | ARIA, labels, contrast, focus management |
+| Windows  | Accessibility Insights for Windows                    | UI Automation tree, Narrator, contrast   |
 
 ### Screenshot Tests
 

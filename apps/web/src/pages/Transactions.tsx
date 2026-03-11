@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { FC } from "react";
+import type { FC } from 'react';
 
 /** Transactions page - view, search, and filter transactions. */
 const Transactions: FC = () => (

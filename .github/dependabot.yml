@@ -6,135 +6,135 @@ updates:
   # ──────────────────────────────────────────────
   # npm ecosystem — root and all workspaces
   # ──────────────────────────────────────────────
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     labels:
-      - "dependencies"
-      - "dependabot"
+      - 'dependencies'
+      - 'dependabot'
     groups:
       npm-production:
-        dependency-type: "production"
+        dependency-type: 'production'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       npm-dev:
-        dependency-type: "development"
+        dependency-type: 'development'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       npm-major:
         update-types:
-          - "major"
+          - 'major'
     commit-message:
-      prefix: "chore(deps)"
+      prefix: 'chore(deps)'
     open-pull-requests-limit: 15
 
   # ──────────────────────────────────────────────
   # GitHub Actions — keep workflow actions up to date
   # ──────────────────────────────────────────────
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     labels:
-      - "dependencies"
-      - "dependabot"
-      - "ci"
+      - 'dependencies'
+      - 'dependabot'
+      - 'ci'
     groups:
       github-actions:
         patterns:
-          - "*"
+          - '*'
     commit-message:
-      prefix: "ci(deps)"
+      prefix: 'ci(deps)'
     open-pull-requests-limit: 5
 
   # ──────────────────────────────────────────────
   # Gradle — KMP / Android packages
   # ──────────────────────────────────────────────
-  - package-ecosystem: "gradle"
-    directory: "/apps/android"
+  - package-ecosystem: 'gradle'
+    directory: '/apps/android'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     labels:
-      - "dependencies"
-      - "dependabot"
-      - "android"
+      - 'dependencies'
+      - 'dependabot'
+      - 'android'
     groups:
       gradle-minor-patch:
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       gradle-major:
         update-types:
-          - "major"
+          - 'major'
     commit-message:
-      prefix: "chore(deps)"
+      prefix: 'chore(deps)'
     open-pull-requests-limit: 10
 
-  - package-ecosystem: "gradle"
-    directory: "/packages/core"
+  - package-ecosystem: 'gradle'
+    directory: '/packages/core'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     labels:
-      - "dependencies"
-      - "dependabot"
-      - "kmp"
+      - 'dependencies'
+      - 'dependabot'
+      - 'kmp'
     groups:
       kmp-core-minor-patch:
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       kmp-core-major:
         update-types:
-          - "major"
+          - 'major'
     commit-message:
-      prefix: "chore(deps)"
+      prefix: 'chore(deps)'
     open-pull-requests-limit: 10
 
-  - package-ecosystem: "gradle"
-    directory: "/packages/models"
+  - package-ecosystem: 'gradle'
+    directory: '/packages/models'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     labels:
-      - "dependencies"
-      - "dependabot"
-      - "kmp"
+      - 'dependencies'
+      - 'dependabot'
+      - 'kmp'
     groups:
       kmp-models-minor-patch:
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       kmp-models-major:
         update-types:
-          - "major"
+          - 'major'
     commit-message:
-      prefix: "chore(deps)"
+      prefix: 'chore(deps)'
     open-pull-requests-limit: 10
 
-  - package-ecosystem: "gradle"
-    directory: "/packages/sync"
+  - package-ecosystem: 'gradle'
+    directory: '/packages/sync'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     labels:
-      - "dependencies"
-      - "dependabot"
-      - "kmp"
+      - 'dependencies'
+      - 'dependabot'
+      - 'kmp'
     groups:
       kmp-sync-minor-patch:
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
       kmp-sync-major:
         update-types:
-          - "major"
+          - 'major'
     commit-message:
-      prefix: "chore(deps)"
+      prefix: 'chore(deps)'
     open-pull-requests-limit: 10

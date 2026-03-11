@@ -4,7 +4,7 @@
 
 > "Financial clarity without cognitive burden."
 
-The app should make tracking finances feel empowering, not overwhelming. Every interaction should leave the user feeling more in control, never more anxious. Finance is a tool for *understanding*, not surveillance — it illuminates your financial life without casting judgment.
+The app should make tracking finances feel empowering, not overwhelming. Every interaction should leave the user feeling more in control, never more anxious. Finance is a tool for _understanding_, not surveillance — it illuminates your financial life without casting judgment.
 
 ---
 
@@ -39,8 +39,8 @@ The most frequent action (recording a transaction) must be completable in 3 taps
 Present facts, not judgments — let users draw their own conclusions.
 
 - Inspired by **Tiimo**: supportive, never punishing
-- No "you overspent" with red warnings — instead: *"You've used 110% of your Food budget. Want to adjust?"*
-- Celebrate positive behavior: *"3-week streak of staying on budget!"*
+- No "you overspent" with red warnings — instead: _"You've used 110% of your Food budget. Want to adjust?"_
+- Celebrate positive behavior: _"3-week streak of staying on budget!"_
 - Use encouraging language: "making progress," "getting clearer," "taking control"
 - Never use shame-based language about spending habits
 - Neutral visual indicators for over-budget states (no alarm colors without opt-in)
@@ -123,9 +123,9 @@ Platform-native components consume design tokens (DTCG spec) — the token syste
 Make the journey visible and motivating — not just the destination.
 
 - Inspired by **Strava**: activity feed, milestones, progress visualization
-- Show trends, not just snapshots — *"Your dining spending is down 15% this month"*
-- Celebrate milestones: *"Emergency fund fully funded! 🎉"*
-- Weekly insights: *"Your highest spending day was Tuesday"*
+- Show trends, not just snapshots — _"Your dining spending is down 15% this month"_
+- Celebrate milestones: _"Emergency fund fully funded! 🎉"_
+- Weekly insights: _"Your highest spending day was Tuesday"_
 - Goal visualization: progress bars, projections, countdowns
 - Net worth trend as a motivational long-term metric
 - Inspired by **YNAB**: envelope budgeting, "give every dollar a job," age of money — without the steep learning curve
@@ -150,17 +150,17 @@ Transparent, minimal, user-controlled data handling.
 
 ## Design Language Summary
 
-| Attribute | Approach |
-|-----------|----------|
-| Tone | Encouraging, clear, non-judgmental |
-| Density | Low — generous whitespace, focused content |
-| Color | Functional (not decorative), CVD-safe, theme-aware |
-| Typography | Platform-native, scalable, readable |
-| Motion | Minimal — meaningful transitions only, reduced motion respected |
-| Icons | Platform-native icon sets (SF Symbols, Material Icons, Fluent Icons) |
-| Charts | Simple, accessible, color-blind safe, labeled |
-| Numbers | Large, bold, locale-aware formatting, integer display preferred |
-| Tokens | DTCG spec, three-tier (primitive → semantic → component), Style Dictionary pipeline |
+| Attribute  | Approach                                                                            |
+| ---------- | ----------------------------------------------------------------------------------- |
+| Tone       | Encouraging, clear, non-judgmental                                                  |
+| Density    | Low — generous whitespace, focused content                                          |
+| Color      | Functional (not decorative), CVD-safe, theme-aware                                  |
+| Typography | Platform-native, scalable, readable                                                 |
+| Motion     | Minimal — meaningful transitions only, reduced motion respected                     |
+| Icons      | Platform-native icon sets (SF Symbols, Material Icons, Fluent Icons)                |
+| Charts     | Simple, accessible, color-blind safe, labeled                                       |
+| Numbers    | Large, bold, locale-aware formatting, integer display preferred                     |
+| Tokens     | DTCG spec, three-tier (primitive → semantic → component), Style Dictionary pipeline |
 
 ---
 
@@ -183,11 +183,11 @@ Transparent, minimal, user-controlled data handling.
 
 ## Inspiration Mapping
 
-| Inspiration | What We Take | What We Skip |
-|-------------|-------------|--------------|
-| **Bevel** | Bold metric cards, focused daily view, streak tracking | Social comparison features |
-| **YNAB** | Envelope budgeting, "give every dollar a job," age of money | Steep learning curve, overwhelming onboarding |
-| **TickTick** | Quick capture, natural language input, habit tracking | Task management complexity |
-| **Strava** | Activity feed, milestones, progress visualization | Social pressure, public-by-default |
-| **Tiimo** | Visual schedules, cognitive support, non-judgmental tone | Schedule-centric focus (we're finance-centric) |
-| **Signal** | Offline-first, encryption at rest, transparent data practices | Messaging paradigm |
+| Inspiration  | What We Take                                                  | What We Skip                                   |
+| ------------ | ------------------------------------------------------------- | ---------------------------------------------- |
+| **Bevel**    | Bold metric cards, focused daily view, streak tracking        | Social comparison features                     |
+| **YNAB**     | Envelope budgeting, "give every dollar a job," age of money   | Steep learning curve, overwhelming onboarding  |
+| **TickTick** | Quick capture, natural language input, habit tracking         | Task management complexity                     |
+| **Strava**   | Activity feed, milestones, progress visualization             | Social pressure, public-by-default             |
+| **Tiimo**    | Visual schedules, cognitive support, non-judgmental tone      | Schedule-centric focus (we're finance-centric) |
+| **Signal**   | Offline-first, encryption at rest, transparent data practices | Messaging paradigm                             |

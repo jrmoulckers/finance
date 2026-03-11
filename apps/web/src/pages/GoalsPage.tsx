@@ -2,6 +2,158 @@
 
 import React from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
-interface Goal { id:string; name:string; target:number; current:number; date:string; icon:string; }
-export const GoalsPage: React.FC = () => { const goals:Goal[]=[{id:'g1',name:'Emergency Fund',target:20000,current:15000,date:'2025-12-31',icon:'🛡️'},{id:'g2',name:'Vacation',target:5000,current:2400,date:'2025-09-01',icon:'✈️'},{id:'g3',name:'New Laptop',target:2000,current:850,date:'2025-06-15',icon:'💻'},{id:'g4',name:'Down Payment',target:60000,current:12000,date:'2027-01-01',icon:'🏡'}]; const tt=goals.reduce((s,g)=>s+g.target,0),tc=goals.reduce((s,g)=>s+g.current,0); return(<><h2 style={{fontSize:'var(--type-scale-headline-font-size)',fontWeight:'var(--type-scale-headline-font-weight)',marginBottom:'var(--spacing-6)'}}>Goals</h2><section className="page-section" aria-label="Goals summary"><div className="card" style={{marginBottom:'var(--spacing-6)'}}><div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:'var(--spacing-4)'}}><div><p className="card__title">Goals</p><p className="card__value">{goals.length}</p></div><div><p className="card__title">Saved</p><p className="card__value"><CurrencyDisplay amount={tc}/></p></div><div><p className="card__title">Target</p><p className="card__value"><CurrencyDisplay amount={tt}/></p></div></div></div></section>{goals.length===0?<EmptyState title="No goals yet" description="Set a savings goal."/>:<section aria-label="Goal list"><div className="card-grid">{goals.map(g=>{const p=Math.round((g.current/g.target)*100),rem=g.target-g.current,st=p>=50?'positive':p>=25?'warning':'negative',td=new Date(g.date+'T00:00:00'),dl=Math.max(0,Math.ceil((td.getTime()-Date.now())/86400000));return(<article key={g.id} className="card" aria-label={`${g.name}: ${p}%`}><div style={{display:'flex',justifyContent:'space-between',marginBottom:'var(--spacing-3)'}}><h3 style={{fontWeight:'var(--font-weight-semibold)'}}><span aria-hidden="true">{g.icon}</span> {g.name}</h3><span style={{fontSize:'var(--type-scale-caption-font-size)',color:'var(--semantic-text-secondary)'}}>{td.toLocaleDateString('en-US',{month:'short',year:'numeric'})}</span></div><div style={{display:'flex',justifyContent:'space-between',marginBottom:'var(--spacing-2)'}}><CurrencyDisplay amount={g.current}/><CurrencyDisplay amount={g.target}/></div><div className="progress-bar" role="progressbar" aria-valuenow={Math.min(p,100)} aria-valuemin={0} aria-valuemax={100}><div className={`progress-bar__fill progress-bar__fill--${st}`} style={{width:`${Math.min(p,100)}%`}}/></div><div style={{display:'flex',justifyContent:'space-between',marginTop:'var(--spacing-2)',fontSize:'var(--type-scale-caption-font-size)',color:'var(--semantic-text-secondary)'}}><span>{p>=100?'Goal reached!':<><CurrencyDisplay amount={rem}/> to go</>}</span><span>{dl>0?dl+' days left':'Past due'}</span></div></article>);})}</div></section>}</>); };
+interface Goal {
+  id: string;
+  name: string;
+  target: number;
+  current: number;
+  date: string;
+  icon: string;
+}
+export const GoalsPage: React.FC = () => {
+  const goals: Goal[] = [
+    {
+      id: 'g1',
+      name: 'Emergency Fund',
+      target: 20000,
+      current: 15000,
+      date: '2025-12-31',
+      icon: '🛡️',
+    },
+    { id: 'g2', name: 'Vacation', target: 5000, current: 2400, date: '2025-09-01', icon: '✈️' },
+    { id: 'g3', name: 'New Laptop', target: 2000, current: 850, date: '2025-06-15', icon: '💻' },
+    {
+      id: 'g4',
+      name: 'Down Payment',
+      target: 60000,
+      current: 12000,
+      date: '2027-01-01',
+      icon: '🏡',
+    },
+  ];
+  const tt = goals.reduce((s, g) => s + g.target, 0),
+    tc = goals.reduce((s, g) => s + g.current, 0);
+  return (
+    <>
+      <h2
+        style={{
+          fontSize: 'var(--type-scale-headline-font-size)',
+          fontWeight: 'var(--type-scale-headline-font-weight)',
+          marginBottom: 'var(--spacing-6)',
+        }}
+      >
+        Goals
+      </h2>
+      <section className="page-section" aria-label="Goals summary">
+        <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 'var(--spacing-4)',
+            }}
+          >
+            <div>
+              <p className="card__title">Goals</p>
+              <p className="card__value">{goals.length}</p>
+            </div>
+            <div>
+              <p className="card__title">Saved</p>
+              <p className="card__value">
+                <CurrencyDisplay amount={tc} />
+              </p>
+            </div>
+            <div>
+              <p className="card__title">Target</p>
+              <p className="card__value">
+                <CurrencyDisplay amount={tt} />
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      {goals.length === 0 ? (
+        <EmptyState title="No goals yet" description="Set a savings goal." />
+      ) : (
+        <section aria-label="Goal list">
+          <div className="card-grid">
+            {goals.map((g) => {
+              const p = Math.round((g.current / g.target) * 100),
+                rem = g.target - g.current,
+                st = p >= 50 ? 'positive' : p >= 25 ? 'warning' : 'negative',
+                td = new Date(g.date + 'T00:00:00'),
+                dl = Math.max(0, Math.ceil((td.getTime() - Date.now()) / 86400000));
+              return (
+                <article key={g.id} className="card" aria-label={`${g.name}: ${p}%`}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: 'var(--spacing-3)',
+                    }}
+                  >
+                    <h3 style={{ fontWeight: 'var(--font-weight-semibold)' }}>
+                      <span aria-hidden="true">{g.icon}</span> {g.name}
+                    </h3>
+                    <span
+                      style={{
+                        fontSize: 'var(--type-scale-caption-font-size)',
+                        color: 'var(--semantic-text-secondary)',
+                      }}
+                    >
+                      {td.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: 'var(--spacing-2)',
+                    }}
+                  >
+                    <CurrencyDisplay amount={g.current} />
+                    <CurrencyDisplay amount={g.target} />
+                  </div>
+                  <div
+                    className="progress-bar"
+                    role="progressbar"
+                    aria-valuenow={Math.min(p, 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <div
+                      className={`progress-bar__fill progress-bar__fill--${st}`}
+                      style={{ width: `${Math.min(p, 100)}%` }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginTop: 'var(--spacing-2)',
+                      fontSize: 'var(--type-scale-caption-font-size)',
+                      color: 'var(--semantic-text-secondary)',
+                    }}
+                  >
+                    <span>
+                      {p >= 100 ? (
+                        'Goal reached!'
+                      ) : (
+                        <>
+                          <CurrencyDisplay amount={rem} /> to go
+                        </>
+                      )}
+                    </span>
+                    <span>{dl > 0 ? dl + ' days left' : 'Past due'}</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </>
+  );
+};
 export default GoalsPage;

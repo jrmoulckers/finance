@@ -1,6 +1,71 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
-export interface ErrorBannerProps { message: string; onRetry?: () => void; onDismiss?: () => void; className?: string; }
-export const ErrorBanner: React.FC<ErrorBannerProps> = ({ message, onRetry, onDismiss, className = '' }) => (<div className={`error-banner ${className}`.trim()} role="alert" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)', padding: 'var(--spacing-3) var(--spacing-4)', background: 'var(--color-red-50)', border: '1px solid var(--semantic-status-negative)', borderRadius: 'var(--border-radius-md)', marginBottom: 'var(--spacing-4)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, stroke: 'var(--semantic-status-negative)', strokeWidth: 2 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg><p style={{ flex: 1, color: 'var(--semantic-status-negative)', margin: 0 }}>{message}</p>{onRetry && <button type="button" onClick={onRetry} style={{ padding: 'var(--spacing-1) var(--spacing-3)', border: '1px solid var(--semantic-status-negative)', borderRadius: 'var(--border-radius-md)', background: 'none', color: 'var(--semantic-status-negative)', cursor: 'pointer' }}>Retry</button>}{onDismiss && <button type="button" onClick={onDismiss} aria-label="Dismiss error" style={{ border: 'none', background: 'none', cursor: 'pointer' }}>&times;</button>}</div>);
+export interface ErrorBannerProps {
+  message: string;
+  onRetry?: () => void;
+  onDismiss?: () => void;
+  className?: string;
+}
+export const ErrorBanner: React.FC<ErrorBannerProps> = ({
+  message,
+  onRetry,
+  onDismiss,
+  className = '',
+}) => (
+  <div
+    className={`error-banner ${className}`.trim()}
+    role="alert"
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 'var(--spacing-3)',
+      padding: 'var(--spacing-3) var(--spacing-4)',
+      background: 'var(--color-red-50)',
+      border: '1px solid var(--semantic-status-negative)',
+      borderRadius: 'var(--border-radius-md)',
+      marginBottom: 'var(--spacing-4)',
+    }}
+  >
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      style={{ flexShrink: 0, stroke: 'var(--semantic-status-negative)', strokeWidth: 2 }}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+    <p style={{ flex: 1, color: 'var(--semantic-status-negative)', margin: 0 }}>{message}</p>
+    {onRetry && (
+      <button
+        type="button"
+        onClick={onRetry}
+        style={{
+          padding: 'var(--spacing-1) var(--spacing-3)',
+          border: '1px solid var(--semantic-status-negative)',
+          borderRadius: 'var(--border-radius-md)',
+          background: 'none',
+          color: 'var(--semantic-status-negative)',
+          cursor: 'pointer',
+        }}
+      >
+        Retry
+      </button>
+    )}
+    {onDismiss && (
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss error"
+        style={{ border: 'none', background: 'none', cursor: 'pointer' }}
+      >
+        &times;
+      </button>
+    )}
+  </div>
+);
 export default ErrorBanner;

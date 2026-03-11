@@ -13,21 +13,21 @@ This guide explains how to use the 13 custom Copilot agents in the Finance monor
 
 ## Quick Reference
 
-| Agent | Role | Best For |
-|-------|------|----------|
-| `@architect` | System design | Cross-platform decisions, API contracts, ADRs |
-| `@docs-writer` | Documentation | Guides, READMEs, API docs, ADRs |
-| `@security-reviewer` | Security review | Auth, encryption, data handling, compliance |
-| `@accessibility-reviewer` | A11y review | WCAG compliance, screen readers, motion |
-| `@finance-domain` | Domain logic | Money math, budgets, transactions, currencies |
-| `@kmp-engineer` | Shared code | KMP modules, SQLDelight, Gradle, expect/actual |
-| `@backend-engineer` | Backend | Supabase, PostgreSQL, RLS, PowerSync, Edge Functions |
-| `@ios-engineer` | iOS app | SwiftUI, KMP integration, Keychain, VoiceOver |
-| `@android-engineer` | Android app | Jetpack Compose, Material 3, BiometricPrompt |
-| `@web-engineer` | Web PWA | Service workers, SQLite-WASM, ARIA, Web Crypto |
-| `@windows-engineer` | Windows app | Compose Desktop, Windows Hello, DPAPI, Narrator |
-| `@devops-engineer` | CI/CD | GitHub Actions, Turborepo, Fastlane, Changesets |
-| `@design-engineer` | Design system | Design tokens, Style Dictionary, color, typography |
+| Agent                     | Role            | Best For                                             |
+| ------------------------- | --------------- | ---------------------------------------------------- |
+| `@architect`              | System design   | Cross-platform decisions, API contracts, ADRs        |
+| `@docs-writer`            | Documentation   | Guides, READMEs, API docs, ADRs                      |
+| `@security-reviewer`      | Security review | Auth, encryption, data handling, compliance          |
+| `@accessibility-reviewer` | A11y review     | WCAG compliance, screen readers, motion              |
+| `@finance-domain`         | Domain logic    | Money math, budgets, transactions, currencies        |
+| `@kmp-engineer`           | Shared code     | KMP modules, SQLDelight, Gradle, expect/actual       |
+| `@backend-engineer`       | Backend         | Supabase, PostgreSQL, RLS, PowerSync, Edge Functions |
+| `@ios-engineer`           | iOS app         | SwiftUI, KMP integration, Keychain, VoiceOver        |
+| `@android-engineer`       | Android app     | Jetpack Compose, Material 3, BiometricPrompt         |
+| `@web-engineer`           | Web PWA         | Service workers, SQLite-WASM, ARIA, Web Crypto       |
+| `@windows-engineer`       | Windows app     | Compose Desktop, Windows Hello, DPAPI, Narrator      |
+| `@devops-engineer`        | CI/CD           | GitHub Actions, Turborepo, Fastlane, Changesets      |
+| `@design-engineer`        | Design system   | Design tokens, Style Dictionary, color, typography   |
 
 ## Agent Profiles and Example Prompts
 
@@ -177,16 +177,16 @@ Step 5: @docs-writer Document the new feature in the architecture docs and updat
 
 ### Other Useful Chains
 
-| Chain | Use Case |
-|-------|----------|
-| `@finance-domain` → `@kmp-engineer` | Design domain logic, then implement in shared code |
-| `@architect` → `@devops-engineer` | Design a system change, then update CI/CD to support it |
-| `@design-engineer` → `@web-engineer` + `@android-engineer` + `@ios-engineer` | Define tokens, then implement on each platform |
-| `@kmp-engineer` → `@security-reviewer` → `@accessibility-reviewer` | Build, security-check, then accessibility-check |
+| Chain                                                                        | Use Case                                                |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `@finance-domain` → `@kmp-engineer`                                          | Design domain logic, then implement in shared code      |
+| `@architect` → `@devops-engineer`                                            | Design a system change, then update CI/CD to support it |
+| `@design-engineer` → `@web-engineer` + `@android-engineer` + `@ios-engineer` | Define tokens, then implement on each platform          |
+| `@kmp-engineer` → `@security-reviewer` → `@accessibility-reviewer`           | Build, security-check, then accessibility-check         |
 
 ### Tips for Effective Chaining
 
-- **Share context explicitly.** Paste the previous agent's output or reference the files it created: *"@kmp-engineer Implement the API contract from docs/architecture/adr-012-budget-sharing.md"*
+- **Share context explicitly.** Paste the previous agent's output or reference the files it created: _"@kmp-engineer Implement the API contract from docs/architecture/adr-012-budget-sharing.md"_
 - **Keep scope narrow.** Each agent works best with a focused task — don't ask one agent to "do everything."
 - **Review between steps.** Verify each agent's output before feeding it to the next. Errors compound when passed down the chain.
 
@@ -202,6 +202,7 @@ Fleet mode uses Copilot CLI's `/fleet` command to run multiple agents in paralle
 ```
 
 The fleet orchestrator automatically:
+
 1. Decomposes the task into subtasks
 2. Dispatches subtasks to the appropriate agents concurrently (e.g., `@kmp-engineer` for code, `@docs-writer` for docs, `@security-reviewer` for review)
 3. Manages dependencies between subtasks
@@ -209,12 +210,12 @@ The fleet orchestrator automatically:
 
 ### Good Candidates for Fleet Mode
 
-| Task Pattern | Agents Dispatched |
-|-------------|-------------------|
-| New feature end-to-end | `@architect` + `@kmp-engineer` + `@android-engineer` + `@ios-engineer` + `@docs-writer` |
-| Code + tests + docs | `@kmp-engineer` + `@devops-engineer` + `@docs-writer` |
-| Cross-platform UI component | `@design-engineer` + `@android-engineer` + `@ios-engineer` + `@web-engineer` |
-| Security audit | `@security-reviewer` + `@accessibility-reviewer` (parallel reviews) |
+| Task Pattern                | Agents Dispatched                                                                       |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| New feature end-to-end      | `@architect` + `@kmp-engineer` + `@android-engineer` + `@ios-engineer` + `@docs-writer` |
+| Code + tests + docs         | `@kmp-engineer` + `@devops-engineer` + `@docs-writer`                                   |
+| Cross-platform UI component | `@design-engineer` + `@android-engineer` + `@ios-engineer` + `@web-engineer`            |
+| Security audit              | `@security-reviewer` + `@accessibility-reviewer` (parallel reviews)                     |
 
 ### Fleet Mode Best Practices
 
@@ -227,13 +228,13 @@ The fleet orchestrator automatically:
 
 MCP (Model Context Protocol) servers extend agent capabilities. Five servers are configured in `.vscode/mcp.json`:
 
-| Server | What It Gives Agents | When to Use |
-|--------|---------------------|-------------|
-| **GitHub** | Issue/PR data, code search, Actions status | Referencing issues, checking CI status |
-| **Sequential Thinking** | Step-by-step chain-of-thought reasoning | Complex debugging, architecture analysis |
-| **Memory** | Persistent context across chat sessions | Long-running tasks, maintaining decisions |
-| **Filesystem** | Sandboxed file read/write/search | Agents that need to browse or edit code |
-| **Context7** | Live library/framework documentation | Ensuring agents use current API signatures |
+| Server                  | What It Gives Agents                       | When to Use                                |
+| ----------------------- | ------------------------------------------ | ------------------------------------------ |
+| **GitHub**              | Issue/PR data, code search, Actions status | Referencing issues, checking CI status     |
+| **Sequential Thinking** | Step-by-step chain-of-thought reasoning    | Complex debugging, architecture analysis   |
+| **Memory**              | Persistent context across chat sessions    | Long-running tasks, maintaining decisions  |
+| **Filesystem**          | Sandboxed file read/write/search           | Agents that need to browse or edit code    |
+| **Context7**            | Live library/framework documentation       | Ensuring agents use current API signatures |
 
 ### Tips for MCP
 
@@ -250,8 +251,8 @@ MCP (Model Context Protocol) servers extend agent capabilities. Five servers are
 
 ### 2. Prompts that are too vague
 
-**Problem:** *"@kmp-engineer fix the bug"* — the agent doesn't know which bug, where, or what the expected behavior is.
-**Fix:** Be specific: *"@kmp-engineer The BudgetEngine.rollover() function in packages/core/src/commonMain/.../BudgetEngine.kt throws an IndexOutOfBoundsException when the category list is empty. Add an empty-list guard and a test."*
+**Problem:** _"@kmp-engineer fix the bug"_ — the agent doesn't know which bug, where, or what the expected behavior is.
+**Fix:** Be specific: _"@kmp-engineer The BudgetEngine.rollover() function in packages/core/src/commonMain/.../BudgetEngine.kt throws an IndexOutOfBoundsException when the category list is empty. Add an empty-list guard and a test."_
 
 ### 3. Skipping the review agents
 
@@ -261,7 +262,7 @@ MCP (Model Context Protocol) servers extend agent capabilities. Five servers are
 ### 4. Not providing context when chaining
 
 **Problem:** Asking the next agent in a chain to "continue" without specifying what was decided.
-**Fix:** Reference the concrete output: *"@kmp-engineer Implement the schema from the ADR that @architect just wrote in docs/architecture/adr-015.md"*
+**Fix:** Reference the concrete output: _"@kmp-engineer Implement the schema from the ADR that @architect just wrote in docs/architecture/adr-015.md"_
 
 ### 5. Trusting agent output without verification
 

@@ -1,6 +1,6 @@
 name: Spike
 description: Time-boxed research or exploration to answer a technical question or reduce risk
-labels: ["spike", "triage"]
+labels: ['spike', 'triage']
 body:
   - type: markdown
     attributes:

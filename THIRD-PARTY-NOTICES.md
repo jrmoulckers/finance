@@ -33,67 +33,67 @@ Last updated: 2026-03-08
 
 #### Kotlin & JetBrains
 
-| Dependency | Version | URL |
-|---|---|---|
-| Kotlin | 2.1.0 | https://github.com/JetBrains/kotlin |
-| Kotlin Test | 2.1.0 | https://github.com/JetBrains/kotlin |
-| kotlinx-coroutines-core | 1.9.0 | https://github.com/Kotlin/kotlinx.coroutines |
-| kotlinx-coroutines-test | 1.9.0 | https://github.com/Kotlin/kotlinx.coroutines |
-| kotlinx-serialization-json | 1.7.3 | https://github.com/Kotlin/kotlinx.serialization |
-| kotlinx-datetime | 0.6.1 | https://github.com/Kotlin/kotlinx-datetime |
-| Compose Multiplatform | 1.7.3 | https://github.com/JetBrains/compose-multiplatform |
-| Kotlin Compose Compiler Plugin | 2.1.0 | https://github.com/JetBrains/kotlin |
-| Kover | 0.9.1 | https://github.com/Kotlin/kotlinx-kover |
+| Dependency                     | Version | URL                                                |
+| ------------------------------ | ------- | -------------------------------------------------- |
+| Kotlin                         | 2.1.0   | https://github.com/JetBrains/kotlin                |
+| Kotlin Test                    | 2.1.0   | https://github.com/JetBrains/kotlin                |
+| kotlinx-coroutines-core        | 1.9.0   | https://github.com/Kotlin/kotlinx.coroutines       |
+| kotlinx-coroutines-test        | 1.9.0   | https://github.com/Kotlin/kotlinx.coroutines       |
+| kotlinx-serialization-json     | 1.7.3   | https://github.com/Kotlin/kotlinx.serialization    |
+| kotlinx-datetime               | 0.6.1   | https://github.com/Kotlin/kotlinx-datetime         |
+| Compose Multiplatform          | 1.7.3   | https://github.com/JetBrains/compose-multiplatform |
+| Kotlin Compose Compiler Plugin | 2.1.0   | https://github.com/JetBrains/kotlin                |
+| Kover                          | 0.9.1   | https://github.com/Kotlin/kotlinx-kover            |
 
 #### Android Jetpack & Google
 
-| Dependency | Version | URL |
-|---|---|---|
-| Compose BOM | 2024.12.01 | https://developer.android.com/jetpack/compose |
-| Compose Material 3 | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-material3 |
-| Compose UI | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-ui |
-| Compose UI Graphics | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-ui |
-| Compose UI Tooling | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-ui |
-| Compose UI Tooling Preview | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-ui |
-| Compose UI Test Manifest | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-ui |
-| Compose Material Icons Extended | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-material |
-| Activity Compose | 1.9.3 | https://developer.android.com/jetpack/androidx/releases/activity |
-| Navigation Compose | 2.8.5 | https://developer.android.com/jetpack/androidx/releases/navigation |
-| Core KTX | 1.15.0 | https://developer.android.com/jetpack/androidx/releases/core |
-| Lifecycle ViewModel Compose | 2.8.7 | https://developer.android.com/jetpack/androidx/releases/lifecycle |
-| Lifecycle Runtime Compose | 2.8.7 | https://developer.android.com/jetpack/androidx/releases/lifecycle |
-| WorkManager Runtime KTX | 2.10.0 | https://developer.android.com/jetpack/androidx/releases/work |
-| Biometric | 1.1.0 | https://developer.android.com/jetpack/androidx/releases/biometric |
-| Security Crypto | 1.0.0 | https://developer.android.com/jetpack/androidx/releases/security |
-| Android Gradle Plugin (AGP) | 8.7.3 | https://developer.android.com/build |
+| Dependency                      | Version          | URL                                                                       |
+| ------------------------------- | ---------------- | ------------------------------------------------------------------------- |
+| Compose BOM                     | 2024.12.01       | https://developer.android.com/jetpack/compose                             |
+| Compose Material 3              | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-material3 |
+| Compose UI                      | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-ui        |
+| Compose UI Graphics             | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-ui        |
+| Compose UI Tooling              | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-ui        |
+| Compose UI Tooling Preview      | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-ui        |
+| Compose UI Test Manifest        | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-ui        |
+| Compose Material Icons Extended | (managed by BOM) | https://developer.android.com/jetpack/androidx/releases/compose-material  |
+| Activity Compose                | 1.9.3            | https://developer.android.com/jetpack/androidx/releases/activity          |
+| Navigation Compose              | 2.8.5            | https://developer.android.com/jetpack/androidx/releases/navigation        |
+| Core KTX                        | 1.15.0           | https://developer.android.com/jetpack/androidx/releases/core              |
+| Lifecycle ViewModel Compose     | 2.8.7            | https://developer.android.com/jetpack/androidx/releases/lifecycle         |
+| Lifecycle Runtime Compose       | 2.8.7            | https://developer.android.com/jetpack/androidx/releases/lifecycle         |
+| WorkManager Runtime KTX         | 2.10.0           | https://developer.android.com/jetpack/androidx/releases/work              |
+| Biometric                       | 1.1.0            | https://developer.android.com/jetpack/androidx/releases/biometric         |
+| Security Crypto                 | 1.0.0            | https://developer.android.com/jetpack/androidx/releases/security          |
+| Android Gradle Plugin (AGP)     | 8.7.3            | https://developer.android.com/build                                       |
 
 #### Ktor (JetBrains)
 
-| Dependency | Version | URL |
-|---|---|---|
-| Ktor Client Core | 3.0.3 | https://github.com/ktorio/ktor |
-| Ktor Client Content Negotiation | 3.0.3 | https://github.com/ktorio/ktor |
-| Ktor Client Auth | 3.0.3 | https://github.com/ktorio/ktor |
-| Ktor Client OkHttp | 3.0.3 | https://github.com/ktorio/ktor |
-| Ktor Client Darwin | 3.0.3 | https://github.com/ktorio/ktor |
-| Ktor Client JS | 3.0.3 | https://github.com/ktorio/ktor |
-| Ktor Serialization kotlinx-json | 3.0.3 | https://github.com/ktorio/ktor |
+| Dependency                      | Version | URL                            |
+| ------------------------------- | ------- | ------------------------------ |
+| Ktor Client Core                | 3.0.3   | https://github.com/ktorio/ktor |
+| Ktor Client Content Negotiation | 3.0.3   | https://github.com/ktorio/ktor |
+| Ktor Client Auth                | 3.0.3   | https://github.com/ktorio/ktor |
+| Ktor Client OkHttp              | 3.0.3   | https://github.com/ktorio/ktor |
+| Ktor Client Darwin              | 3.0.3   | https://github.com/ktorio/ktor |
+| Ktor Client JS                  | 3.0.3   | https://github.com/ktorio/ktor |
+| Ktor Serialization kotlinx-json | 3.0.3   | https://github.com/ktorio/ktor |
 
 #### Other Apache 2.0
 
-| Dependency | Version | URL |
-|---|---|---|
-| Koin Core | 4.0.1 | https://github.com/InsertKoinIO/koin |
-| SQLDelight Runtime | 2.0.2 | https://github.com/cashapp/sqldelight |
-| SQLDelight Coroutines Extensions | 2.0.2 | https://github.com/cashapp/sqldelight |
-| SQLDelight Android Driver | 2.0.2 | https://github.com/cashapp/sqldelight |
-| SQLDelight Native Driver | 2.0.2 | https://github.com/cashapp/sqldelight |
-| SQLDelight JVM Driver | 2.0.2 | https://github.com/cashapp/sqldelight |
-| SQLDelight Web Worker Driver | 2.0.2 | https://github.com/cashapp/sqldelight |
-| Detekt | 1.23.7 | https://github.com/detekt/detekt |
-| Turbine | 1.2.0 | https://github.com/cashapp/turbine |
-| Fastlane | (latest) | https://github.com/fastlane/fastlane |
-| typescript-eslint | 8.56.1 | https://github.com/typescript-eslint/typescript-eslint |
+| Dependency                       | Version  | URL                                                    |
+| -------------------------------- | -------- | ------------------------------------------------------ |
+| Koin Core                        | 4.0.1    | https://github.com/InsertKoinIO/koin                   |
+| SQLDelight Runtime               | 2.0.2    | https://github.com/cashapp/sqldelight                  |
+| SQLDelight Coroutines Extensions | 2.0.2    | https://github.com/cashapp/sqldelight                  |
+| SQLDelight Android Driver        | 2.0.2    | https://github.com/cashapp/sqldelight                  |
+| SQLDelight Native Driver         | 2.0.2    | https://github.com/cashapp/sqldelight                  |
+| SQLDelight JVM Driver            | 2.0.2    | https://github.com/cashapp/sqldelight                  |
+| SQLDelight Web Worker Driver     | 2.0.2    | https://github.com/cashapp/sqldelight                  |
+| Detekt                           | 1.23.7   | https://github.com/detekt/detekt                       |
+| Turbine                          | 1.2.0    | https://github.com/cashapp/turbine                     |
+| Fastlane                         | (latest) | https://github.com/fastlane/fastlane                   |
+| typescript-eslint                | 8.56.1   | https://github.com/typescript-eslint/typescript-eslint |
 
 ---
 
@@ -101,59 +101,59 @@ Last updated: 2026-03-08
 
 #### Web Application (React / Vite ecosystem)
 
-| Dependency | Version | URL |
-|---|---|---|
-| React | 19.1.0 | https://github.com/facebook/react |
-| React DOM | 19.1.0 | https://github.com/facebook/react |
-| React Router DOM | 7.6.1 | https://github.com/remix-run/react-router |
-| D3 | 7.9.0 | https://github.com/d3/d3 |
-| Recharts | 2.15.3 | https://github.com/recharts/recharts |
-| sql.js | 1.14.1 | https://github.com/sql-js/sql.js |
-| wa-sqlite | 1.0.0 | https://github.com/nicolo-ribaudo/niccokunzmann |
-| Vite | 6.3.5 | https://github.com/vitejs/vite |
-| @vitejs/plugin-react | 4.5.2 | https://github.com/vitejs/vite-plugin-react |
-| TypeScript | 5.8.3 | https://github.com/microsoft/TypeScript |
-| Vitest | 3.2.1 | https://github.com/vitest-dev/vitest |
-| nanoid | 3.3.11 | https://github.com/ai/nanoid |
-| source-map-js | 1.2.1 | https://github.com/nicolo-ribaudo/source-map-js |
+| Dependency           | Version | URL                                             |
+| -------------------- | ------- | ----------------------------------------------- |
+| React                | 19.1.0  | https://github.com/facebook/react               |
+| React DOM            | 19.1.0  | https://github.com/facebook/react               |
+| React Router DOM     | 7.6.1   | https://github.com/remix-run/react-router       |
+| D3                   | 7.9.0   | https://github.com/d3/d3                        |
+| Recharts             | 2.15.3  | https://github.com/recharts/recharts            |
+| sql.js               | 1.14.1  | https://github.com/sql-js/sql.js                |
+| wa-sqlite            | 1.0.0   | https://github.com/nicolo-ribaudo/niccokunzmann |
+| Vite                 | 6.3.5   | https://github.com/vitejs/vite                  |
+| @vitejs/plugin-react | 4.5.2   | https://github.com/vitejs/vite-plugin-react     |
+| TypeScript           | 5.8.3   | https://github.com/microsoft/TypeScript         |
+| Vitest               | 3.2.1   | https://github.com/vitest-dev/vitest            |
+| nanoid               | 3.3.11  | https://github.com/ai/nanoid                    |
+| source-map-js        | 1.2.1   | https://github.com/nicolo-ribaudo/source-map-js |
 
 #### Storybook
 
-| Dependency | Version | URL |
-|---|---|---|
-| Storybook | 8.6.14 | https://github.com/storybookjs/storybook |
-| @storybook/addon-a11y | 8.6.14 | https://github.com/storybookjs/storybook |
-| @storybook/addon-essentials | 8.6.14 | https://github.com/storybookjs/storybook |
-| @storybook/addon-interactions | 8.6.14 | https://github.com/storybookjs/storybook |
-| @storybook/react | 8.6.14 | https://github.com/storybookjs/storybook |
-| @storybook/react-vite | 8.6.14 | https://github.com/storybookjs/storybook |
+| Dependency                    | Version | URL                                      |
+| ----------------------------- | ------- | ---------------------------------------- |
+| Storybook                     | 8.6.14  | https://github.com/storybookjs/storybook |
+| @storybook/addon-a11y         | 8.6.14  | https://github.com/storybookjs/storybook |
+| @storybook/addon-essentials   | 8.6.14  | https://github.com/storybookjs/storybook |
+| @storybook/addon-interactions | 8.6.14  | https://github.com/storybookjs/storybook |
+| @storybook/react              | 8.6.14  | https://github.com/storybookjs/storybook |
+| @storybook/react-vite         | 8.6.14  | https://github.com/storybookjs/storybook |
 
 #### Type Definitions
 
-| Dependency | Version | URL |
-|---|---|---|
-| @types/d3 | 7.4.3 | https://github.com/DefinitelyTyped/DefinitelyTyped |
-| @types/react | 19.1.4 | https://github.com/DefinitelyTyped/DefinitelyTyped |
-| @types/react-dom | 19.1.5 | https://github.com/DefinitelyTyped/DefinitelyTyped |
-| @types/sql.js | 1.4.9 | https://github.com/DefinitelyTyped/DefinitelyTyped |
+| Dependency       | Version | URL                                                |
+| ---------------- | ------- | -------------------------------------------------- |
+| @types/d3        | 7.4.3   | https://github.com/DefinitelyTyped/DefinitelyTyped |
+| @types/react     | 19.1.4  | https://github.com/DefinitelyTyped/DefinitelyTyped |
+| @types/react-dom | 19.1.5  | https://github.com/DefinitelyTyped/DefinitelyTyped |
+| @types/sql.js    | 1.4.9   | https://github.com/DefinitelyTyped/DefinitelyTyped |
 
 #### Root / Build Tooling
 
-| Dependency | Version | URL |
-|---|---|---|
-| Husky | 9.1.7 | https://github.com/typicode/husky |
-| Prettier | 3.8.1 | https://github.com/prettier/prettier |
-| Turbo (Turborepo) | 2.8.13 | https://github.com/vercel/turborepo |
-| @commitlint/cli | 20.4.3 | https://github.com/conventional-changelog/commitlint |
-| @commitlint/config-conventional | 20.4.3 | https://github.com/conventional-changelog/commitlint |
-| @changesets/cli | 2.30.0 | https://github.com/changesets/changesets |
-| @changesets/changelog-github | 0.6.0 | https://github.com/changesets/changesets |
+| Dependency                      | Version | URL                                                  |
+| ------------------------------- | ------- | ---------------------------------------------------- |
+| Husky                           | 9.1.7   | https://github.com/typicode/husky                    |
+| Prettier                        | 3.8.1   | https://github.com/prettier/prettier                 |
+| Turbo (Turborepo)               | 2.8.13  | https://github.com/vercel/turborepo                  |
+| @commitlint/cli                 | 20.4.3  | https://github.com/conventional-changelog/commitlint |
+| @commitlint/config-conventional | 20.4.3  | https://github.com/conventional-changelog/commitlint |
+| @changesets/cli                 | 2.30.0  | https://github.com/changesets/changesets             |
+| @changesets/changelog-github    | 0.6.0   | https://github.com/changesets/changesets             |
 
 #### Design Tokens
 
-| Dependency | Version | URL |
-|---|---|---|
-| Style Dictionary | 4.3.0 | https://github.com/amzn/style-dictionary |
+| Dependency       | Version | URL                                      |
+| ---------------- | ------- | ---------------------------------------- |
+| Style Dictionary | 4.3.0   | https://github.com/amzn/style-dictionary |
 
 ---
 
@@ -161,10 +161,10 @@ Last updated: 2026-03-08
 
 > **Note:** BSD licenses require that the copyright notice and disclaimer are retained in all redistributions of source and/or binary forms.
 
-| Dependency | License Variant | Version | URL |
-|---|---|---|---|
-| SQLCipher Android | BSD 3-Clause | 4.6.1 | https://www.zetetic.net/sqlcipher/ |
-| D3 (sub-modules) | BSD 3-Clause | 7.9.0 | https://github.com/d3/d3 |
+| Dependency        | License Variant | Version | URL                                |
+| ----------------- | --------------- | ------- | ---------------------------------- |
+| SQLCipher Android | BSD 3-Clause    | 4.6.1   | https://www.zetetic.net/sqlcipher/ |
+| D3 (sub-modules)  | BSD 3-Clause    | 7.9.0   | https://github.com/d3/d3           |
 
 > See [Special Attributions — SQLCipher](#sqlcipher-zetetic) below for required attribution text.
 
@@ -172,20 +172,20 @@ Last updated: 2026-03-08
 
 ### ISC License
 
-| Dependency | Version | URL |
-|---|---|---|
-| ESLint | 10.0.3 | https://github.com/eslint/eslint |
-| @eslint/js | 10.0.1 | https://github.com/eslint/eslint |
-| rimraf | (transitive) | https://github.com/isaacs/rimraf |
+| Dependency | Version      | URL                              |
+| ---------- | ------------ | -------------------------------- |
+| ESLint     | 10.0.3       | https://github.com/eslint/eslint |
+| @eslint/js | 10.0.1       | https://github.com/eslint/eslint |
+| rimraf     | (transitive) | https://github.com/isaacs/rimraf |
 
 ---
 
 ### Other Licenses
 
-| Dependency | License | Version | URL |
-|---|---|---|---|
-| Apple Swift (standard library) | Apache 2.0 with Runtime Library Exception | (system) | https://github.com/apple/swift |
-| SwiftUI / Swift Charts | Proprietary (Apple SDK) | (system) | https://developer.apple.com/xcode/ |
+| Dependency                     | License                                   | Version  | URL                                |
+| ------------------------------ | ----------------------------------------- | -------- | ---------------------------------- |
+| Apple Swift (standard library) | Apache 2.0 with Runtime Library Exception | (system) | https://github.com/apple/swift     |
+| SwiftUI / Swift Charts         | Proprietary (Apple SDK)                   | (system) | https://developer.apple.com/xcode/ |
 
 ---
 

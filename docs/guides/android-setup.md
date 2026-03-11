@@ -4,12 +4,12 @@ This guide walks you through setting up the Finance app for Android development.
 
 ## Prerequisites
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| Android Studio | Latest stable (Hedgehog+) | [Download](https://developer.android.com/studio) |
-| JDK | 21 | Bundled with Android Studio or install separately |
-| Android SDK | API 35 (Android 15) | Install via SDK Manager |
-| Android Build Tools | 35.0.0+ | Install via SDK Manager |
+| Tool                | Version                   | Notes                                             |
+| ------------------- | ------------------------- | ------------------------------------------------- |
+| Android Studio      | Latest stable (Hedgehog+) | [Download](https://developer.android.com/studio)  |
+| JDK                 | 21                        | Bundled with Android Studio or install separately |
+| Android SDK         | API 35 (Android 15)       | Install via SDK Manager                           |
+| Android Build Tools | 35.0.0+                   | Install via SDK Manager                           |
 
 Ensure `JAVA_HOME` points to your JDK 21 installation. Android Studio's bundled JDK works:
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { FC } from "react";
+import type { FC } from 'react';
 
 /** Goals page - savings goals with progress tracking. */
 const Goals: FC = () => (

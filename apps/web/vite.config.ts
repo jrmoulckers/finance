@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { resolve } from "node:path";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { resolve } from 'node:path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -10,17 +10,17 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      "@": resolve(__dirname, "src"),
+      '@': resolve(__dirname, 'src'),
     },
   },
 
   build: {
-    outDir: "dist",
+    outDir: 'dist',
     sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ["react", "react-dom", "react-router-dom"],
+          vendor: ['react', 'react-dom', 'react-router-dom'],
         },
       },
     },
@@ -31,7 +31,7 @@ export default defineConfig({
     strictPort: false,
     headers: {
       // Strict CSP - no inline scripts, no eval
-      "Content-Security-Policy": [
+      'Content-Security-Policy': [
         "default-src 'self'",
         "script-src 'self'",
         "style-src 'self' 'unsafe-inline'",
@@ -41,10 +41,10 @@ export default defineConfig({
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'",
-      ].join("; "),
-      "X-Content-Type-Options": "nosniff",
-      "X-Frame-Options": "DENY",
-      "Referrer-Policy": "strict-origin-when-cross-origin",
+      ].join('; '),
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
     },
   },
 });

@@ -2,5 +2,89 @@
 
 import React from 'react';
 import { CurrencyDisplay } from '../components/common';
-export const DashboardPage: React.FC = () => { const nw=24750,ms=2340.5,mb=3500,bp=Math.round((ms/mb)*100); const txns=[{id:'1',d:'Grocery Store',c:'Food',a:-67.42,dt:'Today'},{id:'2',d:'Monthly Salary',c:'Income',a:4500,dt:'Today'},{id:'3',d:'Electric Bill',c:'Utilities',a:-124,dt:'Yesterday'},{id:'4',d:'Coffee Shop',c:'Dining',a:-5.75,dt:'Yesterday'},{id:'5',d:'Gas Station',c:'Transport',a:-48.3,dt:'Mar 4'}]; return (<><h2 style={{fontSize:'var(--type-scale-headline-font-size)',fontWeight:'var(--type-scale-headline-font-weight)',marginBottom:'var(--spacing-6)'}}>Dashboard</h2><section className="page-section" aria-label="Financial summary"><div className="card-grid card-grid--3"><article className="card" aria-label="Net worth"><div className="card__header"><h3 className="card__title">Net Worth</h3></div><div className="card__value" aria-live="polite"><CurrencyDisplay amount={nw} colorize /></div></article><article className="card" aria-label="Monthly spending"><div className="card__header"><h3 className="card__title">Spent This Month</h3></div><div className="card__value" aria-live="polite"><CurrencyDisplay amount={ms} /></div></article><article className="card" aria-label="Budget health"><div className="card__header"><h3 className="card__title">Budget Health</h3></div><div className="card__value" aria-live="polite">{bp}% used</div><div className="progress-bar" role="progressbar" aria-valuenow={bp} aria-valuemin={0} aria-valuemax={100} aria-label={`Budget ${bp}% used`}><div className={`progress-bar__fill progress-bar__fill--${bp>90?'negative':bp>75?'warning':'positive'}`} style={{width:`${Math.min(bp,100)}%`}} /></div></article></div></section><section className="page-section" aria-label="Recent transactions"><h3 className="page-section__title">Recent Transactions</h3><div className="card"><ul className="list-group" role="list">{txns.map(t=>(<li key={t.id} className="list-item" role="listitem"><div className="list-item__content"><p className="list-item__primary">{t.d}</p><p className="list-item__secondary">{t.c}</p></div><div className="list-item__trailing"><CurrencyDisplay amount={t.a} colorize showSign /></div></li>))}</ul></div></section></>); };
+export const DashboardPage: React.FC = () => {
+  const nw = 24750,
+    ms = 2340.5,
+    mb = 3500,
+    bp = Math.round((ms / mb) * 100);
+  const txns = [
+    { id: '1', d: 'Grocery Store', c: 'Food', a: -67.42, dt: 'Today' },
+    { id: '2', d: 'Monthly Salary', c: 'Income', a: 4500, dt: 'Today' },
+    { id: '3', d: 'Electric Bill', c: 'Utilities', a: -124, dt: 'Yesterday' },
+    { id: '4', d: 'Coffee Shop', c: 'Dining', a: -5.75, dt: 'Yesterday' },
+    { id: '5', d: 'Gas Station', c: 'Transport', a: -48.3, dt: 'Mar 4' },
+  ];
+  return (
+    <>
+      <h2
+        style={{
+          fontSize: 'var(--type-scale-headline-font-size)',
+          fontWeight: 'var(--type-scale-headline-font-weight)',
+          marginBottom: 'var(--spacing-6)',
+        }}
+      >
+        Dashboard
+      </h2>
+      <section className="page-section" aria-label="Financial summary">
+        <div className="card-grid card-grid--3">
+          <article className="card" aria-label="Net worth">
+            <div className="card__header">
+              <h3 className="card__title">Net Worth</h3>
+            </div>
+            <div className="card__value" aria-live="polite">
+              <CurrencyDisplay amount={nw} colorize />
+            </div>
+          </article>
+          <article className="card" aria-label="Monthly spending">
+            <div className="card__header">
+              <h3 className="card__title">Spent This Month</h3>
+            </div>
+            <div className="card__value" aria-live="polite">
+              <CurrencyDisplay amount={ms} />
+            </div>
+          </article>
+          <article className="card" aria-label="Budget health">
+            <div className="card__header">
+              <h3 className="card__title">Budget Health</h3>
+            </div>
+            <div className="card__value" aria-live="polite">
+              {bp}% used
+            </div>
+            <div
+              className="progress-bar"
+              role="progressbar"
+              aria-valuenow={bp}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Budget ${bp}% used`}
+            >
+              <div
+                className={`progress-bar__fill progress-bar__fill--${bp > 90 ? 'negative' : bp > 75 ? 'warning' : 'positive'}`}
+                style={{ width: `${Math.min(bp, 100)}%` }}
+              />
+            </div>
+          </article>
+        </div>
+      </section>
+      <section className="page-section" aria-label="Recent transactions">
+        <h3 className="page-section__title">Recent Transactions</h3>
+        <div className="card">
+          <ul className="list-group" role="list">
+            {txns.map((t) => (
+              <li key={t.id} className="list-item" role="listitem">
+                <div className="list-item__content">
+                  <p className="list-item__primary">{t.d}</p>
+                  <p className="list-item__secondary">{t.c}</p>
+                </div>
+                <div className="list-item__trailing">
+                  <CurrencyDisplay amount={t.a} colorize showSign />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    </>
+  );
+};
 export default DashboardPage;

@@ -22,12 +22,12 @@ No local build setup is needed for documentation-only changes. Look for issues l
 
 Before cloning, ensure you have:
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| [Git](https://git-scm.com/) | 2.40+ | Version control |
-| [Node.js](https://nodejs.org/) | 22+ | Build tools, MCP servers |
-| [VS Code](https://code.visualstudio.com/) | 1.99+ | Primary editor (or use your preferred editor) |
-| [GitHub Copilot](https://github.com/features/copilot) | Pro+ recommended | AI development *(optional)* |
+| Tool                                                  | Version          | Purpose                                       |
+| ----------------------------------------------------- | ---------------- | --------------------------------------------- |
+| [Git](https://git-scm.com/)                           | 2.40+            | Version control                               |
+| [Node.js](https://nodejs.org/)                        | 22+              | Build tools, MCP servers                      |
+| [VS Code](https://code.visualstudio.com/)             | 1.99+            | Primary editor (or use your preferred editor) |
+| [GitHub Copilot](https://github.com/features/copilot) | Pro+ recommended | AI development _(optional)_                   |
 
 ### VS Code Extensions (Required)
 
@@ -62,6 +62,7 @@ code .
 ```
 
 When VS Code opens, it will:
+
 - Prompt you to install recommended extensions
 - Load Copilot instructions and agent configurations automatically
 - Start MCP servers when you open Copilot Chat
