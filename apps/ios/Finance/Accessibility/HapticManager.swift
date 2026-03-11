@@ -8,6 +8,7 @@
 // References: #29
 
 import CoreHaptics
+import os
 import SwiftUI
 import UIKit
 
@@ -32,6 +33,12 @@ final class HapticManager {
     /// Shared instance. Use this from SwiftUI views via
     /// `@Environment` or direct reference.
     static let shared = HapticManager()
+
+    /// Subsystem logger for haptic events.
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "HapticManager"
+    )
 
     // MARK: - Private State
 
@@ -177,10 +184,7 @@ final class HapticManager {
         }
 
         engine.stoppedHandler = { reason in
-            // Log the reason in debug builds; no user-facing impact.
-            #if DEBUG
-            print("HapticManager: engine stopped – reason \(reason.rawValue)")
-            #endif
+            Self.logger.debug("Engine stopped – reason \(reason.rawValue)")
         }
 
         // Allow haptics to play even when the system audio session is
@@ -193,9 +197,7 @@ final class HapticManager {
         do {
             try engine?.start()
         } catch {
-            #if DEBUG
-            print("HapticManager: engine start failed – \(error.localizedDescription)")
-            #endif
+            Self.logger.error("Engine start failed – \(error.localizedDescription)")
         }
     }
 
@@ -219,9 +221,7 @@ final class HapticManager {
             let player = try engine.makePlayer(with: pattern)
             try player.start(atTime: CHHapticTimeImmediate)
         } catch {
-            #if DEBUG
-            print("HapticManager: pattern playback failed – \(error.localizedDescription)")
-            #endif
+            Self.logger.error("Pattern playback failed – \(error.localizedDescription)")
         }
     }
 }
