@@ -94,7 +94,11 @@ fun FinanceTopBar(
         actions = {
             if (currentRoute == Route.Dashboard.route) {
                 IconButton(
-                    onClick = { /* TODO: Open search */ },
+                    onClick = {
+                        navController.navigate(Route.Transactions.route) {
+                            launchSingleTop = true
+                        }
+                    },
                     modifier = Modifier.semantics {
                         contentDescription = "Search"
                     },

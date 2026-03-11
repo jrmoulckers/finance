@@ -210,7 +210,9 @@ class SettingsViewModel(
 
     fun exportData(format: ExportFormat) {
         viewModelScope.launch {
-            // TODO: Wire into actual export implementation from KMP core module
+            // Export service is defined by #239 — when implemented, inject
+            // the KMP DataExporter and call:
+            //   dataExporter.export(format.name, outputStream)
             _events.emit(SettingsEvent.ExportStarted)
             _events.emit(SettingsEvent.ShowToast("Exporting data as ${format.label}…"))
         }
@@ -251,7 +253,10 @@ class SettingsViewModel(
     fun confirmDeleteAccount() {
         if (!_uiState.value.isDeleteEnabled) return
         viewModelScope.launch {
-            // TODO: Wire into actual account deletion through KMP core module
+            // Account deletion backend is tracked by a future issue —
+            // when implemented, inject KMP AccountService and call:
+            //   accountService.deleteCurrentUser()
+            // Then clear local state and navigate to login.
             prefs.edit().clear().apply()
             _events.emit(SettingsEvent.ShowToast("Account deleted"))
             _events.emit(SettingsEvent.NavigateToLogin)
