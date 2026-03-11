@@ -11,6 +11,7 @@ A multi-platform, native-first financial tracking application for personal, fami
 ## Table of Contents
 
 - [Vision](#vision)
+- [Project Status](#project-status)
 - [Monorepo Health](#monorepo-health)
 - [Principles](#principles)
 - [Platforms](#platforms)
@@ -25,6 +26,26 @@ A multi-platform, native-first financial tracking application for personal, fami
 ## Vision
 
 Finance aspires to re-think and re-vitalize the desire to track every financial aspect of one's life — from daily habits to long-term impacts of financial goals.
+
+## Project Status
+
+All 8 development phases are **complete**. The project is in pre-launch (v0.1.0).
+
+| Phase | Name              | Status      |
+| ----- | ----------------- | ----------- |
+| 0     | Foundation        | ✅ Complete |
+| 1     | Core Engine       | ✅ Complete |
+| 2     | Sync & Backend    | ✅ Complete |
+| 3     | Android App       | ✅ Complete |
+| 4     | iOS App           | ✅ Complete |
+| 5     | Web PWA           | ✅ Complete |
+| 6     | Windows App       | ✅ Complete |
+| 7     | Advanced Features | ✅ Complete |
+| 8     | Polish & Launch   | ✅ Complete |
+
+**What's implemented:** KMP shared business logic, Supabase backend with RLS + E2E encryption, PowerSync offline-first sync, platform-native apps on all 4 targets, design token pipeline, CI/CD workflows, accessibility (WCAG 2.2 AA), biometric auth, multi-currency support, recurring transactions, and financial analytics.
+
+**Current focus:** Tech debt cleanup, CI hardening, and launch preparation. See the [detailed roadmap](docs/architecture/roadmap.md) and [open issues](https://github.com/jrmoulckers/finance/issues) for what's next.
 
 ## Monorepo Health
 
@@ -120,13 +141,16 @@ finance/
 ├── packages/       # Shared packages and libraries
 │   ├── core/       # Core business logic
 │   ├── models/     # Shared data models
-│   └── sync/       # Data synchronization engine
+│   ├── sync/       # Data synchronization engine
+│   └── design-tokens/ # Design token definitions (DTCG JSON)
 ├── services/       # Backend services
 │   └── api/        # Consolidated API server
 ├── docs/           # Project documentation
 │   ├── ai/         # AI development workflow docs
-│   ├── architecture/
-│   └── design/
+│   ├── architecture/ # ADRs, roadmap, SDLC
+│   ├── design/     # UX principles, personas, features
+│   ├── guides/     # Setup, deployment, and platform guides
+│   └── testing/    # Testing strategy
 ├── tools/          # Development tools and scripts
 ├── .github/        # GitHub config, Copilot AI setup
 └── .vscode/        # VS Code workspace configuration
