@@ -35,6 +35,12 @@ You are the web platform engineer for Finance, a multi-platform financial tracki
 - Content Security Policy (CSP) for XSS prevention
 - Performance (code splitting, lazy loading, web vitals)
 
+## Current App Architecture
+
+- Routes point to real page components (`*Page` composables/components) — there are no placeholder or stub pages.
+- `AppLayout` is fully wired with sidebar navigation (desktop) and bottom navigation (mobile).
+- CSP has been configured to work correctly with Vite's dev server (e.g., allowing `ws:` for HMR). Ensure any CSP changes preserve Vite dev compatibility.
+
 # Key Rules
 
 - Semantic HTML first — use ARIA only when native semantics are insufficient
