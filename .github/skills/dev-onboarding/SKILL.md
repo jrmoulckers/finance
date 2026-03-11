@@ -85,6 +85,16 @@ For maximum safety, use a [fine-grained PAT](https://github.com/settings/persona
 
 This ensures the MCP server can search and read but **cannot mutate** any remote state.
 
+## Project Status
+
+All 8 development phases are **complete** — the project is at v0.1.0 pre-launch. CI enforces **ESLint + Prettier** on all PRs, and releases follow the **Changesets** flow (version PR → merge → tag → GitHub Release).
+
+## Useful Resources
+
+- **Workflow Cheat Sheet** — `docs/guides/workflow-cheatsheet.md` covers the day-to-day development workflow: branching, commits, CI checks, and release steps.
+- **Troubleshooting Template** — Located alongside the cheat sheet, includes KMP-specific gotchas (missing `actual` declarations, `java.*` in `commonMain`, Gradle sync failures) and common CI fix recipes.
+- **README** — The root `README.md` reflects the current project status, architecture overview, and quick-start instructions.
+
 ## Common Onboarding Issues
 
 ### MCP servers won't start

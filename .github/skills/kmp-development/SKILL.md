@@ -526,6 +526,43 @@ class TransactionRepositoryTest {
 - Use `iosTest` for tests requiring Darwin APIs.
 - Prefer fakes/stubs over mocks in multiplatform code (mocking libraries are platform-specific).
 
+## Monitoring Interfaces (packages/core)
+
+The `packages/core/src/commonMain/kotlin/com/finance/core/monitoring/` directory defines cross-platform monitoring contracts:
+
+- **`CrashReporter`** — Interface for crash/error reporting. Platform `actual` implementations wrap Crashlytics (Android), MetricKit (iOS), etc.
+- **`MetricsCollector`** — Interface for collecting app performance metrics (sync duration, query latency, UI frame times).
+- **`SyncHealthMonitor`** — Tracks sync engine health: connection state, last-sync timestamps, error rates, retry counts.
+
+These are `commonMain` interfaces with `expect`/`actual` platform bindings — keep implementations in the appropriate platform source sets.
+
+## Conflict Resolution
+
+The sync engine uses `ConflictStrategy.resolverFor(tableName)` to select the correct resolver per table:
+
+- **`LastWriteWinsResolver`** — Default for most tables. Compares `updated_at` timestamps; newest write wins.
+- **`MergeResolver`** — Used for complex records (e.g., budgets with multiple sub-fields). Merges non-conflicting field changes and flags true conflicts for user resolution.
+
+```kotlin
+// Usage in sync engine
+val resolver = ConflictStrategy.resolverFor(tableName)
+val resolved = resolver.resolve(localRecord, remoteRecord)
+```
+
+## Version Catalog Additions
+
+The `gradle/libs.versions.toml` catalog includes these platform-specific dependencies:
+
+```toml
+[libraries]
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
+timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
+```
+
+- **Koin 4.0.1** — Dependency injection framework, used in `androidMain` and Compose ViewModels.
+- **Timber 5.0.1** — Android logging library, used as the `actual` implementation backing `PlatformLogger` on Android.
+
 ## Common Pitfalls
 
 ### java.* in commonMain
