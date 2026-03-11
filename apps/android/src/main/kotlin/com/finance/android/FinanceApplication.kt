@@ -3,17 +3,40 @@
 package com.finance.android
 
 import android.app.Application
+import com.finance.android.di.appModule
+import org.koin.android.ext.koin.androidContext
+import org.koin.android.ext.koin.androidLogger
+import org.koin.core.context.startKoin
+import org.koin.core.logger.Level
+import timber.log.Timber
 
 /**
  * Finance application entry point.
  *
- * Initializes application-level dependencies and configuration.
- * DI framework (e.g. Koin) can be set up here in a future iteration.
+ * Initializes Koin DI, Timber logging, and crash reporting
+ * before any Activity is created.
  */
 class FinanceApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // TODO: Initialize DI (Koin), logging, crash reporting
+        initLogging()
+        initDependencyInjection()
+    }
+
+    private fun initLogging() {
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
+        Timber.i("Finance app starting")
+    }
+
+    private fun initDependencyInjection() {
+        startKoin {
+            androidLogger(if (BuildConfig.DEBUG) Level.DEBUG else Level.NONE)
+            androidContext(this@FinanceApplication)
+            modules(appModule)
+        }
+        Timber.i("Koin DI initialized")
     }
 }

@@ -2,20 +2,13 @@
 
 package com.finance.android.ui.onboarding
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.finance.android.FinanceApp
 
 /**
  * Navigation route constants for the onboarding / main-app boundary.
@@ -41,7 +34,7 @@ private object OnboardingRoutes {
  *
  * The navigation graph contains two destinations:
  * - **onboarding** — the multi-step [OnboardingScreen]
- * - **main** — placeholder for the real [FinanceNavHost] (to be wired up by the main-app module)
+ * - **main** — the full [FinanceApp] with bottom bar, FAB, and all screens
  *
  * After the user completes or skips onboarding the graph navigates to "main"
  * and removes the onboarding back-stack entry so pressing Back does not return
@@ -78,30 +71,7 @@ fun OnboardingNavigation() {
         }
 
         composable(OnboardingRoutes.MAIN_APP) {
-            // TODO: Replace with actual FinanceNavHost once the main app shell is built.
-            FinanceNavHostPlaceholder()
+            FinanceApp()
         }
-    }
-}
-
-/**
- * Temporary placeholder for the main application navigation host.
- *
- * Replace this with the real `FinanceNavHost` composable once the dashboard,
- * accounts, budgets, and settings screens are implemented.
- */
-@Composable
-private fun FinanceNavHostPlaceholder() {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        Text(
-            text = "Finance — Home",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.semantics {
-                contentDescription = "Finance app home screen placeholder"
-            },
-        )
     }
 }

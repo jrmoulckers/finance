@@ -60,6 +60,13 @@ dependencies {
     // AndroidX Core
     implementation(libs.core.ktx)
 
+    // DI — Koin
+    implementation(libs.koin.android)
+    implementation(libs.koin.compose.viewmodel)
+
+    // Logging
+    implementation(libs.timber)
+
     // Security & Biometric
     implementation(libs.biometric)
     implementation(libs.security.crypto)
