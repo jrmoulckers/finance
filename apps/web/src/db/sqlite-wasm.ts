@@ -331,8 +331,7 @@ export async function initDatabase(): Promise<SqliteDb> {
     module.vfs_register(vfs, /* makeDefault */ true);
     db = await module.open_v2(DB_NAME);
   } else {
-    const initSqlJs = (await import(/* webpackChunkName: "sql-js" */ 'sql.js'))
-      .default;
+    const initSqlJs = (await import(/* webpackChunkName: "sql-js" */ 'sql.js')).default;
 
     const SQL = await initSqlJs({
       locateFile: (file: string) => `/assets/sql-wasm/${file}`,
@@ -400,16 +399,14 @@ function selectRaw(
 ): QueryResult {
   if (backend === 'opfs') {
     const rows: Row[] = [];
-    let columns: string[] = [];
+    let columns: string[];
     const stmt = driver.prepare(db, sql);
     try {
       if (params && params.length > 0) {
         driver.bind(stmt, params);
       }
       const colCount: number = driver.column_count(stmt);
-      columns = Array.from({ length: colCount }, (_, i) =>
-        driver.column_name(stmt, i),
-      ) as string[];
+      columns = Array.from({ length: colCount }, (_, i) => driver.column_name(stmt, i)) as string[];
       while (driver.step(stmt) === /* SQLITE_ROW */ 100) {
         const row: Row = {};
         for (let i = 0; i < colCount; i++) {
@@ -507,6 +504,7 @@ async function runMigrations(
       execRaw(driver, db, 'ROLLBACK;', backend);
       throw new Error(
         `Migration v${migration.version} (${migration.label}) failed: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
       );
     }
   }
@@ -541,10 +539,7 @@ async function loadFromIndexedDB(key: string): Promise<ArrayBuffer | null> {
   });
 }
 
-async function persistToIndexedDB(
-  key: string,
-  data: Uint8Array,
-): Promise<void> {
+async function persistToIndexedDB(key: string, data: Uint8Array): Promise<void> {
   const idb = await openIDB();
   return new Promise((resolve, reject) => {
     const tx = idb.transaction(IDB_STORE, 'readwrite');
@@ -606,11 +601,7 @@ function createDbWrapper(
  * const accounts = query<Account>(db, 'SELECT id, name FROM account');
  * ```
  */
-export function query<T = Row>(
-  db: SqliteDb,
-  sql: string,
-  params?: unknown[],
-): QueryResult<T> {
+export function query<T = Row>(db: SqliteDb, sql: string, params?: unknown[]): QueryResult<T> {
   const rows = db.selectAll(sql, params) as T[];
   return {
     columns: rows.length > 0 ? Object.keys(rows[0] as object) : [],
@@ -621,21 +612,13 @@ export function query<T = Row>(
 /**
  * Execute a read query and return the first row or `null`.
  */
-export function queryOne<T = Row>(
-  db: SqliteDb,
-  sql: string,
-  params?: unknown[],
-): T | null {
+export function queryOne<T = Row>(db: SqliteDb, sql: string, params?: unknown[]): T | null {
   return db.selectOne(sql, params) as T | null;
 }
 
 /**
  * Execute a write statement (INSERT / UPDATE / DELETE).
  */
-export function execute(
-  db: SqliteDb,
-  sql: string,
-  params?: unknown[],
-): void {
+export function execute(db: SqliteDb, sql: string, params?: unknown[]): void {
   db.exec(sql, params);
 }
