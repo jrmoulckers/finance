@@ -22,6 +22,8 @@ include(":packages:core")
 include(":packages:models")
 include(":packages:sync")
 
+include(":apps:windows")
+
 // Only include Android app if SDK is available
 val androidSdkAvailable = providers.environmentVariable("ANDROID_HOME").isPresent ||
     providers.environmentVariable("ANDROID_SDK_ROOT").isPresent ||
