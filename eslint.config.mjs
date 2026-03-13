@@ -10,7 +10,7 @@ export default [
     ignores: ['**/build/**', '**/dist/**', '**/node_modules/**', '**/.gradle/**'],
   },
   {
-    files: ['**/*.ts', '**/*.mjs', '**/*.js'],
+    files: ['**/*.ts', '**/*.tsx', '**/*.mjs', '**/*.js'],
     rules: {
       'no-console': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],

@@ -4,8 +4,20 @@ import com.android.build.gradle.LibraryExtension
 
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
-    id("com.android.library")
     id("org.jetbrains.kotlinx.kover")
+}
+
+// Only configure Android targets when the SDK is available
+val androidSdkAvailable = providers.environmentVariable("ANDROID_HOME").isPresent ||
+    providers.environmentVariable("ANDROID_SDK_ROOT").isPresent ||
+    rootProject.file("local.properties").let { f ->
+        f.exists() && f.readText().contains("sdk.dir")
+    }
+
+project.extra["androidSdkAvailable"] = androidSdkAvailable
+
+if (androidSdkAvailable) {
+    apply(plugin = "com.android.library")
 }
 
 kotlin {
@@ -15,8 +27,10 @@ kotlin {
     // JVM target (Desktop / server)
     jvm()
 
-    // Android target
-    androidTarget()
+    // Android target (requires SDK)
+    if (androidSdkAvailable) {
+        androidTarget()
+    }
 
     // iOS targets
     iosArm64()
@@ -42,20 +56,22 @@ kotlin {
     }
 }
 
-extensions.configure<LibraryExtension> {
-    val androidCompileSdk = libs.findVersion("android-compileSdk").get().toString().toInt()
-    val androidMinSdk = libs.findVersion("android-minSdk").get().toString().toInt()
+if (androidSdkAvailable) {
+    extensions.configure<LibraryExtension> {
+        val androidCompileSdk = libs.findVersion("android-compileSdk").get().toString().toInt()
+        val androidMinSdk = libs.findVersion("android-minSdk").get().toString().toInt()
 
-    compileSdk = androidCompileSdk
-    namespace = "com.finance.${project.name}"
+        compileSdk = androidCompileSdk
+        namespace = "com.finance.${project.name}"
 
-    defaultConfig {
-        minSdk = androidMinSdk
-    }
+        defaultConfig {
+            minSdk = androidMinSdk
+        }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_21
+            targetCompatibility = JavaVersion.VERSION_21
+        }
     }
 }
 

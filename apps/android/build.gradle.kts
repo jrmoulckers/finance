@@ -38,6 +38,9 @@ dependencies {
     implementation(project(":packages:models"))
     implementation(project(":packages:sync"))
 
+    // Date/time utilities
+    implementation(libs.kotlinx.datetime)
+
     // Compose BOM — manages all Compose library versions
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
