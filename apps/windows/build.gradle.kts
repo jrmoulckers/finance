@@ -7,6 +7,9 @@ plugins {
 }
 
 dependencies {
+    // KMP shared modules
+    implementation(project(":packages:models"))
+
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
