@@ -49,9 +49,9 @@ The VPS provider will be selected from cost-effective options such as Hetzner or
 
 ### Risks
 
-- **Data loss from misconfigured backups.** *Mitigation:* Automated daily database backups with off-site storage (e.g., S3-compatible object storage or a secondary VPS). Backup restoration tested periodically.
-- **Security exposure from unpatched services.** *Mitigation:* Automated security updates for the host OS (unattended-upgrades), Docker image update alerts, and firewall rules restricting access to only necessary ports.
-- **Single point of failure (single VPS).** *Mitigation:* Acceptable for a personal app given the offline-first architecture. If the server goes down, clients continue working locally and sync when it recovers. Can scale to multi-node later if needed.
+- **Data loss from misconfigured backups.** _Mitigation:_ Automated daily database backups with off-site storage (e.g., S3-compatible object storage or a secondary VPS). Backup restoration tested periodically.
+- **Security exposure from unpatched services.** _Mitigation:_ Automated security updates for the host OS (unattended-upgrades), Docker image update alerts, and firewall rules restricting access to only necessary ports.
+- **Single point of failure (single VPS).** _Mitigation:_ Acceptable for a personal app given the offline-first architecture. If the server goes down, clients continue working locally and sync when it recovers. Can scale to multi-node later if needed.
 
 ## Implementation Notes
 

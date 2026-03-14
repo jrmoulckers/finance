@@ -1,6 +1,7 @@
 ---
-applyTo: "services/**"
+applyTo: 'services/**'
 ---
+
 # Instructions for Backend Services
 
 You are working in the `services/` directory, which contains the consolidated backend.

@@ -240,8 +240,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           hasPasskey: data.user.has_passkey ?? false,
         });
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'An unexpected error occurred';
+        const message = err instanceof Error ? err.message : 'An unexpected error occurred';
         setError(message);
         throw err;
       } finally {
@@ -294,8 +293,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           });
         }
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Passkey authentication failed';
+        const message = err instanceof Error ? err.message : 'Passkey authentication failed';
         setError(message);
         throw err;
       } finally {
@@ -319,8 +317,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       // Update user state to reflect passkey registration
       setUser((prev) => (prev ? { ...prev, hasPasskey: true } : null));
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Passkey registration failed';
+      const message = err instanceof Error ? err.message : 'Passkey registration failed';
       setError(message);
       throw err;
     }
@@ -384,9 +381,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     ],
   );
 
-  return (
-    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
 
 // ---------------------------------------------------------------------------
@@ -486,18 +481,13 @@ export function ProtectedRoute({
  * Only used to extract user info for the UI — all real validation
  * happens server-side.
  */
-function parseTokenPayload(
-  token: string,
-): { sub?: string; email?: string } | null {
+function parseTokenPayload(token: string): { sub?: string; email?: string } | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
 
     const base64 = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(
-      base64.length + ((4 - (base64.length % 4)) % 4),
-      '=',
-    );
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
     const json = atob(padded);
     return JSON.parse(json) as { sub?: string; email?: string };
   } catch {

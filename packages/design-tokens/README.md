@@ -20,11 +20,11 @@ npm run clean    # Remove build artifacts
 
 ### Output Platforms
 
-| Platform | Path | Files |
-|----------|------|-------|
-| Web (CSS) | `build/web/` | `tokens.css`, `tokens-dark.css` |
-| iOS (Swift) | `build/ios/` | `FinanceTokens.swift`, `FinanceTokensDark.swift` |
-| Android (XML) | `build/android/` | `colors.xml`, `dimens.xml`, `colors-night.xml` |
+| Platform      | Path             | Files                                            |
+| ------------- | ---------------- | ------------------------------------------------ |
+| Web (CSS)     | `build/web/`     | `tokens.css`, `tokens-dark.css`                  |
+| iOS (Swift)   | `build/ios/`     | `FinanceTokens.swift`, `FinanceTokensDark.swift` |
+| Android (XML) | `build/android/` | `colors.xml`, `dimens.xml`, `colors-night.xml`   |
 
 ## Usage
 

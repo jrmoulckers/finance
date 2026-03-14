@@ -20,12 +20,14 @@ If you need to perform any of these, STOP, explain what you need and why, and wa
 ### Destructive File Operations — Detailed Rules
 
 You MUST NOT delete directories or perform bulk file removal. Specific prohibitions:
+
 - NEVER run `rm -rf`, `del /S`, `Remove-Item -Recurse -Force`, or any recursive delete
 - NEVER delete more than one file in a single command without listing each file explicitly
 - NEVER overwrite a file without reading it first to understand what you're replacing
 - NEVER use wildcard deletion (`rm *.js`, `del *.log`) — always name each file
 
 **Instead, do this:**
+
 - To remove a single file: use the standard file tools, not shell commands
 - To remove multiple files: list each file by name and explain why each should be deleted
 - To clean build artifacts: tell the human to run `npm run clean` or equivalent
@@ -34,6 +36,7 @@ You MUST NOT delete directories or perform bulk file removal. Specific prohibiti
 ### Package Publishing — Detailed Rules
 
 You MUST NOT distribute code to any external registry or platform. Specific prohibitions:
+
 - NEVER run `npm publish`, `yarn publish`, `pnpm publish`, or any publish command
 - NEVER run `docker push`, `docker buildx push`, or push container images
 - NEVER submit to app stores, package registries, or CDNs
@@ -41,6 +44,7 @@ You MUST NOT distribute code to any external registry or platform. Specific proh
 - NEVER create GitHub Releases with attached binaries
 
 **Instead, do this:**
+
 - Prepare the package/release and document the steps for the human to execute
 - Create a checklist of pre-publish verification steps
 - Write release notes and changelogs, then ask the human to publish
@@ -48,6 +52,7 @@ You MUST NOT distribute code to any external registry or platform. Specific proh
 ### Secret & Credential Operations — Detailed Rules
 
 You MUST NOT access, create, or modify real credentials. Specific prohibitions:
+
 - NEVER create or edit `.env` files containing actual API keys, passwords, tokens, or connection strings
 - NEVER read files in a `secrets/`, `.secrets/`, or `credentials/` directory
 - NEVER access the system keychain, Windows Credential Manager, macOS Keychain, or Linux secret-service
@@ -56,6 +61,7 @@ You MUST NOT access, create, or modify real credentials. Specific prohibitions:
 - NEVER echo, log, or display the contents of environment variables that may contain secrets
 
 **Instead, do this:**
+
 - Create `.env.example` or `.env.template` files with placeholder values like `YOUR_API_KEY_HERE`
 - Reference environment variable names (`process.env.DATABASE_URL`) without the actual values
 - Document what secrets are needed and where the human should configure them
@@ -64,6 +70,7 @@ You MUST NOT access, create, or modify real credentials. Specific prohibitions:
 ### Database Destructive Operations — Detailed Rules
 
 You MUST NOT execute operations that delete, truncate, or irreversibly modify database data. Specific prohibitions:
+
 - NEVER run `DROP TABLE`, `DROP DATABASE`, `DROP INDEX`, or any `DROP` statement
 - NEVER run `TRUNCATE TABLE` or `TRUNCATE`
 - NEVER run `DELETE FROM` without a `WHERE` clause (full table deletion)
@@ -73,6 +80,7 @@ You MUST NOT execute operations that delete, truncate, or irreversibly modify da
 - NEVER modify database connection strings to point at production/staging systems
 
 **Instead, do this:**
+
 - Write migration scripts and ask the human to review and execute them
 - Use `SELECT` queries to inspect data before proposing changes
 - Create migration files with both `up` and `down` operations

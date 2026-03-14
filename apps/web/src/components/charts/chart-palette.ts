@@ -15,9 +15,7 @@ export const CHART_COLORS = [
   '#009E73', // teal
 ] as const;
 
-export const CHART_COLOR_LABELS = [
-  'Blue', 'Orange', 'Purple', 'Gold', 'Magenta', 'Teal',
-] as const;
+export const CHART_COLOR_LABELS = ['Blue', 'Orange', 'Purple', 'Gold', 'Magenta', 'Teal'] as const;
 
 export function chartColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length];
@@ -27,11 +25,7 @@ export function patternId(index: number): string {
   return `chart-pattern-${index}`;
 }
 
-export function formatChartCurrency(
-  value: number,
-  currency = 'USD',
-  locale = 'en-US',
-): string {
+export function formatChartCurrency(value: number, currency = 'USD', locale = 'en-US'): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,

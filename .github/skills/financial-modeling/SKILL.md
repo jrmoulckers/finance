@@ -43,12 +43,14 @@ Transaction {
 ## Budgeting Models
 
 ### Envelope / Zero-Based (YNAB-style)
+
 - Every dollar has a job — income is allocated to categories
 - Categories can be overspent (negative available)
 - Overspending rolls over or is covered from other categories
 - Budget period is typically monthly but should be configurable
 
 ### Budget Calculations
+
 ```
 available = allocated - spent + rolledOver
 spent = sum(transactions in category for period)
@@ -56,6 +58,7 @@ rolledOver = previous period's remaining (if carry-over enabled)
 ```
 
 ### Budget Alerts
+
 - Threshold-based alerts (80% spent, 100% spent, overspent)
 - Trend alerts (spending pace ahead of historical average)
 - Goal progress alerts (on track, behind, ahead)
@@ -63,18 +66,21 @@ rolledOver = previous period's remaining (if carry-over enabled)
 ## Transaction Processing
 
 ### Transaction Types
+
 - **Income** — Money coming in (salary, refund, gift)
 - **Expense** — Money going out (purchase, bill, fee)
 - **Transfer** — Money between accounts (always creates two linked entries)
 - **Split** — A single transaction split across multiple categories
 
 ### Transaction Categorization
+
 - Support hierarchical categories (Food > Groceries > Organic)
 - Auto-categorization based on payee history
 - Allow manual override that feeds back into learning
 - Support multiple tags in addition to categories
 
 ### Recurring Transactions
+
 - Store the schedule definition, not future instances
 - Generate upcoming instances on-demand (for display and budgeting)
 - Handle variable amounts (estimated vs. actual)
@@ -99,13 +105,16 @@ Goal {
 ## Reporting
 
 ### Net Worth
+
 ```
 netWorth = sum(asset accounts) - sum(liability accounts)
 ```
+
 - Track over time for trend analysis
 - Exclude closed accounts from active calculations but preserve history
 
 ### Spending Analysis
+
 - Category breakdown (pie/bar chart data)
 - Trend over time (monthly spending per category)
 - Comparison to budget (actual vs. planned)

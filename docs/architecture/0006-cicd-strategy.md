@@ -26,6 +26,7 @@ We will implement a **GitHub Actions + Turborepo CI/CD pipeline** with the follo
 ### 1. GitHub Actions as Unified CI Platform
 
 GitHub Actions is the sole CI/CD platform for all platforms and workflows. This provides:
+
 - All runner types needed (ubuntu, macos, windows) in one system.
 - Native integration with Copilot coding agent (same platform where agent opens PRs).
 - Built-in security features (CodeQL, Dependabot, secret scanning, push protection).
@@ -45,14 +46,15 @@ npx turbo run build --filter='...[origin/main...HEAD]'
 
 **Why Turborepo over alternatives:**
 
-| Approach | Pros | Cons | Fit |
-|----------|------|------|-----|
-| **Turborepo** | Simple config, excellent caching, JS-native, automatic dependency graph | Less mature than Nx for non-JS | ✅ Best fit |
-| **Nx** | Full-featured, CI distribution, generators | Heavy, opinionated, steep learning curve | ⚠️ Overkill at current scale |
-| **Custom path filters** | Zero dependencies, simple YAML | No dependency graph, manual maintenance, breaks as repo grows | ⚠️ Fragile |
-| **dorny/paths-filter** | Easy per-job triggers | No transitive dependency detection | ⚠️ Supplement only |
+| Approach                | Pros                                                                    | Cons                                                          | Fit                          |
+| ----------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------- |
+| **Turborepo**           | Simple config, excellent caching, JS-native, automatic dependency graph | Less mature than Nx for non-JS                                | ✅ Best fit                  |
+| **Nx**                  | Full-featured, CI distribution, generators                              | Heavy, opinionated, steep learning curve                      | ⚠️ Overkill at current scale |
+| **Custom path filters** | Zero dependencies, simple YAML                                          | No dependency graph, manual maintenance, breaks as repo grows | ⚠️ Fragile                   |
+| **dorny/paths-filter**  | Easy per-job triggers                                                   | No transitive dependency detection                            | ⚠️ Supplement only           |
 
 **Dependency graph:**
+
 ```
 apps/ios ──────┐
 apps/android ──┤
@@ -65,6 +67,7 @@ services/api ──┘
 A change to `packages/models` automatically triggers tests in ALL consumers (all apps, sync, api). Turborepo handles this via its dependency graph derived from workspace `package.json` files.
 
 **`turbo.json` configuration:**
+
 ```json
 {
   "$schema": "https://turbo.build/schema.json",
@@ -120,6 +123,7 @@ A change to `packages/models` automatically triggers tests in ALL consumers (all
 4. Merging the version PR bumps versions, updates `CHANGELOG.md`, and publishes.
 
 **Per-platform version formats:**
+
 - `packages/*` → npm semver (e.g., `1.2.3`)
 - `apps/ios` → `CFBundleShortVersionString` (e.g., `1.3.0`) + build number
 - `apps/android` → `versionName` (e.g., `1.3.0`) + `versionCode`
@@ -291,13 +295,13 @@ Tag: windows/v1.3.0 → release-windows.yml → Flight ring → Microsoft Store
 
 ### 6. Platform Build Matrix
 
-| Platform | Runner | Toolchain | Build Tool | Test Framework | Est. Duration |
-|----------|--------|-----------|------------|----------------|---------------|
-| Shared packages | ubuntu-latest | Node.js 22 | Turborepo | Vitest | 1–2 min |
-| Web | ubuntu-latest | Node.js 22 | Turborepo + Vite | Vitest + RTL | 3–5 min |
-| Android | ubuntu-latest | JDK 21 | Gradle | JUnit | 5–8 min |
-| iOS | macos-14 (M1) | Xcode 16 | xcodebuild + Fastlane | XCTest | 8–12 min |
-| Windows | windows-latest | .NET 9 | MSBuild | MSTest/xUnit | 5–8 min |
+| Platform        | Runner         | Toolchain  | Build Tool            | Test Framework | Est. Duration |
+| --------------- | -------------- | ---------- | --------------------- | -------------- | ------------- |
+| Shared packages | ubuntu-latest  | Node.js 22 | Turborepo             | Vitest         | 1–2 min       |
+| Web             | ubuntu-latest  | Node.js 22 | Turborepo + Vite      | Vitest + RTL   | 3–5 min       |
+| Android         | ubuntu-latest  | JDK 21     | Gradle                | JUnit          | 5–8 min       |
+| iOS             | macos-14 (M1)  | Xcode 16   | xcodebuild + Fastlane | XCTest         | 8–12 min      |
+| Windows         | windows-latest | .NET 9     | MSBuild               | MSTest/xUnit   | 5–8 min       |
 
 ### 7. Testing Strategy (Unit/Integration/E2E Tiers)
 
@@ -315,6 +319,7 @@ Tag: windows/v1.3.0 → release-windows.yml → Flight ring → Microsoft Store
 ```
 
 **Unit tests (every PR):**
+
 - Shared packages: Vitest on ubuntu-latest
 - Web: Vitest + React Testing Library on ubuntu-latest
 - Android: JUnit + Gradle on ubuntu-latest
@@ -322,11 +327,13 @@ Tag: windows/v1.3.0 → release-windows.yml → Flight ring → Microsoft Store
 - Windows: MSTest/xUnit on windows-latest
 
 **Integration tests (every PR):**
+
 - API integration: Spin up API with test database, run request/response tests.
 - Sync integration: Test CRDT conflict resolution, offline/online scenarios.
 - Run on ubuntu-latest with Docker Compose for service dependencies.
 
 **E2E tests (merge to main only):**
+
 - Web: Playwright on ubuntu-latest (~5–10 min)
 - iOS: XCUITest on macos-14 (~15–30 min)
 - Android: Espresso on ubuntu-latest with emulator (~10–20 min)
@@ -335,36 +342,40 @@ Tag: windows/v1.3.0 → release-windows.yml → Flight ring → Microsoft Store
 
 **Accessibility audits in CI:**
 
-| Tool | Scope | Trigger |
-|------|-------|---------|
-| axe-core (`@axe-core/playwright`) | Web components | Every PR (web changes) |
-| Lighthouse CI | Full page a11y + performance | Every PR (web changes) |
-| Accessibility Insights CLI | Windows app | On merge (windows) |
-| XCUITest accessibility assertions | iOS app | On merge (iOS) |
+| Tool                              | Scope                        | Trigger                |
+| --------------------------------- | ---------------------------- | ---------------------- |
+| axe-core (`@axe-core/playwright`) | Web components               | Every PR (web changes) |
+| Lighthouse CI                     | Full page a11y + performance | Every PR (web changes) |
+| Accessibility Insights CLI        | Windows app                  | On merge (windows)     |
+| XCUITest accessibility assertions | iOS app                      | On merge (iOS)         |
 
 **Policy:** PRs that introduce axe-core critical/serious accessibility violations are blocked from merge.
 
 ### 8. Release Automation Per Platform
 
 **iOS release flow:**
+
 ```
 merge to main → build on macos-14 → Fastlane Match (signing) →
 Fastlane pilot (TestFlight upload) → manual promote to App Store
 ```
 
 **Android release flow:**
+
 ```
 merge to main → build on ubuntu → Fastlane supply (internal track) →
 manual promote to beta → manual promote to production
 ```
 
 **Web release flow:**
+
 ```
 merge to main → auto-deploy to staging (Vercel preview) →
 manual promote to production (or auto-deploy)
 ```
 
 **Windows release flow:**
+
 ```
 merge to main → build MSIX on windows-latest →
 submit via MS Store Submission API (flight ring) → manual promote to production
@@ -372,39 +383,41 @@ submit via MS Store Submission API (flight ring) → manual promote to productio
 
 ### 9. Security Scanning
 
-| Scan Type | Tool | Trigger | Gate |
-|-----------|------|---------|------|
-| **SAST** | GitHub CodeQL | Every PR | Block on high/critical |
-| **Dependency scanning** | Dependabot | Continuous | Auto-PR for updates |
-| **Secret scanning** | GitHub Advanced Security | Every push | Block on detected secrets (push protection) |
-| **License compliance** | Dependabot / FOSSA | Weekly | Warn on copyleft |
-| **DAST** | OWASP ZAP | On deploy to staging | Warn (block on critical) |
-| **Container scanning** | Trivy | If/when Docker is used | Block on critical CVEs |
+| Scan Type               | Tool                     | Trigger                | Gate                                        |
+| ----------------------- | ------------------------ | ---------------------- | ------------------------------------------- |
+| **SAST**                | GitHub CodeQL            | Every PR               | Block on high/critical                      |
+| **Dependency scanning** | Dependabot               | Continuous             | Auto-PR for updates                         |
+| **Secret scanning**     | GitHub Advanced Security | Every push             | Block on detected secrets (push protection) |
+| **License compliance**  | Dependabot / FOSSA       | Weekly                 | Warn on copyleft                            |
+| **DAST**                | OWASP ZAP                | On deploy to staging   | Warn (block on critical)                    |
+| **Container scanning**  | Trivy                    | If/when Docker is used | Block on critical CVEs                      |
 
 **Dependabot configuration (`.github/dependabot.yml`):**
+
 ```yaml
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     groups:
       production:
-        dependency-type: "production"
+        dependency-type: 'production'
       development:
-        dependency-type: "development"
-  - package-ecosystem: "gradle"
-    directory: "/apps/android"
+        dependency-type: 'development'
+  - package-ecosystem: 'gradle'
+    directory: '/apps/android'
     schedule:
-      interval: "weekly"
-  - package-ecosystem: "nuget"
-    directory: "/apps/windows"
+      interval: 'weekly'
+  - package-ecosystem: 'nuget'
+    directory: '/apps/windows'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
 ```
 
 **CodeQL custom queries** for financial app patterns:
+
 - Hardcoded API keys or tokens
 - Insecure cryptographic usage
 - SQL injection in API layer
@@ -414,37 +427,37 @@ updates:
 
 **Runner costs (GitHub-hosted, private repo):**
 
-| Runner | Cost/min |
-|--------|----------|
-| ubuntu-latest | $0.008 |
-| windows-latest | $0.016 |
-| macos-14 (M1) | $0.08 |
+| Runner         | Cost/min |
+| -------------- | -------- |
+| ubuntu-latest  | $0.008   |
+| windows-latest | $0.016   |
+| macos-14 (M1)  | $0.08    |
 
 **Estimated monthly cost (moderate usage):**
 
-| Activity | Runs/month | Min/run | Runner | Est. Cost |
-|----------|-----------|---------|--------|-----------|
-| Shared package tests | 200 | 3 | ubuntu | $4.80 |
-| Web build + test | 100 | 5 | ubuntu | $4.00 |
-| Android build + test | 80 | 8 | ubuntu | $5.12 |
-| iOS build + test | 80 | 10 | macos-14 | $64.00 |
-| Windows build + test | 60 | 8 | windows | $7.68 |
-| E2E (all platforms) | 30 | 30 avg | mixed | ~$50.00 |
-| Security scans | 200 | 2 | ubuntu | $3.20 |
-| Copilot agent | 100 | 5 | ubuntu | $4.00 |
-| **Total** | | | | **~$143/mo** |
+| Activity             | Runs/month | Min/run | Runner   | Est. Cost    |
+| -------------------- | ---------- | ------- | -------- | ------------ |
+| Shared package tests | 200        | 3       | ubuntu   | $4.80        |
+| Web build + test     | 100        | 5       | ubuntu   | $4.00        |
+| Android build + test | 80         | 8       | ubuntu   | $5.12        |
+| iOS build + test     | 80         | 10      | macos-14 | $64.00       |
+| Windows build + test | 60         | 8       | windows  | $7.68        |
+| E2E (all platforms)  | 30         | 30 avg  | mixed    | ~$50.00      |
+| Security scans       | 200        | 2       | ubuntu   | $3.20        |
+| Copilot agent        | 100        | 5       | ubuntu   | $4.00        |
+| **Total**            |            |         |          | **~$143/mo** |
 
 iOS is the biggest cost driver. The `macos-14` Apple Silicon runners are ~2x faster than `macos-13`, reducing per-build cost.
 
 **Cost reduction strategies:**
 
-| Strategy | Savings | How |
-|----------|---------|-----|
-| Affected-only builds | 50–80% | Turborepo `--filter` |
-| Remote caching | 70–90% on hits | Turborepo Remote Cache |
-| Skip E2E on PRs | ~60% of total | E2E only on merge to main |
-| Concurrency control | Avoid duplicates | `cancel-in-progress: true` |
-| Apple Silicon runners | ~2x faster iOS | `macos-14` over `macos-13` |
+| Strategy              | Savings          | How                        |
+| --------------------- | ---------------- | -------------------------- |
+| Affected-only builds  | 50–80%           | Turborepo `--filter`       |
+| Remote caching        | 70–90% on hits   | Turborepo Remote Cache     |
+| Skip E2E on PRs       | ~60% of total    | E2E only on merge to main  |
+| Concurrency control   | Avoid duplicates | `cancel-in-progress: true` |
+| Apple Silicon runners | ~2x faster iOS   | `macos-14` over `macos-13` |
 
 ## Alternatives Considered
 
@@ -487,13 +500,13 @@ iOS is the biggest cost driver. The `macos-14` Apple Silicon runners are ~2x fas
 
 ### Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| GitHub Actions outage blocks all CI | Low | High | Workflows are YAML-based and portable; can migrate to self-hosted runners |
-| Remote cache poisoning | Low | Medium | Use signed cache artifacts; restrict cache write to trusted workflows |
-| macOS runner costs spike | Medium | Medium | Monitor usage; consider Xcode Cloud as iOS-only supplement; self-hosted Mac minis |
-| Fastlane signing issues | Medium | Medium | Fastlane Match with encrypted git repo; documented rotation procedure |
-| Changeset fatigue (developers skip) | Medium | Low | CI check requiring changeset on relevant PRs; bot reminders |
+| Risk                                | Likelihood | Impact | Mitigation                                                                        |
+| ----------------------------------- | ---------- | ------ | --------------------------------------------------------------------------------- |
+| GitHub Actions outage blocks all CI | Low        | High   | Workflows are YAML-based and portable; can migrate to self-hosted runners         |
+| Remote cache poisoning              | Low        | Medium | Use signed cache artifacts; restrict cache write to trusted workflows             |
+| macOS runner costs spike            | Medium     | Medium | Monitor usage; consider Xcode Cloud as iOS-only supplement; self-hosted Mac minis |
+| Fastlane signing issues             | Medium     | Medium | Fastlane Match with encrypted git repo; documented rotation procedure             |
+| Changeset fatigue (developers skip) | Medium     | Low    | CI check requiring changeset on relevant PRs; bot reminders                       |
 
 ## Implementation Notes
 
@@ -516,15 +529,15 @@ iOS is the biggest cost driver. The `macos-14` Apple Silicon runners are ~2x fas
 
 ### Caching Strategy
 
-| Layer | Tool | Scope | Cache Key |
-|-------|------|-------|-----------|
-| Task output | Turborepo local | Per-runner, per-task | Automatic (content hash) |
-| Remote cache | Turborepo Remote Cache | Cross-runner, cross-PR | Automatic |
-| Node modules | `actions/cache` | Per-runner | `node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}` |
-| Gradle | `gradle/actions/setup-gradle` | Android builds | Built-in (wrapper + config hash) |
-| CocoaPods | `actions/cache` | iOS builds | `pods-${{ hashFiles('apps/ios/Podfile.lock') }}` |
-| NuGet | `actions/cache` | Windows builds | `nuget-${{ hashFiles('**/*.csproj') }}` |
-| Turborepo | `actions/cache` | Cross-PR | `turbo-${{ runner.os }}-${{ github.sha }}` |
+| Layer        | Tool                          | Scope                  | Cache Key                                                     |
+| ------------ | ----------------------------- | ---------------------- | ------------------------------------------------------------- |
+| Task output  | Turborepo local               | Per-runner, per-task   | Automatic (content hash)                                      |
+| Remote cache | Turborepo Remote Cache        | Cross-runner, cross-PR | Automatic                                                     |
+| Node modules | `actions/cache`               | Per-runner             | `node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}` |
+| Gradle       | `gradle/actions/setup-gradle` | Android builds         | Built-in (wrapper + config hash)                              |
+| CocoaPods    | `actions/cache`               | iOS builds             | `pods-${{ hashFiles('apps/ios/Podfile.lock') }}`              |
+| NuGet        | `actions/cache`               | Windows builds         | `nuget-${{ hashFiles('**/*.csproj') }}`                       |
+| Turborepo    | `actions/cache`               | Cross-PR               | `turbo-${{ runner.os }}-${{ github.sha }}`                    |
 
 ### Secrets Management
 
@@ -537,6 +550,7 @@ iOS is the biggest cost driver. The `macos-14` Apple Silicon runners are ~2x fas
 ### Conventional Commits
 
 Enforced via `commitlint` + `husky` pre-commit hook:
+
 ```
 feat(core): add transaction categorization engine
 fix(sync): resolve CRDT merge conflict on concurrent edits
@@ -546,18 +560,18 @@ docs(adr): add CI/CD strategy decision record
 
 ### Implementation Priority
 
-| Phase | Scope | Effort |
-|-------|-------|--------|
-| Phase 1 | `ci.yml` — shared package lint/test on ubuntu | S (1 day) |
-| Phase 2 | Turborepo setup + affected-only detection | S (1 day) |
-| Phase 3 | Web build/test + Lighthouse CI | M (2 days) |
-| Phase 4 | CodeQL + Dependabot security scanning | S (1 day) |
-| Phase 5 | Android build/test workflow | M (2 days) |
-| Phase 6 | iOS build/test workflow + Fastlane | M (2 days) |
-| Phase 7 | Windows build/test workflow | M (2 days) |
-| Phase 8 | E2E pipeline on merge to main | L (3 days) |
-| Phase 9 | Changesets + release workflows | M (2 days) |
-| Phase 10 | Fastlane + store submission automation | L (3 days) |
+| Phase    | Scope                                         | Effort     |
+| -------- | --------------------------------------------- | ---------- |
+| Phase 1  | `ci.yml` — shared package lint/test on ubuntu | S (1 day)  |
+| Phase 2  | Turborepo setup + affected-only detection     | S (1 day)  |
+| Phase 3  | Web build/test + Lighthouse CI                | M (2 days) |
+| Phase 4  | CodeQL + Dependabot security scanning         | S (1 day)  |
+| Phase 5  | Android build/test workflow                   | M (2 days) |
+| Phase 6  | iOS build/test workflow + Fastlane            | M (2 days) |
+| Phase 7  | Windows build/test workflow                   | M (2 days) |
+| Phase 8  | E2E pipeline on merge to main                 | L (3 days) |
+| Phase 9  | Changesets + release workflows                | M (2 days) |
+| Phase 10 | Fastlane + store submission automation        | L (3 days) |
 
 **Total estimated effort:** ~19 days, spread across feature development.
 

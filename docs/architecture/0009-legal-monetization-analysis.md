@@ -42,22 +42,22 @@ This analysis evaluates the legal readiness of the Finance monorepo for transiti
 
 ### Critical Findings (Must Address Before Public)
 
-| # | Finding | Risk | Priority |
-|---|---------|------|----------|
-| 1 | ~~MIT License allows competitors to fork, rebrand, and sell an identical product~~ | ~~**Critical**~~ | ✅ Resolved — BSL 1.1 adopted |
-| 2 | No Contributor License Agreement exists | **Critical** | Must address before public |
-| 3 | No legal entity separates personal liability from the application | **Critical** | Must address before public |
-| 4 | Cryptographic code requires BIS notification before public release | **High** | Must address before public |
-| 5 | No Terms of Service or Privacy Policy for the application | **High** | Must address before public |
+| #   | Finding                                                                            | Risk             | Priority                      |
+| --- | ---------------------------------------------------------------------------------- | ---------------- | ----------------------------- |
+| 1   | ~~MIT License allows competitors to fork, rebrand, and sell an identical product~~ | ~~**Critical**~~ | ✅ Resolved — BSL 1.1 adopted |
+| 2   | No Contributor License Agreement exists                                            | **Critical**     | Must address before public    |
+| 3   | No legal entity separates personal liability from the application                  | **Critical**     | Must address before public    |
+| 4   | Cryptographic code requires BIS notification before public release                 | **High**         | Must address before public    |
+| 5   | No Terms of Service or Privacy Policy for the application                          | **High**         | Must address before public    |
 
 ### High/Medium Findings (Address Soon After Public)
 
-| # | Finding | Risk | Priority |
-|---|---------|------|----------|
-| 6 | "Finance" is likely unregistrable as a trademark | **Medium** | Should do soon |
-| 7 | MIT lacks an explicit patent grant (Apache 2.0 has one) | **Medium** | Should do soon |
-| 8 | No GDPR/CCPA compliance documentation for the application | **High** | Should do soon |
-| 9 | No contributor DCO or sign-off mechanism in git hooks | **Low** | Nice to have |
+| #   | Finding                                                   | Risk       | Priority       |
+| --- | --------------------------------------------------------- | ---------- | -------------- |
+| 6   | "Finance" is likely unregistrable as a trademark          | **Medium** | Should do soon |
+| 7   | MIT lacks an explicit patent grant (Apache 2.0 has one)   | **Medium** | Should do soon |
+| 8   | No GDPR/CCPA compliance documentation for the application | **High**   | Should do soon |
+| 9   | No contributor DCO or sign-off mechanism in git hooks     | **Low**    | Nice to have   |
 
 ---
 
@@ -84,48 +84,52 @@ However, MIT also grants **everyone else** the same rights.
 
 Under MIT, **any person or company** can:
 
-| Action | Permitted? | Notes |
-|--------|-----------|-------|
-| Fork the entire codebase | ✅ Yes | Including all business logic, sync engine, crypto |
-| Remove your branding and rebrand | ✅ Yes | Only must keep the copyright notice |
-| Sell the forked version commercially | ✅ Yes | As a competing product |
-| Offer it as a hosted SaaS | ✅ Yes | Without contributing back |
-| Modify and distribute without source | ✅ Yes | No copyleft obligation |
-| Patent derived implementations | ✅ Yes | MIT has no patent retaliation clause |
-| Sublicense under different terms | ✅ Yes | Can even make derivatives proprietary |
+| Action                               | Permitted? | Notes                                             |
+| ------------------------------------ | ---------- | ------------------------------------------------- |
+| Fork the entire codebase             | ✅ Yes     | Including all business logic, sync engine, crypto |
+| Remove your branding and rebrand     | ✅ Yes     | Only must keep the copyright notice               |
+| Sell the forked version commercially | ✅ Yes     | As a competing product                            |
+| Offer it as a hosted SaaS            | ✅ Yes     | Without contributing back                         |
+| Modify and distribute without source | ✅ Yes     | No copyleft obligation                            |
+| Patent derived implementations       | ✅ Yes     | MIT has no patent retaliation clause              |
+| Sublicense under different terms     | ✅ Yes     | Can even make derivatives proprietary             |
 
 This is not hypothetical. Amazon, Google, and other cloud providers have built commercial offerings from MIT/BSD-licensed projects, which led companies like Elastic, MongoDB, and HashiCorp to change their licenses.
 
 ### 2.4 License Comparison for Monetized Products
 
-| License | Competitors can fork & sell? | Competitors must share changes? | SaaS protection? | Compatible with App Store? | Complexity |
-|---------|---------------------------|-------------------------------|-------------------|---------------------------|------------|
-| **MIT** (current) | ✅ Yes | ❌ No | ❌ None | ✅ Yes | Very low |
-| **Apache 2.0** | ✅ Yes | ❌ No | ❌ None | ✅ Yes | Low (adds patent grant) |
-| **AGPL-3.0** | ✅ Yes, but must share source | ✅ Yes, including SaaS | ✅ Strong | ⚠️ Controversial | Medium |
-| **BSL 1.1** (MariaDB) | ❌ No (until change date) | N/A (not OSS until change date) | ✅ Strong | ✅ Yes | Medium |
-| **SSPL** (MongoDB) | ❌ No (for SaaS) | ✅ Entire service stack | ✅ Very strong | ⚠️ Not OSI-approved | Medium |
-| **Elastic License 2.0** | ⚠️ Limited | ❌ No | ✅ Strong | ✅ Yes | Medium |
-| **Dual license** (MIT + Commercial) | Depends on track | Depends on track | ✅ Configurable | ✅ Yes | High (legal) |
+| License                             | Competitors can fork & sell?  | Competitors must share changes? | SaaS protection? | Compatible with App Store? | Complexity              |
+| ----------------------------------- | ----------------------------- | ------------------------------- | ---------------- | -------------------------- | ----------------------- |
+| **MIT** (current)                   | ✅ Yes                        | ❌ No                           | ❌ None          | ✅ Yes                     | Very low                |
+| **Apache 2.0**                      | ✅ Yes                        | ❌ No                           | ❌ None          | ✅ Yes                     | Low (adds patent grant) |
+| **AGPL-3.0**                        | ✅ Yes, but must share source | ✅ Yes, including SaaS          | ✅ Strong        | ⚠️ Controversial           | Medium                  |
+| **BSL 1.1** (MariaDB)               | ❌ No (until change date)     | N/A (not OSS until change date) | ✅ Strong        | ✅ Yes                     | Medium                  |
+| **SSPL** (MongoDB)                  | ❌ No (for SaaS)              | ✅ Entire service stack         | ✅ Very strong   | ⚠️ Not OSI-approved        | Medium                  |
+| **Elastic License 2.0**             | ⚠️ Limited                    | ❌ No                           | ✅ Strong        | ✅ Yes                     | Medium                  |
+| **Dual license** (MIT + Commercial) | Depends on track              | Depends on track                | ✅ Configurable  | ✅ Yes                     | High (legal)            |
 
 ### 2.5 Detailed License Analysis
 
 #### AGPL-3.0 (Copyleft)
+
 - **How it protects you:** Anyone who modifies the code and offers it as a network service must release their modifications under AGPL. This means a competitor can't take your sync engine, improve it, and offer a competing SaaS without open-sourcing their changes.
 - **Downside:** Strong copyleft scares away enterprise contributors and some integrations. Apple's App Store historically has tension with GPL-family licenses (though this is debated and several AGPL apps are on the App Store). Some companies have blanket policies against AGPL dependencies.
 - **Fit for Finance:** Moderate. Protects the sync engine from SaaS competitors but may limit adoption.
 
 #### BSL 1.1 (Business Source License)
+
 - **How it protects you:** Source code is publicly visible but cannot be used in production by others until a "change date" (typically 3–4 years). After that, it converts to an open-source license (usually Apache 2.0 or MIT). Used by MariaDB, Sentry, CockroachDB, HashiCorp (Terraform).
 - **Downside:** Not OSI-approved "open source." Community contributors may be less willing to contribute to a project they can't freely use. However, it's become very common for venture-backed infrastructure companies.
 - **Fit for Finance:** Strong. Allows source transparency (aligns with "open development" principle) while preventing commercial competition for a window.
 
 #### Elastic License 2.0 / SSPL
+
 - **How it protects you:** Prevents offering the software as a managed service. Elastic License 2.0 is simpler and more modern; SSPL (MongoDB) is broader but more controversial.
 - **Downside:** Neither is OSI-approved. SSPL is considered overly broad by many. Elastic License 2.0 is cleaner but still limits some use cases.
 - **Fit for Finance:** Moderate. If the primary competitive threat is cloud providers offering a hosted version, these are strong. But Finance's moat is more likely the native apps and UX than the backend code.
 
 #### Dual Licensing (Recommended Approach)
+
 - **How it protects you:** The open-source codebase uses a copyleft license (e.g., AGPL-3.0) that requires competitors to share their changes. Companies that want to use the code without the copyleft obligation purchase a commercial license. This is the model used by Qt, MySQL (historically), GitLab (partially), and many others.
 - **Downside:** Requires all contributors to sign a CLA granting you the right to dual-license (see §3). More complex legal setup.
 - **Fit for Finance:** Strong. Supports the "open development" principle while protecting commercial interests. The CLA you need anyway (see §3) naturally enables this.
@@ -196,15 +200,15 @@ For a **monetized** open-source project, a CLA serves several vital functions:
 
 ### 3.3 CLA vs. DCO
 
-| Aspect | CLA (Contributor License Agreement) | DCO (Developer Certificate of Origin) |
-|--------|--------------------------------------|---------------------------------------|
-| **What it does** | Grants specific license rights to the project | Certifies the contributor has the right to submit the code |
-| **Legal weight** | Stronger — explicit contractual agreement | Weaker — attestation only, not a license grant |
-| **Allows relicensing?** | ✅ Yes (if CLA includes this right) | ❌ No — only certifies the contribution matches the project license |
-| **Patent grant?** | ✅ Can include | ❌ No |
-| **Contributor friction** | Higher — must sign a document | Lower — just add `Signed-off-by:` to commits |
-| **Used by** | Apache, Google, Microsoft, Facebook | Linux kernel, GitLab |
-| **Right for Finance?** | ✅ **Yes** — needed for monetization | ❌ Insufficient alone |
+| Aspect                   | CLA (Contributor License Agreement)           | DCO (Developer Certificate of Origin)                               |
+| ------------------------ | --------------------------------------------- | ------------------------------------------------------------------- |
+| **What it does**         | Grants specific license rights to the project | Certifies the contributor has the right to submit the code          |
+| **Legal weight**         | Stronger — explicit contractual agreement     | Weaker — attestation only, not a license grant                      |
+| **Allows relicensing?**  | ✅ Yes (if CLA includes this right)           | ❌ No — only certifies the contribution matches the project license |
+| **Patent grant?**        | ✅ Can include                                | ❌ No                                                               |
+| **Contributor friction** | Higher — must sign a document                 | Lower — just add `Signed-off-by:` to commits                        |
+| **Used by**              | Apache, Google, Microsoft, Facebook           | Linux kernel, GitLab                                                |
+| **Right for Finance?**   | ✅ **Yes** — needed for monetization          | ❌ Insufficient alone                                               |
 
 **Recommendation:** Use a **CLA** (not just a DCO). A DCO only certifies origin — it doesn't grant you the rights needed for dual licensing or license changes. You can additionally require DCO sign-offs for lightweight provenance tracking, but the CLA is the critical document.
 
@@ -221,6 +225,7 @@ There are two CLA models:
 ### 3.5 Recommended CLA Template
 
 Use the **Apache Individual Contributor License Agreement** as the basis, with modifications for Finance. The Apache ICLA is:
+
 - The most widely used CLA in open source
 - Well-understood by corporate legal departments
 - Includes a patent grant
@@ -292,6 +297,7 @@ Key clauses the CLA must include:
 - **GitHub Copilot ToS:** GitHub's terms state that the user (not GitHub) owns the code suggestions they accept.
 
 **Recommendation:** Document in the CLA and `CONTRIBUTING.md` that:
+
 1. Contributors using AI tools are responsible for ensuring they have the right to contribute the code
 2. Contributors should not accept AI suggestions verbatim without review and modification
 3. The `Co-authored-by: Copilot` trailer (already in your contributing guide) is good practice for transparency
@@ -310,17 +316,18 @@ Key clauses the CLA must include:
 
 Trademark law classifies marks on a spectrum of distinctiveness:
 
-| Category | Example | Registrable? | "Finance" for a Finance App |
-|----------|---------|-------------|---------------------------|
-| **Fanciful** (invented words) | "Xerox," "Kodak" | ✅ Strongest | ❌ Not applicable |
-| **Arbitrary** (real words, unrelated meaning) | "Apple" for computers | ✅ Strong | ❌ Not applicable |
-| **Suggestive** (hints at product) | "Netflix" | ✅ Moderate | ❌ Not applicable |
-| **Descriptive** (describes the product) | "Sharp" for TVs | ⚠️ Only with "secondary meaning" | ⚠️ Borderline descriptive/generic |
-| **Generic** (the category name) | "Computer" for computers | ❌ Never | ✅ **This is "Finance" for a finance app** |
+| Category                                      | Example                  | Registrable?                     | "Finance" for a Finance App                |
+| --------------------------------------------- | ------------------------ | -------------------------------- | ------------------------------------------ |
+| **Fanciful** (invented words)                 | "Xerox," "Kodak"         | ✅ Strongest                     | ❌ Not applicable                          |
+| **Arbitrary** (real words, unrelated meaning) | "Apple" for computers    | ✅ Strong                        | ❌ Not applicable                          |
+| **Suggestive** (hints at product)             | "Netflix"                | ✅ Moderate                      | ❌ Not applicable                          |
+| **Descriptive** (describes the product)       | "Sharp" for TVs          | ⚠️ Only with "secondary meaning" | ⚠️ Borderline descriptive/generic          |
+| **Generic** (the category name)               | "Computer" for computers | ❌ Never                         | ✅ **This is "Finance" for a finance app** |
 
 **"Finance" is generic or at best descriptive** for a financial tracking application. The USPTO would almost certainly refuse registration under Section 2(e)(1) of the Lanham Act (merely descriptive) or Section 2(e)(1)/(d) (generic).
 
 **Comparison:**
+
 - "Mint" (Intuit) — arbitrary for finance (a plant/flavor, not a finance term) → registrable ✅
 - "Quicken" — suggestive (suggests speed) → registrable ✅
 - "Finance" — generic (literally the product category) → not registrable ❌
@@ -329,19 +336,20 @@ Trademark law classifies marks on a spectrum of distinctiveness:
 
 Even though "Finance" alone is likely unregistrable, other brand elements can be protected:
 
-| Element | Protectable? | Action |
-|---------|-------------|--------|
-| **Logo / icon** (when designed) | ✅ Yes | File trademark once logo is finalized |
-| **Stylized wordmark** (unique typographic treatment of "Finance") | ⚠️ Possibly | Depends on distinctiveness of the styling |
-| **Tagline** (e.g., "Re-think your financial life") | ✅ Possibly | If sufficiently distinctive |
-| **Product name + distinctive element** (e.g., "Finance by [Name]") | ⚠️ Possibly | Stronger if combined with distinctive element |
-| **Different product name** | ✅ Yes | Best long-term strategy |
+| Element                                                            | Protectable? | Action                                        |
+| ------------------------------------------------------------------ | ------------ | --------------------------------------------- |
+| **Logo / icon** (when designed)                                    | ✅ Yes       | File trademark once logo is finalized         |
+| **Stylized wordmark** (unique typographic treatment of "Finance")  | ⚠️ Possibly  | Depends on distinctiveness of the styling     |
+| **Tagline** (e.g., "Re-think your financial life")                 | ✅ Possibly  | If sufficiently distinctive                   |
+| **Product name + distinctive element** (e.g., "Finance by [Name]") | ⚠️ Possibly  | Stronger if combined with distinctive element |
+| **Different product name**                                         | ✅ Yes       | Best long-term strategy                       |
 
 ### 4.4 Recommendations
 
 **Short-term (before public release):**
 
 1. **Add a ™ notice to the README** — You can use ™ (unregistered trademark) without filing anything. It provides notice of claimed rights even without registration.
+
    ```markdown
    # Finance™
    ```
@@ -395,16 +403,16 @@ For questions about trademark usage, contact [contact info].
 
 After reviewing the codebase, here is an assessment of potentially patentable innovations:
 
-| Component | File(s) | Innovation | Patentable? |
-|-----------|---------|------------|-------------|
-| **Envelope encryption for sync** | `packages/sync/crypto/EnvelopeEncryption.kt` | DEK/KEK pattern for per-record encryption with household key sharing | ❌ Known pattern (AWS uses this; well-documented) |
-| **Crypto-shredding for GDPR** | `packages/sync/crypto/CryptoShredder.kt` | Key destruction as data deletion with deletion certificates | ❌ Known technique (documented in NIST SP 800-88) |
-| **Household key management** | `packages/sync/crypto/HouseholdKeyManager.kt` | Asymmetric key exchange for household KEK sharing | ❌ Standard key exchange pattern |
-| **Delta sync with sequence tracking** | `packages/sync/delta/DeltaSyncManager.kt` | Per-table monotonic sequences with gap detection and checksum verification | ❌ Standard sync pattern (used by CouchDB, PowerSync, etc.) |
-| **Conflict resolution** | `packages/sync/conflict/` | LWW and merge-based conflict resolution | ❌ Well-known CRDT/sync patterns |
-| **Categorization engine** | `packages/core/categorization/CategorizationEngine.kt` | Rule-based transaction categorization with learning from history | ❌ Basic pattern matching, not novel |
-| **Money allocation** | `packages/core/money/MoneyOperations.kt` | Remainder-distributing allocation with banker's rounding | ❌ Standard financial computation |
-| **Financial aggregation** | `packages/core/aggregation/FinancialAggregator.kt` | Edge-first financial analytics (spending velocity, savings rate) | ❌ Standard financial calculations |
+| Component                             | File(s)                                                | Innovation                                                                 | Patentable?                                                 |
+| ------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **Envelope encryption for sync**      | `packages/sync/crypto/EnvelopeEncryption.kt`           | DEK/KEK pattern for per-record encryption with household key sharing       | ❌ Known pattern (AWS uses this; well-documented)           |
+| **Crypto-shredding for GDPR**         | `packages/sync/crypto/CryptoShredder.kt`               | Key destruction as data deletion with deletion certificates                | ❌ Known technique (documented in NIST SP 800-88)           |
+| **Household key management**          | `packages/sync/crypto/HouseholdKeyManager.kt`          | Asymmetric key exchange for household KEK sharing                          | ❌ Standard key exchange pattern                            |
+| **Delta sync with sequence tracking** | `packages/sync/delta/DeltaSyncManager.kt`              | Per-table monotonic sequences with gap detection and checksum verification | ❌ Standard sync pattern (used by CouchDB, PowerSync, etc.) |
+| **Conflict resolution**               | `packages/sync/conflict/`                              | LWW and merge-based conflict resolution                                    | ❌ Well-known CRDT/sync patterns                            |
+| **Categorization engine**             | `packages/core/categorization/CategorizationEngine.kt` | Rule-based transaction categorization with learning from history           | ❌ Basic pattern matching, not novel                        |
+| **Money allocation**                  | `packages/core/money/MoneyOperations.kt`               | Remainder-distributing allocation with banker's rounding                   | ❌ Standard financial computation                           |
+| **Financial aggregation**             | `packages/core/aggregation/FinancialAggregator.kt`     | Edge-first financial analytics (spending velocity, savings rate)           | ❌ Standard financial calculations                          |
 
 **Finding:** The codebase implements well-known patterns and algorithms. No novel, non-obvious inventions were identified that would meet the patent eligibility threshold under 35 U.S.C. §101–103. The innovation in Finance is in the **combination and execution** of these patterns, not in any individual algorithm.
 
@@ -412,12 +420,12 @@ After reviewing the codebase, here is an assessment of potentially patentable in
 
 ### 5.2 MIT vs. Apache 2.0 Patent Grant
 
-| Aspect | MIT | Apache 2.0 |
-|--------|-----|-----------|
-| **Explicit patent grant** | ❌ No | ✅ Yes (Section 3) |
-| **Implied patent grant** | ⚠️ Debated — some courts find an implied license | ✅ Explicit |
-| **Patent retaliation** | ❌ No | ✅ Yes — patent license terminates if you sue |
-| **Contributor patent grant** | ❌ No | ✅ Yes — contributors grant patent rights |
+| Aspect                       | MIT                                              | Apache 2.0                                    |
+| ---------------------------- | ------------------------------------------------ | --------------------------------------------- |
+| **Explicit patent grant**    | ❌ No                                            | ✅ Yes (Section 3)                            |
+| **Implied patent grant**     | ⚠️ Debated — some courts find an implied license | ✅ Explicit                                   |
+| **Patent retaliation**       | ❌ No                                            | ✅ Yes — patent license terminates if you sue |
+| **Contributor patent grant** | ❌ No                                            | ✅ Yes — contributors grant patent rights     |
 
 The MIT License's phrase "to deal in the Software without restriction" arguably implies a patent license, but this has never been definitively tested in court. Apache 2.0 removes all ambiguity.
 
@@ -439,17 +447,17 @@ The MIT License's phrase "to deal in the Software without restriction" arguably 
 
 The Finance codebase uses the following cryptographic technologies:
 
-| Technology | Usage | Location | Classification |
-|-----------|-------|----------|----------------|
-| **AES-256-GCM** | Envelope encryption (DEK/KEK) | `packages/sync/crypto/` | Symmetric encryption — export controlled |
-| **AES-256-CBC** | SQLCipher local database encryption | `packages/models/` (via SQLCipher dependency) | Symmetric encryption — export controlled |
-| **HMAC-SHA512** | SQLCipher page authentication | `packages/models/` (via SQLCipher dependency) | Authentication — controlled |
-| **Argon2id** | Key derivation | `packages/sync/crypto/KeyDerivation.kt` | KDF — controlled |
-| **X25519** | Household key exchange (planned) | `packages/sync/crypto/HouseholdKeyManager.kt` | Asymmetric encryption — controlled |
-| **ES256 (ECDSA P-256)** | JWT signing | `services/api/` (via Supabase) | Digital signature — controlled |
-| **WebAuthn/FIDO2** | Passkey authentication | Auth architecture (ADR-0004) | Authentication — controlled |
-| **TLS 1.2+** | Transit encryption | All network communication | Transport — usually exempt |
-| **PKCE (SHA-256)** | OAuth challenge | `packages/sync/auth/PKCEHelper.kt` | Hash only — usually exempt |
+| Technology              | Usage                               | Location                                      | Classification                           |
+| ----------------------- | ----------------------------------- | --------------------------------------------- | ---------------------------------------- |
+| **AES-256-GCM**         | Envelope encryption (DEK/KEK)       | `packages/sync/crypto/`                       | Symmetric encryption — export controlled |
+| **AES-256-CBC**         | SQLCipher local database encryption | `packages/models/` (via SQLCipher dependency) | Symmetric encryption — export controlled |
+| **HMAC-SHA512**         | SQLCipher page authentication       | `packages/models/` (via SQLCipher dependency) | Authentication — controlled              |
+| **Argon2id**            | Key derivation                      | `packages/sync/crypto/KeyDerivation.kt`       | KDF — controlled                         |
+| **X25519**              | Household key exchange (planned)    | `packages/sync/crypto/HouseholdKeyManager.kt` | Asymmetric encryption — controlled       |
+| **ES256 (ECDSA P-256)** | JWT signing                         | `services/api/` (via Supabase)                | Digital signature — controlled           |
+| **WebAuthn/FIDO2**      | Passkey authentication              | Auth architecture (ADR-0004)                  | Authentication — controlled              |
+| **TLS 1.2+**            | Transit encryption                  | All network communication                     | Transport — usually exempt               |
+| **PKCE (SHA-256)**      | OAuth challenge                     | `packages/sync/auth/PKCEHelper.kt`            | Hash only — usually exempt               |
 
 ### 6.2 Applicable Regulations
 
@@ -459,16 +467,17 @@ Software that implements, uses, or provides access to cryptography is classified
 
 **Key classifications:**
 
-| ECCN | Description | Applies to Finance? |
-|------|-------------|-------------------|
-| **5D002** | Software that uses or performs cryptographic functionality | ✅ Yes — AES-256, Argon2id, X25519 |
-| **5D992** | Mass-market encryption software | ⚠️ Possibly — depends on distribution |
+| ECCN      | Description                                                | Applies to Finance?                   |
+| --------- | ---------------------------------------------------------- | ------------------------------------- |
+| **5D002** | Software that uses or performs cryptographic functionality | ✅ Yes — AES-256, Argon2id, X25519    |
+| **5D992** | Mass-market encryption software                            | ⚠️ Possibly — depends on distribution |
 
 #### Open-Source Exception (License Exception TSU / EAR §740.13(e))
 
 **Good news:** EAR provides a specific exception for **publicly available encryption source code** under License Exception TSU (Technology and Software Unrestricted):
 
 > Source code that is publicly available (e.g., posted on the internet) and subject to an open-source license is eligible for License Exception TSU, provided:
+>
 > 1. The source code is not subject to an express agreement for payment of a licensing fee
 > 2. A copy of the source code is sent (or a URL notification is made) to the Bureau of Industry and Security (BIS) and the ENC Encryption Request Coordinator at NSA
 
@@ -481,6 +490,7 @@ Software that implements, uses, or provides access to cryptography is classified
 #### Step 1: File BIS/ENC Notification (Required Before Publication)
 
 Send an email to **both**:
+
 - `crypt@bis.doc.gov` (Bureau of Industry and Security)
 - `enc@nsa.gov` (NSA Encryption Request Coordinator)
 
@@ -544,6 +554,7 @@ U.S. embargo or to persons on the U.S. Denied Persons List.
 #### Step 3: App Store Considerations
 
 When publishing to the App Store and Google Play:
+
 - **Apple App Store:** Requires an annual self-classification report for apps using encryption. You'll need to declare encryption usage in App Store Connect (ITSAppUsesNonExemptEncryption = YES, then provide ECCN).
 - **Google Play:** Less formal, but the app must comply with export regulations of the countries where it's distributed.
 
@@ -553,12 +564,12 @@ ITAR (International Traffic in Arms Regulations) applies to defense-related item
 
 ### 6.5 Recommendation
 
-| Action | Priority |
-|--------|----------|
-| File BIS/ENC notification email | **Must do before public** |
-| Add `EXPORT_CONTROL.md` to repository | **Must do before public** |
+| Action                                                  | Priority                              |
+| ------------------------------------------------------- | ------------------------------------- |
+| File BIS/ENC notification email                         | **Must do before public**             |
+| Add `EXPORT_CONTROL.md` to repository                   | **Must do before public**             |
 | Set `ITSAppUsesNonExemptEncryption` in iOS `Info.plist` | Should do before App Store submission |
-| Document ECCN classification internally | Should do soon |
+| Document ECCN classification internally                 | Should do soon                        |
 
 ---
 
@@ -572,19 +583,20 @@ ITAR (International Traffic in Arms Regulations) applies to defense-related item
 
 ### 7.2 What's Needed
 
-| Document | Needed for Repo? | Needed for App? | When? |
-|----------|-----------------|-----------------|-------|
-| **Privacy Policy** | Not required (repo doesn't collect user data) | ✅ Required (App Store requirement, GDPR/CCPA mandate) | Before app launch |
-| **Terms of Service** | Not required | ✅ Required (for monetized app with accounts) | Before app launch |
-| **Cookie Policy** | N/A | ✅ Required for web app (if using cookies) | Before web app launch |
-| **Data Processing Agreement (DPA)** | N/A | ⚠️ May be required (if processing EU data with Supabase) | Before app launch |
-| **Acceptable Use Policy** | N/A | ⚠️ Recommended (especially for household sharing) | Before app launch |
+| Document                            | Needed for Repo?                              | Needed for App?                                          | When?                 |
+| ----------------------------------- | --------------------------------------------- | -------------------------------------------------------- | --------------------- |
+| **Privacy Policy**                  | Not required (repo doesn't collect user data) | ✅ Required (App Store requirement, GDPR/CCPA mandate)   | Before app launch     |
+| **Terms of Service**                | Not required                                  | ✅ Required (for monetized app with accounts)            | Before app launch     |
+| **Cookie Policy**                   | N/A                                           | ✅ Required for web app (if using cookies)               | Before web app launch |
+| **Data Processing Agreement (DPA)** | N/A                                           | ⚠️ May be required (if processing EU data with Supabase) | Before app launch     |
+| **Acceptable Use Policy**           | N/A                                           | ⚠️ Recommended (especially for household sharing)        | Before app launch     |
 
 ### 7.3 Privacy Policy Requirements
 
 The Privacy Policy must comply with:
 
 **GDPR (EU/EEA users):**
+
 - Legal basis for processing (consent, legitimate interest, contract performance)
 - What data is collected, how it's used, who has access
 - Data retention periods
@@ -594,6 +606,7 @@ The Privacy Policy must comply with:
 - Right to lodge a complaint with a supervisory authority
 
 **CCPA/CPRA (California users):**
+
 - Categories of personal information collected
 - Purpose of collection
 - Right to know, delete, correct, and opt out
@@ -601,17 +614,20 @@ The Privacy Policy must comply with:
 - Financial incentive disclosure (if premium features offer different data practices)
 
 **App Store requirements (Apple):**
+
 - Privacy "nutrition labels" in App Store Connect
 - A URL to the privacy policy (required for all apps with accounts)
 - App Tracking Transparency (ATT) disclosure if using any tracking
 
 **Google Play:**
+
 - Data Safety section completion
 - Privacy policy URL (required for all apps that handle personal data)
 
 ### 7.4 PCI DSS Considerations
 
 **Finance is a tracking app, not a payments processor.** Based on the codebase, Finance:
+
 - ✅ Tracks transactions (amounts, payees, categories)
 - ✅ Tracks account balances
 - ❌ Does NOT process payments
@@ -641,14 +657,14 @@ The app itself should link to hosted versions (e.g., `https://finance-app.com/le
 
 ### 7.6 Recommendations
 
-| Action | Priority |
-|--------|----------|
-| Draft Privacy Policy covering GDPR + CCPA | Must do before app launch |
-| Draft Terms of Service | Must do before app launch |
-| Set up `docs/legal/` directory structure | Should do before public |
-| Ensure Supabase DPA is in place for EU data processing | Must do before app launch |
-| Complete Apple Privacy Nutrition Labels | Must do before App Store submission |
-| Complete Google Play Data Safety section | Must do before Play Store submission |
+| Action                                                 | Priority                             |
+| ------------------------------------------------------ | ------------------------------------ |
+| Draft Privacy Policy covering GDPR + CCPA              | Must do before app launch            |
+| Draft Terms of Service                                 | Must do before app launch            |
+| Set up `docs/legal/` directory structure               | Should do before public              |
+| Ensure Supabase DPA is in place for EU data processing | Must do before app launch            |
+| Complete Apple Privacy Nutrition Labels                | Must do before App Store submission  |
+| Complete Google Play Data Safety section               | Must do before Play Store submission |
 
 ---
 
@@ -662,15 +678,15 @@ The app itself should link to hosted versions (e.g., `https://finance-app.com/le
 
 ### 8.2 Liability Analysis
 
-| Risk | Without Entity (Current) | With LLC/Corp |
-|------|-------------------------|---------------|
-| **User sues over data breach** | Personal assets at risk (house, savings, car) | Limited to company assets |
-| **User sues over incorrect financial calculations** | Personal liability | Limited liability |
-| **Tax authority dispute** | Personal tax situation complicated | Clean business/personal separation |
-| **Regulatory fine (GDPR/CCPA)** | Assessed against individual | Assessed against entity |
-| **App Store disputes** | Personal developer account | Business developer account |
-| **Contract disputes (Supabase, etc.)** | Personal obligation | Entity obligation |
-| **Intellectual property lawsuit** | Personal financial exposure | Limited to entity |
+| Risk                                                | Without Entity (Current)                      | With LLC/Corp                      |
+| --------------------------------------------------- | --------------------------------------------- | ---------------------------------- |
+| **User sues over data breach**                      | Personal assets at risk (house, savings, car) | Limited to company assets          |
+| **User sues over incorrect financial calculations** | Personal liability                            | Limited liability                  |
+| **Tax authority dispute**                           | Personal tax situation complicated            | Clean business/personal separation |
+| **Regulatory fine (GDPR/CCPA)**                     | Assessed against individual                   | Assessed against entity            |
+| **App Store disputes**                              | Personal developer account                    | Business developer account         |
+| **Contract disputes (Supabase, etc.)**              | Personal obligation                           | Entity obligation                  |
+| **Intellectual property lawsuit**                   | Personal financial exposure                   | Limited to entity                  |
 
 ### 8.3 Why This Is Critical for a Financial App
 
@@ -679,7 +695,6 @@ A financial tracking application carries **elevated risk** compared to a typical
 1. **Data sensitivity:** Financial data is among the most sensitive categories of personal data. A breach could result in identity theft, fraud, or financial harm to users. Regulatory fines can be severe:
    - GDPR: Up to €20M or 4% of global annual revenue
    - CCPA: $2,500–$7,500 per intentional violation
-   
 2. **Accuracy expectations:** Users rely on the app for financial decisions. If a calculation error causes a user to overspend, misallocate, or make a poor financial decision, there is potential for a negligence claim.
 
 3. **Fiduciary-adjacent perception:** While a tracking app is not a financial advisor, users may perceive it as providing financial guidance. Clear disclaimers are needed.
@@ -688,12 +703,12 @@ A financial tracking application carries **elevated risk** compared to a typical
 
 **Recommendation: Form a single-member LLC** in a business-friendly state (Delaware, Wyoming, or your state of residence).
 
-| Consideration | Recommendation |
-|--------------|----------------|
-| **Entity type** | Single-member LLC (simplest, pass-through taxation) |
-| **State** | Wyoming (lowest cost, strong privacy), Delaware (standard for tech), or Texas (if resident) |
-| **Cost** | $100–$500 formation + $50–$300/year maintenance |
-| **Timeline** | 1–2 weeks for formation |
+| Consideration     | Recommendation                                                                                             |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Entity type**   | Single-member LLC (simplest, pass-through taxation)                                                        |
+| **State**         | Wyoming (lowest cost, strong privacy), Delaware (standard for tech), or Texas (if resident)                |
+| **Cost**          | $100–$500 formation + $50–$300/year maintenance                                                            |
+| **Timeline**      | 1–2 weeks for formation                                                                                    |
 | **Tax treatment** | Default: disregarded entity (pass-through to personal taxes). Can elect S-Corp later for tax optimization. |
 
 ### 8.5 Steps After Entity Formation
@@ -713,14 +728,14 @@ A financial tracking application carries **elevated risk** compared to a typical
 
 ### 8.6 IP Protection Under an LLC
 
-| Aspect | Individual Ownership | LLC Ownership |
-|--------|---------------------|---------------|
-| **Copyright enforcement** | You sue personally | Entity sues (less personal exposure) |
-| **Trademark registration** | Filed by individual | Filed by entity (more credible) |
-| **CLA counterparty** | Contributors grant rights to you personally | Contributors grant rights to the entity (survives you) |
-| **Continuity** | IP dies with you (enters estate) | Entity continues independently |
-| **Credibility** | "A guy's side project" | "A company's product" |
-| **Acquisition** | Complex personal asset sale | Clean entity sale (standard M&A) |
+| Aspect                     | Individual Ownership                        | LLC Ownership                                          |
+| -------------------------- | ------------------------------------------- | ------------------------------------------------------ |
+| **Copyright enforcement**  | You sue personally                          | Entity sues (less personal exposure)                   |
+| **Trademark registration** | Filed by individual                         | Filed by entity (more credible)                        |
+| **CLA counterparty**       | Contributors grant rights to you personally | Contributors grant rights to the entity (survives you) |
+| **Continuity**             | IP dies with you (enters estate)            | Entity continues independently                         |
+| **Credibility**            | "A guy's side project"                      | "A company's product"                                  |
+| **Acquisition**            | Complex personal asset sale                 | Clean entity sale (standard M&A)                       |
 
 **Recommendation:** Form the LLC and transfer IP **before going public.** The `LICENSE` file's copyright holder should be the LLC, not an individual. This also makes the CLA cleaner — contributors grant rights to the entity, not to a person.
 
@@ -730,37 +745,37 @@ A financial tracking application carries **elevated risk** compared to a typical
 
 ### Must Do Before Going Public
 
-| # | Action | Section | Effort | Blocked By | Status |
-|---|--------|---------|--------|------------|--------|
-| 1 | **Decide on license** (BSL 1.1 or AGPL-3.0 recommended over MIT) | §2 | 1 day (decision) + attorney review | Attorney consultation | ✅ Done — BSL 1.1 selected |
-| 2 | **Form LLC** and transfer IP ownership | §8 | 1–2 weeks | State filing | ⬜ Pending |
-| 3 | **Update LICENSE** with new entity name and chosen license | §2, §8 | 1 hour | LLC formation, license decision | ✅ Done (BUSL-1.1) |
-| 4 | **Draft and implement CLA** (based on Apache ICLA) | §3 | 2–3 days + attorney review | LLC formation | ⬜ Pending |
-| 5 | **File BIS/ENC notification** for cryptographic code | §6 | 1 hour (email) | None | ⬜ Pending |
-| 6 | **Add EXPORT_CONTROL.md** | §6 | 30 minutes | BIS notification | ⬜ Pending |
-| 7 | **Update all SPDX headers** if license changes | §2 | 1 hour (scripted) | License decision | ✅ Done (BUSL-1.1) |
+| #   | Action                                                           | Section | Effort                             | Blocked By                      | Status                     |
+| --- | ---------------------------------------------------------------- | ------- | ---------------------------------- | ------------------------------- | -------------------------- |
+| 1   | **Decide on license** (BSL 1.1 or AGPL-3.0 recommended over MIT) | §2      | 1 day (decision) + attorney review | Attorney consultation           | ✅ Done — BSL 1.1 selected |
+| 2   | **Form LLC** and transfer IP ownership                           | §8      | 1–2 weeks                          | State filing                    | ⬜ Pending                 |
+| 3   | **Update LICENSE** with new entity name and chosen license       | §2, §8  | 1 hour                             | LLC formation, license decision | ✅ Done (BUSL-1.1)         |
+| 4   | **Draft and implement CLA** (based on Apache ICLA)               | §3      | 2–3 days + attorney review         | LLC formation                   | ⬜ Pending                 |
+| 5   | **File BIS/ENC notification** for cryptographic code             | §6      | 1 hour (email)                     | None                            | ⬜ Pending                 |
+| 6   | **Add EXPORT_CONTROL.md**                                        | §6      | 30 minutes                         | BIS notification                | ⬜ Pending                 |
+| 7   | **Update all SPDX headers** if license changes                   | §2      | 1 hour (scripted)                  | License decision                | ✅ Done (BUSL-1.1)         |
 
 ### Should Do Soon After Public
 
-| # | Action | Section | Effort |
-|---|--------|---------|--------|
-| 8 | **Add TRADEMARKS.md** | §4 | 1 hour |
-| 9 | **Draft Privacy Policy** | §7 | 2–3 days + attorney review |
-| 10 | **Draft Terms of Service** | §7 | 2–3 days + attorney review |
-| 11 | **Set up CLA Assistant** GitHub integration | §3 | 2 hours |
-| 12 | **Consider renaming the product** for trademark viability | §4 | Ongoing |
-| 13 | **Obtain business insurance** (E&O + cyber liability) | §8 | 1 week |
-| 14 | **Review Supabase DPA** for GDPR compliance | §7 | 1 day |
+| #   | Action                                                    | Section | Effort                     |
+| --- | --------------------------------------------------------- | ------- | -------------------------- |
+| 8   | **Add TRADEMARKS.md**                                     | §4      | 1 hour                     |
+| 9   | **Draft Privacy Policy**                                  | §7      | 2–3 days + attorney review |
+| 10  | **Draft Terms of Service**                                | §7      | 2–3 days + attorney review |
+| 11  | **Set up CLA Assistant** GitHub integration               | §3      | 2 hours                    |
+| 12  | **Consider renaming the product** for trademark viability | §4      | Ongoing                    |
+| 13  | **Obtain business insurance** (E&O + cyber liability)     | §8      | 1 week                     |
+| 14  | **Review Supabase DPA** for GDPR compliance               | §7      | 1 day                      |
 
 ### Nice to Have
 
-| # | Action | Section | Effort |
-|---|--------|---------|--------|
-| 15 | Add DCO sign-off to git hooks (in addition to CLA) | §3 | 1 hour |
-| 16 | File trademark application for logo (when designed) | §4 | $250–$350 USPTO fee + attorney |
-| 17 | Add `LICENSING.md` explaining license rationale | §2 | 1 hour |
-| 18 | Set up Apple Privacy Nutrition Labels | §7 | 2 hours |
-| 19 | Prepare Google Play Data Safety form | §7 | 2 hours |
+| #   | Action                                              | Section | Effort                         |
+| --- | --------------------------------------------------- | ------- | ------------------------------ |
+| 15  | Add DCO sign-off to git hooks (in addition to CLA)  | §3      | 1 hour                         |
+| 16  | File trademark application for logo (when designed) | §4      | $250–$350 USPTO fee + attorney |
+| 17  | Add `LICENSING.md` explaining license rationale     | §2      | 1 hour                         |
+| 18  | Set up Apple Privacy Nutrition Labels               | §7      | 2 hours                        |
+| 19  | Prepare Google Play Data Safety form                | §7      | 2 hours                        |
 
 ---
 
@@ -793,4 +808,4 @@ A financial tracking application carries **elevated risk** compared to a typical
 
 ---
 
-*This analysis was prepared by the Architect AI agent and requires review by Jeffrey Moulckers and qualified legal counsel before any actions are taken. No legal decisions should be made based on this document alone.*
+_This analysis was prepared by the Architect AI agent and requires review by Jeffrey Moulckers and qualified legal counsel before any actions are taken. No legal decisions should be made based on this document alone._

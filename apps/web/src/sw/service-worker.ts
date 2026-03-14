@@ -39,11 +39,7 @@ const SYNC_TAG = 'finance-offline-mutations';
  * These URLs are cache-first and guarantee the app loads offline.
  * Update this list whenever the build output changes.
  */
-const APP_SHELL: string[] = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-];
+const APP_SHELL: string[] = ['/', '/index.html', '/manifest.json'];
 
 /**
  * File-extension patterns that qualify for cache-first treatment.
@@ -56,9 +52,7 @@ const STATIC_EXTENSIONS = /\.(js|css|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|we
 // ---------------------------------------------------------------------------
 
 self.addEventListener('install', (event: ExtendableEvent) => {
-  event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => cache.addAll(APP_SHELL)),
-  );
+  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(APP_SHELL)));
   // Activate immediately without waiting for existing clients to close
   void self.skipWaiting();
 });
@@ -69,13 +63,15 @@ self.addEventListener('install', (event: ExtendableEvent) => {
 
 self.addEventListener('activate', (event: ExtendableEvent) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== STATIC_CACHE && key !== API_CACHE)
-          .map((key) => caches.delete(key)),
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== STATIC_CACHE && key !== API_CACHE)
+            .map((key) => caches.delete(key)),
+        ),
       ),
-    ),
   );
   // Take control of all open tabs immediately
   void self.clients.claim();
@@ -135,12 +131,10 @@ self.addEventListener('sync', (event: SyncEvent) => {
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
   if (event.data?.type === 'REGISTER_SYNC') {
     event.waitUntil(
-      self.registration.sync
-        .register(SYNC_TAG)
-        .catch(() => {
-          // Background Sync not supported ΓÇö the main thread will
-          // retry via online/offline listeners instead.
-        }),
+      self.registration.sync.register(SYNC_TAG).catch(() => {
+        // Background Sync not supported ΓÇö the main thread will
+        // retry via online/offline listeners instead.
+      }),
     );
   }
 
@@ -157,10 +151,7 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
  * **Cache-first**: serve from cache if available, otherwise fetch from
  * the network and cache the response for next time.
  */
-async function cacheFirst(
-  request: Request,
-  fallbackUrl?: string,
-): Promise<Response> {
+async function cacheFirst(request: Request, fallbackUrl?: string): Promise<Response> {
   const cache = await caches.open(STATIC_CACHE);
 
   const cached = await cache.match(request);

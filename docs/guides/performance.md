@@ -4,14 +4,14 @@ This guide defines performance targets, profiling techniques, and optimization b
 
 ## Performance Targets
 
-| Metric | Target | Measurement |
-|---|---|---|
-| Cold start | < 2 s | Time from app launch to interactive UI |
-| Scroll performance | 60 fps | No dropped frames in transaction lists |
-| Memory budget | < 150 MB | Resident memory during normal use |
-| SQLite aggregation | < 100 ms | SUM/GROUP BY over 10K+ rows |
-| Dashboard load | < 200 ms | All aggregations for main screen |
-| Sync payload parse | < 50 ms | Deserialize 100-transaction batch |
+| Metric             | Target   | Measurement                            |
+| ------------------ | -------- | -------------------------------------- |
+| Cold start         | < 2 s    | Time from app launch to interactive UI |
+| Scroll performance | 60 fps   | No dropped frames in transaction lists |
+| Memory budget      | < 150 MB | Resident memory during normal use      |
+| SQLite aggregation | < 100 ms | SUM/GROUP BY over 10K+ rows            |
+| Dashboard load     | < 200 ms | All aggregations for main screen       |
+| Sync payload parse | < 50 ms  | Deserialize 100-transaction batch      |
 
 ## Running Benchmarks
 

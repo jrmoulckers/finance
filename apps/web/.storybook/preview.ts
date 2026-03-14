@@ -27,8 +27,12 @@ const preview: Preview = {
     colorScheme: {
       description: 'Color scheme for components',
       toolbar: {
-        title: 'Color Scheme', icon: 'mirror',
-        items: [{ value: 'light', title: 'Light' }, { value: 'dark', title: 'Dark' }],
+        title: 'Color Scheme',
+        icon: 'mirror',
+        items: [
+          { value: 'light', title: 'Light' },
+          { value: 'dark', title: 'Dark' },
+        ],
         dynamicTitle: true,
       },
     },

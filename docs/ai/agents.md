@@ -18,6 +18,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Designs high-level architecture, evaluates technology choices, defines API contracts, and ensures edge-first design principles.
 
 **When to use:**
+
 - Making cross-platform architecture decisions
 - Designing the sync protocol or API contracts
 - Evaluating new technologies or dependencies
@@ -35,6 +36,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Creates and maintains all project documentation — architecture docs, AI guides, API references, and contributor guides.
 
 **When to use:**
+
 - Writing or updating README files
 - Creating Architecture Decision Records
 - Documenting API endpoints
@@ -52,6 +54,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Reviews code for security vulnerabilities, privacy violations, and regulatory compliance. Critical for a financial application.
 
 **When to use:**
+
 - Reviewing PRs that handle financial data
 - Adding authentication or authorization logic
 - Integrating third-party services
@@ -61,6 +64,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Tools:** read, search, shell
 
 **Severity levels:**
+
 - **CRITICAL** — Must fix before merge (data exposure risk)
 - **HIGH** — Should fix before merge (significant weakness)
 - **MEDIUM** — Fix within sprint (defense-in-depth)
@@ -75,6 +79,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Reviews UI code for WCAG 2.2 AA compliance, platform accessibility guidelines, and inclusive design. Inspired by Tiimo's disability-inclusive approach.
 
 **When to use:**
+
 - Any UI component creation or modification
 - Navigation flow changes
 - Color/theme changes
@@ -94,6 +99,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Ensures financial logic correctness — budgeting algorithms, transaction processing, currency handling, and reporting accuracy.
 
 **When to use:**
+
 - Implementing budgeting logic
 - Handling monetary calculations
 - Designing transaction processing flows
@@ -114,6 +120,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Expert on all Kotlin Multiplatform shared code in `packages/` — business logic, SQLDelight database schemas, Ktor client networking, kotlinx libraries, and Gradle KMP configuration across all targets.
 
 **When to use:**
+
 - Writing or modifying shared KMP code in `packages/`
 - Creating SQLDelight schemas (`.sq` files) and migrations
 - Configuring Gradle for KMP targets (iOS, Android, JVM, JS, Wasm)
@@ -131,6 +138,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Owns the Supabase project (PostgreSQL, Auth, Edge Functions, RLS) and PowerSync sync engine, ensuring secure data flow between edge clients and the cloud.
 
 **When to use:**
+
 - Designing or modifying PostgreSQL schemas
 - Writing or reviewing Row-Level Security (RLS) policies
 - Configuring PowerSync sync rules
@@ -148,6 +156,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Builds and maintains the native Apple platform experience (iPhone, iPad, Mac, Apple Watch, App Clips) using SwiftUI, with KMP integration via Swift Export.
 
 **When to use:**
+
 - Building or modifying SwiftUI views in `apps/ios/`
 - Integrating KMP shared logic via Swift Export or SKIE
 - Implementing Apple Keychain, Face ID, or Touch ID features
@@ -165,6 +174,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Builds and maintains the Android and Wear OS clients using Jetpack Compose with Material 3, integrating shared KMP business logic with native security and accessibility.
 
 **When to use:**
+
 - Building or modifying Jetpack Compose UI
 - Integrating KMP modules as direct Kotlin dependencies
 - Implementing BiometricPrompt and Android Keystore
@@ -182,6 +192,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Builds and maintains the Progressive Web App with offline-first capability, integrating KMP shared logic via Kotlin/JS or WASM bindings, with SQLite-WASM for local storage.
 
 **When to use:**
+
 - Building or modifying the PWA in `apps/web/`
 - Configuring service workers and offline caching
 - Setting up SQLite-WASM with OPFS storage
@@ -199,6 +210,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Builds and maintains the Windows desktop client using Compose Desktop (JVM target) with Windows Hello authentication, DPAPI secure storage, and Narrator accessibility.
 
 **When to use:**
+
 - Building or modifying Compose Desktop UI for Windows
 - Implementing Windows Hello biometric authentication
 - Using DPAPI for secure credential storage
@@ -216,6 +228,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Designs and maintains CI/CD pipelines using GitHub Actions, Turborepo monorepo builds, Fastlane mobile deployment, Changesets versioning, and release automation.
 
 **When to use:**
+
 - Authoring or modifying GitHub Actions workflows
 - Configuring Turborepo pipelines and caching
 - Setting up Fastlane lanes for iOS/Android
@@ -233,6 +246,7 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 **Purpose:** Defines and maintains the design token system (DTCG spec), Style Dictionary pipeline, color systems, typography scales, and accessibility-first component specifications across all platforms.
 
 **When to use:**
+
 - Defining or modifying design tokens (primitives, semantic, component)
 - Configuring Style Dictionary transforms for platform outputs
 - Designing color systems with WCAG AA compliance

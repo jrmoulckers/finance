@@ -17,13 +17,14 @@ export default [
     },
   },
   {
-    files: ['tools/**/*.js', '*.js', '*.cjs', '**/*.config.mjs'],
+    files: ['tools/**/*.js', '*.js', '*.cjs', '**/*.config.mjs', '**/webpack.config.d/**/*.js'],
     languageOptions: {
       globals: {
         console: 'readonly',
         process: 'readonly',
         require: 'readonly',
         module: 'readonly',
+        config: 'readonly',
         __dirname: 'readonly',
         __filename: 'readonly',
         Buffer: 'readonly',

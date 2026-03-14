@@ -9,6 +9,7 @@ Instruction files tell GitHub Copilot how to behave when working in specific par
 **File:** `.github/copilot-instructions.md`
 
 This file is loaded for ALL Copilot interactions in the repository. It contains:
+
 - Architecture context (monorepo structure, edge-first design)
 - Code quality requirements
 - Security rules (critical for a financial application)
@@ -23,13 +24,13 @@ This file is loaded for ALL Copilot interactions in the repository. It contains:
 
 These files use YAML frontmatter with `applyTo` globs to scope instructions to specific directories or file types. They are loaded only when Copilot is working on matching files.
 
-| File | Applies To | Purpose |
-|------|-----------|---------|
-| `apps.instructions.md` | `apps/**` | Platform-specific app development rules |
-| `packages.instructions.md` | `packages/**` | Shared library development rules |
-| `services.instructions.md` | `services/**` | Backend service development rules |
-| `docs.instructions.md` | `docs/**` | Documentation standards |
-| `tools.instructions.md` | `tools/**` | Development tools and scripts |
+| File                       | Applies To    | Purpose                                 |
+| -------------------------- | ------------- | --------------------------------------- |
+| `apps.instructions.md`     | `apps/**`     | Platform-specific app development rules |
+| `packages.instructions.md` | `packages/**` | Shared library development rules        |
+| `services.instructions.md` | `services/**` | Backend service development rules       |
+| `docs.instructions.md`     | `docs/**`     | Documentation standards                 |
+| `tools.instructions.md`    | `tools/**`    | Development tools and scripts           |
 
 ## How Instructions Are Loaded
 
@@ -45,6 +46,7 @@ Instructions stack — global instructions always apply, and matching path-speci
 ## Writing Good Instructions
 
 ### Do
+
 - Be specific and actionable ("Use integer cents for money" not "Be careful with money")
 - Include concrete examples where helpful
 - State what TO do and what NOT to do
@@ -52,6 +54,7 @@ Instructions stack — global instructions always apply, and matching path-speci
 - Keep instructions concise — agents have context limits
 
 ### Don't
+
 - Don't repeat the same rules across multiple instruction files
 - Don't include implementation details that change frequently
 - Don't write instructions so long they consume excessive agent context
@@ -63,7 +66,7 @@ Instructions stack — global instructions always apply, and matching path-speci
 2. Add YAML frontmatter with the `applyTo` glob:
    ```yaml
    ---
-   applyTo: "path/to/files/**"
+   applyTo: 'path/to/files/**'
    ---
    ```
 3. Write clear, scoped instructions in Markdown

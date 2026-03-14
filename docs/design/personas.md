@@ -21,16 +21,16 @@
 
 ### Persona 1: Alex — The Intentional Spender (Primary MVP user)
 
-| Attribute | Details |
-|-----------|---------|
-| **Age / Role** | 28, software engineer |
-| **Income** | Earns well but feels money "disappears" |
-| **Wants** | Know exactly where every dollar goes, feel in control |
-| **Current tools** | Spreadsheets, occasionally YNAB trial |
-| **Pain points** | Existing apps are overwhelming, not native-feeling, data feels unsafe |
-| **Goal** | _"I want to see my financial picture clearly without it being a chore"_ |
-| **Accessibility needs** | None specific, but wants clean, minimal UI |
-| **Platforms** | iPhone (primary), Mac (secondary), Web (occasional) |
+| Attribute               | Details                                                                 |
+| ----------------------- | ----------------------------------------------------------------------- |
+| **Age / Role**          | 28, software engineer                                                   |
+| **Income**              | Earns well but feels money "disappears"                                 |
+| **Wants**               | Know exactly where every dollar goes, feel in control                   |
+| **Current tools**       | Spreadsheets, occasionally YNAB trial                                   |
+| **Pain points**         | Existing apps are overwhelming, not native-feeling, data feels unsafe   |
+| **Goal**                | _"I want to see my financial picture clearly without it being a chore"_ |
+| **Accessibility needs** | None specific, but wants clean, minimal UI                              |
+| **Platforms**           | iPhone (primary), Mac (secondary), Web (occasional)                     |
 
 **Why Alex is the primary MVP persona:** Alex represents the largest addressable segment — employed adults who earn enough to budget but lack the habit. Alex values speed (quick-entry < 30 seconds), privacy (edge-first, encrypted), and native feel (SwiftUI on iOS, not a webview). Every MVP feature must pass the "Alex test": _does this help Alex feel more in control without adding friction?_
 
@@ -38,16 +38,16 @@
 
 ### Persona 2: Jordan — The Goal Setter
 
-| Attribute | Details |
-|-----------|---------|
-| **Age / Role** | 35, teacher |
-| **Income** | Modest, but disciplined |
-| **Wants** | Track progress toward goals, see projections, stay motivated |
-| **Current tools** | Separate savings accounts, mental math |
-| **Pain points** | Can't see holistic picture, no projections, juggling multiple accounts |
-| **Goal** | _"I want to see if I'm on track for my goals and what I need to adjust"_ |
-| **Accessibility needs** | Uses larger font sizes, prefers dark mode |
-| **Platforms** | Android phone (primary), Windows laptop (secondary) |
+| Attribute               | Details                                                                  |
+| ----------------------- | ------------------------------------------------------------------------ |
+| **Age / Role**          | 35, teacher                                                              |
+| **Income**              | Modest, but disciplined                                                  |
+| **Wants**               | Track progress toward goals, see projections, stay motivated             |
+| **Current tools**       | Separate savings accounts, mental math                                   |
+| **Pain points**         | Can't see holistic picture, no projections, juggling multiple accounts   |
+| **Goal**                | _"I want to see if I'm on track for my goals and what I need to adjust"_ |
+| **Accessibility needs** | Uses larger font sizes, prefers dark mode                                |
+| **Platforms**           | Android phone (primary), Windows laptop (secondary)                      |
 
 **Design implications:** Jordan validates the goal-tracking feature set. The app must support Dynamic Type / font scaling, dark mode theming via design tokens, and financial projections ("At this pace, you'll reach your goal by March 2028"). Jordan also validates the Android-first strategy — Android is Phase 3, iOS is Phase 4, ensuring Android isn't a second-class citizen.
 
@@ -55,16 +55,16 @@
 
 ### Persona 3: Sam — The Couple's Coordinator (V1.1)
 
-| Attribute | Details |
-|-----------|---------|
-| **Age / Role** | 30, marketing manager |
-| **Relationship** | Shares finances with partner |
-| **Wants** | Shared budget visibility, split expenses, maintain some privacy |
-| **Current tools** | Shared spreadsheet, Venmo for splits |
-| **Pain points** | No good tool for "shared but not merged" finances |
-| **Goal** | _"We want to budget together without losing individual autonomy"_ |
-| **Accessibility needs** | Partner has color vision deficiency |
-| **Platforms** | Mixed household (one iOS, one Android) |
+| Attribute               | Details                                                           |
+| ----------------------- | ----------------------------------------------------------------- |
+| **Age / Role**          | 30, marketing manager                                             |
+| **Relationship**        | Shares finances with partner                                      |
+| **Wants**               | Shared budget visibility, split expenses, maintain some privacy   |
+| **Current tools**       | Shared spreadsheet, Venmo for splits                              |
+| **Pain points**         | No good tool for "shared but not merged" finances                 |
+| **Goal**                | _"We want to budget together without losing individual autonomy"_ |
+| **Accessibility needs** | Partner has color vision deficiency                               |
+| **Platforms**           | Mixed household (one iOS, one Android)                            |
 
 **Design implications:** Sam is deferred to V1.1 but informs architectural decisions now. The RBAC role system (Owner, Partner, Member, Viewer) and household key exchange protocol must be designed in Phase 2 even if not exposed in UI until Phase 7. The color vision deficiency requirement validates the IBM CVD-safe palette choice and ensures all charts use pattern + color (never color alone). Cross-platform sync (iOS ↔ Android) is a hard requirement.
 
@@ -72,16 +72,16 @@
 
 ### Persona 4: Casey — The Accessibility-First User (Tiimo-inspired)
 
-| Attribute | Details |
-|-----------|---------|
-| **Age / Role** | 24, graduate student |
-| **Condition** | Has ADHD |
-| **Wants** | Financial tracking that doesn't overwhelm, gentle reminders, routine-friendly |
-| **Current tools** | Nothing — existing apps are too complex |
-| **Pain points** | Information overload, too many features, judgmental tone about spending |
-| **Goal** | _"I want a financial app that works with my brain, not against it"_ |
+| Attribute               | Details                                                                                |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| **Age / Role**          | 24, graduate student                                                                   |
+| **Condition**           | Has ADHD                                                                               |
+| **Wants**               | Financial tracking that doesn't overwhelm, gentle reminders, routine-friendly          |
+| **Current tools**       | Nothing — existing apps are too complex                                                |
+| **Pain points**         | Information overload, too many features, judgmental tone about spending                |
+| **Goal**                | _"I want a financial app that works with my brain, not against it"_                    |
 | **Accessibility needs** | Reduced motion, simplified views, non-judgmental language, routine-based notifications |
-| **Platforms** | iPhone, occasionally iPad |
+| **Platforms**           | iPhone, occasionally iPad                                                              |
 
 **Design implications:** Casey is the conscience of the product. Every feature must have a "simplified view" toggle. Language must be descriptive, not judgmental — "You spent $200 on dining" not "You overspent on dining! 🚨". Notifications must be opt-in, gentle, and routine-aware (Tiimo-inspired). The `prefers-reduced-motion` media query and platform equivalents must be respected everywhere. Casey validates that the app serves users who have been excluded by every existing finance tool.
 
@@ -145,51 +145,51 @@ Open → Spending breakdown → Budget comparison → Goal progress → Projecti
 
 ### ✅ IN scope for MVP (Personal, single user)
 
-| Feature | Description | Phase |
-|---------|-------------|-------|
-| Account management | Manual accounts with balances (checking, savings, credit card, cash) | Phase 3 |
-| Transaction entry | Manual entry with quick-entry flow (amount + category, 3 taps) | Phase 3 |
-| Category management | Hierarchical, customizable categories with icons | Phase 3 |
-| Envelope budgeting | Zero-based / YNAB-inspired envelope method | Phase 3 |
-| Basic reporting | Spending by category, trends over time, budget vs actual | Phase 3 |
-| Goal tracking | Savings goals with progress bars and projections | Phase 3 |
-| Multi-device sync | Offline-first via PowerSync, works without internet | Phase 2 |
-| Android app | Jetpack Compose, Material Design 3, TalkBack accessible | Phase 3 |
-| iOS app | SwiftUI, Human Interface Guidelines, VoiceOver accessible | Phase 4 |
-| Web PWA | Responsive, offline-capable, WCAG 2.2 AA compliant | Phase 5 |
-| Windows app | Desktop-optimized, Narrator accessible | Phase 6 |
+| Feature             | Description                                                          | Phase   |
+| ------------------- | -------------------------------------------------------------------- | ------- |
+| Account management  | Manual accounts with balances (checking, savings, credit card, cash) | Phase 3 |
+| Transaction entry   | Manual entry with quick-entry flow (amount + category, 3 taps)       | Phase 3 |
+| Category management | Hierarchical, customizable categories with icons                     | Phase 3 |
+| Envelope budgeting  | Zero-based / YNAB-inspired envelope method                           | Phase 3 |
+| Basic reporting     | Spending by category, trends over time, budget vs actual             | Phase 3 |
+| Goal tracking       | Savings goals with progress bars and projections                     | Phase 3 |
+| Multi-device sync   | Offline-first via PowerSync, works without internet                  | Phase 2 |
+| Android app         | Jetpack Compose, Material Design 3, TalkBack accessible              | Phase 3 |
+| iOS app             | SwiftUI, Human Interface Guidelines, VoiceOver accessible            | Phase 4 |
+| Web PWA             | Responsive, offline-capable, WCAG 2.2 AA compliant                   | Phase 5 |
+| Windows app         | Desktop-optimized, Narrator accessible                               | Phase 6 |
 
 ### ❌ OUT of scope for MVP
 
-| Feature | Reason | Target |
-|---------|--------|--------|
-| Bank connections (Plaid/MX) | Adds complexity, cost (~$500+/mo), and third-party data dependency | Future |
-| Partner/family sharing | Requires RBAC, invitation flows, shared key exchange | V1.1 (Phase 7) |
-| Recurring transaction scheduling | Nice-to-have, not core to budgeting loop | Phase 7 |
-| Multi-currency | Adds complexity to money arithmetic and reporting | Phase 7 |
-| Investment tracking | Different domain (portfolio management vs budgeting) | Future |
-| Tax categorization | Requires jurisdiction-specific rules | Future |
-| AI-powered categorization | Use manual rules first; add ML once usage patterns exist | Future |
-| Social features (Strava-inspired) | Requires multi-user; build community after core is proven | Future |
-| Natural language input | "Spent $45 at Target groceries" — requires NLP pipeline | Phase 7 |
-| Gamification | Streaks, badges, milestones — layer on after core habit forms | Phase 7 |
+| Feature                           | Reason                                                             | Target         |
+| --------------------------------- | ------------------------------------------------------------------ | -------------- |
+| Bank connections (Plaid/MX)       | Adds complexity, cost (~$500+/mo), and third-party data dependency | Future         |
+| Partner/family sharing            | Requires RBAC, invitation flows, shared key exchange               | V1.1 (Phase 7) |
+| Recurring transaction scheduling  | Nice-to-have, not core to budgeting loop                           | Phase 7        |
+| Multi-currency                    | Adds complexity to money arithmetic and reporting                  | Phase 7        |
+| Investment tracking               | Different domain (portfolio management vs budgeting)               | Future         |
+| Tax categorization                | Requires jurisdiction-specific rules                               | Future         |
+| AI-powered categorization         | Use manual rules first; add ML once usage patterns exist           | Future         |
+| Social features (Strava-inspired) | Requires multi-user; build community after core is proven          | Future         |
+| Natural language input            | "Spent $45 at Target groceries" — requires NLP pipeline            | Phase 7        |
+| Gamification                      | Streaks, badges, milestones — layer on after core habit forms      | Phase 7        |
 
 ---
 
 ## Persona-to-Feature Mapping
 
-| Feature | Alex | Jordan | Casey | Sam (V1.1) |
-|---------|:----:|:------:|:-----:|:----------:|
-| Quick-entry transactions | ★★★ | ★★ | ★★★ | ★★ |
-| Envelope budgeting | ★★★ | ★★ | ★ | ★★★ |
-| Goal tracking & projections | ★ | ★★★ | ★ | ★★ |
-| Simplified views | ★ | ★ | ★★★ | ★ |
-| Dark mode | ★★ | ★★★ | ★★ | ★★ |
-| Reduced motion | — | — | ★★★ | — |
-| Non-judgmental language | ★ | ★ | ★★★ | ★ |
-| Shared budgets | — | — | — | ★★★ |
-| CVD-safe charts | ★ | ★ | ★ | ★★★ |
-| Multi-device sync | ★★★ | ★★ | ★ | ★★★ |
+| Feature                     | Alex | Jordan | Casey | Sam (V1.1) |
+| --------------------------- | :--: | :----: | :---: | :--------: |
+| Quick-entry transactions    | ★★★  |   ★★   |  ★★★  |     ★★     |
+| Envelope budgeting          | ★★★  |   ★★   |   ★   |    ★★★     |
+| Goal tracking & projections |  ★   |  ★★★   |   ★   |     ★★     |
+| Simplified views            |  ★   |   ★    |  ★★★  |     ★      |
+| Dark mode                   |  ★★  |  ★★★   |  ★★   |     ★★     |
+| Reduced motion              |  —   |   —    |  ★★★  |     —      |
+| Non-judgmental language     |  ★   |   ★    |  ★★★  |     ★      |
+| Shared budgets              |  —   |   —    |   —   |    ★★★     |
+| CVD-safe charts             |  ★   |   ★    |   ★   |    ★★★     |
+| Multi-device sync           | ★★★  |   ★★   |   ★   |    ★★★     |
 
 _★★★ = critical, ★★ = important, ★ = nice-to-have, — = not applicable_
 

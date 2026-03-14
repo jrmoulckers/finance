@@ -10,15 +10,15 @@ This is a Kotlin Multiplatform (KMP) library targeting `commonMain`, `iosMain`, 
 
 ## Key Components
 
-| Module | File | Purpose |
-|---|---|---|
-| `money` | `MoneyOperations.kt` | Banker's rounding, allocation (equal splits, ratio-weighted), percentage and division with financial precision |
-| `budget` | `BudgetCalculator.kt` | Budget utilization, period boundaries (weekly through yearly), remaining amount, daily spending rate |
-| `categorization` | `CategorizationEngine.kt` | Rule-based transaction categorization — exact, contains, and starts-with matching with learning from history |
-| `aggregation` | `FinancialAggregator.kt` | Net worth, total spending/income, cash flow, spending-by-category, daily/monthly trends, savings rate |
-| `validation` | `TransactionValidator.kt` | Pre-persist validation — checks amounts, account/category existence, transfer rules, date bounds, field lengths |
-| `currency` | `CurrencyConverter.kt`, `CurrencyFormatter.kt`, `ExchangeRate.kt` | Multi-currency conversion and display formatting |
-| `events` | `DomainEvent.kt`, `EventBus.kt` | Sealed domain event hierarchy (transaction, budget, account, goal events) with coroutine-based `SharedFlow` bus |
+| Module           | File                                                              | Purpose                                                                                                         |
+| ---------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `money`          | `MoneyOperations.kt`                                              | Banker's rounding, allocation (equal splits, ratio-weighted), percentage and division with financial precision  |
+| `budget`         | `BudgetCalculator.kt`                                             | Budget utilization, period boundaries (weekly through yearly), remaining amount, daily spending rate            |
+| `categorization` | `CategorizationEngine.kt`                                         | Rule-based transaction categorization — exact, contains, and starts-with matching with learning from history    |
+| `aggregation`    | `FinancialAggregator.kt`                                          | Net worth, total spending/income, cash flow, spending-by-category, daily/monthly trends, savings rate           |
+| `validation`     | `TransactionValidator.kt`                                         | Pre-persist validation — checks amounts, account/category existence, transfer rules, date bounds, field lengths |
+| `currency`       | `CurrencyConverter.kt`, `CurrencyFormatter.kt`, `ExchangeRate.kt` | Multi-currency conversion and display formatting                                                                |
+| `events`         | `DomainEvent.kt`, `EventBus.kt`                                   | Sealed domain event hierarchy (transaction, budget, account, goal events) with coroutine-based `SharedFlow` bus |
 
 ## Usage
 

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { lazy, Suspense } from "react";
-import type { FC } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense } from 'react';
+import type { FC } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 /*
  * Lazy-loaded route pages - each is code-split into its own chunk.
  * These mirror the mobile app navigation structure.
  */
-const Dashboard = lazy(() => import("./pages/DashboardPage"));
-const Accounts = lazy(() => import("./pages/AccountsPage"));
-const Transactions = lazy(() => import("./pages/TransactionsPage"));
-const Budgets = lazy(() => import("./pages/BudgetsPage"));
-const Goals = lazy(() => import("./pages/GoalsPage"));
-const Settings = lazy(() => import("./pages/SettingsPage"));
+const Dashboard = lazy(() => import('./pages/DashboardPage'));
+const Accounts = lazy(() => import('./pages/AccountsPage'));
+const Transactions = lazy(() => import('./pages/TransactionsPage'));
+const Budgets = lazy(() => import('./pages/BudgetsPage'));
+const Goals = lazy(() => import('./pages/GoalsPage'));
+const Settings = lazy(() => import('./pages/SettingsPage'));
 
 /**
  * Loading fallback shown while a lazy route chunk is being fetched.

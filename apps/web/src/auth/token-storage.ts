@@ -113,10 +113,7 @@ function decodeJwtPayload(token: string): JwtPayload {
     }
 
     const base64 = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(
-      base64.length + ((4 - (base64.length % 4)) % 4),
-      '=',
-    );
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
     const json = atob(padded);
     return JSON.parse(json) as JwtPayload;
   } catch {
@@ -193,10 +190,7 @@ function scheduleRefresh(): void {
 
   const now = Date.now();
   const timeUntilExpiry = tokenExpiresAt - now;
-  const refreshIn = Math.max(
-    timeUntilExpiry - REFRESH_THRESHOLD_MS - REFRESH_SAFETY_MARGIN_MS,
-    0,
-  );
+  const refreshIn = Math.max(timeUntilExpiry - REFRESH_THRESHOLD_MS - REFRESH_SAFETY_MARGIN_MS, 0);
 
   refreshTimerId = setTimeout(() => {
     void refreshAccessToken();
@@ -349,9 +343,7 @@ export function getTokenTimeRemaining(): number {
  *
  * @param logoutEndpoint The backend logout URL.
  */
-export async function revokeRefreshToken(
-  logoutEndpoint: string,
-): Promise<void> {
+export async function revokeRefreshToken(logoutEndpoint: string): Promise<void> {
   try {
     await fetch(logoutEndpoint, {
       method: 'POST',

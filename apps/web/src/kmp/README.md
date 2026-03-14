@@ -73,15 +73,15 @@ Create `adapter.ts` in this directory to map KMP JS objects to bridge types:
 
 ```ts
 // Example adapter (actual shape depends on Kotlin/JS compiler output)
-import * as kmp from "@finance/kmp";
-import type { Account } from "./bridge";
+import * as kmp from '@finance/kmp';
+import type { Account } from './bridge';
 
 export function toAccount(kmpAccount: kmp.com.finance.models.Account): Account {
   return {
     id: kmpAccount.id.value,
     householdId: kmpAccount.householdId.value,
     name: kmpAccount.name,
-    type: kmpAccount.type.name as Account["type"],
+    type: kmpAccount.type.name as Account['type'],
     currency: {
       code: kmpAccount.currency.code,
       decimalPlaces: kmpAccount.currency.decimalPlaces,
@@ -116,19 +116,19 @@ Update the adapter to handle the WASM memory model for value types.
 The `bridge.ts` interfaces are the **single source of truth** for web-side
 type definitions. They must stay in sync with the KMP models:
 
-| KMP Model              | Bridge Interface   |
-| ---------------------- | ------------------ |
-| `Account`              | `Account`          |
-| `Transaction`          | `Transaction`      |
-| `Budget`               | `Budget`           |
-| `Goal`                 | `Goal`             |
-| `Category`             | `Category`         |
-| `User`                 | `User`             |
-| `Household`            | `Household`        |
-| `HouseholdMember`      | `HouseholdMember`  |
-| `Cents` (value class)  | `Cents`            |
-| `Currency` (value)     | `Currency`         |
-| `SyncId` (value)       | `SyncId` (string)  |
+| KMP Model             | Bridge Interface  |
+| --------------------- | ----------------- |
+| `Account`             | `Account`         |
+| `Transaction`         | `Transaction`     |
+| `Budget`              | `Budget`          |
+| `Goal`                | `Goal`            |
+| `Category`            | `Category`        |
+| `User`                | `User`            |
+| `Household`           | `Household`       |
+| `HouseholdMember`     | `HouseholdMember` |
+| `Cents` (value class) | `Cents`           |
+| `Currency` (value)    | `Currency`        |
+| `SyncId` (value)      | `SyncId` (string) |
 
 When KMP models change, update `bridge.ts` accordingly and run `npm run type-check`
 to catch any downstream breakage.

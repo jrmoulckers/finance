@@ -10,15 +10,15 @@ The Finance project uses a single GitHub Projects V2 board as the central planni
 
 Define these custom fields for the project board:
 
-| Field | Type | Options | Purpose |
-|-------|------|---------|---------|
-| Status | Single select | Triage, Shaping, Ready, In Progress, In Review, Done | Workflow stage |
-| Priority | Single select | Critical, High, Medium, Low | Urgency/importance |
-| Effort | Single select | XS, S, M, L, XL | T-shirt sizing |
-| Platform | Single select | iOS, Android, Web, Windows, Shared, Backend | Primary platform |
-| Component | Single select | Core, Models, Sync, API, Docs, Tools, CI/CD | Codebase area |
-| Sprint | Iteration | 2-week iterations | Optional time-boxing |
-| Target Release | Text | Free-form (e.g., "v0.1", "MVP", "Beta") | Release planning |
+| Field          | Type          | Options                                              | Purpose              |
+| -------------- | ------------- | ---------------------------------------------------- | -------------------- |
+| Status         | Single select | Triage, Shaping, Ready, In Progress, In Review, Done | Workflow stage       |
+| Priority       | Single select | Critical, High, Medium, Low                          | Urgency/importance   |
+| Effort         | Single select | XS, S, M, L, XL                                      | T-shirt sizing       |
+| Platform       | Single select | iOS, Android, Web, Windows, Shared, Backend          | Primary platform     |
+| Component      | Single select | Core, Models, Sync, API, Docs, Tools, CI/CD          | Codebase area        |
+| Sprint         | Iteration     | 2-week iterations                                    | Optional time-boxing |
+| Target Release | Text          | Free-form (e.g., "v0.1", "MVP", "Beta")              | Release planning     |
 
 ### Views
 

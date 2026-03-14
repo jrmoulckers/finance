@@ -23,10 +23,10 @@
 
 ### Recommended Tools
 
-| Tool | Deployment | Privacy Notes |
-|------|-----------|---------------|
-| **Sentry (self-hosted)** | On-premise or private cloud | Full data sovereignty. Recommended for production. |
-| **Firebase Crashlytics** | Google Cloud | Acceptable if data residency requirements are met. Disable user ID tracking. |
+| Tool                     | Deployment                  | Privacy Notes                                                                |
+| ------------------------ | --------------------------- | ---------------------------------------------------------------------------- |
+| **Sentry (self-hosted)** | On-premise or private cloud | Full data sovereignty. Recommended for production.                           |
+| **Firebase Crashlytics** | Google Cloud                | Acceptable if data residency requirements are met. Disable user ID tracking. |
 
 ### Self-Hosted Sentry Setup
 
@@ -47,14 +47,14 @@
 
 ### Metrics
 
-| Metric | Description | Collection Point |
-|--------|-------------|-----------------|
-| `sync_latency_ms` | Time from sync initiation to completion | Client (SyncHealthMonitor) |
-| `pending_mutations` | Number of unsynced local changes | Client (SyncHealthMonitor) |
-| `sync_failure_count` | Consecutive sync failures | Client (SyncHealthMonitor) |
-| `conflict_rate` | Conflicts per sync cycle | Client + Server |
-| `last_successful_sync` | Timestamp of last successful sync | Client (SyncHealthMonitor) |
-| `average_sync_duration_ms` | Rolling average of sync duration | Client (SyncHealthMonitor) |
+| Metric                     | Description                             | Collection Point           |
+| -------------------------- | --------------------------------------- | -------------------------- |
+| `sync_latency_ms`          | Time from sync initiation to completion | Client (SyncHealthMonitor) |
+| `pending_mutations`        | Number of unsynced local changes        | Client (SyncHealthMonitor) |
+| `sync_failure_count`       | Consecutive sync failures               | Client (SyncHealthMonitor) |
+| `conflict_rate`            | Conflicts per sync cycle                | Client + Server            |
+| `last_successful_sync`     | Timestamp of last successful sync       | Client (SyncHealthMonitor) |
+| `average_sync_duration_ms` | Rolling average of sync duration        | Client (SyncHealthMonitor) |
 
 ### Health Status
 
@@ -78,13 +78,13 @@ The `sync_health_logs` table in Supabase records sync events server-side:
 
 ### Metrics
 
-| Metric | Target | Alert Threshold |
-|--------|--------|----------------|
-| Response time (p50) | < 200 ms | > 500 ms |
-| Response time (p99) | < 1000 ms | > 3000 ms |
-| Error rate (5xx) | < 0.1% | > 1% |
-| Auth failure rate | < 1% | > 5% |
-| Sync endpoint latency | < 500 ms | > 2000 ms |
+| Metric                | Target    | Alert Threshold |
+| --------------------- | --------- | --------------- |
+| Response time (p50)   | < 200 ms  | > 500 ms        |
+| Response time (p99)   | < 1000 ms | > 3000 ms       |
+| Error rate (5xx)      | < 0.1%    | > 1%            |
+| Auth failure rate     | < 1%      | > 5%            |
+| Sync endpoint latency | < 500 ms  | > 2000 ms       |
 
 ### Implementation
 
@@ -98,12 +98,12 @@ The `sync_health_logs` table in Supabase records sync events server-side:
 
 ### Severity Levels
 
-| Level | Condition | Response Time | Action |
-|-------|-----------|--------------|--------|
-| **P1 — Critical** | Sync completely broken for all users, data loss risk | 15 minutes | Page on-call, all hands |
-| **P2 — High** | Sync degraded (> 50% failure rate), auth outage | 1 hour | Notify on-call, begin investigation |
-| **P3 — Medium** | Elevated error rates, slow API responses | 4 hours | Create issue, investigate next business day |
-| **P4 — Low** | Minor anomalies, single-user reports | 24 hours | Log and monitor |
+| Level             | Condition                                            | Response Time | Action                                      |
+| ----------------- | ---------------------------------------------------- | ------------- | ------------------------------------------- |
+| **P1 — Critical** | Sync completely broken for all users, data loss risk | 15 minutes    | Page on-call, all hands                     |
+| **P2 — High**     | Sync degraded (> 50% failure rate), auth outage      | 1 hour        | Notify on-call, begin investigation         |
+| **P3 — Medium**   | Elevated error rates, slow API responses             | 4 hours       | Create issue, investigate next business day |
+| **P4 — Low**      | Minor anomalies, single-user reports                 | 24 hours      | Log and monitor                             |
 
 ### Escalation Flow
 

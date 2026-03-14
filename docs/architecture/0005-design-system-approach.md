@@ -32,61 +32,71 @@ Tokens are the **only** shared artifact between platforms. No UI component code 
 
 Tokens are organized in three layers, each building on the previous:
 
-| Layer | Purpose | Naming Convention | Example |
-|-------|---------|-------------------|---------|
-| **Primitive** | Raw, context-free values | `color.blue.500`, `spacing.4` | `#0066FF`, `16px` |
-| **Semantic** | Role-based mappings that change per theme | `color.surface.primary`, `color.text.primary` | Maps to different primitives in light vs dark |
-| **Component** | Per-component token bindings | `button.background.primary`, `card.border.radius` | References semantic tokens |
+| Layer         | Purpose                                   | Naming Convention                                 | Example                                       |
+| ------------- | ----------------------------------------- | ------------------------------------------------- | --------------------------------------------- |
+| **Primitive** | Raw, context-free values                  | `color.blue.500`, `spacing.4`                     | `#0066FF`, `16px`                             |
+| **Semantic**  | Role-based mappings that change per theme | `color.surface.primary`, `color.text.primary`     | Maps to different primitives in light vs dark |
+| **Component** | Per-component token bindings              | `button.background.primary`, `card.border.radius` | References semantic tokens                    |
 
 **Example primitive tokens (`tokens/primitives/colors.json`):**
+
 ```json
 {
   "color": {
     "blue": {
-      "50":  { "$value": "#E8F0FE", "$type": "color" },
+      "50": { "$value": "#E8F0FE", "$type": "color" },
       "100": { "$value": "#D2E3FC", "$type": "color" },
       "500": { "$value": "#0066FF", "$type": "color" },
       "700": { "$value": "#0052CC", "$type": "color" },
       "900": { "$value": "#003D99", "$type": "color" }
     },
     "neutral": {
-      "0":   { "$value": "#FFFFFF", "$type": "color" },
-      "50":  { "$value": "#F8F9FA", "$type": "color" },
+      "0": { "$value": "#FFFFFF", "$type": "color" },
+      "50": { "$value": "#F8F9FA", "$type": "color" },
       "900": { "$value": "#1A1A2E", "$type": "color" },
       "1000": { "$value": "#000000", "$type": "color" }
     }
   },
   "spacing": {
-    "1":  { "$value": "4px",  "$type": "dimension" },
-    "2":  { "$value": "8px",  "$type": "dimension" },
-    "3":  { "$value": "12px", "$type": "dimension" },
-    "4":  { "$value": "16px", "$type": "dimension" },
-    "6":  { "$value": "24px", "$type": "dimension" },
-    "8":  { "$value": "32px", "$type": "dimension" }
+    "1": { "$value": "4px", "$type": "dimension" },
+    "2": { "$value": "8px", "$type": "dimension" },
+    "3": { "$value": "12px", "$type": "dimension" },
+    "4": { "$value": "16px", "$type": "dimension" },
+    "6": { "$value": "24px", "$type": "dimension" },
+    "8": { "$value": "32px", "$type": "dimension" }
   }
 }
 ```
 
 **Example semantic tokens (`tokens/semantic/light.json`):**
+
 ```json
 {
   "color": {
     "surface": {
-      "primary":   { "$value": "{color.neutral.0}",   "$type": "color" },
-      "secondary": { "$value": "{color.neutral.50}",  "$type": "color" }
+      "primary": { "$value": "{color.neutral.0}", "$type": "color" },
+      "secondary": { "$value": "{color.neutral.50}", "$type": "color" }
     },
     "text": {
-      "primary":   { "$value": "{color.neutral.900}", "$type": "color" },
+      "primary": { "$value": "{color.neutral.900}", "$type": "color" },
       "secondary": { "$value": "{color.neutral.600}", "$type": "color" }
     },
     "interactive": {
-      "primary":   { "$value": "{color.blue.500}",    "$type": "color" },
-      "hover":     { "$value": "{color.blue.700}",    "$type": "color" }
+      "primary": { "$value": "{color.blue.500}", "$type": "color" },
+      "hover": { "$value": "{color.blue.700}", "$type": "color" }
     },
     "data": {
-      "positive":  { "$value": "#009E73", "$type": "color", "$description": "Income, positive balance — CVD-safe teal" },
-      "negative":  { "$value": "#DC267F", "$type": "color", "$description": "Overspending, alerts — CVD-safe magenta" },
-      "neutral":   { "$value": "#666666", "$type": "color" },
+      "positive": {
+        "$value": "#009E73",
+        "$type": "color",
+        "$description": "Income, positive balance — CVD-safe teal"
+      },
+      "negative": {
+        "$value": "#DC267F",
+        "$type": "color",
+        "$description": "Overspending, alerts — CVD-safe magenta"
+      },
+      "neutral": { "$value": "#666666", "$type": "color" },
       "category1": { "$value": "#648FFF", "$type": "color", "$description": "IBM CVD-safe blue" },
       "category2": { "$value": "#785EF0", "$type": "color", "$description": "IBM CVD-safe purple" },
       "category3": { "$value": "#FE6100", "$type": "color", "$description": "IBM CVD-safe orange" },
@@ -95,8 +105,8 @@ Tokens are organized in three layers, each building on the previous:
   },
   "spacing": {
     "component": {
-      "padding":    { "$value": "{spacing.4}", "$type": "dimension" },
-      "gap":        { "$value": "{spacing.3}", "$type": "dimension" },
+      "padding": { "$value": "{spacing.4}", "$type": "dimension" },
+      "gap": { "$value": "{spacing.3}", "$type": "dimension" },
       "sectionGap": { "$value": "{spacing.8}", "$type": "dimension" }
     }
   }
@@ -107,28 +117,37 @@ Tokens are organized in three layers, each building on the previous:
 
 Four theme sets override semantic tokens without duplicating the full token tree:
 
-| Theme | Use Case | Key Characteristics |
-|-------|----------|---------------------|
-| **Light** | Default, well-lit environments | White surfaces, dark text, vibrant accents |
-| **Dark** | Low-light, OLED battery savings | Dark surfaces, light text, muted accents |
-| **High Contrast** | Low vision, accessibility | Maximum contrast ratios, bold borders, enlarged focus indicators |
-| **Color-Blind Safe** | Color vision deficiency users | IBM CVD-safe palette, pattern overlays on charts |
+| Theme                | Use Case                        | Key Characteristics                                              |
+| -------------------- | ------------------------------- | ---------------------------------------------------------------- |
+| **Light**            | Default, well-lit environments  | White surfaces, dark text, vibrant accents                       |
+| **Dark**             | Low-light, OLED battery savings | Dark surfaces, light text, muted accents                         |
+| **High Contrast**    | Low vision, accessibility       | Maximum contrast ratios, bold borders, enlarged focus indicators |
+| **Color-Blind Safe** | Color vision deficiency users   | IBM CVD-safe palette, pattern overlays on charts                 |
 
 **Dark theme override (`tokens/semantic/dark.json`):**
+
 ```json
 {
   "color": {
     "surface": {
-      "primary":   { "$value": "{color.neutral.900}", "$type": "color" },
+      "primary": { "$value": "{color.neutral.900}", "$type": "color" },
       "secondary": { "$value": "{color.neutral.800}", "$type": "color" }
     },
     "text": {
-      "primary":   { "$value": "{color.neutral.50}",  "$type": "color" },
+      "primary": { "$value": "{color.neutral.50}", "$type": "color" },
       "secondary": { "$value": "{color.neutral.300}", "$type": "color" }
     },
     "data": {
-      "positive":  { "$value": "#56B4E9", "$type": "color", "$description": "Adjusted for dark backgrounds" },
-      "negative":  { "$value": "#FF6B9D", "$type": "color", "$description": "Adjusted for dark backgrounds" }
+      "positive": {
+        "$value": "#56B4E9",
+        "$type": "color",
+        "$description": "Adjusted for dark backgrounds"
+      },
+      "negative": {
+        "$value": "#FF6B9D",
+        "$type": "color",
+        "$description": "Adjusted for dark backgrounds"
+      }
     }
   }
 }
@@ -138,15 +157,16 @@ Four theme sets override semantic tokens without duplicating the full token tree
 
 Financial data visualization relies heavily on color to convey meaning (positive/negative, category breakdowns, budget status). We adopt the **IBM Color-Blind Safe palette**, validated for all color vision deficiency types (protanopia, deuteranopia, tritanopia):
 
-| Swatch | Hex | Role |
-|--------|-----|------|
-| Blue | `#648FFF` | Income / positive trends |
-| Purple | `#785EF0` | Investments |
-| Magenta | `#DC267F` | Overspending / alerts |
-| Orange | `#FE6100` | Spending categories |
-| Yellow | `#FFB000` | Savings / goals |
+| Swatch  | Hex       | Role                     |
+| ------- | --------- | ------------------------ |
+| Blue    | `#648FFF` | Income / positive trends |
+| Purple  | `#785EF0` | Investments              |
+| Magenta | `#DC267F` | Overspending / alerts    |
+| Orange  | `#FE6100` | Spending categories      |
+| Yellow  | `#FFB000` | Savings / goals          |
 
 **Data visualization rules:**
+
 1. Never rely on color alone — use patterns, textures, direct labels, and distinct shapes.
 2. Limit categories to 6 maximum per chart (+ "Other").
 3. Maintain ≥4.5:1 contrast ratio for all data elements against their background.
@@ -159,14 +179,14 @@ Financial data visualization relies heavily on color to convey meaning (positive
 
 Each platform uses its native type system, mapped from shared semantic tokens:
 
-| Semantic Token | iOS (SF Pro) | Android (Roboto) | Web (Inter) | Windows (Segoe UI Variable) |
-|---------------|-------------|-----------------|-------------|---------------------------|
-| `type.display.large` | .largeTitle (34pt) | Display Large (57sp) | 3.5rem (56px) | 40px |
-| `type.heading.1` | .title (28pt) | Headline Large (32sp) | 2rem (32px) | 28px |
-| `type.heading.2` | .title2 (22pt) | Headline Medium (28sp) | 1.5rem (24px) | 24px |
-| `type.body` | .body (17pt) | Body Large (16sp) | 1rem (16px) | 14px |
-| `type.caption` | .caption (12pt) | Body Small (12sp) | 0.75rem (12px) | 12px |
-| `type.money` | SF Mono (17pt) | Roboto Mono (16sp) | Tabular nums (16px) | Cascadia Mono (14px) |
+| Semantic Token       | iOS (SF Pro)       | Android (Roboto)       | Web (Inter)         | Windows (Segoe UI Variable) |
+| -------------------- | ------------------ | ---------------------- | ------------------- | --------------------------- |
+| `type.display.large` | .largeTitle (34pt) | Display Large (57sp)   | 3.5rem (56px)       | 40px                        |
+| `type.heading.1`     | .title (28pt)      | Headline Large (32sp)  | 2rem (32px)         | 28px                        |
+| `type.heading.2`     | .title2 (22pt)     | Headline Medium (28sp) | 1.5rem (24px)       | 24px                        |
+| `type.body`          | .body (17pt)       | Body Large (16sp)      | 1rem (16px)         | 14px                        |
+| `type.caption`       | .caption (12pt)    | Body Small (12sp)      | 0.75rem (12px)      | 12px                        |
+| `type.money`         | SF Mono (17pt)     | Roboto Mono (16sp)     | Tabular nums (16px) | Cascadia Mono (14px)        |
 
 The `type.money` token uses monospaced/tabular numerals for financial figures, ensuring decimal points align in lists and tables.
 
@@ -181,11 +201,13 @@ The `type.money` token uses monospaced/tabular numerals for financial figures, e
     "ios-swift": {
       "transformGroup": "ios-swift",
       "buildPath": "packages/design-tokens/build/ios/",
-      "files": [{
-        "destination": "FinanceTokens.swift",
-        "format": "ios-swift/class.swift",
-        "options": { "accessControl": "public" }
-      }]
+      "files": [
+        {
+          "destination": "FinanceTokens.swift",
+          "format": "ios-swift/class.swift",
+          "options": { "accessControl": "public" }
+        }
+      ]
     },
     "android": {
       "transformGroup": "android",
@@ -207,10 +229,12 @@ The `type.money` token uses monospaced/tabular numerals for financial figures, e
     "xaml": {
       "transformGroup": "xaml",
       "buildPath": "packages/design-tokens/build/windows/",
-      "files": [{
-        "destination": "Tokens.xaml",
-        "format": "xaml/resources"
-      }]
+      "files": [
+        {
+          "destination": "Tokens.xaml",
+          "format": "xaml/resources"
+        }
+      ]
     }
   }
 }
@@ -219,6 +243,7 @@ The `type.money` token uses monospaced/tabular numerals for financial figures, e
 **Generated output examples:**
 
 **Swift (`FinanceTokens.swift`):**
+
 ```swift
 public struct FinanceTokens {
     public struct Color {
@@ -235,18 +260,20 @@ public struct FinanceTokens {
 ```
 
 **CSS (`tokens.css`):**
+
 ```css
 :root {
-  --color-surface-primary: #FFFFFF;
-  --color-text-primary: #1A1A2E;
-  --color-data-positive: #009E73;
-  --color-data-negative: #DC267F;
+  --color-surface-primary: #ffffff;
+  --color-text-primary: #1a1a2e;
+  --color-data-positive: #009e73;
+  --color-data-negative: #dc267f;
   --spacing-component-padding: 16px;
   --spacing-component-gap: 12px;
 }
 ```
 
 **Android (`colors.xml`):**
+
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -261,14 +288,15 @@ public struct FinanceTokens {
 
 Each platform implements components natively using shared **component specifications** (not shared code):
 
-| Platform | UI Framework | Design Language | Charting Library |
-|----------|-------------|-----------------|-----------------|
-| iOS/macOS | SwiftUI | Human Interface Guidelines | Swift Charts |
-| Android | Jetpack Compose | Material Design 3 (Material You) | Vico (Compose-native) |
-| Web | React + TypeScript | Custom (brand-aligned) | Recharts + D3.js |
-| Windows | WinUI 3 / XAML | Windows 11 Fluent Design | LiveCharts2 |
+| Platform  | UI Framework       | Design Language                  | Charting Library      |
+| --------- | ------------------ | -------------------------------- | --------------------- |
+| iOS/macOS | SwiftUI            | Human Interface Guidelines       | Swift Charts          |
+| Android   | Jetpack Compose    | Material Design 3 (Material You) | Vico (Compose-native) |
+| Web       | React + TypeScript | Custom (brand-aligned)           | Recharts + D3.js      |
+| Windows   | WinUI 3 / XAML     | Windows 11 Fluent Design         | LiveCharts2           |
 
 **Component specifications** (stored in `packages/component-specs/`) define:
+
 - **Behavioral spec:** States, interactions, transitions, and edge cases.
 - **Token bindings:** Which semantic tokens apply to each visual property.
 - **Accessibility contract:** Required labels, roles, keyboard/gesture support, screen reader behavior.
@@ -279,28 +307,34 @@ Each platform implements components natively using shared **component specificat
 Every component specification includes a mandatory accessibility contract:
 
 **Example — Transaction Row accessibility contract:**
+
 ```markdown
 ## Accessibility Contract: Transaction Row
 
 ### Screen Reader
+
 - Announce as a single group: "{payee}, {category}, {amount}, {date}"
 - Amount sign announced as "positive" or "negative" (not "minus")
 - Currency announced before amount: "negative forty-two dollars"
 
 ### Keyboard/Switch
+
 - Focusable as a single unit
 - Enter/Space: open transaction detail
 - Context menu (right-click/long-press): categorize, flag, delete
 
 ### Target Size
+
 - Minimum: 44×44pt (iOS) / 48×48dp (Android) / 24×24px (Web, WCAG 2.2 AA)
 - Recommended: full row height ≥ 56pt/dp
 
 ### Motion
+
 - Respect `prefers-reduced-motion` / `UIAccessibility.isReduceMotionEnabled`
 - Swipe actions must have non-gesture alternatives (context menu)
 
 ### Contrast
+
 - Amount text: ≥4.5:1 against row background (all themes)
 - Category chip: ≥3:1 for non-text elements
 ```
@@ -313,15 +347,15 @@ Charts are implemented natively per platform but share a common **chart specific
 // Shared chart specification (packages/component-specs/charts/category-breakdown.ts)
 interface CategoryBreakdownSpec {
   type: 'donut';
-  maxSegments: 6;  // + "Other" bucket
+  maxSegments: 6; // + "Other" bucket
   tokens: {
     segments: [
-      'color.data.category1',  // #648FFF — IBM CVD-safe
-      'color.data.category2',  // #785EF0
-      'color.data.category3',  // #FE6100
-      'color.data.category4',  // #FFB000
-      'color.data.positive',   // #009E73
-      'color.data.negative',   // #DC267F
+      'color.data.category1', // #648FFF — IBM CVD-safe
+      'color.data.category2', // #785EF0
+      'color.data.category3', // #FE6100
+      'color.data.category4', // #FFB000
+      'color.data.positive', // #009E73
+      'color.data.negative', // #DC267F
     ];
     background: 'color.surface.primary';
     label: 'color.text.primary';
@@ -329,8 +363,8 @@ interface CategoryBreakdownSpec {
   accessibility: {
     role: 'img';
     label: 'Category spending breakdown for {month}';
-    textAlternative: 'required';  // Table fallback mandatory
-    directLabels: true;           // Label segments directly, not just legend
+    textAlternative: 'required'; // Table fallback mandatory
+    directLabels: true; // Label segments directly, not just legend
   };
 }
 ```
@@ -384,12 +418,12 @@ Let each platform team make independent design decisions with only high-level br
 
 ### Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Platform implementations diverge from specs | Medium | Medium | Cross-platform visual regression testing with shared test data; regular design reviews |
-| Token naming conflicts or ambiguity | Low | Medium | Strict naming convention in DTCG spec; automated linting of token files |
-| Style Dictionary transform bugs | Low | High | CI pipeline builds tokens on every change; snapshot tests for generated output |
-| Accessibility contract compliance | Medium | High | Automated a11y audits in CI (axe-core for web, XCUITest assertions for iOS) |
+| Risk                                        | Likelihood | Impact | Mitigation                                                                             |
+| ------------------------------------------- | ---------- | ------ | -------------------------------------------------------------------------------------- |
+| Platform implementations diverge from specs | Medium     | Medium | Cross-platform visual regression testing with shared test data; regular design reviews |
+| Token naming conflicts or ambiguity         | Low        | Medium | Strict naming convention in DTCG spec; automated linting of token files                |
+| Style Dictionary transform bugs             | Low        | High   | CI pipeline builds tokens on every change; snapshot tests for generated output         |
+| Accessibility contract compliance           | Medium     | High   | Automated a11y audits in CI (axe-core for web, XCUITest assertions for iOS)            |
 
 ## Implementation Notes
 
@@ -457,18 +491,19 @@ The token build is integrated into the monorepo's Turborepo pipeline:
 ```
 
 Tokens are built as a dependency of all platform apps:
+
 ```bash
 npx turbo run build --filter=design-tokens
 ```
 
 ### Component Catalog Per Platform
 
-| Platform | Catalog Tool | Purpose |
-|----------|-------------|---------|
-| Web | Storybook.js + `@storybook/addon-a11y` | Interactive docs, accessibility auditing, visual regression |
-| iOS | SwiftUI Previews + dedicated catalog target | Xcode previews for all components with state variants |
-| Android | Compose Previews + `:design-system-catalog` module | Android Studio previews, dedicated catalog app |
-| Windows | XAML Hot Reload + catalog project | Visual Studio previews, component browser |
+| Platform | Catalog Tool                                       | Purpose                                                     |
+| -------- | -------------------------------------------------- | ----------------------------------------------------------- |
+| Web      | Storybook.js + `@storybook/addon-a11y`             | Interactive docs, accessibility auditing, visual regression |
+| iOS      | SwiftUI Previews + dedicated catalog target        | Xcode previews for all components with state variants       |
+| Android  | Compose Previews + `:design-system-catalog` module | Android Studio previews, dedicated catalog app              |
+| Windows  | XAML Hot Reload + catalog project                  | Visual Studio previews, component browser                   |
 
 ### Figma Integration
 
@@ -479,6 +514,7 @@ Figma Variables → Tokens Studio (export) → tokens/*.json → Style Dictionar
 ```
 
 The Figma design system is structured as:
+
 - **Foundations** — shared tokens, colors, typography, spacing, icons
 - **iOS Components** — HIG-compliant variants
 - **Android Components** — Material 3 variants

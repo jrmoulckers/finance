@@ -12,22 +12,22 @@ This is a Kotlin Multiplatform (KMP) library with SQLDelight generating the `Fin
 
 ### Domain Models (`com.finance.models`)
 
-| File | Description |
-|---|---|
-| `Transaction.kt` | Expense, income, and transfer records with status tracking and recurring support |
-| `Account.kt` | Bank accounts, credit cards, loans, etc. |
-| `Budget.kt` | Budget definitions with period and amount |
-| `Category.kt` | Transaction categories |
-| `Goal.kt` | Savings goals |
-| `User.kt`, `Household.kt`, `HouseholdMember.kt` | Multi-user household model |
+| File                                            | Description                                                                      |
+| ----------------------------------------------- | -------------------------------------------------------------------------------- |
+| `Transaction.kt`                                | Expense, income, and transfer records with status tracking and recurring support |
+| `Account.kt`                                    | Bank accounts, credit cards, loans, etc.                                         |
+| `Budget.kt`                                     | Budget definitions with period and amount                                        |
+| `Category.kt`                                   | Transaction categories                                                           |
+| `Goal.kt`                                       | Savings goals                                                                    |
+| `User.kt`, `Household.kt`, `HouseholdMember.kt` | Multi-user household model                                                       |
 
 ### Value Types (`com.finance.models.types`)
 
-| Type | Description |
-|---|---|
-| `Cents` | `@JvmInline value class` wrapping `Long` — overflow-safe arithmetic operators, `fromDollars()` conversion |
-| `Currency` | ISO 4217 currency code with minor-unit decimal places (e.g., `JPY` → 0, `USD` → 2, `BHD` → 3) |
-| `SyncId` | Opaque UUID wrapper for type-safe entity identification |
+| Type       | Description                                                                                               |
+| ---------- | --------------------------------------------------------------------------------------------------------- |
+| `Cents`    | `@JvmInline value class` wrapping `Long` — overflow-safe arithmetic operators, `fromDollars()` conversion |
+| `Currency` | ISO 4217 currency code with minor-unit decimal places (e.g., `JPY` → 0, `USD` → 2, `BHD` → 3)             |
+| `SyncId`   | Opaque UUID wrapper for type-safe entity identification                                                   |
 
 ### Database (`com.finance.db`)
 

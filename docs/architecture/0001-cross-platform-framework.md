@@ -218,27 +218,27 @@ Flutter uses a single Dart codebase with a custom rendering engine (Impeller/Ski
 
 ### Risks
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| Compose for Web beta stability | Medium | Start with core mobile/desktop targets; web can ship slightly later. Alternatively, use Kobweb (Kotlin/JS + HTML/CSS) or a thin TypeScript PWA that calls KMP-compiled JS modules. |
-| watchOS KMP support is beta | Low | watchOS companion app has limited scope (complications, quick glance). Use native Swift with a thin KMP logic bridge for shared models. |
-| Multi-language AI agent complexity | Medium | Configure custom Copilot agents per platform (`@ios-agent` for SwiftUI, `@android-agent` for Compose). Each UI language is individually well-supported by Copilot. Shared Kotlin core reduces total platform-specific surface to ~20–30%. |
-| Smaller community than RN/Flutter | Low | JetBrains + Google dual backing ensures long-term viability. Google officially recommends KMP for shared logic. Ecosystem is growing rapidly (Jetpack libraries now support KMP). |
-| Gradle build time | Medium | Use Gradle build cache, configuration cache, and remote build caching. Modularize to enable incremental builds. CI can parallelize platform builds. |
+| Risk                               | Severity | Mitigation                                                                                                                                                                                                                                |
+| ---------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Compose for Web beta stability     | Medium   | Start with core mobile/desktop targets; web can ship slightly later. Alternatively, use Kobweb (Kotlin/JS + HTML/CSS) or a thin TypeScript PWA that calls KMP-compiled JS modules.                                                        |
+| watchOS KMP support is beta        | Low      | watchOS companion app has limited scope (complications, quick glance). Use native Swift with a thin KMP logic bridge for shared models.                                                                                                   |
+| Multi-language AI agent complexity | Medium   | Configure custom Copilot agents per platform (`@ios-agent` for SwiftUI, `@android-agent` for Compose). Each UI language is individually well-supported by Copilot. Shared Kotlin core reduces total platform-specific surface to ~20–30%. |
+| Smaller community than RN/Flutter  | Low      | JetBrains + Google dual backing ensures long-term viability. Google officially recommends KMP for shared logic. Ecosystem is growing rapidly (Jetpack libraries now support KMP).                                                         |
+| Gradle build time                  | Medium   | Use Gradle build cache, configuration cache, and remote build caching. Modularize to enable incremental builds. CI can parallelize platform builds.                                                                                       |
 
 ## Implementation Notes
 
 ### Package Structure
 
-| Package | Source Sets | Purpose |
-|---------|-----------|---------|
-| `packages/core` | `commonMain`, `androidMain`, `iosMain`, `jvmMain`, `jsMain` | Business logic, domain services, validation, financial calculations |
-| `packages/models` | `commonMain` (primarily) | Data classes, serialization (kotlinx.serialization), enums |
-| `packages/sync` | `commonMain`, platform actuals for networking | Sync engine, conflict resolution, delta sync protocol |
-| `apps/android` | Android app module | Jetpack Compose UI, Android-specific integrations |
-| `apps/ios` | Xcode project | SwiftUI app that imports KMP framework via SPM or CocoaPods |
-| `apps/web` | Kotlin/JS or Kotlin/Wasm | Compose for Web or Kobweb frontend |
-| `apps/windows` | JVM Desktop module | Compose Desktop app targeting Windows 11 |
+| Package           | Source Sets                                                 | Purpose                                                             |
+| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------- |
+| `packages/core`   | `commonMain`, `androidMain`, `iosMain`, `jvmMain`, `jsMain` | Business logic, domain services, validation, financial calculations |
+| `packages/models` | `commonMain` (primarily)                                    | Data classes, serialization (kotlinx.serialization), enums          |
+| `packages/sync`   | `commonMain`, platform actuals for networking               | Sync engine, conflict resolution, delta sync protocol               |
+| `apps/android`    | Android app module                                          | Jetpack Compose UI, Android-specific integrations                   |
+| `apps/ios`        | Xcode project                                               | SwiftUI app that imports KMP framework via SPM or CocoaPods         |
+| `apps/web`        | Kotlin/JS or Kotlin/Wasm                                    | Compose for Web or Kobweb frontend                                  |
+| `apps/windows`    | JVM Desktop module                                          | Compose Desktop app targeting Windows 11                            |
 
 ### Build System
 

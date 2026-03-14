@@ -2,13 +2,13 @@
 
 ## Running Tests
 
-| Command | What it runs |
-|---------|-------------|
-| `npm test` | All tests (KMP JVM + Turbo) |
-| `npm run test:kmp` | KMP JVM tests only |
-| `node tools/gradle.js :packages:core:jvmTest` | Core package tests |
-| `node tools/gradle.js :packages:sync:jvmTest` | Sync package tests |
-| `node tools/gradle.js :packages:models:jvmTest` | Models package tests |
+| Command                                         | What it runs                |
+| ----------------------------------------------- | --------------------------- |
+| `npm test`                                      | All tests (KMP JVM + Turbo) |
+| `npm run test:kmp`                              | KMP JVM tests only          |
+| `node tools/gradle.js :packages:core:jvmTest`   | Core package tests          |
+| `node tools/gradle.js :packages:sync:jvmTest`   | Sync package tests          |
+| `node tools/gradle.js :packages:models:jvmTest` | Models package tests        |
 
 ## Test Structure
 
@@ -35,6 +35,7 @@ packages/core/src/
 ## Financial Test Requirements
 
 Financial logic tests MUST cover:
+
 - Zero amounts
 - Negative amounts
 - Overflow (Long.MAX_VALUE boundaries)
@@ -75,9 +76,9 @@ class MyCalculatorTest {
 
 ## Coverage Targets
 
-| Package | Target | Rationale |
-|---------|--------|-----------|
-| packages/core | 90%+ | All financial logic |
-| packages/models | 80%+ | Schema and migration logic |
-| packages/sync | 80%+ | Sync, conflict resolution, encryption |
-| apps/android | 60%+ | ViewModels and business logic (not UI) |
+| Package         | Target | Rationale                              |
+| --------------- | ------ | -------------------------------------- |
+| packages/core   | 90%+   | All financial logic                    |
+| packages/models | 80%+   | Schema and migration logic             |
+| packages/sync   | 80%+   | Sync, conflict resolution, encryption  |
+| apps/android    | 60%+   | ViewModels and business logic (not UI) |

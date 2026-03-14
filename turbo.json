@@ -43,12 +43,29 @@
     },
     "type-check": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "test/**", "tests/**", "package.json", "tsconfig.json", "tsconfig*.json"],
+      "inputs": [
+        "src/**",
+        "test/**",
+        "tests/**",
+        "package.json",
+        "tsconfig.json",
+        "tsconfig*.json"
+      ],
       "outputs": [],
       "cache": true
     },
     "format": {
-      "inputs": ["src/**", "test/**", "tests/**", "*.ts", "*.tsx", "*.js", "*.jsx", "*.json", "*.md"],
+      "inputs": [
+        "src/**",
+        "test/**",
+        "tests/**",
+        "*.ts",
+        "*.tsx",
+        "*.js",
+        "*.jsx",
+        "*.json",
+        "*.md"
+      ],
       "outputs": [],
       "cache": false
     }

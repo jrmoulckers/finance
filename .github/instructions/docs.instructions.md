@@ -1,6 +1,7 @@
 ---
-applyTo: "docs/**"
+applyTo: 'docs/**'
 ---
+
 # Instructions for Documentation
 
 You are working in the `docs/` directory, which contains all project documentation.

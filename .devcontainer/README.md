@@ -25,12 +25,12 @@ extensions — no manual setup required.
 
 ## What's Included
 
-| Tool / Feature | Details |
-|----------------|---------|
-| **Base image** | `mcr.microsoft.com/devcontainers/base:ubuntu-22.04` |
-| **JDK** | 21 (via `ghcr.io/devcontainers/features/java`) |
-| **Node.js** | 22 (via `ghcr.io/devcontainers/features/node`) |
-| **GitHub CLI** | Latest (via `ghcr.io/devcontainers/features/github-cli`) |
+| Tool / Feature         | Details                                                                    |
+| ---------------------- | -------------------------------------------------------------------------- |
+| **Base image**         | `mcr.microsoft.com/devcontainers/base:ubuntu-22.04`                        |
+| **JDK**                | 21 (via `ghcr.io/devcontainers/features/java`)                             |
+| **Node.js**            | 22 (via `ghcr.io/devcontainers/features/node`)                             |
+| **GitHub CLI**         | Latest (via `ghcr.io/devcontainers/features/github-cli`)                   |
 | **VS Code extensions** | Copilot, Kotlin, Gradle, ESLint, Prettier, EditorConfig, GitLens, and more |
 
 ### Post-Create Setup
@@ -42,6 +42,7 @@ npm install && git config core.hooksPath tools/git-hooks && npm run build
 ```
 
 This ensures:
+
 - All npm dependencies are installed across the monorepo workspaces.
 - Git hooks (commit-lint, pre-push checks) are configured.
 - The full project is built (KMP + Turbo) so you can start working immediately.
@@ -54,9 +55,9 @@ for the full schema reference.
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| Container build fails | Check Docker has ≥8 GB RAM allocated |
-| Gradle build OOM | Increase `org.gradle.jvmargs` in `gradle.properties` |
+| Problem                | Solution                                                     |
+| ---------------------- | ------------------------------------------------------------ |
+| Container build fails  | Check Docker has ≥8 GB RAM allocated                         |
+| Gradle build OOM       | Increase `org.gradle.jvmargs` in `gradle.properties`         |
 | Extensions not loading | Rebuild the container: **Dev Containers: Rebuild Container** |
-| Codespace is slow | Upgrade to a 4-core machine type in Codespace settings |
+| Codespace is slow      | Upgrade to a 4-core machine type in Codespace settings       |

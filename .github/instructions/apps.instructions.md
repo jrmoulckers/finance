@@ -1,6 +1,7 @@
 ---
-applyTo: "apps/**"
+applyTo: 'apps/**'
 ---
+
 # Instructions for Platform Applications
 
 You are working in the `apps/` directory, which contains platform-specific application code.

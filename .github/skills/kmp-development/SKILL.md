@@ -528,11 +528,12 @@ class TransactionRepositoryTest {
 
 ## Common Pitfalls
 
-### java.* in commonMain
+### java.\* in commonMain
 
 **Problem:** Accidentally using `java.util.UUID`, `java.time.*`, or other JVM APIs in `commonMain`.
 
 **Solution:** The Kotlin compiler will error on non-JVM targets, but catch this early by building all targets in CI. Use kotlinx equivalents:
+
 - `java.util.UUID` → custom `expect fun randomUUID()` or `kotlin.uuid.Uuid` (Kotlin 2.0+)
 - `java.time.*` → `kotlinx-datetime`
 - `java.io.*` → `kotlinx-io` or `okio`

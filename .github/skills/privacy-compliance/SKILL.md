@@ -13,6 +13,7 @@ This skill provides knowledge about privacy regulations and data protection requ
 ## Applicable Regulations
 
 ### GDPR (EU/EEA)
+
 - **Lawful basis** — Must have a legal basis for processing (consent, contract, legitimate interest)
 - **Data minimization** — Collect only what's necessary for the stated purpose
 - **Purpose limitation** — Use data only for the purpose it was collected
@@ -23,6 +24,7 @@ This skill provides knowledge about privacy regulations and data protection requ
 - **Breach notification** — 72 hours to notify authority; without undue delay to users
 
 ### CCPA/CPRA (California)
+
 - **Right to know** — What personal information is collected and how it's used
 - **Right to delete** — Request deletion of personal information
 - **Right to opt-out** — Of sale/sharing of personal information
@@ -30,6 +32,7 @@ This skill provides knowledge about privacy regulations and data protection requ
 - **Financial incentives** — Must disclose if offering incentives for data collection
 
 ### Additional Considerations
+
 - **PCI DSS awareness** — If ever handling raw card numbers (avoid if possible)
 - **State/country-specific** — Various US states, Canada (PIPEDA), UK (UK GDPR), etc.
 - **Children's privacy** — COPPA if users under 13 possible (unlikely for finance app but consider)
@@ -37,17 +40,19 @@ This skill provides knowledge about privacy regulations and data protection requ
 ## Implementation Requirements
 
 ### Data Inventory
+
 Maintain a clear inventory of all personal data processed:
 
-| Data Type | Purpose | Storage Location | Retention | Legal Basis |
-|-----------|---------|-----------------|-----------|-------------|
-| Email | Authentication | Backend DB | Account lifetime | Contract |
-| Transactions | Core functionality | Local + Backend DB | User-controlled | Contract |
-| Account balances | Core functionality | Local + Backend DB | User-controlled | Contract |
-| Device ID | Sync identification | Backend DB | Account lifetime | Contract |
-| Usage analytics | Product improvement | Analytics service | 26 months | Consent |
+| Data Type        | Purpose             | Storage Location   | Retention        | Legal Basis |
+| ---------------- | ------------------- | ------------------ | ---------------- | ----------- |
+| Email            | Authentication      | Backend DB         | Account lifetime | Contract    |
+| Transactions     | Core functionality  | Local + Backend DB | User-controlled  | Contract    |
+| Account balances | Core functionality  | Local + Backend DB | User-controlled  | Contract    |
+| Device ID        | Sync identification | Backend DB         | Account lifetime | Contract    |
+| Usage analytics  | Product improvement | Analytics service  | 26 months        | Consent     |
 
 ### Consent Management
+
 - Collect explicit consent before processing optional data (analytics, recommendations)
 - Consent must be freely given, specific, informed, and unambiguous
 - Store consent records (what, when, how)
@@ -55,12 +60,14 @@ Maintain a clear inventory of all personal data processed:
 - Default to opted-out for all non-essential processing
 
 ### Data Export (Portability)
+
 - Support full data export in JSON and CSV formats
 - Export must include ALL user data across all storage locations
 - Must be completable within 30 days of request (aim for immediate)
 - Automated self-service export in the app preferred
 
 ### Data Deletion
+
 - Support full account deletion that removes all personal data
 - Implement **cascading deletion** — user deletion removes all associated records
 - Use **crypto-shredding** for encrypted data — destroy the encryption key
@@ -68,12 +75,14 @@ Maintain a clear inventory of all personal data processed:
 - Handle edge cases: shared household data, pending sync, active subscriptions
 
 ### Encryption Requirements
+
 - **At rest** — All financial data encrypted in local database and backend storage
 - **In transit** — TLS 1.3 minimum for all network communication
 - **End-to-end** (optional/future) — Client-side encryption with user-held keys
 - **Key management** — Use platform Keychain/Keystore; never store keys in app bundle
 
 ### Data Minimization Checklist
+
 - [ ] Every field collected has a documented purpose
 - [ ] No fields collected "just in case"
 - [ ] Analytics data is anonymized/pseudonymized
@@ -94,6 +103,7 @@ Maintain a clear inventory of all personal data processed:
 ## Privacy Review Triggers
 
 Run a privacy review when:
+
 - Adding a new data field or collection point
 - Integrating a third-party SDK or service
 - Changing data storage or transmission patterns

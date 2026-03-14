@@ -275,53 +275,53 @@ secret = "env(APPLE_CLIENT_SECRET)"
 
 ```typescript
 // functions/process-receipt/index.ts
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from '../_shared/cors.ts';
 
 serve(async (req: Request) => {
-    // Handle CORS preflight
-    if (req.method === "OPTIONS") {
-        return new Response("ok", { headers: corsHeaders });
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    // Verify auth
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    try {
-        // Verify auth
-        const authHeader = req.headers.get("Authorization");
-        if (!authHeader) {
-            return new Response(JSON.stringify({ error: "Unauthorized" }), {
-                status: 401,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-        }
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
 
-        const supabase = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            Deno.env.get("SUPABASE_ANON_KEY")!,
-            { global: { headers: { Authorization: authHeader } } }
-        );
-
-        // Validate input
-        const { receiptUrl } = await req.json();
-        if (!receiptUrl || typeof receiptUrl !== "string") {
-            return new Response(JSON.stringify({ error: "Invalid input" }), {
-                status: 400,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-        }
-
-        // Process receipt (OCR, categorization, etc.)
-        const result = await processReceipt(receiptUrl);
-
-        return new Response(JSON.stringify(result), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-    } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    // Validate input
+    const { receiptUrl } = await req.json();
+    if (!receiptUrl || typeof receiptUrl !== 'string') {
+      return new Response(JSON.stringify({ error: 'Invalid input' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
+
+    // Process receipt (OCR, categorization, etc.)
+    const result = await processReceipt(receiptUrl);
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 });
 ```
 
@@ -330,9 +330,8 @@ serve(async (req: Request) => {
 ```typescript
 // functions/_shared/cors.ts
 export const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers":
-        "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 ```
 
@@ -359,17 +358,17 @@ bucket_definitions:
       - SELECT household_id FROM user_profile WHERE id = token_parameters.user_id
     data:
       - SELECT id, household_id, name, type, balance, currency, institution,
-               created_at, updated_at, deleted_at
+        created_at, updated_at, deleted_at
         FROM account
         WHERE household_id = bucket.household_id
 
       - SELECT id, household_id, account_id, amount, description, category,
-               date, notes, created_at, updated_at, deleted_at
+        date, notes, created_at, updated_at, deleted_at
         FROM transaction
         WHERE household_id = bucket.household_id
 
       - SELECT id, household_id, category, amount, period, start_date,
-               end_date, created_at, updated_at, deleted_at
+        end_date, created_at, updated_at, deleted_at
         FROM budget
         WHERE household_id = bucket.household_id
 ```
@@ -648,37 +647,34 @@ psql -d temp_export_db -c "
 ```typescript
 // functions/export-data/index.ts
 serve(async (req: Request) => {
-    const supabase = createClient(url, key, {
-        global: { headers: { Authorization: req.headers.get("Authorization")! } }
-    });
+  const supabase = createClient(url, key, {
+    global: { headers: { Authorization: req.headers.get('Authorization')! } },
+  });
 
-    const { data: profile } = await supabase
-        .from("user_profile")
-        .select("household_id")
-        .single();
+  const { data: profile } = await supabase.from('user_profile').select('household_id').single();
 
-    const householdId = profile.household_id;
+  const householdId = profile.household_id;
 
-    const [accounts, transactions, budgets] = await Promise.all([
-        supabase.from("account").select("*").eq("household_id", householdId),
-        supabase.from("transaction").select("*").eq("household_id", householdId),
-        supabase.from("budget").select("*").eq("household_id", householdId),
-    ]);
+  const [accounts, transactions, budgets] = await Promise.all([
+    supabase.from('account').select('*').eq('household_id', householdId),
+    supabase.from('transaction').select('*').eq('household_id', householdId),
+    supabase.from('budget').select('*').eq('household_id', householdId),
+  ]);
 
-    const exportData = {
-        exported_at: new Date().toISOString(),
-        household_id: householdId,
-        accounts: accounts.data,
-        transactions: transactions.data,
-        budgets: budgets.data,
-    };
+  const exportData = {
+    exported_at: new Date().toISOString(),
+    household_id: householdId,
+    accounts: accounts.data,
+    transactions: transactions.data,
+    budgets: budgets.data,
+  };
 
-    return new Response(JSON.stringify(exportData, null, 2), {
-        headers: {
-            "Content-Type": "application/json",
-            "Content-Disposition": "attachment; filename=finance-export.json",
-        },
-    });
+  return new Response(JSON.stringify(exportData, null, 2), {
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Disposition': 'attachment; filename=finance-export.json',
+    },
+  });
 });
 ```
 

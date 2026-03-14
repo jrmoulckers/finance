@@ -35,16 +35,16 @@ The app starts at [http://localhost:5173](http://localhost:5173).
 
 ## Available Scripts
 
-| Script             | Description                                  |
-| ------------------ | -------------------------------------------- |
-| `npm run dev`      | Start Vite dev server with HMR               |
-| `npm run build`    | Type-check + production build to `dist/`     |
-| `npm run preview`  | Serve the production build locally           |
-| `npm run type-check` | Run TypeScript compiler (no emit)          |
-| `npm run lint`     | Lint source files with ESLint                |
-| `npm run test`     | Run tests with Vitest                        |
-| `npm run test:watch` | Run tests in watch mode                    |
-| `npm run clean`    | Remove `dist/` output directory              |
+| Script               | Description                              |
+| -------------------- | ---------------------------------------- |
+| `npm run dev`        | Start Vite dev server with HMR           |
+| `npm run build`      | Type-check + production build to `dist/` |
+| `npm run preview`    | Serve the production build locally       |
+| `npm run type-check` | Run TypeScript compiler (no emit)        |
+| `npm run lint`       | Lint source files with ESLint            |
+| `npm run test`       | Run tests with Vitest                    |
+| `npm run test:watch` | Run tests in watch mode                  |
+| `npm run clean`      | Remove `dist/` output directory          |
 
 ## Project Structure
 

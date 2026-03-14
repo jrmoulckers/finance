@@ -13,6 +13,7 @@ MCP (Model Context Protocol) is a standard that allows AI agents to interact wit
 The following MCP servers are configured in `.vscode/mcp.json`:
 
 #### 1. GitHub (`github`)
+
 - **Type:** HTTP
 - **Purpose:** GitHub API access — issue/PR management, code search, Actions inspection
 - **Auth:** GitHub Personal Access Token (prompted on first use)
@@ -20,24 +21,28 @@ The following MCP servers are configured in `.vscode/mcp.json`:
 - **Risk level:** LOW with read-only PAT; HIGH with write PAT
 
 #### 2. Sequential Thinking (`sequential-thinking`)
+
 - **Type:** stdio (runs locally via npx)
 - **Purpose:** Enables step-by-step chain-of-thought reasoning for complex tasks
 - **Why:** Dramatically improves accuracy for debugging, architecture analysis, and multi-step problem solving
 - **No auth required**
 
 #### 3. Memory (`memory`)
+
 - **Type:** stdio (runs locally via npx)
 - **Purpose:** Persistent memory across Copilot Chat sessions
 - **Why:** Maintains context about ongoing work, decisions, and patterns even after session resets
 - **No auth required**
 
 #### 4. Filesystem (`filesystem`)
+
 - **Type:** stdio (runs locally via npx)
 - **Purpose:** Sandboxed file system access scoped to the workspace
 - **Why:** Enables Copilot to read, write, and search files directly during agent mode
 - **No auth required**
 
 #### 5. Context7 (`context7`)
+
 - **Type:** stdio (runs locally via npx)
 - **Purpose:** Injects up-to-date library/framework documentation into prompts
 - **Why:** Ensures Copilot uses current API signatures instead of outdated training data
@@ -48,6 +53,7 @@ The following MCP servers are configured in `.vscode/mcp.json`:
 ### HTTP/REST Servers
 
 For cloud APIs:
+
 ```json
 {
   "servers": {
@@ -65,6 +71,7 @@ For cloud APIs:
 ### Stdio Servers (Local Tools)
 
 For local tools and scripts:
+
 ```json
 {
   "servers": {
@@ -87,15 +94,15 @@ For local tools and scripts:
 
 All configured and planned MCP servers:
 
-| Server | Purpose | Status |
-|--------|---------|--------|
-| GitHub | GitHub API access | ✅ Configured |
-| Sequential Thinking | Step-by-step reasoning | ✅ Configured |
-| Memory | Persistent context | ✅ Configured |
-| Filesystem | Sandboxed file access | ✅ Configured |
-| Context7 | Live docs injection | ✅ Configured |
-| Database | Local dev database queries | 📋 Planned |
-| Playwright | Browser automation & E2E testing | 📋 Planned |
+| Server              | Purpose                          | Status        |
+| ------------------- | -------------------------------- | ------------- |
+| GitHub              | GitHub API access                | ✅ Configured |
+| Sequential Thinking | Step-by-step reasoning           | ✅ Configured |
+| Memory              | Persistent context               | ✅ Configured |
+| Filesystem          | Sandboxed file access            | ✅ Configured |
+| Context7            | Live docs injection              | ✅ Configured |
+| Database            | Local dev database queries       | 📋 Planned    |
+| Playwright          | Browser automation & E2E testing | 📋 Planned    |
 
 ## Security Notes
 

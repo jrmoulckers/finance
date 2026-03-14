@@ -16,8 +16,8 @@
  *   AUTH_WEBHOOK_SECRET    — Shared secret to verify webhook authenticity
  */
 
-import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
 interface WebhookPayload {
   type: string;
@@ -39,19 +39,19 @@ interface WebhookPayload {
  * Verify that the webhook request is authentic using the shared secret.
  */
 function verifyWebhookSecret(req: Request): boolean {
-  const secret = Deno.env.get("AUTH_WEBHOOK_SECRET");
+  const secret = Deno.env.get('AUTH_WEBHOOK_SECRET');
   if (!secret) {
-    console.error("AUTH_WEBHOOK_SECRET not configured");
+    console.error('AUTH_WEBHOOK_SECRET not configured');
     return false;
   }
 
-  const authHeader = req.headers.get("Authorization");
+  const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
     return false;
   }
 
   // Bearer token comparison using constant-time-like approach
-  const token = authHeader.replace("Bearer ", "");
+  const token = authHeader.replace('Bearer ', '');
   if (token.length !== secret.length) {
     return false;
   }
@@ -65,18 +65,18 @@ function verifyWebhookSecret(req: Request): boolean {
 
 serve(async (req: Request): Promise<Response> => {
   // Only accept POST
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 
   // Verify webhook authenticity
   if (!verifyWebhookSecret(req)) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 
@@ -84,28 +84,25 @@ serve(async (req: Request): Promise<Response> => {
     const payload: WebhookPayload = await req.json();
 
     // Only handle INSERT events on auth.users (new signups)
-    if (payload.type !== "INSERT") {
-      return new Response(JSON.stringify({ message: "Event ignored" }), {
+    if (payload.type !== 'INSERT') {
+      return new Response(JSON.stringify({ message: 'Event ignored' }), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
     const { record } = payload;
 
     // Initialize Supabase admin client (bypasses RLS via service role)
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !serviceRoleKey) {
-      console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+      console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+      return new Response(JSON.stringify({ error: 'Server configuration error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
@@ -117,49 +114,41 @@ serve(async (req: Request): Promise<Response> => {
 
     // Extract display name from user metadata
     const displayName =
-      record.raw_user_meta_data?.full_name ??
-      record.raw_user_meta_data?.name ??
-      null;
+      record.raw_user_meta_data?.full_name ?? record.raw_user_meta_data?.name ?? null;
 
     // Call the database function to create user, household, and membership
-    const { data, error } = await supabaseAdmin.rpc("handle_new_user_signup", {
+    const { data, error } = await supabaseAdmin.rpc('handle_new_user_signup', {
       p_user_id: record.id,
       p_email: record.email,
       p_name: displayName,
     });
 
     if (error) {
-      console.error("Error provisioning user:", error.message);
-      return new Response(
-        JSON.stringify({ error: "Failed to provision user" }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+      console.error('Error provisioning user:', error.message);
+      return new Response(JSON.stringify({ error: 'Failed to provision user' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     // Log success without exposing user data
-    console.log("User provisioned successfully:", record.id);
+    console.log('User provisioned successfully:', record.id);
 
     return new Response(
       JSON.stringify({
-        message: "User provisioned",
+        message: 'User provisioned',
         user_id: record.id,
       }),
       {
         status: 201,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       },
     );
   } catch (err) {
-    console.error("Webhook processing error:", (err as Error).message);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    console.error('Webhook processing error:', (err as Error).message);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 });

@@ -5,7 +5,7 @@
 This project follows **Agentic Kanban** — a continuous-flow development methodology where AI agents are first-class contributors alongside human developers. It draws from:
 
 - **Kanban** — Continuous flow with WIP limits and pull-based work
-- **Shape Up** — Appetite-based scoping (define how much time work is *worth*, not how long it'll *take*)
+- **Shape Up** — Appetite-based scoping (define how much time work is _worth_, not how long it'll _take_)
 
 The core dynamic: **humans direct, AI agents execute**. Humans own strategy, scoping, and review. Agents handle implementation, testing, and documentation. Work flows continuously — no sprints, no ceremonies, no artificial time boxes.
 
@@ -29,12 +29,12 @@ The core dynamic: **humans direct, AI agents execute**. Humans own strategy, sco
 
 ## Work Types
 
-| Type | Description | Tracking |
-|------|-------------|----------|
-| **Feature** | New user-facing capability. Involves UI, business logic, or new functionality visible to users. | Tracked as an epic (parent issue) with sub-issues for individual tasks. |
-| **Bug** | Something broken that needs fixing. Deviates from expected behavior or acceptance criteria. | Single issue with reproduction steps and severity label. |
-| **Task** | Internal work — refactoring, infrastructure, tooling, CI/CD, documentation, dependency updates. Not directly user-facing. | Single issue. |
-| **Spike** | Time-boxed research to answer a question or reduce risk. Output is knowledge (an ADR, a recommendation, a proof of concept), not production code. | Single issue with a defined time box and deliverable. |
+| Type        | Description                                                                                                                                       | Tracking                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Feature** | New user-facing capability. Involves UI, business logic, or new functionality visible to users.                                                   | Tracked as an epic (parent issue) with sub-issues for individual tasks. |
+| **Bug**     | Something broken that needs fixing. Deviates from expected behavior or acceptance criteria.                                                       | Single issue with reproduction steps and severity label.                |
+| **Task**    | Internal work — refactoring, infrastructure, tooling, CI/CD, documentation, dependency updates. Not directly user-facing.                         | Single issue.                                                           |
+| **Spike**   | Time-boxed research to answer a question or reduce risk. Output is knowledge (an ADR, a recommendation, a proof of concept), not production code. | Single issue with a defined time box and deliverable.                   |
 
 ---
 
@@ -42,14 +42,14 @@ The core dynamic: **humans direct, AI agents execute**. Humans own strategy, sco
 
 Every work item flows through these stages, represented as columns on the project board:
 
-| Stage | Description | Who Works | Exit Criteria |
-|-------|-------------|-----------|---------------|
-| **Triage** | New issues land here for prioritization. Includes bug reports, feature requests, and tasks. | Human | Prioritized, labeled, sized |
-| **Shaping** | Define scope, acceptance criteria, constraints, and approach. Reduce ambiguity to zero. | Human + `@architect` | Clear scope, acceptance criteria, no open questions |
-| **Ready** | Fully shaped and ready for implementation. Meets the Definition of Ready (below). | — | Meets Definition of Ready |
-| **In Progress** | Active development. An agent or developer is working on this. | AI agents + Human | Code written, tests passing |
-| **In Review** | PR open, awaiting review. Automated and human reviews in progress. | Human + `@security-reviewer`, `@accessibility-reviewer` | All reviews approved, CI green |
-| **Done** | Merged to `main`. Deployed or ready to deploy. | — | Deployed or ready to deploy |
+| Stage           | Description                                                                                 | Who Works                                               | Exit Criteria                                       |
+| --------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------- |
+| **Triage**      | New issues land here for prioritization. Includes bug reports, feature requests, and tasks. | Human                                                   | Prioritized, labeled, sized                         |
+| **Shaping**     | Define scope, acceptance criteria, constraints, and approach. Reduce ambiguity to zero.     | Human + `@architect`                                    | Clear scope, acceptance criteria, no open questions |
+| **Ready**       | Fully shaped and ready for implementation. Meets the Definition of Ready (below).           | —                                                       | Meets Definition of Ready                           |
+| **In Progress** | Active development. An agent or developer is working on this.                               | AI agents + Human                                       | Code written, tests passing                         |
+| **In Review**   | PR open, awaiting review. Automated and human reviews in progress.                          | Human + `@security-reviewer`, `@accessibility-reviewer` | All reviews approved, CI green                      |
+| **Done**        | Merged to `main`. Deployed or ready to deploy.                                              | —                                                       | Deployed or ready to deploy                         |
 
 ### WIP Limits
 
@@ -101,12 +101,12 @@ A PR is **done** when all of the following are true:
 
 No sprints, but regular rhythm:
 
-| Cadence | Activity | Duration | Details |
-|---------|----------|----------|---------|
-| **Daily** | Triage new issues | ~5 min | Review incoming issues, label, and prioritize. Can be AI-assisted — agent drafts labels/priority, human approves. |
-| **Weekly** | Board review | ~30 min | Review the board end-to-end. Unblock stuck items. Pull shaped items into Ready. Reprioritize backlog based on new information. |
-| **Monthly** | Appetite planning | ~1 hr | Review roadmap progress. Set appetites for next month's work. Decide what's worth investing in and what to cut. Adjust priorities based on user feedback and metrics. |
-| **Quarterly** | Strategic review | ~2 hr | Reassess product vision. Evaluate technology choices. Plan major features and architectural changes. Review whether the methodology itself is working. |
+| Cadence       | Activity          | Duration | Details                                                                                                                                                               |
+| ------------- | ----------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Daily**     | Triage new issues | ~5 min   | Review incoming issues, label, and prioritize. Can be AI-assisted — agent drafts labels/priority, human approves.                                                     |
+| **Weekly**    | Board review      | ~30 min  | Review the board end-to-end. Unblock stuck items. Pull shaped items into Ready. Reprioritize backlog based on new information.                                        |
+| **Monthly**   | Appetite planning | ~1 hr    | Review roadmap progress. Set appetites for next month's work. Decide what's worth investing in and what to cut. Adjust priorities based on user feedback and metrics. |
+| **Quarterly** | Strategic review  | ~2 hr    | Reassess product vision. Evaluate technology choices. Plan major features and architectural changes. Review whether the methodology itself is working.                |
 
 ---
 
@@ -180,7 +180,7 @@ AI agents follow the same lifecycle as human developers. See [docs/ai/workflow.m
 - **Fleet mode for multi-faceted work** — Use `/fleet` for features that span multiple packages or require parallel work streams (e.g., implementing a feature across mobile + web + API simultaneously). The fleet orchestrator partitions the work and manages dependencies between agents.
 
 - **Transparency** — All AI work is visible and auditable:
-  - Commit messages explain *what* and *why*
+  - Commit messages explain _what_ and _why_
   - PR descriptions document the agent's approach and decisions
   - Architecture Decision Records (ADRs) capture AI-generated design rationale in `docs/architecture/`
   - No "black box" changes — if an agent made a choice, the reasoning is documented
@@ -203,11 +203,11 @@ AI agents follow the same lifecycle as human developers. See [docs/ai/workflow.m
 
 Track these to understand and improve flow:
 
-| Metric | What It Measures | Target |
-|--------|-----------------|--------|
-| **Cycle time** | Time from Triage → Done | Decreasing trend |
-| **Throughput** | Issues completed per week | Stable or increasing |
-| **Bug rate** | Bugs per feature shipped | Decreasing trend |
-| **Review turnaround** | Time from PR opened → approved | < 24 hours |
+| Metric                | What It Measures               | Target               |
+| --------------------- | ------------------------------ | -------------------- |
+| **Cycle time**        | Time from Triage → Done        | Decreasing trend     |
+| **Throughput**        | Issues completed per week      | Stable or increasing |
+| **Bug rate**          | Bugs per feature shipped       | Decreasing trend     |
+| **Review turnaround** | Time from PR opened → approved | < 24 hours           |
 
 These are informational, not targets to game. Use them to identify bottlenecks and improve flow, not to measure individual performance.

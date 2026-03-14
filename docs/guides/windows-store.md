@@ -4,13 +4,13 @@ Step-by-step guide for packaging and publishing the Finance Windows desktop app 
 
 ## Overview
 
-| Item | Value |
-|---|---|
-| **Package format** | MSIX |
-| **Build tool** | Compose Desktop → `packageMsi` / MSIX tooling |
-| **CI workflow** | `.github/workflows/windows-ci.yml` |
-| **Manifest template** | `apps/windows/packaging/AppxManifest.xml` |
-| **Minimum OS** | Windows 10 1809 (build 17763) |
+| Item                  | Value                                         |
+| --------------------- | --------------------------------------------- |
+| **Package format**    | MSIX                                          |
+| **Build tool**        | Compose Desktop → `packageMsi` / MSIX tooling |
+| **CI workflow**       | `.github/workflows/windows-ci.yml`            |
+| **Manifest template** | `apps/windows/packaging/AppxManifest.xml`     |
+| **Minimum OS**        | Windows 10 1809 (build 17763)                 |
 
 ## Prerequisites
 
@@ -39,6 +39,7 @@ From the repository root:
 ```
 
 The MSI output is located at:
+
 ```
 apps/windows/build/compose/binaries/main/msi/Finance-1.0.0.msi
 ```
@@ -111,11 +112,11 @@ Get-AppPackage -Name "*Finance*" | Remove-AppPackage
 
 ### Certification Timeline
 
-| Phase | Typical Duration |
-|---|---|
-| Validation | Minutes |
-| Certification review | 1–3 business days |
-| Publishing | Hours after approval |
+| Phase                | Typical Duration     |
+| -------------------- | -------------------- |
+| Validation           | Minutes              |
+| Certification review | 1–3 business days    |
+| Publishing           | Hours after approval |
 
 ## 7. CI/CD Integration
 
@@ -148,6 +149,7 @@ The `windows-ci.yml` workflow handles build and packaging automatically:
 ### "Publisher does not match the signing certificate"
 
 Ensure the `Publisher` field in `AppxManifest.xml` exactly matches the subject of your code-signing certificate:
+
 ```
 Publisher="CN=Your Publisher Name, O=Your Org, L=City, S=State, C=US"
 ```

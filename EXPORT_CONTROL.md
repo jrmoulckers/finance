@@ -1,4 +1,5 @@
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
+
 # Export Control Notice
 
 ## Classification
@@ -13,16 +14,16 @@ distributed free of charge via a public repository.
 
 ## Cryptographic Components
 
-| Component | Algorithm | Purpose |
-|-----------|-----------|---------|
-| Local database encryption | AES-256-CBC + HMAC-SHA512 | Encrypting financial data at rest (via SQLCipher) |
-| Envelope encryption | AES-256-GCM | Field-level encryption of sensitive records |
-| Authentication | WebAuthn/FIDO2 (ECDSA P-256) | Passkey-based user authentication |
-| OAuth security | SHA-256 (PKCE, RFC 7636) | Proof Key for Code Exchange |
-| Key storage | Platform keystores | Android Keystore, iOS Keychain, Windows DPAPI |
-| Network transport | TLS 1.2+ | Encrypted communications (via platform APIs) |
-| Planned | Argon2id | Password-based key derivation |
-| Planned | X25519 | Household key exchange |
+| Component                 | Algorithm                    | Purpose                                           |
+| ------------------------- | ---------------------------- | ------------------------------------------------- |
+| Local database encryption | AES-256-CBC + HMAC-SHA512    | Encrypting financial data at rest (via SQLCipher) |
+| Envelope encryption       | AES-256-GCM                  | Field-level encryption of sensitive records       |
+| Authentication            | WebAuthn/FIDO2 (ECDSA P-256) | Passkey-based user authentication                 |
+| OAuth security            | SHA-256 (PKCE, RFC 7636)     | Proof Key for Code Exchange                       |
+| Key storage               | Platform keystores           | Android Keystore, iOS Keychain, Windows DPAPI     |
+| Network transport         | TLS 1.2+                     | Encrypted communications (via platform APIs)      |
+| Planned                   | Argon2id                     | Password-based key derivation                     |
+| Planned                   | X25519                       | Household key exchange                            |
 
 ## BIS Notification
 

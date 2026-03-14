@@ -85,10 +85,7 @@ interface ServerAuthenticationOptions {
  */
 function base64UrlToBuffer(base64url: string): ArrayBuffer {
   const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = base64.padEnd(
-    base64.length + ((4 - (base64.length % 4)) % 4),
-    '=',
-  );
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
   const binary = atob(padded);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -106,10 +103,7 @@ function bufferToBase64Url(buffer: ArrayBuffer): string {
   for (const byte of bytes) {
     binary += String.fromCharCode(byte);
   }
-  return btoa(binary)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // ---------------------------------------------------------------------------
@@ -138,9 +132,7 @@ export async function isConditionalMediationAvailable(): Promise<boolean> {
   if (!isWebAuthnSupported()) return false;
 
   try {
-    if (
-      typeof PublicKeyCredential.isConditionalMediationAvailable === 'function'
-    ) {
+    if (typeof PublicKeyCredential.isConditionalMediationAvailable === 'function') {
       return await PublicKeyCredential.isConditionalMediationAvailable();
     }
   } catch {
@@ -201,12 +193,9 @@ async function callEdgeFunction<T>(
   });
 
   if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ error: 'Unknown error' }));
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(
-      (error as { error?: string }).error ??
-        `Edge Function error (${response.status})`,
+      (error as { error?: string }).error ?? `Edge Function error (${response.status})`,
     );
   }
 
@@ -229,9 +218,7 @@ async function callEdgeFunction<T>(
  * @returns The registration result including credential ID and device type.
  * @throws If WebAuthn is not supported or the ceremony fails.
  */
-export async function registerPasskey(
-  accessToken: string,
-): Promise<RegistrationResult> {
+export async function registerPasskey(accessToken: string): Promise<RegistrationResult> {
   if (!isWebAuthnSupported()) {
     throw new Error('WebAuthn is not supported in this browser.');
   }
@@ -261,19 +248,19 @@ export async function registerPasskey(
       type: param.type as PublicKeyCredentialType,
     })),
     timeout: options.timeout ?? 60_000,
-    attestation:
-      (options.attestation as AttestationConveyancePreference) ?? 'none',
+    attestation: (options.attestation as AttestationConveyancePreference) ?? 'none',
     authenticatorSelection: options.authenticatorSelection
       ? {
-          authenticatorAttachment: options.authenticatorSelection
-            .authenticatorAttachment as AuthenticatorAttachment | undefined,
-          residentKey: options.authenticatorSelection
-            .residentKey as ResidentKeyRequirement | undefined,
-          requireResidentKey:
-            options.authenticatorSelection.requireResidentKey ?? false,
+          authenticatorAttachment: options.authenticatorSelection.authenticatorAttachment as
+            | AuthenticatorAttachment
+            | undefined,
+          residentKey: options.authenticatorSelection.residentKey as
+            | ResidentKeyRequirement
+            | undefined,
+          requireResidentKey: options.authenticatorSelection.requireResidentKey ?? false,
           userVerification:
-            (options.authenticatorSelection
-              .userVerification as UserVerificationRequirement) ?? 'preferred',
+            (options.authenticatorSelection.userVerification as UserVerificationRequirement) ??
+            'preferred',
         }
       : undefined,
     excludeCredentials: options.excludeCredentials?.map((cred) => ({
@@ -292,8 +279,7 @@ export async function registerPasskey(
     throw new Error('Credential creation was cancelled or failed.');
   }
 
-  const attestationResponse =
-    credential.response as AuthenticatorAttestationResponse;
+  const attestationResponse = credential.response as AuthenticatorAttestationResponse;
 
   // Step 4: Build the attestation response for the server
   const attestationBody = {
@@ -302,9 +288,7 @@ export async function registerPasskey(
     type: credential.type,
     response: {
       clientDataJSON: bufferToBase64Url(attestationResponse.clientDataJSON),
-      attestationObject: bufferToBase64Url(
-        attestationResponse.attestationObject,
-      ),
+      attestationObject: bufferToBase64Url(attestationResponse.attestationObject),
       transports:
         typeof attestationResponse.getTransports === 'function'
           ? attestationResponse.getTransports()
@@ -349,9 +333,7 @@ export async function registerPasskey(
  * @returns The authentication result including the user ID.
  * @throws If WebAuthn is not supported or the ceremony fails.
  */
-export async function authenticateWithPasskey(
-  email?: string,
-): Promise<AuthenticationResult> {
+export async function authenticateWithPasskey(email?: string): Promise<AuthenticationResult> {
   if (!isWebAuthnSupported()) {
     throw new Error('WebAuthn is not supported in this browser.');
   }
@@ -369,8 +351,7 @@ export async function authenticateWithPasskey(
     challenge: base64UrlToBuffer(options.challenge),
     timeout: options.timeout ?? 60_000,
     rpId: options.rpId,
-    userVerification:
-      (options.userVerification as UserVerificationRequirement) ?? 'preferred',
+    userVerification: (options.userVerification as UserVerificationRequirement) ?? 'preferred',
     allowCredentials: options.allowCredentials?.map((cred) => ({
       id: base64UrlToBuffer(cred.id),
       type: cred.type as PublicKeyCredentialType,
@@ -387,8 +368,7 @@ export async function authenticateWithPasskey(
     throw new Error('Authentication was cancelled or failed.');
   }
 
-  const assertionResponse =
-    credential.response as AuthenticatorAssertionResponse;
+  const assertionResponse = credential.response as AuthenticatorAssertionResponse;
 
   // Step 4: Build the assertion response for the server
   const assertionBody = {
@@ -397,9 +377,7 @@ export async function authenticateWithPasskey(
     type: credential.type,
     response: {
       clientDataJSON: bufferToBase64Url(assertionResponse.clientDataJSON),
-      authenticatorData: bufferToBase64Url(
-        assertionResponse.authenticatorData,
-      ),
+      authenticatorData: bufferToBase64Url(assertionResponse.authenticatorData),
       signature: bufferToBase64Url(assertionResponse.signature),
       userHandle: assertionResponse.userHandle
         ? bufferToBase64Url(assertionResponse.userHandle)

@@ -37,7 +37,7 @@ All security audit items must pass before release. A single FAIL-level item bloc
 - [ ] **Dependency audit clean** — No known critical or high CVEs in production dependencies. Dependabot alerts reviewed and resolved.
 - [ ] **Secret scanning enabled** — GitHub Advanced Security push protection active. No secrets in commit history (verified via `git log` search or `trufflehog`).
 - [ ] **CodeQL scan passing** — No high or critical findings in static analysis. Custom financial-app queries (hardcoded keys, insecure crypto, SQL injection, sensitive data logging) all pass.
-- [ ] **Penetration test** *(if applicable)* — Third-party or internal pen test completed, findings remediated or risk-accepted with documentation.
+- [ ] **Penetration test** _(if applicable)_ — Third-party or internal pen test completed, findings remediated or risk-accepted with documentation.
 
 ---
 
@@ -151,17 +151,17 @@ All accessibility audit items must pass on every platform before release.
 
 ## Final Sign-Off
 
-| Area | Reviewer | Date | Status |
-|------|----------|------|--------|
-| Development (all phases) | _Name_ | _YYYY-MM-DD_ | ⬜ |
-| Security | _Name_ | _YYYY-MM-DD_ | ⬜ |
-| Accessibility | _Name_ | _YYYY-MM-DD_ | ⬜ |
-| Privacy & Compliance | _Name_ | _YYYY-MM-DD_ | ⬜ |
-| App Store Listings | _Name_ | _YYYY-MM-DD_ | ⬜ |
-| Testing | _Name_ | _YYYY-MM-DD_ | ⬜ |
-| Monitoring & Ops | _Name_ | _YYYY-MM-DD_ | ⬜ |
-| Documentation | _Name_ | _YYYY-MM-DD_ | ⬜ |
-| **Overall Go/No-Go** | _Project Lead_ | _YYYY-MM-DD_ | ⬜ |
+| Area                     | Reviewer       | Date         | Status |
+| ------------------------ | -------------- | ------------ | ------ |
+| Development (all phases) | _Name_         | _YYYY-MM-DD_ | ⬜     |
+| Security                 | _Name_         | _YYYY-MM-DD_ | ⬜     |
+| Accessibility            | _Name_         | _YYYY-MM-DD_ | ⬜     |
+| Privacy & Compliance     | _Name_         | _YYYY-MM-DD_ | ⬜     |
+| App Store Listings       | _Name_         | _YYYY-MM-DD_ | ⬜     |
+| Testing                  | _Name_         | _YYYY-MM-DD_ | ⬜     |
+| Monitoring & Ops         | _Name_         | _YYYY-MM-DD_ | ⬜     |
+| Documentation            | _Name_         | _YYYY-MM-DD_ | ⬜     |
+| **Overall Go/No-Go**     | _Project Lead_ | _YYYY-MM-DD_ | ⬜     |
 
 > **Launch criteria:** All rows above must show ✅ before the first public release. Any ⬜ or ❌ blocks launch. Exceptions require documented risk acceptance from the project lead.
 

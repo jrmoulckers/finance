@@ -12,28 +12,28 @@ platform must resolve the same semantic tokens to equivalent rendered values.
 
 ### 1.1 Color Tokens
 
-| Token Name             | Figma Value   | Android (Compose) | iOS (SwiftUI) | Web (CSS)       | Windows (WinUI) |
-|------------------------|---------------|--------------------|---------------|-----------------|-----------------|
-| `color.primary`        | `#1B6EF3`     | `Color(0xFF1B6EF3)`| `Color(hex: 0x1B6EF3)` | `var(--color-primary)` | `<SolidColorBrush>` |
-| `color.surface`        | `#FFFFFF`     | ✅                 | ✅            | ✅              | ✅              |
-| `color.error`          | `#D32F2F`     | ✅                 | ✅            | ✅              | ✅              |
-| `color.on-primary`     | `#FFFFFF`     | ✅                 | ✅            | ✅              | ✅              |
-| `color.surface-variant`| `#F5F5F5`     | ✅                 | ✅            | ✅              | ✅              |
+| Token Name              | Figma Value | Android (Compose)   | iOS (SwiftUI)          | Web (CSS)              | Windows (WinUI)     |
+| ----------------------- | ----------- | ------------------- | ---------------------- | ---------------------- | ------------------- |
+| `color.primary`         | `#1B6EF3`   | `Color(0xFF1B6EF3)` | `Color(hex: 0x1B6EF3)` | `var(--color-primary)` | `<SolidColorBrush>` |
+| `color.surface`         | `#FFFFFF`   | ✅                  | ✅                     | ✅                     | ✅                  |
+| `color.error`           | `#D32F2F`   | ✅                  | ✅                     | ✅                     | ✅                  |
+| `color.on-primary`      | `#FFFFFF`   | ✅                  | ✅                     | ✅                     | ✅                  |
+| `color.surface-variant` | `#F5F5F5`   | ✅                  | ✅                     | ✅                     | ✅                  |
 
 **Verification steps:**
 
-1. Export the full token list from Figma using the *Tokens Studio* plugin.
+1. Export the full token list from Figma using the _Tokens Studio_ plugin.
 2. For each platform, grep the codebase for every semantic token name.
 3. Confirm the resolved hex value matches Figma within ΔE ≤ 1.0 (perceptual).
 4. Repeat for both **light** and **dark** color schemes.
 
 ### 1.2 Typography Tokens
 
-| Token               | Figma Spec              | Android         | iOS              | Web               | Windows          |
-|----------------------|-------------------------|-----------------|------------------|-------------------|------------------|
-| `type.display-large` | Inter 36/44 Medium     | `MaterialTheme` | `.title` + custom | `font-size: 2.25rem` | `TitleLarge`    |
-| `type.body-medium`   | Inter 14/20 Regular    | `MaterialTheme` | `.body`          | `font-size: 0.875rem`| `BodyTextBlock`  |
-| `type.label-small`   | Inter 11/16 Medium     | `MaterialTheme` | `.caption`       | `font-size: 0.6875rem`| `CaptionTextBlock` |
+| Token                | Figma Spec          | Android         | iOS               | Web                    | Windows            |
+| -------------------- | ------------------- | --------------- | ----------------- | ---------------------- | ------------------ |
+| `type.display-large` | Inter 36/44 Medium  | `MaterialTheme` | `.title` + custom | `font-size: 2.25rem`   | `TitleLarge`       |
+| `type.body-medium`   | Inter 14/20 Regular | `MaterialTheme` | `.body`           | `font-size: 0.875rem`  | `BodyTextBlock`    |
+| `type.label-small`   | Inter 11/16 Medium  | `MaterialTheme` | `.caption`        | `font-size: 0.6875rem` | `CaptionTextBlock` |
 
 **Verification steps:**
 
@@ -44,15 +44,15 @@ platform must resolve the same semantic tokens to equivalent rendered values.
 
 ### 1.3 Spacing & Layout Tokens
 
-| Token              | Value  | Tolerance |
-|--------------------|--------|-----------|
-| `spacing.xs`       | 4 dp   | ±1 dp     |
-| `spacing.sm`       | 8 dp   | ±2 dp     |
-| `spacing.md`       | 16 dp  | ±2 dp     |
-| `spacing.lg`       | 24 dp  | ±2 dp     |
-| `spacing.xl`       | 32 dp  | ±2 dp     |
-| `radius.card`      | 12 dp  | ±1 dp     |
-| `radius.button`    | 8 dp   | ±1 dp     |
+| Token           | Value | Tolerance |
+| --------------- | ----- | --------- |
+| `spacing.xs`    | 4 dp  | ±1 dp     |
+| `spacing.sm`    | 8 dp  | ±2 dp     |
+| `spacing.md`    | 16 dp | ±2 dp     |
+| `spacing.lg`    | 24 dp | ±2 dp     |
+| `spacing.xl`    | 32 dp | ±2 dp     |
+| `radius.card`   | 12 dp | ±1 dp     |
+| `radius.button` | 8 dp  | ±1 dp     |
 
 ---
 
@@ -62,18 +62,18 @@ Use this template to track visual parity per screen, per platform, per theme.
 
 ### 2.1 Matrix Template
 
-| Screen                  | Android Light | Android Dark | iOS Light | iOS Dark | Web Light | Web Dark | Windows Light | Windows Dark | Status |
-|-------------------------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Onboarding              | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | ⬜   |
-| Sign In                 | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | ⬜   |
-| Dashboard               | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | ⬜   |
-| Transaction List        | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | ⬜   |
-| Transaction Detail      | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | ⬜   |
-| Add / Edit Transaction  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | ⬜   |
-| Budget Overview         | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | ⬜   |
-| Goal Detail             | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | ⬜   |
-| Settings                | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | ⬜   |
-| Data Export              | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | 📸  | ⬜   |
+| Screen                 | Android Light | Android Dark | iOS Light | iOS Dark | Web Light | Web Dark | Windows Light | Windows Dark | Status |
+| ---------------------- | :-----------: | :----------: | :-------: | :------: | :-------: | :------: | :-----------: | :----------: | :----: |
+| Onboarding             |      📸       |      📸      |    📸     |    📸    |    📸     |    📸    |      📸       |      📸      |   ⬜   |
+| Sign In                |      📸       |      📸      |    📸     |    📸    |    📸     |    📸    |      📸       |      📸      |   ⬜   |
+| Dashboard              |      📸       |      📸      |    📸     |    📸    |    📸     |    📸    |      📸       |      📸      |   ⬜   |
+| Transaction List       |      📸       |      📸      |    📸     |    📸    |    📸     |    📸    |      📸       |      📸      |   ⬜   |
+| Transaction Detail     |      📸       |      📸      |    📸     |    📸    |    📸     |    📸    |      📸       |      📸      |   ⬜   |
+| Add / Edit Transaction |      📸       |      📸      |    📸     |    📸    |    📸     |    📸    |      📸       |      📸      |   ⬜   |
+| Budget Overview        |      📸       |      📸      |    📸     |    📸    |    📸     |    📸    |      📸       |      📸      |   ⬜   |
+| Goal Detail            |      📸       |      📸      |    📸     |    📸    |    📸     |    📸    |      📸       |      📸      |   ⬜   |
+| Settings               |      📸       |      📸      |    📸     |    📸    |    📸     |    📸    |      📸       |      📸      |   ⬜   |
+| Data Export            |      📸       |      📸      |    📸     |    📸    |    📸     |    📸    |      📸       |      📸      |   ⬜   |
 
 **Status legend:** ✅ Pass · ⚠️ Minor deviation · ❌ Fail · ⬜ Not yet audited
 
@@ -96,16 +96,16 @@ Use this template to track visual parity per screen, per platform, per theme.
 Not every pixel must match across platforms. These thresholds define what is
 acceptable vs. what requires a fix.
 
-| Category         | Threshold              | Notes                                              |
-|------------------|------------------------|----------------------------------------------------|
-| Spacing          | ±2 dp                  | Rounding differences across density buckets         |
-| Font size        | Same visual weight     | Platform fonts differ; match optical size not px    |
-| Corner radius    | ±1 dp                  | Rendering engine anti-aliasing may differ           |
-| Color            | ΔE ≤ 1.0 (CIELAB)     | Imperceptible to human eye                         |
-| Icon size        | ±1 dp                  | Vector rendering may round differently             |
-| Shadow/elevation | Platform-native OK     | Material elevation on Android, shadow on iOS/Web   |
-| Animation curve  | Same semantic intent   | Exact curves may use platform-native easing        |
-| System chrome    | Platform-native        | Status bar, navigation bar follow OS conventions   |
+| Category         | Threshold            | Notes                                            |
+| ---------------- | -------------------- | ------------------------------------------------ |
+| Spacing          | ±2 dp                | Rounding differences across density buckets      |
+| Font size        | Same visual weight   | Platform fonts differ; match optical size not px |
+| Corner radius    | ±1 dp                | Rendering engine anti-aliasing may differ        |
+| Color            | ΔE ≤ 1.0 (CIELAB)    | Imperceptible to human eye                       |
+| Icon size        | ±1 dp                | Vector rendering may round differently           |
+| Shadow/elevation | Platform-native OK   | Material elevation on Android, shadow on iOS/Web |
+| Animation curve  | Same semantic intent | Exact curves may use platform-native easing      |
+| System chrome    | Platform-native      | Status bar, navigation bar follow OS conventions |
 
 ### Deviation Severity
 
@@ -156,25 +156,25 @@ For CI integration, use pixel-diff tools to catch regressions:
 
 **Tool options:**
 
-| Tool            | Use Case                          | Integration      |
-|-----------------|-----------------------------------|-------------------|
-| `reg-cli`       | Pixel diff with HTML report       | CI / local        |
-| `BackstopJS`    | Visual regression for web         | CI                |
-| `shot-scraper`  | Automated web screenshots         | CI                |
-| `Maestro`       | Mobile screenshot flows           | CI / local        |
-| `Paparazzi`     | Compose snapshot testing          | Android CI        |
-| `swift-snapshot` | SwiftUI snapshot testing         | iOS CI            |
+| Tool             | Use Case                    | Integration |
+| ---------------- | --------------------------- | ----------- |
+| `reg-cli`        | Pixel diff with HTML report | CI / local  |
+| `BackstopJS`     | Visual regression for web   | CI          |
+| `shot-scraper`   | Automated web screenshots   | CI          |
+| `Maestro`        | Mobile screenshot flows     | CI / local  |
+| `Paparazzi`      | Compose snapshot testing    | Android CI  |
+| `swift-snapshot` | SwiftUI snapshot testing    | iOS CI      |
 
 ---
 
 ## 5. Audit Cadence
 
-| Event                        | Action                                |
-|------------------------------|---------------------------------------|
-| Every PR touching UI         | Screenshot comparison in PR review    |
-| Weekly (during active dev)   | Full matrix audit of changed screens  |
-| Pre-release                  | Complete audit of all screens         |
-| Post-design-token change     | Full token verification + screenshots |
+| Event                      | Action                                |
+| -------------------------- | ------------------------------------- |
+| Every PR touching UI       | Screenshot comparison in PR review    |
+| Weekly (during active dev) | Full matrix audit of changed screens  |
+| Pre-release                | Complete audit of all screens         |
+| Post-design-token change   | Full token verification + screenshots |
 
 ---
 

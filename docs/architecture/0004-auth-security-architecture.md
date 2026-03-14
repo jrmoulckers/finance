@@ -28,12 +28,12 @@ Passkeys provide phishing-resistant, passwordless authentication using platform-
 
 **Platform implementation:**
 
-| Platform | Passkey API | Key Sync |
-|----------|------------|----------|
-| iOS 16+ | `ASAuthorizationPlatformPublicKeyCredentialProvider` | iCloud Keychain |
-| Android 9+ | Credential Manager API | Google Password Manager |
-| Web | `navigator.credentials.create()` / `.get()` | Browser sync |
-| Windows | Windows Hello | Microsoft account |
+| Platform   | Passkey API                                          | Key Sync                |
+| ---------- | ---------------------------------------------------- | ----------------------- |
+| iOS 16+    | `ASAuthorizationPlatformPublicKeyCredentialProvider` | iCloud Keychain         |
+| Android 9+ | Credential Manager API                               | Google Password Manager |
+| Web        | `navigator.credentials.create()` / `.get()`          | Browser sync            |
+| Windows    | Windows Hello                                        | Microsoft account       |
 
 **Registration and authentication ceremonies** are handled server-side using [SimpleWebAuthn](https://simplewebauthn.dev/), with a consistent Relying Party ID (`RPID`) set to the application domain across all platforms.
 
@@ -42,6 +42,7 @@ Passkeys provide phishing-resistant, passwordless authentication using platform-
 OAuth 2.0 with PKCE (Proof Key for Code Exchange, per RFC 9700) serves as the fallback authentication method and the mechanism for initial account creation via social providers (Apple Sign-In, Google Sign-In).
 
 **Flow:**
+
 1. Client generates random `code_verifier`, derives `code_challenge` (SHA-256).
 2. Authorization request includes `code_challenge`.
 3. User authenticates at the authorization server.
@@ -50,12 +51,12 @@ OAuth 2.0 with PKCE (Proof Key for Code Exchange, per RFC 9700) serves as the fa
 
 **Platform browser integration:**
 
-| Platform | System Browser | Redirect Handling |
-|----------|---------------|-------------------|
-| iOS | `ASWebAuthenticationSession` | Universal Links |
-| Android | Chrome Custom Tabs | App Links |
-| Web | Standard redirect | Origin validation |
-| Windows | System browser / WAM | Custom URI scheme |
+| Platform | System Browser               | Redirect Handling |
+| -------- | ---------------------------- | ----------------- |
+| iOS      | `ASWebAuthenticationSession` | Universal Links   |
+| Android  | Chrome Custom Tabs           | App Links         |
+| Web      | Standard redirect            | Origin validation |
+| Windows  | System browser / WAM         | Custom URI scheme |
 
 Social auth (Apple Sign-In, Google Sign-In) uses OAuth 2.0 + PKCE under the hood. Apple's "Hide My Email" relay is supported.
 
@@ -63,14 +64,15 @@ Social auth (Apple Sign-In, Google Sign-In) uses OAuth 2.0 + PKCE under the hood
 
 Biometric authentication gates access to locally stored credentials and tokens. The application never sees raw biometric data — only the platform-provided pass/fail response.
 
-| Platform | API | Hardware |
-|----------|-----|----------|
-| iOS | `LocalAuthentication` (LAContext) | Secure Enclave |
-| Android | `BiometricPrompt` (androidx.biometric) | TEE / Secure Element |
-| Windows | `Windows.Security.Credentials.UI` | TPM / VBS |
-| Web | WebAuthn `userVerification: "required"` | Platform authenticator |
+| Platform | API                                     | Hardware               |
+| -------- | --------------------------------------- | ---------------------- |
+| iOS      | `LocalAuthentication` (LAContext)       | Secure Enclave         |
+| Android  | `BiometricPrompt` (androidx.biometric)  | TEE / Secure Element   |
+| Windows  | `Windows.Security.Credentials.UI`       | TPM / VBS              |
+| Web      | WebAuthn `userVerification: "required"` | Platform authenticator |
 
 **Security requirements:**
+
 - Biometric unlock gates access to Keychain/Keystore-stored tokens only.
 - Sensitive operations (large transfers, settings changes) require re-authentication.
 - PIN/password fallback is always available.
@@ -85,12 +87,12 @@ Biometric authentication gates access to locally stored credentials and tokens. 
 
 ### 5. Secure Token Storage Per Platform
 
-| Platform | Storage | Encryption | Configuration |
-|----------|---------|------------|---------------|
-| iOS | Keychain Services | Hardware (Secure Enclave) | `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` |
-| Android | Android Keystore + EncryptedSharedPreferences | Hardware (TEE/SE) | `AndroidKeyStore` provider |
-| Windows | DPAPI / Credential Locker | User/machine-bound | `Windows.Security.Credentials.PasswordVault` |
-| Web | HttpOnly + Secure + SameSite cookies | TLS in transit | **Never** localStorage for tokens |
+| Platform | Storage                                       | Encryption                | Configuration                                  |
+| -------- | --------------------------------------------- | ------------------------- | ---------------------------------------------- |
+| iOS      | Keychain Services                             | Hardware (Secure Enclave) | `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` |
+| Android  | Android Keystore + EncryptedSharedPreferences | Hardware (TEE/SE)         | `AndroidKeyStore` provider                     |
+| Windows  | DPAPI / Credential Locker                     | User/machine-bound        | `Windows.Security.Credentials.PasswordVault`   |
+| Web      | HttpOnly + Secure + SameSite cookies          | TLS in transit            | **Never** localStorage for tokens              |
 
 ### 6. Hybrid E2E Encryption for Sensitive Fields
 
@@ -100,12 +102,14 @@ Pure end-to-end encryption prevents server-side search and sync operations. We a
 - **Server-readable:** Timestamps, categories, `household_id`, sync metadata (required for sync and search).
 
 **Envelope encryption pattern:**
+
 - Data encrypted with a **Data Encryption Key (DEK)** using AES-256-GCM.
 - DEK encrypted with a **Key Encryption Key (KEK)** stored in the platform's Keychain/Keystore.
 
 ### 7. Key Derivation — Argon2id
 
 **Key hierarchy:**
+
 ```
 Master Password / Biometric
     └─► Key Derivation (Argon2id, 256-bit)
@@ -133,19 +137,19 @@ Household (tenant)
 
 **Permission matrix:**
 
-| Permission | Owner | Partner | Member | Viewer |
-|-----------|-------|---------|--------|--------|
-| View own transactions | ✅ | ✅ | ✅ | ❌ |
-| View shared transactions | ✅ | ✅ | ✅ | ✅ |
-| Create transactions | ✅ | ✅ | ✅ | ❌ |
-| Edit others' transactions | ✅ | ✅ | ❌ | ❌ |
-| Manage budgets | ✅ | ✅ | ❌ | ❌ |
-| Invite/remove members | ✅ | ✅* | ❌ | ❌ |
-| Delete household | ✅ | ❌ | ❌ | ❌ |
-| Manage billing | ✅ | ❌ | ❌ | ❌ |
-| Export all data | ✅ | ✅ | Own only | ❌ |
+| Permission                | Owner | Partner | Member   | Viewer |
+| ------------------------- | ----- | ------- | -------- | ------ |
+| View own transactions     | ✅    | ✅      | ✅       | ❌     |
+| View shared transactions  | ✅    | ✅      | ✅       | ✅     |
+| Create transactions       | ✅    | ✅      | ✅       | ❌     |
+| Edit others' transactions | ✅    | ✅      | ❌       | ❌     |
+| Manage budgets            | ✅    | ✅      | ❌       | ❌     |
+| Invite/remove members     | ✅    | ✅\*    | ❌       | ❌     |
+| Delete household          | ✅    | ❌      | ❌       | ❌     |
+| Manage billing            | ✅    | ❌      | ❌       | ❌     |
+| Export all data           | ✅    | ✅      | Own only | ❌     |
 
-*Partners can invite Members and Viewers, not other Partners.
+\*Partners can invite Members and Viewers, not other Partners.
 
 ### 9. PostgreSQL Row-Level Security for Tenant Isolation
 
@@ -169,6 +173,7 @@ CREATE POLICY transactions_write ON transactions
 ```
 
 Authorization is checked at three layers (defense-in-depth):
+
 1. **API gateway:** JWT `household_id` claim validated against requested resource.
 2. **Service layer:** Policy engine evaluates `(user, role, household, resource, action) → allow/deny`.
 3. **Data access layer:** PostgreSQL RLS enforces isolation regardless of application logic bugs.
@@ -215,13 +220,13 @@ Authorization is checked at three layers (defense-in-depth):
 
 ### Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Key loss (user locked out) | Medium | High | Key recovery via backup codes, social auth re-link, email OTP fallback |
-| Passkey platform support gaps | Low | Medium | OAuth 2.0 + PKCE fallback always available |
-| RLS policy misconfiguration | Low | Critical | Automated RLS policy tests in CI; audit logging of all cross-boundary attempts |
-| Refresh token compromise | Low | High | Token rotation + reuse detection + device binding |
-| Argon2id performance on low-end devices | Medium | Low | Tune parameters per platform; use platform Keychain/Keystore for subsequent unlocks |
+| Risk                                    | Likelihood | Impact   | Mitigation                                                                          |
+| --------------------------------------- | ---------- | -------- | ----------------------------------------------------------------------------------- |
+| Key loss (user locked out)              | Medium     | High     | Key recovery via backup codes, social auth re-link, email OTP fallback              |
+| Passkey platform support gaps           | Low        | Medium   | OAuth 2.0 + PKCE fallback always available                                          |
+| RLS policy misconfiguration             | Low        | Critical | Automated RLS policy tests in CI; audit logging of all cross-boundary attempts      |
+| Refresh token compromise                | Low        | High     | Token rotation + reuse detection + device binding                                   |
+| Argon2id performance on low-end devices | Medium     | Low      | Tune parameters per platform; use platform Keychain/Keystore for subsequent unlocks |
 
 ## Implementation Notes
 
@@ -235,10 +240,10 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    flowType: 'pkce',           // Enforce PKCE for all OAuth flows
-    autoRefreshToken: true,      // Automatic token refresh
-    persistSession: true,        // Session persistence (platform-specific storage adapter)
-    detectSessionInUrl: true,    // Handle OAuth redirects
+    flowType: 'pkce', // Enforce PKCE for all OAuth flows
+    autoRefreshToken: true, // Automatic token refresh
+    persistSession: true, // Session persistence (platform-specific storage adapter)
+    detectSessionInUrl: true, // Handle OAuth redirects
   },
 });
 
@@ -255,6 +260,7 @@ const { data, error } = await supabase.auth.signInWithOAuth({
 ### Platform-Specific Biometric Integration
 
 **iOS (Swift):**
+
 ```swift
 import LocalAuthentication
 
@@ -285,6 +291,7 @@ func retrieveTokenFromKeychain() throws -> String {
 ```
 
 **Android (Kotlin):**
+
 ```kotlin
 import androidx.biometric.BiometricPrompt
 
@@ -330,6 +337,7 @@ User opens app
 ### Household Key Sharing Protocol
 
 For E2E encryption with shared household data:
+
 1. Owner generates household KEK during household creation.
 2. KEK is encrypted with each member's public key (from passkey or derived key pair).
 3. On member invite: encrypt household KEK with the new member's public key.
@@ -340,22 +348,22 @@ For E2E encryption with shared household data:
 
 All platforms use SQLCipher for local SQLite database encryption (AES-256-GCM). The encryption key is derived from the user's master key stored in the platform Keychain/Keystore:
 
-| Platform | DB Encryption | Key Storage |
-|----------|--------------|-------------|
-| iOS | SQLCipher + Data Protection API | Keychain (Secure Enclave) |
-| Android | SQLCipher + EncryptedFile | Keystore (TEE) |
-| Windows | SQLCipher + DPAPI | DPAPI / TPM |
-| Web | IndexedDB + Web Crypto API | Web Crypto non-extractable keys |
+| Platform | DB Encryption                   | Key Storage                     |
+| -------- | ------------------------------- | ------------------------------- |
+| iOS      | SQLCipher + Data Protection API | Keychain (Secure Enclave)       |
+| Android  | SQLCipher + EncryptedFile       | Keystore (TEE)                  |
+| Windows  | SQLCipher + DPAPI               | DPAPI / TPM                     |
+| Web      | IndexedDB + Web Crypto API      | Web Crypto non-extractable keys |
 
 ### Compliance Implementation
 
-| Right | Implementation |
-|-------|---------------|
-| GDPR Right to Access | Self-serve data export (JSON/CSV) across local + backend |
-| GDPR Right to Erasure | Crypto-shredding: destroy KEK → all data irrecoverable |
-| GDPR Right to Portability | Automated machine-readable export |
-| CCPA Right to Delete | Honor deletion requests with crypto-shredding |
-| CCPA Right to Opt-Out | No sale/sharing of personal information |
+| Right                     | Implementation                                           |
+| ------------------------- | -------------------------------------------------------- |
+| GDPR Right to Access      | Self-serve data export (JSON/CSV) across local + backend |
+| GDPR Right to Erasure     | Crypto-shredding: destroy KEK → all data irrecoverable   |
+| GDPR Right to Portability | Automated machine-readable export                        |
+| CCPA Right to Delete      | Honor deletion requests with crypto-shredding            |
+| CCPA Right to Opt-Out     | No sale/sharing of personal information                  |
 
 ## References
 

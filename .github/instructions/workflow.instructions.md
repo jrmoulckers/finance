@@ -11,6 +11,7 @@ Created (Open) → PR opened with "Closes #N" → PR merged → Issue auto-close
 ```
 
 **Rules:**
+
 - **NEVER close issues manually** with `gh issue close` — let GitHub close them when the PR merges
 - An issue is **in progress** when a PR referencing it is open
 - An issue is **done** only when the PR that closes it has been merged into `main`
@@ -33,6 +34,7 @@ type(scope): description (#123)
 ```
 
 Examples:
+
 - `feat(core): implement budget calculator (#134)`
 - `fix(models): add JvmInline imports for KMP targets (#130)`
 - `docs: update README with getting started guide (#86)`

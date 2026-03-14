@@ -8,7 +8,7 @@
  * the service role key to verify tokens.
  */
 
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
 /** Minimal user info extracted from a verified JWT. */
 export interface AuthenticatedUser {
@@ -25,11 +25,11 @@ export interface AuthenticatedUser {
  * server-side operations that need elevated privileges.
  */
 export function createAdminClient(): SupabaseClient {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {
@@ -46,11 +46,9 @@ export function createAdminClient(): SupabaseClient {
  * @param req The incoming request with an Authorization header.
  * @returns The authenticated user, or `null` if the token is missing/invalid.
  */
-export async function getAuthenticatedUser(
-  req: Request,
-): Promise<AuthenticatedUser | null> {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+export async function getAuthenticatedUser(req: Request): Promise<AuthenticatedUser | null> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
 
@@ -69,7 +67,7 @@ export async function getAuthenticatedUser(
 
     return {
       id: user.id,
-      email: user.email ?? "",
+      email: user.email ?? '',
     };
   } catch {
     return null;
@@ -92,13 +90,10 @@ export async function getAuthenticatedUser(
 export async function requireAuth(req: Request): Promise<AuthenticatedUser> {
   const user = await getAuthenticatedUser(req);
   if (!user) {
-    throw new Response(
-      JSON.stringify({ error: "Authentication required" }),
-      {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    throw new Response(JSON.stringify({ error: 'Authentication required' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
   return user;
 }

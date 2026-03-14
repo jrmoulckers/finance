@@ -45,10 +45,10 @@ All AI-assisted contributions are licensed under the [Business Source License 1.
 
 ## Summary
 
-| Aspect | Policy |
-|--------|--------|
-| AI tool role | Assistant, not author |
-| Code ownership | Human contributor who commits |
-| License | BUSL-1.1 — same as all project code |
-| Review requirement | Mandatory before commit |
-| Transparency | `Co-authored-by` trailer + documentation |
+| Aspect             | Policy                                   |
+| ------------------ | ---------------------------------------- |
+| AI tool role       | Assistant, not author                    |
+| Code ownership     | Human contributor who commits            |
+| License            | BUSL-1.1 — same as all project code      |
+| Review requirement | Mandatory before commit                  |
+| Transparency       | `Co-authored-by` trailer + documentation |

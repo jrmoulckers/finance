@@ -7,6 +7,7 @@ This guide describes how to work with AI agents day-to-day when developing the F
 ### GitHub Copilot in VS Code
 
 The primary AI development interface. Provides:
+
 - **Inline completions** — Context-aware code suggestions as you type
 - **Copilot Chat** — Conversational AI with full codebase context
 - **Agent Mode** — Autonomous multi-step task execution with tool use
@@ -16,6 +17,7 @@ The primary AI development interface. Provides:
 ### GitHub Copilot CLI
 
 Terminal-based AI assistance for:
+
 - Command-line task automation
 - Multi-file editing from the terminal
 - Build/test debugging
@@ -24,6 +26,7 @@ Terminal-based AI assistance for:
 ### GitHub Copilot Coding Agent
 
 Autonomous agent that runs on GitHub's infrastructure:
+
 - Assign issues to `@copilot` on GitHub to trigger
 - Runs in an isolated environment configured by `copilot-setup-steps.yml`
 - Creates PRs with proposed changes
@@ -85,6 +88,7 @@ For complex, multi-faceted tasks, use Copilot CLI's `/fleet` command:
 ```
 
 **Best practices for fleet mode:**
+
 - Describe the full scope so the orchestrator can partition effectively
 - Works best for tasks with naturally separable concerns (code + tests + docs)
 - Monitor progress — intervene if agents drift or conflict
@@ -95,6 +99,7 @@ For complex, multi-faceted tasks, use Copilot CLI's `/fleet` command:
 ### In VS Code Copilot Chat
 
 Type `@` followed by the agent name:
+
 ```
 @architect How should we structure the sync protocol for offline-first support?
 @security-reviewer Review this PR for security issues
@@ -153,16 +158,19 @@ Type `@` followed by the agent name:
 ## Troubleshooting
 
 ### Agent not loading instructions
+
 - Verify `copilot-instructions.md` is on the default branch
 - Check that `applyTo` globs in instruction files match your file paths
 - Ensure VS Code Copilot extensions are up to date
 
 ### MCP server not connecting
+
 - Run `MCP: List Servers` in Command Palette to check status
 - Verify API tokens are valid
 - Check VS Code Output panel → "GitHub Copilot" channel for errors
 
 ### Coding agent not starting
+
 - Ensure `copilot-setup-steps.yml` is on the default branch
 - Verify the job is named exactly `copilot-setup-steps`
 - Check GitHub Actions tab for workflow run errors

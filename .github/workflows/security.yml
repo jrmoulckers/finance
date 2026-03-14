@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '0 6 * * 1'  # Weekly Monday 6 AM UTC
+    - cron: '0 6 * * 1' # Weekly Monday 6 AM UTC
 
 permissions:
   actions: read
@@ -37,7 +37,7 @@ jobs:
         run: ./gradlew build -x test -x jsBrowserTest -x allTests --no-daemon
       - uses: github/codeql-action/analyze@820e3160e279568db735cee8ed8f8e77a6da7818 # v3.32.6
         with:
-          category: "/language:${{ matrix.language }}"
+          category: '/language:${{ matrix.language }}'
 
   dependency-review:
     name: Dependency Review
