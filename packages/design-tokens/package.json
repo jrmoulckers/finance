@@ -7,6 +7,6 @@
     "clean": "rimraf build/"
   },
   "devDependencies": {
-    "style-dictionary": "^4.3.0"
+    "style-dictionary": "^5.3.3"
   }
 }
