@@ -30,7 +30,7 @@ jobs:
       - run: npm ci
 
       - name: ESLint
-        run: npx eslint .
+        run: npx eslint . --max-warnings 0
 
       - name: Prettier
         run: npx prettier --check .
