@@ -1,10 +1,17 @@
 # Finance
 
+![CI — Shared Packages](https://github.com/jrmoulckers/finance/actions/workflows/ci.yml/badge.svg)
+![Lint & Format](https://github.com/jrmoulckers/finance/actions/workflows/lint-format.yml/badge.svg)
+![Web CI](https://github.com/jrmoulckers/finance/actions/workflows/web-ci.yml/badge.svg)
+![PR Title](https://github.com/jrmoulckers/finance/actions/workflows/pr-title.yml/badge.svg)
+![License](https://img.shields.io/badge/license-BSL--1.1-blue)
+
 A multi-platform, native-first financial tracking application for personal, family, and partnered finances.
 
 ## Table of Contents
 
 - [Vision](#vision)
+- [Monorepo Health](#monorepo-health)
 - [Principles](#principles)
 - [Platforms](#platforms)
 - [Architecture](#architecture)
@@ -19,6 +26,44 @@ A multi-platform, native-first financial tracking application for personal, fami
 
 Finance aspires to re-think and re-vitalize the desire to track every financial aspect of one's life — from daily habits to long-term impacts of financial goals.
 
+## Monorepo Health
+
+### Packages
+
+| Package           | Purpose                                                                      |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `packages/core`   | Core business logic — budgeting, categorization, goal tracking, analytics    |
+| `packages/models` | Shared data models and schemas — accounts, transactions, budgets, goals      |
+| `packages/sync`   | Data synchronization engine — conflict resolution, offline queue, delta sync |
+
+### Platform Coverage
+
+4 native platforms built from shared KMP logic:
+
+| Platform              | App            | UI Framework       |
+| --------------------- | -------------- | ------------------ |
+| iOS / macOS / watchOS | `apps/ios`     | SwiftUI            |
+| Android / Wear OS     | `apps/android` | Jetpack Compose    |
+| Web (PWA)             | `apps/web`     | React + TypeScript |
+| Windows 11            | `apps/windows` | Compose Desktop    |
+
+### Test Coverage
+
+- **KMP JVM tests** — Unit tests for all shared packages run via `npm run test:kmp`
+- **Web tests** — Web app tests run via the `web-ci` workflow
+- **Lint & format** — All workspaces checked via `npm run lint` and `npm run format`
+
+### CI Workflows
+
+All workflows run on GitHub Actions — see badges at the top of this README.
+
+| Workflow                                                                                  | What it checks                                 |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| [CI — Shared Packages](https://github.com/jrmoulckers/finance/actions/workflows/ci.yml)   | KMP build + JVM unit tests for `packages/*`    |
+| [Web CI](https://github.com/jrmoulckers/finance/actions/workflows/web-ci.yml)             | Web app build + tests                          |
+| [Lint & Format](https://github.com/jrmoulckers/finance/actions/workflows/lint-format.yml) | ESLint, Prettier, Ktlint across all workspaces |
+| [PR Title](https://github.com/jrmoulckers/finance/actions/workflows/pr-title.yml)         | Conventional commit format for PR titles       |
+
 ## Principles
 
 - **Native-first** — Platform-native experiences on every device
@@ -30,14 +75,14 @@ Finance aspires to re-think and re-vitalize the desire to track every financial 
 
 ## Platforms
 
-| Platform | Target |
-|----------|--------|
-| iOS | iPhone, iPad, Mac (native) |
-| watchOS | Apple Watch (companion) |
-| Android | Phones, tablets |
-| Wear OS | Android accessories (companion) |
-| Web | PWA on modern browsers |
-| Windows | Windows 11 native |
+| Platform | Target                          |
+| -------- | ------------------------------- |
+| iOS      | iPhone, iPad, Mac (native)      |
+| watchOS  | Apple Watch (companion)         |
+| Android  | Phones, tablets                 |
+| Wear OS  | Android accessories (companion) |
+| Web      | PWA on modern browsers          |
+| Windows  | Windows 11 native               |
 
 ## Architecture
 
@@ -50,18 +95,18 @@ This is a **monorepo** with a consolidated backend designed to minimize server c
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Shared logic | Kotlin Multiplatform (KMP) |
-| iOS UI | SwiftUI |
-| Android UI | Jetpack Compose |
-| Web UI | React + TypeScript |
-| Windows UI | Compose Desktop |
-| Backend | Supabase (PostgreSQL + Auth) |
-| Offline sync | PowerSync |
-| Local storage | SQLite + SQLCipher (encrypted) |
+| Layer         | Technology                                               |
+| ------------- | -------------------------------------------------------- |
+| Shared logic  | Kotlin Multiplatform (KMP)                               |
+| iOS UI        | SwiftUI                                                  |
+| Android UI    | Jetpack Compose                                          |
+| Web UI        | React + TypeScript                                       |
+| Windows UI    | Compose Desktop                                          |
+| Backend       | Supabase (PostgreSQL + Auth)                             |
+| Offline sync  | PowerSync                                                |
+| Local storage | SQLite + SQLCipher (encrypted)                           |
 | Design tokens | Style Dictionary (DTCG format) → Swift, CSS, Android XML |
-| CI/CD | GitHub Actions + Turborepo |
+| CI/CD         | GitHub Actions + Turborepo                               |
 
 ## Repository Structure
 
@@ -93,10 +138,10 @@ finance/
 
 You need the following installed before building:
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| [Git](https://git-scm.com/) | 2.40+ | Version control |
-| [Node.js](https://nodejs.org/) | 22+ | Build tooling, npm workspaces, MCP servers |
+| Tool                            | Version  | Notes                                                                                   |
+| ------------------------------- | -------- | --------------------------------------------------------------------------------------- |
+| [Git](https://git-scm.com/)     | 2.40+    | Version control                                                                         |
+| [Node.js](https://nodejs.org/)  | 22+      | Build tooling, npm workspaces, MCP servers                                              |
 | [JDK 21](https://adoptium.net/) | 21 (LTS) | Kotlin Multiplatform compilation — [Eclipse Temurin](https://adoptium.net/) recommended |
 
 > **JDK auto-detection:** The build script `tools/gradle.js` automatically locates a JDK 21 installation on your system. Install Temurin to a standard location and the build will find it — no need to set `JAVA_HOME` manually.
@@ -105,11 +150,11 @@ You need the following installed before building:
 
 These are only needed if you are building or testing for a specific platform:
 
-| SDK | Platform | Purpose |
-|-----|----------|---------|
-| [Xcode](https://developer.apple.com/xcode/) 16+ | macOS only | iOS, macOS, and watchOS builds |
-| [Android Studio](https://developer.android.com/studio) | All | Android and Wear OS builds |
-| [Chrome](https://www.google.com/chrome/) | All | Kotlin/JS browser tests |
+| SDK                                                    | Platform   | Purpose                        |
+| ------------------------------------------------------ | ---------- | ------------------------------ |
+| [Xcode](https://developer.apple.com/xcode/) 16+        | macOS only | iOS, macOS, and watchOS builds |
+| [Android Studio](https://developer.android.com/studio) | All        | Android and Wear OS builds     |
+| [Chrome](https://www.google.com/chrome/)               | All        | Kotlin/JS browser tests        |
 
 ### Clone and build
 
@@ -148,17 +193,17 @@ For VS Code configuration, Copilot agent setup, MCP servers, and commit conventi
 
 All commands are run from the repository root.
 
-| Command | Description |
-|---------|-------------|
-| `npm run build` | Build everything — KMP packages first, then Turborepo tasks (design tokens, apps) |
-| `npm test` | Run all tests — KMP JVM unit tests, then Turborepo test tasks |
-| `npm run build:kmp` | Build only the Kotlin Multiplatform packages (skips JS browser tests) |
-| `npm run test:kmp` | Run KMP JVM tests only |
-| `npm run build:tokens` | Build design tokens — generates Swift, CSS, and Android XML outputs |
-| `npm run lint` | Run linters across all workspaces via Turborepo |
-| `npm run type-check` | Run TypeScript type checking across all workspaces |
-| `npm run format` | Run formatters across all workspaces |
-| `npm run clean` | Clean all build artifacts (Gradle + Turborepo) |
+| Command                | Description                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| `npm run build`        | Build everything — KMP packages first, then Turborepo tasks (design tokens, apps) |
+| `npm test`             | Run all tests — KMP JVM unit tests, then Turborepo test tasks                     |
+| `npm run build:kmp`    | Build only the Kotlin Multiplatform packages (skips JS browser tests)             |
+| `npm run test:kmp`     | Run KMP JVM tests only                                                            |
+| `npm run build:tokens` | Build design tokens — generates Swift, CSS, and Android XML outputs               |
+| `npm run lint`         | Run linters across all workspaces via Turborepo                                   |
+| `npm run type-check`   | Run TypeScript type checking across all workspaces                                |
+| `npm run format`       | Run formatters across all workspaces                                              |
+| `npm run clean`        | Clean all build artifacts (Gradle + Turborepo)                                    |
 
 ### Running Gradle directly
 
@@ -196,6 +241,7 @@ This project is developed with AI agents as first-class contributors. See [`docs
 This project is source-available under the [Business Source License 1.1](LICENSE).
 
 **What this means:**
+
 - ✅ You can view, fork, modify, and learn from the source code
 - ✅ Personal, non-commercial, and educational use is always permitted
 - ✅ Non-production use (development, testing, evaluation) is permitted
