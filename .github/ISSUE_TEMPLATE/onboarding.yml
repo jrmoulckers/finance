@@ -1,0 +1,96 @@
+name: Contributor Onboarding
+description: Checklist for new contributors to set up their development environment and make their first contribution
+labels: ['onboarding']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Welcome to the Finance project! 🎉
+
+        This checklist helps you set up your development environment and get familiar with the project.
+        Open this issue for yourself, assign it to your GitHub handle, and check off each step as you complete it.
+
+  - type: input
+    id: contributor-name
+    attributes:
+      label: Your Name
+      description: How should we refer to you?
+      placeholder: e.g., Alex
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: 'Step 1: Prerequisites'
+      description: Install the required tools before cloning.
+      options:
+        - label: 'Git 2.40+ installed'
+        - label: 'Node.js 22+ installed (check with `node --version`)'
+        - label: 'JDK 21 installed — [Eclipse Temurin](https://adoptium.net/) recommended'
+        - label: 'VS Code 1.99+ installed'
+
+  - type: checkboxes
+    id: clone-setup
+    attributes:
+      label: 'Step 2: Clone & Setup'
+      description: Get the repository and run the setup script.
+      options:
+        - label: 'Cloned the repository: `git clone https://github.com/jrmoulckers/finance.git`'
+        - label: 'Ran `npm run setup` (or manual: `git config core.hooksPath tools/git-hooks && npm install`)'
+        - label: 'Build succeeded: `npm run build`'
+        - label: 'Tests pass: `npm test`'
+
+  - type: checkboxes
+    id: vscode-config
+    attributes:
+      label: 'Step 3: VS Code Configuration'
+      description: Install the required extensions.
+      options:
+        - label: 'Installed **GitHub Copilot** extension'
+        - label: 'Installed **GitHub Copilot Chat** extension'
+        - label: 'Installed **EditorConfig for VS Code** extension'
+        - label: 'Installed recommended extensions (GitLens, Markdown All in One, Code Spell Checker)'
+
+  - type: checkboxes
+    id: project-orientation
+    attributes:
+      label: 'Step 4: Project Orientation'
+      description: Read the key project documents.
+      options:
+        - label: 'Read [README.md](../../README.md) — project vision, architecture, commands'
+        - label: 'Read [CONTRIBUTING.md](../.github/CONTRIBUTING.md) — code standards, commit conventions'
+        - label: 'Read [AGENTS.md](../../AGENTS.md) — AI agent guidelines and restrictions'
+        - label: 'Browsed [docs/architecture/roadmap.md](../../docs/architecture/roadmap.md) — development phases'
+        - label: 'Reviewed [docs/ai/](../../docs/ai/) — AI workflow documentation'
+
+  - type: checkboxes
+    id: first-contribution
+    attributes:
+      label: 'Step 5: First Contribution'
+      description: Make your first change and submit a PR.
+      options:
+        - label: 'Found an issue labeled `good first issue` (or created one)'
+        - label: 'Created a feature branch from `main`'
+        - label: 'Made changes and verified locally (lint, test)'
+        - label: 'Committed with conventional format: `type(scope): description (#N)`'
+        - label: 'Pushed branch and confirmed pre-push hook passes'
+
+  - type: checkboxes
+    id: optional
+    attributes:
+      label: 'Step 6: Optional Enhancements'
+      description: These are optional but improve the development experience.
+      options:
+        - label: 'Set up MCP servers for Copilot Chat (see CONTRIBUTING.md)'
+        - label: 'Ran the web app locally: `npm run dev -w apps/web`'
+        - label: 'Explored the Copilot custom agents (type `@agent-name` in Copilot Chat)'
+
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Onboarding Feedback
+      description: Was anything confusing, missing, or broken during setup? Help us improve!
+      placeholder: Share any pain points, unclear docs, or suggestions for improvement.
+    validations:
+      required: false
