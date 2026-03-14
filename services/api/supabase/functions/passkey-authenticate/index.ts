@@ -214,9 +214,9 @@ serve(async (req: Request): Promise<Response> => {
       // Generate a Supabase session for the authenticated user
       // Use the admin API to create a session for the user
       await supabaseAdmin.auth.admin.generateLink({
-          type: 'magiclink',
-          email: '', // Will be resolved from user_id
-        });
+        type: 'magiclink',
+        email: '', // Will be resolved from user_id
+      });
 
       // Since we can't directly generate a session via admin API easily,
       // we return a signed verification token that the client can exchange.
