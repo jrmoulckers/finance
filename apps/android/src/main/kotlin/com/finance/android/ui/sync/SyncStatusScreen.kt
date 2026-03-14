@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.sync.SyncChange
 
 // ---------------------------------------------------------------------------
 // UI State
@@ -78,12 +79,17 @@ data class PendingChangeItem(
 
 /**
  * A pair of conflicting records shown in the conflict resolution section.
+ *
+ * @property localChange The locally-originated [SyncChange] for resolver input.
+ * @property remoteChange The server-originated [SyncChange] for resolver input.
  */
 data class ConflictItem(
     val id: String,
     val fieldName: String,
     val localValue: String,
     val remoteValue: String,
+    val localChange: SyncChange? = null,
+    val remoteChange: SyncChange? = null,
 )
 
 // ---------------------------------------------------------------------------

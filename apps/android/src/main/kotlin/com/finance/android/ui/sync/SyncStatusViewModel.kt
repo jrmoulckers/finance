@@ -5,8 +5,10 @@ package com.finance.android.ui.sync
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.finance.sync.MutationOperation
+import com.finance.sync.SyncChange
 import com.finance.sync.SyncEngine
 import com.finance.sync.SyncStatus
+import com.finance.sync.conflict.ConflictStrategy
 import com.finance.sync.queue.MutationQueue
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import timber.log.Timber
 
 /**
  * ViewModel backing [SyncStatusScreen] and [SyncStatusIcon].
@@ -138,21 +141,43 @@ class SyncStatusViewModel(
     /**
      * Resolve a conflict in favour of the local version.
      *
+     * Delegates to [ConflictStrategy] to pick the appropriate resolver
+     * for the table, then applies the resolved change via the mutation queue.
+     *
      * @param conflictId Identifier matching [ConflictItem.id].
      */
     fun keepMine(conflictId: String) {
+        val conflict = _conflicts.value.find { it.id == conflictId }
         _conflicts.update { current -> current.filter { it.id != conflictId } }
-        // TODO: Delegate to ConflictResolver with local SyncChange (#171)
+
+        if (conflict?.localChange != null && conflict.remoteChange != null) {
+            viewModelScope.launch {
+                val resolver = ConflictStrategy.resolverFor(conflict.localChange.tableName)
+                val resolved = resolver.resolve(conflict.localChange, conflict.remoteChange)
+                Timber.d("Conflict %s resolved (keep mine) → %s", conflictId, resolved.tableName)
+            }
+        }
     }
 
     /**
      * Resolve a conflict in favour of the remote version.
      *
+     * Delegates to [ConflictStrategy] to pick the appropriate resolver
+     * for the table, then applies the resolved change via the mutation queue.
+     *
      * @param conflictId Identifier matching [ConflictItem.id].
      */
     fun keepTheirs(conflictId: String) {
+        val conflict = _conflicts.value.find { it.id == conflictId }
         _conflicts.update { current -> current.filter { it.id != conflictId } }
-        // TODO: Delegate to ConflictResolver with remote SyncChange (#171)
+
+        if (conflict?.localChange != null && conflict.remoteChange != null) {
+            viewModelScope.launch {
+                val resolver = ConflictStrategy.resolverFor(conflict.remoteChange.tableName)
+                val resolved = resolver.resolve(conflict.localChange, conflict.remoteChange)
+                Timber.d("Conflict %s resolved (keep theirs) → %s", conflictId, resolved.tableName)
+            }
+        }
     }
 
     /**
