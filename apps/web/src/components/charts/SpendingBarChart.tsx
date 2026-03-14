@@ -96,7 +96,7 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
             width={80}
           />
           <Tooltip
-            formatter={(value: number) => formatChartCurrency(value, currency)}
+            formatter={(value) => formatChartCurrency(Number(value ?? 0), currency)}
             contentStyle={{
               background: 'var(--color-background-elevated, #FFFFFF)',
               border: '1px solid var(--color-border-default, #E5E7EB)',
