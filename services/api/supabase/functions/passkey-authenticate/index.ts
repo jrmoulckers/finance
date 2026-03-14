@@ -213,8 +213,7 @@ serve(async (req: Request): Promise<Response> => {
 
       // Generate a Supabase session for the authenticated user
       // Use the admin API to create a session for the user
-      const { data: sessionData, error: sessionError } =
-        await supabaseAdmin.auth.admin.generateLink({
+      await supabaseAdmin.auth.admin.generateLink({
           type: 'magiclink',
           email: '', // Will be resolved from user_id
         });
