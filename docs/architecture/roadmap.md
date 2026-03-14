@@ -1,7 +1,7 @@
 # System Architecture Roadmap — Finance
 
-> **Status:** ACTIVE — Technology decisions confirmed (app name pending)
-> **Last Updated:** 2026-03-05
+> **Status:** All 8 development phases COMPLETE — pre-launch (v0.1.0)
+> **Last Updated:** 2026-03-11
 > **Purpose:** Source-of-truth for issue creation and development planning
 
 ---
@@ -296,7 +296,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 - Configure Dependabot for all package ecosystems
 - Set up conventional commits enforcement (commitlint + husky)
 
-### Phase 1: Core Engine
+### Phase 1: Core Engine ✅
 
 Set up the KMP project structure and implement foundational business logic. All items are in `packages/`.
 
@@ -317,7 +317,7 @@ Set up the KMP project structure and implement foundational business logic. All 
 - Set up design tokens package (`packages/design-tokens`) — primitive, semantic, and component token definitions in DTCG JSON format
 - Configure Style Dictionary pipeline to generate platform-native output (Swift, XML, CSS, XAML)
 
-### Phase 2: Sync & Backend
+### Phase 2: Sync & Backend ✅
 
 Set up Supabase project and integrate PowerSync for offline-first sync.
 
@@ -339,7 +339,7 @@ Set up Supabase project and integrate PowerSync for offline-first sync.
 - Set up integration test suite for sync scenarios — online/offline transitions, conflict resolution, multi-device sync
 - Configure security scanning — CodeQL SAST, GitHub secret scanning with push protection
 
-### Phase 3: First Platform — Android
+### Phase 3: First Platform — Android ✅
 
 Android is the natural first platform for a KMP project since Kotlin is Android's primary language.
 
@@ -363,7 +363,7 @@ Android is the natural first platform for a KMP project since Kotlin is Android'
 - Set up Android CI workflow — Gradle build + unit tests on ubuntu-latest, triggered by affected-only detection
 - Implement Fastlane configuration for Android — automated builds, signing, Google Play internal track upload
 
-### Phase 4: iOS App
+### Phase 4: iOS App ✅
 
 Implement the iOS app using SwiftUI with KMP shared logic via Swift Export.
 
@@ -382,7 +382,7 @@ Implement the iOS app using SwiftUI with KMP shared logic via Swift Export.
 - Set up iOS CI workflow — Xcode build + XCTest on macos-14 runners, Fastlane Match for signing
 - Implement Fastlane configuration for iOS — TestFlight upload, App Store Connect metadata
 
-### Phase 5: Web PWA
+### Phase 5: Web PWA ✅
 
 Implement the web app with offline PWA support.
 
@@ -402,7 +402,7 @@ Implement the web app with offline PWA support.
 - Set up web CI workflow — build + test + Lighthouse CI on ubuntu-latest
 - Configure deployment to Vercel or Cloudflare Pages with preview environments per PR
 
-### Phase 6: Windows App
+### Phase 6: Windows App ✅
 
 Implement the Windows desktop app.
 
@@ -418,7 +418,7 @@ Implement the Windows desktop app.
 - Set up Windows CI workflow — build + test on windows-latest runners
 - Configure MS Store Submission API for automated flight ring uploads
 
-### Phase 7: Advanced Features
+### Phase 7: Advanced Features ✅
 
 Cross-platform features that build on the core platform implementations.
 
@@ -436,7 +436,7 @@ Cross-platform features that build on the core platform implementations.
 - Implement gamification — streaks for staying under budget, milestone celebrations, achievement badges
 - Future consideration: Bank connection API integration (Plaid, MX) for automatic transaction import
 
-### Phase 8: Polish & Launch
+### Phase 8: Polish & Launch ✅
 
 Final optimization, auditing, and release preparation.
 
@@ -480,18 +480,20 @@ Estimated monthly costs for a production deployment at moderate scale (~1K users
 
 ## Open Questions
 
-The following items require human decision before development can proceed past Phase 0:
+All technology decisions from Phase 0 have been confirmed and documented as ADRs:
 
-1. **Cross-platform framework confirmation** — KMP is recommended (scored 80/90 in evaluation). Confirm or select alternative.
-2. **Backend choice confirmation** — Supabase + PowerSync is recommended. Confirm or select alternative.
-3. **Web app approach** — Kotlin/JS with Compose for Web (maximum code sharing) vs TypeScript + React (maximum AI tooling support, largest ecosystem). This affects the web developer experience significantly.
-4. **Windows app approach** — Compose Desktop via JVM target (maximum KMP integration) vs WinUI 3 (maximum Windows-native feel). Compose Desktop is simpler; WinUI offers deeper OS integration.
-5. **Wearable platform priority** — Should watchOS (Phase 4) and Wear OS (Phase 3) companion apps be included in their respective platform phases, or deferred to Phase 7?
-6. **Bank connection API** — Plaid or MX integration for automatic transaction import. Include in Phase 7 or defer to post-launch? Plaid costs ~$500+/mo at scale.
-7. **Monetization model** — Freemium (free tier + paid features), subscription (monthly/annual), or one-time purchase? Affects architecture (paywall logic, feature flags, subscription management).
-8. **App name and branding** — "Finance" is a working title. Final name affects domain, app store listings, design token brand colors, and marketing.
-9. **Self-hosting timeline** — When should Supabase + PowerSync be self-hosted? At what user count does managed cost exceed self-hosted infrastructure + maintenance?
-10. **E2E encryption scope** — Full E2E encryption (server never sees plaintext) limits server-side search/analytics. Hybrid approach (encrypt amounts/notes, keep metadata readable) is recommended but requires confirmation.
+| #   | Question                 | Resolution                                                              |
+| --- | ------------------------ | ----------------------------------------------------------------------- |
+| 1   | Cross-platform framework | ✅ KMP confirmed — [ADR-0001](0001-cross-platform-framework.md)         |
+| 2   | Backend choice           | ✅ Supabase + PowerSync — [ADR-0002](0002-backend-sync-architecture.md) |
+| 3   | Web app approach         | ✅ TypeScript + React consuming KMP via JS bindings                     |
+| 4   | Windows app approach     | ✅ Compose Desktop (JVM)                                                |
+| 5   | Wearable priority        | ✅ Deferred to post-launch                                              |
+| 6   | Bank connection API      | ✅ Deferred to post-launch (Plaid/MX)                                   |
+| 7   | Monetization model       | ✅ Freemium — [ADR-0009](0009-legal-monetization-analysis.md)           |
+| 8   | App name                 | ⏳ "Finance" remains the working title                                  |
+| 9   | Self-hosting timeline    | ✅ Self-hosted on VPS — [ADR-0007](0007-hosting-strategy.md)            |
+| 10  | E2E encryption scope     | ✅ Hybrid E2E — [ADR-0004](0004-auth-security-architecture.md)          |
 
 ---
 
