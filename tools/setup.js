@@ -7,7 +7,7 @@
 //
 // --check   Run validation only (no install / build) and print a scorecard.
 
-const { execFileSync, execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
