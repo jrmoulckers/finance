@@ -117,7 +117,7 @@ serve(async (req: Request): Promise<Response> => {
       record.raw_user_meta_data?.full_name ?? record.raw_user_meta_data?.name ?? null;
 
     // Call the database function to create user, household, and membership
-    const { data, error } = await supabaseAdmin.rpc('handle_new_user_signup', {
+    const { error } = await supabaseAdmin.rpc('handle_new_user_signup', {
       p_user_id: record.id,
       p_email: record.email,
       p_name: displayName,
