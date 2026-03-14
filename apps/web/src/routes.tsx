@@ -8,12 +8,12 @@ import { Routes, Route, Navigate } from 'react-router-dom';
  * Lazy-loaded route pages - each is code-split into its own chunk.
  * These mirror the mobile app navigation structure.
  */
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Accounts = lazy(() => import('./pages/Accounts'));
-const Transactions = lazy(() => import('./pages/Transactions'));
-const Budgets = lazy(() => import('./pages/Budgets'));
-const Goals = lazy(() => import('./pages/Goals'));
-const Settings = lazy(() => import('./pages/Settings'));
+const Dashboard = lazy(() => import('./pages/DashboardPage'));
+const Accounts = lazy(() => import('./pages/AccountsPage'));
+const Transactions = lazy(() => import('./pages/TransactionsPage'));
+const Budgets = lazy(() => import('./pages/BudgetsPage'));
+const Goals = lazy(() => import('./pages/GoalsPage'));
+const Settings = lazy(() => import('./pages/SettingsPage'));
 
 /**
  * Loading fallback shown while a lazy route chunk is being fetched.

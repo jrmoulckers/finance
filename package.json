@@ -23,7 +23,8 @@
     "clean": "node tools/gradle.js clean && turbo run clean",
     "setup": "node tools/setup.js",
     "prepare": "husky",
-    "changeset": "changeset"
+    "changeset": "changeset",
+    "version": "changeset version"
   },
   "keywords": [
     "finance",

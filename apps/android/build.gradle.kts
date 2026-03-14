@@ -38,6 +38,9 @@ dependencies {
     implementation(project(":packages:models"))
     implementation(project(":packages:sync"))
 
+    // Date/time utilities
+    implementation(libs.kotlinx.datetime)
+
     // Compose BOM — manages all Compose library versions
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
@@ -59,6 +62,13 @@ dependencies {
 
     // AndroidX Core
     implementation(libs.core.ktx)
+
+    // DI — Koin
+    implementation(libs.koin.android)
+    implementation(libs.koin.compose.viewmodel)
+
+    // Logging
+    implementation(libs.timber)
 
     // Security & Biometric
     implementation(libs.biometric)

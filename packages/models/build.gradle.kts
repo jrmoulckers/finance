@@ -24,10 +24,19 @@ kotlin {
                 implementation(libs.sqldelight.jvm.driver)
             }
         }
-        val androidMain by getting {
+        if (project.extra["androidSdkAvailable"] as Boolean) {
+            val androidMain by getting {
+                dependencies {
+                    implementation(libs.sqldelight.android.driver)
+                    implementation(libs.sqlcipher.android)
+                }
+            }
+        }
+        val jsMain by getting {
             dependencies {
-                implementation(libs.sqldelight.android.driver)
-                implementation(libs.sqlcipher.android)
+                implementation(libs.sqldelight.js.driver)
+                implementation(npm("@cashapp/sqldelight-sqljs-worker", "2.0.2"))
+                implementation(devNpm("copy-webpack-plugin", "9.1.0"))
             }
         }
     }

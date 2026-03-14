@@ -1,10 +1,17 @@
 # Finance
 
+![CI — Shared Packages](https://github.com/jrmoulckers/finance/actions/workflows/ci.yml/badge.svg)
+![Lint & Format](https://github.com/jrmoulckers/finance/actions/workflows/lint-format.yml/badge.svg)
+![Web CI](https://github.com/jrmoulckers/finance/actions/workflows/web-ci.yml/badge.svg)
+![PR Title](https://github.com/jrmoulckers/finance/actions/workflows/pr-title.yml/badge.svg)
+![License](https://img.shields.io/badge/license-BSL--1.1-blue)
+
 A multi-platform, native-first financial tracking application for personal, family, and partnered finances.
 
 ## Table of Contents
 
 - [Vision](#vision)
+- [Monorepo Health](#monorepo-health)
 - [Principles](#principles)
 - [Platforms](#platforms)
 - [Architecture](#architecture)
@@ -18,6 +25,44 @@ A multi-platform, native-first financial tracking application for personal, fami
 ## Vision
 
 Finance aspires to re-think and re-vitalize the desire to track every financial aspect of one's life — from daily habits to long-term impacts of financial goals.
+
+## Monorepo Health
+
+### Packages
+
+| Package           | Purpose                                                                      |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `packages/core`   | Core business logic — budgeting, categorization, goal tracking, analytics    |
+| `packages/models` | Shared data models and schemas — accounts, transactions, budgets, goals      |
+| `packages/sync`   | Data synchronization engine — conflict resolution, offline queue, delta sync |
+
+### Platform Coverage
+
+4 native platforms built from shared KMP logic:
+
+| Platform              | App            | UI Framework       |
+| --------------------- | -------------- | ------------------ |
+| iOS / macOS / watchOS | `apps/ios`     | SwiftUI            |
+| Android / Wear OS     | `apps/android` | Jetpack Compose    |
+| Web (PWA)             | `apps/web`     | React + TypeScript |
+| Windows 11            | `apps/windows` | Compose Desktop    |
+
+### Test Coverage
+
+- **KMP JVM tests** — Unit tests for all shared packages run via `npm run test:kmp`
+- **Web tests** — Web app tests run via the `web-ci` workflow
+- **Lint & format** — All workspaces checked via `npm run lint` and `npm run format`
+
+### CI Workflows
+
+All workflows run on GitHub Actions — see badges at the top of this README.
+
+| Workflow                                                                                  | What it checks                                 |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| [CI — Shared Packages](https://github.com/jrmoulckers/finance/actions/workflows/ci.yml)   | KMP build + JVM unit tests for `packages/*`    |
+| [Web CI](https://github.com/jrmoulckers/finance/actions/workflows/web-ci.yml)             | Web app build + tests                          |
+| [Lint & Format](https://github.com/jrmoulckers/finance/actions/workflows/lint-format.yml) | ESLint, Prettier, Ktlint across all workspaces |
+| [PR Title](https://github.com/jrmoulckers/finance/actions/workflows/pr-title.yml)         | Conventional commit format for PR titles       |
 
 ## Principles
 

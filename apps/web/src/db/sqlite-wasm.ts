@@ -399,7 +399,7 @@ function selectRaw(
 ): QueryResult {
   if (backend === 'opfs') {
     const rows: Row[] = [];
-    let columns: string[] = [];
+    let columns: string[];
     const stmt = driver.prepare(db, sql);
     try {
       if (params && params.length > 0) {
@@ -504,6 +504,7 @@ async function runMigrations(
       execRaw(driver, db, 'ROLLBACK;', backend);
       throw new Error(
         `Migration v${migration.version} (${migration.label}) failed: ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
       );
     }
   }
