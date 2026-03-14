@@ -58,7 +58,7 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
 
   const { handleKeyDown } = useArrowKeyNavigation(containerRef, {
     orientation: 'horizontal',
-    onFocus: useCallback((_index: number) => {}, []),
+    onFocus: useCallback(() => {}, []),
   });
 
   const disableAnimation = prefersReducedMotion();
