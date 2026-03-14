@@ -20,16 +20,16 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.1",
-    "recharts": "^2.15.3",
+    "recharts": "^3.8.0",
     "sql.js": "^1.14.1",
     "wa-sqlite": "^1.0.0"
   },
   "devDependencies": {
-    "@storybook/addon-a11y": "^8.6.14",
+    "@storybook/addon-a11y": "^10.2.19",
     "@storybook/addon-essentials": "^8.6.14",
     "@storybook/addon-interactions": "^8.6.14",
-    "@storybook/react": "^8.6.14",
-    "@storybook/react-vite": "^8.6.14",
+    "@storybook/react": "^10.2.19",
+    "@storybook/react-vite": "^10.2.19",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -37,13 +37,13 @@
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "@types/sql.js": "^1.4.9",
-    "@vitejs/plugin-react": "^4.5.2",
+    "@vitejs/plugin-react": "^6.0.1",
     "jsdom": "^28.1.0",
-    "nanoid": "^3.3.11",
+    "nanoid": "^5.1.6",
     "source-map-js": "^1.2.1",
-    "storybook": "^8.6.14",
+    "storybook": "^10.2.19",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5",
-    "vitest": "^3.2.1"
+    "vite": "^8.0.0",
+    "vitest": "^4.1.0"
   }
 }
