@@ -101,8 +101,8 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
             />
           </Pie>
           <Tooltip
-            formatter={(value: number, name: string) => [
-              formatChartCurrency(value, currency),
+            formatter={(value: number | undefined, name: string) => [
+              formatChartCurrency(value ?? 0, currency),
               name,
             ]}
             contentStyle={{
