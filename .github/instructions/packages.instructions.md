@@ -24,6 +24,16 @@ You are working in the `packages/` directory, which contains shared libraries co
 - Financial calculations must use appropriate precision (avoid floating point for money)
 - All monetary values should use the smallest currency unit (cents, not dollars)
 
+## Monitoring Interfaces
+
+`packages/core/src/commonMain/kotlin/com/finance/core/monitoring/` contains cross-platform monitoring contracts:
+
+- **`CrashReporter`** — Error/crash reporting interface. Implement per-platform (Crashlytics on Android, MetricKit on iOS).
+- **`MetricsCollector`** — Performance metrics collection (sync durations, query latency).
+- **`SyncHealthMonitor`** — Sync engine health tracking (connection state, last-sync time, error rates).
+
+These are `commonMain` interfaces — platform `actual` implementations live in `androidMain`, `iosMain`, etc. When adding new monitoring capabilities, define the interface in `commonMain` first.
+
 ## KMP (Kotlin Multiplatform) Requirements
 
 - Code must compile for **all** KMP targets: `commonMain`, `iosMain`, `androidMain`, `jvmMain`, `jsMain`

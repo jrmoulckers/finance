@@ -24,3 +24,8 @@ You are working in the `apps/` directory, which contains platform-specific appli
 - Handle sync conflicts gracefully with clear user-facing resolution options
 - Local data is stored in SQLite + SQLCipher (encrypted at rest) on all platforms
 - Design tokens (DTCG JSON) drive visual consistency — consume generated platform-native constants (Swift, XML resources, CSS variables, XAML resources)
+
+## Platform Dependency Injection & Logging
+
+- **Android** — Uses **Koin 4.0.1** for dependency injection. Define Koin modules in the app's DI layer; use `koin-compose-viewmodel` for ViewModel injection in Jetpack Compose screens. Use **Timber** (5.0.1) for logging — plant a `DebugTree` in debug builds only.
+- **iOS** — Uses native **`os.Logger`** for structured logging (preferred over `NSLog` or `print`). DI is handled via Swift-native patterns (e.g., environment objects, manual injection via protocols).
