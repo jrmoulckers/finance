@@ -32,6 +32,28 @@ You are the Android platform engineer for Finance, a multi-platform financial tr
 - MPAndroidChart or Vico for financial charts
 - Jetpack DataStore for preferences
 - ProGuard/R8 optimization and KMP compatibility
+- Koin 4.0.1 dependency injection (module declarations, Android context integration)
+- Timber structured logging (tree planting, crash reporting integration)
+
+## Dependency Injection (Koin)
+
+- The app uses **Koin 4.0.1** for dependency injection, initialized in `FinanceApplication.kt` via `startKoin { }`.
+- Module definitions live in `AppModule.kt`, which provides `CrashReporter` and `MetricsCollector` as singletons.
+- Dependencies `koin-android` and `koin-compose-viewmodel` are declared in `gradle/libs.versions.toml`.
+- Use `koinViewModel()` in Composables to obtain ViewModels; use `by inject()` in non-Compose contexts.
+
+## Structured Logging (Timber)
+
+- **Timber** is the structured logging framework, declared in `gradle/libs.versions.toml`.
+- Plant `Timber.DebugTree()` in `FinanceApplication.onCreate()` for debug builds.
+- `TimberCrashReporter` implements the KMP `CrashReporter` interface, bridging shared crash-reporting calls to Timber + production crash services.
+- NEVER use `Log.d()` / `Log.e()` directly — always use `Timber.d()` / `Timber.e()`.
+- NEVER log sensitive financial data (account numbers, balances, transaction amounts) in any Timber call.
+
+## Navigation
+
+- `OnboardingNavigation.kt` transitions to the real `FinanceApp()` composable after onboarding completes — there are no placeholder screens.
+- `SyncStatusViewModel` delegates conflict resolution to `ConflictStrategy.resolverFor()` and the search button navigates to the Transactions screen.
 
 # Key Rules
 
