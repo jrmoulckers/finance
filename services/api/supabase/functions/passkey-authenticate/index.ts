@@ -28,7 +28,6 @@ import type {
   VerifiedAuthenticationResponse,
 } from 'https://esm.sh/@simplewebauthn/server@9.0.3';
 
-
 interface StoredCredential {
   id: string;
   user_id: string;

@@ -30,10 +30,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
-import {
-  methodNotAllowedResponse,
-  streamingResponse,
-} from '../_shared/response.ts';
+import { methodNotAllowedResponse, streamingResponse } from '../_shared/response.ts';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -80,16 +77,13 @@ function exportErrorResponse(
   message: string,
   status: number = 400,
 ): Response {
-  return new Response(
-    JSON.stringify({ error: { code, message } }),
-    {
-      status,
-      headers: {
-        ...getCorsHeaders(request),
-        'Content-Type': 'application/json',
-      },
+  return new Response(JSON.stringify({ error: { code, message } }), {
+    status,
+    headers: {
+      ...getCorsHeaders(request),
+      'Content-Type': 'application/json',
     },
-  );
+  });
 }
 
 /**
@@ -254,17 +248,10 @@ serve(async (req: Request): Promise<Response> => {
 
     if (memberError) {
       console.error('Failed to fetch memberships:', memberError.message);
-      return exportErrorResponse(
-        req,
-        'INTERNAL_ERROR',
-        'An unexpected error occurred.',
-        500,
-      );
+      return exportErrorResponse(req, 'INTERNAL_ERROR', 'An unexpected error occurred.', 500);
     }
 
-    const householdIds = (memberships ?? []).map(
-      (m: { household_id: string }) => m.household_id,
-    );
+    const householdIds = (memberships ?? []).map((m: { household_id: string }) => m.household_id);
 
     // ------------------------------------------------------------------
     // Collect all exportable data
@@ -322,10 +309,7 @@ serve(async (req: Request): Promise<Response> => {
       new_values: {
         format: exportFormat,
         tables_exported: Object.keys(exportData),
-        total_records: Object.values(exportData).reduce(
-          (sum, records) => sum + records.length,
-          0,
-        ),
+        total_records: Object.values(exportData).reduce((sum, records) => sum + records.length, 0),
       },
     });
 
@@ -418,11 +402,6 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    return exportErrorResponse(
-      req,
-      'INTERNAL_ERROR',
-      'An unexpected error occurred.',
-      500,
-    );
+    return exportErrorResponse(req, 'INTERNAL_ERROR', 'An unexpected error occurred.', 500);
   }
 });

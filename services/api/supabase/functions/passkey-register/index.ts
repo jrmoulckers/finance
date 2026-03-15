@@ -29,7 +29,6 @@ import type {
   VerifiedRegistrationResponse,
 } from 'https://esm.sh/@simplewebauthn/server@9.0.3';
 
-
 /**
  * Extract and verify the authenticated user from the JWT.
  */

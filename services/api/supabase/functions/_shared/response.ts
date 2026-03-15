@@ -28,11 +28,7 @@ export function jsonResponse(
 }
 
 /** Standard error response. */
-export function errorResponse(
-  request: Request,
-  message: string,
-  status: number = 400,
-): Response {
+export function errorResponse(request: Request, message: string, status: number = 400): Response {
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers: {
@@ -43,10 +39,7 @@ export function errorResponse(
 }
 
 /** 201 Created response. */
-export function createdResponse(
-  request: Request,
-  data: Record<string, unknown>,
-): Response {
+export function createdResponse(request: Request, data: Record<string, unknown>): Response {
   return jsonResponse(request, data, 201);
 }
 
