@@ -242,7 +242,6 @@ export function useTransactions(filters: TransactionFilters = {}): UseTransactio
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, refreshToken, filtersKey]);
 
   const createTransaction = useCallback(

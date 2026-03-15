@@ -9,7 +9,6 @@ import {
   mapCurrency,
   mapSyncMetadata,
   optionalString,
-  requireNumber,
   requireString,
   toBoolean,
 } from './helpers';
