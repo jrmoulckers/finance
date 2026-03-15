@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { GoalForm } from '../components/forms';
+import type { CreateGoalInput } from '../db/repositories/goals';
 import { useGoals } from '../hooks';
 
 function getGoalIcon(iconName: string | null | undefined): string {
@@ -20,21 +22,53 @@ function getGoalIcon(iconName: string | null | undefined): string {
 }
 
 export const GoalsPage: React.FC = () => {
-  const { goals, loading, error, refresh } = useGoals();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const { goals, loading, error, refresh, createGoal } = useGoals();
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount.amount, 0);
   const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount.amount, 0);
 
+  const handleOpenForm = useCallback(() => {
+    setIsFormOpen(true);
+  }, []);
+
+  const handleCloseForm = useCallback(() => {
+    setIsFormOpen(false);
+  }, []);
+
+  const handleSubmitGoal = useCallback(
+    async (data: CreateGoalInput) => {
+      const createdGoal = createGoal(data);
+      if (createdGoal === null) {
+        throw new Error('Failed to create goal.');
+      }
+
+      setIsFormOpen(false);
+      refresh();
+    },
+    [createGoal, refresh],
+  );
+
   return (
     <>
-      <h2
-        style={{
-          fontSize: 'var(--type-scale-headline-font-size)',
-          fontWeight: 'var(--type-scale-headline-font-weight)',
-          marginBottom: 'var(--spacing-6)',
-        }}
-      >
-        Goals
-      </h2>
+      <div className="page-section__header" style={{ marginBottom: 'var(--spacing-6)' }}>
+        <h2
+          style={{
+            fontSize: 'var(--type-scale-headline-font-size)',
+            fontWeight: 'var(--type-scale-headline-font-weight)',
+            marginBottom: 0,
+          }}
+        >
+          Goals
+        </h2>
+        <button
+          type="button"
+          className="form-button form-button--primary"
+          onClick={handleOpenForm}
+          aria-label="Add a new goal"
+        >
+          Add Goal
+        </button>
+      </div>
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
           <LoadingSpinner label="Loading goals" />
@@ -197,6 +231,7 @@ export const GoalsPage: React.FC = () => {
           </section>
         </>
       )}
+      <GoalForm isOpen={isFormOpen} onCancel={handleCloseForm} onSubmit={handleSubmitGoal} />
     </>
   );
 };

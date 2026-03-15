@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
-import { useAccounts, useCategories, useTransactions } from '../hooks';
+import { TransactionForm } from '../components/forms';
+import type { CreateTransactionInput } from '../db/repositories/transactions';
+import { useAccounts } from '../hooks/useAccounts';
+import { useCategories } from '../hooks/useCategories';
+import { useTransactions } from '../hooks/useTransactions';
 import type { Transaction } from '../kmp/bridge';
 
 const ALL_CATEGORIES_FILTER = '__all__';
@@ -18,6 +22,7 @@ function getTransactionDisplayAmount(transaction: Transaction): number {
 export const TransactionsPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_CATEGORIES_FILTER);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const filters = useMemo(
     () => ({
@@ -27,7 +32,13 @@ export const TransactionsPage: React.FC = () => {
     [query, selectedCategoryId],
   );
 
-  const { transactions, loading, error, refresh: refreshTransactions } = useTransactions(filters);
+  const {
+    transactions,
+    loading,
+    error,
+    refresh: refreshTransactions,
+    createTransaction,
+  } = useTransactions(filters);
   const {
     categories,
     loading: categoriesLoading,
@@ -48,6 +59,18 @@ export const TransactionsPage: React.FC = () => {
     refreshCategories();
     refreshAccounts();
   };
+
+  const handleTransactionSubmit = useCallback(
+    async (data: CreateTransactionInput): Promise<void> => {
+      const result = createTransaction(data);
+      if (result === null) {
+        throw new Error('Failed to create transaction. Please try again.');
+      }
+      setIsFormOpen(false);
+      refreshTransactions();
+    },
+    [createTransaction, refreshTransactions],
+  );
 
   const categoryFilters = useMemo(
     () => [
@@ -93,15 +116,24 @@ export const TransactionsPage: React.FC = () => {
 
   return (
     <>
-      <h2
-        style={{
-          fontSize: 'var(--type-scale-headline-font-size)',
-          fontWeight: 'var(--type-scale-headline-font-weight)',
-          marginBottom: 'var(--spacing-4)',
-        }}
-      >
-        Transactions
-      </h2>
+      <div className="transactions-page-header">
+        <h2
+          style={{
+            fontSize: 'var(--type-scale-headline-font-size)',
+            fontWeight: 'var(--type-scale-headline-font-weight)',
+          }}
+        >
+          Transactions
+        </h2>
+        <button
+          type="button"
+          className="add-button"
+          onClick={() => setIsFormOpen(true)}
+          aria-label="Add new transaction"
+        >
+          <span aria-hidden="true">+</span> Add Transaction
+        </button>
+      </div>
       <div className="search-bar" role="search">
         <input
           type="search"
@@ -183,6 +215,13 @@ export const TransactionsPage: React.FC = () => {
           ))}
         </div>
       )}
+      <TransactionForm
+        isOpen={isFormOpen}
+        accounts={accounts}
+        categories={categories}
+        onSubmit={handleTransactionSubmit}
+        onCancel={() => setIsFormOpen(false)}
+      />
     </>
   );
 };

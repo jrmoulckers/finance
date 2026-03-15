@@ -9,6 +9,12 @@ vi.mock('../hooks', () => ({
   useGoals: vi.fn(),
 }));
 
+// GoalForm renders unconditionally and calls useDatabase internally.
+// Stub it out so the test has no provider dependency.
+vi.mock('../components/forms', () => ({
+  GoalForm: () => null,
+}));
+
 const mockedUseGoals = vi.mocked(useGoals);
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',

@@ -1,10 +1,32 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useMemo } from 'react';
+import { CategoryPieChart, SpendingBarChart, TrendLineChart } from '../components/charts';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
-import { useCategories, useDashboardData } from '../hooks';
+import { useCategories, useDashboardData, useTransactions } from '../hooks';
 import type { DashboardData } from '../hooks/useDashboardData';
 import type { Transaction } from '../kmp/bridge';
+
+const CHART_LOOKBACK_DAYS = 30;
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function getLastNDaysBounds(days: number): { startDate: string; endDate: string } {
+  const endDate = new Date();
+  const startDate = new Date(endDate);
+  startDate.setDate(endDate.getDate() - (days - 1));
+
+  return {
+    startDate: formatLocalDate(startDate),
+    endDate: formatLocalDate(endDate),
+  };
+}
 
 function getTransactionDisplayAmount(transaction: Transaction): number {
   if (transaction.type === 'EXPENSE') {
@@ -26,6 +48,53 @@ function isDashboardDataEmpty(data: DashboardData): boolean {
   );
 }
 
+function buildTrendData(transactions: Transaction[], days: number) {
+  const dailySpending = new Map<string, number>();
+
+  for (const transaction of transactions) {
+    dailySpending.set(
+      transaction.date,
+      (dailySpending.get(transaction.date) ?? 0) + Math.abs(transaction.amount.amount) / 100,
+    );
+  }
+
+  const endDate = new Date();
+
+  return Array.from({ length: days }, (_value, index) => {
+    const pointDate = new Date(endDate);
+    pointDate.setDate(endDate.getDate() - (days - index - 1));
+    const dateKey = formatLocalDate(pointDate);
+
+    return {
+      label: pointDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      }),
+      spending: dailySpending.get(dateKey) ?? 0,
+    };
+  });
+}
+
+function buildCategoryData(transactions: Transaction[], categoryNames: Map<string, string>) {
+  const totalsByCategory = new Map<string, number>();
+
+  for (const transaction of transactions) {
+    const categoryName =
+      transaction.categoryId !== null
+        ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
+        : 'Uncategorized';
+
+    totalsByCategory.set(
+      categoryName,
+      (totalsByCategory.get(categoryName) ?? 0) + Math.abs(transaction.amount.amount) / 100,
+    );
+  }
+
+  return Array.from(totalsByCategory, ([name, value]) => ({ name, value })).sort(
+    (left, right) => right.value - left.value,
+  );
+}
+
 export const DashboardPage: React.FC = () => {
   const { data, loading, error, refresh } = useDashboardData();
   const {
@@ -34,14 +103,41 @@ export const DashboardPage: React.FC = () => {
     error: categoriesError,
     refresh: refreshCategories,
   } = useCategories();
+  const chartDateRange = useMemo(() => getLastNDaysBounds(CHART_LOOKBACK_DAYS), []);
+  const chartFilters = useMemo(
+    () => ({
+      type: 'EXPENSE' as const,
+      startDate: chartDateRange.startDate,
+      endDate: chartDateRange.endDate,
+    }),
+    [chartDateRange],
+  );
+  const {
+    transactions: chartTransactions,
+    loading: chartTransactionsLoading,
+    error: chartTransactionsError,
+    refresh: refreshChartTransactions,
+  } = useTransactions(chartFilters);
 
   const categoryNames = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories],
   );
+  const chartCurrency =
+    chartTransactions[0]?.currency.code ?? data?.recentTransactions[0]?.currency.code ?? 'USD';
+  const { trendData, barData, categoryData, hasChartData } = useMemo(() => {
+    const transformedCategoryData = buildCategoryData(chartTransactions, categoryNames);
 
-  const isLoading = loading || categoriesLoading;
-  const resolvedError = error ?? categoriesError;
+    return {
+      trendData: buildTrendData(chartTransactions, CHART_LOOKBACK_DAYS),
+      barData: transformedCategoryData.map(({ name, value }) => ({ name, amount: value })),
+      categoryData: transformedCategoryData,
+      hasChartData: transformedCategoryData.length > 0,
+    };
+  }, [chartTransactions, categoryNames]);
+
+  const isLoading = loading || categoriesLoading || chartTransactionsLoading;
+  const resolvedError = error ?? categoriesError ?? chartTransactionsError;
   const budgetPercentage =
     data !== null && data.monthlyBudget > 0
       ? Math.round((data.budgetSpent / data.monthlyBudget) * 100)
@@ -51,6 +147,7 @@ export const DashboardPage: React.FC = () => {
   const handleRetry = () => {
     refresh();
     refreshCategories();
+    refreshChartTransactions();
   };
 
   return (
@@ -118,6 +215,34 @@ export const DashboardPage: React.FC = () => {
               </article>
             </div>
           </section>
+          {hasChartData ? (
+            <section className="page-section dashboard-charts" aria-label="Financial charts">
+              <div className="chart-container" aria-label="Spending trend chart">
+                <TrendLineChart
+                  data={trendData}
+                  series={[{ dataKey: 'spending', name: 'Spending' }]}
+                  currency={chartCurrency}
+                  title="Spending Trend"
+                />
+              </div>
+              <div className="chart-container" aria-label="Category spending bar chart">
+                <SpendingBarChart
+                  data={barData}
+                  currency={chartCurrency}
+                  title="Spending by Category"
+                />
+              </div>
+              <div className="chart-container" aria-label="Category share pie chart">
+                <CategoryPieChart
+                  data={categoryData}
+                  currency={chartCurrency}
+                  width={280}
+                  height={280}
+                  title="Category Share"
+                />
+              </div>
+            </section>
+          ) : null}
           <section className="page-section" aria-label="Recent transactions">
             <h3 className="page-section__title">Recent Transactions</h3>
             <div className="card">

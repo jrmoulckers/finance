@@ -220,6 +220,32 @@
   font-weight: var(--type-scale-title-font-weight);
   color: var(--semantic-text-primary);
 }
+.add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  min-height: 40px;
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--semantic-interactive-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast, 100ms) ease,
+    border-color var(--duration-fast, 100ms) ease;
+}
+.add-button:hover:not(:disabled) {
+  background: var(--semantic-interactive-hover);
+  border-color: var(--semantic-interactive-hover);
+}
+.add-button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
 .list-group {
   display: flex;
   flex-direction: column;
@@ -483,6 +509,41 @@
 .settings-item--destructive .settings-item__value {
   color: var(--semantic-status-negative);
 }
+.dashboard-charts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-6, 1.5rem);
+  margin-top: var(--spacing-6, 1.5rem);
+}
+.chart-container {
+  min-width: 0;
+  min-height: 300px;
+  padding: var(--spacing-4, 1rem);
+  background: var(--semantic-surface-primary, var(--card-background));
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius-lg, 12px);
+  box-shadow: var(--card-shadow);
+}
+.chart-container > div {
+  height: 100%;
+}
+.chart-container [aria-roledescription='pie chart'] svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+.chart-title {
+  margin-bottom: var(--spacing-4);
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+}
+@media (min-width: 640px) {
+  .dashboard-charts {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+}
 @media (min-width: 768px) {
   .app-layout {
     flex-direction: row;
@@ -539,12 +600,28 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+@media (min-width: 1024px) {
+  .dashboard-charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 @media (min-width: 1200px) {
   :root {
     --layout-sidebar-width: 280px;
   }
 }
+/* ─── Transactions page ──────────────────────────────────────────────────── */
+.transactions-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+/* ─── End Transactions page ──────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
+  .add-button,
   .progress-bar__fill,
   .progress-ring__fill {
     transition: none;

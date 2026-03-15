@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { AccountForm } from '../components/forms';
 import { useAccounts } from '../hooks';
 import type { AccountType } from '../kmp/bridge';
 
@@ -27,7 +28,8 @@ const ACCOUNT_TYPE_ORDER: AccountType[] = [
 
 export const AccountsPage: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const { accounts, loading, error, refresh } = useAccounts();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const { accounts, loading, error, refresh, createAccount } = useAccounts();
 
   const accountGroups = useMemo(
     () =>
@@ -44,6 +46,47 @@ export const AccountsPage: React.FC = () => {
       ? (accounts.find((account) => account.id === selectedAccountId) ?? null)
       : null;
   const netWorth = accounts.reduce((sum, account) => sum + account.currentBalance.amount, 0);
+  const headingStyle = {
+    fontSize: 'var(--type-scale-headline-font-size)',
+    fontWeight: 'var(--type-scale-headline-font-weight)',
+    margin: 0,
+  } as const;
+  const pageHeader = (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 'var(--spacing-3)',
+        flexWrap: 'wrap',
+        marginBottom: 'var(--spacing-4)',
+      }}
+    >
+      <h2 style={headingStyle}>Accounts</h2>
+      <button
+        type="button"
+        className="add-button"
+        onClick={() => setIsFormOpen(true)}
+        aria-label="Add new account"
+      >
+        + Add Account
+      </button>
+    </div>
+  );
+  const accountForm = (
+    <AccountForm
+      isOpen={isFormOpen}
+      onCancel={() => setIsFormOpen(false)}
+      onSubmit={async (data) => {
+        const createdAccount = createAccount(data);
+        if (createdAccount === null) {
+          throw new Error('Failed to create account.');
+        }
+        setIsFormOpen(false);
+        refresh();
+      }}
+    />
+  );
 
   if (loading) {
     return (
@@ -84,19 +127,12 @@ export const AccountsPage: React.FC = () => {
   if (accounts.length === 0) {
     return (
       <>
-        <h2
-          style={{
-            fontSize: 'var(--type-scale-headline-font-size)',
-            fontWeight: 'var(--type-scale-headline-font-weight)',
-            marginBottom: 'var(--spacing-2)',
-          }}
-        >
-          Accounts
-        </h2>
+        {pageHeader}
         <EmptyState
           title="No accounts yet"
           description="Add your first account to start tracking your balances."
         />
+        {accountForm}
       </>
     );
   }
@@ -139,15 +175,7 @@ export const AccountsPage: React.FC = () => {
 
   return (
     <>
-      <h2
-        style={{
-          fontSize: 'var(--type-scale-headline-font-size)',
-          fontWeight: 'var(--type-scale-headline-font-weight)',
-          marginBottom: 'var(--spacing-2)',
-        }}
-      >
-        Accounts
-      </h2>
+      {pageHeader}
       <p
         style={{ marginBottom: 'var(--spacing-6)', color: 'var(--semantic-text-secondary)' }}
         aria-live="polite"
@@ -206,6 +234,7 @@ export const AccountsPage: React.FC = () => {
           </section>
         );
       })}
+      {accountForm}
     </>
   );
 };
