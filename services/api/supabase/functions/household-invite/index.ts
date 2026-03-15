@@ -43,7 +43,7 @@ function generateInviteCode(): string {
 
 serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
-    return handleCorsPreflightRequest();
+    return handleCorsPreflightRequest(req);
   }
 
   try {
@@ -66,7 +66,7 @@ serve(async (req: Request): Promise<Response> => {
         const { household_id, invited_email, role = 'member', expires_in_hours = 72 } = body;
 
         if (!household_id) {
-          return errorResponse('household_id is required');
+          return errorResponse(req, 'household_id is required');
         }
 
         // Verify the requesting user is the household owner
@@ -78,11 +78,11 @@ serve(async (req: Request): Promise<Response> => {
           .single();
 
         if (hhError || !household) {
-          return errorResponse('Household not found', 404);
+          return errorResponse(req, 'Household not found', 404);
         }
 
         if (household.created_by !== user.id) {
-          return errorResponse('Only the household owner can create invitations', 403);
+          return errorResponse(req, 'Only the household owner can create invitations', 403);
         }
 
         // Check if user is already a member (if email provided)
@@ -104,7 +104,7 @@ serve(async (req: Request): Promise<Response> => {
               .single();
 
             if (existingMember) {
-              return errorResponse('User is already a member of this household', 409);
+              return errorResponse(req, 'User is already a member of this household', 409);
             }
           }
         }
@@ -128,10 +128,10 @@ serve(async (req: Request): Promise<Response> => {
 
         if (insertError) {
           console.error('Failed to create invitation:', insertError.message);
-          return internalErrorResponse();
+          return internalErrorResponse(req);
         }
 
-        return createdResponse({
+        return createdResponse(req, {
           id: invitation.id,
           invite_code: invitation.invite_code,
           expires_at: invitation.expires_at,
@@ -148,7 +148,7 @@ serve(async (req: Request): Promise<Response> => {
         const code = url.searchParams.get('code');
 
         if (!code) {
-          return errorResponse('code query parameter is required');
+          return errorResponse(req, 'code query parameter is required');
         }
 
         const { data: invitation, error: lookupError } = await supabase
@@ -173,27 +173,27 @@ serve(async (req: Request): Promise<Response> => {
           .single();
 
         if (lookupError || !invitation) {
-          return errorResponse('Invalid invitation code', 404);
+          return errorResponse(req, 'Invalid invitation code', 404);
         }
 
         // Check if already accepted
         if (invitation.accepted_at) {
-          return errorResponse('This invitation has already been accepted', 410);
+          return errorResponse(req, 'This invitation has already been accepted', 410);
         }
 
         // Check if expired
         if (new Date(invitation.expires_at) < new Date()) {
-          return errorResponse('This invitation has expired', 410);
+          return errorResponse(req, 'This invitation has expired', 410);
         }
 
         // Check if invitation is restricted to a specific email
         if (invitation.invited_email && invitation.invited_email !== user.email) {
-          return errorResponse('This invitation is for a different email address', 403);
+          return errorResponse(req, 'This invitation is for a different email address', 403);
         }
 
         // Return household info (safe subset only)
         const householdInfo = invitation.households as unknown as { id: string; name: string };
-        return jsonResponse({
+        return jsonResponse(req, {
           valid: true,
           household_id: householdInfo.id,
           household_name: householdInfo.name,
@@ -210,7 +210,7 @@ serve(async (req: Request): Promise<Response> => {
         const { invite_code } = body;
 
         if (!invite_code) {
-          return errorResponse('invite_code is required');
+          return errorResponse(req, 'invite_code is required');
         }
 
         // Look up the invitation
@@ -222,20 +222,20 @@ serve(async (req: Request): Promise<Response> => {
           .single();
 
         if (lookupError || !invitation) {
-          return errorResponse('Invalid invitation code', 404);
+          return errorResponse(req, 'Invalid invitation code', 404);
         }
 
         // Validate invitation state
         if (invitation.accepted_at) {
-          return errorResponse('This invitation has already been accepted', 410);
+          return errorResponse(req, 'This invitation has already been accepted', 410);
         }
 
         if (new Date(invitation.expires_at) < new Date()) {
-          return errorResponse('This invitation has expired', 410);
+          return errorResponse(req, 'This invitation has expired', 410);
         }
 
         if (invitation.invited_email && invitation.invited_email !== user.email) {
-          return errorResponse('This invitation is for a different email address', 403);
+          return errorResponse(req, 'This invitation is for a different email address', 403);
         }
 
         // Check if user is already a member
@@ -248,7 +248,7 @@ serve(async (req: Request): Promise<Response> => {
           .single();
 
         if (existingMember) {
-          return errorResponse('You are already a member of this household', 409);
+          return errorResponse(req, 'You are already a member of this household', 409);
         }
 
         // Add user to household in a transaction-like sequence
@@ -261,7 +261,7 @@ serve(async (req: Request): Promise<Response> => {
 
         if (memberError) {
           console.error('Failed to add member:', memberError.message);
-          return internalErrorResponse();
+          return internalErrorResponse(req);
         }
 
         // 2. Mark invitation as accepted
@@ -286,7 +286,7 @@ serve(async (req: Request): Promise<Response> => {
           .eq('id', invitation.household_id)
           .single();
 
-        return jsonResponse({
+        return jsonResponse(req, {
           message: 'Invitation accepted',
           household_id: invitation.household_id,
           household_name: household?.name ?? 'Unknown',
@@ -295,10 +295,10 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       default:
-        return methodNotAllowedResponse();
+        return methodNotAllowedResponse(req);
     }
   } catch (err) {
     console.error('Household invite error:', (err as Error).message);
-    return internalErrorResponse();
+    return internalErrorResponse(req);
   }
 });

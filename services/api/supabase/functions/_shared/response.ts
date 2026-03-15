@@ -1,67 +1,83 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Standard JSON response helpers for Supabase Edge Functions (#98).
+ * Standard JSON response helpers for Supabase Edge Functions (#98, #353).
  *
- * Provides consistent response formatting with CORS headers included.
+ * Provides consistent response formatting with origin-validated CORS headers.
+ * All response helpers require the incoming Request so the correct
+ * Access-Control-Allow-Origin can be computed.
+ *
  * NEVER include raw financial data in error responses.
  */
 
-import { corsHeaders } from './cors.ts';
+import { getCorsHeaders } from './cors.ts';
 
 /** Standard success response with JSON body. */
-export function jsonResponse(data: Record<string, unknown>, status: number = 200): Response {
+export function jsonResponse(
+  request: Request,
+  data: Record<string, unknown>,
+  status: number = 200,
+): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...corsHeaders,
+      ...getCorsHeaders(request),
       'Content-Type': 'application/json',
     },
   });
 }
 
 /** Standard error response. */
-export function errorResponse(message: string, status: number = 400): Response {
+export function errorResponse(
+  request: Request,
+  message: string,
+  status: number = 400,
+): Response {
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers: {
-      ...corsHeaders,
+      ...getCorsHeaders(request),
       'Content-Type': 'application/json',
     },
   });
 }
 
 /** 201 Created response. */
-export function createdResponse(data: Record<string, unknown>): Response {
-  return jsonResponse(data, 201);
+export function createdResponse(
+  request: Request,
+  data: Record<string, unknown>,
+): Response {
+  return jsonResponse(request, data, 201);
 }
 
 /** 204 No Content response (for successful deletes, etc.). */
-export function noContentResponse(): Response {
+export function noContentResponse(request: Request): Response {
   return new Response(null, {
     status: 204,
-    headers: corsHeaders,
+    headers: getCorsHeaders(request),
   });
 }
 
 /** 405 Method Not Allowed response. */
-export function methodNotAllowedResponse(): Response {
-  return errorResponse('Method not allowed', 405);
+export function methodNotAllowedResponse(request: Request): Response {
+  return errorResponse(request, 'Method not allowed', 405);
 }
 
 /** 500 Internal Server Error response. Never include internal details. */
-export function internalErrorResponse(): Response {
-  return errorResponse('Internal server error', 500);
+export function internalErrorResponse(request: Request): Response {
+  return errorResponse(request, 'Internal server error', 500);
 }
 
 /**
  * Streaming response for large datasets (data export).
  *
+ * @param request The incoming request (for CORS headers).
  * @param stream A ReadableStream of the response body.
  * @param contentType The MIME type of the response.
  * @param filename Suggested filename for the Content-Disposition header.
  */
 export function streamingResponse(
+  request: Request,
   stream: ReadableStream,
   contentType: string,
   filename: string,
@@ -69,7 +85,7 @@ export function streamingResponse(
   return new Response(stream, {
     status: 200,
     headers: {
-      ...corsHeaders,
+      ...getCorsHeaders(request),
       'Content-Type': contentType,
       'Content-Disposition': `attachment; filename="${filename}"`,
       'Transfer-Encoding': 'chunked',

@@ -22,16 +22,12 @@ import {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from 'https://esm.sh/@simplewebauthn/server@9.0.3';
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import type {
   AuthenticatorTransportFuture,
   VerifiedAuthenticationResponse,
 } from 'https://esm.sh/@simplewebauthn/server@9.0.3';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 
 interface StoredCredential {
   id: string;
@@ -45,13 +41,13 @@ interface StoredCredential {
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return handleCorsPreflightRequest(req);
   }
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 
@@ -127,7 +123,7 @@ serve(async (req: Request): Promise<Response> => {
 
       return new Response(JSON.stringify(authenticationOptions), {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     } else if (step === 'verify') {
       // Step 2: Verify authentication response
@@ -137,7 +133,7 @@ serve(async (req: Request): Promise<Response> => {
       if (!credentialId) {
         return new Response(JSON.stringify({ error: 'Missing credential ID' }), {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         });
       }
 
@@ -152,7 +148,7 @@ serve(async (req: Request): Promise<Response> => {
       if (credError || !storedCred) {
         return new Response(JSON.stringify({ error: 'Credential not found' }), {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         });
       }
 
@@ -170,7 +166,7 @@ serve(async (req: Request): Promise<Response> => {
       if (!challenges || challenges.length === 0) {
         return new Response(JSON.stringify({ error: 'No valid challenge found' }), {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         });
       }
 
@@ -196,7 +192,7 @@ serve(async (req: Request): Promise<Response> => {
       if (!verification.verified) {
         return new Response(JSON.stringify({ error: 'Authentication verification failed' }), {
           status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         });
       }
 
@@ -233,7 +229,7 @@ serve(async (req: Request): Promise<Response> => {
         }),
         {
           status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         },
       );
     } else {
@@ -243,7 +239,7 @@ serve(async (req: Request): Promise<Response> => {
         }),
         {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         },
       );
     }
@@ -251,7 +247,7 @@ serve(async (req: Request): Promise<Response> => {
     console.error('Passkey authentication error:', (err as Error).message);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 });
