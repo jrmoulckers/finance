@@ -3,6 +3,7 @@
 package com.finance.android.data.repository.mock
 
 import com.finance.android.data.repository.GoalRepository
+import com.finance.android.ui.data.SampleData
 import com.finance.models.Goal
 import com.finance.models.GoalStatus
 import com.finance.models.types.Cents
@@ -14,16 +15,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.datetime.Clock
 
 /**
- * In-memory [GoalRepository] with no initial data.
+ * In-memory [GoalRepository] seeded with [SampleData.goals].
  *
- * Goals are not yet present in [SampleData], so this starts empty.
  * Supports basic CRUD by mutating an internal list and re-emitting the [Flow].
  * Intended for development, previews, and testing until a real database layer
  * (e.g. SQLDelight) is wired up.
  */
 class MockGoalRepository : GoalRepository {
 
-    private val _goals = MutableStateFlow<List<Goal>>(emptyList())
+    private val _goals = MutableStateFlow(SampleData.goals)
 
     override fun getAll(): Flow<List<Goal>> =
         _goals.map { list -> list.filter { it.deletedAt == null } }
