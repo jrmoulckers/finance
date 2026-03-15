@@ -1,94 +1,284 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React from 'react';
-import { DataExport } from '../components/DataExport';
+import React, { useCallback, useEffect, useState } from 'react';
 
-export const SettingsPage: React.FC = () => (
-  <>
-    <h2
-      style={{
-        fontSize: 'var(--type-scale-headline-font-size)',
-        fontWeight: 'var(--type-scale-headline-font-weight)',
-        marginBottom: 'var(--spacing-6)',
-      }}
-    >
-      Settings
-    </h2>
-    <section aria-label="Preferences" className="page-section">
-      <div className="settings-group">
-        <h3 className="settings-group__title">Preferences</h3>
-        <div className="settings-item" role="button" tabIndex={0}>
-          <span className="settings-item__label">Currency</span>
-          <span className="settings-item__value">USD ($)</span>
+import { useAuth } from '../auth/auth-context';
+import { DataExport } from '../components/DataExport';
+import { useOfflineStatus } from '../hooks/useOfflineStatus';
+
+const APP_VERSION = '0.1.0';
+const THEME_STORAGE_KEY = 'finance-theme';
+const CURRENCY_STORAGE_KEY = 'finance-currency';
+const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
+
+type ThemePreference = 'light' | 'dark' | 'system';
+type CurrencyPreference = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
+
+const currencyOptions: Array<{ value: CurrencyPreference; label: string }> = [
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'GBP', label: 'GBP (£)' },
+  { value: 'CAD', label: 'CAD (C$)' },
+  { value: 'AUD', label: 'AUD (A$)' },
+  { value: 'JPY', label: 'JPY (¥)' },
+];
+
+function getSystemThemeMediaQuery(): MediaQueryList | null {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return null;
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)');
+}
+
+function applyThemePreference(theme: ThemePreference): void {
+  const root = document.documentElement;
+
+  if (theme === 'light') {
+    root.classList.remove('dark');
+    root.setAttribute('data-theme', 'light');
+    return;
+  }
+
+  if (theme === 'dark') {
+    root.classList.add('dark');
+    root.setAttribute('data-theme', 'dark');
+    return;
+  }
+
+  const prefersDark = getSystemThemeMediaQuery()?.matches ?? false;
+  root.classList.toggle('dark', prefersDark);
+  root.removeAttribute('data-theme');
+}
+
+/**
+ * Settings page for managing local web-app preferences and account actions.
+ */
+export const SettingsPage: React.FC = () => {
+  const [theme, setTheme] = useState<ThemePreference>(
+    () => (localStorage.getItem(THEME_STORAGE_KEY) as ThemePreference) || 'system',
+  );
+  const [currency, setCurrency] = useState<CurrencyPreference>(
+    () => (localStorage.getItem(CURRENCY_STORAGE_KEY) as CurrencyPreference) || 'USD',
+  );
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    () => localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) !== 'false',
+  );
+
+  const { isAuthenticated, isLoading, logout, user } = useAuth();
+  const { isOffline } = useOfflineStatus();
+
+  const handleThemeChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextTheme = event.target.value as ThemePreference;
+    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    setTheme(nextTheme);
+  }, []);
+
+  const handleCurrencyChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextCurrency = event.target.value as CurrencyPreference;
+    localStorage.setItem(CURRENCY_STORAGE_KEY, nextCurrency);
+    setCurrency(nextCurrency);
+  }, []);
+
+  const handleNotificationsChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const nextNotificationsEnabled = event.target.checked;
+      localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, String(nextNotificationsEnabled));
+      setNotificationsEnabled(nextNotificationsEnabled);
+    },
+    [],
+  );
+
+  const handleComingSoon = useCallback((message: string) => {
+    window.alert(message);
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    if (!isAuthenticated || isLoading) {
+      return;
+    }
+
+    const confirmed = window.confirm('Are you sure you want to sign out?');
+    if (!confirmed) {
+      return;
+    }
+
+    await logout();
+  }, [isAuthenticated, isLoading, logout]);
+
+  useEffect(() => {
+    applyThemePreference(theme);
+
+    if (theme !== 'system') {
+      return undefined;
+    }
+
+    const mediaQuery = getSystemThemeMediaQuery();
+    if (!mediaQuery) {
+      return undefined;
+    }
+
+    const handleChange = () => {
+      applyThemePreference('system');
+    };
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, [theme]);
+
+  return (
+    <>
+      <h2
+        style={{
+          fontSize: 'var(--type-scale-headline-font-size)',
+          fontWeight: 'var(--type-scale-headline-font-weight)',
+          marginBottom: 'var(--spacing-6)',
+        }}
+      >
+        Settings
+      </h2>
+      <section aria-label="Preferences" className="page-section">
+        <div className="settings-group">
+          <h3 className="settings-group__title">Preferences</h3>
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-currency">
+              Currency
+            </label>
+            <div className="settings-item__control">
+              <select
+                id="settings-currency"
+                aria-label="Currency"
+                className="settings-item__select"
+                value={currency}
+                onChange={handleCurrencyChange}
+              >
+                {currencyOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-theme">
+              Theme
+            </label>
+            <div className="settings-item__control">
+              <select
+                id="settings-theme"
+                aria-label="Theme"
+                className="settings-item__select"
+                value={theme}
+                onChange={handleThemeChange}
+              >
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+          </div>
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="s-notif">
+              Notifications
+            </label>
+            <input
+              type="checkbox"
+              id="s-notif"
+              checked={notificationsEnabled}
+              onChange={handleNotificationsChange}
+              aria-label="Notifications"
+              className="settings-item__checkbox"
+            />
+          </div>
         </div>
-        <div className="settings-item" role="button" tabIndex={0}>
-          <span className="settings-item__label">Theme</span>
-          <span className="settings-item__value">System</span>
-        </div>
-        <div className="settings-item">
-          <label className="settings-item__label" htmlFor="s-notif">
-            Notifications
-          </label>
-          <input
-            type="checkbox"
-            id="s-notif"
-            defaultChecked
-            style={{
-              width: '20px',
-              height: '20px',
-              accentColor: 'var(--semantic-interactive-default)',
+      </section>
+      <section aria-label="Security" className="page-section">
+        <div className="settings-group">
+          <h3 className="settings-group__title">Security</h3>
+          <div className="settings-item settings-item--static">
+            <span className="settings-item__label">Account</span>
+            <span className="settings-item__value">{isAuthenticated ? user?.email ?? 'Not signed in' : 'Not signed in'}</span>
+          </div>
+          <button
+            type="button"
+            className="settings-item settings-item--button"
+            onClick={() => handleComingSoon('Biometric lock settings are coming soon.')}
+          >
+            <span className="settings-item__label">Biometric Lock</span>
+            <span className="settings-item__value">Off</span>
+          </button>
+          <button
+            type="button"
+            className="settings-item settings-item--button"
+            onClick={() => handleComingSoon('Passkey management is coming soon.')}
+          >
+            <span className="settings-item__label">Passkeys</span>
+            <span className="settings-item__value">{user?.hasPasskey ? 'Registered' : 'Not set up'}</span>
+          </button>
+          <button
+            type="button"
+            className="settings-item settings-item--button"
+            onClick={() => {
+              void handleSignOut();
             }}
-          />
+            disabled={!isAuthenticated || isLoading}
+            aria-label="Sign out"
+          >
+            <span className="settings-item__label">Sign Out</span>
+            <span className="settings-item__value">&rarr;</span>
+          </button>
         </div>
-      </div>
-    </section>
-    <section aria-label="Security" className="page-section">
-      <div className="settings-group">
-        <h3 className="settings-group__title">Security</h3>
-        <div className="settings-item" role="button" tabIndex={0}>
-          <span className="settings-item__label">Biometric Lock</span>
-          <span className="settings-item__value">Off</span>
+      </section>
+      <section aria-label="Data" className="page-section">
+        <div className="settings-group">
+          <h3 className="settings-group__title">Data</h3>
+          <DataExport />
+          <div className="settings-item settings-item--static" aria-live="polite">
+            <span className="settings-item__label">Sync Status</span>
+            <span className="settings-item__status">
+              <span
+                aria-hidden="true"
+                className={`settings-item__status-dot ${isOffline ? 'settings-item__status-dot--offline' : 'settings-item__status-dot--online'}`}
+              />
+              <span className="settings-item__value">
+                {isOffline ? 'Offline — changes saved locally' : 'Online — synced'}
+              </span>
+            </span>
+          </div>
         </div>
-        <div className="settings-item" role="button" tabIndex={0}>
-          <span className="settings-item__label">Passkeys</span>
-          <span className="settings-item__value">Not set up</span>
+      </section>
+      <section aria-label="About" className="page-section">
+        <div className="settings-group">
+          <h3 className="settings-group__title">About</h3>
+          <div className="settings-item settings-item--static">
+            <span className="settings-item__label">Version</span>
+            <span className="settings-item__value">{APP_VERSION}</span>
+          </div>
         </div>
-      </div>
-    </section>
-    <section aria-label="Data" className="page-section">
-      <div className="settings-group">
-        <h3 className="settings-group__title">Data</h3>
-        <DataExport />
-        <div className="settings-item" role="button" tabIndex={0}>
-          <span className="settings-item__label">Sync Status</span>
-          <span className="settings-item__value">Up to date</span>
+      </section>
+      <section aria-label="Danger zone" className="page-section">
+        <div className="settings-group">
+          <h3 className="settings-group__title" style={{ color: 'var(--semantic-status-negative)' }}>
+            Danger Zone
+          </h3>
+          <button
+            type="button"
+            className="settings-item settings-item--button settings-item--destructive"
+            onClick={() => handleComingSoon('Account deletion is coming soon.')}
+            aria-label="Delete all data"
+          >
+            <span className="settings-item__label">Delete All Data</span>
+          </button>
         </div>
-      </div>
-    </section>
-    <section aria-label="About" className="page-section">
-      <div className="settings-group">
-        <h3 className="settings-group__title">About</h3>
-        <div className="settings-item">
-          <span className="settings-item__label">Version</span>
-          <span className="settings-item__value">0.1.0</span>
-        </div>
-      </div>
-    </section>
-    <section aria-label="Danger zone" className="page-section">
-      <div className="settings-group">
-        <h3 className="settings-group__title" style={{ color: 'var(--semantic-status-negative)' }}>
-          Danger Zone
-        </h3>
-        <div
-          className="settings-item settings-item--destructive"
-          role="button"
-          tabIndex={0}
-          aria-label="Delete all data"
-        >
-          <span className="settings-item__label">Delete All Data</span>
-        </div>
-      </div>
-    </section>
-  </>
-);
+      </section>
+    </>
+  );
+};
+
 export default SettingsPage;

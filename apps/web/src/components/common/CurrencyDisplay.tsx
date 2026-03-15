@@ -21,6 +21,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   className = '',
   'aria-label': ariaLabel,
 }) => {
+  const amountInMajorUnits = amount / 100;
   const formatter = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
@@ -29,14 +30,15 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
     signDisplay: showSign ? 'exceptZero' : 'auto',
   });
 
-  const formatted = formatter.format(amount);
+  const formatted = formatter.format(amountInMajorUnits);
   let colorClass = '';
   if (colorize) {
     if (amount > 0) colorClass = 'amount--positive';
     else if (amount < 0) colorClass = 'amount--negative';
   }
 
-  const label = ariaLabel ?? (amount < 0 ? 'negative ' : '') + formatter.format(Math.abs(amount));
+  const label =
+    ariaLabel ?? (amount < 0 ? 'negative ' : '') + formatter.format(Math.abs(amountInMajorUnits));
 
   return (
     <span className={`currency-display ${colorClass} ${className}`.trim()} aria-label={label}>

@@ -1,38 +1,29 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
-import { CurrencyDisplay, EmptyState } from '../components/common';
-interface Goal {
-  id: string;
-  name: string;
-  target: number;
-  current: number;
-  date: string;
-  icon: string;
+import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { useGoals } from '../hooks';
+
+function getGoalIcon(iconName: string | null | undefined): string {
+  switch (iconName) {
+    case 'shield':
+      return '🛡️';
+    case 'plane':
+      return '✈️';
+    case 'home':
+      return '🏡';
+    case 'laptop':
+      return '💻';
+    default:
+      return '🎯';
+  }
 }
+
 export const GoalsPage: React.FC = () => {
-  const goals: Goal[] = [
-    {
-      id: 'g1',
-      name: 'Emergency Fund',
-      target: 20000,
-      current: 15000,
-      date: '2025-12-31',
-      icon: '🛡️',
-    },
-    { id: 'g2', name: 'Vacation', target: 5000, current: 2400, date: '2025-09-01', icon: '✈️' },
-    { id: 'g3', name: 'New Laptop', target: 2000, current: 850, date: '2025-06-15', icon: '💻' },
-    {
-      id: 'g4',
-      name: 'Down Payment',
-      target: 60000,
-      current: 12000,
-      date: '2027-01-01',
-      icon: '🏡',
-    },
-  ];
-  const tt = goals.reduce((s, g) => s + g.target, 0),
-    tc = goals.reduce((s, g) => s + g.current, 0);
+  const { goals, loading, error, refresh } = useGoals();
+  const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount.amount, 0);
+  const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount.amount, 0);
+
   return (
     <>
       <h2
@@ -44,116 +35,170 @@ export const GoalsPage: React.FC = () => {
       >
         Goals
       </h2>
-      <section className="page-section" aria-label="Goals summary">
-        <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 'var(--spacing-4)',
-            }}
-          >
-            <div>
-              <p className="card__title">Goals</p>
-              <p className="card__value">{goals.length}</p>
-            </div>
-            <div>
-              <p className="card__title">Saved</p>
-              <p className="card__value">
-                <CurrencyDisplay amount={tc} />
-              </p>
-            </div>
-            <div>
-              <p className="card__title">Target</p>
-              <p className="card__value">
-                <CurrencyDisplay amount={tt} />
-              </p>
-            </div>
-          </div>
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
+          <LoadingSpinner label="Loading goals" />
         </div>
-      </section>
-      {goals.length === 0 ? (
-        <EmptyState title="No goals yet" description="Set a savings goal." />
+      ) : error ? (
+        <ErrorBanner message={error} onRetry={refresh} />
+      ) : goals.length === 0 ? (
+        <EmptyState
+          title="No goals yet"
+          description="Create a savings goal to track progress toward something important."
+        />
       ) : (
-        <section aria-label="Goal list">
-          <div className="card-grid">
-            {goals.map((g) => {
-              const p = Math.round((g.current / g.target) * 100),
-                rem = g.target - g.current,
-                st = p >= 50 ? 'positive' : p >= 25 ? 'warning' : 'negative',
-                td = new Date(g.date + 'T00:00:00'),
-                dl = Math.max(0, Math.ceil((td.getTime() - Date.now()) / 86400000));
-              return (
-                <article key={g.id} className="card" aria-label={`${g.name}: ${p}%`}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      marginBottom: 'var(--spacing-3)',
-                    }}
+        <>
+          <section className="page-section" aria-label="Goals summary">
+            <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 'var(--spacing-4)',
+                }}
+              >
+                <div>
+                  <p className="card__title">Goals</p>
+                  <p className="card__value">{goals.length}</p>
+                </div>
+                <div>
+                  <p className="card__title">Saved</p>
+                  <p className="card__value">
+                    <CurrencyDisplay amount={totalSaved} />
+                  </p>
+                </div>
+                <div>
+                  <p className="card__title">Target</p>
+                  <p className="card__value">
+                    <CurrencyDisplay amount={totalTarget} />
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section aria-label="Goal list">
+            <div className="card-grid">
+              {goals.map((goal) => {
+                const percentComplete =
+                  goal.targetAmount.amount > 0
+                    ? Math.round((goal.currentAmount.amount / goal.targetAmount.amount) * 100)
+                    : 0;
+                const remainingAmount = Math.max(
+                  goal.targetAmount.amount - goal.currentAmount.amount,
+                  0,
+                );
+                const statusTone =
+                  percentComplete >= 100
+                    ? 'positive'
+                    : percentComplete >= 50
+                      ? 'positive'
+                      : percentComplete >= 25
+                        ? 'warning'
+                        : 'negative';
+                const targetDate = goal.targetDate ? new Date(`${goal.targetDate}T00:00:00`) : null;
+                const daysLeft =
+                  targetDate === null
+                    ? null
+                    : Math.max(0, Math.ceil((targetDate.getTime() - Date.now()) / 86400000));
+
+                return (
+                  <article
+                    key={goal.id}
+                    className="card"
+                    aria-label={`${goal.name}: ${percentComplete}%`}
                   >
-                    <h3 style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                      <span aria-hidden="true">{g.icon}</span> {g.name}
-                    </h3>
-                    <span
+                    <div
                       style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        marginBottom: 'var(--spacing-3)',
+                      }}
+                    >
+                      <h3 style={{ fontWeight: 'var(--font-weight-semibold)' }}>
+                        <span aria-hidden="true">{getGoalIcon(goal.icon)}</span> {goal.name}
+                      </h3>
+                      <span
+                        style={{
+                          fontSize: 'var(--type-scale-caption-font-size)',
+                          color: 'var(--semantic-text-secondary)',
+                        }}
+                      >
+                        {targetDate !== null
+                          ? targetDate.toLocaleDateString('en-US', {
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                          : 'No target date'}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        marginBottom: 'var(--spacing-2)',
+                      }}
+                    >
+                      <CurrencyDisplay
+                        amount={goal.currentAmount.amount}
+                        currency={goal.currency.code}
+                      />
+                      <CurrencyDisplay
+                        amount={goal.targetAmount.amount}
+                        currency={goal.currency.code}
+                      />
+                    </div>
+                    <div
+                      className="progress-bar"
+                      role="progressbar"
+                      aria-valuenow={Math.min(percentComplete, 100)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <div
+                        className={`progress-bar__fill progress-bar__fill--${statusTone}`}
+                        style={{ width: `${Math.min(percentComplete, 100)}%` }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        marginTop: 'var(--spacing-2)',
                         fontSize: 'var(--type-scale-caption-font-size)',
                         color: 'var(--semantic-text-secondary)',
                       }}
                     >
-                      {td.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      marginBottom: 'var(--spacing-2)',
-                    }}
-                  >
-                    <CurrencyDisplay amount={g.current} />
-                    <CurrencyDisplay amount={g.target} />
-                  </div>
-                  <div
-                    className="progress-bar"
-                    role="progressbar"
-                    aria-valuenow={Math.min(p, 100)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <div
-                      className={`progress-bar__fill progress-bar__fill--${st}`}
-                      style={{ width: `${Math.min(p, 100)}%` }}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      marginTop: 'var(--spacing-2)',
-                      fontSize: 'var(--type-scale-caption-font-size)',
-                      color: 'var(--semantic-text-secondary)',
-                    }}
-                  >
-                    <span>
-                      {p >= 100 ? (
-                        'Goal reached!'
-                      ) : (
-                        <>
-                          <CurrencyDisplay amount={rem} /> to go
-                        </>
-                      )}
-                    </span>
-                    <span>{dl > 0 ? dl + ' days left' : 'Past due'}</span>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
+                      <span>
+                        {percentComplete >= 100 ? (
+                          'Goal reached!'
+                        ) : (
+                          <>
+                            <CurrencyDisplay
+                              amount={remainingAmount}
+                              currency={goal.currency.code}
+                            />{' '}
+                            to go
+                          </>
+                        )}
+                      </span>
+                      <span>
+                        {daysLeft === null
+                          ? 'No due date'
+                          : daysLeft > 0
+                            ? `${daysLeft} days left`
+                            : 'Past due'}
+                      </span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </>
       )}
     </>
   );
 };
+
 export default GoalsPage;

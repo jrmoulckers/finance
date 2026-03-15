@@ -405,15 +405,35 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--spacing-3);
+  width: 100%;
   padding: var(--spacing-3) var(--card-padding);
+  border: none;
   border-bottom: 1px solid var(--semantic-border-default);
-  cursor: pointer;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 .settings-item:last-child {
   border-bottom: none;
 }
-.settings-item:hover {
+.settings-item--button {
+  cursor: pointer;
+}
+.settings-item--button:hover:not(:disabled) {
   background: var(--semantic-background-secondary);
+}
+.settings-item--button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.settings-item--static {
+  cursor: default;
+}
+.settings-item:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: -2px;
 }
 .settings-item__label {
   color: var(--semantic-text-primary);
@@ -421,7 +441,46 @@
 .settings-item__value {
   color: var(--semantic-text-secondary);
 }
-.settings-item--destructive .settings-item__label {
+.settings-item__control,
+.settings-item__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+}
+.settings-item__select {
+  min-width: 8rem;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font: inherit;
+}
+.settings-item__select:focus-visible,
+.settings-item__checkbox:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+.settings-item__checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--semantic-interactive-default);
+}
+.settings-item__status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.settings-item__status-dot--online {
+  background: var(--semantic-status-positive);
+}
+.settings-item__status-dot--offline {
+  background: var(--semantic-status-warning);
+}
+.settings-item--destructive .settings-item__label,
+.settings-item--destructive .settings-item__value {
   color: var(--semantic-status-negative);
 }
 @media (min-width: 768px) {

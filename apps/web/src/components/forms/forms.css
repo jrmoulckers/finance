@@ -1,0 +1,381 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the account and transaction creation forms.
+ *
+ * Uses CSS custom properties from the design-tokens package for consistent
+ * theming. Provides layout, input styling, error states, button groups,
+ * dialog overlay, responsive stacking, dark mode, reduced motion, and
+ * high-contrast adaptations.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Dialog / modal overlay
+ * ------------------------------------------------------------------------- */
+
+.form-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-4);
+}
+
+.form-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: -1;
+}
+
+.form-dialog__panel {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100dvh - var(--spacing-8));
+  overflow-y: auto;
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-lg, var(--border-radius-md));
+  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.15));
+  padding: var(--spacing-6);
+  animation: form-dialog-enter var(--duration-normal, 200ms) var(--easing-out, ease-out);
+}
+
+@keyframes form-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Form layout
+ * ------------------------------------------------------------------------- */
+
+.form-dialog__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin-bottom: var(--spacing-5);
+}
+
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+/* ---------------------------------------------------------------------------
+ * Form groups (label + input + error)
+ * ------------------------------------------------------------------------- */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.form-group__label {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+.form-group__label--required::after {
+  content: ' *';
+  color: var(--semantic-status-negative);
+}
+
+/* ---------------------------------------------------------------------------
+ * Inputs, selects, textareas
+ * ------------------------------------------------------------------------- */
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: var(--input-padding-y, 0.5rem) var(--input-padding-x, 0.75rem);
+  border: 1px solid var(--input-border, var(--semantic-border-default));
+  border-radius: var(--input-border-radius, var(--border-radius-md));
+  background: var(--input-background, var(--semantic-background-primary));
+  color: var(--input-text, var(--semantic-text-primary));
+  font-size: var(--type-scale-body-font-size);
+  font-family: inherit;
+  line-height: var(--line-height-normal);
+  transition: border-color var(--duration-fast, 100ms) ease,
+              box-shadow var(--duration-fast, 100ms) ease;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--input-border-focus, var(--semantic-border-focus));
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.form-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.25rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Error state
+ * ------------------------------------------------------------------------- */
+
+.form-input--error,
+.form-select--error,
+.form-textarea--error {
+  border-color: var(--semantic-border-error, var(--semantic-status-negative));
+}
+
+.form-input--error:focus,
+.form-select--error:focus,
+.form-textarea--error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.form-error {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-status-negative);
+  min-height: 1.25em;
+}
+
+.form-error[role='alert'] {
+  font-weight: var(--font-weight-medium);
+}
+
+/* ---------------------------------------------------------------------------
+ * Radio group (fieldset)
+ * ------------------------------------------------------------------------- */
+
+.form-radio-group {
+  border: none;
+  padding: 0;
+}
+
+.form-radio-group__legend {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+  margin-bottom: var(--spacing-2);
+}
+
+.form-radio-group__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+.form-radio-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  cursor: pointer;
+}
+
+.form-radio-option input[type='radio'] {
+  accent-color: var(--semantic-interactive-default);
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
+.form-radio-option__label {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Button group
+ * ------------------------------------------------------------------------- */
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-5);
+}
+
+.form-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-5);
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-md);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 100ms) ease,
+              opacity var(--duration-fast, 100ms) ease;
+  min-height: 40px;
+}
+
+.form-button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.form-button--primary {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  border-color: var(--semantic-interactive-default);
+}
+
+.form-button--primary:hover:not(:disabled) {
+  background: var(--semantic-interactive-hover);
+  border-color: var(--semantic-interactive-hover);
+}
+
+.form-button--primary:active:not(:disabled) {
+  background: var(--semantic-interactive-pressed);
+  border-color: var(--semantic-interactive-pressed);
+}
+
+.form-button--secondary {
+  background: transparent;
+  color: var(--semantic-text-primary);
+  border-color: var(--semantic-border-default);
+}
+
+.form-button--secondary:hover:not(:disabled) {
+  background: var(--semantic-background-secondary);
+}
+
+.form-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+ * Form-level error banner
+ * ------------------------------------------------------------------------- */
+
+.form-banner-error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  background: var(--color-red-50, #fef2f2);
+  border: 1px solid var(--semantic-status-negative);
+  border-radius: var(--border-radius-md);
+  color: var(--semantic-status-negative);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ---------------------------------------------------------------------------
+ * Responsive: stack on small screens
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .form-dialog__panel {
+    max-width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+    padding: var(--spacing-4);
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .form-button {
+    width: 100%;
+  }
+
+  .form-radio-group__options {
+    flex-direction: column;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .form-dialog__backdrop {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  html:not([data-theme='light']) .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23aaa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  html:not([data-theme='light']) .form-banner-error {
+    background: rgba(239, 68, 68, 0.1);
+  }
+}
+
+[data-theme='dark'] .form-dialog__backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+[data-theme='dark'] .form-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23aaa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+[data-theme='dark'] .form-banner-error {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .form-dialog__panel {
+    animation: none;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea,
+  .form-button {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .form-input,
+  .form-select,
+  .form-textarea {
+    border-width: 2px;
+  }
+
+  .form-input--error,
+  .form-select--error,
+  .form-textarea--error {
+    border-width: 2px;
+  }
+
+  .form-dialog__panel {
+    border-width: 2px;
+  }
+
+  .form-button {
+    border-width: 2px;
+  }
+}

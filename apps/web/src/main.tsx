@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
+import { DatabaseProvider } from './db/DatabaseProvider';
 import './theme/tokens.css';
 import './styles/responsive.css';
 
@@ -15,8 +16,10 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <DatabaseProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </DatabaseProvider>
   </StrictMode>,
 );
