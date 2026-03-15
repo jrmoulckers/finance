@@ -71,3 +71,12 @@ SELECT * FROM account WHERE is_synced = 0;
 
 markSynced:
 UPDATE account SET is_synced = 1, sync_version = ? WHERE id = ?;
+
+selectUnsyncedByHousehold:
+SELECT * FROM account WHERE household_id = ? AND is_synced = 0;
+
+markSyncedById:
+UPDATE account SET is_synced = 1 WHERE id = ?;
+
+archive:
+UPDATE account SET is_archived = 1, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;

@@ -81,3 +81,9 @@ SELECT * FROM goal WHERE is_synced = 0;
 
 markSynced:
 UPDATE goal SET is_synced = 1, sync_version = ? WHERE id = ?;
+
+selectUnsyncedByHousehold:
+SELECT * FROM goal WHERE household_id = ? AND is_synced = 0;
+
+markSyncedById:
+UPDATE goal SET is_synced = 1 WHERE id = ?;

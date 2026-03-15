@@ -114,3 +114,9 @@ SELECT * FROM "transaction" WHERE is_synced = 0;
 
 markSynced:
 UPDATE "transaction" SET is_synced = 1, sync_version = ? WHERE id = ?;
+
+selectUnsyncedByHousehold:
+SELECT * FROM "transaction" WHERE household_id = ? AND is_synced = 0;
+
+markSyncedById:
+UPDATE "transaction" SET is_synced = 1 WHERE id = ?;

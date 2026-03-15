@@ -75,3 +75,9 @@ SELECT * FROM budget WHERE is_synced = 0;
 
 markSynced:
 UPDATE budget SET is_synced = 1, sync_version = ? WHERE id = ?;
+
+selectUnsyncedByHousehold:
+SELECT * FROM budget WHERE household_id = ? AND is_synced = 0;
+
+markSyncedById:
+UPDATE budget SET is_synced = 1 WHERE id = ?;
