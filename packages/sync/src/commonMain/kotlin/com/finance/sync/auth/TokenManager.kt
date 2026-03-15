@@ -115,6 +115,41 @@ class TokenManager(
         val nowMillis = clock.now().toEpochMilliseconds()
         return maxOf(0L, refreshAtMillis - nowMillis)
     }
+
+    /**
+     * Retrieve a valid (non-expired) access token from storage.
+     *
+     * Returns `null` if no session is stored or the stored session's
+     * access token has expired.
+     *
+     * @return The access token string, or `null` if unavailable or expired.
+     */
+    suspend fun getValidToken(): String? {
+        val session = retrieveTokens() ?: return null
+        return if (!isTokenExpired(session)) session.accessToken else null
+    }
+
+    /**
+     * Persist an [AuthSession] to secure storage.
+     *
+     * Convenience suspend wrapper around [storeTokens] for use in
+     * coroutine-based auth flows.
+     *
+     * @param session The session to persist.
+     */
+    suspend fun storeSession(session: AuthSession) {
+        storeTokens(session)
+    }
+
+    /**
+     * Clear all stored session data.
+     *
+     * Convenience suspend wrapper around [clearTokens] for use in
+     * coroutine-based auth flows.
+     */
+    suspend fun clearSession() {
+        clearTokens()
+    }
 }
 
 /**

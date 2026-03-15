@@ -3,6 +3,7 @@
 package com.finance.sync.auth
 
 import com.finance.sync.SyncCredentials
+import com.finance.sync.auth.OAuthProvider
 import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertFalse
@@ -71,7 +72,7 @@ class ToStringSecurityTest {
     @Test
     fun oauth_toString_masks_authCode_and_codeVerifier() {
         val creds = AuthCredentials.OAuth(
-            provider = "google",
+            provider = OAuthProvider.GOOGLE,
             authCode = "4/0AX4XfWjSecretAuthCode",
             codeVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
         )
@@ -80,7 +81,7 @@ class ToStringSecurityTest {
         assertFalse(str.contains("4/0AX4XfWjSecretAuthCode"), "authCode must not appear in toString()")
         assertFalse(str.contains("dBjftJeZ4CVP"), "codeVerifier must not appear in toString()")
         assertTrue(str.contains("*****"), "toString() must contain masked placeholder")
-        assertTrue(str.contains("google"), "provider must appear in toString()")
+        assertTrue(str.contains("GOOGLE"), "provider must appear in toString()")
     }
 
     // ── AuthCredentials.Passkey ─────────────────────────────────────

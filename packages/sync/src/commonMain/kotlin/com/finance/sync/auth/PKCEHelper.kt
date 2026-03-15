@@ -71,6 +71,22 @@ object PKCEHelper {
     }
 
     /**
+     * Generate a cryptographically random `state` parameter for OAuth flows.
+     *
+     * The state parameter is used to prevent CSRF attacks. It is a
+     * random string sent to the authorization server and echoed back
+     * in the callback, where the client verifies it matches.
+     *
+     * @param length Desired length of the state string. Defaults to 32.
+     * @return A random base64url-safe string.
+     */
+    fun generateState(length: Int = 32): String {
+        require(length > 0) { "State length must be positive, got $length" }
+        val randomBytes = PlatformSHA256.randomBytes(length)
+        return base64UrlEncode(randomBytes).take(length)
+    }
+
+    /**
      * Base64url encode without padding (RFC 4648 §5).
      *
      * Standard base64 with `+` → `-`, `/` → `_`, and trailing `=` removed.
