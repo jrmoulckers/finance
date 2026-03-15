@@ -1,0 +1,456 @@
+/* Localizable.strings — Finance (English, Base)
+   SPDX-License-Identifier: BUSL-1.1
+
+   All user-facing strings for the Finance iOS app.
+   Keys match the literal values passed to String(localized:) in source code.
+   For interpolated strings the compiler-generated format-specifier key is used
+   (e.g. %@ for String, %lld for Int).
+
+   Organized by screen / feature area with comment headers.
+*/
+
+
+/* ==========================================================================
+   App — Root / ContentView
+   ========================================================================== */
+
+"Finance" = "Finance";
+"Your financial life, unified." = "Your financial life, unified.";
+"SwiftUI + KMP — coming soon" = "SwiftUI + KMP — coming soon";
+
+
+/* ==========================================================================
+   Navigation — MainTabView (Tab Titles)
+   ========================================================================== */
+
+"Dashboard" = "Dashboard";
+"Accounts" = "Accounts";
+"Transactions" = "Transactions";
+"Budgets" = "Budgets";
+"Goals" = "Goals";
+
+/* Tab accessibility hints */
+"Shows your financial overview" = "Shows your financial overview";
+"Shows your accounts grouped by type" = "Shows your accounts grouped by type";
+"Shows all your transactions" = "Shows all your transactions";
+"Shows your budget categories and spending" = "Shows your budget categories and spending";
+"Shows your financial goals and progress" = "Shows your financial goals and progress";
+
+
+/* ==========================================================================
+   Dashboard Screen
+   ========================================================================== */
+
+"Net Worth" = "Net Worth";
+"This Month" = "This Month";
+"Income" = "Income";
+"Expenses" = "Expenses";
+"Net" = "Net";
+"Budget Health" = "Budget Health";
+"Recent Transactions" = "Recent Transactions";
+"See All" = "See All";
+"No Recent Transactions" = "No Recent Transactions";
+"Your latest transactions will appear here." = "Your latest transactions will appear here.";
+
+/* Dashboard accessibility */
+"Monthly spending summary" = "Monthly spending summary";
+"See all transactions" = "See all transactions";
+"Opens the full transactions list" = "Opens the full transactions list";
+"%lld percent of budget used" = "%lld percent of budget used";
+
+
+/* ==========================================================================
+   Accounts Screen
+   ========================================================================== */
+
+/* Account type display names */
+"Checking" = "Checking";
+"Savings" = "Savings";
+"Credit Cards" = "Credit Cards";
+"Cash" = "Cash";
+"Investments" = "Investments";
+"Loans" = "Loans";
+"Other" = "Other";
+
+/* Empty state */
+"No Accounts" = "No Accounts";
+"Add your first account to start tracking your finances." = "Add your first account to start tracking your finances.";
+
+/* Actions and toolbar */
+"Add Account" = "Add Account";
+"Add account" = "Add account";
+"Delete" = "Delete";
+
+/* Placeholder form */
+"Account creation will be connected to KMP shared logic." = "Account creation will be connected to KMP shared logic.";
+
+/* Accounts accessibility */
+"Opens a form to create a new account" = "Opens a form to create a new account";
+"Delete %@" = "Delete %@";
+"Shows account details and transaction history" = "Shows account details and transaction history";
+"Dismisses the add account form" = "Dismisses the add account form";
+
+
+/* ==========================================================================
+   Account Detail Screen
+   ========================================================================== */
+
+"Current Balance" = "Current Balance";
+"No Transactions" = "No Transactions";
+"Transactions for this account will appear here." = "Transactions for this account will appear here.";
+
+/* Account detail accessibility (interpolated) */
+"%@, %@" = "%@, %@";
+
+
+/* ==========================================================================
+   Transactions Screen
+   ========================================================================== */
+
+/* Transaction status */
+"Pending" = "Pending";
+"Cleared" = "Cleared";
+"Reconciled" = "Reconciled";
+"Void" = "Void";
+
+/* Empty state */
+"Add your first transaction to start tracking your spending." = "Add your first transaction to start tracking your spending.";
+"Add Transaction" = "Add Transaction";
+
+/* Search */
+"Search by payee, category, or account" = "Search by payee, category, or account";
+
+/* Swipe actions */
+"Edit" = "Edit";
+
+/* Transactions accessibility */
+"Add transaction" = "Add transaction";
+"Opens a form to create a new transaction" = "Opens a form to create a new transaction";
+"Delete transaction" = "Delete transaction";
+"Edit transaction" = "Edit transaction";
+"Swipe for edit and delete actions" = "Swipe for edit and delete actions";
+
+
+/* ==========================================================================
+   Transaction Create Screen
+   ========================================================================== */
+
+/* Step titles */
+"Type" = "Type";
+"Details" = "Details";
+"Review" = "Review";
+
+/* Transaction types */
+"Expense" = "Expense";
+"Transfer" = "Transfer";
+
+/* Navigation & actions */
+"New Transaction" = "New Transaction";
+"Back" = "Back";
+"Next" = "Next";
+"Save Transaction" = "Save Transaction";
+"Cancel" = "Cancel";
+"OK" = "OK";
+
+/* Validation errors */
+"Validation Error" = "Validation Error";
+"Please enter a valid amount." = "Please enter a valid amount.";
+"Please enter a payee." = "Please enter a payee.";
+"Please select an account." = "Please select an account.";
+
+/* Step 1: Type selection */
+"What type of transaction?" = "What type of transaction?";
+
+/* Step 2: Details — form section headers */
+"Amount" = "Amount";
+"Payee" = "Payee";
+"Account" = "Account";
+"Category" = "Category";
+"Date" = "Date";
+"Note (optional)" = "Note (optional)";
+"Note" = "Note";
+
+/* Step 2: Details — placeholders */
+"0.00" = "0.00";
+"Who was this payment to?" = "Who was this payment to?";
+"Add a note..." = "Add a note...";
+"Select Account" = "Select Account";
+"Select Category" = "Select Category";
+
+/* Step 3: Review */
+"Transaction Summary" = "Transaction Summary";
+
+/* Transaction create accessibility */
+"Step %lld: %@" = "Step %lld: %@";
+"Current step" = "Current step";
+"Selected" = "Selected";
+"Selects %@ as the transaction type" = "Selects %@ as the transaction type";
+"Transaction amount" = "Transaction amount";
+"Enter the amount in dollars" = "Enter the amount in dollars";
+"Payee name" = "Payee name";
+"Transaction date" = "Transaction date";
+"Dismisses the transaction form without saving" = "Dismisses the transaction form without saving";
+"Goes to the previous step" = "Goes to the previous step";
+"Saves the transaction and closes the form" = "Saves the transaction and closes the form";
+"Advances to the next step" = "Advances to the next step";
+
+
+/* ==========================================================================
+   Budgets Screen
+   ========================================================================== */
+
+/* Budget status text */
+"Over budget" = "Over budget";
+"On track" = "On track";
+
+/* Budget period */
+"Monthly" = "Monthly";
+
+/* Budget summary labels */
+"Spent" = "Spent";
+"Budgeted" = "Budgeted";
+"Remaining" = "Remaining";
+"of" = "of";
+
+/* Empty state */
+"No Budgets" = "No Budgets";
+"Create a budget to start tracking your spending by category." = "Create a budget to start tracking your spending by category.";
+"Create Budget" = "Create Budget";
+
+/* Placeholder form */
+"Budget creation will be connected to KMP shared logic." = "Budget creation will be connected to KMP shared logic.";
+
+/* Budgets accessibility */
+"Create budget" = "Create budget";
+"Opens a form to create a new budget" = "Opens a form to create a new budget";
+"Previous month" = "Previous month";
+"Shows budgets for the previous month" = "Shows budgets for the previous month";
+"Next month" = "Next month";
+"Shows budgets for the next month" = "Shows budgets for the next month";
+"Overall budget summary" = "Overall budget summary";
+"%lld percent spent, %@" = "%lld percent spent, %@";
+"Dismisses the budget creation form" = "Dismisses the budget creation form";
+
+
+/* ==========================================================================
+   Goals Screen
+   ========================================================================== */
+
+/* Goal status */
+"Active" = "Active";
+"Paused" = "Paused";
+"Completed" = "Completed";
+"Cancelled" = "Cancelled";
+
+/* Goal labels */
+"Target" = "Target";
+"Remaining:" = "Remaining:";
+"Goal completed!" = "Goal completed!";
+
+/* Empty state */
+"No Goals" = "No Goals";
+"Set a financial goal to start saving toward something meaningful." = "Set a financial goal to start saving toward something meaningful.";
+"Create Goal" = "Create Goal";
+
+/* Placeholder form */
+"Goal creation will be connected to KMP shared logic." = "Goal creation will be connected to KMP shared logic.";
+
+/* Goals accessibility */
+"Create goal" = "Create goal";
+"Opens a form to create a new financial goal" = "Opens a form to create a new financial goal";
+"%lld percent complete, %@" = "%lld percent complete, %@";
+"Goal has been completed" = "Goal has been completed";
+"Goal is in progress" = "Goal is in progress";
+"Dismisses the goal creation form" = "Dismisses the goal creation form";
+
+/* Sample goal names (used in placeholder data) */
+"Emergency Fund" = "Emergency Fund";
+"Vacation" = "Vacation";
+"New Laptop" = "New Laptop";
+"Home Down Payment" = "Home Down Payment";
+
+
+/* ==========================================================================
+   Settings Screen
+   ========================================================================== */
+
+/* Section headers */
+"General" = "General";
+"Notifications" = "Notifications";
+"Security" = "Security";
+"Data" = "Data";
+"About" = "About";
+
+/* General section */
+"Currency" = "Currency";
+
+/* Biometric type display names */
+"Face ID" = "Face ID";
+"Touch ID" = "Touch ID";
+"Biometric Authentication" = "Biometric Authentication";
+
+/* Notifications section */
+"Enable Notifications" = "Enable Notifications";
+"Budget Alerts" = "Budget Alerts";
+"Goal Milestones" = "Goal Milestones";
+
+/* Security section */
+"Privacy policy content will be loaded here." = "Privacy policy content will be loaded here.";
+"Privacy Policy" = "Privacy Policy";
+
+/* Data section */
+"Exporting..." = "Exporting...";
+"Export Data" = "Export Data";
+"Export as CSV" = "Export as CSV";
+"Export as JSON" = "Export as JSON";
+"Choose your preferred export format." = "Choose your preferred export format.";
+"Delete All Data" = "Delete All Data";
+"Delete All Data?" = "Delete All Data?";
+"Delete Everything" = "Delete Everything";
+"This will permanently delete all accounts, transactions, budgets, and goals. This action cannot be undone." = "This will permanently delete all accounts, transactions, budgets, and goals. This action cannot be undone.";
+
+/* About section */
+"Version" = "Version";
+"Open source licenses and acknowledgments will be listed here." = "Open source licenses and acknowledgments will be listed here.";
+"Acknowledgments" = "Acknowledgments";
+"Settings" = "Settings";
+
+/* Settings accessibility */
+"Default currency" = "Default currency";
+"Select your preferred currency for displaying amounts" = "Select your preferred currency for displaying amounts";
+"Enable notifications" = "Enable notifications";
+"Toggles push notifications for the app" = "Toggles push notifications for the app";
+"Budget alerts" = "Budget alerts";
+"Receive alerts when approaching budget limits" = "Receive alerts when approaching budget limits";
+"Goal milestones" = "Goal milestones";
+"Receive notifications for goal progress milestones" = "Receive notifications for goal progress milestones";
+"Require biometric authentication to open the app" = "Require biometric authentication to open the app";
+"Opens the privacy policy" = "Opens the privacy policy";
+"Export data" = "Export data";
+"Exports all your financial data as a file" = "Exports all your financial data as a file";
+"Delete all data" = "Delete all data";
+"Permanently deletes all your financial data" = "Permanently deletes all your financial data";
+"App version %@, build %@" = "App version %@, build %@";
+"Opens the open source acknowledgments" = "Opens the open source acknowledgments";
+
+
+/* ==========================================================================
+   Components — CurrencyLabel
+   ========================================================================== */
+
+"Income of %@" = "Income of %@";
+"Expense of %@" = "Expense of %@";
+
+
+/* ==========================================================================
+   Components — ProgressRing
+   ========================================================================== */
+
+"%@, %@ complete" = "%@, %@ complete";
+"%@ complete" = "%@ complete";
+
+
+/* ==========================================================================
+   Components — EmptyStateView
+   ========================================================================== */
+
+"Creates a new item" = "Creates a new item";
+
+
+/* ==========================================================================
+   Accessibility — AccessibilityModifiers
+   ========================================================================== */
+
+"Balance: %@" = "Balance: %@";
+
+
+/* ==========================================================================
+   Charts — SpendingChart
+   ========================================================================== */
+
+"Spending by Category" = "Spending by Category";
+"Spending by category bar chart" = "Spending by category bar chart";
+
+
+/* ==========================================================================
+   Charts — TrendChart
+   ========================================================================== */
+
+"Trend" = "Trend";
+"Series" = "Series";
+"Selected: %@" = "Selected: %@";
+"Financial trend line chart" = "Financial trend line chart";
+
+
+/* ==========================================================================
+   Charts — BudgetProgressChart
+   ========================================================================== */
+
+"Budget Progress" = "Budget Progress";
+"Budget utilisation gauges" = "Budget utilisation gauges";
+"%@ spent, %@ of %@" = "%@ spent, %@ of %@";
+
+
+/* ==========================================================================
+   Charts — CategoryBreakdownChart
+   ========================================================================== */
+
+"Category Breakdown" = "Category Breakdown";
+"Category breakdown donut chart" = "Category breakdown donut chart";
+
+
+/* ==========================================================================
+   Charts — Shared Axis Labels
+   ========================================================================== */
+
+/* Used as chart axis value descriptors in Swift Charts .value() calls */
+
+
+/* ==========================================================================
+   Security — BiometricAuthManager
+   ========================================================================== */
+
+"Verify your identity to access Finance" = "Verify your identity to access Finance";
+"Biometric authentication is not available on this device." = "Biometric authentication is not available on this device.";
+"No biometric credentials are enrolled. Please set up Face ID or Touch ID in Settings." = "No biometric credentials are enrolled. Please set up Face ID or Touch ID in Settings.";
+"Biometric authentication is locked out. Please use your device passcode to re-enable it." = "Biometric authentication is locked out. Please use your device passcode to re-enable it.";
+"Authentication failed: %@" = "Authentication failed: %@";
+"Authentication was cancelled." = "Authentication was cancelled.";
+"An unexpected error occurred: %@" = "An unexpected error occurred: %@";
+"Authentication did not succeed." = "Authentication did not succeed.";
+
+
+/* ==========================================================================
+   Security — AppleSignInManager
+   ========================================================================== */
+
+"Apple Sign-In did not return an identity token." = "Apple Sign-In did not return an identity token.";
+"The identity token from Apple could not be decoded." = "The identity token from Apple could not be decoded.";
+"Apple Sign-In failed: %@" = "Apple Sign-In failed: %@";
+"Apple Sign-In was cancelled." = "Apple Sign-In was cancelled.";
+"Failed to create a session: %@" = "Failed to create a session: %@";
+"A sign-in is already in progress." = "A sign-in is already in progress.";
+"Unexpected credential type received." = "Unexpected credential type received.";
+
+
+/* ==========================================================================
+   Security — KeychainManager
+   ========================================================================== */
+
+"Keychain save failed (status %lld)." = "Keychain save failed (status %lld).";
+"Keychain load failed (status %lld)." = "Keychain load failed (status %lld).";
+"Keychain delete failed (status %lld)." = "Keychain delete failed (status %lld).";
+"Keychain returned data in an unexpected format." = "Keychain returned data in an unexpected format.";
+"Secure Enclave is not available on this device." = "Secure Enclave is not available on this device.";
+
+
+/* ==========================================================================
+   Sample / Placeholder Category Names
+   (Used in mock data — will be replaced by KMP shared logic)
+   ========================================================================== */
+
+"Groceries" = "Groceries";
+"Dining Out" = "Dining Out";
+"Transport" = "Transport";
+"Entertainment" = "Entertainment";
+"Shopping" = "Shopping";

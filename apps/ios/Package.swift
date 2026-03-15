@@ -25,12 +25,10 @@ let package = Package(
             name: "FinanceApp",
             dependencies: [],
             path: "Finance",
-            sources: [
-                "Charts/ChartColorPalette.swift",
-                "Charts/SpendingChart.swift",
-                "Charts/TrendChart.swift",
-                "Charts/BudgetProgressChart.swift",
-                "Charts/CategoryBreakdownChart.swift",
+            exclude: [
+                "Info.plist",
+                "Resources",
+                "FinanceApp.swift",
             ]
         ),
         .target(
@@ -44,6 +42,11 @@ let package = Package(
                 "BudgetStatusView.swift",
                 "ComplicationProvider.swift",
             ]
+        ),
+        .testTarget(
+            name: "FinanceTests",
+            dependencies: ["FinanceApp"],
+            path: "Tests"
         ),
     ]
 )
