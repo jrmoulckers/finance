@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.theme.FinanceTheme
 
 /**
  * Represents a selectable financial category with display metadata.
@@ -264,10 +265,11 @@ private val sampleCategories = listOf(
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "CategoryPicker - with selection")
+@Preview(showBackground = true, name = "CategoryPicker - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CategoryPicker - Dark")
 @Composable
 private fun CategoryPickerPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CategoryPicker(
             categories = sampleCategories,
             selectedCategoryId = "2",
@@ -277,10 +279,11 @@ private fun CategoryPickerPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "CategoryGridCell - unselected")
+@Preview(showBackground = true, name = "CategoryGridCell Unselected - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CategoryGridCell Unselected - Dark")
 @Composable
 private fun CategoryGridCellUnselectedPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CategoryGridCell(
             category = sampleCategories.first(),
             isSelected = false,
@@ -289,10 +292,11 @@ private fun CategoryGridCellUnselectedPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "CategoryGridCell - selected")
+@Preview(showBackground = true, name = "CategoryGridCell Selected - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CategoryGridCell Selected - Dark")
 @Composable
 private fun CategoryGridCellSelectedPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CategoryGridCell(
             category = sampleCategories.first(),
             isSelected = true,

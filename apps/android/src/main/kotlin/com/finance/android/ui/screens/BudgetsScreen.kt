@@ -51,7 +51,8 @@ fun BudgetsScreen(
     }
 }
 
-@Preview(showBackground = true, name = "Budgets")
+@Preview(showBackground = true, name = "Budgets - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Budgets - Dark")
 @Composable
 private fun BudgetsScreenPreview() {
     FinanceTheme(dynamicColor = false) {

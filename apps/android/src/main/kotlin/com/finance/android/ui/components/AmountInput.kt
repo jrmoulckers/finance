@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.theme.FinanceTheme
 
 /**
  * Currency-formatted amount input that stores the value internally as [Long] cents.
@@ -162,10 +163,11 @@ private fun pow10(n: Int): Long {
 
 // -- Previews -----------------------------------------------------------------
 
-@Preview(showBackground = true, name = "AmountInput - zero")
+@Preview(showBackground = true, name = "AmountInput Zero - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AmountInput Zero - Dark")
 @Composable
 private fun AmountInputZeroPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         AmountInput(
             amountCents = 0L,
             onAmountChange = {},
@@ -175,10 +177,11 @@ private fun AmountInputZeroPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "AmountInput - 1234.56")
+@Preview(showBackground = true, name = "AmountInput Formatted - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AmountInput Formatted - Dark")
 @Composable
 private fun AmountInputFormattedPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         AmountInput(
             amountCents = 123456L,
             onAmountChange = {},
@@ -188,10 +191,11 @@ private fun AmountInputFormattedPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "AmountInput - small amount")
+@Preview(showBackground = true, name = "AmountInput Euro - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AmountInput Euro - Dark")
 @Composable
 private fun AmountInputSmallPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         AmountInput(
             amountCents = 5L,
             onAmountChange = {},
@@ -202,10 +206,11 @@ private fun AmountInputSmallPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "AmountInput - error state")
+@Preview(showBackground = true, name = "AmountInput Error - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AmountInput Error - Dark")
 @Composable
 private fun AmountInputErrorPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         AmountInput(
             amountCents = 0L,
             onAmountChange = {},
@@ -217,10 +222,11 @@ private fun AmountInputErrorPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "AmountInput - JPY no decimals")
+@Preview(showBackground = true, name = "AmountInput JPY - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AmountInput JPY - Dark")
 @Composable
 private fun AmountInputJpyPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         AmountInput(
             amountCents = 150000L,
             onAmountChange = {},

@@ -263,7 +263,8 @@ private fun accountTypeIcon(type: AccountType): ImageVector = when (type) {
     AccountType.OTHER -> Icons.Filled.AccountBalance
 }
 
-@Preview(showBackground = true, showSystemUi = true)
+@Preview(showBackground = true, showSystemUi = true, name = "Accounts List - Light")
+@Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Accounts List - Dark")
 @Composable
 private fun AccountsScreenPreview() {
     FinanceTheme(dynamicColor = false) {
@@ -279,8 +280,32 @@ private fun AccountsScreenPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Accounts Empty - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Accounts Empty - Dark")
 @Composable
 private fun AccountsEmptyPreview() {
     FinanceTheme(dynamicColor = false) { AccountsEmptyState() }
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "Accounts All Types - Light")
+@Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Accounts All Types - Dark")
+@Composable
+private fun AccountsAllTypesPreview() {
+    FinanceTheme(dynamicColor = false) {
+        AccountsList(
+            groups = listOf(
+                AccountGroup(AccountType.CHECKING, "Checking",
+                    SampleData.accounts.filter { it.type == AccountType.CHECKING },
+                    Cents(524_73L), "$524.73"),
+                AccountGroup(AccountType.SAVINGS, "Savings",
+                    SampleData.accounts.filter { it.type == AccountType.SAVINGS },
+                    Cents(18_670_00L), "$18,670.00"),
+                AccountGroup(AccountType.CREDIT_CARD, "Credit Cards",
+                    SampleData.accounts.filter { it.type == AccountType.CREDIT_CARD },
+                    Cents(2_370_51L), "$2,370.51"),
+                AccountGroup(AccountType.INVESTMENT, "Investments",
+                    SampleData.accounts.filter { it.type == AccountType.INVESTMENT },
+                    Cents(99_990_00L), "$99,990.00")),
+            onAccountClick = {})
+    }
 }

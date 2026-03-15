@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.theme.FinanceTheme
 
 /**
  * Animated circular progress ring for budget/goal visualisation.
@@ -127,10 +128,11 @@ fun CircularProgressRing(
 
 // -- Previews -----------------------------------------------------------------
 
-@Preview(showBackground = true, name = "CircularProgressRing - 0%")
+@Preview(showBackground = true, name = "ProgressRing 0% - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing 0% - Dark")
 @Composable
 private fun ProgressRing0Preview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CircularProgressRing(
             progress = 0f,
             centerContent = {
@@ -144,10 +146,11 @@ private fun ProgressRing0Preview() {
     }
 }
 
-@Preview(showBackground = true, name = "CircularProgressRing - 50%")
+@Preview(showBackground = true, name = "ProgressRing 50% - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing 50% - Dark")
 @Composable
 private fun ProgressRing50Preview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CircularProgressRing(
             progress = 0.5f,
             centerContent = {
@@ -161,10 +164,11 @@ private fun ProgressRing50Preview() {
     }
 }
 
-@Preview(showBackground = true, name = "CircularProgressRing - 80%")
+@Preview(showBackground = true, name = "ProgressRing 80% - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing 80% - Dark")
 @Composable
 private fun ProgressRing80Preview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CircularProgressRing(
             progress = 0.8f,
             centerContent = {
@@ -178,10 +182,11 @@ private fun ProgressRing80Preview() {
     }
 }
 
-@Preview(showBackground = true, name = "CircularProgressRing - 100%")
+@Preview(showBackground = true, name = "ProgressRing 100% - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing 100% - Dark")
 @Composable
 private fun ProgressRing100Preview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CircularProgressRing(
             progress = 1.0f,
             centerContent = {
@@ -195,10 +200,11 @@ private fun ProgressRing100Preview() {
     }
 }
 
-@Preview(showBackground = true, name = "CircularProgressRing - 130%")
+@Preview(showBackground = true, name = "ProgressRing 130% - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing 130% - Dark")
 @Composable
 private fun ProgressRing130Preview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CircularProgressRing(
             progress = 1.3f,
             centerContent = {
@@ -215,10 +221,11 @@ private fun ProgressRing130Preview() {
     }
 }
 
-@Preview(showBackground = true, name = "CircularProgressRing - all states")
+@Preview(showBackground = true, name = "ProgressRing All States - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing All States - Dark")
 @Composable
 private fun ProgressRingAllStatesPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         Row {
             listOf(0f, 0.5f, 0.8f, 1.0f, 1.3f).forEach { pct ->
                 CircularProgressRing(

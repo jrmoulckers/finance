@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.theme.FinanceTheme
 
 /**
  * Displays a formatted, colorized currency amount.
@@ -168,10 +169,11 @@ private fun currencyPow10(n: Int): Long {
 
 // -- Previews -----------------------------------------------------------------
 
-@Preview(showBackground = true, name = "CurrencyText - income")
+@Preview(showBackground = true, name = "CurrencyText Income - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText Income - Dark")
 @Composable
 private fun CurrencyTextIncomePreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CurrencyText(
             amountCents = 250000L,
             currencyCode = "USD",
@@ -181,10 +183,11 @@ private fun CurrencyTextIncomePreview() {
     }
 }
 
-@Preview(showBackground = true, name = "CurrencyText - expense")
+@Preview(showBackground = true, name = "CurrencyText Expense - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText Expense - Dark")
 @Composable
 private fun CurrencyTextExpensePreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CurrencyText(
             amountCents = -89550L,
             currencyCode = "USD",
@@ -194,10 +197,11 @@ private fun CurrencyTextExpensePreview() {
     }
 }
 
-@Preview(showBackground = true, name = "CurrencyText - zero")
+@Preview(showBackground = true, name = "CurrencyText Zero - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText Zero - Dark")
 @Composable
 private fun CurrencyTextZeroPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CurrencyText(
             amountCents = 0L,
             currencyCode = "USD",
@@ -207,10 +211,11 @@ private fun CurrencyTextZeroPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "CurrencyText - compact mode")
+@Preview(showBackground = true, name = "CurrencyText Compact - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText Compact - Dark")
 @Composable
 private fun CurrencyTextCompactPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         Column(modifier = Modifier.padding(16.dp)) {
             CurrencyText(
                 amountCents = 120000L,
@@ -236,10 +241,11 @@ private fun CurrencyTextCompactPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "CurrencyText - EUR currency")
+@Preview(showBackground = true, name = "CurrencyText EUR - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText EUR - Dark")
 @Composable
 private fun CurrencyTextEurPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CurrencyText(
             amountCents = 199900L,
             currencyCode = "EUR",
@@ -250,10 +256,11 @@ private fun CurrencyTextEurPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "CurrencyText - JPY no decimals")
+@Preview(showBackground = true, name = "CurrencyText JPY - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText JPY - Dark")
 @Composable
 private fun CurrencyTextJpyPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         CurrencyText(
             amountCents = 150000L,
             currencyCode = "JPY",
@@ -263,10 +270,11 @@ private fun CurrencyTextJpyPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "CurrencyText - with sign")
+@Preview(showBackground = true, name = "CurrencyText With Sign - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText With Sign - Dark")
 @Composable
 private fun CurrencyTextWithSignPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         Column(modifier = Modifier.padding(16.dp)) {
             CurrencyText(
                 amountCents = 50000L,
