@@ -16,23 +16,23 @@ The current implementation is still materially short of GDPR/CCPA readiness. The
 
 ### Personal Data Collected
 
-| Data Type | Fields | Storage Location | Legal Basis | Retention |
-|-----------|--------|------------------|-------------|-----------|
-| User profile | `email`, `displayName`, `avatarUrl`, `defaultCurrency` | Local SQLite `user` table and Supabase `users` table | Contract (account creation, authentication, app personalization) | Not defined in code; effectively account lifetime until deletion |
-| Household metadata | `name`, `ownerId` / `created_by` | Local SQLite `household` table and Supabase `households` table | Contract; legitimate interest for shared household management | Not defined |
-| Household membership | `userId`, `role`, `joinedAt`, timestamps | Local SQLite `household_member` table and Supabase `household_members` table | Contract | Not defined |
-| Accounts | `name`, `type`, `currency`, `currentBalance`, cosmetic metadata | Local SQLite `account` table and Supabase `accounts` table | Contract | Not defined / user-controlled until deletion |
-| Transactions | `amount`, `currency`, `payee`, `note`, `date`, `tags`, recurrence metadata, transfer links | Local SQLite `transaction` table and Supabase `transactions` table | Contract | Not defined / user-controlled until deletion |
-| Budgets | `name`, `amount`, `period`, `date range`, `categoryId` | Local SQLite `budget` table and Supabase `budgets` table | Contract | Not defined |
-| Goals | `name`, `targetAmount`, `currentAmount`, `targetDate`, `status`, `accountId` | Local SQLite `goal` table and Supabase `goals` table | Contract | Not defined |
-| Categories | `name`, `icon`, `color`, `parentId`, `isIncome` | Local SQLite `category` table and Supabase `categories` table | Contract | Not defined |
-| Passkey credentials | `credential_id`, `public_key`, `counter`, `device_type`, `backed_up`, `transports` | Supabase `passkey_credentials` | Contract; legitimate interest/security for passwordless auth | Until account deletion; no explicit retention schedule |
-| Household invitations | `invite_code`, `invited_email`, `invited_by`, `accepted_by`, `role`, `expires_at` | Supabase `household_invitations` | Contract; legitimate interest for household collaboration | Intended expiry (`expires_at`), but no purge job found |
-| WebAuthn challenges | `challenge`, `user_id`, `type`, `expires_at` | Supabase `webauthn_challenges` | Legitimate interest/security for passkey ceremonies | Intended 5 minutes, but no purge job found |
-| Audit/security logs | `user_id`, `household_id`, `action`, `table_name`, `record_id`, `old_values`, `new_values`, `ip_address`, `user_agent` | Supabase `audit_log` | Legitimate interest; security/accountability | Not defined |
-| Sync health logs | `user_id`, `device_id`, `sync_duration_ms`, `record_count`, `error_code`, `error_message`, `sync_status` | Supabase `sync_health_logs` | Legitimate interest; service reliability | Docs say 30 days, but no purge implementation found |
-| Auth/session artifacts | HttpOnly refresh cookie (web), in-memory access token (web), encrypted access/refresh tokens (Android) | Browser cookie + memory; Android `EncryptedSharedPreferences` | Contract; security | Session/token lifetime |
-| App preferences and onboarding data | Notification and accessibility prefs, `userName`, `userEmail`, onboarding currency, first account name, starting balance, first budget data | Android plain `SharedPreferences` files `finance_settings` and `finance_onboarding` | Contract; user preference persistence | Not defined |
+| Data Type                           | Fields                                                                                                                                      | Storage Location                                                                    | Legal Basis                                                      | Retention                                                        |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| User profile                        | `email`, `displayName`, `avatarUrl`, `defaultCurrency`                                                                                      | Local SQLite `user` table and Supabase `users` table                                | Contract (account creation, authentication, app personalization) | Not defined in code; effectively account lifetime until deletion |
+| Household metadata                  | `name`, `ownerId` / `created_by`                                                                                                            | Local SQLite `household` table and Supabase `households` table                      | Contract; legitimate interest for shared household management    | Not defined                                                      |
+| Household membership                | `userId`, `role`, `joinedAt`, timestamps                                                                                                    | Local SQLite `household_member` table and Supabase `household_members` table        | Contract                                                         | Not defined                                                      |
+| Accounts                            | `name`, `type`, `currency`, `currentBalance`, cosmetic metadata                                                                             | Local SQLite `account` table and Supabase `accounts` table                          | Contract                                                         | Not defined / user-controlled until deletion                     |
+| Transactions                        | `amount`, `currency`, `payee`, `note`, `date`, `tags`, recurrence metadata, transfer links                                                  | Local SQLite `transaction` table and Supabase `transactions` table                  | Contract                                                         | Not defined / user-controlled until deletion                     |
+| Budgets                             | `name`, `amount`, `period`, `date range`, `categoryId`                                                                                      | Local SQLite `budget` table and Supabase `budgets` table                            | Contract                                                         | Not defined                                                      |
+| Goals                               | `name`, `targetAmount`, `currentAmount`, `targetDate`, `status`, `accountId`                                                                | Local SQLite `goal` table and Supabase `goals` table                                | Contract                                                         | Not defined                                                      |
+| Categories                          | `name`, `icon`, `color`, `parentId`, `isIncome`                                                                                             | Local SQLite `category` table and Supabase `categories` table                       | Contract                                                         | Not defined                                                      |
+| Passkey credentials                 | `credential_id`, `public_key`, `counter`, `device_type`, `backed_up`, `transports`                                                          | Supabase `passkey_credentials`                                                      | Contract; legitimate interest/security for passwordless auth     | Until account deletion; no explicit retention schedule           |
+| Household invitations               | `invite_code`, `invited_email`, `invited_by`, `accepted_by`, `role`, `expires_at`                                                           | Supabase `household_invitations`                                                    | Contract; legitimate interest for household collaboration        | Intended expiry (`expires_at`), but no purge job found           |
+| WebAuthn challenges                 | `challenge`, `user_id`, `type`, `expires_at`                                                                                                | Supabase `webauthn_challenges`                                                      | Legitimate interest/security for passkey ceremonies              | Intended 5 minutes, but no purge job found                       |
+| Audit/security logs                 | `user_id`, `household_id`, `action`, `table_name`, `record_id`, `old_values`, `new_values`, `ip_address`, `user_agent`                      | Supabase `audit_log`                                                                | Legitimate interest; security/accountability                     | Not defined                                                      |
+| Sync health logs                    | `user_id`, `device_id`, `sync_duration_ms`, `record_count`, `error_code`, `error_message`, `sync_status`                                    | Supabase `sync_health_logs`                                                         | Legitimate interest; service reliability                         | Docs say 30 days, but no purge implementation found              |
+| Auth/session artifacts              | HttpOnly refresh cookie (web), in-memory access token (web), encrypted access/refresh tokens (Android)                                      | Browser cookie + memory; Android `EncryptedSharedPreferences`                       | Contract; security                                               | Session/token lifetime                                           |
+| App preferences and onboarding data | Notification and accessibility prefs, `userName`, `userEmail`, onboarding currency, first account name, starting balance, first budget data | Android plain `SharedPreferences` files `finance_settings` and `finance_onboarding` | Contract; user preference persistence                            | Not defined                                                      |
 
 #### Evidence
 
@@ -94,11 +94,13 @@ flowchart LR
 Finance has partial DSAR/data-portability support, but not full right-to-access compliance.
 
 Positive findings:
+
 - There is a shared KMP export service intended for client-side export with JSON/CSV output and integrity metadata (`packages/core/src/commonMain/kotlin/com/finance/core/export/DataExportService.kt:14-18,63-129`, `ExportTypes.kt:14-78`).
 - There is a server-side Supabase Edge Function for exporting user data (`services/api/supabase/functions/data-export/index.ts:3-18,33-44,125-229`).
 - The server export is authenticated and audit-logged (`services/api/supabase/functions/data-export/index.ts:97-105,153-164`).
 
 However, the implementation is incomplete:
+
 - The shared `ExportData` model only includes `accounts`, `transactions`, `categories`, `budgets`, and `goals` (`packages/core/src/commonMain/kotlin/com/finance/core/export/ExportData.kt:29-53`). It omits `User`, `Household`, and `HouseholdMember`, which means the common self-serve export does **not** include all personal data.
 - The client-side export metadata counts only those five entity types (`packages/core/src/commonMain/kotlin/com/finance/core/export/ExportTypes.kt:49-58`).
 - The server-side export adds `users`, `households`, `household_members`, and `passkey_credentials` (`services/api/supabase/functions/data-export/index.ts:33-44`), but it still omits `household_invitations`, `webauthn_challenges`, `audit_log`, and `sync_health_logs`, all of which contain personal data in the Supabase schema.
@@ -124,11 +126,13 @@ However, the implementation is incomplete:
 Finance has strong design intent for erasure, but the implemented end-to-end flow is incomplete and not yet reliable enough for GDPR Article 17 or CCPA deletion rights.
 
 Positive findings:
+
 - Every core model includes `deletedAt`, which establishes a consistent soft-delete pattern (`User.kt:19`, `Account.kt:28`, `Transaction.kt:38`, `Budget.kt:29`, `Goal.kt:30`, `Category.kt:22`, `Household.kt:16`, `HouseholdMember.kt:21`).
 - A `CryptoShredder` abstraction exists with `shredHouseholdData`, `shredUserData`, and `DeletionCertificate` support (`packages/sync/src/commonMain/kotlin/com/finance/sync/crypto/CryptoShredder.kt:8-92`, `DeletionCertificate.kt:8-39`).
 - A server-side account deletion Edge Function exists (`services/api/supabase/functions/account-deletion/index.ts:3-24,47-256`).
 
 Major problems:
+
 - The server deletion flow does **not** actually call the KMP `CryptoShredder` or a keystore-backed deletion service. Instead it generates synthetic fingerprints and explicitly notes that real keystore integration is only a future production step (`services/api/supabase/functions/account-deletion/index.ts:117-121,133-170`).
 - The function mainly soft-deletes household/user rows and then best-effort deletes the Supabase auth user (`services/api/supabase/functions/account-deletion/index.ts:138-160,174-200,223-231`). If `auth.admin.deleteUser` fails, the auth identity remains and some downstream cascades may not happen.
 - Audit logs are append-only and are not deleted in the deletion flow (`services/api/supabase/migrations/20260306000003_auth_config.sql:184-212`). Those logs can contain `old_values`, `new_values`, `ip_address`, and `user_agent`, so the app needs a documented retention/legal-obligation basis or minimization/redaction strategy.
@@ -156,12 +160,14 @@ Major problems:
 Optional analytics/crash collection is privacy-preserving by default in the current codebase, but there is no implemented consent-management system that would satisfy GDPR consent requirements if optional processing is enabled.
 
 Positive findings:
+
 - The shared `CrashReporter` contract explicitly requires consent and forbids PII/financial data in reports (`packages/core/src/commonMain/kotlin/com/finance/core/monitoring/CrashReporter.kt:6-15,29-60`).
 - The shared `MetricsCollector` is consent-gated and documents that events must not contain PII or financial data (`packages/core/src/commonMain/kotlin/com/finance/core/monitoring/MetricsCollector.kt:8-20,35-65,76-107`).
 - Android currently defaults both crash reporting and metrics to disabled by wiring `consentProvider = { false }` (`apps/android/src/main/kotlin/com/finance/android/di/AppModule.kt:18-30`).
 - The Android Timber crash reporter checks consent before reporting (`apps/android/src/main/kotlin/com/finance/android/logging/TimberCrashReporter.kt:17-44`).
 
 Compliance gaps:
+
 - No onboarding flow was found that presents a privacy notice, analytics/crash consent choice, or a consent record. Android onboarding collects app-setup data only (`apps/android/src/main/kotlin/com/finance/android/ui/onboarding/OnboardingViewModel.kt:51-80,121-200`), and no consent-related code was found in `apps/web` or `apps/ios` onboarding/settings flow.
 - No `ConsentRecord` domain model, database table, or exportable consent receipt exists anywhere in `packages/models`, `services/api/supabase/migrations`, or the apps.
 - There is no implemented withdrawal UI for optional processing. Android defaults everything to off but has no settings toggle for analytics/crash consent; iOS and web likewise do not expose a consent control.
@@ -183,11 +189,13 @@ Compliance gaps:
 Finance does several things well from a minimization standpoint: it avoids localStorage/sessionStorage token persistence on web, uses pseudonymous device IDs for sync logs in principle, and does not model obvious over-collection such as bank account numbers or raw payment cards. But several fields and storage patterns still exceed a defensible minimum or lack documented purpose/retention.
 
 Positive findings:
+
 - Web auth token storage avoids `localStorage`, `sessionStorage`, and IndexedDB for tokens (`apps/web/src/auth/token-storage.ts:12-24`).
 - Core analytics and crash interfaces are designed to avoid PII (`MetricsCollector.kt:11-14`, `CrashReporter.kt:8-12`).
 - Core models do not include full bank account numbers, routing numbers, or payment-card PANs.
 
 Material minimization risks:
+
 - Several sensitive fields are stored in cleartext by design or omission. The KMP audit found no field-encryption coverage for `User.email`, `displayName`, `Goal.name`, `Budget.name`, `Household.name`, `currentBalance`, and transaction `tags`; see the model definitions above and crypto-shredding analysis in `packages/sync/src/commonMain/kotlin/com/finance/sync/crypto/CryptoShredder.kt:8-92`.
 - Android stores `userName` and `userEmail` in plain `SharedPreferences` (`apps/android/src/main/kotlin/com/finance/android/ui/screens/SettingsViewModel.kt:57-60,90-101,131-149`) rather than encrypted storage.
 - Android onboarding stores financial setup data (`accountName`, `startingBalance`, `budgetAmount`) in plain `SharedPreferences` (`apps/android/src/main/kotlin/com/finance/android/ui/onboarding/OnboardingViewModel.kt:171-200`).
@@ -210,10 +218,12 @@ Material minimization risks:
 CCPA/CPRA support is partial and not ready for launch.
 
 What exists:
+
 - A partial “right to know” implementation via export endpoints and partial “right to delete” implementation via server/client deletion scaffolding.
 - No evidence of selling or sharing personal information with ad-tech providers was found in the audited code. Android metrics/crash are off by default (`apps/android/src/main/kotlin/com/finance/android/di/AppModule.kt:18-30`), and no third-party analytics SDK was identified in the reviewed paths.
 
 Missing for compliance:
+
 - No public CCPA/CPRA privacy notice or notice at collection exists. Existing internal docs explicitly say a privacy policy is missing and required before launch (`docs/architecture/0009-legal-monetization-analysis.md:580-589`) and that store/onboarding/in-app access is required (`docs/guides/launch-checklist.md:65-70`, `docs/guides/app-store-preparation.md:103-111`).
 - No “Do Not Sell or Share My Personal Information” disclosure exists, even to state that Finance does not sell/share data.
 - No California-specific disclosures were found for sensitive personal information, data retention, categories of recipients, or non-discrimination rights.
@@ -235,11 +245,13 @@ Missing for compliance:
 The web app gets token handling largely right, but there are serious open questions around browser-side storage of financial data and cached API responses.
 
 Positive findings:
+
 - Tokens are intentionally **not** stored in `localStorage`, `sessionStorage`, or IndexedDB (`apps/web/src/auth/token-storage.ts:8-24`).
 - The refresh flow uses HttpOnly cookies and keeps the access token in memory only (`apps/web/src/auth/token-storage.ts:12-24,64-80,153-171,346-360`; `apps/web/src/auth/auth-context.tsx:147-180`).
 - No direct `localStorage` or `sessionStorage` usage was found in `apps/web/src/` during this audit.
 
 Major web-storage gaps:
+
 - The full web SQLite database is persisted in OPFS when possible and otherwise exported to IndexedDB (`apps/web/src/db/sqlite-wasm.ts:271-352,531-549,557-590`). The current implementation shows persistence but **no implemented encryption layer** in this file. For a finance app, unencrypted browser-stored financial data is a launch blocker unless a verified Web Crypto envelope is added.
 - The service worker caches all same-origin `/api/` responses in `CacheStorage` (`apps/web/src/sw/service-worker.ts:84-113,188-210`). If authenticated API responses include user profile, account, transaction, or export data, those responses may persist in the browser cache without a user-facing explanation or clear data-retention controls.
 - There is no in-app storage-management UI to explain or clear browser-side data (cookies, OPFS/IndexedDB, CacheStorage).
