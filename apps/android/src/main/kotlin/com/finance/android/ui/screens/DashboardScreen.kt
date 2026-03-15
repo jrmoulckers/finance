@@ -250,7 +250,8 @@ private fun QuickActionsRow(onAdd: () -> Unit, onViewAll: () -> Unit) {
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
+@Preview(showBackground = true, showSystemUi = true, name = "Dashboard - Light")
+@Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Dashboard - Dark")
 @Composable
 private fun DashboardScreenPreview() {
     FinanceTheme(dynamicColor = false) {
@@ -263,6 +264,38 @@ private fun DashboardScreenPreview() {
                     BudgetStatusUi("Transport", "$89", "$200", "+$111", 0.45f, BudgetHealth.HEALTHY, null),
                 ),
                 recentTransactions = SampleData.transactions.take(5), currency = Currency.USD),
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Dashboard - Loading - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Dashboard - Loading - Dark")
+@Composable
+private fun DashboardLoadingPreview() {
+    FinanceTheme(dynamicColor = false) {
+        DashboardContent(
+            state = DashboardUiState(isLoading = false, isRefreshing = false,
+                netWorthFormatted = "$0.00", todaySpendingFormatted = "$0.00",
+                monthlySpendingFormatted = "$0.00", budgetStatuses = emptyList(),
+                recentTransactions = emptyList(), currency = Currency.USD),
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {})
+    }
+}
+
+@Preview(showBackground = true, name = "Dashboard - Over Budget - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Dashboard - Over Budget - Dark")
+@Composable
+private fun DashboardOverBudgetPreview() {
+    FinanceTheme(dynamicColor = false) {
+        DashboardContent(
+            state = DashboardUiState(isLoading = false, netWorthFormatted = "$42,350.00",
+                todaySpendingFormatted = "$156.40", monthlySpendingFormatted = "$3,892.15",
+                budgetStatuses = listOf(
+                    BudgetStatusUi("Dining", "$380", "$300", "-$80", 1.27f, BudgetHealth.OVER, null),
+                    BudgetStatusUi("Shopping", "$510", "$500", "-$10", 1.02f, BudgetHealth.OVER, null),
+                    BudgetStatusUi("Groceries", "$580", "$600", "+$20", 0.97f, BudgetHealth.WARNING, null),
+                ),
+                recentTransactions = SampleData.transactions.take(3), currency = Currency.USD),
             onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {})
     }
 }

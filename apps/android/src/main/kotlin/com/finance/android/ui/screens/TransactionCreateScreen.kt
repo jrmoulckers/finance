@@ -84,6 +84,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.finance.android.ui.theme.FinanceTheme
+import com.finance.android.ui.data.SampleData
 import com.finance.android.ui.viewmodel.CreateStep
 import com.finance.android.ui.viewmodel.TransactionCreateUiState
 import com.finance.android.ui.viewmodel.TransactionCreateViewModel
@@ -323,7 +324,8 @@ private fun catIcon(name: String?): ImageVector = when (name) {
     else -> Icons.Filled.Category
 }
 
-@Preview(showBackground = true, showSystemUi = true)
+@Preview(showBackground = true, showSystemUi = true, name = "Amount Step - Light")
+@Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Amount Step - Dark")
 @Composable
 private fun AmountStepPreview() {
     FinanceTheme(dynamicColor = false) {
@@ -332,12 +334,41 @@ private fun AmountStepPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Confirm Step - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Confirm Step - Dark")
 @Composable
 private fun ConfirmPreview() {
     FinanceTheme(dynamicColor = false) {
         ConfirmStep(TransactionCreateUiState(currentStep = CreateStep.CONFIRM, formattedAmount = "\$42.50",
             payee = "Whole Foods", selectedCategoryName = "Groceries", selectedAccountName = "Main Checking",
             date = kotlinx.datetime.LocalDate(2025, 3, 6)))
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, name = "Category Step - Light")
+@Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Category Step - Dark")
+@Composable
+private fun CategoryStepPreview() {
+    FinanceTheme(dynamicColor = false) {
+        Column { StepIndicator(CreateStep.CATEGORY, Modifier.padding(16.dp))
+            CategoryStep(
+                TransactionCreateUiState(
+                    currentStep = CreateStep.CATEGORY,
+                    categories = SampleData.categories.take(8),
+                    accounts = SampleData.accounts.take(4),
+                    selectedCategoryId = SyncId("cat-groceries"),
+                    selectedAccountId = SyncId("acc-checking"),
+                    date = kotlinx.datetime.LocalDate(2025, 3, 6),
+                ), {}, {}, {}, {})
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Transaction Create - Errors - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Transaction Create - Errors - Dark")
+@Composable
+private fun ErrorMessagesPreview() {
+    FinanceTheme(dynamicColor = false) {
+        ErrorMessages(listOf("Amount is required", "Please select a category"), Modifier.padding(16.dp))
     }
 }

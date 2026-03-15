@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.theme.FinanceTheme
 
 /**
  * Account type for display purposes, mirroring [com.finance.models.AccountType].
@@ -265,10 +266,11 @@ private val sampleAccounts = listOf(
     AccountDisplayItem("6", "Cash Wallet", AccountDisplayType.CASH, "\$120.00"),
 )
 
-@Preview(showBackground = true, name = "AccountSelector - with selection")
+@Preview(showBackground = true, name = "AccountSelector Selected - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AccountSelector Selected - Dark")
 @Composable
 private fun AccountSelectorSelectedPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         AccountSelector(
             accounts = sampleAccounts,
             selectedAccountId = "1",
@@ -279,10 +281,11 @@ private fun AccountSelectorSelectedPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "AccountSelector - no selection")
+@Preview(showBackground = true, name = "AccountSelector Empty - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AccountSelector Empty - Dark")
 @Composable
 private fun AccountSelectorEmptyPreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         AccountSelector(
             accounts = sampleAccounts,
             selectedAccountId = null,

@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.theme.FinanceTheme
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -158,10 +159,11 @@ fun FinanceDatePicker(
 // -- Previews -----------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "FinanceDatePicker - single date")
+@Preview(showBackground = true, name = "DatePicker Single - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "DatePicker Single - Dark")
 @Composable
 private fun FinanceDatePickerSinglePreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         FinanceDatePicker(
             mode = DatePickerMode.SINGLE,
             onDateSelected = {},
@@ -170,10 +172,11 @@ private fun FinanceDatePickerSinglePreview() {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "FinanceDatePicker - date range")
+@Preview(showBackground = true, name = "DatePicker Range - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "DatePicker Range - Dark")
 @Composable
 private fun FinanceDatePickerRangePreview() {
-    MaterialTheme {
+    FinanceTheme(dynamicColor = false) {
         FinanceDatePicker(
             mode = DatePickerMode.RANGE,
             onDateRangeSelected = { _, _ -> },

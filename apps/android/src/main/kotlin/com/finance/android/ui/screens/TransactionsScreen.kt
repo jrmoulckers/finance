@@ -259,7 +259,8 @@ private fun buildTxnDesc(txn: Transaction): String {
     return "Transaction: $amt at ${txn.payee ?: "Unknown"}, ${txn.date}"
 }
 
-@Preview(showBackground = true, showSystemUi = true)
+@Preview(showBackground = true, showSystemUi = true, name = "Transactions - Light")
+@Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Transactions - Dark")
 @Composable
 private fun TransactionsPreview() {
     FinanceTheme(dynamicColor = false) {
@@ -272,6 +273,12 @@ private fun TransactionsPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Transactions Empty - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Transactions Empty - Dark")
 @Composable
 private fun TxnEmptyPreview() { FinanceTheme(dynamicColor = false) { TxnEmptyState(false) } }
+
+@Preview(showBackground = true, name = "Transactions Filtered Empty - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Transactions Filtered Empty - Dark")
+@Composable
+private fun TxnFilteredEmptyPreview() { FinanceTheme(dynamicColor = false) { TxnEmptyState(true) } }

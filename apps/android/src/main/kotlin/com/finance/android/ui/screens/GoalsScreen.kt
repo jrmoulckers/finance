@@ -51,7 +51,8 @@ fun GoalsScreen(
     }
 }
 
-@Preview(showBackground = true, name = "Goals")
+@Preview(showBackground = true, name = "Goals - Light")
+@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Goals - Dark")
 @Composable
 private fun GoalsScreenPreview() {
     FinanceTheme(dynamicColor = false) {
