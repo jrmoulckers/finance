@@ -2,13 +2,21 @@
 
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useAccounts, useCategories, useTransactions } from '../hooks';
+import { useAccounts } from '../hooks/useAccounts';
+import { useCategories } from '../hooks/useCategories';
+import { useTransactions } from '../hooks/useTransactions';
 import { TransactionsPage } from './TransactionsPage';
 
-vi.mock('../hooks', () => ({
-  useTransactions: vi.fn(),
-  useCategories: vi.fn(),
-  useAccounts: vi.fn(),
+// Mock each hook file individually — the page imports from the individual
+// paths, not the barrel, so the barrel mock would not intercept them.
+vi.mock('../hooks/useTransactions', () => ({ useTransactions: vi.fn() }));
+vi.mock('../hooks/useCategories', () => ({ useCategories: vi.fn() }));
+vi.mock('../hooks/useAccounts', () => ({ useAccounts: vi.fn() }));
+
+// TransactionForm renders unconditionally and calls useDatabase internally.
+// Stub it out so the test has no provider dependency.
+vi.mock('../components/forms', () => ({
+  TransactionForm: () => null,
 }));
 
 const mockedUseTransactions = vi.mocked(useTransactions);

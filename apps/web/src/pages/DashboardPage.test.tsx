@@ -2,16 +2,27 @@
 
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useCategories, useDashboardData } from '../hooks';
+import { useCategories, useDashboardData, useTransactions } from '../hooks';
 import { DashboardPage } from './DashboardPage';
 
 vi.mock('../hooks', () => ({
   useDashboardData: vi.fn(),
   useCategories: vi.fn(),
+  // DashboardPage now calls useTransactions to feed chart components.
+  useTransactions: vi.fn(),
+}));
+
+// Chart components depend on Recharts canvas APIs unavailable in jsdom.
+// Stub them so the render test stays provider/canvas-free.
+vi.mock('../components/charts', () => ({
+  TrendLineChart: () => null,
+  SpendingBarChart: () => null,
+  CategoryPieChart: () => null,
 }));
 
 const mockedUseDashboardData = vi.mocked(useDashboardData);
 const mockedUseCategories = vi.mocked(useCategories);
+const mockedUseTransactions = vi.mocked(useTransactions);
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-01T00:00:00Z',
@@ -108,6 +119,17 @@ describe('DashboardPage', () => {
       createCategory: vi.fn(),
       updateCategory: vi.fn(),
       deleteCategory: vi.fn(),
+    });
+    // useTransactions is called by DashboardPage to supply chart data.
+    // Return an empty list — charts are stubbed, so no data is needed.
+    mockedUseTransactions.mockReturnValue({
+      transactions: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createTransaction: vi.fn(),
+      updateTransaction: vi.fn(),
+      deleteTransaction: vi.fn(),
     });
   });
 

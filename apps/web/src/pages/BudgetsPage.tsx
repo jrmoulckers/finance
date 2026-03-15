@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { BudgetForm } from '../components/forms';
+import type { CreateBudgetInput } from '../db/repositories/budgets';
 import { useBudgets, useCategories } from '../hooks';
 
 function getBudgetIcon(iconName: string | null | undefined): string {
@@ -22,13 +24,15 @@ function getBudgetIcon(iconName: string | null | undefined): string {
 }
 
 export const BudgetsPage: React.FC = () => {
-  const { budgets, loading, error, refresh } = useBudgets();
+  const { budgets, loading, error, refresh, createBudget } = useBudgets();
   const {
     categories,
     loading: categoriesLoading,
     error: categoriesError,
     refresh: refreshCategories,
   } = useCategories();
+
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -42,21 +46,73 @@ export const BudgetsPage: React.FC = () => {
     refreshCategories();
   };
 
+  /** Open the Create Budget dialog. */
+  const handleAddBudget = useCallback(() => {
+    setIsFormOpen(true);
+  }, []);
+
+  /** Close the Create Budget dialog without saving. */
+  const handleFormCancel = useCallback(() => {
+    setIsFormOpen(false);
+  }, []);
+
+  /**
+   * Submit a new budget.  `createBudget` from the hook is synchronous and
+   * already triggers an internal refresh on success, so we only need to close
+   * the form here.
+   */
+  const handleFormSubmit = useCallback(
+    async (data: CreateBudgetInput) => {
+      const result = createBudget(data);
+      if (result === null) {
+        throw new Error('Failed to create budget.');
+      }
+      setIsFormOpen(false);
+      refresh();
+    },
+    [createBudget, refresh],
+  );
+
   const totalBudgeted = budgets.reduce((sum, budget) => sum + budget.amount.amount, 0);
   const totalSpent = budgets.reduce((sum, budget) => sum + budget.spentAmount.amount, 0);
   const totalRemaining = budgets.reduce((sum, budget) => sum + budget.remainingAmount.amount, 0);
 
   return (
     <>
-      <h2
+      <div
         style={{
-          fontSize: 'var(--type-scale-headline-font-size)',
-          fontWeight: 'var(--type-scale-headline-font-weight)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           marginBottom: 'var(--spacing-6)',
+          gap: 'var(--spacing-4)',
+          flexWrap: 'wrap',
         }}
       >
-        Budgets
-      </h2>
+        <h2
+          style={{
+            fontSize: 'var(--type-scale-headline-font-size)',
+            fontWeight: 'var(--type-scale-headline-font-weight)',
+          }}
+        >
+          Budgets
+        </h2>
+        <button
+          type="button"
+          className="form-button form-button--primary"
+          onClick={handleAddBudget}
+          aria-label="Add budget"
+        >
+          + Add Budget
+        </button>
+      </div>
+
+      <BudgetForm
+        isOpen={isFormOpen}
+        onCancel={handleFormCancel}
+        onSubmit={handleFormSubmit}
+        categories={categories}
+      />
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
           <LoadingSpinner label="Loading budgets" />
