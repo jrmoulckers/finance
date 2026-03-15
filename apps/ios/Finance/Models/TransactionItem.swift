@@ -71,6 +71,7 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
     let date: Date
     let type: TransactionTypeUI
     let status: TransactionStatusUI
+    let note: String?
 
     /// Convenience: `true` when the transaction type is `.expense`.
     var isExpense: Bool { type == .expense }
@@ -84,7 +85,8 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
         currencyCode: String,
         date: Date,
         type: TransactionTypeUI = .expense,
-        status: TransactionStatusUI = .cleared
+        status: TransactionStatusUI = .cleared,
+        note: String? = nil
     ) {
         self.id = id
         self.payee = payee
@@ -95,5 +97,6 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
         self.date = date
         self.type = type
         self.status = status
+        self.note = note
     }
 }

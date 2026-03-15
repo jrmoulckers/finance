@@ -52,6 +52,7 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
     var errorToThrow: Error?
     private(set) var deletedTransactionIds: [String] = []
     private(set) var createdTransactions: [TransactionItem] = []
+    private(set) var updatedTransactions: [TransactionItem] = []
 
     func getTransactions() async throws -> [TransactionItem] {
         if let error = errorToThrow { throw error }
@@ -76,6 +77,11 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
     func deleteTransaction(id: String) async throws {
         if let error = errorToThrow { throw error }
         deletedTransactionIds.append(id)
+    }
+
+    func updateTransaction(_ transaction: TransactionItem) async throws {
+        if let error = errorToThrow { throw error }
+        updatedTransactions.append(transaction)
     }
 }
 

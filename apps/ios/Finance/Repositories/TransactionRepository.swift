@@ -29,4 +29,7 @@ protocol TransactionRepository: Sendable {
 
     /// Permanently deletes the transaction with the given identifier.
     func deleteTransaction(id: String) async throws
+
+    /// Updates an existing transaction with new values.
+    func updateTransaction(_ transaction: TransactionItem) async throws
 }

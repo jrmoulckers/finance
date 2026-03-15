@@ -107,7 +107,8 @@ final class TransactionCreateViewModel {
             currencyCode: currencyCode,
             date: date,
             type: transactionType,
-            status: .pending
+            status: .pending,
+            note: note.isEmpty ? nil : note
         )
 
         do {

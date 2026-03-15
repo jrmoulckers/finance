@@ -27,6 +27,17 @@ final class SettingsViewModel {
     var showingDeleteConfirmation = false
     var biometricError: BiometricError?
     var showingBiometricError = false
+    var exportFormat: DataExportService.ExportFormat = .csv
+    var exportFileURL: URL?
+    var showExportSheet = false
+    var exportError: String?
+    var showingExportError = false
+
+    private let accountRepository: AccountRepository
+    private let transactionRepository: TransactionRepository
+    private let budgetRepository: BudgetRepository
+    private let goalRepository: GoalRepository
+    private let exportService = DataExportService()
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -38,6 +49,18 @@ final class SettingsViewModel {
         ("CAD", "Canadian Dollar"), ("JPY", "Japanese Yen"),
         ("AUD", "Australian Dollar"), ("CHF", "Swiss Franc"),
     ]
+
+    init(
+        accountRepository: AccountRepository = MockAccountRepository(),
+        transactionRepository: TransactionRepository = MockTransactionRepository(),
+        budgetRepository: BudgetRepository = MockBudgetRepository(),
+        goalRepository: GoalRepository = MockGoalRepository()
+    ) {
+        self.accountRepository = accountRepository
+        self.transactionRepository = transactionRepository
+        self.budgetRepository = budgetRepository
+        self.goalRepository = goalRepository
+    }
 
     func loadSettings() async {
         biometricEnabled = UserDefaults.standard.bool(
@@ -112,10 +135,50 @@ final class SettingsViewModel {
         }
     }
 
+    /// Exports all user financial data in the selected format.
+    ///
+    /// Fetches current data from all repositories, passes it to the
+    /// `DataExportService`, and presents the resulting file via the
+    /// share sheet. Only metadata (format, filename) is logged —
+    /// actual financial values are never written to the log.
     func exportData() async {
         isExporting = true
         defer { isExporting = false }
-        // TODO: Implement data export via KMP shared logic
-        try? await Task.sleep(for: .seconds(1))
+
+        Self.logger.info(
+            "Starting data export as \(self.exportFormat.rawValue, privacy: .public)"
+        )
+
+        do {
+            async let accounts = accountRepository.getAccounts()
+            async let transactions = transactionRepository.getTransactions()
+            async let budgets = budgetRepository.getBudgets()
+            async let goals = goalRepository.getGoals()
+
+            let exportData = DataExportService.ExportData(
+                accounts: try await accounts,
+                transactions: try await transactions,
+                budgets: try await budgets,
+                goals: try await goals
+            )
+
+            let fileURL = try await exportService.export(
+                data: exportData,
+                format: exportFormat
+            )
+
+            exportFileURL = fileURL
+            showExportSheet = true
+
+            Self.logger.info(
+                "Export complete: \(fileURL.lastPathComponent, privacy: .public)"
+            )
+        } catch {
+            Self.logger.error(
+                "Export failed: \(error.localizedDescription, privacy: .public)"
+            )
+            exportError = error.localizedDescription
+            showingExportError = true
+        }
     }
 }
