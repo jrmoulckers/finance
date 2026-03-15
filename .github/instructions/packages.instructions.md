@@ -36,7 +36,10 @@ These are `commonMain` interfaces — platform `actual` implementations live in 
 
 ## KMP (Kotlin Multiplatform) Requirements
 
-- Code must compile for **all** KMP targets: `commonMain`, `iosMain`, `androidMain`, `jvmMain`, `jsMain`
+- Code must compile for applicable KMP targets per package:
+  - **packages/core** (business logic): `commonMain`, `iosMain`, `jvmMain`, `jsMain`
+  - **packages/models** (data models): `commonMain`, `iosMain`, `androidMain`, `jvmMain`, `jsMain`
+  - **packages/sync** (sync engine): `commonMain`, `iosMain`, `androidMain`, `jvmMain`, `jsMain`
 - Use `expect`/`actual` declarations for platform-specific APIs — keep `expect` in `commonMain`, `actual` in each target source set
 - Use **SQLDelight** for all database access — define schemas and queries in `.sq` files, never write raw SQL strings in Kotlin
 - Use **kotlinx-datetime** for all date/time operations — no `java.time` or platform date APIs in shared code

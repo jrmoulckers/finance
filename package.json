@@ -15,6 +15,7 @@
     "build:tokens": "npm run build -w packages/design-tokens",
     "test": "npm run test:kmp && turbo run test",
     "test:kmp": "node tools/gradle.js :packages:core:jvmTest",
+    "test:web": "npm run test -w apps/web",
     "lint": "turbo run lint && npx eslint .",
     "lint:fix": "npx eslint . --fix",
     "type-check": "turbo run type-check",
