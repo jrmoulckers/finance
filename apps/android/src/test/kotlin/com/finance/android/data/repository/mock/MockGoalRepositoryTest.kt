@@ -8,6 +8,7 @@ import com.finance.models.GoalStatus
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
 import com.finance.models.types.SyncId
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -20,14 +21,21 @@ import kotlin.test.assertTrue
 /**
  * Unit tests for [MockGoalRepository].
  *
- * The repository starts empty (no SampleData for goals), so every test
- * creates its own data. Flow re-emission is verified with Turbine.
+ * The repository is seeded from [com.finance.android.ui.data.SampleData.goals]
+ * (5 goals: 4 ACTIVE, 1 COMPLETED). Tests account for this baseline.
+ * Flow re-emission is verified with Turbine.
  */
 class MockGoalRepositoryTest {
 
     // -- Helpers --------------------------------------------------------------
 
     private fun createRepo() = MockGoalRepository()
+
+    /** Number of goals seeded from SampleData. */
+    private val seedCount = 5
+
+    /** Number of ACTIVE goals in the seed data. */
+    private val seedActiveCount = 4
 
     private val now = Clock.System.now()
 
@@ -57,12 +65,12 @@ class MockGoalRepositoryTest {
     // -- Tests ----------------------------------------------------------------
 
     @Test
-    fun `getAll returns empty initially`() = runTest {
+    fun `getAll returns seeded goals initially`() = runTest {
         val repo = createRepo()
 
         repo.getAll().test {
             val list = awaitItem()
-            assertTrue(list.isEmpty(), "GoalRepository starts with no data")
+            assertEquals(seedCount, list.size, "GoalRepository starts with seeded data")
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -70,12 +78,12 @@ class MockGoalRepositoryTest {
     @Test
     fun `getAll returns non-deleted goals`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-1", name = "Vacation"))
-        repo.create(goal("goal-2", name = "Car"))
+        repo.create(goal("goal-extra-1", name = "Vacation"))
+        repo.create(goal("goal-extra-2", name = "Car"))
 
         repo.getAll().test {
             val list = awaitItem()
-            assertEquals(2, list.size)
+            assertEquals(seedCount + 2, list.size)
             assertTrue(list.all { it.deletedAt == null })
             cancelAndIgnoreRemainingEvents()
         }
@@ -110,13 +118,14 @@ class MockGoalRepositoryTest {
         val repo = createRepo()
         repo.create(goal("goal-active", name = "Active Goal", status = GoalStatus.ACTIVE))
         repo.create(goal("goal-paused", name = "Paused Goal", status = GoalStatus.PAUSED))
-        repo.create(goal("goal-completed", name = "Completed Goal", status = GoalStatus.COMPLETED))
+        repo.create(goal("goal-completed-x", name = "Completed Goal", status = GoalStatus.COMPLETED))
         repo.create(goal("goal-cancelled", name = "Cancelled Goal", status = GoalStatus.CANCELLED))
 
         repo.getActiveGoals().test {
             val list = awaitItem()
-            assertEquals(1, list.size, "Only ACTIVE goals should be returned")
-            assertEquals(SyncId("goal-active"), list.first().id)
+            // seedActiveCount from seed + 1 newly added ACTIVE
+            assertEquals(seedActiveCount + 1, list.size, "Only ACTIVE goals should be returned")
+            assertTrue(list.any { it.id == SyncId("goal-active") })
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -124,12 +133,14 @@ class MockGoalRepositoryTest {
     @Test
     fun `getActiveGoals excludes deleted goals even if status is ACTIVE`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-1", name = "Active Goal", status = GoalStatus.ACTIVE))
-        repo.delete(SyncId("goal-1"))
+        repo.create(goal("goal-del-test", name = "Active Goal", status = GoalStatus.ACTIVE))
+        val beforeDelete = repo.getActiveGoals().first().size
+
+        repo.delete(SyncId("goal-del-test"))
 
         repo.getActiveGoals().test {
             val list = awaitItem()
-            assertTrue(list.isEmpty(), "Soft-deleted active goals should not appear")
+            assertEquals(beforeDelete - 1, list.size, "Soft-deleted active goals should not appear")
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -175,13 +186,13 @@ class MockGoalRepositoryTest {
 
         repo.getAll().test {
             val before = awaitItem()
-            assertTrue(before.isEmpty())
+            assertEquals(seedCount, before.size)
 
             repo.create(goal("goal-new", name = "New Goal"))
 
             val after = awaitItem()
-            assertEquals(1, after.size)
-            assertEquals("New Goal", after.first().name)
+            assertEquals(seedCount + 1, after.size)
+            assertTrue(after.any { it.name == "New Goal" })
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -222,15 +233,16 @@ class MockGoalRepositoryTest {
     @Test
     fun `deleted goals excluded from getAll`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-1", name = "Keep"))
-        repo.create(goal("goal-2", name = "Remove"))
+        repo.create(goal("goal-keep", name = "Keep"))
+        repo.create(goal("goal-remove", name = "Remove"))
 
-        repo.delete(SyncId("goal-2"))
+        repo.delete(SyncId("goal-remove"))
 
         repo.getAll().test {
             val list = awaitItem()
-            assertEquals(1, list.size)
-            assertEquals(SyncId("goal-1"), list.first().id)
+            assertEquals(seedCount + 1, list.size)
+            assertTrue(list.any { it.id == SyncId("goal-keep") })
+            assertTrue(list.none { it.id == SyncId("goal-remove") })
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -240,24 +252,24 @@ class MockGoalRepositoryTest {
         val repo = createRepo()
 
         repo.getAll().test {
-            // Initial → empty
+            // Initial → seeded data
             val initial = awaitItem()
-            assertTrue(initial.isEmpty())
+            assertEquals(seedCount, initial.size)
 
-            // Create → 1 goal
+            // Create → +1 goal
             repo.create(goal("goal-flow", name = "Flow Goal"))
             val afterCreate = awaitItem()
-            assertEquals(1, afterCreate.size)
+            assertEquals(seedCount + 1, afterCreate.size)
 
             // UpdateProgress → re-emit
             repo.updateProgress(SyncId("goal-flow"), Cents(50_000L))
             val afterProgress = awaitItem()
-            assertEquals(Cents(50_000L), afterProgress.first().currentAmount)
+            assertEquals(Cents(50_000L), afterProgress.first { it.id == SyncId("goal-flow") }.currentAmount)
 
-            // Delete → 0 goals
+            // Delete → back to seed count
             repo.delete(SyncId("goal-flow"))
             val afterDelete = awaitItem()
-            assertTrue(afterDelete.isEmpty())
+            assertEquals(seedCount, afterDelete.size)
 
             cancelAndIgnoreRemainingEvents()
         }
