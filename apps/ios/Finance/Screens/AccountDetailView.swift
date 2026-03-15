@@ -5,64 +5,36 @@
 //
 // Account detail screen showing balance, info, and transaction history.
 
+import os
 import SwiftUI
-
-// MARK: - View Model
-
-@Observable
-@MainActor
-final class AccountDetailViewModel {
-    var transactions: [TransactionRow] = []
-    var isLoading = false
-
-    struct TransactionRow: Identifiable {
-        let id: String
-        let payee: String
-        let category: String
-        let amountMinorUnits: Int64
-        let currencyCode: String
-        let date: Date
-        let isExpense: Bool
-    }
-
-    struct DateGroup: Identifiable {
-        let id: String
-        let date: Date
-        let transactions: [TransactionRow]
-    }
-
-    var groupedTransactions: [DateGroup] {
-        let calendar = Calendar.current
-        let grouped = Dictionary(grouping: transactions) { calendar.startOfDay(for: $0.date) }
-        return grouped
-            .sorted { $0.key > $1.key }
-            .map { DateGroup(id: $0.key.ISO8601Format(), date: $0.key, transactions: $0.value) }
-    }
-
-    func loadTransactions(accountId: String) async {
-        isLoading = true
-        defer { isLoading = false }
-
-        // TODO: Replace with KMP shared logic via Swift Export bridge
-        transactions = [
-            TransactionRow(id: "t1", payee: "Whole Foods", category: String(localized: "Groceries"), amountMinorUnits: -85_40, currencyCode: "USD", date: .now, isExpense: true),
-            TransactionRow(id: "t2", payee: "Shell Gas", category: String(localized: "Transport"), amountMinorUnits: -45_00, currencyCode: "USD", date: .now, isExpense: true),
-            TransactionRow(id: "t3", payee: "Direct Deposit", category: String(localized: "Income"), amountMinorUnits: 4_250_00, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -1, to: .now)!, isExpense: false),
-            TransactionRow(id: "t4", payee: "Amazon", category: String(localized: "Shopping"), amountMinorUnits: -129_99, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -2, to: .now)!, isExpense: true),
-            TransactionRow(id: "t5", payee: "Starbucks", category: String(localized: "Dining Out"), amountMinorUnits: -6_75, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -2, to: .now)!, isExpense: true),
-        ]
-    }
-}
 
 // MARK: - View
 
 struct AccountDetailView: View {
-    let account: AccountsViewModel.AccountItem
-    @State private var viewModel = AccountDetailViewModel()
+    let account: AccountItem
+    @Environment(BiometricAuthManager.self) private var biometricManager
+    @State private var viewModel: AccountDetailViewModel
+    @State private var showAccountNumber = false
+    @State private var biometricError: BiometricError?
+    @State private var showingBiometricError = false
+
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "AccountDetailView"
+    )
+
+    init(
+        account: AccountItem,
+        viewModel: AccountDetailViewModel = AccountDetailViewModel(repository: MockTransactionRepository())
+    ) {
+        self.account = account
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         List {
             accountHeader
+            accountActions
             ForEach(viewModel.groupedTransactions) { group in
                 Section {
                     ForEach(group.transactions) { transaction in
@@ -87,6 +59,16 @@ struct AccountDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .refreshable { await viewModel.loadTransactions(accountId: account.id) }
         .task { await viewModel.loadTransactions(accountId: account.id) }
+        .alert(
+            String(localized: "Authentication Error"),
+            isPresented: $showingBiometricError,
+            presenting: biometricError
+        ) { _ in
+            Button(String(localized: "OK"), role: .cancel) {}
+                .accessibilityLabel(String(localized: "Dismiss error"))
+        } message: { error in
+            Text(error.localizedDescription)
+        }
     }
 
     private var accountHeader: some View {
@@ -111,7 +93,81 @@ struct AccountDetailView: View {
         }
     }
 
-    private func transactionRow(_ transaction: AccountDetailViewModel.TransactionRow) -> some View {
+    // MARK: - Account Actions
+
+    /// Section with sensitive account operations gated behind biometric
+    /// authentication.  Viewing the account number requires Face ID /
+    /// Touch ID (with passcode fallback) before the value is revealed.
+    private var accountActions: some View {
+        Section {
+            Button {
+                Task { await toggleAccountNumber() }
+            } label: {
+                Label(
+                    showAccountNumber
+                        ? String(localized: "Hide Account Number")
+                        : String(localized: "View Account Number"),
+                    systemImage: showAccountNumber ? "eye.slash" : "eye"
+                )
+            }
+            .accessibilityLabel(
+                showAccountNumber
+                    ? String(localized: "Hide account number")
+                    : String(localized: "View account number")
+            )
+            .accessibilityHint(
+                showAccountNumber
+                    ? String(localized: "Hides the account number")
+                    : String(localized: "Requires authentication to reveal the account number")
+            )
+
+            if showAccountNumber {
+                LabeledContent(String(localized: "Account Number")) {
+                    Text("•••• •••• •••• 4242")
+                        .font(.body.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(String(localized: "Account number ending in 4242"))
+            }
+        }
+    }
+
+    // MARK: - Biometric Authentication
+
+    /// Toggles the visibility of the masked account number.
+    ///
+    /// Showing the number requires biometric / passcode authentication;
+    /// hiding is immediate and does not require re-authentication.
+    private func toggleAccountNumber() async {
+        if showAccountNumber {
+            showAccountNumber = false
+            Self.logger.debug("Account number hidden")
+            return
+        }
+        do {
+            try await biometricManager.authenticate(
+                reason: String(localized: "Authenticate to view account number")
+            )
+            showAccountNumber = true
+            Self.logger.info("Account number revealed after authentication")
+        } catch let error as BiometricError {
+            Self.logger.warning(
+                "Account number auth failed: \(error.localizedDescription, privacy: .public)"
+            )
+            if case .cancelled = error { return }
+            biometricError = error
+            showingBiometricError = true
+        } catch {
+            Self.logger.error(
+                "Account number auth error: \(error.localizedDescription, privacy: .public)"
+            )
+            biometricError = .unknown(underlying: error)
+            showingBiometricError = true
+        }
+    }
+
+    private func transactionRow(_ transaction: TransactionItem) -> some View {
         HStack(spacing: 12) {
             Image(systemName: transaction.isExpense ? "arrow.up.right" : "arrow.down.left")
                 .font(.caption)
@@ -133,9 +189,10 @@ struct AccountDetailView: View {
 
 #Preview {
     NavigationStack {
-        AccountDetailView(account: AccountsViewModel.AccountItem(
+        AccountDetailView(account: AccountItem(
             id: "preview-1", name: "Main Checking", balanceMinorUnits: 12_450_00,
             currencyCode: "USD", type: .checking, icon: "building.columns", isArchived: false
         ))
     }
+    .environment(BiometricAuthManager())
 }

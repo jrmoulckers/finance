@@ -7,86 +7,14 @@
 
 import SwiftUI
 
-// MARK: - View Model
-
-@Observable
-@MainActor
-final class BudgetsViewModel {
-    var budgets: [BudgetItem] = []
-    var isLoading = false
-    var selectedMonth = Date()
-    var showingCreateBudget = false
-
-    struct BudgetItem: Identifiable, Sendable {
-        let id: String
-        let name: String
-        let categoryName: String
-        let spentMinorUnits: Int64
-        let limitMinorUnits: Int64
-        let currencyCode: String
-        let period: String
-        let icon: String
-
-        var progress: Double {
-            guard limitMinorUnits > 0 else { return 0 }
-            return Double(spentMinorUnits) / Double(limitMinorUnits)
-        }
-
-        var remainingMinorUnits: Int64 { limitMinorUnits - spentMinorUnits }
-
-        var progressColor: Color {
-            if progress >= 1.0 { return .red }
-            if progress >= 0.75 { return .orange }
-            return .green
-        }
-
-        var statusText: String {
-            progress >= 1.0 ? String(localized: "Over budget") : String(localized: "On track")
-        }
-    }
-
-    var totalBudgeted: Int64 { budgets.reduce(0) { $0 + $1.limitMinorUnits } }
-    var totalSpent: Int64 { budgets.reduce(0) { $0 + $1.spentMinorUnits } }
-
-    var monthDisplayText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: selectedMonth)
-    }
-
-    func previousMonth() {
-        if let d = Calendar.current.date(byAdding: .month, value: -1, to: selectedMonth) {
-            selectedMonth = d
-            Task { await loadBudgets() }
-        }
-    }
-
-    func nextMonth() {
-        if let d = Calendar.current.date(byAdding: .month, value: 1, to: selectedMonth) {
-            selectedMonth = d
-            Task { await loadBudgets() }
-        }
-    }
-
-    func loadBudgets() async {
-        isLoading = true
-        defer { isLoading = false }
-
-        // TODO: Replace with KMP shared logic via Swift Export bridge
-        budgets = [
-            BudgetItem(id: "b1", name: String(localized: "Groceries"), categoryName: String(localized: "Groceries"), spentMinorUnits: 320_00, limitMinorUnits: 500_00, currencyCode: "USD", period: String(localized: "Monthly"), icon: "cart"),
-            BudgetItem(id: "b2", name: String(localized: "Dining Out"), categoryName: String(localized: "Dining Out"), spentMinorUnits: 180_00, limitMinorUnits: 200_00, currencyCode: "USD", period: String(localized: "Monthly"), icon: "fork.knife"),
-            BudgetItem(id: "b3", name: String(localized: "Transport"), categoryName: String(localized: "Transport"), spentMinorUnits: 95_00, limitMinorUnits: 150_00, currencyCode: "USD", period: String(localized: "Monthly"), icon: "car"),
-            BudgetItem(id: "b4", name: String(localized: "Entertainment"), categoryName: String(localized: "Entertainment"), spentMinorUnits: 210_00, limitMinorUnits: 200_00, currencyCode: "USD", period: String(localized: "Monthly"), icon: "film"),
-            BudgetItem(id: "b5", name: String(localized: "Shopping"), categoryName: String(localized: "Shopping"), spentMinorUnits: 75_00, limitMinorUnits: 300_00, currencyCode: "USD", period: String(localized: "Monthly"), icon: "bag"),
-        ]
-    }
-}
-
 // MARK: - View
 
 struct BudgetsView: View {
-    @State private var viewModel = BudgetsViewModel()
+    @State private var viewModel: BudgetsViewModel
+
+    init(viewModel: BudgetsViewModel = BudgetsViewModel(repository: MockBudgetRepository())) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         NavigationStack {
@@ -183,7 +111,7 @@ struct BudgetsView: View {
         }
     }
 
-    private func budgetCard(_ budget: BudgetsViewModel.BudgetItem) -> some View {
+    private func budgetCard(_ budget: BudgetItem) -> some View {
         HStack(spacing: 16) {
             ProgressRing(progress: budget.progress, lineWidth: 6, progressColor: budget.progressColor, size: 56)
             VStack(alignment: .leading, spacing: 4) {
@@ -232,4 +160,4 @@ struct BudgetsView: View {
     }
 }
 
-#Preview { BudgetsView() }
+#Preview { BudgetsView(viewModel: BudgetsViewModel(repository: MockBudgetRepository())) }

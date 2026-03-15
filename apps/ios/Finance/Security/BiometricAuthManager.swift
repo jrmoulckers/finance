@@ -48,6 +48,30 @@ enum BiometricType: Sendable {
     case opticID
 }
 
+// MARK: - BiometricType Display Properties
+
+extension BiometricType {
+    /// Localized display name for use in UI labels and settings.
+    var displayName: String {
+        switch self {
+        case .faceID: String(localized: "Face ID")
+        case .touchID: String(localized: "Touch ID")
+        case .opticID: String(localized: "Optic ID")
+        case .none: String(localized: "Biometric Authentication")
+        }
+    }
+
+    /// SF Symbol name matching the biometric type.
+    var systemImage: String {
+        switch self {
+        case .faceID: "faceid"
+        case .touchID: "touchid"
+        case .opticID: "opticid"
+        case .none: "lock"
+        }
+    }
+}
+
 // MARK: - BiometricAuthManaging Protocol
 
 /// Abstraction over biometric authentication for testability.
@@ -80,6 +104,13 @@ final class BiometricAuthManager: BiometricAuthManaging {
 
     /// Default localized reason shown in the system biometric prompt.
     static let defaultReason = String(localized: "Verify your identity to access Finance")
+
+    /// UserDefaults key for the biometric app lock preference.
+    ///
+    /// Used by `SettingsViewModel` and `FinanceApp` to persist/read the
+    /// user's choice to enable biometric app lock. This is a non-sensitive
+    /// boolean preference — not a secret.
+    static let appLockEnabledKey = "biometricAuthEnabled"
 
     // MARK: - Initialization
 

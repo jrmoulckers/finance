@@ -7,105 +7,14 @@
 
 import SwiftUI
 
-// MARK: - View Model
-
-@Observable
-@MainActor
-final class TransactionsViewModel {
-    var transactions: [TransactionListItem] = []
-    var isLoading = false
-    var searchText = ""
-    var showingCreateTransaction = false
-
-    struct TransactionListItem: Identifiable, Sendable {
-        let id: String
-        let payee: String
-        let category: String
-        let accountName: String
-        let amountMinorUnits: Int64
-        let currencyCode: String
-        let date: Date
-        let type: TransactionTypeUI
-        let status: TransactionStatusUI
-    }
-
-    enum TransactionTypeUI: String, Sendable {
-        case expense, income, transfer
-        var systemImage: String {
-            switch self {
-            case .expense: "arrow.up.right"
-            case .income: "arrow.down.left"
-            case .transfer: "arrow.left.arrow.right"
-            }
-        }
-        var color: Color {
-            switch self {
-            case .expense: .red
-            case .income: .green
-            case .transfer: .blue
-            }
-        }
-    }
-
-    enum TransactionStatusUI: String, Sendable {
-        case pending, cleared, reconciled, voided
-        var displayName: String {
-            switch self {
-            case .pending: String(localized: "Pending")
-            case .cleared: String(localized: "Cleared")
-            case .reconciled: String(localized: "Reconciled")
-            case .voided: String(localized: "Void")
-            }
-        }
-    }
-
-    struct DateGroup: Identifiable {
-        let id: String
-        let date: Date
-        let transactions: [TransactionListItem]
-    }
-
-    var filteredTransactions: [TransactionListItem] {
-        guard !searchText.isEmpty else { return transactions }
-        return transactions.filter {
-            $0.payee.localizedCaseInsensitiveContains(searchText) ||
-            $0.category.localizedCaseInsensitiveContains(searchText) ||
-            $0.accountName.localizedCaseInsensitiveContains(searchText)
-        }
-    }
-
-    var groupedTransactions: [DateGroup] {
-        let calendar = Calendar.current
-        let grouped = Dictionary(grouping: filteredTransactions) { calendar.startOfDay(for: $0.date) }
-        return grouped.sorted { $0.key > $1.key }
-            .map { DateGroup(id: $0.key.ISO8601Format(), date: $0.key, transactions: $0.value) }
-    }
-
-    func loadTransactions() async {
-        isLoading = true
-        defer { isLoading = false }
-
-        // TODO: Replace with KMP shared logic via Swift Export bridge
-        transactions = [
-            TransactionListItem(id: "t1", payee: "Whole Foods", category: String(localized: "Groceries"), accountName: "Main Checking", amountMinorUnits: -85_40, currencyCode: "USD", date: .now, type: .expense, status: .cleared),
-            TransactionListItem(id: "t2", payee: "Payroll", category: String(localized: "Income"), accountName: "Main Checking", amountMinorUnits: 4_250_00, currencyCode: "USD", date: .now, type: .income, status: .cleared),
-            TransactionListItem(id: "t3", payee: "Netflix", category: String(localized: "Entertainment"), accountName: "Travel Card", amountMinorUnits: -15_99, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -1, to: .now)!, type: .expense, status: .cleared),
-            TransactionListItem(id: "t4", payee: "Transfer to Savings", category: String(localized: "Transfer"), accountName: "Main Checking", amountMinorUnits: -500_00, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -1, to: .now)!, type: .transfer, status: .cleared),
-            TransactionListItem(id: "t5", payee: "Shell Gas", category: String(localized: "Transport"), accountName: "Travel Card", amountMinorUnits: -45_00, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -2, to: .now)!, type: .expense, status: .pending),
-            TransactionListItem(id: "t6", payee: "Starbucks", category: String(localized: "Dining Out"), accountName: "Main Checking", amountMinorUnits: -6_75, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -3, to: .now)!, type: .expense, status: .cleared),
-            TransactionListItem(id: "t7", payee: "Amazon", category: String(localized: "Shopping"), accountName: "Travel Card", amountMinorUnits: -129_99, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -4, to: .now)!, type: .expense, status: .reconciled),
-        ]
-    }
-
-    func deleteTransaction(id: String) async {
-        transactions.removeAll { $0.id == id }
-    }
-}
-
 // MARK: - View
 
 struct TransactionsView: View {
-    @State private var viewModel = TransactionsViewModel()
+    @State private var viewModel: TransactionsViewModel
+
+    init(viewModel: TransactionsViewModel = TransactionsViewModel(repository: MockTransactionRepository())) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         NavigationStack {
@@ -175,7 +84,7 @@ struct TransactionsView: View {
         .listStyle(.insetGrouped)
     }
 
-    private func transactionRow(_ transaction: TransactionsViewModel.TransactionListItem) -> some View {
+    private func transactionRow(_ transaction: TransactionItem) -> some View {
         HStack(spacing: 12) {
             Image(systemName: transaction.type.systemImage)
                 .font(.caption).foregroundStyle(transaction.type.color)
@@ -208,4 +117,4 @@ struct TransactionsView: View {
     }
 }
 
-#Preview { TransactionsView() }
+#Preview { TransactionsView(viewModel: TransactionsViewModel(repository: MockTransactionRepository())) }

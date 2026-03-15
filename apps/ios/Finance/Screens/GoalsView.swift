@@ -7,81 +7,14 @@
 
 import SwiftUI
 
-// MARK: - View Model
-
-@Observable
-@MainActor
-final class GoalsViewModel {
-    var goals: [GoalItem] = []
-    var isLoading = false
-    var showingCreateGoal = false
-
-    struct GoalItem: Identifiable, Sendable {
-        let id: String
-        let name: String
-        let currentMinorUnits: Int64
-        let targetMinorUnits: Int64
-        let currencyCode: String
-        let targetDate: Date?
-        let status: GoalStatusUI
-        let icon: String
-        let color: Color
-
-        var progress: Double {
-            guard targetMinorUnits > 0 else { return 0 }
-            return Double(currentMinorUnits) / Double(targetMinorUnits)
-        }
-
-        var isComplete: Bool { currentMinorUnits >= targetMinorUnits }
-        var remainingMinorUnits: Int64 { max(0, targetMinorUnits - currentMinorUnits) }
-    }
-
-    enum GoalStatusUI: String, Sendable {
-        case active, paused, completed, cancelled
-        var displayName: String {
-            switch self {
-            case .active: String(localized: "Active")
-            case .paused: String(localized: "Paused")
-            case .completed: String(localized: "Completed")
-            case .cancelled: String(localized: "Cancelled")
-            }
-        }
-        var color: Color {
-            switch self {
-            case .active: .blue
-            case .paused: .orange
-            case .completed: .green
-            case .cancelled: .gray
-            }
-        }
-        var systemImage: String {
-            switch self {
-            case .active: "flame"
-            case .paused: "pause.circle"
-            case .completed: "checkmark.circle.fill"
-            case .cancelled: "xmark.circle"
-            }
-        }
-    }
-
-    func loadGoals() async {
-        isLoading = true
-        defer { isLoading = false }
-
-        // TODO: Replace with KMP shared logic via Swift Export bridge
-        goals = [
-            GoalItem(id: "g1", name: String(localized: "Emergency Fund"), currentMinorUnits: 7_500_00, targetMinorUnits: 10_000_00, currencyCode: "USD", targetDate: Calendar.current.date(byAdding: .month, value: 6, to: .now), status: .active, icon: "shield", color: .blue),
-            GoalItem(id: "g2", name: String(localized: "Vacation"), currentMinorUnits: 1_200_00, targetMinorUnits: 5_000_00, currencyCode: "USD", targetDate: Calendar.current.date(byAdding: .month, value: 12, to: .now), status: .active, icon: "airplane", color: .teal),
-            GoalItem(id: "g3", name: String(localized: "New Laptop"), currentMinorUnits: 2_000_00, targetMinorUnits: 2_000_00, currencyCode: "USD", targetDate: nil, status: .completed, icon: "laptopcomputer", color: .green),
-            GoalItem(id: "g4", name: String(localized: "Home Down Payment"), currentMinorUnits: 15_000_00, targetMinorUnits: 60_000_00, currencyCode: "USD", targetDate: Calendar.current.date(byAdding: .year, value: 3, to: .now), status: .active, icon: "house", color: .purple),
-        ]
-    }
-}
-
 // MARK: - View
 
 struct GoalsView: View {
-    @State private var viewModel = GoalsViewModel()
+    @State private var viewModel: GoalsViewModel
+
+    init(viewModel: GoalsViewModel = GoalsViewModel(repository: MockGoalRepository())) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         NavigationStack {
@@ -124,7 +57,7 @@ struct GoalsView: View {
         .padding(.bottom, 20)
     }
 
-    private func goalCard(_ goal: GoalsViewModel.GoalItem) -> some View {
+    private func goalCard(_ goal: GoalItem) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack(spacing: 12) {
@@ -212,4 +145,4 @@ struct GoalsView: View {
     }
 }
 
-#Preview { GoalsView() }
+#Preview { GoalsView(viewModel: GoalsViewModel(repository: MockGoalRepository())) }
