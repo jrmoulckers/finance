@@ -2,6 +2,8 @@
 
 package com.finance.sync.crypto
 
+import com.finance.sync.auth.PlatformSHA256
+
 /**
  * Abstraction for cryptographically-secure random byte generation.
  *
@@ -14,13 +16,15 @@ interface RandomProvider {
 }
 
 /**
- * Default [RandomProvider] using [kotlin.random.Random].
+ * Default [RandomProvider] backed by the platform CSPRNG.
  *
- * **WARNING:** This is NOT cryptographically secure and exists only as a
- * fallback / compilation placeholder. Platform `actual` implementations
- * MUST supply a CSPRNG-backed provider for production use.
+ * Delegates to [PlatformSHA256.randomBytes] which uses the platform-native
+ * cryptographically-secure random number generator on each target:
+ * - **JVM/Android:** `java.security.SecureRandom`
+ * - **iOS:** `SecRandomCopyBytes` (via CryptoKit)
+ * - **JS:** `crypto.getRandomValues` (Web Crypto API)
  */
 internal object DefaultRandomProvider : RandomProvider {
     override fun nextBytes(size: Int): ByteArray =
-        kotlin.random.Random.nextBytes(size)
+        PlatformSHA256.randomBytes(size)
 }
