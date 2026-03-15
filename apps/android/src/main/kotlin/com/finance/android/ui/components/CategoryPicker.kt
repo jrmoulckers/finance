@@ -220,7 +220,7 @@ private fun CategoryGridCell(
                 )
             }
 
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = isSelected,
                 enter = fadeIn(),
                 exit = fadeOut(),

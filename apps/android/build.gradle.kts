@@ -20,6 +20,14 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    lint {
+        // Baseline captures pre-existing lint issues so they don't block CI.
+        // Run `./gradlew :apps:android:updateLintBaseline` to regenerate.
+        baseline = file("lint-baseline.xml")
+        abortOnError = true
     }
 
     compileOptions {

@@ -3,7 +3,11 @@
 package com.finance.android.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -14,6 +18,7 @@ import com.finance.android.ui.screens.BudgetsScreen
 import com.finance.android.ui.screens.DashboardScreen
 import com.finance.android.ui.screens.GoalsScreen
 import com.finance.android.ui.screens.SettingsScreen
+import com.finance.android.ui.screens.SettingsViewModel
 import com.finance.android.ui.screens.TransactionCreateScreen
 import com.finance.android.ui.screens.TransactionsScreen
 
@@ -97,7 +102,30 @@ fun FinanceNavHost(
 
         // ── Secondary screens ───────────────────────────────────────
         composable(Route.Settings.route) {
-            SettingsScreen(onNavigateBack = { navController.popBackStack() })
+            val context = LocalContext.current
+            val settingsViewModel: SettingsViewModel = viewModel(
+                factory = SettingsViewModel.provideFactory(context),
+            )
+            val settingsState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+
+            SettingsScreen(
+                state = settingsState,
+                onNavigateBack = { navController.popBackStack() },
+                onSetCurrency = settingsViewModel::setDefaultCurrency,
+                onSetNotifications = settingsViewModel::setNotificationsEnabled,
+                onSetBillReminders = settingsViewModel::setBillRemindersEnabled,
+                onSetBiometric = settingsViewModel::setBiometricEnabled,
+                onSetAppLockTimeout = settingsViewModel::setAppLockTimeout,
+                onSetSimplifiedView = settingsViewModel::setSimplifiedViewEnabled,
+                onSetHighContrast = settingsViewModel::setHighContrastEnabled,
+                onExportClick = settingsViewModel::showExportDialog,
+                onDeleteClick = settingsViewModel::showDeleteDialog,
+                onExportFormat = settingsViewModel::exportData,
+                onDismissExportDialog = settingsViewModel::dismissExportDialog,
+                onDeleteTextChanged = settingsViewModel::onDeleteConfirmationTextChanged,
+                onConfirmDelete = settingsViewModel::confirmDeleteAccount,
+                onDismissDeleteDialog = settingsViewModel::dismissDeleteDialog,
+            )
         }
 
         composable(

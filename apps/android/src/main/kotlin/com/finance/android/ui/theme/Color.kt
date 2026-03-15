@@ -57,6 +57,7 @@ val Red400 = Color(0xFFF87171)
 val Red500 = Color(0xFFEF4444)
 val Red600 = Color(0xFFDC2626)
 val Red700 = Color(0xFFB91C1C)
+val Red900 = Color(0xFF7F1D1D)
 // endregion
 
 // region Primitive — Neutral

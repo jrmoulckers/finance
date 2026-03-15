@@ -168,10 +168,13 @@ private fun AmountStep(state: TransactionCreateUiState, onAmt: (String) -> Unit,
             Spacer(Modifier.height(8.dp))
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 TransactionType.entries.forEachIndexed { i, t ->
-                    SegmentedButton(SegmentedButtonDefaults.itemShape(i, TransactionType.entries.size),
-                        { onType(t) }, state.transactionType == t,
-                        modifier = Modifier.semantics { contentDescription = "${t.name.lowercase()} type" }) {
-                        Text(t.name.lowercase().replaceFirstChar { it.uppercase() })
+                    SegmentedButton(
+                        selected = state.transactionType == t,
+                        onClick = { onType(t) },
+                        shape = SegmentedButtonDefaults.itemShape(i, TransactionType.entries.size),
+                        modifier = Modifier.semantics { contentDescription = "${t.name.lowercase()} type" },
+                    ) {
+                        Text(t.name.lowercase().replaceFirstChar { c -> c.uppercase() })
                     }
                 }
             }
