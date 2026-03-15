@@ -8,16 +8,19 @@ on:
 
 jobs:
   add-to-project:
+    # Projects V2 requires a PAT with `project` scope — GITHUB_TOKEN is insufficient.
+    # This job is skipped when the ADD_TO_PROJECT_PAT secret is not configured.
+    # Setup: create a PAT (classic) with `project` scope, add it as a repository
+    # secret named ADD_TO_PROJECT_PAT.
+    if: ${{ secrets.ADD_TO_PROJECT_PAT != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    continue-on-error: true
     permissions:
       issues: write
       pull-requests: write
-      repository-projects: write
     steps:
       - name: Add to project
         uses: actions/add-to-project@244f685bbc3b7adfa8466e08b698b5577571133e # v1.0.2
         with:
           project-url: https://github.com/users/jrmoulckers/projects/2
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
