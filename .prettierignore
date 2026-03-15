@@ -2,7 +2,11 @@ build/
 dist/
 node_modules/
 .gradle/
+.turbo/
+.next/
+.kotlin/
 *.jar
 *.apk
 *.aab
 packages/design-tokens/build/
+kotlin-js-store/
