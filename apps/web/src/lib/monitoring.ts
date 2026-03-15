@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+/* eslint-disable no-console */
+
 /**
  * Monitoring and error tracking configuration for the Finance web app (#410).
  *
@@ -176,7 +178,8 @@ export function initMonitoring(): void {
   if (isInitialized) return;
 
   const dsn = import.meta.env.VITE_SENTRY_DSN;
-  const environment = import.meta.env.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE;
+  // Will be used when Sentry initialization is uncommented (#367)
+  // const environment = import.meta.env.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE;
 
   if (!dsn) {
     if (import.meta.env.DEV) {
