@@ -29,19 +29,21 @@ Finance is a financial tracking application handling sensitive personal and mone
 - `git add`, `git commit` (local only)
 - `git branch` (listing), `git stash list`
 
-### 2. Pull Request & Review Operations ⛔
-
-**Operations requiring human approval:**
-
-- `gh pr create`, `merge`, `close`, `approve`, `review`
-- `gh pr edit` (modifying PR metadata)
-- Requesting or dismissing reviewers
-- Any GitHub API call that modifies PR state
+### 2. Pull Request & Review Operations ⚠️
 
 **Safe operations (auto-approved):**
 
+- `gh pr create` — Create PRs with linked issues and detailed descriptions
 - `gh pr list`, `view`, `diff`, `checks`
+- `gh pr edit` — Update PR title, body, labels
 - Reading PR comments and review content
+
+**Operations requiring human approval:**
+
+- `gh pr merge`, `gh pr close` — Merging or closing pull requests
+- `gh pr review --approve` — Approving or dismissing PR reviews
+- Requesting or dismissing reviewers
+- Any GitHub API call that merges or closes a PR
 
 ### 3. Remote Platform Operations ⛔
 

@@ -7,7 +7,7 @@ You are working in the Finance monorepo — a multi-platform, native-first finan
 The following operations require EXPLICIT human approval. NEVER perform these autonomously:
 
 - **Git remote operations** — May push feature branches; no pushing to `main`/`master`/release branches; no `git push --force` (use `--force-with-lease` on feature branches only); no `pull`, `fetch`, `remote`, `merge` from remote, `rebase` onto remote
-- **PR/review operations** — No creating, merging, closing, or approving PRs or reviews
+- **PR/review operations** — May create PRs with linked issues and detailed descriptions; no merging, closing, or approving PRs or reviews
 - **Remote platform mutations** — No GitHub API writes (issue close, label changes, repo settings, releases, deployments)
 - **Outside project boundary** — No file access outside the repository root; no system config changes; no global package installs
 - **Destructive file operations** — See detailed rules below
@@ -94,6 +94,20 @@ You MUST NOT execute operations that delete, truncate, or irreversibly modify da
 - **Platforms**: iOS (SwiftUI), Android (Kotlin), Web (PWA), Windows 11
 - **Shared code** lives in packages/ (core logic, data models, sync engine)
 - **Single backend API** in services/api/ for data synchronization
+
+## Development Workflow (MANDATORY)
+
+All code changes MUST follow this workflow:
+
+1. **Create or verify a GitHub issue** exists for the work (`gh issue create` if needed)
+2. **Create a feature branch** from main: `git checkout -b <type>/<description>-<issue#>`
+3. **Implement and commit** with issue references: `type(scope): description (#N)`
+4. **Push the feature branch**: `git push origin <branch-name>`
+5. **Create a PR** with `gh pr create` — include `Closes #N` and a detailed description
+6. **Never commit directly to `main`** — all changes go through feature branches and PRs
+7. **Never merge PRs** — humans review and merge
+
+Branch naming: `feat/web-data-layer-443`, `fix/auth-refresh-127`, `docs/api-guide-86`
 
 ## Code Quality Requirements
 
