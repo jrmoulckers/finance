@@ -23,6 +23,7 @@ final class TransactionsViewModelTests: XCTestCase {
 
         XCTAssertEqual(vm.transactions.count, SampleData.allTransactions.count,
                        "Should load all transactions from the repository")
+        XCTAssertNil(vm.errorMessage, "Error message should be nil on success")
         XCTAssertFalse(vm.isLoading, "isLoading should be false after loading")
     }
 
@@ -95,5 +96,41 @@ final class TransactionsViewModelTests: XCTestCase {
                      "Deleted transaction should no longer appear in the list")
         XCTAssertEqual(repo.deletedTransactionIds, ["t1"],
                        "Repository should record the deleted transaction id")
+    }
+
+    // MARK: - Test: repository error sets errorMessage
+
+    @MainActor
+    func testErrorHandlingSetsErrorMessage() async {
+        let repo = StubTransactionRepository()
+        repo.errorToThrow = TestError.simulated
+        let vm = TransactionsViewModel(repository: repo)
+
+        await vm.loadTransactions()
+
+        XCTAssertNotNil(vm.errorMessage,
+                        "Error message should be set when repository throws")
+        XCTAssertFalse(vm.isLoading, "isLoading should be false after error")
+    }
+
+    // MARK: - Test: successful load clears errorMessage
+
+    @MainActor
+    func testSuccessfulLoadClearsErrorMessage() async {
+        let repo = StubTransactionRepository()
+        repo.errorToThrow = TestError.simulated
+        let vm = TransactionsViewModel(repository: repo)
+
+        await vm.loadTransactions()
+        XCTAssertNotNil(vm.errorMessage, "Error message should be set after failure")
+
+        repo.errorToThrow = nil
+        repo.transactionsToReturn = SampleData.allTransactions
+        await vm.loadTransactions()
+
+        XCTAssertNil(vm.errorMessage,
+                     "Error message should be cleared after successful load")
+        XCTAssertFalse(vm.transactions.isEmpty,
+                       "Transactions should be populated after successful reload")
     }
 }

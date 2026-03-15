@@ -6,13 +6,18 @@
 // ViewModel for the account detail screen. Loads transactions for a
 // specific account and groups them by date for sectioned display.
 
-import Observation
 import Foundation
+import Observation
+import os
 
 @Observable
 @MainActor
 final class AccountDetailViewModel {
     private let repository: TransactionRepository
+    private let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "AccountDetailViewModel"
+    )
 
     var transactions: [TransactionItem] = []
     var isLoading = false
@@ -43,9 +48,10 @@ final class AccountDetailViewModel {
 
         do {
             transactions = try await repository.getTransactions(forAccountId: accountId)
+            errorMessage = nil
         } catch {
+            logger.error("Failed to load transactions: \(error.localizedDescription, privacy: .public)")
             errorMessage = error.localizedDescription
-            transactions = []
         }
     }
 }

@@ -6,16 +6,22 @@
 // ViewModel for the accounts list screen. Loads accounts from a
 // repository and groups them by account type for sectioned display.
 
-import Observation
 import Foundation
+import Observation
+import os
 
 @Observable
 @MainActor
 final class AccountsViewModel {
     private let repository: AccountRepository
+    private let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "AccountsViewModel"
+    )
 
     var accountGroups: [AccountGroup] = []
     var isLoading = false
+    var errorMessage: String?
     var showingAddAccount = false
 
     init(repository: AccountRepository) {
@@ -33,9 +39,10 @@ final class AccountsViewModel {
                 guard let items = grouped[type], !items.isEmpty else { return nil }
                 return AccountGroup(id: type.rawValue, type: type, accounts: items)
             }
+            errorMessage = nil
         } catch {
-            // Error handling will be enhanced with KMP-backed repository
-            accountGroups = []
+            logger.error("Failed to load accounts: \(error.localizedDescription, privacy: .public)")
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -43,7 +50,7 @@ final class AccountsViewModel {
         do {
             try await repository.deleteAccount(id: id)
         } catch {
-            // Deletion error handling will be enhanced with KMP-backed repository
+            logger.error("Failed to delete account: \(error.localizedDescription, privacy: .public)")
         }
         // Remove from local state for immediate UI feedback
         accountGroups = accountGroups.compactMap { group in

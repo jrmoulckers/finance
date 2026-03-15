@@ -35,16 +35,26 @@ struct AccountDetailView: View {
         List {
             accountHeader
             accountActions
-            ForEach(viewModel.groupedTransactions) { group in
+            if viewModel.isLoading && viewModel.transactions.isEmpty {
                 Section {
-                    ForEach(group.transactions) { transaction in
-                        transactionRow(transaction)
-                    }
-                } header: {
-                    Text(group.date, style: .date)
+                    ProgressView(String(localized: "Loading..."))
+                        .accessibilityLabel(String(localized: "Loading data"))
+                        .frame(maxWidth: .infinity)
+                        .padding()
                 }
-            }
-            if viewModel.transactions.isEmpty && !viewModel.isLoading {
+            } else if let error = viewModel.errorMessage, viewModel.transactions.isEmpty {
+                Section {
+                    ContentUnavailableView {
+                        Label(String(localized: "Something Went Wrong"), systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(error)
+                    } actions: {
+                        Button(String(localized: "Try Again")) {
+                            Task { await viewModel.loadTransactions(accountId: account.id) }
+                        }
+                    }
+                }
+            } else if viewModel.transactions.isEmpty {
                 Section {
                     EmptyStateView(
                         systemImage: "arrow.left.arrow.right",
@@ -52,9 +62,26 @@ struct AccountDetailView: View {
                         message: String(localized: "Transactions for this account will appear here.")
                     )
                 }
+            } else {
+                ForEach(viewModel.groupedTransactions) { group in
+                    Section {
+                        ForEach(group.transactions) { transaction in
+                            transactionRow(transaction)
+                        }
+                    } header: {
+                        Text(group.date, style: .date)
+                    }
+                }
             }
         }
         .listStyle(.insetGrouped)
+        .overlay(alignment: .top) {
+            if let error = viewModel.errorMessage, !viewModel.transactions.isEmpty {
+                ErrorBannerView(message: error) {
+                    await viewModel.loadTransactions(accountId: account.id)
+                }
+            }
+        }
         .navigationTitle(account.name)
         .navigationBarTitleDisplayMode(.large)
         .refreshable { await viewModel.loadTransactions(accountId: account.id) }

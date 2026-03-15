@@ -100,6 +100,31 @@ final class AccountsViewModelTests: XCTestCase {
 
         XCTAssertTrue(vm.accountGroups.isEmpty,
                       "Account groups should be empty when repository throws")
+        XCTAssertNotNil(vm.errorMessage,
+                        "Error message should be set when repository throws")
         XCTAssertFalse(vm.isLoading, "isLoading should be false after error")
+    }
+
+    // MARK: - Test: successful load clears errorMessage
+
+    @MainActor
+    func testSuccessfulLoadClearsErrorMessage() async {
+        let repo = StubAccountRepository()
+        repo.errorToThrow = TestError.simulated
+        let vm = AccountsViewModel(repository: repo)
+
+        // First load fails
+        await vm.loadAccounts()
+        XCTAssertNotNil(vm.errorMessage, "Error message should be set after failure")
+
+        // Second load succeeds
+        repo.errorToThrow = nil
+        repo.accountsToReturn = SampleData.allAccounts
+        await vm.loadAccounts()
+
+        XCTAssertNil(vm.errorMessage,
+                     "Error message should be cleared after successful load")
+        XCTAssertFalse(vm.accountGroups.isEmpty,
+                       "Account groups should be populated after successful reload")
     }
 }
