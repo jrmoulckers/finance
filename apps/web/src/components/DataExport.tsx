@@ -30,7 +30,13 @@ function gatherExportData(): Record<string, unknown>[] {
   return [
     { id: 'txn-1', date: '2024-03-06', payee: 'Grocery Store', category: 'Food', amount: -67.42 },
     { id: 'txn-2', date: '2024-03-06', payee: 'Monthly Salary', category: 'Income', amount: 4500 },
-    { id: 'txn-3', date: '2024-03-05', payee: 'Electric Bill', category: 'Utilities', amount: -124 },
+    {
+      id: 'txn-3',
+      date: '2024-03-05',
+      payee: 'Electric Bill',
+      category: 'Utilities',
+      amount: -124,
+    },
     { id: 'txn-4', date: '2024-03-05', payee: 'Coffee Shop', category: 'Dining', amount: -5.75 },
     { id: 'txn-5', date: '2024-03-04', payee: 'Gas Station', category: 'Transport', amount: -48.3 },
   ];

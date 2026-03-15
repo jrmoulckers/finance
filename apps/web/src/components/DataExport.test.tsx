@@ -37,9 +37,7 @@ describe('DataExport', () => {
 
   it('renders description text', () => {
     render(<DataExport />);
-    expect(
-      screen.getByText(/download your financial data/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/download your financial data/i)).toBeInTheDocument();
   });
 
   // -- Accessibility --------------------------------------------------------
