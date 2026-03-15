@@ -156,4 +156,7 @@ data class StoredTokenData(
     val refreshToken: String,
     val expiresAtMillis: Long,
     val userId: String,
-)
+) {
+    override fun toString(): String =
+        "StoredTokenData(userId=$userId, accessToken=*****, refreshToken=*****, expiresAtMillis=$expiresAtMillis)"
+}

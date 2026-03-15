@@ -22,4 +22,7 @@ data class SyncCredentials(
         require(authToken.isNotBlank()) { "Auth token cannot be blank" }
         require(userId.isNotBlank()) { "User ID cannot be blank" }
     }
+
+    override fun toString(): String =
+        "SyncCredentials(endpointUrl=$endpointUrl, authToken=*****, userId=$userId)"
 }
