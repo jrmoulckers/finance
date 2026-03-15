@@ -87,6 +87,7 @@ Export happens instantly on your device — no waiting for an email. This is ava
 3. Confirm.
 
 This deletes:
+
 - All local data on the current device
 - All synced data on the server (if you used sync)
 - Your account credentials
@@ -204,12 +205,12 @@ Archiving is recommended for closed accounts so you keep your financial history 
 
 ### Which platforms are supported?
 
-| Platform | Status |
-| --- | --- |
-| iOS (iPhone, iPad, Mac) | ✅ Available |
+| Platform                  | Status       |
+| ------------------------- | ------------ |
+| iOS (iPhone, iPad, Mac)   | ✅ Available |
 | Android (phones, tablets) | ✅ Available |
-| Web (any modern browser) | ✅ Available |
-| Windows 11 | ✅ Available |
+| Web (any modern browser)  | ✅ Available |
+| Windows 11                | ✅ Available |
 
 Companion apps for Apple Watch and Wear OS are planned for a future release.
 
@@ -227,11 +228,11 @@ Once installed, it works offline and launches in its own window.
 
 Yes! On the web and Windows:
 
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl+N` | New transaction |
-| `/` | Search |
-| `Tab` | Navigate through fields and categories |
+| Shortcut | Action                                 |
+| -------- | -------------------------------------- |
+| `Ctrl+N` | New transaction                        |
+| `/`      | Search                                 |
+| `Tab`    | Navigate through fields and categories |
 
 See [Platform Guides → Web](./platforms.md#web-pwa) and [Platform Guides → Windows](./platforms.md#windows) for more.
 
@@ -264,11 +265,11 @@ The premium tier adds:
 
 ### How much does premium cost?
 
-| Plan | Price |
-| --- | --- |
-| Monthly | ~$4.99/month |
-| Annual | ~$39.99/year (save ~33%) |
-| Family | Household sharing (pricing TBD) |
+| Plan    | Price                           |
+| ------- | ------------------------------- |
+| Monthly | ~$4.99/month                    |
+| Annual  | ~$39.99/year (save ~33%)        |
+| Family  | Household sharing (pricing TBD) |
 
 ---
 

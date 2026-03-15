@@ -25,14 +25,14 @@ An account represents any place you keep or owe money. Your accounts form the fo
 
 ### Account types
 
-| Type | What it's for | Examples |
-| --- | --- | --- |
-| **Checking** | Everyday spending | Chase Checking, Bank of America |
-| **Savings** | Money set aside | Emergency fund, vacation savings |
-| **Credit Card** | What you owe on cards | Visa, Amex, store cards |
-| **Cash** | Physical money on hand | Wallet, cash jar |
-| **Investment** | Brokerage and retirement | 401(k), Robinhood, Vanguard |
-| **Loan** | Debt you're paying down | Mortgage, student loans, car payment |
+| Type            | What it's for            | Examples                             |
+| --------------- | ------------------------ | ------------------------------------ |
+| **Checking**    | Everyday spending        | Chase Checking, Bank of America      |
+| **Savings**     | Money set aside          | Emergency fund, vacation savings     |
+| **Credit Card** | What you owe on cards    | Visa, Amex, store cards              |
+| **Cash**        | Physical money on hand   | Wallet, cash jar                     |
+| **Investment**  | Brokerage and retirement | 401(k), Robinhood, Vanguard          |
+| **Loan**        | Debt you're paying down  | Mortgage, student loans, car payment |
 
 ### Adding an account
 
@@ -397,10 +397,10 @@ You own your data. Finance makes it easy to take it with you.
 
 ### What's included
 
-| Format | Includes |
-| --- | --- |
-| JSON | Accounts, transactions, categories, budgets, goals, plus metadata (export date, record counts, integrity check) |
-| CSV | Transaction history with dates, amounts, payees, categories, and notes |
+| Format | Includes                                                                                                        |
+| ------ | --------------------------------------------------------------------------------------------------------------- |
+| JSON   | Accounts, transactions, categories, budgets, goals, plus metadata (export date, record counts, integrity check) |
+| CSV    | Transaction history with dates, amounts, payees, categories, and notes                                          |
 
 Export is instant — no waiting for an email. The file is generated on your device from your local data.
 
@@ -432,12 +432,12 @@ Invitations expire after 72 hours for security.
 
 ### Roles and permissions
 
-| Role | Can do |
-| --- | --- |
-| **Owner** | Full control — manage members, edit everything, delete the household |
-| **Partner** | Edit shared accounts and budgets, view everything |
-| **Member** | Edit their own entries, view shared items |
-| **Viewer** | Read-only access to shared items |
+| Role        | Can do                                                               |
+| ----------- | -------------------------------------------------------------------- |
+| **Owner**   | Full control — manage members, edit everything, delete the household |
+| **Partner** | Edit shared accounts and budgets, view everything                    |
+| **Member**  | Edit their own entries, view shared items                            |
+| **Viewer**  | Read-only access to shared items                                     |
 
 The owner can change anyone's role. No one can escalate their own permissions.
 
@@ -463,11 +463,11 @@ Finance adapts to your comfort level with financial concepts.
 
 ### Three levels
 
-| Level | What it means |
-| --- | --- |
+| Level                  | What it means                                                                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 🌱 **Getting Started** | Plain language everywhere. Guided prompts walk you through actions. Advanced features are hidden until you're ready. Proactive tips help you learn. |
-| 📊 **Comfortable** | Standard financial terms with plain-language descriptions available on tap. All features visible. This is the default. |
-| 🧠 **Advanced** | Traditional finance terminology. Detailed breakdowns. Power-user shortcuts. Raw data access. |
+| 📊 **Comfortable**     | Standard financial terms with plain-language descriptions available on tap. All features visible. This is the default.                              |
+| 🧠 **Advanced**        | Traditional finance terminology. Detailed breakdowns. Power-user shortcuts. Raw data access.                                                        |
 
 ### What changes between levels
 

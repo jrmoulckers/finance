@@ -29,6 +29,7 @@ Lock Finance with your biometrics so only you can see your finances.
 3. Authenticate to confirm.
 
 **Options:**
+
 - Require biometric every time you open the app
 - Require biometric after a period of inactivity
 
@@ -156,15 +157,18 @@ Finance on the web is a **Progressive Web App (PWA)** — a full-featured app th
 You don't have to use Finance in a browser tab. Install it for a native-like experience:
 
 **Chrome or Edge:**
+
 1. Visit Finance in your browser.
 2. Click the **install icon** (⊕) in the address bar, or open the browser menu → **Install app**.
 3. Finance opens in its own window with its own icon — just like a regular app.
 
 **Safari (macOS):**
+
 1. Visit Finance in Safari.
 2. Go to **File → Add to Dock**.
 
 **Mobile browsers:**
+
 1. Visit Finance in your mobile browser.
 2. Tap the browser menu → **Add to Home Screen**.
 
@@ -183,12 +187,12 @@ The web version works offline thanks to a service worker that caches the app:
 
 Finance works best in modern browsers:
 
-| Browser | Support |
-| --- | --- |
-| **Chrome** (90+) | ✅ Full support, installable |
-| **Edge** (90+) | ✅ Full support, installable |
-| **Safari** (16+) | ✅ Supported (limited PWA install on macOS) |
-| **Firefox** (90+) | ✅ Supported (limited PWA install) |
+| Browser           | Support                                     |
+| ----------------- | ------------------------------------------- |
+| **Chrome** (90+)  | ✅ Full support, installable                |
+| **Edge** (90+)    | ✅ Full support, installable                |
+| **Safari** (16+)  | ✅ Supported (limited PWA install on macOS) |
+| **Firefox** (90+) | ✅ Supported (limited PWA install)          |
 
 For the best experience, use Chrome or Edge — they have the most complete PWA support.
 
@@ -196,13 +200,13 @@ For the best experience, use Chrome or Edge — they have the most complete PWA 
 
 The web version is built with a **keyboard-first workflow** for efficient desktop use:
 
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl+N` (or `⌘+N`) | New transaction |
-| `/` | Open search |
-| `Tab` | Navigate through fields and categories |
-| `Enter` | Confirm / save |
-| `Escape` | Cancel / close dialog |
+| Shortcut            | Action                                 |
+| ------------------- | -------------------------------------- |
+| `Ctrl+N` (or `⌘+N`) | New transaction                        |
+| `/`                 | Open search                            |
+| `Tab`               | Navigate through fields and categories |
+| `Enter`             | Confirm / save                         |
+| `Escape`            | Cancel / close dialog                  |
 
 ### Desktop layout
 
@@ -230,6 +234,7 @@ Lock Finance with Windows Hello biometrics or PIN.
 4. Authenticate to confirm.
 
 Windows Hello supports:
+
 - Fingerprint readers
 - IR face recognition cameras
 - Security keys
@@ -240,10 +245,12 @@ Windows Hello supports:
 Finance takes advantage of the Windows desktop environment:
 
 **Snap Layouts:**
+
 - Snap Finance to half your screen alongside a browser or spreadsheet
 - Finance adapts its layout to the snap size
 
 **System notifications:**
+
 - Budget alerts appear as Windows toast notifications
 - Click a notification to jump directly to the relevant screen
 - Notifications integrate with Focus Assist (they won't interrupt when you're in Do Not Disturb mode)
@@ -252,14 +259,14 @@ Finance takes advantage of the Windows desktop environment:
 
 Finance supports keyboard shortcuts for efficient use:
 
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl+N` | New transaction |
-| `Ctrl+F` or `/` | Search |
-| `Ctrl+E` | Export data |
+| Shortcut            | Action                      |
+| ------------------- | --------------------------- |
+| `Ctrl+N`            | New transaction             |
+| `Ctrl+F` or `/`     | Search                      |
+| `Ctrl+E`            | Export data                 |
 | `Tab` / `Shift+Tab` | Navigate forward / backward |
-| `Enter` | Confirm / save |
-| `Escape` | Cancel / close |
+| `Enter`             | Confirm / save              |
+| `Escape`            | Cancel / close              |
 
 ### Accessibility on Windows
 

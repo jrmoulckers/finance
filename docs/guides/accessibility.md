@@ -24,12 +24,12 @@ This guide covers the accessibility features available in Finance and how to use
 
 Finance works with the screen reader on every platform:
 
-| Platform | Screen reader |
-| --- | --- |
-| **iOS** | VoiceOver |
-| **Android** | TalkBack |
-| **Windows** | Narrator |
-| **Web** | Any screen reader (ARIA landmarks and roles) |
+| Platform    | Screen reader                                |
+| ----------- | -------------------------------------------- |
+| **iOS**     | VoiceOver                                    |
+| **Android** | TalkBack                                     |
+| **Windows** | Narrator                                     |
+| **Web**     | Any screen reader (ARIA landmarks and roles) |
 
 ### What's announced
 
@@ -129,21 +129,21 @@ Finance is fully keyboard-accessible, especially on web and Windows where keyboa
 
 ### General keyboard shortcuts
 
-| Shortcut | Action |
-| --- | --- |
-| `Tab` | Move to the next interactive element |
-| `Shift+Tab` | Move to the previous interactive element |
-| `Enter` or `Space` | Activate a button or select an option |
-| `Escape` | Close a dialog, cancel an action, or dismiss a popup |
-| `Arrow keys` | Navigate within lists, menus, and date pickers |
+| Shortcut           | Action                                               |
+| ------------------ | ---------------------------------------------------- |
+| `Tab`              | Move to the next interactive element                 |
+| `Shift+Tab`        | Move to the previous interactive element             |
+| `Enter` or `Space` | Activate a button or select an option                |
+| `Escape`           | Close a dialog, cancel an action, or dismiss a popup |
+| `Arrow keys`       | Navigate within lists, menus, and date pickers       |
 
 ### App shortcuts (Web and Windows)
 
-| Shortcut | Action |
-| --- | --- |
+| Shortcut            | Action          |
+| ------------------- | --------------- |
 | `Ctrl+N` (or `⌘+N`) | New transaction |
-| `/` | Open search |
-| `Ctrl+E` | Export data |
+| `/`                 | Open search     |
+| `Ctrl+E`            | Export data     |
 
 ### Focus indicators
 
@@ -262,49 +262,49 @@ Most accessibility features in Finance activate automatically based on your devi
 
 ### iOS
 
-| Feature | Where to enable |
-| --- | --- |
-| VoiceOver | Settings → Accessibility → VoiceOver |
-| Dynamic Type | Settings → Accessibility → Display & Text Size → Larger Text |
-| Reduce Motion | Settings → Accessibility → Motion → Reduce Motion |
+| Feature           | Where to enable                                                    |
+| ----------------- | ------------------------------------------------------------------ |
+| VoiceOver         | Settings → Accessibility → VoiceOver                               |
+| Dynamic Type      | Settings → Accessibility → Display & Text Size → Larger Text       |
+| Reduce Motion     | Settings → Accessibility → Motion → Reduce Motion                  |
 | Increase Contrast | Settings → Accessibility → Display & Text Size → Increase Contrast |
-| Bold Text | Settings → Accessibility → Display & Text Size → Bold Text |
+| Bold Text         | Settings → Accessibility → Display & Text Size → Bold Text         |
 
 ### Android
 
-| Feature | Where to enable |
-| --- | --- |
-| TalkBack | Settings → Accessibility → TalkBack |
-| Font size | Settings → Display → Font size |
-| Remove animations | Settings → Accessibility → Remove animations |
+| Feature            | Where to enable                               |
+| ------------------ | --------------------------------------------- |
+| TalkBack           | Settings → Accessibility → TalkBack           |
+| Font size          | Settings → Display → Font size                |
+| Remove animations  | Settings → Accessibility → Remove animations  |
 | High contrast text | Settings → Accessibility → High contrast text |
-| Color correction | Settings → Accessibility → Color correction |
+| Color correction   | Settings → Accessibility → Color correction   |
 
 ### Windows
 
-| Feature | Where to enable |
-| --- | --- |
-| Narrator | Settings → Accessibility → Narrator |
-| Text size | Settings → Accessibility → Text size |
-| Contrast themes | Settings → Accessibility → Contrast themes |
+| Feature           | Where to enable                                               |
+| ----------------- | ------------------------------------------------------------- |
+| Narrator          | Settings → Accessibility → Narrator                           |
+| Text size         | Settings → Accessibility → Text size                          |
+| Contrast themes   | Settings → Accessibility → Contrast themes                    |
 | Animation effects | Settings → Accessibility → Visual effects → Animation effects |
 
 ### Web
 
-| Feature | How to enable |
-| --- | --- |
-| Screen reader | Use your operating system's screen reader (VoiceOver, NVDA, JAWS, Narrator) |
-| Font size | Browser settings → Font size (Finance uses relative units) |
-| High contrast | OS-level high contrast settings or browser extension |
-| Reduced motion | OS-level reduced motion setting (Finance reads `prefers-reduced-motion`) |
+| Feature        | How to enable                                                               |
+| -------------- | --------------------------------------------------------------------------- |
+| Screen reader  | Use your operating system's screen reader (VoiceOver, NVDA, JAWS, Narrator) |
+| Font size      | Browser settings → Font size (Finance uses relative units)                  |
+| High contrast  | OS-level high contrast settings or browser extension                        |
+| Reduced motion | OS-level reduced motion setting (Finance reads `prefers-reduced-motion`)    |
 
 ### In Finance
 
-| Feature | Where to find it |
-| --- | --- |
+| Feature          | Where to find it                                                   |
+| ---------------- | ------------------------------------------------------------------ |
 | Experience level | Settings → Experience Level (🌱 Getting Started for simplified UI) |
-| Simplified view | Settings → Accessibility → Simplified View |
-| Biometric lock | Settings → Security → Biometric Lock |
+| Simplified view  | Settings → Accessibility → Simplified View                         |
+| Biometric lock   | Settings → Security → Biometric Lock                               |
 
 ---
 

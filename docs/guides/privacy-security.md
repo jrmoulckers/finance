@@ -29,12 +29,12 @@ Your local database is encrypted using **SQLCipher** — the same encryption sta
 
 The encryption key itself is stored in your device's secure hardware:
 
-| Platform | Where the key lives |
-| --- | --- |
-| iOS | Apple Keychain (Secure Enclave) |
-| Android | Android Keystore (StrongBox when available) |
-| Windows | DPAPI (per-user, not cloud-synced) |
-| Web | In-memory only (for auth tokens) |
+| Platform | Where the key lives                         |
+| -------- | ------------------------------------------- |
+| iOS      | Apple Keychain (Secure Enclave)             |
+| Android  | Android Keystore (StrongBox when available) |
+| Windows  | DPAPI (per-user, not cloud-synced)          |
+| Web      | In-memory only (for auth tokens)            |
 
 ### Encrypted in transit
 
@@ -60,12 +60,12 @@ Because your data is stored locally:
 
 Finance supports biometric unlock so only you can open the app.
 
-| Platform | Methods |
-| --- | --- |
-| **iOS** | Face ID, Touch ID |
-| **Android** | Fingerprint, face recognition |
+| Platform    | Methods                                |
+| ----------- | -------------------------------------- |
+| **iOS**     | Face ID, Touch ID                      |
+| **Android** | Fingerprint, face recognition          |
 | **Windows** | Windows Hello (fingerprint, face, PIN) |
-| **Web** | WebAuthn-compatible biometrics |
+| **Web**     | WebAuthn-compatible biometrics         |
 
 All platforms use **strong biometric authentication** (Class 3 on Android) with a device PIN/passcode fallback.
 
@@ -109,25 +109,25 @@ Finance follows a **data minimization** principle — we collect only what's nee
 
 ### Data stored on your device
 
-| Data | Why it's needed |
-| --- | --- |
-| Account names, types, and balances | To display and track your financial accounts |
+| Data                                                           | Why it's needed                                  |
+| -------------------------------------------------------------- | ------------------------------------------------ |
+| Account names, types, and balances                             | To display and track your financial accounts     |
 | Transactions (amounts, dates, payees, notes, categories, tags) | To record and categorize your financial activity |
-| Budgets and spending plans | To track spending against your budget |
-| Goals and progress | To track savings goal progress |
-| Categories and rules | To organize transactions |
-| App preferences (currency, theme, experience level) | To personalize your experience |
+| Budgets and spending plans                                     | To track spending against your budget            |
+| Goals and progress                                             | To track savings goal progress                   |
+| Categories and rules                                           | To organize transactions                         |
+| App preferences (currency, theme, experience level)            | To personalize your experience                   |
 
 This data is stored in your encrypted local database and never leaves your device unless you enable sync.
 
 ### Data stored on the sync server (only if you enable sync)
 
-| Data | Why it's needed |
-| --- | --- |
-| Email address | To identify your account and send critical notifications (e.g., password reset) |
-| Encrypted financial data | To sync between your devices (the server can't read this data) |
-| Household memberships | To manage shared finance access |
-| Sync metadata (timestamps, device IDs) | To coordinate sync between devices |
+| Data                                   | Why it's needed                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------- |
+| Email address                          | To identify your account and send critical notifications (e.g., password reset) |
+| Encrypted financial data               | To sync between your devices (the server can't read this data)                  |
+| Household memberships                  | To manage shared finance access                                                 |
+| Sync metadata (timestamps, device IDs) | To coordinate sync between devices                                              |
 
 ### What is NOT collected
 
@@ -172,11 +172,13 @@ Finance uses a minimal set of third-party services for sync and authentication. 
 **What it does:** Provides the backend database and authentication system for cross-device sync.
 
 **What it can see:**
+
 - Your email address (for authentication)
 - Encrypted financial data (it stores this but cannot decrypt it — the encryption keys never leave your device)
 - Sync metadata (timestamps, record counts)
 
 **What it cannot see:**
+
 - Your transaction amounts, payees, or notes
 - Your account names or balances
 - Your budget or goal details
@@ -198,23 +200,23 @@ You have legal rights over your personal data. Here's what they are and how Fina
 
 If you're in the EU or EEA, you have the right to:
 
-| Right | What it means | How Finance supports it |
-| --- | --- | --- |
-| **Access** | See what personal data we have | Export your data anytime (Settings → Export) |
-| **Erasure** | Have your data deleted | Delete your account and all data (Settings → Delete Account) |
-| **Portability** | Get your data in a standard format | Export as JSON or CSV |
-| **Rectification** | Correct inaccurate data | Edit any account, transaction, or profile information directly in the app |
-| **Objection** | Object to certain processing | Analytics/crash reporting are opt-in; you can turn them off anytime |
+| Right             | What it means                      | How Finance supports it                                                   |
+| ----------------- | ---------------------------------- | ------------------------------------------------------------------------- |
+| **Access**        | See what personal data we have     | Export your data anytime (Settings → Export)                              |
+| **Erasure**       | Have your data deleted             | Delete your account and all data (Settings → Delete Account)              |
+| **Portability**   | Get your data in a standard format | Export as JSON or CSV                                                     |
+| **Rectification** | Correct inaccurate data            | Edit any account, transaction, or profile information directly in the app |
+| **Objection**     | Object to certain processing       | Analytics/crash reporting are opt-in; you can turn them off anytime       |
 
 ### Under CCPA/CPRA (California)
 
 If you're a California resident, you have the right to:
 
-| Right | What it means | How Finance supports it |
-| --- | --- | --- |
-| **Know** | Know what personal data is collected | This guide documents everything collected |
-| **Delete** | Request deletion of your data | Delete your account (Settings → Delete Account) |
-| **Opt-out of sale** | Opt out of data selling | Finance **does not sell** your personal data. Ever. |
+| Right                  | What it means                                | How Finance supports it                                        |
+| ---------------------- | -------------------------------------------- | -------------------------------------------------------------- |
+| **Know**               | Know what personal data is collected         | This guide documents everything collected                      |
+| **Delete**             | Request deletion of your data                | Delete your account (Settings → Delete Account)                |
+| **Opt-out of sale**    | Opt out of data selling                      | Finance **does not sell** your personal data. Ever.            |
 | **Non-discrimination** | Equal service regardless of rights exercised | Exercising your rights has no effect on your access to Finance |
 
 ---
@@ -235,6 +237,7 @@ If you're a California resident, you have the right to:
 3. Confirm.
 
 What happens next:
+
 - All local data on the current device is deleted.
 - If you used sync, all server-side data is deleted through **crypto-shredding** — the encryption keys are destroyed, making any remaining encrypted data permanently unreadable.
 - A deletion confirmation is sent to your email.
@@ -273,12 +276,12 @@ When you delete your account, Finance doesn't just delete the encrypted data —
 
 Authentication tokens (the credentials that prove you're signed in) are stored using each platform's most secure storage mechanism:
 
-| Platform | Storage | Protection |
-| --- | --- | --- |
-| iOS | Keychain with Secure Enclave | Accessible only when device is unlocked; biometric access control |
-| Android | EncryptedSharedPreferences with Android Keystore | AES-256 encryption backed by hardware security |
-| Windows | DPAPI-encrypted files | Per-user encryption, not cloud-synced |
-| Web | In-memory only (access token); HttpOnly cookie (refresh token) | Tokens never touch localStorage or IndexedDB |
+| Platform | Storage                                                        | Protection                                                        |
+| -------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| iOS      | Keychain with Secure Enclave                                   | Accessible only when device is unlocked; biometric access control |
+| Android  | EncryptedSharedPreferences with Android Keystore               | AES-256 encryption backed by hardware security                    |
+| Windows  | DPAPI-encrypted files                                          | Per-user encryption, not cloud-synced                             |
+| Web      | In-memory only (access token); HttpOnly cookie (refresh token) | Tokens never touch localStorage or IndexedDB                      |
 
 ### Row-Level Security (RLS)
 

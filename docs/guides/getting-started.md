@@ -38,12 +38,12 @@ Finance tracks your accounts, transactions, budgets, goals, and spending — all
 
 Finance runs natively on four platforms:
 
-| Platform | Details |
-| --- | --- |
-| 📱 **iOS** | iPhone, iPad, and Mac (native SwiftUI) |
-| 🤖 **Android** | Phones and tablets (Jetpack Compose) |
-| 🌐 **Web** | Any modern browser — installable as an app (PWA) |
-| 🖥️ **Windows** | Windows 11 desktop app |
+| Platform       | Details                                          |
+| -------------- | ------------------------------------------------ |
+| 📱 **iOS**     | iPhone, iPad, and Mac (native SwiftUI)           |
+| 🤖 **Android** | Phones and tablets (Jetpack Compose)             |
+| 🌐 **Web**     | Any modern browser — installable as an app (PWA) |
+| 🖥️ **Windows** | Windows 11 desktop app                           |
 
 All platforms share the same core features. Your data syncs seamlessly between them if you choose to enable sync (it's optional).
 
@@ -74,11 +74,11 @@ A quick 30-second setup (skippable at any point):
 
 Finance offers three experience tiers — you pick the one that fits you best, and you can change it anytime in Settings:
 
-| Level | Best for | What changes |
-| --- | --- | --- |
-| 🌱 **Getting Started** | New to budgeting or personal finance | Simpler language, guided prompts, fewer numbers on screen |
-| 📊 **Comfortable** | You've tracked finances before | Standard view with all features visible (this is the default) |
-| 🧠 **Advanced** | You love spreadsheets and data | Detailed breakdowns, technical terms, power-user shortcuts |
+| Level                  | Best for                             | What changes                                                  |
+| ---------------------- | ------------------------------------ | ------------------------------------------------------------- |
+| 🌱 **Getting Started** | New to budgeting or personal finance | Simpler language, guided prompts, fewer numbers on screen     |
+| 📊 **Comfortable**     | You've tracked finances before       | Standard view with all features visible (this is the default) |
+| 🧠 **Advanced**        | You love spreadsheets and data       | Detailed breakdowns, technical terms, power-user shortcuts    |
 
 ---
 

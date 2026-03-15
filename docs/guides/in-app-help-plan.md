@@ -44,6 +44,7 @@ Layer 3: External documentation (docs site, linked from app)
 Small info icons (ℹ️) next to financial terms and concepts. Tapping opens a brief, plain-language tooltip.
 
 **Examples:**
+
 - Next to "Net Worth": _"Your net worth is everything you own minus everything you owe. It's the big-picture number that shows your overall financial health."_
 - Next to "Rollover": _"When rollover is on, any money you didn't spend this month carries forward to next month."_
 - Next to "Savings Rate": _"Your savings rate is the percentage of your income that you keep. A higher number means you're saving more."_
@@ -51,6 +52,7 @@ Small info icons (ℹ️) next to financial terms and concepts. Tapping opens a 
 ### Layer 2 — Help panel
 
 A slide-up panel or bottom sheet with a fuller explanation, examples, and a "Learn more" link to external docs. Triggered by:
+
 - Tapping "Learn more" on a tooltip
 - Tapping a "?" icon in the section header
 - The help entry in the navigation/settings menu
@@ -58,6 +60,7 @@ A slide-up panel or bottom sheet with a fuller explanation, examples, and a "Lea
 ### Layer 3 — External documentation
 
 Links to the hosted documentation site (or in-app WebView) for:
+
 - Complete feature guides
 - Privacy and security details
 - FAQ and troubleshooting
@@ -86,39 +89,39 @@ Each tooltip has a consistent structure:
 
 Tooltips adapt to the user's selected experience level:
 
-| Concept | 🌱 Getting Started | 📊 Comfortable | 🧠 Advanced |
-| --- | --- | --- | --- |
-| **Net Worth** | "Everything you own minus everything you owe." | "Total assets minus total liabilities." | "Sum of asset account balances less liability account balances, excluding archived accounts." |
-| **Savings Rate** | "How much of your income you keep." | "Percentage of income not spent." | "Net savings ÷ gross income × 100, calculated per period." |
-| **Rollover** | "Unspent budget money carries to next month." | "Positive or negative balance rolls to the next budget period." | "Residual allocation propagated to the subsequent period as a signed carryforward." |
+| Concept          | 🌱 Getting Started                             | 📊 Comfortable                                                  | 🧠 Advanced                                                                                   |
+| ---------------- | ---------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Net Worth**    | "Everything you own minus everything you owe." | "Total assets minus total liabilities."                         | "Sum of asset account balances less liability account balances, excluding archived accounts." |
+| **Savings Rate** | "How much of your income you keep."            | "Percentage of income not spent."                               | "Net savings ÷ gross income × 100, calculated per period."                                    |
+| **Rollover**     | "Unspent budget money carries to next month."  | "Positive or negative balance rolls to the next budget period." | "Residual allocation propagated to the subsequent period as a signed carryforward."           |
 
 ### Tooltip inventory (initial set)
 
 Financial concepts that need tooltips at launch:
 
-| Screen | Concept | Tooltip needed |
-| --- | --- | --- |
-| Accounts | Net worth | ✅ |
-| Accounts | Assets vs. liabilities | ✅ |
-| Transactions | Split transaction | ✅ |
-| Transactions | Transfer vs. transaction | ✅ |
-| Transactions | Recurring transaction | ✅ |
-| Budget | Envelope budgeting | ✅ |
-| Budget | To Budget (remaining) | ✅ |
-| Budget | Rollover | ✅ |
-| Budget | Cover overspending | ✅ |
-| Goals | Target amount | ✅ |
-| Goals | Monthly contribution | ✅ |
-| Goals | Projected completion | ✅ |
-| Reports | Spending breakdown | ✅ |
-| Reports | Savings rate | ✅ |
-| Reports | Spending trend | ✅ |
-| Reports | Income vs. expenses | ✅ |
-| Settings | Biometric lock | ✅ |
-| Settings | Data export | ✅ |
-| Settings | Crypto-shredding (in delete flow) | ✅ |
-| Sync | End-to-end encryption | ✅ |
-| Sync | Conflict resolution | ✅ |
+| Screen       | Concept                           | Tooltip needed |
+| ------------ | --------------------------------- | -------------- |
+| Accounts     | Net worth                         | ✅             |
+| Accounts     | Assets vs. liabilities            | ✅             |
+| Transactions | Split transaction                 | ✅             |
+| Transactions | Transfer vs. transaction          | ✅             |
+| Transactions | Recurring transaction             | ✅             |
+| Budget       | Envelope budgeting                | ✅             |
+| Budget       | To Budget (remaining)             | ✅             |
+| Budget       | Rollover                          | ✅             |
+| Budget       | Cover overspending                | ✅             |
+| Goals        | Target amount                     | ✅             |
+| Goals        | Monthly contribution              | ✅             |
+| Goals        | Projected completion              | ✅             |
+| Reports      | Spending breakdown                | ✅             |
+| Reports      | Savings rate                      | ✅             |
+| Reports      | Spending trend                    | ✅             |
+| Reports      | Income vs. expenses               | ✅             |
+| Settings     | Biometric lock                    | ✅             |
+| Settings     | Data export                       | ✅             |
+| Settings     | Crypto-shredding (in delete flow) | ✅             |
+| Sync         | End-to-end encryption             | ✅             |
+| Sync         | Conflict resolution               | ✅             |
 
 ### Implementation notes
 
@@ -142,24 +145,25 @@ https://docs.finance.example.com/guides/{page}#{section}
 ```
 
 **Examples:**
+
 - `https://docs.finance.example.com/guides/features#budgets`
 - `https://docs.finance.example.com/guides/faq#sync-isnt-working`
 - `https://docs.finance.example.com/guides/privacy-security#your-rights`
 
 ### Link mapping
 
-| In-app location | Link target |
-| --- | --- |
-| Settings → Help → Getting Started | `guides/getting-started` |
-| Settings → Help → Feature Guide | `guides/features` |
-| Settings → Help → FAQ | `guides/faq` |
-| Settings → Help → Privacy & Security | `guides/privacy-security` |
-| Settings → Help → Accessibility | `guides/accessibility` |
-| Tooltip "Learn more" → Budgets | `guides/features#budgets` |
-| Tooltip "Learn more" → Goals | `guides/features#goals` |
-| Tooltip "Learn more" → Sync | `guides/getting-started#syncing-across-devices` |
-| Delete account confirmation | `guides/privacy-security#how-to-exercise-your-rights` |
-| Privacy policy link | `legal/privacy-policy` |
+| In-app location                      | Link target                                           |
+| ------------------------------------ | ----------------------------------------------------- |
+| Settings → Help → Getting Started    | `guides/getting-started`                              |
+| Settings → Help → Feature Guide      | `guides/features`                                     |
+| Settings → Help → FAQ                | `guides/faq`                                          |
+| Settings → Help → Privacy & Security | `guides/privacy-security`                             |
+| Settings → Help → Accessibility      | `guides/accessibility`                                |
+| Tooltip "Learn more" → Budgets       | `guides/features#budgets`                             |
+| Tooltip "Learn more" → Goals         | `guides/features#goals`                               |
+| Tooltip "Learn more" → Sync          | `guides/getting-started#syncing-across-devices`       |
+| Delete account confirmation          | `guides/privacy-security#how-to-exercise-your-rights` |
+| Privacy policy link                  | `legal/privacy-policy`                                |
 
 ### Opening behavior
 
@@ -185,15 +189,15 @@ A searchable FAQ screen accessible from **Settings → Help → FAQ** that:
 
 Certain screens surface relevant FAQ items proactively:
 
-| Screen / State | Suggested FAQ |
-| --- | --- |
-| Sync settings (first visit) | "How does sync work?" |
-| Sync error state | "Sync isn't working — what should I do?" |
-| Export screen | "How do I export my data?" |
-| Delete account screen | "How do I delete my account?" |
-| Offline state (badge visible) | "What happens when I'm offline?" |
-| Premium feature (locked) | "Is there a free version?" / "What does premium include?" |
-| Login screen | "I forgot my password" |
+| Screen / State                | Suggested FAQ                                             |
+| ----------------------------- | --------------------------------------------------------- |
+| Sync settings (first visit)   | "How does sync work?"                                     |
+| Sync error state              | "Sync isn't working — what should I do?"                  |
+| Export screen                 | "How do I export my data?"                                |
+| Delete account screen         | "How do I delete my account?"                             |
+| Offline state (badge visible) | "What happens when I'm offline?"                          |
+| Premium feature (locked)      | "Is there a free version?" / "What does premium include?" |
+| Login screen                  | "I forgot my password"                                    |
 
 ### FAQ content management
 
@@ -210,14 +214,14 @@ Certain screens surface relevant FAQ items proactively:
 
 Help is offered — never forced — at specific moments:
 
-| Trigger | Help type | Content |
-| --- | --- | --- |
-| First time viewing budget screen | Coach mark / spotlight | "This is your budget. Each category is like an envelope of money." |
-| First time using quick entry | Guided highlight | "Tap +, enter amount, pick category. That's it!" |
-| Overspent a budget category | Non-judgmental nudge | "You've used 110% of Food. You can cover it from another category." |
-| Goal milestone reached | Celebration + tip | "🎉 50% of your goal! At this pace, you'll reach it by [date]." |
-| First time in settings | Task card | "Tip: Set up biometric lock to keep your finances private." |
-| After 7 days of use | Achievement card | "You've tracked for a week! Here's your first weekly summary." |
+| Trigger                          | Help type              | Content                                                             |
+| -------------------------------- | ---------------------- | ------------------------------------------------------------------- |
+| First time viewing budget screen | Coach mark / spotlight | "This is your budget. Each category is like an envelope of money."  |
+| First time using quick entry     | Guided highlight       | "Tap +, enter amount, pick category. That's it!"                    |
+| Overspent a budget category      | Non-judgmental nudge   | "You've used 110% of Food. You can cover it from another category." |
+| Goal milestone reached           | Celebration + tip      | "🎉 50% of your goal! At this pace, you'll reach it by [date]."     |
+| First time in settings           | Task card              | "Tip: Set up biometric lock to keep your finances private."         |
+| After 7 days of use              | Achievement card       | "You've tracked for a week! Here's your first weekly summary."      |
 
 ### Dismissal behavior
 
@@ -236,6 +240,7 @@ After onboarding, gentle task cards appear on the dashboard:
 - "Complete your setup (3/6 done)"
 
 Cards are:
+
 - Non-nagging (appear once, can be dismissed permanently)
 - Progress-tracked (show completion state)
 - Experience-tier-aware (🌱 users see more guidance)
@@ -257,17 +262,18 @@ Users can provide feedback from any screen:
 
 The bug report form collects:
 
-| Field | Required | Contains personal data? |
-| --- | --- | --- |
-| Description of the problem | Yes | Potentially (user-written) |
-| Steps to reproduce | No | No |
-| Expected vs. actual behavior | No | No |
-| App version | Auto-filled | No |
-| Platform and OS version | Auto-filled | No |
-| Experience tier | Auto-filled | No |
-| Screenshot (opt-in) | No | Potentially |
+| Field                        | Required    | Contains personal data?    |
+| ---------------------------- | ----------- | -------------------------- |
+| Description of the problem   | Yes         | Potentially (user-written) |
+| Steps to reproduce           | No          | No                         |
+| Expected vs. actual behavior | No          | No                         |
+| App version                  | Auto-filled | No                         |
+| Platform and OS version      | Auto-filled | No                         |
+| Experience tier              | Auto-filled | No                         |
+| Screenshot (opt-in)          | No          | Potentially                |
 
 **What is NOT collected:**
+
 - ❌ Financial data (accounts, transactions, balances)
 - ❌ Personal identifiers (email, name) unless the user provides them for follow-up
 - ❌ Device identifiers or advertising IDs
@@ -341,14 +347,14 @@ All help content should follow the product voice:
 
 ### Metrics to track
 
-| Metric | What it tells us |
-| --- | --- |
-| Tooltip open rate (per concept) | Which concepts need more explanation |
-| Tooltip "not helpful" rate | Which explanations need rewriting |
-| FAQ search queries with no results | What topics are missing from FAQ |
-| Help link tap-through rate | Whether users need deeper content |
-| Coach mark dismissal rate | Whether guidance is useful or annoying |
-| Time to dismiss onboarding cards | Whether cards are valuable or ignored |
+| Metric                             | What it tells us                       |
+| ---------------------------------- | -------------------------------------- |
+| Tooltip open rate (per concept)    | Which concepts need more explanation   |
+| Tooltip "not helpful" rate         | Which explanations need rewriting      |
+| FAQ search queries with no results | What topics are missing from FAQ       |
+| Help link tap-through rate         | Whether users need deeper content      |
+| Coach mark dismissal rate          | Whether guidance is useful or annoying |
+| Time to dismiss onboarding cards   | Whether cards are valuable or ignored  |
 
 All metrics are privacy-safe (aggregated counts, no personal data) and only collected if the user has opted in to analytics.
 
