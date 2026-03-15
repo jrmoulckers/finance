@@ -26,8 +26,6 @@
   },
   "devDependencies": {
     "@storybook/addon-a11y": "^10.2.19",
-    "@storybook/addon-essentials": "^8.6.14",
-    "@storybook/addon-interactions": "^8.6.14",
     "@storybook/react": "^10.2.19",
     "@storybook/react-vite": "^10.2.19",
     "@testing-library/dom": "^10.4.1",
@@ -37,13 +35,13 @@
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "@types/sql.js": "^1.4.9",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^4.5.2",
     "jsdom": "^28.1.0",
     "nanoid": "^5.1.6",
     "source-map-js": "^1.2.1",
     "storybook": "^10.2.19",
     "typescript": "^5.8.3",
-    "vite": "^8.0.0",
+    "vite": "^6.4.1",
     "vitest": "^4.1.0"
   }
 }
