@@ -41,10 +41,7 @@ interface HealthCheckResponse {
  * database connection is alive. NEVER queries user tables or
  * exposes table names, schemas, or data.
  */
-async function checkDatabase(
-  supabaseUrl: string,
-  serviceRoleKey: string,
-): Promise<ServiceStatus> {
+async function checkDatabase(supabaseUrl: string, serviceRoleKey: string): Promise<ServiceStatus> {
   try {
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
