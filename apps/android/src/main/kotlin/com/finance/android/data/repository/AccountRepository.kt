@@ -3,34 +3,42 @@
 package com.finance.android.data.repository
 
 import com.finance.models.Account
-import com.finance.models.AccountType
+import com.finance.models.types.Cents
 import com.finance.models.types.SyncId
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Repository for [Account] entities.
+ * Repository contract for [Account] entities.
  *
- * Provides reactive read streams via [Flow] and suspend write operations.
- * Implementations may be backed by a local database, remote API, or
- * in-memory store (for previews / testing).
+ * Extends [BaseRepository] with account-specific operations such as
+ * filtering active (non-archived) accounts and updating balances.
  */
-interface AccountRepository {
+interface AccountRepository : BaseRepository<Account> {
 
-    /** Observe all non-deleted accounts, ordered by [Account.sortOrder]. */
-    fun getAll(): Flow<List<Account>>
+    /**
+     * Observes all non-deleted, non-archived accounts for a household,
+     * ordered by [Account.sortOrder].
+     *
+     * @param householdId The household to scope the query to.
+     */
+    fun observeActive(householdId: SyncId): Flow<List<Account>>
 
-    /** Observe a single account by its [SyncId], or `null` if not found. */
-    fun getById(id: SyncId): Flow<Account?>
+    /**
+     * Updates the current balance of an account.
+     *
+     * Marks the account as unsynced so the change is pushed on the
+     * next sync cycle.
+     *
+     * @param id The account's [SyncId].
+     * @param newBalance The new balance in [Cents].
+     */
+    suspend fun updateBalance(id: SyncId, newBalance: Cents)
 
-    /** Observe accounts filtered by [AccountType]. */
-    fun getByType(type: AccountType): Flow<List<Account>>
-
-    /** Insert a new account. */
-    suspend fun create(account: Account)
-
-    /** Update an existing account. */
-    suspend fun update(account: Account)
-
-    /** Soft-delete an account by its [SyncId]. */
-    suspend fun delete(id: SyncId)
+    /**
+     * Archives an account, hiding it from active views but retaining
+     * its data and transaction history.
+     *
+     * @param id The account's [SyncId].
+     */
+    suspend fun archive(id: SyncId)
 }
