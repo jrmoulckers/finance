@@ -114,6 +114,8 @@ This is a **monorepo** with a consolidated backend designed to minimize server c
 - The backend serves as the coordination and sync layer
 - Similar to models used by Signal, Bevel, and other offline-first apps
 
+**Platform architecture docs:** [Android](docs/architecture/android-architecture.md) · [Roadmap](docs/architecture/roadmap.md) · [All ADRs](docs/architecture/)
+
 ## Tech Stack
 
 | Layer         | Technology                                               |

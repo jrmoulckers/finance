@@ -82,9 +82,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.data.SampleData
+import org.koin.compose.viewmodel.koinViewModel
 import com.finance.android.ui.viewmodel.CreateStep
 import com.finance.android.ui.viewmodel.TransactionCreateUiState
 import com.finance.android.ui.viewmodel.TransactionCreateViewModel
@@ -103,7 +103,7 @@ import com.finance.models.types.SyncId
 @Composable
 fun TransactionCreateScreen(
     onSaved: () -> Unit = {}, onBack: () -> Unit = {},
-    viewModel: TransactionCreateViewModel = viewModel(),
+    viewModel: TransactionCreateViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     if (state.isSaved) { onSaved(); return }

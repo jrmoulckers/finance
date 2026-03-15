@@ -59,10 +59,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.finance.android.ui.data.SampleData
 import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.viewmodel.TransactionDateGroup
+import org.koin.compose.viewmodel.koinViewModel
 import com.finance.android.ui.viewmodel.TransactionFilter
 import com.finance.android.ui.viewmodel.TransactionsUiState
 import com.finance.android.ui.viewmodel.TransactionsViewModel
@@ -81,7 +81,7 @@ import com.finance.models.types.SyncId
 fun TransactionsScreen(
     onEditTransaction: (SyncId) -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: TransactionsViewModel = viewModel(),
+    viewModel: TransactionsViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     if (state.isLoading && state.dateGroups.isEmpty()) {

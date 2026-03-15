@@ -4,7 +4,8 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.finance.android.ui.data.SampleData
+import com.finance.android.data.repository.CategoryRepository
+import com.finance.android.data.repository.TransactionRepository
 import com.finance.models.Transaction
 import com.finance.models.TransactionType
 import com.finance.models.types.SyncId
@@ -12,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -47,8 +49,16 @@ data class TransactionsUiState(
     val totalCount: Int = 0,
 )
 
-/** ViewModel for the Transactions screen (#26). Filtering, search, pagination. */
-class TransactionsViewModel : ViewModel() {
+/**
+ * ViewModel for the Transactions screen (#26). Filtering, search, pagination.
+ *
+ * @param transactionRepository Source for transaction data.
+ * @param categoryRepository Source for category data used in search-by-category-name.
+ */
+class TransactionsViewModel(
+    private val transactionRepository: TransactionRepository,
+    private val categoryRepository: CategoryRepository,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(TransactionsUiState())
     val uiState: StateFlow<TransactionsUiState> = _uiState.asStateFlow()
     private val pageSize = 20
@@ -97,7 +107,12 @@ class TransactionsViewModel : ViewModel() {
         }
     }
 
-    fun deleteTransaction(id: SyncId) { currentPage = 0; loadTransactions() }
+    fun deleteTransaction(id: SyncId) {
+        viewModelScope.launch {
+            transactionRepository.delete(id)
+            currentPage = 0; loadData()
+        }
+    }
 
     private fun loadTransactions() {
         viewModelScope.launch {
@@ -107,16 +122,21 @@ class TransactionsViewModel : ViewModel() {
         }
     }
 
-    private fun loadData(append: Boolean = false) {
+    private suspend fun loadData(append: Boolean = false) {
         val filter = _uiState.value.filter
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-        var filtered = SampleData.transactions.filter { it.deletedAt == null }
+
+        val allTransactions = transactionRepository.getAll().first()
+        val categories = categoryRepository.getAll().first()
+        val categoryMap = categories.associateBy { it.id }
+
+        var filtered = allTransactions
         if (filter.searchQuery.isNotBlank()) {
             val q = filter.searchQuery.lowercase()
             filtered = filtered.filter { txn ->
                 (txn.payee?.lowercase()?.contains(q) == true) ||
                     (txn.note?.lowercase()?.contains(q) == true) ||
-                    SampleData.categoryMap[txn.categoryId]?.name?.lowercase()?.contains(q) == true
+                    categoryMap[txn.categoryId]?.name?.lowercase()?.contains(q) == true
             }
         }
         if (filter.type != null) filtered = filtered.filter { it.type == filter.type }
