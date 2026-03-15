@@ -5,24 +5,32 @@ package com.finance.sync.auth
 /**
  * iOS actual for [TokenStorage].
  *
- * Stub — real implementation will use Keychain Services via
- * Security framework when the iOS app module is built.
+ * This keeps token state in memory until the Swift Export bridge can delegate
+ * directly to the app's KeychainManager-backed storage. That mirrors the current
+ * Android, JVM, and JS development implementations while removing the iOS stub.
  */
 actual open class TokenStorage actual constructor() {
+    // TODO(#440): Replace this with direct Security.framework Keychain access
+    // when the Swift Export bridge is wired to the app's KeychainManager.
+    private var stored: StoredTokenData? = null
+
     actual open fun save(
         accessToken: String,
         refreshToken: String,
         expiresAt: Long,
         userId: String,
     ) {
-        throw NotImplementedError("Platform storage not yet implemented — iOS Keychain binding required")
+        stored = StoredTokenData(
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            expiresAtMillis = expiresAt,
+            userId = userId,
+        )
     }
 
-    actual open fun load(): StoredTokenData? {
-        throw NotImplementedError("Platform storage not yet implemented — iOS Keychain binding required")
-    }
+    actual open fun load(): StoredTokenData? = stored
 
     actual open fun clear() {
-        throw NotImplementedError("Platform storage not yet implemented — iOS Keychain binding required")
+        stored = null
     }
 }
