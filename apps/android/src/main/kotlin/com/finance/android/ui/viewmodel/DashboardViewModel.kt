@@ -4,7 +4,10 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.finance.android.ui.data.SampleData
+import com.finance.android.data.repository.AccountRepository
+import com.finance.android.data.repository.BudgetRepository
+import com.finance.android.data.repository.CategoryRepository
+import com.finance.android.data.repository.TransactionRepository
 import com.finance.core.aggregation.FinancialAggregator
 import com.finance.core.budget.BudgetCalculator
 import com.finance.core.budget.BudgetHealth
@@ -16,6 +19,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -51,8 +55,18 @@ data class BudgetStatusUi(
  * ViewModel for the Dashboard screen (#19).
  * Loads net worth, spending, budget summaries, and recent transactions
  * using KMP shared logic from packages/core.
+ *
+ * @param accountRepository Source for account data used in net-worth calculation.
+ * @param transactionRepository Source for transaction data used in spending aggregation.
+ * @param budgetRepository Source for budget data used in budget-status cards.
+ * @param categoryRepository Source for category data used to resolve budget icons.
  */
-class DashboardViewModel : ViewModel() {
+class DashboardViewModel(
+    private val accountRepository: AccountRepository,
+    private val transactionRepository: TransactionRepository,
+    private val budgetRepository: BudgetRepository,
+    private val categoryRepository: CategoryRepository,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -76,10 +90,13 @@ class DashboardViewModel : ViewModel() {
         }
     }
 
-    private fun loadData() {
-        val accounts = SampleData.accounts
-        val transactions = SampleData.transactions
-        val budgets = SampleData.budgets
+    private suspend fun loadData() {
+        val accounts = accountRepository.getAll().first()
+        val transactions = transactionRepository.getAll().first()
+        val budgets = budgetRepository.getAll().first()
+        val categories = categoryRepository.getAll().first()
+        val categoryMap = categories.associateBy { it.id }
+
         val currency = Currency.USD
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         val netWorth = FinancialAggregator.netWorth(accounts)
@@ -90,7 +107,7 @@ class DashboardViewModel : ViewModel() {
         val budgetStatuses = budgets.map { budget ->
             val catTxns = transactions.filter { it.categoryId == budget.categoryId }
             val status = BudgetCalculator.calculateStatus(budget, catTxns, today)
-            val cat = SampleData.categoryMap[budget.categoryId]
+            val cat = categoryMap[budget.categoryId]
             BudgetStatusUi(
                 name = budget.name,
                 spent = CurrencyFormatter.format(status.spent, currency),
@@ -103,7 +120,6 @@ class DashboardViewModel : ViewModel() {
         }
 
         val recentTransactions = transactions
-            .filter { it.deletedAt == null }
             .sortedByDescending { it.date }
             .take(5)
 

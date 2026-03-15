@@ -54,12 +54,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.finance.android.ui.data.SampleData
 import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.viewmodel.BudgetStatusUi
 import com.finance.android.ui.viewmodel.DashboardUiState
 import com.finance.android.ui.viewmodel.DashboardViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.finance.core.budget.BudgetHealth
 import com.finance.core.currency.CurrencyFormatter
 import com.finance.models.Transaction
@@ -79,7 +79,7 @@ fun DashboardScreen(
     onAddTransaction: () -> Unit = {},
     onViewAllTransactions: () -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: DashboardViewModel = viewModel(),
+    viewModel: DashboardViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     if (state.isLoading) {

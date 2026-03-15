@@ -69,7 +69,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.compose.viewmodel.koinViewModel
 import java.io.File
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -826,7 +826,7 @@ private fun DeleteAccountDialog(
  * Stateful entry-point for the Settings screen, intended for use by
  * [FinanceNavHost].
  *
- * Creates the [SettingsViewModel], collects its state & one-shot events,
+ * Creates the [SettingsViewModel] via Koin, collects its state & one-shot events,
  * and wires everything into the stateless [SettingsScreen] composable.
  *
  * Export events are handled here so the ViewModel stays platform-agnostic:
@@ -834,13 +834,20 @@ private fun DeleteAccountDialog(
  *   the Android share sheet via [Intent.ACTION_SEND].
  * - [SettingsEvent.ExportFailed] → shows a Toast with the error message.
  * - [SettingsEvent.ShowToast] → shows a regular Toast.
+ * - [SettingsEvent.NavigateToLogin] → invokes [onNavigateToLogin] to clear
+ *   the back stack and return to the initial screen after logout / account deletion.
+ *
+ * @param onNavigateBack Called when the user taps the back arrow in the top bar.
+ * @param onNavigateToLogin Called after logout or account deletion to navigate
+ *   to the initial screen (e.g. Dashboard) with a cleared back stack.
  */
 @Composable
-fun SettingsScreen(onNavigateBack: () -> Unit) {
+fun SettingsScreen(
+    onNavigateBack: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+) {
     val context = LocalContext.current
-    val viewModel: SettingsViewModel = viewModel(
-        factory = SettingsViewModel.provideFactory(context),
-    )
+    val viewModel: SettingsViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsState()
 
     // Collect one-shot events
@@ -851,7 +858,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 }
                 is SettingsEvent.NavigateToLogin -> {
-                    // TODO: Navigate to login screen
+                    onNavigateToLogin()
                 }
                 is SettingsEvent.ExportStarted -> {
                     // Progress is shown via state.isExporting — no action needed

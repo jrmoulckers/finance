@@ -2,6 +2,7 @@
 
 package com.finance.android
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,10 +15,13 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.core.util.Consumer
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.finance.android.ui.navigation.FinanceBottomBar
@@ -56,6 +60,20 @@ fun FinanceApp(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // Forward deep link intents that arrive while the activity is already running.
+    // On first launch, NavHost automatically processes the Activity's initial intent.
+    val context = LocalContext.current
+    DisposableEffect(Unit) {
+        val activity = context as ComponentActivity
+        val listener = Consumer<Intent> { intent ->
+            navController.handleDeepLink(intent)
+        }
+        activity.addOnNewIntentListener(listener)
+        onDispose {
+            activity.removeOnNewIntentListener(listener)
+        }
+    }
 
     // Show FAB only on Dashboard and Transactions screens
     val showFab = currentRoute in setOf(

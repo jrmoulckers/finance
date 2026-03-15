@@ -87,6 +87,11 @@ dependencies {
     // WorkManager — scheduled notifications
     implementation(libs.work.runtime)
 
+    // Unit tests
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+
     // Debug tooling
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)

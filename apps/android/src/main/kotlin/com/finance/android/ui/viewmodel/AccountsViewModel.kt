@@ -4,7 +4,8 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.finance.android.ui.data.SampleData
+import com.finance.android.data.repository.AccountRepository
+import com.finance.android.data.repository.TransactionRepository
 import com.finance.core.currency.CurrencyFormatter
 import com.finance.models.Account
 import com.finance.models.AccountType
@@ -15,6 +16,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -34,8 +36,16 @@ data class AccountsUiState(
     val isEmpty: Boolean = false,
 )
 
-/** ViewModel for the Accounts screen (#22). Loads accounts grouped by type. */
-class AccountsViewModel : ViewModel() {
+/**
+ * ViewModel for the Accounts screen (#22). Loads accounts grouped by type.
+ *
+ * @param accountRepository Source for account data.
+ * @param transactionRepository Source for transactions shown in account detail.
+ */
+class AccountsViewModel(
+    private val accountRepository: AccountRepository,
+    private val transactionRepository: TransactionRepository,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(AccountsUiState())
     val uiState: StateFlow<AccountsUiState> = _uiState.asStateFlow()
 
@@ -44,7 +54,7 @@ class AccountsViewModel : ViewModel() {
     private fun loadAccounts() {
         viewModelScope.launch {
             delay(200)
-            val accounts = SampleData.accounts
+            val accounts = accountRepository.getAll().first()
             val currency = Currency.USD
             if (accounts.isEmpty()) {
                 _uiState.update { it.copy(isLoading = false, isEmpty = true) }
@@ -65,10 +75,11 @@ class AccountsViewModel : ViewModel() {
     }
 
     fun selectAccount(account: Account) {
-        val txns = SampleData.transactions
-            .filter { it.accountId == account.id && it.deletedAt == null }
-            .sortedByDescending { it.date }
-        _uiState.update { it.copy(selectedAccount = account, selectedAccountTransactions = txns) }
+        viewModelScope.launch {
+            val txns = transactionRepository.getByAccountId(account.id).first()
+                .sortedByDescending { it.date }
+            _uiState.update { it.copy(selectedAccount = account, selectedAccountTransactions = txns) }
+        }
     }
 
     fun clearSelection() {

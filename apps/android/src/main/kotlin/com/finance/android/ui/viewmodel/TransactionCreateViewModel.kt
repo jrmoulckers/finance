@@ -4,10 +4,14 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.finance.android.ui.data.SampleData
+import com.finance.android.data.repository.AccountRepository
+import com.finance.android.data.repository.CategoryRepository
+import com.finance.android.data.repository.TransactionRepository
 import com.finance.core.currency.CurrencyFormatter
 import com.finance.models.Account
 import com.finance.models.Category
+import com.finance.models.Transaction
+import com.finance.models.TransactionStatus
 import com.finance.models.TransactionType
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
@@ -16,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -52,17 +57,41 @@ data class TransactionCreateUiState(
     val selectedTransferAccountName: String = "",
 )
 
-/** ViewModel for Transaction Creation (#23). 3-step flow with validation. */
-class TransactionCreateViewModel : ViewModel() {
+/**
+ * ViewModel for Transaction Creation (#23). 3-step flow with validation.
+ *
+ * @param transactionRepository Target repository for saving new transactions.
+ * @param accountRepository Source for account list in the account picker.
+ * @param categoryRepository Source for category list in the category picker.
+ */
+class TransactionCreateViewModel(
+    private val transactionRepository: TransactionRepository,
+    private val accountRepository: AccountRepository,
+    private val categoryRepository: CategoryRepository,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(TransactionCreateUiState())
     val uiState: StateFlow<TransactionCreateUiState> = _uiState.asStateFlow()
 
+    /** In-memory cache of payee history for autocomplete. */
+    private var payeeHistory: List<String> = emptyList()
+
+    /** In-memory cache of categories by ID for name lookups. */
+    private var categoryMap: Map<SyncId, Category> = emptyMap()
+
+    /** In-memory cache of accounts by ID for name lookups. */
+    private var accountMap: Map<SyncId, Account> = emptyMap()
+
     init {
-        val cats = SampleData.categories
-        val accts = SampleData.accounts
-        _uiState.update { it.copy(categories = cats, accounts = accts,
-            selectedAccountId = accts.firstOrNull()?.id,
-            selectedAccountName = accts.firstOrNull()?.name ?: "") }
+        viewModelScope.launch {
+            val cats = categoryRepository.getAll().first()
+            val accts = accountRepository.getAll().first()
+            payeeHistory = transactionRepository.getPayeeHistory().first()
+            categoryMap = cats.associateBy { it.id }
+            accountMap = accts.associateBy { it.id }
+            _uiState.update { it.copy(categories = cats, accounts = accts,
+                selectedAccountId = accts.firstOrNull()?.id,
+                selectedAccountName = accts.firstOrNull()?.name ?: "") }
+        }
     }
 
     fun nextStep() {
@@ -109,7 +138,7 @@ class TransactionCreateViewModel : ViewModel() {
 
     fun updatePayee(payee: String) {
         val suggestions = if (payee.length >= 2)
-            SampleData.payeeHistory.filter { it.lowercase().contains(payee.lowercase()) }.take(5)
+            payeeHistory.filter { it.lowercase().contains(payee.lowercase()) }.take(5)
         else emptyList()
         _uiState.update { it.copy(payee = payee, payeeSuggestions = suggestions, errors = emptyList()) }
     }
@@ -120,17 +149,17 @@ class TransactionCreateViewModel : ViewModel() {
 
     fun selectCategory(id: SyncId) {
         _uiState.update { it.copy(selectedCategoryId = id,
-            selectedCategoryName = SampleData.categoryMap[id]?.name ?: "", errors = emptyList()) }
+            selectedCategoryName = categoryMap[id]?.name ?: "", errors = emptyList()) }
     }
 
     fun selectAccount(id: SyncId) {
         _uiState.update { it.copy(selectedAccountId = id,
-            selectedAccountName = SampleData.accountMap[id]?.name ?: "", errors = emptyList()) }
+            selectedAccountName = accountMap[id]?.name ?: "", errors = emptyList()) }
     }
 
     fun selectTransferAccount(id: SyncId) {
         _uiState.update { it.copy(selectedTransferAccountId = id,
-            selectedTransferAccountName = SampleData.accountMap[id]?.name ?: "", errors = emptyList()) }
+            selectedTransferAccountName = accountMap[id]?.name ?: "", errors = emptyList()) }
     }
 
     fun updateDate(date: LocalDate) { _uiState.update { it.copy(date = date, errors = emptyList()) } }
@@ -141,7 +170,27 @@ class TransactionCreateViewModel : ViewModel() {
         if (errs.isNotEmpty()) { _uiState.update { it.copy(errors = errs) }; return }
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errors = emptyList()) }
-            delay(500)
+            val s = _uiState.value
+            val now = Clock.System.now()
+            val amountCents = if (s.transactionType == TransactionType.INCOME)
+                Cents(s.amountCents) else Cents(-s.amountCents)
+            val transaction = Transaction(
+                id = SyncId("txn-${now.toEpochMilliseconds()}"),
+                householdId = SyncId("household-1"),
+                accountId = s.selectedAccountId!!,
+                categoryId = s.selectedCategoryId,
+                type = s.transactionType,
+                status = TransactionStatus.CLEARED,
+                amount = amountCents,
+                currency = Currency.USD,
+                payee = s.payee.ifBlank { null },
+                note = s.note.ifBlank { null },
+                date = s.date,
+                transferAccountId = s.selectedTransferAccountId,
+                createdAt = now,
+                updatedAt = now,
+            )
+            transactionRepository.create(transaction)
             _uiState.update { it.copy(isSaving = false, isSaved = true) }
         }
     }

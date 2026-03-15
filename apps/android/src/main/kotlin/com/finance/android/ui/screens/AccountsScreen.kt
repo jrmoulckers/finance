@@ -56,11 +56,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.finance.android.ui.data.SampleData
 import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.viewmodel.AccountGroup
 import com.finance.android.ui.viewmodel.AccountsViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.finance.core.currency.CurrencyFormatter
 import com.finance.models.Account
 import com.finance.models.AccountType
@@ -80,7 +80,7 @@ fun AccountsScreen(
     onAccountClick: (String) -> Unit = {},
     onAddAccount: () -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: AccountsViewModel = viewModel(),
+    viewModel: AccountsViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     val sel = state.selectedAccount

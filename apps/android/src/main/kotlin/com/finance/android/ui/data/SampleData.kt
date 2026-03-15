@@ -7,6 +7,8 @@ import com.finance.models.AccountType
 import com.finance.models.Budget
 import com.finance.models.BudgetPeriod
 import com.finance.models.Category
+import com.finance.models.Goal
+import com.finance.models.GoalStatus
 import com.finance.models.Transaction
 import com.finance.models.TransactionStatus
 import com.finance.models.TransactionType
@@ -18,6 +20,7 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 
 /**
@@ -66,6 +69,22 @@ object SampleData {
     )
 
     val accountMap: Map<SyncId, Account> = accounts.associateBy { it.id }
+
+    // -- Goals ----------------------------------------------------------------
+
+    val goals = listOf(
+        goal("goal-emergency", "Emergency Fund", 2_500_000L, 1_500_000L,
+            today.plus(6, DateTimeUnit.MONTH), icon = "savings", accountId = "acc-savings"),
+        goal("goal-vacation", "Vacation Fund", 500_000L, 175_000L,
+            today.plus(3, DateTimeUnit.MONTH), icon = "flight", accountId = "acc-savings-2"),
+        goal("goal-car", "New Car Down Payment", 1_200_000L, 180_000L,
+            today.plus(12, DateTimeUnit.MONTH), icon = "directions_car"),
+        goal("goal-credit-card", "Pay Off Credit Card", 250_000L, 250_000L,
+            today.minus(14, DateTimeUnit.DAY), status = GoalStatus.COMPLETED,
+            icon = "credit_card", accountId = "acc-credit"),
+        goal("goal-home", "Home Down Payment", 6_000_000L, 300_000L,
+            today.plus(24, DateTimeUnit.MONTH), icon = "home"),
+    )
 
     // -- Budgets --------------------------------------------------------------
 
@@ -153,6 +172,18 @@ object SampleData {
             name = name, amount = Cents(amountCents), currency = Currency.USD, period = period,
             startDate = LocalDate(today.year, today.month, 1), isRollover = false,
             createdAt = now, updatedAt = now)
+
+    private fun goal(
+        id: String, name: String, targetCents: Long, currentCents: Long,
+        targetDate: LocalDate?, status: GoalStatus = GoalStatus.ACTIVE,
+        icon: String? = null, accountId: String? = null,
+    ) = Goal(
+        id = SyncId(id), householdId = SyncId("household-1"), name = name,
+        targetAmount = Cents(targetCents), currentAmount = Cents(currentCents),
+        currency = Currency.USD, targetDate = targetDate, status = status,
+        icon = icon, color = null, accountId = accountId?.let { SyncId(it) },
+        createdAt = now, updatedAt = now,
+    )
 
     private fun expense(id: String, payee: String, amountCents: Long, categoryId: String,
         accountId: String, date: LocalDate, note: String? = null) =

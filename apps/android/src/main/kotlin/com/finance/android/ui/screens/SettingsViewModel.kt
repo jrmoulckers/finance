@@ -5,14 +5,16 @@ package com.finance.android.ui.screens
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.finance.android.data.repository.CategoryRepository
+import com.finance.android.data.repository.TransactionRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -128,10 +130,17 @@ private object PrefKeys {
  * Uses [SharedPreferences] for local persistence. A future iteration will
  * migrate to Multiplatform Settings (or Jetpack DataStore) once the shared
  * KMP module exposes a settings API.
+ *
+ * @param prefs Local preferences store for settings persistence.
+ * @param biometricChecker Abstraction to query biometric hardware availability.
+ * @param transactionRepository Source for transaction data used in data export.
+ * @param categoryRepository Source for category data used to resolve category names in export.
  */
 class SettingsViewModel(
     private val prefs: SharedPreferences,
     private val biometricChecker: BiometricAvailabilityChecker,
+    private val transactionRepository: TransactionRepository,
+    private val categoryRepository: CategoryRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -233,15 +242,7 @@ class SettingsViewModel(
             _events.emit(SettingsEvent.ExportStarted)
 
             try {
-                // TODO(#239): Replace mock data with real database query once the
-                // KMP DataExportService (packages/core/export) is available.
-                // Example future integration:
-                //   val exportData = dataExportService.gatherExportData()
-                //   val serialized = when (format) {
-                //       ExportFormat.JSON -> JsonExportSerializer().serialize(exportData)
-                //       ExportFormat.CSV  -> CsvExportSerializer().serialize(exportData)
-                //   }
-                val serialized = buildMockExportContent(format)
+                val serialized = buildExportContent(format)
 
                 val timestamp = java.text.SimpleDateFormat(
                     "yyyy-MM-dd",
@@ -265,46 +266,41 @@ class SettingsViewModel(
     }
 
     /**
-     * Builds mock export content using sample data structures.
+     * Builds export content from the repository layer.
      *
-     * This is a temporary implementation until the KMP DataExportService is
-     * integrated. It intentionally does NOT log the content to avoid leaking
-     * financial data.
+     * Queries all transactions and categories, then serializes them
+     * into the requested [format]. The content itself is never logged
+     * to avoid leaking financial data.
      */
-    private fun buildMockExportContent(format: ExportFormat): String {
-        // Minimal representative data for export testing
-        data class ExportRow(
-            val id: String,
-            val date: String,
-            val payee: String,
-            val category: String,
-            val amount: String,
-        )
-
-        val rows = listOf(
-            ExportRow("txn-1", "2024-03-06", "Grocery Store", "Food", "-67.42"),
-            ExportRow("txn-2", "2024-03-06", "Monthly Salary", "Income", "4500.00"),
-            ExportRow("txn-3", "2024-03-05", "Electric Bill", "Utilities", "-124.00"),
-        )
+    private suspend fun buildExportContent(format: ExportFormat): String {
+        val transactions = transactionRepository.getAll().first()
+        val categories = categoryRepository.getAll().first()
+        val categoryMap = categories.associateBy { it.id }
 
         return when (format) {
             ExportFormat.JSON -> buildString {
                 appendLine("{")
                 appendLine("""  "exportedAt": "${java.time.Instant.now()}",""")
                 appendLine("""  "transactions": [""")
-                rows.forEachIndexed { i, row ->
-                    val comma = if (i < rows.lastIndex) "," else ""
+                transactions.forEachIndexed { i, txn ->
+                    val comma = if (i < transactions.lastIndex) "," else ""
+                    val catName = (txn.categoryId?.let { categoryMap[it]?.name } ?: "Uncategorized")
+                        .replace("\\", "\\\\").replace("\"", "\\\"")
+                    val payee = txn.payee?.replace("\\", "\\\\")?.replace("\"", "\\\"") ?: ""
                     appendLine(
-                        """    {"id":"${row.id}","date":"${row.date}","payee":"${row.payee}","category":"${row.category}","amount":${row.amount}}$comma""",
+                        """    {"id":"${txn.id.value}","date":"${txn.date}","payee":"$payee","category":"$catName","type":"${txn.type}","currency":"${txn.currency.code}"}$comma""",
                     )
                 }
                 appendLine("  ]")
                 appendLine("}")
             }
             ExportFormat.CSV -> buildString {
-                appendLine("id,date,payee,category,amount")
-                rows.forEach { row ->
-                    appendLine("${row.id},${row.date},${row.payee},${row.category},${row.amount}")
+                appendLine("id,date,payee,category,type,currency")
+                transactions.forEach { txn ->
+                    val catName = (txn.categoryId?.let { categoryMap[it]?.name } ?: "Uncategorized")
+                        .let { "\"${it.replace("\"", "\"\"")}\"" }
+                    val payee = txn.payee?.let { "\"${it.replace("\"", "\"\"")}\"" } ?: ""
+                    appendLine("${txn.id.value},${txn.date},$payee,$catName,${txn.type},${txn.currency.code}")
                 }
             }
         }
@@ -353,24 +349,6 @@ class SettingsViewModel(
             _events.emit(SettingsEvent.NavigateToLogin)
         }
         dismissDeleteDialog()
-    }
-
-    // -- Factory --------------------------------------------------------------
-
-    companion object {
-        /**
-         * Convenience factory that resolves dependencies from the given [Context].
-         */
-        fun provideFactory(
-            context: Context,
-            biometricChecker: BiometricAvailabilityChecker = DefaultBiometricAvailabilityChecker(context),
-        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val prefs = context.getSharedPreferences(PrefKeys.FILE_NAME, Context.MODE_PRIVATE)
-                return SettingsViewModel(prefs, biometricChecker) as T
-            }
-        }
     }
 }
 
