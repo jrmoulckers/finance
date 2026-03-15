@@ -46,11 +46,11 @@ function generateCertificateId(): string {
 
 serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
-    return handleCorsPreflightRequest();
+    return handleCorsPreflightRequest(req);
   }
 
   if (req.method !== 'DELETE') {
-    return methodNotAllowedResponse();
+    return methodNotAllowedResponse(req);
   }
 
   try {
@@ -74,6 +74,7 @@ serve(async (req: Request): Promise<Response> => {
     // Require explicit confirmation to prevent accidental deletion
     if (body.confirm !== true && body.confirm !== 'DELETE_MY_ACCOUNT') {
       return errorResponse(
+        req,
         'Account deletion requires confirmation. Send { "confirm": "DELETE_MY_ACCOUNT" } in the request body.',
         400,
       );
@@ -108,7 +109,7 @@ serve(async (req: Request): Promise<Response> => {
 
     if (memberError) {
       console.error('Failed to fetch memberships:', memberError.message);
-      return internalErrorResponse();
+      return internalErrorResponse(req);
     }
 
     const householdIds = (memberships ?? []).map((m: { household_id: string }) => m.household_id);
@@ -201,7 +202,7 @@ serve(async (req: Request): Promise<Response> => {
 
     if (userDeleteError) {
       console.error('Failed to soft-delete user:', userDeleteError.message);
-      return internalErrorResponse();
+      return internalErrorResponse(req);
     }
 
     // ===================================================================
@@ -233,7 +234,7 @@ serve(async (req: Request): Promise<Response> => {
     // ===================================================================
     // Step 9: Return deletion certificate
     // ===================================================================
-    return jsonResponse({
+    return jsonResponse(req, {
       deletion_certificate: {
         certificate_id: certificateId,
         subject_type: 'USER',
@@ -251,6 +252,6 @@ serve(async (req: Request): Promise<Response> => {
     });
   } catch (err) {
     console.error('Account deletion error:', (err as Error).message);
-    return internalErrorResponse();
+    return internalErrorResponse(req);
   }
 });

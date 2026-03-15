@@ -13,31 +13,61 @@ permissions:
   security-events: write
 
 jobs:
-  codeql:
-    name: CodeQL Analysis
+  codeql-java-kotlin:
+    name: CodeQL Analysis (java-kotlin)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    strategy:
-      matrix:
-        language: [java-kotlin, javascript-typescript]
+    # Only run on pushes to main, schedule, or PRs that touch JVM/Android/Kotlin files
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        if: github.event_name == 'pull_request'
         with:
-          languages: ${{ matrix.language }}
+          filters: |
+            kotlin:
+              - '**/*.kt'
+              - '**/*.kts'
+              - '**/*.java'
+              - '**/build.gradle*'
+              - 'gradle/**'
+              - 'settings.gradle*'
+      - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
+        uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
+        with:
+          languages: java-kotlin
           queries: +security-and-quality
-      - if: matrix.language == 'java-kotlin'
+      - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
           java-version: '21'
-      - if: matrix.language == 'java-kotlin'
+      - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
         uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
-      - if: matrix.language == 'java-kotlin'
+      - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
         run: ./gradlew build -x test -x jsBrowserTest -x allTests --no-daemon
+      - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
+        uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
+        with:
+          category: '/language:java-kotlin'
+
+  codeql-javascript:
+    name: CodeQL Analysis (javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
+        with:
+          languages: javascript-typescript
+          queries: +security-and-quality
       - uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
         with:
-          category: '/language:${{ matrix.language }}'
+          category: '/language:javascript-typescript'
 
   dependency-review:
     name: Dependency Review
