@@ -64,7 +64,7 @@ When making architectural decisions:
 You MUST NOT perform any of the following without explicit human approval:
 
 - Git remote operations (push, pull, fetch, merge from remote, rebase onto remote)
-- PR/review operations (create, merge, close, approve PRs or reviews)
+- PR/review operations (merge, close, or approve PRs — creating PRs with linked issues IS allowed)
 - Remote platform mutations (GitHub API writes, deployments, releases)
 - File operations outside the repository root
 

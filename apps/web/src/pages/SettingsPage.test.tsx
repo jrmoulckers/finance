@@ -1,56 +1,111 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const logoutMock = vi.fn<() => Promise<void>>();
+const offlineStatusMock = {
+  isOffline: false,
+  isOnline: true,
+};
+
+vi.mock('../auth/auth-context', () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    isLoading: false,
+    user: {
+      id: 'user-1',
+      email: 'alex@example.com',
+      hasPasskey: true,
+    },
+    error: null,
+    webAuthnSupported: true,
+    loginWithEmail: vi.fn(),
+    loginWithPasskey: vi.fn(),
+    registerNewPasskey: vi.fn(),
+    logout: logoutMock,
+    refresh: vi.fn(),
+  }),
+}));
+
+vi.mock('../hooks/useOfflineStatus', () => ({
+  useOfflineStatus: () => offlineStatusMock,
+}));
+
 import { SettingsPage } from './SettingsPage';
 
-/** Stub URL.createObjectURL / revokeObjectURL since jsdom doesn't provide them. */
-beforeEach(() => {
-  vi.stubGlobal('URL', {
-    ...globalThis.URL,
-    createObjectURL: vi.fn(() => 'blob:mock-url'),
-    revokeObjectURL: vi.fn(),
-  });
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 describe('SettingsPage', () => {
-  it('renders without crashing', () => {
-    render(<SettingsPage />);
-    expect(screen.getByText('Settings')).toBeInTheDocument();
+  beforeEach(() => {
+    localStorage.clear();
+    logoutMock.mockReset();
+    logoutMock.mockResolvedValue(undefined);
+    offlineStatusMock.isOffline = false;
+    offlineStatusMock.isOnline = true;
+
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
   });
 
-  it('displays all settings sections', () => {
+  it('renders the settings sections and persisted preferences', () => {
     render(<SettingsPage />);
+
+    expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.getByText('Preferences')).toBeInTheDocument();
     expect(screen.getByText('Security')).toBeInTheDocument();
     expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('About')).toBeInTheDocument();
     expect(screen.getByText('Danger Zone')).toBeInTheDocument();
+    expect(screen.getByLabelText('Currency')).toHaveValue('USD');
+    expect(screen.getByLabelText('Theme')).toHaveValue('system');
+    expect(screen.getByRole('checkbox', { name: 'Notifications' })).toBeChecked();
+    expect(screen.getByText('0.1.0')).toBeInTheDocument();
   });
 
-  it('displays settings values', () => {
+  it('shows authenticated user info and online sync status', () => {
     render(<SettingsPage />);
-    expect(screen.getByText('USD ($)')).toBeInTheDocument();
-    expect(screen.getByText('System')).toBeInTheDocument();
-    expect(screen.getByText('0.1.0')).toBeInTheDocument();
+
+    expect(screen.getByText('alex@example.com')).toBeInTheDocument();
+    expect(screen.getByText('Online — synced')).toBeInTheDocument();
+    expect(screen.getByText('Registered')).toBeInTheDocument();
+  });
+
+  it('shows offline sync messaging when the app is offline', () => {
+    offlineStatusMock.isOffline = true;
+    offlineStatusMock.isOnline = false;
+
+    render(<SettingsPage />);
+
+    expect(screen.getByText('Offline — changes saved locally')).toBeInTheDocument();
+  });
+
+  it('confirms before signing out', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(<SettingsPage />);
+    fireEvent.click(screen.getByRole('button', { name: /sign out/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to sign out?');
+    expect(logoutMock).toHaveBeenCalledTimes(1);
   });
 
   it('has accessible section landmarks', () => {
     render(<SettingsPage />);
+
     expect(screen.getByRole('region', { name: /preferences/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /security/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /data/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /about/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /danger zone/i })).toBeInTheDocument();
-  });
-
-  it('renders the data export component within the Data section', () => {
-    render(<SettingsPage />);
-    expect(screen.getByRole('button', { name: /export as json/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /export as csv/i })).toBeInTheDocument();
   });
 });

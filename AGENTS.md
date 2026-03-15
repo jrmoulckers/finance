@@ -25,14 +25,16 @@ Finance is a multi-platform, native-first financial tracking application for per
 
 ## Issue-First Development
 
-All work in this repository follows an issue-first workflow:
+All work in this repository follows an issue-first, feature-branch workflow:
 
 1. **Every code change must reference a GitHub issue.** If no issue exists for the work you're about to do, create one first.
-2. **Commit messages must include issue references** in the format `type(scope): description (#N)`.
-3. **PRs must link to issues** using `Closes #N` or `Refs #N` in the description.
-4. **Planning happens in issues, not in code.** Decompose work into issues before starting implementation.
+2. **Always work on a feature branch** — never commit directly to `main`. Branch naming: `<type>/<description>-<issue#>` (e.g., `feat/web-data-layer-443`).
+3. **Commit messages must include issue references** in the format `type(scope): description (#N)`.
+4. **Push the feature branch** and create a PR with `gh pr create` — include `Closes #N` for resolved issues.
+5. **Never merge PRs** — humans review and merge. PRs are the review checkpoint.
+6. **Planning happens in issues, not in code.** Decompose work into issues before starting implementation.
 
-AI agents that skip issue creation or fail to reference issues in commits are not following the project workflow. If you discover work was done without an issue, create a retroactive issue to track it.
+AI agents that skip issue creation, commit directly to `main`, or fail to create PRs are not following the project workflow. If you discover work was done without an issue, create a retroactive issue to track it.
 
 ## Coding Standards
 
@@ -86,15 +88,19 @@ AI agents MUST NOT:
 
 ### Category 2: Pull Request & Review Operations
 
-AI agents MUST NOT execute:
+AI agents MAY:
 
-- Creating pull requests
-- Merging or closing pull requests
-- Approving or dismissing PR reviews
-- Requesting reviewers
-- Any `gh pr` CLI command that mutates state
+- Create pull requests with linked issues (`Closes #N`) and detailed descriptions
+- Use `gh pr create` to open PRs for review
 
-**Why:** Code review is a critical human responsibility, especially for a financial application handling sensitive data.
+AI agents MUST NOT:
+
+- Merge or close pull requests
+- Approve or dismiss PR reviews
+- Request reviewers
+- Use `gh pr merge`, `gh pr close`, or `gh pr review --approve`
+
+**Why:** Merging and approval are critical human responsibilities, especially for a financial application handling sensitive data. PR creation is safe because `main` is protected by branch protection requiring human review before merge.
 
 ### Category 3: Remote Platform Operations
 

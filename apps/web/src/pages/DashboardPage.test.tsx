@@ -1,10 +1,116 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useCategories, useDashboardData } from '../hooks';
 import { DashboardPage } from './DashboardPage';
 
+vi.mock('../hooks', () => ({
+  useDashboardData: vi.fn(),
+  useCategories: vi.fn(),
+}));
+
+const mockedUseDashboardData = vi.mocked(useDashboardData);
+const mockedUseCategories = vi.mocked(useCategories);
+const syncMetadata = {
+  createdAt: '2025-01-01T00:00:00Z',
+  updatedAt: '2025-01-01T00:00:00Z',
+  deletedAt: null,
+  syncVersion: 1,
+  isSynced: true,
+};
+
 describe('DashboardPage', () => {
+  beforeEach(() => {
+    mockedUseDashboardData.mockReturnValue({
+      data: {
+        netWorth: 2475000,
+        spentThisMonth: 234050,
+        incomeThisMonth: 450000,
+        monthlyBudget: 350000,
+        budgetSpent: 234050,
+        recentTransactions: [
+          {
+            id: '1',
+            householdId: 'household-1',
+            accountId: 'account-1',
+            categoryId: 'category-food',
+            type: 'EXPENSE',
+            status: 'CLEARED',
+            amount: { amount: 6742 },
+            currency: { code: 'USD', decimalPlaces: 2 },
+            payee: 'Grocery Store',
+            note: null,
+            date: '2025-03-06',
+            transferAccountId: null,
+            transferTransactionId: null,
+            isRecurring: false,
+            recurringRuleId: null,
+            tags: [],
+            ...syncMetadata,
+          },
+          {
+            id: '2',
+            householdId: 'household-1',
+            accountId: 'account-1',
+            categoryId: 'category-income',
+            type: 'INCOME',
+            status: 'CLEARED',
+            amount: { amount: 450000 },
+            currency: { code: 'USD', decimalPlaces: 2 },
+            payee: 'Monthly Salary',
+            note: null,
+            date: '2025-03-06',
+            transferAccountId: null,
+            transferTransactionId: null,
+            isRecurring: false,
+            recurringRuleId: null,
+            tags: [],
+            ...syncMetadata,
+          },
+        ],
+        accountSummary: [{ type: 'CHECKING', total: 2475000 }],
+      },
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+    mockedUseCategories.mockReturnValue({
+      categories: [
+        {
+          id: 'category-food',
+          householdId: 'household-1',
+          name: 'Food',
+          icon: 'utensils',
+          color: '#16A34A',
+          parentId: null,
+          isIncome: false,
+          isSystem: false,
+          sortOrder: 1,
+          ...syncMetadata,
+        },
+        {
+          id: 'category-income',
+          householdId: 'household-1',
+          name: 'Income',
+          icon: 'wallet',
+          color: '#059669',
+          parentId: null,
+          isIncome: true,
+          isSystem: true,
+          sortOrder: 2,
+          ...syncMetadata,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createCategory: vi.fn(),
+      updateCategory: vi.fn(),
+      deleteCategory: vi.fn(),
+    });
+  });
+
   it('renders without crashing', () => {
     render(<DashboardPage />);
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
