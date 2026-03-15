@@ -9,12 +9,24 @@ import SwiftUI
 /// The app consumes shared business logic from the KMP `core` module and
 /// renders a native Apple experience using SwiftUI exclusively.
 ///
+/// On first launch the app presents a 4-page onboarding flow (``OnboardingView``)
+/// before showing the main interface. The onboarding completion flag is
+/// persisted in `UserDefaults` under the `"hasCompletedOnboarding"` key. (#476)
+///
 /// When biometric app lock is enabled in settings, the app shows a
 /// full-screen lock overlay on launch and when returning from background.
+///
+/// Deep links (Universal Links and custom URL scheme) are handled by
+/// ``DeepLinkRouter``, which coordinates tab selection and programmatic
+/// navigation. The router is injected into the environment so all
+/// descendant views can react to navigation state changes. (#470)
 @main
 struct FinanceApp: App {
     @State private var biometricManager = BiometricAuthManager()
+    @State private var networkMonitor = NetworkMonitor()
+    @State private var deepLinkRouter = DeepLinkRouter()
     @State private var isLocked = true
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @Environment(\.scenePhase) private var scenePhase
 
     private static let logger = Logger(
@@ -29,25 +41,36 @@ struct FinanceApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                ContentView()
+            if !hasCompletedOnboarding {
+                OnboardingView()
                     .environment(biometricManager)
-                    .accessibilityHidden(biometricLockEnabled && isLocked)
+            } else {
+                ZStack {
+                    ContentView()
+                        .environment(biometricManager)
+                        .environment(networkMonitor)
+                        .environment(deepLinkRouter)
+                        .accessibilityHidden(biometricLockEnabled && isLocked)
 
-                if biometricLockEnabled && isLocked {
-                    LockScreenView(
-                        biometricManager: biometricManager,
-                        onUnlock: { isLocked = false }
-                    )
-                    .transition(.opacity)
+                    if biometricLockEnabled && isLocked {
+                        LockScreenView(
+                            biometricManager: biometricManager,
+                            onUnlock: { isLocked = false }
+                        )
+                        .transition(.opacity)
+                    }
                 }
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                handleScenePhaseChange(newPhase)
-            }
-            .task {
-                if !biometricLockEnabled {
-                    isLocked = false
+                .onOpenURL { url in
+                    deepLinkRouter.handle(url)
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    handleScenePhaseChange(newPhase)
+                }
+                .task {
+                    networkMonitor.start()
+                    if !biometricLockEnabled {
+                        isLocked = false
+                    }
                 }
             }
         }
