@@ -77,7 +77,7 @@ All accessibility audit items must pass on every platform before release.
 
 ## App Store Listings
 
-- [ ] **App store listings ready** — all metadata prepared and validated for each distribution channel.
+- [ ] **App store listings ready** — all metadata prepared and validated for each distribution channel. See the [App Store Submission Guide](app-store-submission.md) for exact field values, character counts, and asset specs.
   - [ ] **Google Play Store**
     - [ ] App title, short description, full description finalized
     - [ ] Feature graphic (1024×500), icon (512×512), screenshots for phone and tablet
@@ -171,6 +171,8 @@ All accessibility audit items must pass on every platform before release.
 
 - [User Guide](../user-guide/README.md) — End-user documentation
 - [Release Process](release-process.md) — Release workflows, versioning, hotfix, and rollback
+- [App Store Submission Guide](app-store-submission.md) — Submission metadata, checklists, and field values
+- [App Store Preparation Guide](app-store-preparation.md) — Developer account setup and store requirements
 - [Performance Guide](performance.md) — Performance targets and benchmarking
 - [Security Checklist](../audits/security-checklist.md) — OWASP MASVS L1 audit
 - [Accessibility Checklist](../audits/accessibility-checklist.md) — WCAG 2.2 AA audit

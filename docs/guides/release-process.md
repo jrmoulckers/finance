@@ -10,7 +10,8 @@ This document describes how Finance releases are versioned, built, and distribut
 - [Per-Platform Release Pipelines](#per-platform-release-pipelines)
 - [Hotfix Process](#hotfix-process)
 - [Rollback Procedures](#rollback-procedures)
-- [Release Checklist](#release-checklist)
+- [Pre-Release Checklist](#pre-release-checklist)
+- [Post-Release Verification](#post-release-verification)
 
 ---
 
@@ -298,6 +299,8 @@ Use the hotfix process when:
 
 If a released version introduces a regression that wasn't caught in testing, you may need to roll back.
 
+> **📖 For detailed, step-by-step rollback instructions** — including database migration rollback and PowerSync conflict handling — see the dedicated [Rollback Procedures Guide](rollback-procedures.md).
+
 ### Web Rollback
 
 Web rollbacks are the simplest because Vercel keeps previous deployments:
@@ -335,28 +338,146 @@ Apple does not support rollbacks in the App Store:
 
 ---
 
-## Release Checklist
+## Pre-Release Checklist
 
-Before triggering any platform release, verify:
+Before triggering any platform release, every item below must be verified. A single unchecked item blocks the release unless the project lead grants a documented exception.
 
-- [ ] All CI checks pass on `main` (lint, test, build, security scans)
+### CI & Code Quality
+
+- [ ] All CI checks pass on `main` (lint, test, build, type-check)
 - [ ] Changeset version PR has been merged
 - [ ] `CHANGELOG.md` accurately describes user-facing changes
 - [ ] No `FIXME` or `TODO` items in the code being released
+- [ ] Version number confirmed — follows [semver rules](#semver-rules) and matches the platform format in [Version Format by Platform](#version-format-by-platform)
+
+### Security
+
+- [ ] Security audit critical items resolved — no FAIL items in the [OWASP MASVS L1 Security Checklist](../audits/security-checklist.md)
+- [ ] CodeQL scan passing — no high or critical findings ([`security.yml`](../../.github/workflows/security.yml))
+- [ ] Dependency audit clean — no critical or high CVEs in production dependencies (Dependabot / `dependency-review.yml`)
+- [ ] Secret scanning — no alerts in GitHub Advanced Security push protection
+- [ ] Security checklist reviewed for any auth/data changes
+
+### Privacy
+
+- [ ] Privacy audit critical items addressed — data practices verified per [Privacy & Compliance checklist](launch-checklist.md#privacy--compliance)
+- [ ] No PII, financial data, or credentials in logs, crash reports, or telemetry
+- [ ] Sentry `beforeSend` scrubbing rules verified (see [monitoring architecture](../architecture/monitoring.md#52-scrubbing-implementation))
+- [ ] Data collection inventory up to date — every metric collected is documented with purpose and legal basis
+
+### Monitoring & Alerting
+
+- [ ] Error tracking configured for the releasing platform (Sentry integration, consent-gated)
+- [ ] Sync health monitoring operational — `SyncHealthMonitor` thresholds reviewed (see [monitoring strategy](monitoring.md#sync-health-monitoring))
+- [ ] Alerting rules configured — team is notified when error rates or latency exceed thresholds (see [alert thresholds](monitoring.md#alert-thresholds-and-escalation))
+- [ ] Uptime monitoring active for API and web endpoints
+- [ ] Operational and client health dashboards accessible (see [monitoring architecture § dashboards](../architecture/monitoring.md#7-dashboards))
+
+### Performance
+
+- [ ] Performance baselines measured — cold start, scroll FPS, SQLite aggregation, memory usage (see [performance guide](performance.md))
+- [ ] Performance benchmarks show no regressions vs. previous release
+- [ ] Lighthouse CI passing for web releases (see [`web-ci.yml`](../../.github/workflows/web-ci.yml))
+- [ ] Bundle size within budget (no unexpected increases)
+
+### Testing & Beta
+
+- [ ] Beta testing completed with feedback addressed:
+  - iOS: TestFlight beta with ≥ 10 testers, ≥ 2-week testing period
+  - Android: Internal/closed track with ≥ 10 testers, ≥ 2-week testing period
+  - Web: Preview deployment shared with testers, feedback collected
+  - Windows: Flight ring with testers, feedback collected
+- [ ] Critical user flows validated by beta testers (onboarding, transactions, budgets, sync, export)
+- [ ] Bug reports from beta triaged — all critical and high-severity bugs resolved
 - [ ] Accessibility audit passes for any UI changes (see [accessibility checklist](../audits/accessibility-checklist.md))
-- [ ] Security checklist reviewed for any auth/data changes (see [security checklist](../audits/security-checklist.md))
-- [ ] Release notes written for the app store listing (plain language, user-facing)
-- [ ] Beta testing completed (TestFlight for iOS, internal track for Android, preview deploy for web, flight ring for Windows)
-- [ ] Performance benchmarks show no regressions (see [performance guide](performance.md))
+
+### Release Artifacts
+
+- [ ] Release notes drafted for the app store listing (plain language, user-facing)
+- [ ] App store metadata updated (screenshots, descriptions) if UI changed
 - [ ] Team notified in the release channel
+
+---
+
+## Post-Release Verification
+
+After a release reaches users, verify that everything is working as expected. Do not promote from internal/beta to production until these checks pass.
+
+### Smoke Test Checklist
+
+Run these critical user flows on the released build within 1 hour of deployment:
+
+| # | Test | iOS | Android | Web | Windows |
+|---|------|-----|---------|-----|---------|
+| 1 | App launches without crash | ☐ | ☐ | ☐ | ☐ |
+| 2 | User can sign in (existing account) | ☐ | ☐ | ☐ | ☐ |
+| 3 | User can create a new account | ☐ | ☐ | ☐ | ☐ |
+| 4 | Sync completes successfully (online) | ☐ | ☐ | ☐ | ☐ |
+| 5 | Add a transaction (< 10 s quick-entry) | ☐ | ☐ | ☐ | ☐ |
+| 6 | View budget overview | ☐ | ☐ | ☐ | ☐ |
+| 7 | View reports / charts | ☐ | ☐ | ☐ | ☐ |
+| 8 | Offline mode — make changes while offline | ☐ | ☐ | ☐ | ☐ |
+| 9 | Reconnect — offline changes sync correctly | ☐ | ☐ | ☐ | ☐ |
+| 10 | Export data (CSV / JSON) | ☐ | ☐ | ☐ | ☐ |
+| 11 | Screen reader announces key elements | ☐ | ☐ | ☐ | ☐ |
+| 12 | Settings / preferences load correctly | ☐ | ☐ | ☐ | ☐ |
+
+### Monitoring Dashboard Checks
+
+Within the first 30 minutes after users start receiving the update:
+
+- [ ] **Crash-free session rate** — verify ≥ 99.5% (check Sentry → Releases → new version)
+- [ ] **Error rate** — no spike compared to the previous version baseline
+- [ ] **Sync success rate** — remains above 95% (`sync_health_logs` aggregate)
+- [ ] **Sync latency P95** — remains below 5 s threshold
+- [ ] **API response time P95** — remains below 1 s
+- [ ] **Auth failure rate** — remains below 1%
+- [ ] **PowerSync queue depth** — no unexpected growth (< 1000 pending)
+- [ ] **Uptime monitors** — all green (API, web, PowerSync endpoints)
+
+### Error Rate Baseline Comparison
+
+Compare the new release's error metrics against the previous version during the same time window (first 24 hours):
+
+| Metric | Previous Release Baseline | New Release (24 h) | Status |
+|--------|---------------------------|---------------------|--------|
+| Crash-free sessions | __%% | __%% | ☐ |
+| Unhandled exceptions / 1k sessions | __ | __ | ☐ |
+| Sync failure rate | __%% | __%% | ☐ |
+| API 5xx error rate | __%% | __%% | ☐ |
+| Client `Unhealthy` sync status count | __ | __ | ☐ |
+
+**Action thresholds:**
+
+- **≤ 10% regression** — monitor for 24 more hours, no action needed.
+- **10–25% regression** — investigate root cause, consider halting staged rollout.
+- **> 25% regression or new P0/P1 errors** — halt rollout immediately, begin [rollback procedures](rollback-procedures.md).
+
+### Staged Rollout Progression
+
+For mobile platforms, follow this promotion schedule (adjust based on monitoring):
+
+| Stage | Audience | Duration | Gate |
+|-------|----------|----------|------|
+| Internal testing | Team only | 1–2 days | Smoke tests pass |
+| Beta / TestFlight | Beta testers | 3–7 days | No critical bugs reported |
+| Staged rollout 10% | 10% of production users | 2–3 days | Error rates within baseline |
+| Staged rollout 50% | 50% of production users | 1–2 days | Error rates within baseline |
+| Full rollout 100% | All users | — | No regressions detected |
+
+> **Never skip the staged rollout for mobile releases.** The blast radius of a broken mobile update is much larger than web because users cannot be instantly rolled back.
 
 ---
 
 ## References
 
+- [Rollback Procedures](rollback-procedures.md) — Detailed rollback instructions for every platform, database, and sync
 - [ADR-0006: CI/CD Strategy](../architecture/0006-cicd-strategy.md) — Architectural decisions for the CI/CD pipeline
+- [Monitoring Architecture](../architecture/monitoring.md) — Error tracking, sync health, dashboards, and alerting
+- [Monitoring Strategy](monitoring.md) — Privacy-respecting observability setup
 - [Changesets documentation](https://github.com/changesets/changesets) — Upstream docs for the versioning tool
 - [Fastlane documentation](https://docs.fastlane.tools/) — Mobile build and release automation
 - [Performance Guide](performance.md) — Performance targets and benchmarking
 - [Security Checklist](../audits/security-checklist.md) — OWASP MASVS L1 audit items
 - [Accessibility Checklist](../audits/accessibility-checklist.md) — WCAG 2.2 AA audit items
+- [Launch Checklist](launch-checklist.md) — Complete pre-launch verification
