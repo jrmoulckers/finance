@@ -111,7 +111,8 @@ export function applyTransactionFilters(
     needsLocalStartDateFilter = startDate !== undefined;
     needsLocalEndDateFilter = endDate !== undefined;
 
-    const hasLocalFilter = needsLocalCategoryFilter || needsLocalStartDateFilter || needsLocalEndDateFilter;
+    const hasLocalFilter =
+      needsLocalCategoryFilter || needsLocalStartDateFilter || needsLocalEndDateFilter;
     results = getTransactionsByAccount(db, accountId, {
       ...baseDbFilters,
       limit: hasLocalFilter ? undefined : limit,

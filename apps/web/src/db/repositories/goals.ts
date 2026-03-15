@@ -236,9 +236,7 @@ export function getActiveGoals(db: SqliteDb): Goal[] {
 
 /** Return goals that have been completed. */
 export function getCompletedGoals(db: SqliteDb): Goal[] {
-  return query<Row>(
-    db,
-    `${GOAL_BASE_QUERY} AND status = ? ORDER BY updated_at DESC, name ASC`,
-    ['COMPLETED'],
-  ).rows.map(mapGoal);
+  return query<Row>(db, `${GOAL_BASE_QUERY} AND status = ? ORDER BY updated_at DESC, name ASC`, [
+    'COMPLETED',
+  ]).rows.map(mapGoal);
 }

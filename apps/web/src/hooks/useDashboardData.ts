@@ -93,7 +93,10 @@ function aggregateDashboardData(db: ReturnType<typeof useDatabase>): DashboardDa
 
   const accountTotals = new Map<string, number>();
   for (const account of accounts) {
-    accountTotals.set(account.type, (accountTotals.get(account.type) ?? 0) + account.currentBalance.amount);
+    accountTotals.set(
+      account.type,
+      (accountTotals.get(account.type) ?? 0) + account.currentBalance.amount,
+    );
   }
 
   const accountSummary = Array.from(accountTotals.entries())

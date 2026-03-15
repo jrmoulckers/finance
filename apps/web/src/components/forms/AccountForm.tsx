@@ -110,9 +110,7 @@ function validate(name: string, balanceStr: string): FormErrors {
  *
  * @returns The household SyncId or `null` if none exists.
  */
-function getFirstHouseholdId(
-  db: ReturnType<typeof useDatabase>,
-): SyncId | null {
+function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): SyncId | null {
   const row = queryOne<Row>(
     db,
     'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
@@ -208,18 +206,13 @@ export function AccountForm({ onSubmit, onCancel, isOpen }: AccountFormProps) {
       // Resolve household ID
       const householdId = getFirstHouseholdId(db);
       if (!householdId) {
-        setSubmitError(
-          'No household found. Please create a household before adding accounts.',
-        );
+        setSubmitError('No household found. Please create a household before adding accounts.');
         return;
       }
 
-      const balanceCents = Math.round(
-        parseFloat(balance || '0') * 100,
-      );
+      const balanceCents = Math.round(parseFloat(balance || '0') * 100);
 
-      const currencyObj =
-        CURRENCY_OPTIONS.find((c) => c.code === currency);
+      const currencyObj = CURRENCY_OPTIONS.find((c) => c.code === currency);
       const decimalPlaces = currency === 'JPY' ? 0 : 2;
 
       const input: CreateAccountInput = {
@@ -245,9 +238,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen }: AccountFormProps) {
         setBalance('0.00');
         setErrors({});
       } catch (err) {
-        setSubmitError(
-          err instanceof Error ? err.message : 'Failed to create account.',
-        );
+        setSubmitError(err instanceof Error ? err.message : 'Failed to create account.');
       } finally {
         setSubmitting(false);
       }
@@ -265,17 +256,9 @@ export function AccountForm({ onSubmit, onCancel, isOpen }: AccountFormProps) {
   const hasBalanceError = Boolean(errors.balance);
 
   return (
-    <div
-      className="form-dialog"
-      role="presentation"
-      onKeyDown={handleKeyDown}
-    >
+    <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
       {/* Backdrop */}
-      <div
-        className="form-dialog__backdrop"
-        aria-hidden="true"
-        onClick={handleCancel}
-      />
+      <div className="form-dialog__backdrop" aria-hidden="true" onClick={handleCancel} />
 
       {/* Dialog panel */}
       <div

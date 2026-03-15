@@ -243,7 +243,8 @@ export function updateTransaction(
   const mergedTransaction = {
     householdId: updates.householdId ?? existingTransaction.householdId,
     accountId: updates.accountId ?? existingTransaction.accountId,
-    categoryId: updates.categoryId !== undefined ? updates.categoryId : existingTransaction.categoryId,
+    categoryId:
+      updates.categoryId !== undefined ? updates.categoryId : existingTransaction.categoryId,
     type: updates.type ?? existingTransaction.type,
     status: updates.status ?? existingTransaction.status,
     amount: updates.amount ?? existingTransaction.amount,

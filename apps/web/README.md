@@ -162,10 +162,10 @@ migrations, and exposes typed query helpers.
 
 **Storage backends (auto-detected):**
 
-| Backend    | When Used                                      | Persistence            |
-| ---------- | ---------------------------------------------- | ---------------------- |
-| OPFS       | Modern browsers with `createSyncAccessHandle`  | Origin Private FS      |
-| IndexedDB  | Fallback (Firefox < 124, Safari < 17.4, etc.)  | IndexedDB object store |
+| Backend   | When Used                                     | Persistence            |
+| --------- | --------------------------------------------- | ---------------------- |
+| OPFS      | Modern browsers with `createSyncAccessHandle` | Origin Private FS      |
+| IndexedDB | Fallback (Firefox < 124, Safari < 17.4, etc.) | IndexedDB object store |
 
 **Migration system:**
 
@@ -182,11 +182,11 @@ The initial migration (v1) creates all eight tables: `user`, `household`,
 
 **Query helpers:**
 
-| Function                          | Purpose                                          |
-| --------------------------------- | ------------------------------------------------ |
-| `query<T>(db, sql, params?)`      | Execute a SELECT and return typed rows            |
-| `queryOne<T>(db, sql, params?)`   | Execute a SELECT and return the first row or null |
-| `execute(db, sql, params?)`       | Execute a write statement (INSERT/UPDATE/DELETE)  |
+| Function                        | Purpose                                           |
+| ------------------------------- | ------------------------------------------------- |
+| `query<T>(db, sql, params?)`    | Execute a SELECT and return typed rows            |
+| `queryOne<T>(db, sql, params?)` | Execute a SELECT and return the first row or null |
+| `execute(db, sql, params?)`     | Execute a write statement (INSERT/UPDATE/DELETE)  |
 
 ### Repositories (`db/repositories/`)
 
@@ -200,14 +200,14 @@ All repositories follow the same pattern:
   flag records for future sync
 - **UUID primary keys** — `crypto.randomUUID()` generates IDs on the client
 
-| Repository         | Key Functions                                                                           |
-| ------------------ | --------------------------------------------------------------------------------------- |
-| `accounts.ts`      | `getAllAccounts`, `getAccountById`, `createAccount`, `updateAccount`, `deleteAccount`, `getAccountsByType` |
-| `transactions.ts`  | `getAllTransactions`, `getTransactionById`, `createTransaction`, `updateTransaction`, `deleteTransaction`, `getTransactionsByAccount`, `getTransactionsByCategory`, `getTransactionsByDateRange`, `getRecentTransactions` |
-| `budgets.ts`       | `getAllBudgets`, `getBudgetById`, `createBudget`, `updateBudget`, `deleteBudget`, `getBudgetsByPeriod`, `getBudgetWithSpending` |
-| `goals.ts`         | `getAllGoals`, `getGoalById`, `createGoal`, `updateGoal`, `deleteGoal`, `getActiveGoals`, `getCompletedGoals` |
-| `categories.ts`    | `getAllCategories`, `getCategoryById`, `createCategory`, `updateCategory`, `deleteCategory`, `getCategoriesByParent`, `getRootCategories` |
-| `helpers.ts`       | `requireString`, `requireNumber`, `optionalString`, `toBoolean`, `mapCurrency`, `mapCents`, `mapSyncMetadata`, `serializeTags`, `parseTags`, `createLikePattern` |
+| Repository        | Key Functions                                                                                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accounts.ts`     | `getAllAccounts`, `getAccountById`, `createAccount`, `updateAccount`, `deleteAccount`, `getAccountsByType`                                                                                                                |
+| `transactions.ts` | `getAllTransactions`, `getTransactionById`, `createTransaction`, `updateTransaction`, `deleteTransaction`, `getTransactionsByAccount`, `getTransactionsByCategory`, `getTransactionsByDateRange`, `getRecentTransactions` |
+| `budgets.ts`      | `getAllBudgets`, `getBudgetById`, `createBudget`, `updateBudget`, `deleteBudget`, `getBudgetsByPeriod`, `getBudgetWithSpending`                                                                                           |
+| `goals.ts`        | `getAllGoals`, `getGoalById`, `createGoal`, `updateGoal`, `deleteGoal`, `getActiveGoals`, `getCompletedGoals`                                                                                                             |
+| `categories.ts`   | `getAllCategories`, `getCategoryById`, `createCategory`, `updateCategory`, `deleteCategory`, `getCategoriesByParent`, `getRootCategories`                                                                                 |
+| `helpers.ts`      | `requireString`, `requireNumber`, `optionalString`, `toBoolean`, `mapCurrency`, `mapCents`, `mapSyncMetadata`, `serializeTags`, `parseTags`, `createLikePattern`                                                          |
 
 ### Seed Data (`db/seed.ts`)
 
@@ -231,15 +231,15 @@ and expose CRUD mutation functions that automatically re-fetch after changes.
 Errors are captured in state (never thrown), so components can render
 loading/error/empty states gracefully.
 
-| Hook                | Returns                        | Description |
-| ------------------- | ------------------------------ | ----------- |
-| `useAccounts()`     | `UseAccountsResult`            | All non-deleted accounts with `createAccount`, `updateAccount`, `deleteAccount`, and `refresh`. |
-| `useTransactions(filters?)` | `UseTransactionsResult` | Filtered transaction list with support for `searchTerm`, `type`, `accountId`, `categoryId`, `startDate`, `endDate`, and `limit`. Includes CRUD mutations. Pass a memoized filter object to avoid unnecessary re-fetches. |
-| `useBudgets()`      | `UseBudgetsResult`             | All budgets enriched with `spentAmount` and `remainingAmount` calculated from matching transactions. Includes CRUD mutations. |
-| `useGoals()`        | `UseGoalsResult`               | All non-deleted goals ordered by target date. Includes CRUD mutations. |
-| `useCategories()`   | `UseCategoriesResult`          | All non-deleted categories (root and child). Includes CRUD mutations. |
-| `useDashboardData()`| `UseDashboardDataResult`       | Aggregated read-only snapshot: net worth, monthly income/spending, budget progress, recent transactions, and account totals by type. |
-| `useOfflineStatus()`| `OfflineStatus`                | Network connectivity via `navigator.onLine` + `online`/`offline` events. Triggers Background Sync on reconnect. |
+| Hook                        | Returns                  | Description                                                                                                                                                                                                              |
+| --------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `useAccounts()`             | `UseAccountsResult`      | All non-deleted accounts with `createAccount`, `updateAccount`, `deleteAccount`, and `refresh`.                                                                                                                          |
+| `useTransactions(filters?)` | `UseTransactionsResult`  | Filtered transaction list with support for `searchTerm`, `type`, `accountId`, `categoryId`, `startDate`, `endDate`, and `limit`. Includes CRUD mutations. Pass a memoized filter object to avoid unnecessary re-fetches. |
+| `useBudgets()`              | `UseBudgetsResult`       | All budgets enriched with `spentAmount` and `remainingAmount` calculated from matching transactions. Includes CRUD mutations.                                                                                            |
+| `useGoals()`                | `UseGoalsResult`         | All non-deleted goals ordered by target date. Includes CRUD mutations.                                                                                                                                                   |
+| `useCategories()`           | `UseCategoriesResult`    | All non-deleted categories (root and child). Includes CRUD mutations.                                                                                                                                                    |
+| `useDashboardData()`        | `UseDashboardDataResult` | Aggregated read-only snapshot: net worth, monthly income/spending, budget progress, recent transactions, and account totals by type.                                                                                     |
+| `useOfflineStatus()`        | `OfflineStatus`          | Network connectivity via `navigator.onLine` + `online`/`offline` events. Triggers Background Sync on reconnect.                                                                                                          |
 
 **Common return shape** (entity hooks):
 
@@ -259,14 +259,14 @@ loading/error/empty states gracefully.
 
 Each page is lazy-loaded via `React.lazy()` in `routes.tsx` for code splitting.
 
-| Page                | Route            | Hooks Used                                      | Description |
-| ------------------- | ---------------- | ------------------------------------------------ | ----------- |
-| `DashboardPage`     | `/dashboard`     | `useDashboardData`, `useCategories`              | Financial overview with net worth, monthly spending, budget health progress bar, and recent transactions list. |
-| `AccountsPage`      | `/accounts`      | `useAccounts`                                    | Accounts grouped by type (Checking, Savings, etc.) with net worth total. Selecting an account shows a detail view. |
-| `TransactionsPage`  | `/transactions`  | `useTransactions`, `useCategories`, `useAccounts` | Searchable, filterable transaction list grouped by date. Category filter chips for quick filtering. |
-| `BudgetsPage`       | `/budgets`       | `useBudgets`, `useCategories`                    | Budget cards with SVG progress rings showing spent vs. budgeted amounts. Summary section with totals. |
-| `GoalsPage`         | `/goals`         | `useGoals`                                       | Savings goal cards with progress bars, days remaining, and saved/target amounts. |
-| `SettingsPage`      | `/settings`      | `useOfflineStatus`, `useAuth`                    | Theme, currency, and notification preferences. Security settings (sign out, passkeys). Sync status indicator. |
+| Page               | Route           | Hooks Used                                        | Description                                                                                                        |
+| ------------------ | --------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `DashboardPage`    | `/dashboard`    | `useDashboardData`, `useCategories`               | Financial overview with net worth, monthly spending, budget health progress bar, and recent transactions list.     |
+| `AccountsPage`     | `/accounts`     | `useAccounts`                                     | Accounts grouped by type (Checking, Savings, etc.) with net worth total. Selecting an account shows a detail view. |
+| `TransactionsPage` | `/transactions` | `useTransactions`, `useCategories`, `useAccounts` | Searchable, filterable transaction list grouped by date. Category filter chips for quick filtering.                |
+| `BudgetsPage`      | `/budgets`      | `useBudgets`, `useCategories`                     | Budget cards with SVG progress rings showing spent vs. budgeted amounts. Summary section with totals.              |
+| `GoalsPage`        | `/goals`        | `useGoals`                                        | Savings goal cards with progress bars, days remaining, and saved/target amounts.                                   |
+| `SettingsPage`     | `/settings`     | `useOfflineStatus`, `useAuth`                     | Theme, currency, and notification preferences. Security settings (sign out, passkeys). Sync status indicator.      |
 
 ## Components
 
@@ -274,45 +274,45 @@ Each page is lazy-loaded via `React.lazy()` in `routes.tsx` for code splitting.
 
 Recharts-based financial visualization components:
 
-| Component           | Purpose |
-| ------------------- | ------- |
-| `SpendingBarChart`  | Bar chart showing spending by category or time period |
-| `TrendLineChart`    | Line chart for income/expense trends over time |
-| `BudgetDonutChart`  | Donut chart for budget allocation and usage |
-| `CategoryPieChart`  | Pie chart for spending distribution by category |
-| `chart-palette.ts`  | Shared color constants and currency formatting for charts |
+| Component          | Purpose                                                   |
+| ------------------ | --------------------------------------------------------- |
+| `SpendingBarChart` | Bar chart showing spending by category or time period     |
+| `TrendLineChart`   | Line chart for income/expense trends over time            |
+| `BudgetDonutChart` | Donut chart for budget allocation and usage               |
+| `CategoryPieChart` | Pie chart for spending distribution by category           |
+| `chart-palette.ts` | Shared color constants and currency formatting for charts |
 
 ### Common (`components/common/`)
 
 Shared UI primitives used across all pages:
 
-| Component         | Purpose |
-| ----------------- | ------- |
-| `LoadingSpinner`  | Accessible spinner with `role="status"` and configurable label |
-| `ErrorBanner`     | Error message display with an optional retry button |
-| `EmptyState`      | Placeholder for pages/sections with no data |
+| Component         | Purpose                                                                    |
+| ----------------- | -------------------------------------------------------------------------- |
+| `LoadingSpinner`  | Accessible spinner with `role="status"` and configurable label             |
+| `ErrorBanner`     | Error message display with an optional retry button                        |
+| `EmptyState`      | Placeholder for pages/sections with no data                                |
 | `CurrencyDisplay` | Formats cent-based amounts for display with optional colorization and sign |
 
 ### Forms (`components/forms/`)
 
 CRUD forms for data entry:
 
-| Component          | Purpose |
-| ------------------ | ------- |
-| `AccountForm`      | Create or edit an account (name, type, currency, balance) |
-| `TransactionForm`  | Create or edit a transaction (amount, date, payee, category, account) |
+| Component         | Purpose                                                               |
+| ----------------- | --------------------------------------------------------------------- |
+| `AccountForm`     | Create or edit an account (name, type, currency, balance)             |
+| `TransactionForm` | Create or edit a transaction (amount, date, payee, category, account) |
 
 ### Layout (`components/layout/`)
 
 App shell and navigation:
 
-| Component            | Purpose |
-| -------------------- | ------- |
-| `AppLayout`          | Responsive shell — sidebar on desktop, bottom nav on mobile |
-| `SidebarNavigation`  | Desktop sidebar with navigation links |
-| `BottomNavigation`   | Mobile bottom tab bar |
-| `FocusManager`       | Manages focus on route transitions for accessibility |
-| `SkipToContent`      | Skip-to-content link for keyboard users |
+| Component           | Purpose                                                     |
+| ------------------- | ----------------------------------------------------------- |
+| `AppLayout`         | Responsive shell — sidebar on desktop, bottom nav on mobile |
+| `SidebarNavigation` | Desktop sidebar with navigation links                       |
+| `BottomNavigation`  | Mobile bottom tab bar                                       |
+| `FocusManager`      | Manages focus on route transitions for accessibility        |
+| `SkipToContent`     | Skip-to-content link for keyboard users                     |
 
 ## Development
 

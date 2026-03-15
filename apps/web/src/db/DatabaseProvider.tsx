@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { ErrorBanner, LoadingSpinner } from '../components/common';
 import { seedDatabase } from './seed';
 import { initDatabase, type SqliteDb } from './sqlite-wasm';

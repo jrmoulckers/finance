@@ -80,14 +80,11 @@ export const SettingsPage: React.FC = () => {
     setCurrency(nextCurrency);
   }, []);
 
-  const handleNotificationsChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const nextNotificationsEnabled = event.target.checked;
-      localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, String(nextNotificationsEnabled));
-      setNotificationsEnabled(nextNotificationsEnabled);
-    },
-    [],
-  );
+  const handleNotificationsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextNotificationsEnabled = event.target.checked;
+    localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, String(nextNotificationsEnabled));
+    setNotificationsEnabled(nextNotificationsEnabled);
+  }, []);
 
   const handleComingSoon = useCallback((message: string) => {
     window.alert(message);
@@ -203,7 +200,9 @@ export const SettingsPage: React.FC = () => {
           <h3 className="settings-group__title">Security</h3>
           <div className="settings-item settings-item--static">
             <span className="settings-item__label">Account</span>
-            <span className="settings-item__value">{isAuthenticated ? user?.email ?? 'Not signed in' : 'Not signed in'}</span>
+            <span className="settings-item__value">
+              {isAuthenticated ? (user?.email ?? 'Not signed in') : 'Not signed in'}
+            </span>
           </div>
           <button
             type="button"
@@ -219,7 +218,9 @@ export const SettingsPage: React.FC = () => {
             onClick={() => handleComingSoon('Passkey management is coming soon.')}
           >
             <span className="settings-item__label">Passkeys</span>
-            <span className="settings-item__value">{user?.hasPasskey ? 'Registered' : 'Not set up'}</span>
+            <span className="settings-item__value">
+              {user?.hasPasskey ? 'Registered' : 'Not set up'}
+            </span>
           </button>
           <button
             type="button"
@@ -264,7 +265,10 @@ export const SettingsPage: React.FC = () => {
       </section>
       <section aria-label="Danger zone" className="page-section">
         <div className="settings-group">
-          <h3 className="settings-group__title" style={{ color: 'var(--semantic-status-negative)' }}>
+          <h3
+            className="settings-group__title"
+            style={{ color: 'var(--semantic-status-negative)' }}
+          >
             Danger Zone
           </h3>
           <button

@@ -71,7 +71,9 @@ function mapCategory(row: Row): Category {
 
 /** Return all non-deleted categories ordered by sort order and name. */
 export function getAllCategories(db: SqliteDb): Category[] {
-  return query<Row>(db, `${CATEGORY_BASE_QUERY} ORDER BY sort_order ASC, name ASC`).rows.map(mapCategory);
+  return query<Row>(db, `${CATEGORY_BASE_QUERY} ORDER BY sort_order ASC, name ASC`).rows.map(
+    mapCategory,
+  );
 }
 
 /** Find a single non-deleted category by its identifier. */
@@ -217,7 +219,8 @@ export function getCategoriesByParent(db: SqliteDb, parentId: SyncId): Category[
 
 /** Return root categories that do not have a parent. */
 export function getRootCategories(db: SqliteDb): Category[] {
-  return query<Row>(db, `${CATEGORY_BASE_QUERY} AND parent_id IS NULL ORDER BY sort_order ASC, name ASC`).rows.map(
-    mapCategory,
-  );
+  return query<Row>(
+    db,
+    `${CATEGORY_BASE_QUERY} AND parent_id IS NULL ORDER BY sort_order ASC, name ASC`,
+  ).rows.map(mapCategory);
 }

@@ -83,7 +83,9 @@ function mapBudget(row: Row): Budget {
 
 /** Return all non-deleted budgets ordered by period start date. */
 export function getAllBudgets(db: SqliteDb): Budget[] {
-  return query<Row>(db, `${BUDGET_BASE_QUERY} ORDER BY start_date DESC, name ASC`).rows.map(mapBudget);
+  return query<Row>(db, `${BUDGET_BASE_QUERY} ORDER BY start_date DESC, name ASC`).rows.map(
+    mapBudget,
+  );
 }
 
 /** Find a single non-deleted budget by its identifier. */

@@ -88,11 +88,7 @@ interface FormErrors {
   accountId?: string;
 }
 
-function validate(
-  amountStr: string,
-  description: string,
-  accountId: string,
-): FormErrors {
+function validate(amountStr: string, description: string, accountId: string): FormErrors {
   const errors: FormErrors = {};
 
   const parsed = parseFloat(amountStr);
@@ -237,9 +233,7 @@ export function TransactionForm({
         setNotes('');
         setErrors({});
       } catch (err) {
-        setSubmitError(
-          err instanceof Error ? err.message : 'Failed to create transaction.',
-        );
+        setSubmitError(err instanceof Error ? err.message : 'Failed to create transaction.');
       } finally {
         setSubmitting(false);
       }
@@ -258,17 +252,9 @@ export function TransactionForm({
   const hasAccountError = Boolean(errors.accountId);
 
   return (
-    <div
-      className="form-dialog"
-      role="presentation"
-      onKeyDown={handleKeyDown}
-    >
+    <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
       {/* Backdrop */}
-      <div
-        className="form-dialog__backdrop"
-        aria-hidden="true"
-        onClick={handleCancel}
-      />
+      <div className="form-dialog__backdrop" aria-hidden="true" onClick={handleCancel} />
 
       {/* Dialog panel */}
       <div
@@ -293,10 +279,7 @@ export function TransactionForm({
           <div className="form-fields">
             {/* Amount */}
             <div className="form-group">
-              <label
-                htmlFor="txn-amount"
-                className="form-group__label form-group__label--required"
-              >
+              <label htmlFor="txn-amount" className="form-group__label form-group__label--required">
                 Amount
               </label>
               <input
@@ -337,9 +320,7 @@ export function TransactionForm({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 aria-invalid={hasDescriptionError}
-                aria-describedby={
-                  hasDescriptionError ? 'txn-description-error' : undefined
-                }
+                aria-describedby={hasDescriptionError ? 'txn-description-error' : undefined}
                 aria-required="true"
                 autoComplete="off"
               />

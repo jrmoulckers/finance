@@ -109,8 +109,9 @@
   font-size: var(--type-scale-body-font-size);
   font-family: inherit;
   line-height: var(--line-height-normal);
-  transition: border-color var(--duration-fast, 100ms) ease,
-              box-shadow var(--duration-fast, 100ms) ease;
+  transition:
+    border-color var(--duration-fast, 100ms) ease,
+    box-shadow var(--duration-fast, 100ms) ease;
 }
 
 .form-input:focus,
@@ -224,8 +225,9 @@
   font-weight: var(--font-weight-semibold);
   font-family: inherit;
   cursor: pointer;
-  transition: background-color var(--duration-fast, 100ms) ease,
-              opacity var(--duration-fast, 100ms) ease;
+  transition:
+    background-color var(--duration-fast, 100ms) ease,
+    opacity var(--duration-fast, 100ms) ease;
   min-height: 40px;
 }
 

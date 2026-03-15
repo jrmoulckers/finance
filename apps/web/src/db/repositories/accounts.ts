@@ -78,7 +78,9 @@ function mapAccount(row: Row): Account {
 
 /** Return every non-deleted account ordered by sort order and name. */
 export function getAllAccounts(db: SqliteDb): Account[] {
-  return query<Row>(db, `${ACCOUNT_BASE_QUERY} ORDER BY sort_order ASC, name ASC`).rows.map(mapAccount);
+  return query<Row>(db, `${ACCOUNT_BASE_QUERY} ORDER BY sort_order ASC, name ASC`).rows.map(
+    mapAccount,
+  );
 }
 
 /** Find a single non-deleted account by its identifier. */
@@ -221,9 +223,7 @@ export function deleteAccount(db: SqliteDb, accountId: SyncId): boolean {
 
 /** Return all non-deleted accounts for a specific account type. */
 export function getAccountsByType(db: SqliteDb, type: AccountType): Account[] {
-  return query<Row>(
-    db,
-    `${ACCOUNT_BASE_QUERY} AND type = ? ORDER BY sort_order ASC, name ASC`,
-    [type],
-  ).rows.map(mapAccount);
+  return query<Row>(db, `${ACCOUNT_BASE_QUERY} AND type = ? ORDER BY sort_order ASC, name ASC`, [
+    type,
+  ]).rows.map(mapAccount);
 }

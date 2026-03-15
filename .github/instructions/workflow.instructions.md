@@ -23,6 +23,7 @@ AI agents MUST follow this workflow for every code change:
 ```
 
 Examples:
+
 - `feat/web-data-layer-443`
 - `fix/auth-token-refresh-127`
 - `docs/api-reference-86`
@@ -75,17 +76,21 @@ Examples:
 
 ```markdown
 ## Summary
+
 Brief description of what this PR does.
 
 ## Changes
+
 - Bullet list of changes
 
 ## Issues
+
 Closes #N
 Closes #M
 Refs #P (for related but not fully resolved issues)
 
 ## Testing
+
 - [ ] TypeScript compiles (`npm run type-check`)
 - [ ] Tests pass (`npm test`)
 - [ ] Manual testing done
