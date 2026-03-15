@@ -170,6 +170,12 @@ finance/
 └── .vscode/        # VS Code workspace config (MCP, settings)
 ```
 
+## Review Routing
+
+GitHub uses [`.github/CODEOWNERS`](./CODEOWNERS) to automatically request review from the repository owner for changes in high-impact areas such as shared packages, platform apps, backend services, build infrastructure, and repository configuration.
+
+If your pull request spans multiple areas, GitHub will apply the most specific matching rule for each changed path. Update `CODEOWNERS` in the same pull request whenever ownership changes so review routing stays accurate.
+
 ## Need Help?
 
 - Read `docs/ai/` for full AI workflow documentation
