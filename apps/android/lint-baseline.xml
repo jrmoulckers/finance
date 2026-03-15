@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Lint baseline: pre-existing issues that should not block CI. -->
+<!-- Regenerate with: ./gradlew :apps:android:updateLintBaseline -->
+<issues format="6" by="baseline" client="cli" dependencies="false" name="AGP (8.7.3)" variant="all" version="8.7.3">
+
+</issues>
