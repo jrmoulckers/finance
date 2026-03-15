@@ -27,6 +27,9 @@ data class AuthSession(
     val expiresAt: Instant,
     val userId: String,
 ) {
+    override fun toString(): String =
+        "AuthSession(userId=$userId, accessToken=*****, refreshToken=*****, expiresAt=$expiresAt)"
+
     /**
      * Check whether this session's access token is still valid.
      *

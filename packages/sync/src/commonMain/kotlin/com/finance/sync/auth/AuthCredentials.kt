@@ -20,7 +20,10 @@ sealed class AuthCredentials {
     data class EmailPassword(
         val email: String,
         val password: String,
-    ) : AuthCredentials()
+    ) : AuthCredentials() {
+        override fun toString(): String =
+            "EmailPassword(email=$email, password=*****)"
+    }
 
     /**
      * OAuth 2.0 + PKCE sign-in (Apple, Google, etc.) (#71).
@@ -37,7 +40,10 @@ sealed class AuthCredentials {
         val provider: String,
         val authCode: String,
         val codeVerifier: String,
-    ) : AuthCredentials()
+    ) : AuthCredentials() {
+        override fun toString(): String =
+            "OAuth(provider=$provider, authCode=*****, codeVerifier=*****)"
+    }
 
     /**
      * Passkey / WebAuthn sign-in (#69).
@@ -52,5 +58,8 @@ sealed class AuthCredentials {
     data class Passkey(
         val credentialId: String,
         val assertion: String,
-    ) : AuthCredentials()
+    ) : AuthCredentials() {
+        override fun toString(): String =
+            "Passkey(credentialId=$credentialId, assertion=*****)"
+    }
 }
