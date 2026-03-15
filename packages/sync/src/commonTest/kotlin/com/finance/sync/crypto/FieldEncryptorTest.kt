@@ -112,4 +112,144 @@ class FieldEncryptorTest {
             "Each record should have a unique DEK",
         )
     }
+
+    // =========================================================================
+    // Different inputs → different ciphertexts
+    // =========================================================================
+
+    @Test
+    fun differentInputsProduceDifferentCiphertexts() {
+        val record1 = mapOf("payee" to "Vendor Alpha", "amount_cents" to "100")
+        val record2 = mapOf("payee" to "Vendor Beta", "amount_cents" to "100")
+
+        val enc1 = FieldEncryptor(crypto, EnvelopeEncryption(crypto, TestRandomProvider(seed = 1)))
+        val enc2 = FieldEncryptor(crypto, EnvelopeEncryption(crypto, TestRandomProvider(seed = 1)))
+
+        val result1 = enc1.encryptRecord(record1, testKek)
+        val result2 = enc2.encryptRecord(record2, testKek)
+
+        val cipher1 = result1.encryptedFields["payee"]!!.ciphertext
+        val cipher2 = result2.encryptedFields["payee"]!!.ciphertext
+
+        assertTrue(
+            !cipher1.contentEquals(cipher2),
+            "Different plaintext inputs should produce different ciphertexts",
+        )
+    }
+
+    // =========================================================================
+    // Decryption with wrong key produces incorrect data
+    // =========================================================================
+
+    @Test
+    fun decryptionWithWrongKeyProducesGarbage() {
+        val encrypted = encryptor.encryptRecord(sampleRecord, testKek)
+        val wrongKek = ByteArray(32) { 0xFF.toByte() }
+
+        // With XOR-based test crypto, wrong key produces different (garbage) output
+        val result = encryptor.decryptRecord(encrypted, wrongKek)
+        assertNotEquals(
+            "Acme Corp",
+            result["payee"],
+            "Decryption with wrong key should not produce original plaintext",
+        )
+    }
+
+    @Test
+    fun decryptionWithWrongKeyDoesNotMatchAnyOriginalField() {
+        val encrypted = encryptor.encryptRecord(sampleRecord, testKek)
+        val wrongKek = ByteArray(32) { 0xAB.toByte() }
+
+        val result = encryptor.decryptRecord(encrypted, wrongKek)
+
+        // Every sensitive field should differ from original
+        for (fieldName in FieldEncryptor.DEFAULT_SENSITIVE_FIELDS) {
+            val original = sampleRecord[fieldName] ?: continue
+            assertNotEquals(
+                original,
+                result[fieldName],
+                "Field '$fieldName' should not match original when decrypted with wrong key",
+            )
+        }
+
+        // Non-sensitive fields should still be correct (they're in cleartext)
+        assertEquals("150000", result["amount_cents"])
+        assertEquals("2025-01-15", result["date"])
+    }
+
+    // =========================================================================
+    // Custom sensitive fields configuration
+    // =========================================================================
+
+    @Test
+    fun customSensitiveFieldsAreRespected() {
+        val customFields = setOf("amount_cents")
+        val customEncryptor = FieldEncryptor(crypto, envelope, customFields)
+
+        val result = customEncryptor.encryptRecord(sampleRecord, testKek)
+
+        // amount_cents should now be encrypted
+        assertTrue(
+            result.encryptedFields.containsKey("amount_cents"),
+            "Custom sensitive field 'amount_cents' should be encrypted",
+        )
+        // payee should now be in cleartext (not in custom set)
+        assertTrue(
+            result.cleartextFields.containsKey("payee"),
+            "Non-custom field 'payee' should be in cleartext",
+        )
+    }
+
+    @Test
+    fun emptyFieldsMapProducesEmptyResult() {
+        val result = encryptor.encryptRecord(emptyMap(), testKek)
+
+        assertTrue(result.encryptedFields.isEmpty(), "No encrypted fields for empty input")
+        assertTrue(result.cleartextFields.isEmpty(), "No cleartext fields for empty input")
+        assertTrue(result.wrappedDek.isNotEmpty(), "DEK should still be generated")
+    }
+
+    @Test
+    fun onlyNonSensitiveFieldsProducesNoCiphertexts() {
+        val nonSensitiveOnly = mapOf(
+            "amount_cents" to "5000",
+            "date" to "2025-06-15",
+        )
+
+        val result = encryptor.encryptRecord(nonSensitiveOnly, testKek)
+
+        assertTrue(result.encryptedFields.isEmpty(), "No sensitive fields to encrypt")
+        assertEquals(2, result.cleartextFields.size)
+        assertEquals("5000", result.cleartextFields["amount_cents"])
+    }
+
+    @Test
+    fun onlySensitiveFieldsProducesNoCleartext() {
+        val sensitiveOnly = mapOf(
+            "payee" to "Secret Corp",
+            "note" to "Confidential",
+        )
+
+        val result = encryptor.encryptRecord(sensitiveOnly, testKek)
+
+        assertTrue(result.cleartextFields.isEmpty(), "No cleartext fields")
+        assertEquals(2, result.encryptedFields.size)
+    }
+
+    @Test
+    fun encryptedRecordEquality() {
+        // Same inputs with same random provider should produce equal records
+        val r1 = TestRandomProvider(seed = 0)
+        val r2 = TestRandomProvider(seed = 0)
+        val c1 = TestCryptoProvider()
+        val c2 = TestCryptoProvider()
+
+        val enc1 = FieldEncryptor(c1, EnvelopeEncryption(c1, r1))
+        val enc2 = FieldEncryptor(c2, EnvelopeEncryption(c2, r2))
+
+        val result1 = enc1.encryptRecord(sampleRecord, testKek)
+        val result2 = enc2.encryptRecord(sampleRecord, testKek)
+
+        assertEquals(result1, result2, "Identical inputs and random state should produce equal records")
+    }
 }
