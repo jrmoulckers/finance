@@ -284,8 +284,9 @@ class SettingsViewModel(
                 appendLine("""  "transactions": [""")
                 transactions.forEachIndexed { i, txn ->
                     val comma = if (i < transactions.lastIndex) "," else ""
-                    val catName = txn.categoryId?.let { categoryMap[it]?.name } ?: "Uncategorized"
-                    val payee = txn.payee?.replace("\"", "\\\"") ?: ""
+                    val catName = (txn.categoryId?.let { categoryMap[it]?.name } ?: "Uncategorized")
+                        .replace("\\", "\\\\").replace("\"", "\\\"")
+                    val payee = txn.payee?.replace("\\", "\\\\")?.replace("\"", "\\\"") ?: ""
                     appendLine(
                         """    {"id":"${txn.id.value}","date":"${txn.date}","payee":"$payee","category":"$catName","type":"${txn.type}","currency":"${txn.currency.code}"}$comma""",
                     )
@@ -296,7 +297,8 @@ class SettingsViewModel(
             ExportFormat.CSV -> buildString {
                 appendLine("id,date,payee,category,type,currency")
                 transactions.forEach { txn ->
-                    val catName = txn.categoryId?.let { categoryMap[it]?.name } ?: "Uncategorized"
+                    val catName = (txn.categoryId?.let { categoryMap[it]?.name } ?: "Uncategorized")
+                        .let { "\"${it.replace("\"", "\"\"")}\"" }
                     val payee = txn.payee?.let { "\"${it.replace("\"", "\"\"")}\"" } ?: ""
                     appendLine("${txn.id.value},${txn.date},$payee,$catName,${txn.type},${txn.currency.code}")
                 }
