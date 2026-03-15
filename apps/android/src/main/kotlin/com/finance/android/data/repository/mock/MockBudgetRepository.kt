@@ -35,8 +35,9 @@ class MockBudgetRepository : BudgetRepository {
         _budgets.map { list ->
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             list.filter { budget ->
+                val end = budget.endDate
                 budget.deletedAt == null &&
-                    (budget.endDate == null || budget.endDate >= today)
+                    (end == null || end >= today)
             }
         }
 
