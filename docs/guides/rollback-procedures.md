@@ -24,12 +24,12 @@ Detailed rollback instructions for every platform, database migration, and sync 
 
 Before initiating a rollback, assess the situation using these criteria:
 
-| Severity | Symptoms | Action |
-|----------|----------|--------|
-| **P0 — Data loss or corruption** | Users report missing or garbled data; sync writes incorrect values | Immediate rollback on all affected platforms. Halt all staged rollouts. |
-| **P1 — Crash on launch** | Crash-free rate drops below 95%; app unusable for a significant portion of users | Immediate rollback. Use hotfix process in parallel. |
-| **P2 — Feature broken** | A core feature (transactions, budgets, sync) is broken but app launches | Halt staged rollout. Ship hotfix within 24 hours. Rollback if hotfix timeline exceeds 48 hours. |
-| **P3 — Minor regression** | UI glitch, non-critical feature affected | Do NOT roll back. Ship fix in next regular release. |
+| Severity                         | Symptoms                                                                         | Action                                                                                          |
+| -------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **P0 — Data loss or corruption** | Users report missing or garbled data; sync writes incorrect values               | Immediate rollback on all affected platforms. Halt all staged rollouts.                         |
+| **P1 — Crash on launch**         | Crash-free rate drops below 95%; app unusable for a significant portion of users | Immediate rollback. Use hotfix process in parallel.                                             |
+| **P2 — Feature broken**          | A core feature (transactions, budgets, sync) is broken but app launches          | Halt staged rollout. Ship hotfix within 24 hours. Rollback if hotfix timeline exceeds 48 hours. |
+| **P3 — Minor regression**        | UI glitch, non-critical feature affected                                         | Do NOT roll back. Ship fix in next regular release.                                             |
 
 > **Rule of thumb:** Roll back if the issue affects > 5% of users AND the hotfix cannot ship within 24 hours. For data integrity issues, always roll back immediately regardless of hotfix timeline.
 
@@ -176,6 +176,7 @@ Apple does not support rollbacks in the App Store. Users who have updated cannot
 ### Prevention Strategy
 
 > **For iOS, prevention is the best rollback strategy.** Always:
+>
 > - Use TestFlight with a meaningful beta period (minimum 3–7 days) before promoting to App Store.
 > - Use phased release (automatic 7-day rollout) rather than immediate release to all users.
 > - Enable **Phased Release** in App Store Connect: this distributes the update to 1%, 2%, 5%, 10%, 20%, 50%, 100% over 7 days, giving time to catch issues.
@@ -285,14 +286,14 @@ Every migration file in `services/api/supabase/migrations/` SHOULD have a corres
 
 ### Common Rollback Patterns
 
-| Migration Type | Rollback Approach | Risk Level |
-|----------------|-------------------|------------|
-| **Add new table** | `DROP TABLE IF EXISTS <table>` (safe if table is unused) | Low |
-| **Add new column** | `ALTER TABLE <table> DROP COLUMN <column>` (safe if column is unused) | Low |
-| **Alter column type** | `ALTER TABLE <table> ALTER COLUMN <column> TYPE <old_type>` | Medium — may fail if data doesn't fit old type |
-| **Add RLS policy** | `DROP POLICY <policy> ON <table>` | Medium — verify no security gap |
-| **Drop column** | **Cannot roll back** — data is gone. Must restore from backup. | Critical |
-| **Data migration** | **Cannot roll back** — must restore from backup or run reverse data migration. | Critical |
+| Migration Type        | Rollback Approach                                                              | Risk Level                                     |
+| --------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------- |
+| **Add new table**     | `DROP TABLE IF EXISTS <table>` (safe if table is unused)                       | Low                                            |
+| **Add new column**    | `ALTER TABLE <table> DROP COLUMN <column>` (safe if column is unused)          | Low                                            |
+| **Alter column type** | `ALTER TABLE <table> ALTER COLUMN <column> TYPE <old_type>`                    | Medium — may fail if data doesn't fit old type |
+| **Add RLS policy**    | `DROP POLICY <policy> ON <table>`                                              | Medium — verify no security gap                |
+| **Drop column**       | **Cannot roll back** — data is gone. Must restore from backup.                 | Critical                                       |
+| **Data migration**    | **Cannot roll back** — must restore from backup or run reverse data migration. | Critical                                       |
 
 ### Backup Verification
 
@@ -347,12 +348,12 @@ If the broken release did NOT change the database schema (pure UI/logic bug):
 
 During any rollback, expect a period where multiple client versions are active:
 
-| Client State | Action |
-|-------------|--------|
-| Never updated (still on v1.3.0) | No action — working normally |
-| Updated to v1.3.1 (broken) | Will receive v1.3.2 via auto-update |
+| Client State                                     | Action                                                         |
+| ------------------------------------------------ | -------------------------------------------------------------- |
+| Never updated (still on v1.3.0)                  | No action — working normally                                   |
+| Updated to v1.3.1 (broken)                       | Will receive v1.3.2 via auto-update                            |
 | Updated to v1.3.1, has pending offline mutations | Mutations will upload when online — ensure server accepts them |
-| Updated to v1.3.2 (fix) | Working normally |
+| Updated to v1.3.2 (fix)                          | Working normally                                               |
 
 **Key principle:** The server must accept writes from ALL active client versions during the transition period. Use versioned API endpoints or schema-tolerant sync rules.
 

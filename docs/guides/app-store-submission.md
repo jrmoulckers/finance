@@ -29,12 +29,12 @@ For background on developer account setup, build requirements, and review guidel
 
 ### Distribution Summary
 
-| Channel         | Format  | Developer Account       | Fee             |
-| --------------- | ------- | ----------------------- | --------------- |
-| Apple App Store | IPA     | Apple Developer Program | $99 USD/year    |
-| Google Play     | AAB     | Google Play Console     | $25 USD one-time |
-| Microsoft Store | MSIX    | Partner Center          | $19 USD one-time |
-| Web (PWA)       | Hosted  | N/A                     | Hosting costs   |
+| Channel         | Format | Developer Account       | Fee              |
+| --------------- | ------ | ----------------------- | ---------------- |
+| Apple App Store | IPA    | Apple Developer Program | $99 USD/year     |
+| Google Play     | AAB    | Google Play Console     | $25 USD one-time |
+| Microsoft Store | MSIX   | Partner Center          | $19 USD one-time |
+| Web (PWA)       | Hosted | N/A                     | Hosting costs    |
 
 ---
 
@@ -44,14 +44,14 @@ These values are shared across all stores. Platform-specific adjustments are not
 
 ### App Identity
 
-| Field          | Value                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------ |
-| App name       | **Finance**                                                                                |
-| Bundle ID      | `com.finance.app`                                                                          |
-| Category       | Finance / Personal Finance                                                                 |
-| Content rating | Everyone / PEGI 3 (no objectionable content)                                               |
-| Pricing        | Free (with in-app purchases for premium tier)                                              |
-| Default locale | English (US)                                                                               |
+| Field          | Value                                         |
+| -------------- | --------------------------------------------- |
+| App name       | **Finance**                                   |
+| Bundle ID      | `com.finance.app`                             |
+| Category       | Finance / Personal Finance                    |
+| Content rating | Everyone / PEGI 3 (no objectionable content)  |
+| Pricing        | Free (with in-app purchases for premium tier) |
+| Default locale | English (US)                                  |
 
 ### Short Description
 
@@ -110,34 +110,34 @@ Character count: ~1,900 ✅ (well within 4,000 limit)
 
 > iOS: max 100 characters, comma-separated · Play Store: up to 5 tags · Microsoft: up to 7 keywords
 
-| Platform  | Value                                                                                       |
-| --------- | ------------------------------------------------------------------------------------------- |
-| iOS       | `budget,expense,tracker,money,finance,savings,offline,privacy,spending,goals`               |
-| Android   | `budgeting`, `expense tracker`, `personal finance`, `offline`, `privacy`                    |
+| Platform  | Value                                                                                        |
+| --------- | -------------------------------------------------------------------------------------------- |
+| iOS       | `budget,expense,tracker,money,finance,savings,offline,privacy,spending,goals`                |
+| Android   | `budgeting`, `expense tracker`, `personal finance`, `offline`, `privacy`                     |
 | Microsoft | `budgeting`, `expense tracker`, `personal finance`, `offline`, `privacy`, `money`, `savings` |
 
 iOS keyword character count: 74 ✅ (under 100)
 
 ### Contact Information
 
-| Field              | Value                     | Notes                                              |
-| ------------------ | ------------------------- | -------------------------------------------------- |
-| Contact email      | `{{SUPPORT_EMAIL}}`       | Must be monitored — app stores forward user issues |
-| Support URL        | `{{SUPPORT_URL}}`         | Linked from store listings and in-app Settings     |
-| Privacy policy URL | `{{PRIVACY_POLICY_URL}}`  | Must be publicly accessible (no auth wall)         |
-| Terms of service   | `{{TERMS_OF_SERVICE_URL}}`| Required by Apple; recommended for all stores      |
-| Marketing website  | `{{WEBSITE_URL}}`         | Landing page with download links                   |
+| Field              | Value                      | Notes                                              |
+| ------------------ | -------------------------- | -------------------------------------------------- |
+| Contact email      | `{{SUPPORT_EMAIL}}`        | Must be monitored — app stores forward user issues |
+| Support URL        | `{{SUPPORT_URL}}`          | Linked from store listings and in-app Settings     |
+| Privacy policy URL | `{{PRIVACY_POLICY_URL}}`   | Must be publicly accessible (no auth wall)         |
+| Terms of service   | `{{TERMS_OF_SERVICE_URL}}` | Required by Apple; recommended for all stores      |
+| Marketing website  | `{{WEBSITE_URL}}`          | Landing page with download links                   |
 
 > **⚠️ Action required:** Replace all `{{PLACEHOLDER}}` values with real URLs before submission. Privacy policy and terms of service must be live and accessible at the time of submission.
 
 ### App Icon
 
-| Platform  | Size          | Format               | Notes                              |
-| --------- | ------------- | -------------------- | ---------------------------------- |
-| iOS       | 1024 × 1024   | PNG, no transparency | Single icon; system applies masks  |
+| Platform  | Size          | Format               | Notes                                           |
+| --------- | ------------- | -------------------- | ----------------------------------------------- |
+| iOS       | 1024 × 1024   | PNG, no transparency | Single icon; system applies masks               |
 | Android   | 512 × 512     | PNG, 32-bit          | Adaptive icon with foreground/background layers |
-| Microsoft | 300 × 300 min | PNG                  | Recommended 512 × 512             |
-| Web (PWA) | 512 × 512     | PNG                  | Also provide 192 × 192 for manifest |
+| Microsoft | 300 × 300 min | PNG                  | Recommended 512 × 512                           |
+| Web (PWA) | 512 × 512     | PNG                  | Also provide 192 × 192 for manifest             |
 
 Source icon: generate from design tokens / brand assets pipeline.
 
@@ -165,22 +165,22 @@ Complete these steps before the first public submission. TestFlight beta testing
 
 ### App Store Listing Fields
 
-| Field                     | Limit                   | Value                                                              |
-| ------------------------- | ----------------------- | ------------------------------------------------------------------ |
-| App name                  | 30 chars                | `Finance`                                                          |
-| Subtitle                  | 30 chars                | `Private financial tracking`                                       |
-| Promotional text          | 170 chars, no review    | `Track every dollar privately. Offline-first budgeting for individuals, couples, and families.` |
-| Description               | 4,000 chars             | See [Full Description](#full-description)                          |
-| Keywords                  | 100 chars               | See [Keywords / Tags](#keywords--tags)                             |
-| Primary category          | —                       | Finance                                                            |
-| Secondary category        | —                       | Productivity                                                       |
-| Bundle ID                 | —                       | `com.finance.app`                                                  |
-| SKU                       | —                       | `finance-ios-001`                                                  |
-| Support URL               | Required                | `{{SUPPORT_URL}}`                                                  |
-| Marketing URL             | Optional                | `{{WEBSITE_URL}}`                                                  |
-| Privacy policy URL        | Required                | `{{PRIVACY_POLICY_URL}}`                                           |
-| Copyright                 | —                       | `© {{YEAR}} Finance`                                               |
-| Version                   | Semver                  | Current release version from Changesets                            |
+| Field              | Limit                | Value                                                                                           |
+| ------------------ | -------------------- | ----------------------------------------------------------------------------------------------- |
+| App name           | 30 chars             | `Finance`                                                                                       |
+| Subtitle           | 30 chars             | `Private financial tracking`                                                                    |
+| Promotional text   | 170 chars, no review | `Track every dollar privately. Offline-first budgeting for individuals, couples, and families.` |
+| Description        | 4,000 chars          | See [Full Description](#full-description)                                                       |
+| Keywords           | 100 chars            | See [Keywords / Tags](#keywords--tags)                                                          |
+| Primary category   | —                    | Finance                                                                                         |
+| Secondary category | —                    | Productivity                                                                                    |
+| Bundle ID          | —                    | `com.finance.app`                                                                               |
+| SKU                | —                    | `finance-ios-001`                                                                               |
+| Support URL        | Required             | `{{SUPPORT_URL}}`                                                                               |
+| Marketing URL      | Optional             | `{{WEBSITE_URL}}`                                                                               |
+| Privacy policy URL | Required             | `{{PRIVACY_POLICY_URL}}`                                                                        |
+| Copyright          | —                    | `© {{YEAR}} Finance`                                                                            |
+| Version            | Semver               | Current release version from Changesets                                                         |
 
 ### Privacy Nutrition Labels
 
@@ -276,17 +276,17 @@ The app uses encryption: Yes
 
 ### Age Rating Questionnaire
 
-| Question                                 | Answer |
-| ---------------------------------------- | ------ |
-| Made for Kids                            | No     |
-| Violence (cartoon, realistic, etc.)      | None   |
-| Sexual content or nudity                 | None   |
-| Profanity or crude humor                 | None   |
-| Alcohol, tobacco, or drugs               | None   |
-| Medical/treatment information            | None   |
-| Gambling or contests                     | None   |
-| Horror or fear themes                    | None   |
-| Unrestricted web access                  | No     |
+| Question                            | Answer |
+| ----------------------------------- | ------ |
+| Made for Kids                       | No     |
+| Violence (cartoon, realistic, etc.) | None   |
+| Sexual content or nudity            | None   |
+| Profanity or crude humor            | None   |
+| Alcohol, tobacco, or drugs          | None   |
+| Medical/treatment information       | None   |
+| Gambling or contests                | None   |
+| Horror or fear themes               | None   |
+| Unrestricted web access             | No     |
 
 **Expected rating:** 4+ (appropriate for all ages).
 
@@ -311,19 +311,19 @@ The app uses encryption: Yes
 
 ### Store Listing Fields
 
-| Field              | Limit         | Value                                                              |
-| ------------------ | ------------- | ------------------------------------------------------------------ |
-| App name           | 30 chars      | `Finance`                                                          |
-| Short description  | 80 chars      | `Track your money privately. Offline-first budgeting and expense tracking.` |
-| Full description   | 4,000 chars   | See [Full Description](#full-description)                          |
-| App icon           | 512 × 512     | PNG, 32-bit, no transparency                                      |
-| Feature graphic    | 1024 × 500    | PNG or JPEG — hero image for store listing                         |
-| App category       | —             | Finance                                                            |
-| Tags               | Up to 5       | See [Keywords / Tags](#keywords--tags)                             |
-| Contact email      | Required      | `{{SUPPORT_EMAIL}}`                                                |
-| Contact phone      | Optional      | —                                                                  |
-| Contact website    | Optional      | `{{WEBSITE_URL}}`                                                  |
-| Privacy policy URL | Required      | `{{PRIVACY_POLICY_URL}}`                                           |
+| Field              | Limit       | Value                                                                       |
+| ------------------ | ----------- | --------------------------------------------------------------------------- |
+| App name           | 30 chars    | `Finance`                                                                   |
+| Short description  | 80 chars    | `Track your money privately. Offline-first budgeting and expense tracking.` |
+| Full description   | 4,000 chars | See [Full Description](#full-description)                                   |
+| App icon           | 512 × 512   | PNG, 32-bit, no transparency                                                |
+| Feature graphic    | 1024 × 500  | PNG or JPEG — hero image for store listing                                  |
+| App category       | —           | Finance                                                                     |
+| Tags               | Up to 5     | See [Keywords / Tags](#keywords--tags)                                      |
+| Contact email      | Required    | `{{SUPPORT_EMAIL}}`                                                         |
+| Contact phone      | Optional    | —                                                                           |
+| Contact website    | Optional    | `{{WEBSITE_URL}}`                                                           |
+| Privacy policy URL | Required    | `{{PRIVACY_POLICY_URL}}`                                                    |
 
 Short description character count: 73 ✅ (under 80)
 
@@ -333,32 +333,32 @@ Google Play's Data Safety form maps to the app's actual data practices. See the 
 
 #### Data Types Declaration
 
-| Data Type                               | Collected         | Shared | Purpose                         | Optional |
-| --------------------------------------- | ----------------- | ------ | ------------------------------- | -------- |
+| Data Type                               | Collected         | Shared | Purpose                         | Optional        |
+| --------------------------------------- | ----------------- | ------ | ------------------------------- | --------------- |
 | Email address                           | ✅                | ❌     | Account authentication          | Yes (sync only) |
-| Financial info (transactions, balances) | ✅                | ❌     | App functionality               | No       |
-| App activity (screens viewed)           | ✅ (with consent) | ❌     | Analytics — funnel optimization | Yes      |
-| Crash logs                              | ✅ (with consent) | ❌     | Stability monitoring            | Yes      |
-| Device identifiers                      | ❌                | ❌     | Not collected                   | —        |
-| Location                                | ❌                | ❌     | Not collected                   | —        |
+| Financial info (transactions, balances) | ✅                | ❌     | App functionality               | No              |
+| App activity (screens viewed)           | ✅ (with consent) | ❌     | Analytics — funnel optimization | Yes             |
+| Crash logs                              | ✅ (with consent) | ❌     | Stability monitoring            | Yes             |
+| Device identifiers                      | ❌                | ❌     | Not collected                   | —               |
+| Location                                | ❌                | ❌     | Not collected                   | —               |
 
 #### Key Data Safety Declarations
 
-| Declaration                            | Value                                                      |
-| -------------------------------------- | ---------------------------------------------------------- |
-| Data encrypted in transit              | ✅ Yes (TLS 1.3)                                           |
-| Data encrypted at rest                 | ✅ Yes (SQLCipher AES-256)                                 |
-| Users can request data deletion        | ✅ Yes (Settings > Account > Delete Account)               |
-| Data not sold to third parties         | ✅ Confirmed                                               |
-| Committed to Play Families policy      | N/A — app is not targeted at children                      |
-| Independent security review            | TBD — recommended post-launch                              |
+| Declaration                       | Value                                        |
+| --------------------------------- | -------------------------------------------- |
+| Data encrypted in transit         | ✅ Yes (TLS 1.3)                             |
+| Data encrypted at rest            | ✅ Yes (SQLCipher AES-256)                   |
+| Users can request data deletion   | ✅ Yes (Settings > Account > Delete Account) |
+| Data not sold to third parties    | ✅ Confirmed                                 |
+| Committed to Play Families policy | N/A — app is not targeted at children        |
+| Independent security review       | TBD — recommended post-launch                |
 
 ### Screenshot Requirements
 
 Provide **2–8 screenshots** per device type. All screenshots must reflect actual in-app UI.
 
-| Device Type | Dimensions (px)          | Required           |
-| ----------- | ------------------------ | ------------------ |
+| Device Type | Dimensions (px)         | Required           |
+| ----------- | ----------------------- | ------------------ |
 | Phone       | 1080 × 1920 (16:9)      | ✅ Yes (minimum 2) |
 | 7" Tablet   | 1200 × 1920             | Recommended        |
 | 10" Tablet  | 1600 × 2560             | Recommended        |
@@ -390,13 +390,13 @@ Google Play uses the **IARC (International Age Rating Coalition)** system. Answe
 
 ### Android-Specific Build Requirements
 
-| Requirement           | Detail                                                                     |
-| --------------------- | -------------------------------------------------------------------------- |
-| Target API level      | Latest stable (currently API 35 / Android 15)                              |
-| App bundle format     | AAB required (not APK) for Play Store                                      |
-| App signing           | Enroll in Google Play App Signing                                          |
-| 64-bit support        | Required for all native code                                               |
-| Deobfuscation file    | Upload ProGuard/R8 mapping file for crash reports                          |
+| Requirement        | Detail                                            |
+| ------------------ | ------------------------------------------------- |
+| Target API level   | Latest stable (currently API 35 / Android 15)     |
+| App bundle format  | AAB required (not APK) for Play Store             |
+| App signing        | Enroll in Google Play App Signing                 |
+| 64-bit support     | Required for all native code                      |
+| Deobfuscation file | Upload ProGuard/R8 mapping file for crash reports |
 
 ---
 
@@ -423,17 +423,17 @@ For step-by-step MSIX packaging, see the [Windows Store Guide](windows-store.md)
 
 ### Store Listing Fields
 
-| Field              | Limit           | Value                                                                  |
-| ------------------ | --------------- | ---------------------------------------------------------------------- |
-| App name           | 256 chars       | `Finance`                                                              |
-| Short description  | 1,000 chars     | See [Full Description](#full-description) (first two paragraphs)       |
-| Full description   | 10,000 chars    | See [Full Description](#full-description) — expand with desktop-specific notes |
-| App icon           | 300 × 300 min   | PNG (recommended 512 × 512)                                           |
-| Category           | —               | Personal Finance                                                       |
-| Support contact    | Required        | `{{SUPPORT_EMAIL}}`                                                    |
-| Privacy policy URL | Required        | `{{PRIVACY_POLICY_URL}}`                                               |
-| Website            | Optional        | `{{WEBSITE_URL}}`                                                      |
-| Keywords           | Up to 7         | See [Keywords / Tags](#keywords--tags)                                 |
+| Field              | Limit         | Value                                                                          |
+| ------------------ | ------------- | ------------------------------------------------------------------------------ |
+| App name           | 256 chars     | `Finance`                                                                      |
+| Short description  | 1,000 chars   | See [Full Description](#full-description) (first two paragraphs)               |
+| Full description   | 10,000 chars  | See [Full Description](#full-description) — expand with desktop-specific notes |
+| App icon           | 300 × 300 min | PNG (recommended 512 × 512)                                                    |
+| Category           | —             | Personal Finance                                                               |
+| Support contact    | Required      | `{{SUPPORT_EMAIL}}`                                                            |
+| Privacy policy URL | Required      | `{{PRIVACY_POLICY_URL}}`                                                       |
+| Website            | Optional      | `{{WEBSITE_URL}}`                                                              |
+| Keywords           | Up to 7       | See [Keywords / Tags](#keywords--tags)                                         |
 
 ### Privacy Statement Requirements
 
@@ -449,10 +449,10 @@ Microsoft requires a privacy policy that meets these criteria:
 
 ### Screenshot Requirements
 
-| Type        | Dimensions (px)                        | Count         |
-| ----------- | -------------------------------------- | ------------- |
-| Desktop     | 1366 × 768 minimum, 3840 × 2160 max   | 1–10 required |
-| Recommended | 1920 × 1080 (Full HD)                  | Best practice |
+| Type        | Dimensions (px)                     | Count         |
+| ----------- | ----------------------------------- | ------------- |
+| Desktop     | 1366 × 768 minimum, 3840 × 2160 max | 1–10 required |
+| Recommended | 1920 × 1080 (Full HD)               | Best practice |
 
 **Desktop screenshots should show:**
 
@@ -472,15 +472,15 @@ Microsoft Store uses the same **IARC** questionnaire as Google Play. Answers are
 
 ### Windows-Specific Compliance
 
-| Requirement         | Detail                                                                          |
-| ------------------- | ------------------------------------------------------------------------------- |
-| Accessibility       | Windows Narrator, High Contrast, keyboard-only navigation supported            |
-| System integration  | Respects system theme (light/dark), DPI scaling, Snap Layouts                  |
-| Offline capability  | Core financial features work without network                                    |
-| Clean uninstall     | No residual files outside `%LOCALAPPDATA%`                                     |
-| Capabilities        | Declared in manifest: `internetClient`, `localStorage`                         |
-| Min OS version      | Windows 10 version 1809 (build 17763)                                          |
-| Architecture        | x64 required, ARM64 recommended                                                |
+| Requirement        | Detail                                                              |
+| ------------------ | ------------------------------------------------------------------- |
+| Accessibility      | Windows Narrator, High Contrast, keyboard-only navigation supported |
+| System integration | Respects system theme (light/dark), DPI scaling, Snap Layouts       |
+| Offline capability | Core financial features work without network                        |
+| Clean uninstall    | No residual files outside `%LOCALAPPDATA%`                          |
+| Capabilities       | Declared in manifest: `internetClient`, `localStorage`              |
+| Min OS version     | Windows 10 version 1809 (build 17763)                               |
+| Architecture       | x64 required, ARM64 recommended                                     |
 
 ---
 
@@ -519,32 +519,44 @@ Add these tags to `apps/web/index.html` `<head>` for rich link previews when the
 
 ```html
 <!-- Primary Meta Tags -->
-<meta name="title" content="Finance — Private Financial Tracking">
-<meta name="description" content="Track your money privately. Offline-first budgeting and expense tracking across all your devices.">
+<meta name="title" content="Finance — Private Financial Tracking" />
+<meta
+  name="description"
+  content="Track your money privately. Offline-first budgeting and expense tracking across all your devices."
+/>
 
 <!-- Open Graph / Facebook -->
-<meta property="og:type" content="website">
-<meta property="og:url" content="{{APP_URL}}">
-<meta property="og:title" content="Finance — Private Financial Tracking">
-<meta property="og:description" content="Track your money privately. Offline-first budgeting and expense tracking across all your devices.">
-<meta property="og:image" content="{{APP_URL}}/og-image.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Finance app dashboard showing budget overview and recent transactions">
+<meta property="og:type" content="website" />
+<meta property="og:url" content="{{APP_URL}}" />
+<meta property="og:title" content="Finance — Private Financial Tracking" />
+<meta
+  property="og:description"
+  content="Track your money privately. Offline-first budgeting and expense tracking across all your devices."
+/>
+<meta property="og:image" content="{{APP_URL}}/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta
+  property="og:image:alt"
+  content="Finance app dashboard showing budget overview and recent transactions"
+/>
 
 <!-- Twitter -->
-<meta property="twitter:card" content="summary_large_image">
-<meta property="twitter:url" content="{{APP_URL}}">
-<meta property="twitter:title" content="Finance — Private Financial Tracking">
-<meta property="twitter:description" content="Track your money privately. Offline-first budgeting and expense tracking across all your devices.">
-<meta property="twitter:image" content="{{APP_URL}}/og-image.png">
+<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:url" content="{{APP_URL}}" />
+<meta property="twitter:title" content="Finance — Private Financial Tracking" />
+<meta
+  property="twitter:description"
+  content="Track your money privately. Offline-first budgeting and expense tracking across all your devices."
+/>
+<meta property="twitter:image" content="{{APP_URL}}/og-image.png" />
 
 <!-- PWA / Mobile -->
-<meta name="theme-color" content="#1a1a2e">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Finance">
-<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<meta name="theme-color" content="#1a1a2e" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Finance" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 ```
 
 **OG image:** Create a 1200 × 630 px image (`og-image.png`) showing the app dashboard with the tagline. Store in `apps/web/public/`.
@@ -591,13 +603,13 @@ window.addEventListener('appinstalled', () => {
 
 ### Lighthouse Score Targets
 
-| Category       | Target | Key Metrics                                              |
-| -------------- | ------ | -------------------------------------------------------- |
-| Performance    | ≥ 90   | LCP < 2.5 s, FID < 100 ms, CLS < 0.1                   |
-| Accessibility  | ≥ 95   | WCAG 2.2 AA, ARIA landmarks, focus management           |
-| Best Practices | ≥ 95   | HTTPS, no console errors, CSP headers                    |
-| SEO            | ≥ 90   | Meta tags, canonical URL, robots.txt, structured data    |
-| PWA            | ✅ Pass | Installable, offline-capable, fast loading               |
+| Category       | Target  | Key Metrics                                           |
+| -------------- | ------- | ----------------------------------------------------- |
+| Performance    | ≥ 90    | LCP < 2.5 s, FID < 100 ms, CLS < 0.1                  |
+| Accessibility  | ≥ 95    | WCAG 2.2 AA, ARIA landmarks, focus management         |
+| Best Practices | ≥ 95    | HTTPS, no console errors, CSP headers                 |
+| SEO            | ≥ 90    | Meta tags, canonical URL, robots.txt, structured data |
+| PWA            | ✅ Pass | Installable, offline-capable, fast loading            |
 
 ---
 
@@ -669,12 +681,12 @@ After submitting to each store, follow this runbook to track review progress and
 
 ### Expected Review Times
 
-| Store          | Typical Review Time  | Expedited Review Available |
-| -------------- | -------------------- | -------------------------- |
-| Apple          | 24–48 hours          | Yes (limited, request via App Store Connect) |
-| Google Play    | Hours to 7 days      | No                         |
-| Microsoft      | 1–5 business days    | No                         |
-| Web (PWA)      | No review required   | N/A                        |
+| Store       | Typical Review Time | Expedited Review Available                   |
+| ----------- | ------------------- | -------------------------------------------- |
+| Apple       | 24–48 hours         | Yes (limited, request via App Store Connect) |
+| Google Play | Hours to 7 days     | No                                           |
+| Microsoft   | 1–5 business days   | No                                           |
+| Web (PWA)   | No review required  | N/A                                          |
 
 ### If Rejected
 

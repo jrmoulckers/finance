@@ -407,20 +407,20 @@ After a release reaches users, verify that everything is working as expected. Do
 
 Run these critical user flows on the released build within 1 hour of deployment:
 
-| # | Test | iOS | Android | Web | Windows |
-|---|------|-----|---------|-----|---------|
-| 1 | App launches without crash | ☐ | ☐ | ☐ | ☐ |
-| 2 | User can sign in (existing account) | ☐ | ☐ | ☐ | ☐ |
-| 3 | User can create a new account | ☐ | ☐ | ☐ | ☐ |
-| 4 | Sync completes successfully (online) | ☐ | ☐ | ☐ | ☐ |
-| 5 | Add a transaction (< 10 s quick-entry) | ☐ | ☐ | ☐ | ☐ |
-| 6 | View budget overview | ☐ | ☐ | ☐ | ☐ |
-| 7 | View reports / charts | ☐ | ☐ | ☐ | ☐ |
-| 8 | Offline mode — make changes while offline | ☐ | ☐ | ☐ | ☐ |
-| 9 | Reconnect — offline changes sync correctly | ☐ | ☐ | ☐ | ☐ |
-| 10 | Export data (CSV / JSON) | ☐ | ☐ | ☐ | ☐ |
-| 11 | Screen reader announces key elements | ☐ | ☐ | ☐ | ☐ |
-| 12 | Settings / preferences load correctly | ☐ | ☐ | ☐ | ☐ |
+| #   | Test                                       | iOS | Android | Web | Windows |
+| --- | ------------------------------------------ | --- | ------- | --- | ------- |
+| 1   | App launches without crash                 | ☐   | ☐       | ☐   | ☐       |
+| 2   | User can sign in (existing account)        | ☐   | ☐       | ☐   | ☐       |
+| 3   | User can create a new account              | ☐   | ☐       | ☐   | ☐       |
+| 4   | Sync completes successfully (online)       | ☐   | ☐       | ☐   | ☐       |
+| 5   | Add a transaction (< 10 s quick-entry)     | ☐   | ☐       | ☐   | ☐       |
+| 6   | View budget overview                       | ☐   | ☐       | ☐   | ☐       |
+| 7   | View reports / charts                      | ☐   | ☐       | ☐   | ☐       |
+| 8   | Offline mode — make changes while offline  | ☐   | ☐       | ☐   | ☐       |
+| 9   | Reconnect — offline changes sync correctly | ☐   | ☐       | ☐   | ☐       |
+| 10  | Export data (CSV / JSON)                   | ☐   | ☐       | ☐   | ☐       |
+| 11  | Screen reader announces key elements       | ☐   | ☐       | ☐   | ☐       |
+| 12  | Settings / preferences load correctly      | ☐   | ☐       | ☐   | ☐       |
 
 ### Monitoring Dashboard Checks
 
@@ -439,13 +439,13 @@ Within the first 30 minutes after users start receiving the update:
 
 Compare the new release's error metrics against the previous version during the same time window (first 24 hours):
 
-| Metric | Previous Release Baseline | New Release (24 h) | Status |
-|--------|---------------------------|---------------------|--------|
-| Crash-free sessions | __%% | __%% | ☐ |
-| Unhandled exceptions / 1k sessions | __ | __ | ☐ |
-| Sync failure rate | __%% | __%% | ☐ |
-| API 5xx error rate | __%% | __%% | ☐ |
-| Client `Unhealthy` sync status count | __ | __ | ☐ |
+| Metric                               | Previous Release Baseline | New Release (24 h) | Status |
+| ------------------------------------ | ------------------------- | ------------------ | ------ |
+| Crash-free sessions                  | \_\_%%                    | \_\_%%             | ☐      |
+| Unhandled exceptions / 1k sessions   | \_\_                      | \_\_               | ☐      |
+| Sync failure rate                    | \_\_%%                    | \_\_%%             | ☐      |
+| API 5xx error rate                   | \_\_%%                    | \_\_%%             | ☐      |
+| Client `Unhealthy` sync status count | \_\_                      | \_\_               | ☐      |
 
 **Action thresholds:**
 
@@ -457,13 +457,13 @@ Compare the new release's error metrics against the previous version during the 
 
 For mobile platforms, follow this promotion schedule (adjust based on monitoring):
 
-| Stage | Audience | Duration | Gate |
-|-------|----------|----------|------|
-| Internal testing | Team only | 1–2 days | Smoke tests pass |
-| Beta / TestFlight | Beta testers | 3–7 days | No critical bugs reported |
+| Stage              | Audience                | Duration | Gate                        |
+| ------------------ | ----------------------- | -------- | --------------------------- |
+| Internal testing   | Team only               | 1–2 days | Smoke tests pass            |
+| Beta / TestFlight  | Beta testers            | 3–7 days | No critical bugs reported   |
 | Staged rollout 10% | 10% of production users | 2–3 days | Error rates within baseline |
 | Staged rollout 50% | 50% of production users | 1–2 days | Error rates within baseline |
-| Full rollout 100% | All users | — | No regressions detected |
+| Full rollout 100%  | All users               | —        | No regressions detected     |
 
 > **Never skip the staged rollout for mobile releases.** The blast radius of a broken mobile update is much larger than web because users cannot be instantly rolled back.
 
