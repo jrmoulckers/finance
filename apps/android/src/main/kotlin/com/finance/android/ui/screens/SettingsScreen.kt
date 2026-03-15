@@ -5,6 +5,9 @@
 package com.finance.android.ui.screens
 
 import android.content.res.Configuration
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -62,6 +65,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import java.io.File
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Root composable
@@ -183,6 +192,7 @@ fun SettingsScreen(
             DataSection(
                 onExportClick = onExportClick,
                 onDeleteClick = onDeleteClick,
+                isExporting = state.isExporting,
             )
 
             // ── About ────────────────────────────────────────────────────────
@@ -512,6 +522,7 @@ private fun AccessibilitySection(
 private fun DataSection(
     onExportClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    isExporting: Boolean = false,
 ) {
     SectionHeader("Data")
     Card(
@@ -521,11 +532,21 @@ private fun DataSection(
         Column(modifier = Modifier.padding(16.dp)) {
             OutlinedButton(
                 onClick = onExportClick,
+                enabled = !isExporting,
                 modifier = Modifier
                     .fillMaxWidth()
                     .semantics { contentDescription = "Export your financial data" },
             ) {
-                Text("Export data")
+                if (isExporting) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Exporting…")
+                } else {
+                    Text("Export data")
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -795,6 +816,114 @@ private fun DeleteAccountDialog(
             }
         },
     )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stateful wrapper (used by navigation)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Stateful entry-point for the Settings screen, intended for use by
+ * [FinanceNavHost].
+ *
+ * Creates the [SettingsViewModel], collects its state & one-shot events,
+ * and wires everything into the stateless [SettingsScreen] composable.
+ *
+ * Export events are handled here so the ViewModel stays platform-agnostic:
+ * - [SettingsEvent.ExportReady] → writes the file to cache dir and opens
+ *   the Android share sheet via [Intent.ACTION_SEND].
+ * - [SettingsEvent.ExportFailed] → shows a Toast with the error message.
+ * - [SettingsEvent.ShowToast] → shows a regular Toast.
+ */
+@Composable
+fun SettingsScreen(onNavigateBack: () -> Unit) {
+    val context = LocalContext.current
+    val viewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModel.provideFactory(context),
+    )
+    val state by viewModel.uiState.collectAsState()
+
+    // Collect one-shot events
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is SettingsEvent.ShowToast -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+                is SettingsEvent.NavigateToLogin -> {
+                    // TODO: Navigate to login screen
+                }
+                is SettingsEvent.ExportStarted -> {
+                    // Progress is shown via state.isExporting — no action needed
+                }
+                is SettingsEvent.ExportReady -> {
+                    shareExportFile(context, event.fileName, event.mimeType, event.content)
+                }
+                is SettingsEvent.ExportFailed -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    SettingsScreen(
+        state = state,
+        onNavigateBack = onNavigateBack,
+        onSetCurrency = viewModel::setDefaultCurrency,
+        onSetNotifications = viewModel::setNotificationsEnabled,
+        onSetBillReminders = viewModel::setBillRemindersEnabled,
+        onSetBiometric = viewModel::setBiometricEnabled,
+        onSetAppLockTimeout = viewModel::setAppLockTimeout,
+        onSetSimplifiedView = viewModel::setSimplifiedViewEnabled,
+        onSetHighContrast = viewModel::setHighContrastEnabled,
+        onExportClick = viewModel::showExportDialog,
+        onDeleteClick = viewModel::showDeleteDialog,
+        onExportFormat = viewModel::exportData,
+        onDismissExportDialog = viewModel::dismissExportDialog,
+        onDeleteTextChanged = viewModel::onDeleteConfirmationTextChanged,
+        onConfirmDelete = viewModel::confirmDeleteAccount,
+        onDismissDeleteDialog = viewModel::dismissDeleteDialog,
+    )
+}
+
+/**
+ * Writes export content to a temporary file in the app's cache directory
+ * and opens the Android share sheet so the user can save or send it.
+ *
+ * Uses [FileProvider] for secure file access across app boundaries.
+ * The content itself is never logged to avoid leaking financial data.
+ */
+private fun shareExportFile(
+    context: Context,
+    fileName: String,
+    mimeType: String,
+    content: String,
+) {
+    try {
+        // Write to cache dir (auto-cleaned by the OS)
+        val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+        val file = File(exportDir, fileName)
+        file.writeText(content)
+
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file,
+        )
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = mimeType
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, "Finance Data Export")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        val chooser = Intent.createChooser(shareIntent, "Share export file")
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
+    } catch (_: Exception) {
+        Toast.makeText(context, "Could not share the export file", Toast.LENGTH_LONG).show()
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
+import { DataExport } from '../components/DataExport';
+
 export const SettingsPage: React.FC = () => (
   <>
     <h2
@@ -56,10 +58,7 @@ export const SettingsPage: React.FC = () => (
     <section aria-label="Data" className="page-section">
       <div className="settings-group">
         <h3 className="settings-group__title">Data</h3>
-        <div className="settings-item" role="button" tabIndex={0}>
-          <span className="settings-item__label">Export Data</span>
-          <span className="settings-item__value">&rarr;</span>
-        </div>
+        <DataExport />
         <div className="settings-item" role="button" tabIndex={0}>
           <span className="settings-item__label">Sync Status</span>
           <span className="settings-item__value">Up to date</span>

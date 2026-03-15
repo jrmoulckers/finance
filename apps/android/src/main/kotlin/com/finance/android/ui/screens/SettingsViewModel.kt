@@ -51,6 +51,21 @@ sealed interface SettingsEvent {
     data class ShowToast(val message: String) : SettingsEvent
     data object NavigateToLogin : SettingsEvent
     data object ExportStarted : SettingsEvent
+
+    /**
+     * Signals that export data is ready and should be shared/saved.
+     *
+     * The screen layer handles the Android-specific [Intent.ACTION_SEND]
+     * or save-to-Downloads flow so the ViewModel stays platform-agnostic.
+     */
+    data class ExportReady(
+        val fileName: String,
+        val mimeType: String,
+        val content: String,
+    ) : SettingsEvent
+
+    /** Signals an export failure with a user-facing message. */
+    data class ExportFailed(val message: String) : SettingsEvent
 }
 
 /** Complete UI state consumed by [SettingsScreen]. */
@@ -75,6 +90,9 @@ data class SettingsUiState(
 
     // About
     val appVersion: String = "1.0.0",
+
+    // Export
+    val isExporting: Boolean = false,
 
     // Dialog visibility
     val showExportDialog: Boolean = false,
@@ -209,14 +227,87 @@ class SettingsViewModel(
     }
 
     fun exportData(format: ExportFormat) {
-        viewModelScope.launch {
-            // Export service is defined by #239 — when implemented, inject
-            // the KMP DataExporter and call:
-            //   dataExporter.export(format.name, outputStream)
-            _events.emit(SettingsEvent.ExportStarted)
-            _events.emit(SettingsEvent.ShowToast("Exporting data as ${format.label}…"))
-        }
         dismissExportDialog()
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExporting = true) }
+            _events.emit(SettingsEvent.ExportStarted)
+
+            try {
+                // TODO(#239): Replace mock data with real database query once the
+                // KMP DataExportService (packages/core/export) is available.
+                // Example future integration:
+                //   val exportData = dataExportService.gatherExportData()
+                //   val serialized = when (format) {
+                //       ExportFormat.JSON -> JsonExportSerializer().serialize(exportData)
+                //       ExportFormat.CSV  -> CsvExportSerializer().serialize(exportData)
+                //   }
+                val serialized = buildMockExportContent(format)
+
+                val timestamp = java.text.SimpleDateFormat(
+                    "yyyy-MM-dd",
+                    java.util.Locale.US,
+                ).format(java.util.Date())
+                val extension = format.label.lowercase()
+                val fileName = "finance-export-$timestamp.$extension"
+                val mimeType = when (format) {
+                    ExportFormat.JSON -> "application/json"
+                    ExportFormat.CSV -> "text/csv"
+                }
+
+                _events.emit(SettingsEvent.ExportReady(fileName, mimeType, serialized))
+                _events.emit(SettingsEvent.ShowToast("Export ready — choose where to save"))
+            } catch (_: Exception) {
+                _events.emit(SettingsEvent.ExportFailed("Export failed. Please try again."))
+            } finally {
+                _uiState.update { it.copy(isExporting = false) }
+            }
+        }
+    }
+
+    /**
+     * Builds mock export content using sample data structures.
+     *
+     * This is a temporary implementation until the KMP DataExportService is
+     * integrated. It intentionally does NOT log the content to avoid leaking
+     * financial data.
+     */
+    private fun buildMockExportContent(format: ExportFormat): String {
+        // Minimal representative data for export testing
+        data class ExportRow(
+            val id: String,
+            val date: String,
+            val payee: String,
+            val category: String,
+            val amount: String,
+        )
+
+        val rows = listOf(
+            ExportRow("txn-1", "2024-03-06", "Grocery Store", "Food", "-67.42"),
+            ExportRow("txn-2", "2024-03-06", "Monthly Salary", "Income", "4500.00"),
+            ExportRow("txn-3", "2024-03-05", "Electric Bill", "Utilities", "-124.00"),
+        )
+
+        return when (format) {
+            ExportFormat.JSON -> buildString {
+                appendLine("{")
+                appendLine("""  "exportedAt": "${java.time.Instant.now()}",""")
+                appendLine("""  "transactions": [""")
+                rows.forEachIndexed { i, row ->
+                    val comma = if (i < rows.lastIndex) "," else ""
+                    appendLine(
+                        """    {"id":"${row.id}","date":"${row.date}","payee":"${row.payee}","category":"${row.category}","amount":${row.amount}}$comma""",
+                    )
+                }
+                appendLine("  ]")
+                appendLine("}")
+            }
+            ExportFormat.CSV -> buildString {
+                appendLine("id,date,payee,category,amount")
+                rows.forEach { row ->
+                    appendLine("${row.id},${row.date},${row.payee},${row.category},${row.amount}")
+                }
+            }
+        }
     }
 
     // -- Account deletion -----------------------------------------------------
