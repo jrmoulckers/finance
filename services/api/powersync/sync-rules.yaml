@@ -1,16 +1,16 @@
 bucket_definitions:
   by_household:
     parameters:
-      - SELECT household_id FROM household_members WHERE user_id = token_parameters.user_id
+      - SELECT household_id FROM household_members WHERE user_id = token_parameters.user_id AND deleted_at IS NULL
     data:
-      - SELECT * FROM accounts WHERE household_id = bucket.household_id
-      - SELECT * FROM transactions WHERE household_id = bucket.household_id
-      - SELECT * FROM categories WHERE household_id = bucket.household_id
-      - SELECT * FROM budgets WHERE household_id = bucket.household_id
-      - SELECT * FROM goals WHERE household_id = bucket.household_id
+      - SELECT * FROM accounts WHERE household_id = bucket.household_id AND deleted_at IS NULL
+      - SELECT * FROM transactions WHERE household_id = bucket.household_id AND deleted_at IS NULL
+      - SELECT * FROM categories WHERE household_id = bucket.household_id AND deleted_at IS NULL
+      - SELECT * FROM budgets WHERE household_id = bucket.household_id AND deleted_at IS NULL
+      - SELECT * FROM goals WHERE household_id = bucket.household_id AND deleted_at IS NULL
   user_profile:
     parameters:
-      - SELECT id AS user_id FROM users WHERE id = token_parameters.user_id
+      - SELECT id AS user_id FROM users WHERE id = token_parameters.user_id AND deleted_at IS NULL
     data:
-      - SELECT * FROM users WHERE id = bucket.user_id
-      - SELECT * FROM household_members WHERE user_id = bucket.user_id
+      - SELECT * FROM users WHERE id = bucket.user_id AND deleted_at IS NULL
+      - SELECT * FROM household_members WHERE user_id = bucket.user_id AND deleted_at IS NULL
