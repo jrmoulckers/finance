@@ -1,0 +1,52 @@
+#!/bin/sh
+#
+# pre-push hook — Requires interactive human confirmation before pushing.
+# AI agents running non-interactively will fail this check automatically
+# because they cannot respond to the terminal prompt.
+#
+# Install: git config core.hooksPath tools/git-hooks
+#
+
+remote="$1"
+url="$2"
+
+# Skip hook if explicitly bypassed (git push --no-verify)
+# This is intentional — humans can bypass when needed.
+
+echo ""
+echo "============================================================"
+echo "  HUMAN CONFIRMATION REQUIRED"
+echo "  You are about to push to a remote repository."
+echo "============================================================"
+echo ""
+echo "  Remote: $remote"
+echo "  URL:    $url"
+echo ""
+
+# Show what will be pushed
+git --no-pager log --oneline @{push}.. 2>/dev/null
+
+echo ""
+
+# Try to read from terminal directly (works in most environments)
+# Falls back to /dev/tty which bypasses stdin redirection
+if [ -t 0 ]; then
+    printf "  Type 'push' to confirm: "
+    read -r confirmation
+elif [ -e /dev/tty ]; then
+    printf "  Type 'push' to confirm: "
+    confirmation=$(head -n 1 /dev/tty 2>/dev/null) || confirmation=""
+else
+    echo "  ⛔ BLOCKED — Cannot prompt for confirmation."
+    echo "  Use 'git push --no-verify' if you are a human."
+    echo ""
+    exit 1
+fi
+
+if [ "$confirmation" = "push" ]; then
+    echo "  ✅ Confirmed. Pushing..."
+    exit 0
+else
+    echo "  ❌ Push cancelled."
+    exit 1
+fi

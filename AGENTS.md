@@ -57,11 +57,19 @@ AI agents that skip issue creation, commit directly to `main`, or fail to create
 
 Custom agents are defined in `.github/agents/`. Each agent has a specific role:
 
+- `accessibility-reviewer` — Accessibility compliance review (WCAG 2.2 AA)
+- `android-engineer` — Android platform (Jetpack Compose, KMP integration, Material 3)
 - `architect` — System design and architecture decisions
+- `backend-engineer` — Supabase backend (PostgreSQL, Auth, Edge Functions, RLS, PowerSync)
+- `design-engineer` — Design tokens, Style Dictionary, color systems, typography
+- `devops-engineer` — CI/CD (GitHub Actions, Turborepo, Fastlane, Changesets)
 - `docs-writer` — Documentation authoring and maintenance
-- `security-reviewer` — Security and privacy code review
-- `accessibility-reviewer` — Accessibility compliance review
 - `finance-domain` — Financial domain logic and modeling
+- `ios-engineer` — iOS platform (SwiftUI, KMP via Swift Export, Apple Keychain)
+- `kmp-engineer` — Kotlin Multiplatform shared code (SQLDelight, Ktor, kotlinx)
+- `security-reviewer` — Security and privacy code review
+- `web-engineer` — Web PWA (React/TypeScript, Service Workers, SQLite-WASM)
+- `windows-engineer` — Windows platform (Compose Desktop, Windows Hello, DPAPI)
 
 Agent skills are in `.github/skills/` and provide reusable domain knowledge.
 Path-specific instructions are in `.github/instructions/`.
