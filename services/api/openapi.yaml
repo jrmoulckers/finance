@@ -1,0 +1,1483 @@
+# SPDX-License-Identifier: BUSL-1.1
+#
+# OpenAPI 3.0 specification for the Finance app Supabase Edge Functions.
+# Generated from the actual Edge Function implementations in
+# services/api/supabase/functions/.
+#
+# See: services/api/docs/README.md for usage instructions.
+
+openapi: "3.0.3"
+
+info:
+  title: Finance — Supabase Edge Functions API
+  version: 1.0.0
+  description: |
+    REST API for the Finance app backend, powered by Supabase Edge Functions
+    (Deno runtime). This API provides authentication (WebAuthn passkeys),
+    household management, GDPR data-portability, and system health monitoring.
+
+    ## Conventions
+
+    - **Monetary values** are always integers in **cents** (`BIGINT`), never
+      floating-point.
+    - **Currency** is expressed as an ISO 4217 code (`"USD"`, `"EUR"`, etc.)
+      alongside every monetary column.
+    - **Timestamps** are ISO 8601 strings in UTC (`2025-07-15T10:30:00.000Z`).
+    - **UUIDs** are v4 random UUIDs.
+    - **Soft deletes**: records are never physically removed — a `deleted_at`
+      timestamp is set instead.
+  contact:
+    name: Finance Backend Team
+  license:
+    name: BUSL-1.1
+    url: https://spdx.org/licenses/BUSL-1.1.html
+
+servers:
+  - url: http://localhost:54321/functions/v1
+    description: Local Supabase development (supabase start)
+  - url: https://{project_ref}.supabase.co/functions/v1
+    description: Supabase hosted project
+    variables:
+      project_ref:
+        default: your-project-ref
+        description: Supabase project reference ID
+
+tags:
+  - name: System
+    description: Health and operational status endpoints
+  - name: Auth
+    description: >-
+      Authentication endpoints — WebAuthn passkey registration and
+      authentication ceremonies, and the internal auth webhook
+  - name: Households
+    description: Household invitation lifecycle (create, validate, accept)
+  - name: Data Management
+    description: GDPR data portability — export and account deletion
+
+# ---------------------------------------------------------------------------
+# Security Schemes
+# ---------------------------------------------------------------------------
+
+components:
+  securitySchemes:
+    BearerJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        Supabase Auth JWT obtained after sign-in.  Pass as
+        `Authorization: Bearer <token>`.
+    WebhookSecret:
+      type: http
+      scheme: bearer
+      description: >-
+        Shared secret configured in `AUTH_WEBHOOK_SECRET`.  Used exclusively
+        by the Supabase Auth webhook; not intended for end-user clients.
+
+  # -------------------------------------------------------------------------
+  # Reusable Schemas
+  # -------------------------------------------------------------------------
+  schemas:
+    # -- Common ---------------------------------------------------------------
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+      example:
+        error: "Method not allowed"
+
+    StructuredError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code.
+            message:
+              type: string
+              description: Human-readable error message.
+      example:
+        error:
+          code: "INVALID_FORMAT"
+          message: 'Export format must be "json" or "csv". Use ?format=json or ?format=csv.'
+
+    # -- Health Check ---------------------------------------------------------
+    HealthCheckResponse:
+      type: object
+      required: [status, timestamp, services, version]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded]
+          description: Overall system status.
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the health check.
+        services:
+          type: object
+          required: [database, auth]
+          properties:
+            database:
+              type: string
+              enum: [connected, operational, unavailable, error]
+              description: Database connectivity status.
+            auth:
+              type: string
+              enum: [connected, operational, unavailable, error]
+              description: Auth service status.
+        version:
+          type: string
+          description: API version string.
+      example:
+        status: healthy
+        timestamp: "2025-07-15T10:30:00.000Z"
+        services:
+          database: connected
+          auth: operational
+        version: "1.0.0"
+
+    # -- Auth Webhook ---------------------------------------------------------
+    AuthWebhookPayload:
+      type: object
+      required: [type, table, record]
+      properties:
+        type:
+          type: string
+          description: >-
+            Event type (`INSERT`, `UPDATE`, `DELETE`).
+            Only `INSERT` is processed; other types are acknowledged and ignored.
+          example: INSERT
+        table:
+          type: string
+          description: Source table name.
+          example: users
+        record:
+          type: object
+          required: [id, email, created_at]
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Auth user UUID.
+            email:
+              type: string
+              format: email
+            raw_user_meta_data:
+              type: object
+              nullable: true
+              properties:
+                full_name:
+                  type: string
+                  nullable: true
+                name:
+                  type: string
+                  nullable: true
+                avatar_url:
+                  type: string
+                  format: uri
+                  nullable: true
+            created_at:
+              type: string
+              format: date-time
+        old_record:
+          type: object
+          nullable: true
+          description: Previous row state (null for INSERT).
+
+    AuthWebhookCreatedResponse:
+      type: object
+      required: [message, user_id]
+      properties:
+        message:
+          type: string
+          example: User provisioned
+        user_id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+
+    AuthWebhookIgnoredResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: Event ignored
+
+    # -- Passkey Registration -------------------------------------------------
+    PasskeyRegistrationOptionsResponse:
+      type: object
+      description: >-
+        WebAuthn `PublicKeyCredentialCreationOptions` as defined by
+        the Web Authentication specification. The exact shape is
+        produced by `@simplewebauthn/server` `generateRegistrationOptions`.
+      properties:
+        rp:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Finance App
+            id:
+              type: string
+              example: finance.example.com
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              description: Base64url-encoded user UUID.
+            name:
+              type: string
+              example: user@example.com
+            displayName:
+              type: string
+              example: user@example.com
+        challenge:
+          type: string
+          description: Base64url-encoded challenge.
+          example: "dGhpcyBpcyBhIHNhbXBsZSBjaGFsbGVuZ2U"
+        pubKeyCredParams:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                example: public-key
+              alg:
+                type: integer
+                description: COSE algorithm identifier (-7 = ES256, -257 = RS256).
+                example: -7
+        timeout:
+          type: integer
+          example: 60000
+        attestation:
+          type: string
+          example: none
+        excludeCredentials:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+                example: public-key
+        authenticatorSelection:
+          type: object
+          properties:
+            residentKey:
+              type: string
+              example: preferred
+            userVerification:
+              type: string
+              example: preferred
+            authenticatorAttachment:
+              type: string
+              example: platform
+
+    PasskeyRegistrationVerifyResponse:
+      type: object
+      required: [verified, credential_id, device_type]
+      properties:
+        verified:
+          type: boolean
+          example: true
+        credential_id:
+          type: string
+          description: Base64url-encoded credential ID.
+          example: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+        device_type:
+          type: string
+          description: Authenticator device type.
+          example: singleDevice
+
+    # -- Passkey Authentication -----------------------------------------------
+    PasskeyAuthOptionsResponse:
+      type: object
+      description: >-
+        WebAuthn `PublicKeyCredentialRequestOptions` as defined by
+        the Web Authentication specification.
+      properties:
+        challenge:
+          type: string
+          description: Base64url-encoded challenge.
+          example: "dGhpcyBpcyBhIHNhbXBsZSBjaGFsbGVuZ2U"
+        timeout:
+          type: integer
+          example: 60000
+        rpId:
+          type: string
+          example: finance.example.com
+        userVerification:
+          type: string
+          example: preferred
+        allowCredentials:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+                example: public-key
+              transports:
+                type: array
+                items:
+                  type: string
+                  example: internal
+
+    PasskeyAuthVerifyResponse:
+      type: object
+      required: [verified, user_id, message]
+      properties:
+        verified:
+          type: boolean
+          example: true
+        user_id:
+          type: string
+          format: uuid
+          description: The authenticated user's UUID.
+          example: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+        message:
+          type: string
+          example: "Passkey authentication successful. Exchange for session."
+
+    # -- Household Invite -----------------------------------------------------
+    HouseholdInviteCreateRequest:
+      type: object
+      required: [household_id]
+      properties:
+        household_id:
+          type: string
+          format: uuid
+          description: The household to invite the user to.
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        invited_email:
+          type: string
+          format: email
+          nullable: true
+          description: >-
+            Optional email to restrict the invitation to a specific user.
+            If omitted, anyone with the invite code can accept.
+          example: friend@example.com
+        role:
+          type: string
+          default: member
+          description: Role assigned to the invitee upon acceptance.
+          example: member
+        expires_in_hours:
+          type: integer
+          default: 72
+          minimum: 1
+          description: Hours until the invitation expires.
+          example: 72
+
+    HouseholdInviteCreateResponse:
+      type: object
+      required: [id, invite_code, expires_at, role, household_name]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"
+        invite_code:
+          type: string
+          description: >-
+            Cryptographically random 24-character uppercase invite code.
+          example: "01A2B3C4D5E6F7G8H9I0J1K2"
+        expires_at:
+          type: string
+          format: date-time
+          example: "2025-07-18T10:30:00.000Z"
+        role:
+          type: string
+          example: member
+        household_name:
+          type: string
+          example: "Smith Family"
+
+    HouseholdInviteValidateResponse:
+      type: object
+      required: [valid, household_id, household_name, role, expires_at]
+      properties:
+        valid:
+          type: boolean
+          example: true
+        household_id:
+          type: string
+          format: uuid
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        household_name:
+          type: string
+          example: "Smith Family"
+        role:
+          type: string
+          example: member
+        expires_at:
+          type: string
+          format: date-time
+          example: "2025-07-18T10:30:00.000Z"
+
+    HouseholdInviteAcceptRequest:
+      type: object
+      required: [invite_code]
+      properties:
+        invite_code:
+          type: string
+          description: Invite code received from the household owner.
+          example: "01A2B3C4D5E6F7G8H9I0J1K2"
+
+    HouseholdInviteAcceptResponse:
+      type: object
+      required: [message, household_id, household_name, role]
+      properties:
+        message:
+          type: string
+          example: Invitation accepted
+        household_id:
+          type: string
+          format: uuid
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        household_name:
+          type: string
+          example: "Smith Family"
+        role:
+          type: string
+          example: member
+
+    # -- Account Deletion -----------------------------------------------------
+    AccountDeletionRequest:
+      type: object
+      required: [confirm]
+      properties:
+        confirm:
+          oneOf:
+            - type: boolean
+              example: true
+            - type: string
+              example: DELETE_MY_ACCOUNT
+          description: >-
+            Explicit confirmation to prevent accidental deletion.
+            Must be `true` or the string `"DELETE_MY_ACCOUNT"`.
+
+    DeletionCertificate:
+      type: object
+      required:
+        - deletion_certificate
+      properties:
+        deletion_certificate:
+          type: object
+          required:
+            - certificate_id
+            - subject_type
+            - subject_id
+            - deleted_at
+            - households_affected
+            - keys_shredded
+            - key_fingerprints
+            - verified
+            - message
+          properties:
+            certificate_id:
+              type: string
+              description: Unique deletion certificate identifier.
+              example: "cert-m1abc2d-0011aabb22cc33dd44ee55ff"
+            subject_type:
+              type: string
+              enum: [USER]
+              example: USER
+            subject_id:
+              type: string
+              format: uuid
+              example: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+            deleted_at:
+              type: string
+              format: date-time
+              example: "2025-07-15T10:30:00.000Z"
+            households_affected:
+              type: integer
+              example: 2
+            keys_shredded:
+              type: integer
+              example: 3
+            key_fingerprints:
+              type: array
+              items:
+                type: string
+              example:
+                - "shredded:household:f47ac10b-58cc-4372-a567-0e02b2c3d479:m1abc2d"
+                - "revoked:user-key:b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d3e:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d:m1abc2e"
+                - "shredded:user:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d:m1abc2f"
+            verified:
+              type: boolean
+              example: true
+            message:
+              type: string
+              example: >-
+                Your account and associated data have been permanently deleted.
+                Encrypted data has been rendered unrecoverable via
+                crypto-shredding. This certificate serves as proof of deletion
+                per GDPR Article 17.
+
+    # -- Data Export -----------------------------------------------------------
+    DataExportJsonResponse:
+      type: object
+      required: [export_date, user_id, format_version, data]
+      properties:
+        export_date:
+          type: string
+          format: date-time
+          example: "2025-07-15T10:30:00.000Z"
+        user_id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+        format_version:
+          type: string
+          example: "1.0"
+        data:
+          type: object
+          description: >-
+            Keyed by table name. Each value is an array of records belonging
+            to the authenticated user (user-scoped tables) or to households
+            the user belongs to (household-scoped tables).  Sensitive columns
+            such as `public_key` are redacted.
+          properties:
+            users:
+              type: array
+              items:
+                type: object
+            households:
+              type: array
+              items:
+                type: object
+            household_members:
+              type: array
+              items:
+                type: object
+            accounts:
+              type: array
+              items:
+                type: object
+                description: >-
+                  Financial account record.  Monetary values (e.g.
+                  `balance`) are in **cents** (integer).
+            categories:
+              type: array
+              items:
+                type: object
+            transactions:
+              type: array
+              items:
+                type: object
+                description: >-
+                  Transaction record.  `amount` is in **cents** (integer).
+            budgets:
+              type: array
+              items:
+                type: object
+                description: >-
+                  Budget record.  `amount` is in **cents** (integer).
+            goals:
+              type: array
+              items:
+                type: object
+                description: >-
+                  Goal record.  `target_amount` and `current_amount` are
+                  in **cents** (integer).
+            passkey_credentials:
+              type: array
+              items:
+                type: object
+                description: >-
+                  Passkey credential metadata.  The `public_key` column
+                  is redacted to `[REDACTED]`.
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+
+paths:
+  # =========================================================================
+  # Health Check
+  # =========================================================================
+  /health-check:
+    get:
+      operationId: getHealthCheck
+      summary: System health check
+      description: >-
+        Public endpoint for uptime monitoring.  Returns the operational
+        status of core backend services (database, auth) without exposing
+        any internal details.  No authentication required.
+      tags: [System]
+      security: []
+      responses:
+        "200":
+          description: All services are healthy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthCheckResponse"
+              example:
+                status: healthy
+                timestamp: "2025-07-15T10:30:00.000Z"
+                services:
+                  database: connected
+                  auth: operational
+                version: "1.0.0"
+        "405":
+          description: Method not allowed (non-GET request).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Method not allowed"
+        "503":
+          description: One or more services are degraded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthCheckResponse"
+              example:
+                status: degraded
+                timestamp: "2025-07-15T10:30:00.000Z"
+                services:
+                  database: unavailable
+                  auth: operational
+                version: "1.0.0"
+
+  # =========================================================================
+  # Auth Webhook
+  # =========================================================================
+  /auth-webhook:
+    post:
+      operationId: handleAuthWebhook
+      summary: Auth user-creation webhook
+      description: >-
+        Internal endpoint invoked by Supabase Auth on `auth.users` INSERT
+        events.  Provisions a new user row, a default personal household,
+        and an owner membership.  Non-INSERT events are acknowledged and
+        ignored.
+
+        **This endpoint is not intended for client applications.**
+        It is secured with a shared secret (`AUTH_WEBHOOK_SECRET`).
+      tags: [Auth]
+      security:
+        - WebhookSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthWebhookPayload"
+            example:
+              type: INSERT
+              table: users
+              record:
+                id: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                email: user@example.com
+                raw_user_meta_data:
+                  full_name: "Jane Doe"
+                created_at: "2025-07-15T10:30:00.000Z"
+              old_record: null
+      responses:
+        "201":
+          description: User provisioned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthWebhookCreatedResponse"
+        "200":
+          description: Event type other than INSERT — acknowledged and ignored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthWebhookIgnoredResponse"
+        "401":
+          description: Webhook secret missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Unauthorized
+        "405":
+          description: Method not allowed (non-POST request).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Method not allowed"
+        "500":
+          description: Internal server error during user provisioning.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Internal server error"
+
+  # =========================================================================
+  # Passkey Registration
+  # =========================================================================
+  /passkey-register:
+    post:
+      operationId: passkeyRegister
+      summary: WebAuthn passkey registration ceremony
+      description: >-
+        Two-step WebAuthn registration flow controlled by the `step` query
+        parameter:
+
+        1. `?step=options` — Generate `PublicKeyCredentialCreationOptions`
+           (challenge) for the client.
+        2. `?step=verify` — Validate the attestation response from the
+           authenticator and store the new credential.
+
+        Both steps require a valid Supabase Auth JWT.
+      tags: [Auth]
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: step
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [options, verify]
+          description: >-
+            Ceremony step.  `options` generates the challenge;
+            `verify` validates the authenticator response.
+      requestBody:
+        required: false
+        description: >-
+          Required only for `?step=verify`.  The body is the
+          `AuthenticatorAttestationResponse` produced by the browser's
+          `navigator.credentials.create()` call.
+        content:
+          application/json:
+            schema:
+              type: object
+              description: >-
+                WebAuthn `AuthenticatorAttestationResponse` —
+                shape defined by the Web Authentication specification.
+            example:
+              id: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+              rawId: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+              response:
+                clientDataJSON: "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiZEdobGN5QnBjeUJoSUhOaGJYQnNaU0JqYUdGc2JHVnVaMlUiLCJvcmlnaW4iOiJodHRwczovL2FwcC5maW5hbmNlLmV4YW1wbGUuY29tIn0"
+                attestationObject: "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YQ"
+              type: "public-key"
+              clientExtensionResults: {}
+              authenticatorAttachment: "platform"
+      responses:
+        "200":
+          description: >-
+            Registration options generated (`?step=options`), or
+            authentication options generated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyRegistrationOptionsResponse"
+        "201":
+          description: >-
+            Credential verified and stored (`?step=verify`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyRegistrationVerifyResponse"
+              example:
+                verified: true
+                credential_id: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+                device_type: singleDevice
+        "400":
+          description: >-
+            Invalid step parameter, no valid challenge found, or
+            registration verification failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalidStep:
+                  summary: Missing or invalid step parameter
+                  value:
+                    error: "Invalid step. Use ?step=options or ?step=verify"
+                noChallenge:
+                  summary: Challenge expired or not found
+                  value:
+                    error: "No valid challenge found"
+                verificationFailed:
+                  summary: Attestation verification failed
+                  value:
+                    error: "Registration verification failed"
+        "401":
+          description: Missing or invalid JWT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Unauthorized
+        "405":
+          description: Method not allowed (non-POST request).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Internal server error"
+
+  # =========================================================================
+  # Passkey Authentication
+  # =========================================================================
+  /passkey-authenticate:
+    post:
+      operationId: passkeyAuthenticate
+      summary: WebAuthn passkey authentication ceremony
+      description: >-
+        Two-step WebAuthn authentication flow controlled by the `step`
+        query parameter:
+
+        1. `?step=options` — Generate `PublicKeyCredentialRequestOptions`
+           (challenge).  Optionally accepts `{ "email": "..." }` to
+           scope `allowCredentials` to a known user; omit for a
+           usernameless / discoverable-credential flow.
+        2. `?step=verify` — Validate the assertion response from the
+           authenticator and return a verification result.
+
+        **No JWT is required** — this endpoint is used to *establish*
+        authentication, not to guard an already-authenticated resource.
+      tags: [Auth]
+      security: []
+      parameters:
+        - name: step
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [options, verify]
+          description: >-
+            Ceremony step.  `options` generates the challenge;
+            `verify` validates the authenticator assertion.
+      requestBody:
+        required: false
+        description: >-
+          For `?step=options`: optional JSON body with `email` to scope
+          allowed credentials.
+
+          For `?step=verify`: the `AuthenticatorAssertionResponse`
+          produced by `navigator.credentials.get()`.
+        content:
+          application/json:
+            schema:
+              type: object
+              description: >-
+                For `?step=options`: optional object with `email` to scope
+                allowed credentials (see `PasskeyAuthOptionsRequest`).
+
+                For `?step=verify`: `AuthenticatorAssertionResponse` as
+                defined by the Web Authentication specification.
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: >-
+                    (options step only) Scope `allowCredentials` to a
+                    known user.  Omit for a usernameless flow.
+                id:
+                  type: string
+                  description: (verify step only) Credential ID.
+                rawId:
+                  type: string
+                  description: (verify step only) Raw credential ID.
+                response:
+                  type: object
+                  description: (verify step only) Authenticator response.
+                type:
+                  type: string
+                  description: (verify step only) Credential type.
+                clientExtensionResults:
+                  type: object
+                  description: (verify step only) Client extension results.
+            examples:
+              optionsWithEmail:
+                summary: Request options scoped to a user
+                value:
+                  email: user@example.com
+              optionsUsernameless:
+                summary: Usernameless discoverable-credential flow
+                value: {}
+              verify:
+                summary: Authenticator assertion response
+                value:
+                  id: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+                  rawId: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+                  response:
+                    clientDataJSON: "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0In0"
+                    authenticatorData: "SZYN5YgOjGh0NBcPZHZgW4"
+                    signature: "MEUCIQDNrG..."
+                  type: "public-key"
+                  clientExtensionResults: {}
+      responses:
+        "200":
+          description: >-
+            For `?step=options`: authentication options with challenge.
+
+            For `?step=verify`: passkey verified successfully.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/PasskeyAuthOptionsResponse"
+                  - $ref: "#/components/schemas/PasskeyAuthVerifyResponse"
+              examples:
+                options:
+                  summary: Authentication options response
+                  value:
+                    challenge: "dGhpcyBpcyBhIHNhbXBsZSBjaGFsbGVuZ2U"
+                    timeout: 60000
+                    rpId: finance.example.com
+                    userVerification: preferred
+                    allowCredentials:
+                      - id: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+                        type: public-key
+                        transports: [internal]
+                verified:
+                  summary: Successful verification
+                  value:
+                    verified: true
+                    user_id: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                    message: "Passkey authentication successful. Exchange for session."
+        "400":
+          description: >-
+            Invalid step, missing credential ID, credential not found,
+            or no valid challenge.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalidStep:
+                  summary: Invalid step parameter
+                  value:
+                    error: "Invalid step. Use ?step=options or ?step=verify"
+                missingId:
+                  summary: Missing credential ID in verify body
+                  value:
+                    error: "Missing credential ID"
+                credentialNotFound:
+                  summary: Credential not in database
+                  value:
+                    error: "Credential not found"
+                noChallenge:
+                  summary: Challenge expired or not found
+                  value:
+                    error: "No valid challenge found"
+        "401":
+          description: Authentication assertion verification failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Authentication verification failed"
+        "405":
+          description: Method not allowed (non-POST request).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Internal server error"
+
+  # =========================================================================
+  # Household Invite
+  # =========================================================================
+  /household-invite:
+    post:
+      operationId: createHouseholdInvite
+      summary: Create a household invitation
+      description: >-
+        Generates a cryptographically random invite code for a household.
+        Only the household **owner** (`created_by`) may create invitations.
+        Optionally restricts the invitation to a specific email address.
+      tags: [Households]
+      security:
+        - BearerJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HouseholdInviteCreateRequest"
+            example:
+              household_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+              invited_email: friend@example.com
+              role: member
+              expires_in_hours: 72
+      responses:
+        "201":
+          description: Invitation created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseholdInviteCreateResponse"
+        "400":
+          description: Missing required field (`household_id`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "household_id is required"
+        "401":
+          description: Missing or invalid JWT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Authentication required"
+        "403":
+          description: Authenticated user is not the household owner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Only the household owner can create invitations"
+        "404":
+          description: Household not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Household not found"
+        "409":
+          description: Invited user is already a household member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "User is already a member of this household"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Internal server error"
+
+    get:
+      operationId: validateHouseholdInvite
+      summary: Validate an invite code
+      description: >-
+        Validates a household invitation code and returns household
+        metadata.  Returns an error if the code is invalid, expired,
+        already accepted, or restricted to a different email.
+      tags: [Households]
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The invitation code to validate.
+          example: "01A2B3C4D5E6F7G8H9I0J1K2"
+      responses:
+        "200":
+          description: Invitation is valid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseholdInviteValidateResponse"
+        "400":
+          description: Missing `code` query parameter.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "code query parameter is required"
+        "401":
+          description: Missing or invalid JWT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Authentication required"
+        "403":
+          description: Invitation is restricted to a different email.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "This invitation is for a different email address"
+        "404":
+          description: Invitation code not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Invalid invitation code"
+        "410":
+          description: Invitation expired or already accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                expired:
+                  summary: Invitation expired
+                  value:
+                    error: "This invitation has expired"
+                alreadyAccepted:
+                  summary: Already accepted
+                  value:
+                    error: "This invitation has already been accepted"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Internal server error"
+
+    put:
+      operationId: acceptHouseholdInvite
+      summary: Accept a household invitation
+      description: >-
+        Accepts a valid invitation and adds the authenticated user to the
+        household as a member.  The invitation is marked as accepted and
+        cannot be reused.
+      tags: [Households]
+      security:
+        - BearerJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HouseholdInviteAcceptRequest"
+            example:
+              invite_code: "01A2B3C4D5E6F7G8H9I0J1K2"
+      responses:
+        "200":
+          description: Invitation accepted — user added to the household.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseholdInviteAcceptResponse"
+        "400":
+          description: Missing `invite_code` in request body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "invite_code is required"
+        "401":
+          description: Missing or invalid JWT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Authentication required"
+        "403":
+          description: Invitation is restricted to a different email.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "This invitation is for a different email address"
+        "404":
+          description: Invitation code not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Invalid invitation code"
+        "409":
+          description: User is already a member of the household.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "You are already a member of this household"
+        "410":
+          description: Invitation expired or already accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                expired:
+                  summary: Invitation expired
+                  value:
+                    error: "This invitation has expired"
+                alreadyAccepted:
+                  summary: Already accepted
+                  value:
+                    error: "This invitation has already been accepted"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Internal server error"
+
+  # =========================================================================
+  # Account Deletion
+  # =========================================================================
+  /account-deletion:
+    delete:
+      operationId: deleteAccount
+      summary: Delete user account (GDPR Article 17)
+      description: >-
+        Permanently deletes the authenticated user's account.  This
+        triggers:
+
+        1. **Audit log** of the deletion request.
+        2. **Crypto-shredding** — encryption keys are destroyed so that
+           encrypted data becomes unrecoverable.
+        3. **Household cleanup** — the user is removed from all
+           households; sole-member households are soft-deleted entirely.
+        4. **Soft-delete** of the user record and passkey credentials.
+        5. **Auth user removal** — the Supabase Auth identity is deleted.
+
+        Returns a **deletion certificate** (per GDPR Article 17) that
+        the client should store locally as proof of erasure.
+
+        **This action is irreversible.**
+      tags: [Data Management]
+      security:
+        - BearerJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountDeletionRequest"
+            examples:
+              confirmBoolean:
+                summary: Confirm with boolean
+                value:
+                  confirm: true
+              confirmString:
+                summary: Confirm with string
+                value:
+                  confirm: DELETE_MY_ACCOUNT
+      responses:
+        "200":
+          description: Account deleted — deletion certificate returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletionCertificate"
+        "400":
+          description: Missing or invalid confirmation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: >-
+                  Account deletion requires confirmation. Send
+                  { "confirm": "DELETE_MY_ACCOUNT" } in the request body.
+        "401":
+          description: Missing or invalid JWT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Authentication required"
+        "405":
+          description: Method not allowed (non-DELETE request).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Method not allowed"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Internal server error"
+
+  # =========================================================================
+  # Data Export
+  # =========================================================================
+  /data-export:
+    get:
+      operationId: exportData
+      summary: Export user data (GDPR Article 20)
+      description: >-
+        Exports all of the authenticated user's data across all their
+        households in either **JSON** or **CSV** format.  The response is
+        streamed as a file download.
+
+        ### Exported tables
+
+        | Table                | Scope       |
+        | -------------------- | ----------- |
+        | `users`              | Own row     |
+        | `households`         | Member of   |
+        | `household_members`  | Member of   |
+        | `accounts`           | Household   |
+        | `categories`         | Household   |
+        | `transactions`       | Household   |
+        | `budgets`            | Household   |
+        | `goals`              | Household   |
+        | `passkey_credentials`| Own rows    |
+
+        Sensitive columns (e.g. `public_key`) are redacted to
+        `[REDACTED]`.
+
+        ### Rate limiting
+
+        Maximum **10 exports per user per hour** (tracked in
+        `data_export_audit_log`).
+
+        ### Monetary values
+
+        All monetary values in the export are integers in **cents**.
+        For example, `$12.34` is represented as `1234`.
+      tags: [Data Management]
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+          description: >-
+            Export format.  Defaults to `json`.  Alternatively, set the
+            `Accept` header to `text/csv` to receive CSV.
+      responses:
+        "200":
+          description: >-
+            Data export file.  Delivered as a streaming download with
+            `Content-Disposition: attachment`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataExportJsonResponse"
+            text/csv:
+              schema:
+                type: string
+                description: >-
+                  CSV output with sections separated by `# Table: <name>`
+                  comment headers.
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: >-
+                Suggested filename, e.g.
+                `attachment; filename="finance-export-2025-07-15T10-30-00-000Z.json"`.
+              example: 'attachment; filename="finance-export-2025-07-15T10-30-00-000Z.json"'
+        "400":
+          description: Invalid export format.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StructuredError"
+              example:
+                error:
+                  code: INVALID_FORMAT
+                  message: 'Export format must be "json" or "csv". Use ?format=json or ?format=csv.'
+        "401":
+          description: Missing or invalid JWT.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Authentication required"
+        "405":
+          description: Method not allowed (non-GET request).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Method not allowed"
+        "413":
+          description: Request entity too large (Content-Length exceeds 1 KB).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StructuredError"
+              example:
+                error:
+                  code: REQUEST_TOO_LARGE
+                  message: "Request exceeds maximum allowed size."
+        "429":
+          description: Rate limit exceeded (10 exports per hour).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StructuredError"
+              example:
+                error:
+                  code: RATE_LIMITED
+                  message: "Export limit exceeded. Maximum 10 exports per hour."
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StructuredError"
+              example:
+                error:
+                  code: INTERNAL_ERROR
+                  message: "An unexpected error occurred."
