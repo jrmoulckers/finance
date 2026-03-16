@@ -12,6 +12,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
+    @Environment(NetworkMonitor.self) private var networkMonitor: NetworkMonitor?
 
     init(viewModel: DashboardViewModel = DashboardViewModel(
         accountRepository: RepositoryProvider.shared.accounts,
@@ -31,6 +32,9 @@ struct DashboardView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 20) {
+                            if let monitor = networkMonitor, !monitor.isConnected {
+                                OfflineBanner()
+                            }
                             netWorthCard
                             spendingSummaryCard
                             budgetHealthSection

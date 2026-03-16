@@ -146,12 +146,7 @@ struct SettingsView: View {
             }
 
             NavigationLink {
-                ScrollView {
-                    Text(String(localized: "Privacy policy content will be loaded here."))
-                        .font(.body).foregroundStyle(.secondary).padding()
-                }
-                .navigationTitle(String(localized: "Privacy Policy"))
-                .navigationBarTitleDisplayMode(.inline)
+                PrivacyPolicyView()
             } label: {
                 Label(String(localized: "Privacy Policy"), systemImage: "hand.raised")
             }
@@ -298,12 +293,15 @@ struct SettingsView: View {
             .accessibilityLabel(String(localized: "App version \(viewModel.appVersion), build \(viewModel.buildNumber)"))
 
             NavigationLink {
-                ScrollView {
-                    Text(String(localized: "Open source licenses and acknowledgments will be listed here."))
-                        .font(.body).foregroundStyle(.secondary).padding()
-                }
-                .navigationTitle(String(localized: "Acknowledgments"))
-                .navigationBarTitleDisplayMode(.inline)
+                AboutView()
+            } label: {
+                Label(String(localized: "About Finance"), systemImage: "info.circle")
+            }
+            .accessibilityLabel(String(localized: "About Finance"))
+            .accessibilityHint(String(localized: "Opens app information, licenses, and acknowledgments"))
+
+            NavigationLink {
+                AboutView()
             } label: {
                 Label(String(localized: "Acknowledgments"), systemImage: "heart")
             }
