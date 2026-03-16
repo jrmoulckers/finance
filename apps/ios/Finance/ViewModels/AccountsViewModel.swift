@@ -17,6 +17,7 @@ final class AccountsViewModel {
     var accountGroups: [AccountGroup] = []
     var isLoading = false
     var showingAddAccount = false
+    var errorMessage: String?
 
     init(repository: AccountRepository) {
         self.repository = repository
@@ -34,7 +35,7 @@ final class AccountsViewModel {
                 return AccountGroup(id: type.rawValue, type: type, accounts: items)
             }
         } catch {
-            // Error handling will be enhanced with KMP-backed repository
+            errorMessage = error.localizedDescription
             accountGroups = []
         }
     }
@@ -43,7 +44,7 @@ final class AccountsViewModel {
         do {
             try await repository.deleteAccount(id: id)
         } catch {
-            // Deletion error handling will be enhanced with KMP-backed repository
+            errorMessage = error.localizedDescription
         }
         // Remove from local state for immediate UI feedback
         accountGroups = accountGroups.compactMap { group in

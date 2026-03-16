@@ -50,6 +50,10 @@ struct BudgetsView: View {
             .sheet(isPresented: $viewModel.showingCreateBudget) { createBudgetPlaceholder }
             .refreshable { await viewModel.loadBudgets() }
             .task { await viewModel.loadBudgets() }
+            .errorAlert(
+                errorMessage: Bindable(viewModel).errorMessage,
+                retryAction: { await viewModel.loadBudgets() }
+            )
         }
     }
 

@@ -17,6 +17,7 @@ final class GoalsViewModel {
     var goals: [GoalItem] = []
     var isLoading = false
     var showingCreateGoal = false
+    var errorMessage: String?
 
     init(repository: GoalRepository) {
         self.repository = repository
@@ -29,7 +30,7 @@ final class GoalsViewModel {
         do {
             goals = try await repository.getGoals()
         } catch {
-            // Error handling will be enhanced with KMP-backed repository
+            errorMessage = error.localizedDescription
             goals = []
         }
     }

@@ -36,6 +36,10 @@ struct DashboardView: View {
             .navigationTitle(String(localized: "Dashboard"))
             .refreshable { await viewModel.loadDashboard() }
             .task { await viewModel.loadDashboard() }
+            .errorAlert(
+                errorMessage: Bindable(viewModel).errorMessage,
+                retryAction: { await viewModel.loadDashboard() }
+            )
         }
     }
 

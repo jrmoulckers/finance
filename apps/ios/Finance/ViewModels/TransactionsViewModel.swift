@@ -18,6 +18,7 @@ final class TransactionsViewModel {
     var isLoading = false
     var searchText = ""
     var showingCreateTransaction = false
+    var errorMessage: String?
 
     /// Transactions grouped by calendar day, most recent first.
     struct DateGroup: Identifiable {
@@ -53,7 +54,7 @@ final class TransactionsViewModel {
         do {
             transactions = try await repository.getTransactions()
         } catch {
-            // Error handling will be enhanced with KMP-backed repository
+            errorMessage = error.localizedDescription
             transactions = []
         }
     }
@@ -62,7 +63,7 @@ final class TransactionsViewModel {
         do {
             try await repository.deleteTransaction(id: id)
         } catch {
-            // Deletion error handling will be enhanced with KMP-backed repository
+            errorMessage = error.localizedDescription
         }
         // Remove from local state for immediate UI feedback
         transactions.removeAll { $0.id == id }
