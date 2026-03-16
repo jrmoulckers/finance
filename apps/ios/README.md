@@ -251,10 +251,10 @@ All user-facing strings use the `String(localized:)` API introduced in iOS 15.
 String keys match the literal English text, making source code readable without
 lookup tables.
 
-| File                                            | Contents                          |
-| ----------------------------------------------- | --------------------------------- |
-| `Resources/en.lproj/Localizable.strings`        | 228 string keys covering all screens |
-| `Resources/en.lproj/InfoPlist.strings`           | Privacy usage descriptions (Face ID) |
+| File                                     | Contents                             |
+| ---------------------------------------- | ------------------------------------ |
+| `Resources/en.lproj/Localizable.strings` | 228 string keys covering all screens |
+| `Resources/en.lproj/InfoPlist.strings`   | Privacy usage descriptions (Face ID) |
 
 ### Adding a New String
 
@@ -293,10 +293,10 @@ operations such as exporting financial data and viewing full account numbers.
 
 ### Key Files
 
-| File                        | Purpose                                    |
-| --------------------------- | ------------------------------------------ |
-| `Security/BiometricAuthManager.swift` | Face ID / Touch ID / Optic ID wrapper |
-| `Screens/LockScreenView.swift`       | Full-screen biometric lock gate       |
+| File                                  | Purpose                                |
+| ------------------------------------- | -------------------------------------- |
+| `Security/BiometricAuthManager.swift` | Face ID / Touch ID / Optic ID wrapper  |
+| `Screens/LockScreenView.swift`        | Full-screen biometric lock gate        |
 | `ViewModels/SettingsViewModel.swift`  | Toggle for enabling/disabling app lock |
 
 ## Testing
@@ -328,17 +328,17 @@ XCTAssertEqual(repo.deletedAccountIds, ["a1"])
 
 ### Coverage
 
-| Test File                              | What It Tests                            |
-| -------------------------------------- | ---------------------------------------- |
-| `AccountsViewModelTests.swift`         | Loading, grouping by type, deletion      |
-| `DashboardViewModelTests.swift`        | Aggregated balances, recent transactions |
-| `TransactionsViewModelTests.swift`     | Filtering, sorting, deletion             |
-| `TransactionCreateViewModelTests.swift`| Validation, creation, account loading    |
-| `BudgetsViewModelTests.swift`          | Budget loading, progress calculations    |
-| `GoalsViewModelTests.swift`            | Goal loading, status filtering           |
-| `ModelTests.swift`                     | Computed properties on model types       |
-| `CurrencyFormattingTests.swift`        | Minor-units-to-display formatting        |
-| `TestHelpers.swift`                    | Stub repos, sample data, test error enum |
+| Test File                               | What It Tests                            |
+| --------------------------------------- | ---------------------------------------- |
+| `AccountsViewModelTests.swift`          | Loading, grouping by type, deletion      |
+| `DashboardViewModelTests.swift`         | Aggregated balances, recent transactions |
+| `TransactionsViewModelTests.swift`      | Filtering, sorting, deletion             |
+| `TransactionCreateViewModelTests.swift` | Validation, creation, account loading    |
+| `BudgetsViewModelTests.swift`           | Budget loading, progress calculations    |
+| `GoalsViewModelTests.swift`             | Goal loading, status filtering           |
+| `ModelTests.swift`                      | Computed properties on model types       |
+| `CurrencyFormattingTests.swift`         | Minor-units-to-display formatting        |
+| `TestHelpers.swift`                     | Stub repos, sample data, test error enum |
 
 **68 test cases** across 9 test files.
 
@@ -385,12 +385,12 @@ integration instructions.
 
 iOS-specific Kotlin implementations exist in `packages/sync/src/iosMain/`:
 
-| File                      | Status      | Notes                                                    |
-| ------------------------- | ----------- | -------------------------------------------------------- |
-| `PlatformSHA256.ios.kt`   | ✅ Working  | Pure-Kotlin SHA-256 + `SecRandomCopyBytes` for secure random |
-| `Sha256.ios.kt`           | ✅ Working  | Shared internal SHA-256 (avoids CommonCrypto cinterop)   |
-| `KeyDerivation.ios.kt`    | ✅ Working  | PBKDF2-HMAC-SHA256, 100k iterations, 32-byte key output |
-| `TokenStorage.ios.kt`     | ⚠️ In-memory | Matches Android/JVM/JS; TODO: Keychain via Swift Export  |
+| File                    | Status       | Notes                                                        |
+| ----------------------- | ------------ | ------------------------------------------------------------ |
+| `PlatformSHA256.ios.kt` | ✅ Working   | Pure-Kotlin SHA-256 + `SecRandomCopyBytes` for secure random |
+| `Sha256.ios.kt`         | ✅ Working   | Shared internal SHA-256 (avoids CommonCrypto cinterop)       |
+| `KeyDerivation.ios.kt`  | ✅ Working   | PBKDF2-HMAC-SHA256, 100k iterations, 32-byte key output      |
+| `TokenStorage.ios.kt`   | ⚠️ In-memory | Matches Android/JVM/JS; TODO: Keychain via Swift Export      |
 
 iOS is the first platform with a working key derivation function (KDF). Token
 storage currently uses an in-memory implementation; Keychain integration is

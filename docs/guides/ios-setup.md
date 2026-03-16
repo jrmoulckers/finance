@@ -113,13 +113,13 @@ View  →  ViewModel  →  Repository Protocol  →  Implementation
 
 ### Layers
 
-| Layer         | Location            | Responsibility                                 |
-| ------------- | ------------------- | ---------------------------------------------- |
-| **Models**    | `Finance/Models/`   | Shared data types (`AccountItem`, `BudgetItem`, etc.) |
-| **Repositories** | `Finance/Repositories/` | Protocols defining async data-access contracts |
-| **Mocks**     | `Finance/Repositories/Mocks/` | In-memory implementations with sample data   |
-| **ViewModels** | `Finance/ViewModels/` | `@Observable @MainActor` classes that own screen state |
-| **Views**     | `Finance/Screens/`  | SwiftUI views that bind to ViewModel state     |
+| Layer            | Location                      | Responsibility                                         |
+| ---------------- | ----------------------------- | ------------------------------------------------------ |
+| **Models**       | `Finance/Models/`             | Shared data types (`AccountItem`, `BudgetItem`, etc.)  |
+| **Repositories** | `Finance/Repositories/`       | Protocols defining async data-access contracts         |
+| **Mocks**        | `Finance/Repositories/Mocks/` | In-memory implementations with sample data             |
+| **ViewModels**   | `Finance/ViewModels/`         | `@Observable @MainActor` classes that own screen state |
+| **Views**        | `Finance/Screens/`            | SwiftUI views that bind to ViewModel state             |
 
 ### ViewModel Conventions
 
@@ -159,16 +159,16 @@ final class AccountsViewModel {
 
 ### Current ViewModels
 
-| ViewModel                    | Screen              | Repository Dependencies      |
-| ---------------------------- | ------------------- | ----------------------------- |
-| `DashboardViewModel`         | Dashboard           | Account, Transaction, Budget  |
-| `AccountsViewModel`          | Accounts list       | AccountRepository             |
-| `AccountDetailViewModel`     | Account detail      | AccountRepository, TransactionRepository |
-| `TransactionsViewModel`      | Transactions list   | TransactionRepository         |
-| `TransactionCreateViewModel` | New transaction     | TransactionRepository, AccountRepository |
-| `BudgetsViewModel`           | Budgets             | BudgetRepository              |
-| `GoalsViewModel`             | Goals               | GoalRepository                |
-| `SettingsViewModel`          | Settings            | BiometricAuthManager          |
+| ViewModel                    | Screen            | Repository Dependencies                  |
+| ---------------------------- | ----------------- | ---------------------------------------- |
+| `DashboardViewModel`         | Dashboard         | Account, Transaction, Budget             |
+| `AccountsViewModel`          | Accounts list     | AccountRepository                        |
+| `AccountDetailViewModel`     | Account detail    | AccountRepository, TransactionRepository |
+| `TransactionsViewModel`      | Transactions list | TransactionRepository                    |
+| `TransactionCreateViewModel` | New transaction   | TransactionRepository, AccountRepository |
+| `BudgetsViewModel`           | Budgets           | BudgetRepository                         |
+| `GoalsViewModel`             | Goals             | GoalRepository                           |
+| `SettingsViewModel`          | Settings          | BiometricAuthManager                     |
 
 ## Adding a New Screen
 
@@ -347,17 +347,17 @@ sample accounts, transactions, budgets, and goals used across all test files.
 
 ### Test Coverage
 
-| Test File                              | Cases | What It Tests                              |
-| -------------------------------------- | ----- | ------------------------------------------ |
-| `AccountsViewModelTests.swift`         | 5     | Loading, grouping by type, deletion, errors |
-| `DashboardViewModelTests.swift`        | —     | Aggregated balances, recent transactions   |
-| `TransactionsViewModelTests.swift`     | —     | Filtering, sorting, deletion               |
-| `TransactionCreateViewModelTests.swift`| —     | Validation, creation, account loading      |
-| `BudgetsViewModelTests.swift`          | —     | Budget loading, progress calculations      |
-| `GoalsViewModelTests.swift`            | —     | Goal loading, status filtering             |
-| `ModelTests.swift`                     | —     | Computed properties on model types         |
-| `CurrencyFormattingTests.swift`        | —     | Minor-units-to-display formatting          |
-| `TestHelpers.swift`                    | —     | Stub repos, sample data, test error enum   |
+| Test File                               | Cases | What It Tests                               |
+| --------------------------------------- | ----- | ------------------------------------------- |
+| `AccountsViewModelTests.swift`          | 5     | Loading, grouping by type, deletion, errors |
+| `DashboardViewModelTests.swift`         | —     | Aggregated balances, recent transactions    |
+| `TransactionsViewModelTests.swift`      | —     | Filtering, sorting, deletion                |
+| `TransactionCreateViewModelTests.swift` | —     | Validation, creation, account loading       |
+| `BudgetsViewModelTests.swift`           | —     | Budget loading, progress calculations       |
+| `GoalsViewModelTests.swift`             | —     | Goal loading, status filtering              |
+| `ModelTests.swift`                      | —     | Computed properties on model types          |
+| `CurrencyFormattingTests.swift`         | —     | Minor-units-to-display formatting           |
+| `TestHelpers.swift`                     | —     | Stub repos, sample data, test error enum    |
 
 **Total: 68 test cases across 9 files.**
 
@@ -486,12 +486,12 @@ func loadAccounts() async {
 iOS-specific Kotlin implementations exist in `packages/sync/src/iosMain/` and
 provide platform-native cryptography and token storage:
 
-| File | Path | Status |
-| ---- | ---- | ------ |
-| `PlatformSHA256.ios.kt` | `…/sync/auth/` | ✅ Pure-Kotlin SHA-256 + `SecRandomCopyBytes` for secure random |
-| `Sha256.ios.kt` | `…/sync/crypto/` | ✅ Shared internal SHA-256 implementation (avoids CommonCrypto cinterop) |
-| `KeyDerivation.ios.kt` | `…/sync/crypto/` | ✅ PBKDF2-HMAC-SHA256 — 100k iterations, 32-byte key. First platform with working KDF |
-| `TokenStorage.ios.kt` | `…/sync/auth/` | ⚠️ In-memory storage (matches Android/JVM/JS). TODO: Keychain via Swift Export |
+| File                    | Path             | Status                                                                                |
+| ----------------------- | ---------------- | ------------------------------------------------------------------------------------- |
+| `PlatformSHA256.ios.kt` | `…/sync/auth/`   | ✅ Pure-Kotlin SHA-256 + `SecRandomCopyBytes` for secure random                       |
+| `Sha256.ios.kt`         | `…/sync/crypto/` | ✅ Shared internal SHA-256 implementation (avoids CommonCrypto cinterop)              |
+| `KeyDerivation.ios.kt`  | `…/sync/crypto/` | ✅ PBKDF2-HMAC-SHA256 — 100k iterations, 32-byte key. First platform with working KDF |
+| `TokenStorage.ios.kt`   | `…/sync/auth/`   | ⚠️ In-memory storage (matches Android/JVM/JS). TODO: Keychain via Swift Export        |
 
 **Key notes:**
 
