@@ -6,69 +6,13 @@
 // Form-style settings with large navigation title. Covers currency,
 // notifications, biometric auth, data export, and about.
 
+import os
 import SwiftUI
-
-// MARK: - View Model
-
-@Observable
-@MainActor
-final class SettingsViewModel {
-    var selectedCurrency = "USD"
-    var notificationsEnabled = true
-    var budgetAlerts = true
-    var goalMilestones = true
-    var biometricEnabled = false
-    var biometricType: BiometricType = .faceID
-    var appVersion = "1.0.0"
-    var buildNumber = "1"
-    var showingExportConfirmation = false
-    var isExporting = false
-    var showingDeleteConfirmation = false
-
-    enum BiometricType {
-        case faceID, touchID, none
-        var displayName: String {
-            switch self {
-            case .faceID: String(localized: "Face ID")
-            case .touchID: String(localized: "Touch ID")
-            case .none: String(localized: "Biometric Authentication")
-            }
-        }
-        var systemImage: String {
-            switch self {
-            case .faceID: "faceid"
-            case .touchID: "touchid"
-            case .none: "lock"
-            }
-        }
-    }
-
-    let supportedCurrencies = [
-        ("USD", "US Dollar"), ("EUR", "Euro"), ("GBP", "British Pound"),
-        ("CAD", "Canadian Dollar"), ("JPY", "Japanese Yen"),
-        ("AUD", "Australian Dollar"), ("CHF", "Swiss Franc"),
-    ]
-
-    func loadSettings() async {
-        // TODO: Replace with KMP shared logic and Keychain reads
-    }
-
-    func exportData() async {
-        isExporting = true
-        defer { isExporting = false }
-        // TODO: Implement data export via KMP shared logic
-        try? await Task.sleep(for: .seconds(1))
-    }
-
-    func toggleBiometric() async {
-        // TODO: Implement via LAContext biometric evaluation
-        biometricEnabled.toggle()
-    }
-}
 
 // MARK: - View
 
 struct SettingsView: View {
+    @Environment(BiometricAuthManager.self) private var biometricManager
     @State private var viewModel = SettingsViewModel()
 
     var body: some View {
@@ -83,6 +27,16 @@ struct SettingsView: View {
             .navigationTitle(String(localized: "Settings"))
             .navigationBarTitleDisplayMode(.large)
             .task { await viewModel.loadSettings() }
+            .alert(
+                String(localized: "Authentication Error"),
+                isPresented: $viewModel.showingBiometricError,
+                presenting: viewModel.biometricError
+            ) { _ in
+                Button(String(localized: "OK"), role: .cancel) {}
+                    .accessibilityLabel(String(localized: "Dismiss error"))
+            } message: { error in
+                Text(error.localizedDescription)
+            }
         }
     }
 
@@ -132,12 +86,34 @@ struct SettingsView: View {
         Section(String(localized: "Security")) {
             Toggle(isOn: Binding(
                 get: { viewModel.biometricEnabled },
-                set: { _ in Task { await viewModel.toggleBiometric() } }
+                set: { _ in
+                    Task { await viewModel.toggleBiometric(using: biometricManager) }
+                }
             )) {
-                Label(viewModel.biometricType.displayName, systemImage: viewModel.biometricType.systemImage)
+                Label(
+                    biometricManager.biometricType.displayName,
+                    systemImage: biometricManager.biometricType.systemImage
+                )
             }
-            .accessibilityLabel(viewModel.biometricType.displayName)
-            .accessibilityHint(String(localized: "Require biometric authentication to open the app"))
+            .disabled(!biometricManager.isAvailable)
+            .accessibilityLabel(biometricManager.biometricType.displayName)
+            .accessibilityHint(
+                biometricManager.isAvailable
+                    ? String(localized: "Require biometric authentication to open the app")
+                    : String(localized: "Biometric authentication is not available on this device")
+            )
+            .accessibilityValue(
+                viewModel.biometricEnabled
+                    ? String(localized: "Enabled")
+                    : String(localized: "Disabled")
+            )
+
+            if !biometricManager.isAvailable {
+                Text(String(localized: "Biometric authentication is not available. Enroll Face ID or Touch ID in device Settings."))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(String(localized: "Biometric authentication is not available. Enroll Face ID or Touch ID in device Settings."))
+            }
 
             NavigationLink {
                 ScrollView {
@@ -159,7 +135,14 @@ struct SettingsView: View {
     private var dataSection: some View {
         Section(String(localized: "Data")) {
             Button {
-                viewModel.showingExportConfirmation = true
+                Task {
+                    let authorized = await viewModel.authenticateForExport(
+                        using: biometricManager
+                    )
+                    if authorized {
+                        viewModel.showingExportConfirmation = true
+                    }
+                }
             } label: {
                 Label {
                     if viewModel.isExporting {
@@ -204,7 +187,7 @@ struct SettingsView: View {
                 titleVisibility: .visible
             ) {
                 Button(String(localized: "Delete Everything"), role: .destructive) {
-                    // TODO: Implement via KMP shared logic
+                    // TODO: Replace MockRepository with KMP-backed repository
                 }
                 Button(String(localized: "Cancel"), role: .cancel) {}
             } message: {
@@ -238,4 +221,7 @@ struct SettingsView: View {
     }
 }
 
-#Preview { SettingsView() }
+#Preview {
+    SettingsView()
+        .environment(BiometricAuthManager())
+}

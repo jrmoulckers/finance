@@ -7,136 +7,18 @@
 
 import SwiftUI
 
-// MARK: - View Model
-
-@Observable
-@MainActor
-final class TransactionCreateViewModel {
-    var currentStep: Step = .type
-
-    enum Step: Int, CaseIterable {
-        case type = 0, details = 1, review = 2
-        var title: String {
-            switch self {
-            case .type: String(localized: "Type")
-            case .details: String(localized: "Details")
-            case .review: String(localized: "Review")
-            }
-        }
-    }
-
-    var transactionType: TransactionType = .expense
-    var amountText = ""
-    var payee = ""
-    var selectedAccountId: String?
-    var selectedCategoryId: String?
-    var date = Date()
-    var note = ""
-    var currencyCode = "USD"
-    var isSaving = false
-    var showingValidationError = false
-    var validationMessage = ""
-
-    enum TransactionType: String, CaseIterable {
-        case expense, income, transfer
-        var displayName: String {
-            switch self {
-            case .expense: String(localized: "Expense")
-            case .income: String(localized: "Income")
-            case .transfer: String(localized: "Transfer")
-            }
-        }
-        var systemImage: String {
-            switch self {
-            case .expense: "arrow.up.right"
-            case .income: "arrow.down.left"
-            case .transfer: "arrow.left.arrow.right"
-            }
-        }
-        var color: Color {
-            switch self {
-            case .expense: .red
-            case .income: .green
-            case .transfer: .blue
-            }
-        }
-    }
-
-    struct PickerOption: Identifiable {
-        let id: String
-        let name: String
-        let icon: String
-    }
-
-    var accounts: [PickerOption] = [
-        PickerOption(id: "a1", name: "Main Checking", icon: "building.columns"),
-        PickerOption(id: "a2", name: "Savings", icon: "banknote"),
-        PickerOption(id: "a3", name: "Travel Card", icon: "creditcard"),
-    ]
-
-    var categories: [PickerOption] = [
-        PickerOption(id: "c1", name: "Groceries", icon: "cart"),
-        PickerOption(id: "c2", name: "Dining Out", icon: "fork.knife"),
-        PickerOption(id: "c3", name: "Transport", icon: "car"),
-        PickerOption(id: "c4", name: "Entertainment", icon: "film"),
-        PickerOption(id: "c5", name: "Shopping", icon: "bag"),
-        PickerOption(id: "c6", name: "Income", icon: "dollarsign.circle"),
-    ]
-
-    var canAdvance: Bool {
-        switch currentStep {
-        case .type: true
-        case .details: !amountText.isEmpty && selectedAccountId != nil && !payee.isEmpty
-        case .review: true
-        }
-    }
-
-    var amountMinorUnits: Int64 { Int64((Double(amountText) ?? 0) * 100) }
-
-    func advance() {
-        guard let next = Step(rawValue: currentStep.rawValue + 1) else { return }
-        currentStep = next
-    }
-
-    func goBack() {
-        guard let prev = Step(rawValue: currentStep.rawValue - 1) else { return }
-        currentStep = prev
-    }
-
-    func save() async -> Bool {
-        guard validate() else { return false }
-        isSaving = true
-        defer { isSaving = false }
-        // TODO: Replace with KMP shared logic
-        try? await Task.sleep(for: .milliseconds(500))
-        return true
-    }
-
-    private func validate() -> Bool {
-        if amountText.isEmpty || (Double(amountText) ?? 0) <= 0 {
-            validationMessage = String(localized: "Please enter a valid amount.")
-            showingValidationError = true
-            return false
-        }
-        if payee.isEmpty {
-            validationMessage = String(localized: "Please enter a payee.")
-            showingValidationError = true
-            return false
-        }
-        if selectedAccountId == nil {
-            validationMessage = String(localized: "Please select an account.")
-            showingValidationError = true
-            return false
-        }
-        return true
-    }
-}
-
 // MARK: - View
 
 struct TransactionCreateView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var viewModel = TransactionCreateViewModel()
+    @State private var viewModel: TransactionCreateViewModel
+
+    init(viewModel: TransactionCreateViewModel = TransactionCreateViewModel(
+        transactionRepository: MockTransactionRepository(),
+        accountRepository: MockAccountRepository()
+    )) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         NavigationStack {
@@ -167,6 +49,7 @@ struct TransactionCreateView: View {
             } message: {
                 Text(viewModel.validationMessage)
             }
+            .task { await viewModel.loadData() }
         }
     }
 
@@ -209,7 +92,7 @@ struct TransactionCreateView: View {
             VStack(spacing: 16) {
                 Text(String(localized: "What type of transaction?"))
                     .font(.title3).fontWeight(.semibold).padding(.top, 24)
-                ForEach(TransactionCreateViewModel.TransactionType.allCases, id: \.rawValue) { type in
+                ForEach(TransactionTypeUI.allCases, id: \.rawValue) { type in
                     Button {
                         viewModel.transactionType = type
                     } label: {
@@ -357,4 +240,9 @@ struct TransactionCreateView: View {
     }
 }
 
-#Preview { TransactionCreateView() }
+#Preview {
+    TransactionCreateView(viewModel: TransactionCreateViewModel(
+        transactionRepository: MockTransactionRepository(),
+        accountRepository: MockAccountRepository()
+    ))
+}

@@ -8,77 +8,18 @@
 
 import SwiftUI
 
-// MARK: - View Model
-
-@Observable
-@MainActor
-final class DashboardViewModel {
-    var netWorth: Int64 = 0
-    var monthlyIncome: Int64 = 0
-    var monthlyExpenses: Int64 = 0
-    var budgetSummaries: [BudgetSummaryItem] = []
-    var recentTransactions: [TransactionItem] = []
-    var isLoading = false
-    var currencyCode: String = "USD"
-
-    struct BudgetSummaryItem: Identifiable, Sendable {
-        let id: String
-        let name: String
-        let spentMinorUnits: Int64
-        let limitMinorUnits: Int64
-        let currencyCode: String
-
-        var progress: Double {
-            guard limitMinorUnits > 0 else { return 0 }
-            return Double(spentMinorUnits) / Double(limitMinorUnits)
-        }
-
-        var progressColor: Color {
-            if progress >= 1.0 { return .red }
-            if progress >= 0.75 { return .orange }
-            return .green
-        }
-    }
-
-    struct TransactionItem: Identifiable, Sendable {
-        let id: String
-        let payee: String
-        let category: String
-        let amountMinorUnits: Int64
-        let currencyCode: String
-        let date: Date
-        let isExpense: Bool
-    }
-
-    func loadDashboard() async {
-        isLoading = true
-        defer { isLoading = false }
-
-        // TODO: Replace with KMP shared logic calls via Swift Export bridge
-        netWorth = 42_750_00
-        monthlyIncome = 8_500_00
-        monthlyExpenses = 5_230_00
-        currencyCode = "USD"
-
-        budgetSummaries = [
-            BudgetSummaryItem(id: "1", name: String(localized: "Groceries"), spentMinorUnits: 320_00, limitMinorUnits: 500_00, currencyCode: "USD"),
-            BudgetSummaryItem(id: "2", name: String(localized: "Dining Out"), spentMinorUnits: 180_00, limitMinorUnits: 200_00, currencyCode: "USD"),
-            BudgetSummaryItem(id: "3", name: String(localized: "Transport"), spentMinorUnits: 95_00, limitMinorUnits: 150_00, currencyCode: "USD"),
-            BudgetSummaryItem(id: "4", name: String(localized: "Entertainment"), spentMinorUnits: 210_00, limitMinorUnits: 200_00, currencyCode: "USD"),
-        ]
-
-        recentTransactions = [
-            TransactionItem(id: "t1", payee: "Whole Foods", category: String(localized: "Groceries"), amountMinorUnits: -85_40, currencyCode: "USD", date: .now, isExpense: true),
-            TransactionItem(id: "t2", payee: "Payroll", category: String(localized: "Income"), amountMinorUnits: 4_250_00, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -1, to: .now)!, isExpense: false),
-            TransactionItem(id: "t3", payee: "Netflix", category: String(localized: "Entertainment"), amountMinorUnits: -15_99, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -2, to: .now)!, isExpense: true),
-        ]
-    }
-}
-
 // MARK: - View
 
 struct DashboardView: View {
-    @State private var viewModel = DashboardViewModel()
+    @State private var viewModel: DashboardViewModel
+
+    init(viewModel: DashboardViewModel = DashboardViewModel(
+        accountRepository: MockAccountRepository(),
+        transactionRepository: MockTransactionRepository(),
+        budgetRepository: MockBudgetRepository()
+    )) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         NavigationStack {
@@ -155,7 +96,7 @@ struct DashboardView: View {
             Text(String(localized: "Budget Health")).font(.headline)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 16) {
-                    ForEach(viewModel.budgetSummaries) { budget in
+                    ForEach(viewModel.budgets) { budget in
                         budgetHealthCard(budget)
                     }
                 }
@@ -164,7 +105,7 @@ struct DashboardView: View {
         }
     }
 
-    private func budgetHealthCard(_ budget: DashboardViewModel.BudgetSummaryItem) -> some View {
+    private func budgetHealthCard(_ budget: BudgetItem) -> some View {
         VStack(spacing: 8) {
             ProgressRing(progress: budget.progress, lineWidth: 6, progressColor: budget.progressColor, size: 60)
             Text(budget.name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
@@ -213,7 +154,7 @@ struct DashboardView: View {
         }
     }
 
-    private func transactionRow(_ transaction: DashboardViewModel.TransactionItem) -> some View {
+    private func transactionRow(_ transaction: TransactionItem) -> some View {
         HStack(spacing: 12) {
             Image(systemName: transaction.isExpense ? "arrow.up.right" : "arrow.down.left")
                 .font(.body)
@@ -233,4 +174,10 @@ struct DashboardView: View {
     }
 }
 
-#Preview { DashboardView() }
+#Preview {
+    DashboardView(viewModel: DashboardViewModel(
+        accountRepository: MockAccountRepository(),
+        transactionRepository: MockTransactionRepository(),
+        budgetRepository: MockBudgetRepository()
+    ))
+}
