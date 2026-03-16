@@ -249,11 +249,10 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       // Generate a magic-link token server-side (never sent to the user).
-      const { data: linkData, error: linkError } =
-        await supabaseAdmin.auth.admin.generateLink({
-          type: 'magiclink',
-          email: authUser.email,
-        });
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: authUser.email,
+      });
 
       if (linkError || !linkData?.properties?.hashed_token) {
         console.error('Failed to generate session link');
