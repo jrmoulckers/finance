@@ -30,6 +30,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { createLogger } from '../_shared/logger.ts';
 import { methodNotAllowedResponse, streamingResponse } from '../_shared/response.ts';
 
 // ---------------------------------------------------------------------------
@@ -168,6 +169,9 @@ serve(async (req: Request): Promise<Response> => {
     return handleCorsPreflightRequest(req);
   }
 
+  const logger = createLogger('data-export');
+  logger.info('Request received', { method: req.method });
+
   if (req.method !== 'GET') {
     return methodNotAllowedResponse(req);
   }
@@ -186,6 +190,8 @@ serve(async (req: Request): Promise<Response> => {
       return response as Response;
     }
     userId = user.id;
+
+    logger.setUserId(user.id);
 
     const supabase = createAdminClient();
 
@@ -227,7 +233,7 @@ serve(async (req: Request): Promise<Response> => {
 
     if (rateLimitError) {
       // Log but don't block the request if rate-limit check fails
-      console.error('Rate limit query failed:', rateLimitError.message);
+      logger.error('Rate limit query failed', { errorMessage: rateLimitError.message });
     } else if ((recentExportCount ?? 0) >= RATE_LIMIT_MAX) {
       return exportErrorResponse(
         req,
@@ -247,7 +253,7 @@ serve(async (req: Request): Promise<Response> => {
       .is('deleted_at', null);
 
     if (memberError) {
-      console.error('Failed to fetch memberships:', memberError.message);
+      logger.error('Failed to fetch memberships', { errorMessage: memberError.message });
       return exportErrorResponse(req, 'INTERNAL_ERROR', 'An unexpected error occurred.', 500);
     }
 
@@ -274,7 +280,7 @@ serve(async (req: Request): Promise<Response> => {
       const { data, error } = await query;
 
       if (error) {
-        console.error(`Failed to export ${table.name}:`, error.message);
+        logger.error(`Failed to export ${table.name}`, { errorMessage: error.message });
         exportData[table.name] = [];
         continue;
       }
@@ -316,6 +322,17 @@ serve(async (req: Request): Promise<Response> => {
     // ------------------------------------------------------------------
     // Build and stream the response
     // ------------------------------------------------------------------
+    const totalRecords = Object.values(exportData).reduce(
+      (sum, records) => sum + records.length,
+      0,
+    );
+    logger.info('Data export completed', {
+      httpStatus: 200,
+      format: exportFormat,
+      tablesExported: Object.keys(exportData).length,
+      totalRecords,
+    });
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
     if (exportFormat === 'csv') {
@@ -384,7 +401,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
   } catch (err) {
-    console.error('Data export error:', (err as Error).message);
+    logger.error('Data export error', { errorMessage: (err as Error).message });
 
     // Best-effort: log the failure to the audit table
     if (userId) {

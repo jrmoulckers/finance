@@ -26,6 +26,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { createLogger } from '../_shared/logger.ts';
 import {
   errorResponse,
   internalErrorResponse,
@@ -49,6 +50,9 @@ serve(async (req: Request): Promise<Response> => {
     return handleCorsPreflightRequest(req);
   }
 
+  const logger = createLogger('account-deletion');
+  logger.info('Request received', { method: req.method });
+
   if (req.method !== 'DELETE') {
     return methodNotAllowedResponse(req);
   }
@@ -62,6 +66,9 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const supabase = createAdminClient();
+
+    logger.setUserId(user.id);
+    logger.info('Account deletion requested');
 
     // Parse request body for confirmation
     let body: Record<string, unknown> = {};
@@ -108,7 +115,7 @@ serve(async (req: Request): Promise<Response> => {
       .is('deleted_at', null);
 
     if (memberError) {
-      console.error('Failed to fetch memberships:', memberError.message);
+      logger.error('Failed to fetch memberships', { errorMessage: memberError.message });
       return internalErrorResponse(req);
     }
 
@@ -201,7 +208,7 @@ serve(async (req: Request): Promise<Response> => {
       .eq('id', user.id);
 
     if (userDeleteError) {
-      console.error('Failed to soft-delete user:', userDeleteError.message);
+      logger.error('Failed to soft-delete user', { errorMessage: userDeleteError.message });
       return internalErrorResponse(req);
     }
 
@@ -228,12 +235,20 @@ serve(async (req: Request): Promise<Response> => {
       await supabase.auth.admin.deleteUser(user.id);
     } catch (authErr) {
       // Log but don't fail — the user data is already deleted
-      console.error('Failed to delete auth user (non-fatal):', (authErr as Error).message);
+      logger.error('Failed to delete auth user (non-fatal)', {
+        errorMessage: (authErr as Error).message,
+      });
     }
 
     // ===================================================================
     // Step 9: Return deletion certificate
     // ===================================================================
+    logger.info('Account deletion completed', {
+      httpStatus: 200,
+      householdsAffected: householdIds.length,
+      keysShredded: shreddedKeys.length,
+    });
+
     return jsonResponse(req, {
       deletion_certificate: {
         certificate_id: certificateId,
@@ -251,7 +266,7 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
   } catch (err) {
-    console.error('Account deletion error:', (err as Error).message);
+    logger.error('Account deletion error', { errorMessage: (err as Error).message });
     return internalErrorResponse(req);
   }
 });

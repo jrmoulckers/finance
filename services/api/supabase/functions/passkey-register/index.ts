@@ -24,6 +24,7 @@ import {
   verifyRegistrationResponse,
 } from 'https://esm.sh/@simplewebauthn/server@9.0.3';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { createLogger } from '../_shared/logger.ts';
 import type {
   GenerateRegistrationOptionsOpts,
   VerifiedRegistrationResponse,
@@ -59,7 +60,11 @@ serve(async (req: Request): Promise<Response> => {
     return handleCorsPreflightRequest(req);
   }
 
+  const logger = createLogger('passkey-register');
+  logger.info('Request received', { method: req.method });
+
   if (req.method !== 'POST') {
+    logger.warn('Method not allowed', { method: req.method, httpStatus: 405 });
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
@@ -69,14 +74,19 @@ serve(async (req: Request): Promise<Response> => {
   // Authenticate user
   const user = await getAuthenticatedUser(req);
   if (!user) {
+    logger.warn('Authentication failed', { httpStatus: 401 });
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 
+  logger.setUserId(user.id);
+
   const url = new URL(req.url);
   const step = url.searchParams.get('step');
+
+  logger.info('Processing registration step', { step: step ?? 'unknown' });
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -129,6 +139,8 @@ serve(async (req: Request): Promise<Response> => {
         type: 'registration',
         expires_at: challengeExpiry.toISOString(),
       });
+
+      logger.info('Registration options generated', { httpStatus: 200 });
 
       return new Response(JSON.stringify(registrationOptions), {
         status: 200,
@@ -188,7 +200,7 @@ serve(async (req: Request): Promise<Response> => {
       });
 
       if (insertError) {
-        console.error('Failed to store credential:', insertError.message);
+        logger.error('Failed to store credential', { errorMessage: insertError.message });
         return new Response(JSON.stringify({ error: 'Failed to store credential' }), {
           status: 500,
           headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
@@ -197,6 +209,11 @@ serve(async (req: Request): Promise<Response> => {
 
       // Clean up used challenge
       await supabaseAdmin.from('webauthn_challenges').delete().eq('id', challenges[0].id);
+
+      logger.info('Passkey registration verified', {
+        httpStatus: 201,
+        deviceType: credentialDeviceType,
+      });
 
       return new Response(
         JSON.stringify({
@@ -221,7 +238,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
   } catch (err) {
-    console.error('Passkey registration error:', (err as Error).message);
+    logger.error('Passkey registration error', { errorMessage: (err as Error).message });
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },

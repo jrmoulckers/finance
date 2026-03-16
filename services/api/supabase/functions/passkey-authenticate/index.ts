@@ -28,6 +28,7 @@ import {
   verifyAuthenticationResponse,
 } from 'https://esm.sh/@simplewebauthn/server@9.0.3';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { createLogger } from '../_shared/logger.ts';
 import { errorResponse, internalErrorResponse, jsonResponse } from '../_shared/response.ts';
 import type {
   AuthenticatorTransportFuture,
@@ -66,7 +67,11 @@ serve(async (req: Request): Promise<Response> => {
     return handleCorsPreflightRequest(req);
   }
 
+  const logger = createLogger('passkey-authenticate');
+  logger.info('Request received', { method: req.method });
+
   if (req.method !== 'POST') {
+    logger.warn('Method not allowed', { method: req.method, httpStatus: 405 });
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
@@ -84,6 +89,8 @@ serve(async (req: Request): Promise<Response> => {
 
   const url = new URL(req.url);
   const step = url.searchParams.get('step');
+
+  logger.info('Processing authentication step', { step: step ?? 'unknown' });
 
   try {
     if (step === 'options') {
@@ -144,6 +151,8 @@ serve(async (req: Request): Promise<Response> => {
         expires_at: challengeExpiry.toISOString(),
         user_id: resolvedUserId,
       });
+
+      logger.info('Authentication options generated', { httpStatus: 200 });
 
       return new Response(JSON.stringify(authenticationOptions), {
         status: 200,
@@ -244,7 +253,9 @@ serve(async (req: Request): Promise<Response> => {
       } = await supabaseAdmin.auth.admin.getUserById(credential.user_id);
 
       if (userError || !authUser?.email) {
-        console.error('Failed to resolve auth user for session');
+        logger.error('Failed to resolve auth user for session', {
+          errorMessage: userError?.message ?? 'Auth user missing email',
+        });
         return internalErrorResponse(req);
       }
 
@@ -255,7 +266,9 @@ serve(async (req: Request): Promise<Response> => {
       });
 
       if (linkError || !linkData?.properties?.hashed_token) {
-        console.error('Failed to generate session link');
+        logger.error('Failed to generate session link', {
+          errorMessage: linkError?.message ?? 'Missing hashed token',
+        });
         return internalErrorResponse(req);
       }
 
@@ -269,9 +282,14 @@ serve(async (req: Request): Promise<Response> => {
       });
 
       if (sessionError || !session) {
-        console.error('Failed to mint session from OTP exchange');
+        logger.error('Failed to mint session from OTP exchange', {
+          errorMessage: sessionError?.message ?? 'Session missing after OTP exchange',
+        });
         return internalErrorResponse(req);
       }
+
+      logger.setUserId(credential.user_id);
+      logger.info('Passkey authentication successful', { httpStatus: 200 });
 
       // Return a standard Supabase session payload — clients can use
       // supabase.auth.setSession() with these tokens.
@@ -299,7 +317,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
   } catch (err) {
-    console.error('Passkey authentication error:', (err as Error).message);
+    logger.error('Passkey authentication error', { errorMessage: (err as Error).message });
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
