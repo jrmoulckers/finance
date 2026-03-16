@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useMemo, useState } from 'react';
+
 import {
   ConfirmDialog,
   CurrencyDisplay,
@@ -83,6 +84,11 @@ export const TransactionsPage: React.FC = () => {
     setIsFormOpen(true);
   }, []);
 
+  const handleEditTransaction = useCallback((transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setIsFormOpen(true);
+  }, []);
+
   const handleFormCancel = useCallback(() => {
     setIsFormOpen(false);
     setEditingTransaction(null);
@@ -95,7 +101,6 @@ export const TransactionsPage: React.FC = () => {
         if (result === null) {
           throw new Error('Failed to update transaction. Please try again.');
         }
-        setEditingTransaction(null);
       } else {
         const result = createTransaction(data);
         if (result === null) {
@@ -103,10 +108,16 @@ export const TransactionsPage: React.FC = () => {
         }
       }
 
-      setIsFormOpen(false);
+      handleFormCancel();
       refreshTransactions();
     },
-    [createTransaction, editingTransaction, refreshTransactions, updateTransaction],
+    [
+      createTransaction,
+      editingTransaction,
+      handleFormCancel,
+      refreshTransactions,
+      updateTransaction,
+    ],
   );
 
   const handleDeleteConfirm = useCallback(() => {
@@ -114,9 +125,11 @@ export const TransactionsPage: React.FC = () => {
       return;
     }
 
-    deleteTransaction(deletingTransaction.id);
-    setDeletingTransaction(null);
-    refreshTransactions();
+    const deleted = deleteTransaction(deletingTransaction.id);
+    if (deleted) {
+      setDeletingTransaction(null);
+      refreshTransactions();
+    }
   }, [deleteTransaction, deletingTransaction, refreshTransactions]);
 
   const categoryFilters = useMemo(
@@ -261,10 +274,7 @@ export const TransactionsPage: React.FC = () => {
                             <button
                               type="button"
                               className="icon-button transaction-item__action"
-                              onClick={() => {
-                                setEditingTransaction(transaction);
-                                setIsFormOpen(true);
-                              }}
+                              onClick={() => handleEditTransaction(transaction)}
                               aria-label={`Edit ${transactionLabel}`}
                             >
                               <span aria-hidden="true">✏️</span>
@@ -299,7 +309,13 @@ export const TransactionsPage: React.FC = () => {
       <ConfirmDialog
         isOpen={deletingTransaction !== null}
         title="Delete Transaction"
-        message={`Are you sure you want to delete "${deletingTransaction ? getTransactionLabel(deletingTransaction) : 'this transaction'}"?`}
+        message={
+          deletingTransaction !== null
+            ? `Are you sure you want to delete "${getTransactionLabel(deletingTransaction)}"?`
+            : ''
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeletingTransaction(null)}
       />

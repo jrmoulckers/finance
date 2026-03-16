@@ -8,3 +8,4 @@ export { useGoals } from './useGoals';
 export { useCategories } from './useCategories';
 export { useDashboardData } from './useDashboardData';
 export { useOfflineStatus } from './useOfflineStatus';
+export { useMutationQueue } from './useMutationQueue';

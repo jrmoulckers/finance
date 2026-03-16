@@ -17,7 +17,15 @@
  */
 
 /// <reference lib="webworker" />
+
 declare const self: ServiceWorkerGlobalScope;
+
+import {
+  dequeueMutations,
+  getQueueSize,
+  removeMutation,
+  updateMutationRetryCount,
+} from '../db/mutation-queue';
 
 // ---------------------------------------------------------------------------
 // Cache configuration
@@ -32,6 +40,10 @@ const API_CACHE = `finance-api-${CACHE_VERSION}`;
 
 /** Sync tag used for Background Sync registration. */
 const SYNC_TAG = 'finance-offline-mutations';
+const MAX_MUTATION_RETRIES = 3;
+const MUTATION_SYNC_ENDPOINT = '/api/sync/mutations';
+
+let isReplayingMutations = false;
 
 /**
  * App-shell resources to pre-cache during installation.
@@ -132,10 +144,14 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   if (event.data?.type === 'REGISTER_SYNC') {
     event.waitUntil(
       self.registration.sync.register(SYNC_TAG).catch(() => {
-        // Background Sync not supported ΓÇö the main thread will
-        // retry via online/offline listeners instead.
+        // Background Sync not supported — replay immediately instead.
+        return replayOfflineMutations();
       }),
     );
+  }
+
+  if (event.data?.type === 'REPLAY_MUTATIONS') {
+    event.waitUntil(replayOfflineMutations());
   }
 
   if (event.data?.type === 'SKIP_WAITING') {
@@ -215,17 +231,99 @@ function isStaticAsset(pathname: string): boolean {
   return STATIC_EXTENSIONS.test(pathname);
 }
 
-/**
- * Replay queued offline mutations.
- *
- * NOTE: The actual IndexedDB queue implementation lives in the app
- * layer.  This stub is the service-worker-side consumer and will be
- * wired up once the sync engine is integrated.
- */
-async function replayOfflineMutations(): Promise<void> {
-  // TODO: Wire up to the sync engine's IndexedDB mutation queue (#95)
-  return Promise.resolve();
+/* eslint-disable no-console -- replay attempts must be logged for offline diagnostics. */
+type MutationReplayMessage =
+  | { type: 'MUTATION_REPLAY_STARTED' }
+  | {
+      type: 'MUTATION_REPLAY_FINISHED';
+      queueSize: number;
+      succeeded: number;
+      failed: number;
+    };
+
+async function broadcastMutationReplayMessage(message: MutationReplayMessage): Promise<void> {
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const client of clients) {
+    client.postMessage(message);
+  }
 }
+
+/** Replay queued offline mutations against the placeholder sync API. */
+async function replayOfflineMutations(): Promise<void> {
+  if (isReplayingMutations) {
+    console.info('[finance-sw] Offline mutation replay already in progress.');
+    return;
+  }
+
+  isReplayingMutations = true;
+  let succeeded = 0;
+  let failed = 0;
+
+  await broadcastMutationReplayMessage({ type: 'MUTATION_REPLAY_STARTED' });
+
+  try {
+    const queuedMutations = await dequeueMutations();
+
+    if (queuedMutations.length === 0) {
+      console.info('[finance-sw] No queued offline mutations to replay.');
+      return;
+    }
+
+    for (const mutation of queuedMutations) {
+      try {
+        const response = await fetch(MUTATION_SYNC_ENDPOINT, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(mutation),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Mutation replay failed with status ${response.status}.`);
+        }
+
+        await removeMutation(mutation.id);
+        succeeded += 1;
+      } catch (error) {
+        const nextRetryCount = mutation.retryCount + 1;
+        failed += 1;
+
+        if (nextRetryCount >= MAX_MUTATION_RETRIES) {
+          await removeMutation(mutation.id);
+          console.error(
+            `[finance-sw] Giving up on queued ${mutation.entity} ${mutation.type} mutation ${mutation.id} after ${nextRetryCount} attempts.`,
+            error,
+          );
+          continue;
+        }
+
+        await updateMutationRetryCount(mutation.id, nextRetryCount);
+        console.warn(
+          `[finance-sw] Failed to replay queued ${mutation.entity} ${mutation.type} mutation ${mutation.id}; retry ${nextRetryCount}/${MAX_MUTATION_RETRIES}.`,
+          error,
+        );
+      }
+    }
+
+    console.info(
+      `[finance-sw] Offline mutation replay finished. Succeeded: ${succeeded}, failed: ${failed}, remaining: ${await getQueueSize()}.`,
+    );
+  } catch (error) {
+    console.error('[finance-sw] Unexpected error while replaying offline mutations.', error);
+  } finally {
+    const queueSize = await getQueueSize().catch(() => 0);
+    isReplayingMutations = false;
+    await broadcastMutationReplayMessage({
+      type: 'MUTATION_REPLAY_FINISHED',
+      queueSize,
+      succeeded,
+      failed,
+    });
+  }
+}
+/* eslint-enable no-console */
 
 // ---------------------------------------------------------------------------
 // TypeScript SyncEvent augmentation (not yet in lib.webworker.d.ts)
