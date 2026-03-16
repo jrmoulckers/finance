@@ -14,9 +14,9 @@ struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
 
     init(viewModel: DashboardViewModel = DashboardViewModel(
-        accountRepository: MockAccountRepository(),
-        transactionRepository: MockTransactionRepository(),
-        budgetRepository: MockBudgetRepository()
+        accountRepository: RepositoryProvider.shared.accounts,
+        transactionRepository: RepositoryProvider.shared.transactions,
+        budgetRepository: RepositoryProvider.shared.budgets
     )) {
         _viewModel = State(initialValue: viewModel)
     }
@@ -180,4 +180,5 @@ struct DashboardView: View {
         transactionRepository: MockTransactionRepository(),
         budgetRepository: MockBudgetRepository()
     ))
+    .environment(BiometricAuthManager())
 }
