@@ -12,7 +12,9 @@ import SwiftUI
 struct TransactionsView: View {
     @State private var viewModel: TransactionsViewModel
 
-    init(viewModel: TransactionsViewModel = TransactionsViewModel(repository: KMPTransactionRepository())) {
+    init(viewModel: TransactionsViewModel = TransactionsViewModel(
+        repository: RepositoryProvider.shared.transactions
+    )) {
         _viewModel = State(initialValue: viewModel)
     }
 
@@ -130,4 +132,7 @@ struct TransactionsView: View {
     }
 }
 
-#Preview { TransactionsView(viewModel: TransactionsViewModel(repository: MockTransactionRepository())) }
+#Preview {
+    TransactionsView(viewModel: TransactionsViewModel(repository: MockTransactionRepository()))
+        .environment(BiometricAuthManager())
+}
