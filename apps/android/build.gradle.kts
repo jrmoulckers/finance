@@ -26,6 +26,14 @@ android {
             "POWERSYNC_URL",
             "\"${project.findProperty("POWERSYNC_URL") ?: "https://placeholder.powersync.journeyapps.com"}\"",
         )
+
+        // Supabase project URL — override via gradle.properties or CI environment.
+        // e.g. -PSUPABASE_URL=https://your-project.supabase.co
+        buildConfigField(
+            "String",
+            "SUPABASE_URL",
+            "\"${project.findProperty("SUPABASE_URL") ?: "https://placeholder.supabase.co"}\"",
+        )
     }
 
     buildFeatures {
@@ -98,6 +106,22 @@ dependencies {
     // Security & Biometric
     implementation(libs.biometric)
     implementation(libs.security.crypto)
+
+    // Credential Manager — passkey authentication
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services.auth)
+
+    // Custom Tabs — OAuth browser flow
+    implementation(libs.browser)
+
+    // HTTP client — Supabase Auth API calls
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.json)
+
+    // JSON parsing for auth responses
+    implementation(libs.kotlinx.serialization.json)
 
     // WorkManager — scheduled notifications
     implementation(libs.work.runtime)
