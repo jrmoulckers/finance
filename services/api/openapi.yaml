@@ -6,7 +6,7 @@
 #
 # See: services/api/docs/README.md for usage instructions.
 
-openapi: "3.0.3"
+openapi: '3.0.3'
 
 info:
   title: Finance — Supabase Edge Functions API
@@ -87,7 +87,7 @@ components:
           type: string
           description: Human-readable error message.
       example:
-        error: "Method not allowed"
+        error: 'Method not allowed'
 
     StructuredError:
       type: object
@@ -105,7 +105,7 @@ components:
               description: Human-readable error message.
       example:
         error:
-          code: "INVALID_FORMAT"
+          code: 'INVALID_FORMAT'
           message: 'Export format must be "json" or "csv". Use ?format=json or ?format=csv.'
 
     # -- Health Check ---------------------------------------------------------
@@ -138,11 +138,11 @@ components:
           description: API version string.
       example:
         status: healthy
-        timestamp: "2025-07-15T10:30:00.000Z"
+        timestamp: '2025-07-15T10:30:00.000Z'
         services:
           database: connected
           auth: operational
-        version: "1.0.0"
+        version: '1.0.0'
 
     # -- Auth Webhook ---------------------------------------------------------
     AuthWebhookPayload:
@@ -202,7 +202,7 @@ components:
         user_id:
           type: string
           format: uuid
-          example: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+          example: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
 
     AuthWebhookIgnoredResponse:
       type: object
@@ -244,7 +244,7 @@ components:
         challenge:
           type: string
           description: Base64url-encoded challenge.
-          example: "dGhpcyBpcyBhIHNhbXBsZSBjaGFsbGVuZ2U"
+          example: 'dGhpcyBpcyBhIHNhbXBsZSBjaGFsbGVuZ2U'
         pubKeyCredParams:
           type: array
           items:
@@ -296,7 +296,7 @@ components:
         credential_id:
           type: string
           description: Base64url-encoded credential ID.
-          example: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+          example: 'Y3JlZGVudGlhbC1pZC1leGFtcGxl'
         device_type:
           type: string
           description: Authenticator device type.
@@ -312,7 +312,7 @@ components:
         challenge:
           type: string
           description: Base64url-encoded challenge.
-          example: "dGhpcyBpcyBhIHNhbXBsZSBjaGFsbGVuZ2U"
+          example: 'dGhpcyBpcyBhIHNhbXBsZSBjaGFsbGVuZ2U'
         timeout:
           type: integer
           example: 60000
@@ -349,10 +349,10 @@ components:
           type: string
           format: uuid
           description: The authenticated user's UUID.
-          example: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+          example: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
         message:
           type: string
-          example: "Passkey authentication successful. Exchange for session."
+          example: 'Passkey authentication successful. Exchange for session.'
 
     # -- Household Invite -----------------------------------------------------
     HouseholdInviteCreateRequest:
@@ -363,7 +363,7 @@ components:
           type: string
           format: uuid
           description: The household to invite the user to.
-          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
         invited_email:
           type: string
           format: email
@@ -391,22 +391,22 @@ components:
         id:
           type: string
           format: uuid
-          example: "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"
+          example: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e'
         invite_code:
           type: string
           description: >-
             Cryptographically random 24-character uppercase invite code.
-          example: "01A2B3C4D5E6F7G8H9I0J1K2"
+          example: '01A2B3C4D5E6F7G8H9I0J1K2'
         expires_at:
           type: string
           format: date-time
-          example: "2025-07-18T10:30:00.000Z"
+          example: '2025-07-18T10:30:00.000Z'
         role:
           type: string
           example: member
         household_name:
           type: string
-          example: "Smith Family"
+          example: 'Smith Family'
 
     HouseholdInviteValidateResponse:
       type: object
@@ -418,17 +418,17 @@ components:
         household_id:
           type: string
           format: uuid
-          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
         household_name:
           type: string
-          example: "Smith Family"
+          example: 'Smith Family'
         role:
           type: string
           example: member
         expires_at:
           type: string
           format: date-time
-          example: "2025-07-18T10:30:00.000Z"
+          example: '2025-07-18T10:30:00.000Z'
 
     HouseholdInviteAcceptRequest:
       type: object
@@ -437,7 +437,7 @@ components:
         invite_code:
           type: string
           description: Invite code received from the household owner.
-          example: "01A2B3C4D5E6F7G8H9I0J1K2"
+          example: '01A2B3C4D5E6F7G8H9I0J1K2'
 
     HouseholdInviteAcceptResponse:
       type: object
@@ -449,10 +449,10 @@ components:
         household_id:
           type: string
           format: uuid
-          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+          example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
         household_name:
           type: string
-          example: "Smith Family"
+          example: 'Smith Family'
         role:
           type: string
           example: member
@@ -493,7 +493,7 @@ components:
             certificate_id:
               type: string
               description: Unique deletion certificate identifier.
-              example: "cert-m1abc2d-0011aabb22cc33dd44ee55ff"
+              example: 'cert-m1abc2d-0011aabb22cc33dd44ee55ff'
             subject_type:
               type: string
               enum: [USER]
@@ -501,11 +501,11 @@ components:
             subject_id:
               type: string
               format: uuid
-              example: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+              example: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
             deleted_at:
               type: string
               format: date-time
-              example: "2025-07-15T10:30:00.000Z"
+              example: '2025-07-15T10:30:00.000Z'
             households_affected:
               type: integer
               example: 2
@@ -517,9 +517,9 @@ components:
               items:
                 type: string
               example:
-                - "shredded:household:f47ac10b-58cc-4372-a567-0e02b2c3d479:m1abc2d"
-                - "revoked:user-key:b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d3e:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d:m1abc2e"
-                - "shredded:user:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d:m1abc2f"
+                - 'shredded:household:f47ac10b-58cc-4372-a567-0e02b2c3d479:m1abc2d'
+                - 'revoked:user-key:b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d3e:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d:m1abc2e'
+                - 'shredded:user:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d:m1abc2f'
             verified:
               type: boolean
               example: true
@@ -539,14 +539,14 @@ components:
         export_date:
           type: string
           format: date-time
-          example: "2025-07-15T10:30:00.000Z"
+          example: '2025-07-15T10:30:00.000Z'
         user_id:
           type: string
           format: uuid
-          example: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+          example: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
         format_version:
           type: string
-          example: "1.0"
+          example: '1.0'
         data:
           type: object
           description: >-
@@ -624,40 +624,40 @@ paths:
       tags: [System]
       security: []
       responses:
-        "200":
+        '200':
           description: All services are healthy.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthCheckResponse"
+                $ref: '#/components/schemas/HealthCheckResponse'
               example:
                 status: healthy
-                timestamp: "2025-07-15T10:30:00.000Z"
+                timestamp: '2025-07-15T10:30:00.000Z'
                 services:
                   database: connected
                   auth: operational
-                version: "1.0.0"
-        "405":
+                version: '1.0.0'
+        '405':
           description: Method not allowed (non-GET request).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Method not allowed"
-        "503":
+                error: 'Method not allowed'
+        '503':
           description: One or more services are degraded.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthCheckResponse"
+                $ref: '#/components/schemas/HealthCheckResponse'
               example:
                 status: degraded
-                timestamp: "2025-07-15T10:30:00.000Z"
+                timestamp: '2025-07-15T10:30:00.000Z'
                 services:
                   database: unavailable
                   auth: operational
-                version: "1.0.0"
+                version: '1.0.0'
 
   # =========================================================================
   # Auth Webhook
@@ -682,54 +682,54 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AuthWebhookPayload"
+              $ref: '#/components/schemas/AuthWebhookPayload'
             example:
               type: INSERT
               table: users
               record:
-                id: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
                 email: user@example.com
                 raw_user_meta_data:
-                  full_name: "Jane Doe"
-                created_at: "2025-07-15T10:30:00.000Z"
+                  full_name: 'Jane Doe'
+                created_at: '2025-07-15T10:30:00.000Z'
               old_record: null
       responses:
-        "201":
+        '201':
           description: User provisioned successfully.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthWebhookCreatedResponse"
-        "200":
+                $ref: '#/components/schemas/AuthWebhookCreatedResponse'
+        '200':
           description: Event type other than INSERT — acknowledged and ignored.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthWebhookIgnoredResponse"
-        "401":
+                $ref: '#/components/schemas/AuthWebhookIgnoredResponse'
+        '401':
           description: Webhook secret missing or invalid.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
                 error: Unauthorized
-        "405":
+        '405':
           description: Method not allowed (non-POST request).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Method not allowed"
-        "500":
+                error: 'Method not allowed'
+        '500':
           description: Internal server error during user provisioning.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Internal server error"
+                error: 'Internal server error'
 
   # =========================================================================
   # Passkey Registration
@@ -775,77 +775,77 @@ paths:
                 WebAuthn `AuthenticatorAttestationResponse` —
                 shape defined by the Web Authentication specification.
             example:
-              id: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
-              rawId: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+              id: 'Y3JlZGVudGlhbC1pZC1leGFtcGxl'
+              rawId: 'Y3JlZGVudGlhbC1pZC1leGFtcGxl'
               response:
-                clientDataJSON: "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiZEdobGN5QnBjeUJoSUhOaGJYQnNaU0JqYUdGc2JHVnVaMlUiLCJvcmlnaW4iOiJodHRwczovL2FwcC5maW5hbmNlLmV4YW1wbGUuY29tIn0"
-                attestationObject: "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YQ"
-              type: "public-key"
+                clientDataJSON: 'eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiZEdobGN5QnBjeUJoSUhOaGJYQnNaU0JqYUdGc2JHVnVaMlUiLCJvcmlnaW4iOiJodHRwczovL2FwcC5maW5hbmNlLmV4YW1wbGUuY29tIn0'
+                attestationObject: 'o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YQ'
+              type: 'public-key'
               clientExtensionResults: {}
-              authenticatorAttachment: "platform"
+              authenticatorAttachment: 'platform'
       responses:
-        "200":
+        '200':
           description: >-
             Registration options generated (`?step=options`), or
             authentication options generated.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PasskeyRegistrationOptionsResponse"
-        "201":
+                $ref: '#/components/schemas/PasskeyRegistrationOptionsResponse'
+        '201':
           description: >-
             Credential verified and stored (`?step=verify`).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PasskeyRegistrationVerifyResponse"
+                $ref: '#/components/schemas/PasskeyRegistrationVerifyResponse'
               example:
                 verified: true
-                credential_id: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+                credential_id: 'Y3JlZGVudGlhbC1pZC1leGFtcGxl'
                 device_type: singleDevice
-        "400":
+        '400':
           description: >-
             Invalid step parameter, no valid challenge found, or
             registration verification failed.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               examples:
                 invalidStep:
                   summary: Missing or invalid step parameter
                   value:
-                    error: "Invalid step. Use ?step=options or ?step=verify"
+                    error: 'Invalid step. Use ?step=options or ?step=verify'
                 noChallenge:
                   summary: Challenge expired or not found
                   value:
-                    error: "No valid challenge found"
+                    error: 'No valid challenge found'
                 verificationFailed:
                   summary: Attestation verification failed
                   value:
-                    error: "Registration verification failed"
-        "401":
+                    error: 'Registration verification failed'
+        '401':
           description: Missing or invalid JWT.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
                 error: Unauthorized
-        "405":
+        '405':
           description: Method not allowed (non-POST request).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "500":
+                $ref: '#/components/schemas/Error'
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Internal server error"
+                error: 'Internal server error'
 
   # =========================================================================
   # Passkey Authentication
@@ -930,16 +930,16 @@ paths:
               verify:
                 summary: Authenticator assertion response
                 value:
-                  id: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
-                  rawId: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+                  id: 'Y3JlZGVudGlhbC1pZC1leGFtcGxl'
+                  rawId: 'Y3JlZGVudGlhbC1pZC1leGFtcGxl'
                   response:
-                    clientDataJSON: "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0In0"
-                    authenticatorData: "SZYN5YgOjGh0NBcPZHZgW4"
-                    signature: "MEUCIQDNrG..."
-                  type: "public-key"
+                    clientDataJSON: 'eyJ0eXBlIjoid2ViYXV0aG4uZ2V0In0'
+                    authenticatorData: 'SZYN5YgOjGh0NBcPZHZgW4'
+                    signature: 'MEUCIQDNrG...'
+                  type: 'public-key'
                   clientExtensionResults: {}
       responses:
-        "200":
+        '200':
           description: >-
             For `?step=options`: authentication options with challenge.
 
@@ -948,73 +948,73 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: "#/components/schemas/PasskeyAuthOptionsResponse"
-                  - $ref: "#/components/schemas/PasskeyAuthVerifyResponse"
+                  - $ref: '#/components/schemas/PasskeyAuthOptionsResponse'
+                  - $ref: '#/components/schemas/PasskeyAuthVerifyResponse'
               examples:
                 options:
                   summary: Authentication options response
                   value:
-                    challenge: "dGhpcyBpcyBhIHNhbXBsZSBjaGFsbGVuZ2U"
+                    challenge: 'dGhpcyBpcyBhIHNhbXBsZSBjaGFsbGVuZ2U'
                     timeout: 60000
                     rpId: finance.example.com
                     userVerification: preferred
                     allowCredentials:
-                      - id: "Y3JlZGVudGlhbC1pZC1leGFtcGxl"
+                      - id: 'Y3JlZGVudGlhbC1pZC1leGFtcGxl'
                         type: public-key
                         transports: [internal]
                 verified:
                   summary: Successful verification
                   value:
                     verified: true
-                    user_id: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
-                    message: "Passkey authentication successful. Exchange for session."
-        "400":
+                    user_id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
+                    message: 'Passkey authentication successful. Exchange for session.'
+        '400':
           description: >-
             Invalid step, missing credential ID, credential not found,
             or no valid challenge.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               examples:
                 invalidStep:
                   summary: Invalid step parameter
                   value:
-                    error: "Invalid step. Use ?step=options or ?step=verify"
+                    error: 'Invalid step. Use ?step=options or ?step=verify'
                 missingId:
                   summary: Missing credential ID in verify body
                   value:
-                    error: "Missing credential ID"
+                    error: 'Missing credential ID'
                 credentialNotFound:
                   summary: Credential not in database
                   value:
-                    error: "Credential not found"
+                    error: 'Credential not found'
                 noChallenge:
                   summary: Challenge expired or not found
                   value:
-                    error: "No valid challenge found"
-        "401":
+                    error: 'No valid challenge found'
+        '401':
           description: Authentication assertion verification failed.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Authentication verification failed"
-        "405":
+                error: 'Authentication verification failed'
+        '405':
           description: Method not allowed (non-POST request).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "500":
+                $ref: '#/components/schemas/Error'
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Internal server error"
+                error: 'Internal server error'
 
   # =========================================================================
   # Household Invite
@@ -1035,67 +1035,67 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/HouseholdInviteCreateRequest"
+              $ref: '#/components/schemas/HouseholdInviteCreateRequest'
             example:
-              household_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+              household_id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
               invited_email: friend@example.com
               role: member
               expires_in_hours: 72
       responses:
-        "201":
+        '201':
           description: Invitation created.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HouseholdInviteCreateResponse"
-        "400":
+                $ref: '#/components/schemas/HouseholdInviteCreateResponse'
+        '400':
           description: Missing required field (`household_id`).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "household_id is required"
-        "401":
+                error: 'household_id is required'
+        '401':
           description: Missing or invalid JWT.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Authentication required"
-        "403":
+                error: 'Authentication required'
+        '403':
           description: Authenticated user is not the household owner.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Only the household owner can create invitations"
-        "404":
+                error: 'Only the household owner can create invitations'
+        '404':
           description: Household not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Household not found"
-        "409":
+                error: 'Household not found'
+        '409':
           description: Invited user is already a household member.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "User is already a member of this household"
-        "500":
+                error: 'User is already a member of this household'
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Internal server error"
+                error: 'Internal server error'
 
     get:
       operationId: validateHouseholdInvite
@@ -1114,69 +1114,69 @@ paths:
           schema:
             type: string
           description: The invitation code to validate.
-          example: "01A2B3C4D5E6F7G8H9I0J1K2"
+          example: '01A2B3C4D5E6F7G8H9I0J1K2'
       responses:
-        "200":
+        '200':
           description: Invitation is valid.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HouseholdInviteValidateResponse"
-        "400":
+                $ref: '#/components/schemas/HouseholdInviteValidateResponse'
+        '400':
           description: Missing `code` query parameter.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "code query parameter is required"
-        "401":
+                error: 'code query parameter is required'
+        '401':
           description: Missing or invalid JWT.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Authentication required"
-        "403":
+                error: 'Authentication required'
+        '403':
           description: Invitation is restricted to a different email.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "This invitation is for a different email address"
-        "404":
+                error: 'This invitation is for a different email address'
+        '404':
           description: Invitation code not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Invalid invitation code"
-        "410":
+                error: 'Invalid invitation code'
+        '410':
           description: Invitation expired or already accepted.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               examples:
                 expired:
                   summary: Invitation expired
                   value:
-                    error: "This invitation has expired"
+                    error: 'This invitation has expired'
                 alreadyAccepted:
                   summary: Already accepted
                   value:
-                    error: "This invitation has already been accepted"
-        "500":
+                    error: 'This invitation has already been accepted'
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Internal server error"
+                error: 'Internal server error'
 
     put:
       operationId: acceptHouseholdInvite
@@ -1193,79 +1193,79 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/HouseholdInviteAcceptRequest"
+              $ref: '#/components/schemas/HouseholdInviteAcceptRequest'
             example:
-              invite_code: "01A2B3C4D5E6F7G8H9I0J1K2"
+              invite_code: '01A2B3C4D5E6F7G8H9I0J1K2'
       responses:
-        "200":
+        '200':
           description: Invitation accepted — user added to the household.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HouseholdInviteAcceptResponse"
-        "400":
+                $ref: '#/components/schemas/HouseholdInviteAcceptResponse'
+        '400':
           description: Missing `invite_code` in request body.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "invite_code is required"
-        "401":
+                error: 'invite_code is required'
+        '401':
           description: Missing or invalid JWT.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Authentication required"
-        "403":
+                error: 'Authentication required'
+        '403':
           description: Invitation is restricted to a different email.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "This invitation is for a different email address"
-        "404":
+                error: 'This invitation is for a different email address'
+        '404':
           description: Invitation code not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Invalid invitation code"
-        "409":
+                error: 'Invalid invitation code'
+        '409':
           description: User is already a member of the household.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "You are already a member of this household"
-        "410":
+                error: 'You are already a member of this household'
+        '410':
           description: Invitation expired or already accepted.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               examples:
                 expired:
                   summary: Invitation expired
                   value:
-                    error: "This invitation has expired"
+                    error: 'This invitation has expired'
                 alreadyAccepted:
                   summary: Already accepted
                   value:
-                    error: "This invitation has already been accepted"
-        "500":
+                    error: 'This invitation has already been accepted'
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Internal server error"
+                error: 'Internal server error'
 
   # =========================================================================
   # Account Deletion
@@ -1298,7 +1298,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AccountDeletionRequest"
+              $ref: '#/components/schemas/AccountDeletionRequest'
             examples:
               confirmBoolean:
                 summary: Confirm with boolean
@@ -1309,46 +1309,46 @@ paths:
                 value:
                   confirm: DELETE_MY_ACCOUNT
       responses:
-        "200":
+        '200':
           description: Account deleted — deletion certificate returned.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DeletionCertificate"
-        "400":
+                $ref: '#/components/schemas/DeletionCertificate'
+        '400':
           description: Missing or invalid confirmation.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
                 error: >-
                   Account deletion requires confirmation. Send
                   { "confirm": "DELETE_MY_ACCOUNT" } in the request body.
-        "401":
+        '401':
           description: Missing or invalid JWT.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Authentication required"
-        "405":
+                error: 'Authentication required'
+        '405':
           description: Method not allowed (non-DELETE request).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Method not allowed"
-        "500":
+                error: 'Method not allowed'
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Internal server error"
+                error: 'Internal server error'
 
   # =========================================================================
   # Data Export
@@ -1403,14 +1403,14 @@ paths:
             Export format.  Defaults to `json`.  Alternatively, set the
             `Accept` header to `text/csv` to receive CSV.
       responses:
-        "200":
+        '200':
           description: >-
             Data export file.  Delivered as a streaming download with
             `Content-Disposition: attachment`.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DataExportJsonResponse"
+                $ref: '#/components/schemas/DataExportJsonResponse'
             text/csv:
               schema:
                 type: string
@@ -1425,59 +1425,59 @@ paths:
                 Suggested filename, e.g.
                 `attachment; filename="finance-export-2025-07-15T10-30-00-000Z.json"`.
               example: 'attachment; filename="finance-export-2025-07-15T10-30-00-000Z.json"'
-        "400":
+        '400':
           description: Invalid export format.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StructuredError"
+                $ref: '#/components/schemas/StructuredError'
               example:
                 error:
                   code: INVALID_FORMAT
                   message: 'Export format must be "json" or "csv". Use ?format=json or ?format=csv.'
-        "401":
+        '401':
           description: Missing or invalid JWT.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Authentication required"
-        "405":
+                error: 'Authentication required'
+        '405':
           description: Method not allowed (non-GET request).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
               example:
-                error: "Method not allowed"
-        "413":
+                error: 'Method not allowed'
+        '413':
           description: Request entity too large (Content-Length exceeds 1 KB).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StructuredError"
+                $ref: '#/components/schemas/StructuredError'
               example:
                 error:
                   code: REQUEST_TOO_LARGE
-                  message: "Request exceeds maximum allowed size."
-        "429":
+                  message: 'Request exceeds maximum allowed size.'
+        '429':
           description: Rate limit exceeded (10 exports per hour).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StructuredError"
+                $ref: '#/components/schemas/StructuredError'
               example:
                 error:
                   code: RATE_LIMITED
-                  message: "Export limit exceeded. Maximum 10 exports per hour."
-        "500":
+                  message: 'Export limit exceeded. Maximum 10 exports per hour.'
+        '500':
           description: Internal server error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StructuredError"
+                $ref: '#/components/schemas/StructuredError'
               example:
                 error:
                   code: INTERNAL_ERROR
-                  message: "An unexpected error occurred."
+                  message: 'An unexpected error occurred.'
