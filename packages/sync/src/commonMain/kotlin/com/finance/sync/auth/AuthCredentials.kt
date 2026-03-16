@@ -2,6 +2,20 @@
 
 package com.finance.sync.auth
 
+import kotlinx.serialization.Serializable
+
+/**
+ * Supported OAuth 2.0 providers for federated sign-in.
+ */
+@Serializable
+enum class OAuthProvider {
+    /** Sign in with Google. */
+    GOOGLE,
+
+    /** Sign in with Apple. */
+    APPLE,
+}
+
 /**
  * Sealed hierarchy of credential types for authentication (#70, #71).
  *
@@ -9,6 +23,7 @@ package com.finance.sync.auth
  * with Supabase Auth. The [AuthManager] implementation maps these to
  * the appropriate Supabase Auth API call.
  */
+@Serializable
 sealed class AuthCredentials {
 
     /**
@@ -17,6 +32,7 @@ sealed class AuthCredentials {
      * @property email    User's email address.
      * @property password User's password (plaintext — transmitted over TLS, never stored).
      */
+    @Serializable
     data class EmailPassword(
         val email: String,
         val password: String,
@@ -32,12 +48,13 @@ sealed class AuthCredentials {
      * authorization code plus the PKCE code verifier so the backend
      * can exchange them for tokens.
      *
-     * @property provider     OAuth provider identifier (e.g. "apple", "google").
+     * @property provider     OAuth provider identifier.
      * @property authCode     Authorization code returned by the provider.
      * @property codeVerifier PKCE code_verifier used when starting the flow.
      */
+    @Serializable
     data class OAuth(
-        val provider: String,
+        val provider: OAuthProvider,
         val authCode: String,
         val codeVerifier: String,
     ) : AuthCredentials() {
@@ -55,6 +72,7 @@ sealed class AuthCredentials {
      * @property credentialId  The credential identifier from the authenticator.
      * @property assertion     The signed assertion response (JSON-serialized).
      */
+    @Serializable
     data class Passkey(
         val credentialId: String,
         val assertion: String,
@@ -62,4 +80,18 @@ sealed class AuthCredentials {
         override fun toString(): String =
             "Passkey(credentialId=$credentialId, assertion=*****)"
     }
+
+    /**
+     * Refresh token sign-in.
+     *
+     * Used to obtain a new access token without user interaction when
+     * the current access token has expired but the refresh token is
+     * still valid.
+     *
+     * @property token The opaque refresh token.
+     */
+    @Serializable
+    data class RefreshToken(
+        val token: String,
+    ) : AuthCredentials()
 }

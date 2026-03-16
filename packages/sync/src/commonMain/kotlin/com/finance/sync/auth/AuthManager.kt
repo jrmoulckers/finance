@@ -44,9 +44,17 @@ interface AuthManager {
     val currentSession: StateFlow<AuthSession?>
 
     /**
+     * Observable stream of the current authentication state.
+     *
+     * Convenience flow derived from [currentSession] — emits `true`
+     * when a valid session exists, `false` otherwise.
+     */
+    val isAuthenticated: StateFlow<Boolean>
+
+    /**
      * Authenticate with the given [credentials].
      *
-     * Supports email/password, OAuth + PKCE, and passkey flows.
+     * Supports email/password, OAuth + PKCE, passkey, and refresh-token flows.
      * On success, stores tokens via [TokenManager] and updates
      * [currentSession].
      *
@@ -75,4 +83,17 @@ interface AuthManager {
      *         [Result.failure] if the refresh token is invalid.
      */
     suspend fun refreshToken(): Result<AuthSession>
+
+    /**
+     * Permanently delete the current user's account.
+     *
+     * This is a destructive operation that:
+     * 1. Deletes the user's account on the server
+     * 2. Clears all local tokens and cached data
+     * 3. Sets [currentSession] to `null`
+     *
+     * @return [Result.success] on successful deletion, or
+     *         [Result.failure] if the deletion failed (e.g. server error).
+     */
+    suspend fun deleteAccount(): Result<Unit>
 }

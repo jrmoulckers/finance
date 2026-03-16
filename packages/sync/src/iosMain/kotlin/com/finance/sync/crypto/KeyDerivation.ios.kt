@@ -2,87 +2,82 @@
 
 package com.finance.sync.crypto
 
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.convert
+import kotlinx.cinterop.reinterpret
+import kotlinx.cinterop.usePinned
+import platform.CoreCrypto.CCKeyDerivationPBKDF
+import platform.CoreCrypto.kCCPBKDF2
+import platform.CoreCrypto.kCCPRFHmacAlgSHA256
+import platform.CoreCrypto.kCCSuccess
+
 /**
- * iOS actual for [PlatformKeyDerivation].
+ * iOS actual for [PlatformKeyDerivation] using CommonCrypto's PBKDF2.
  *
- * Argon2id is not available through the Apple framework interop exposed to this
- * KMP module, so iOS uses PBKDF2-HMAC-SHA256 as a deterministic 32-byte fallback.
- * This keeps the iOS source set functional until a shared Argon2id binding lands.
+ * Derives a 256-bit key from a password and salt using PBKDF2-HMAC-SHA256.
+ * Uses 600,000 iterations per OWASP 2023 recommendations for PBKDF2-HMAC-SHA256.
+ *
+ * **Note:** The `expect` declaration documents Argon2id as the ideal KDF.
+ * iOS's CommonCrypto does not natively provide Argon2id, so we use PBKDF2
+ * with a high iteration count as the fallback. When a native Argon2id binding
+ * (e.g., via libsodium/Swift Crypto) is integrated, this implementation
+ * should be upgraded. The 600k-iteration PBKDF2 provides comparable
+ * resistance for the passphrase-based key derivation use case.
+ *
+ * @see <a href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html">OWASP Password Storage</a>
  */
 actual class PlatformKeyDerivation actual constructor() {
-    actual fun deriveKey(password: String, salt: ByteArray): ByteArray {
-        return pbkdf2HmacSha256(
-            password = password.encodeToByteArray(),
-            salt = salt,
-            iterations = PBKDF2_ITERATIONS,
-            outputLength = DERIVED_KEY_SIZE_BYTES,
-        )
+
+    companion object {
+        /** Derived key length in bytes (256 bits). */
+        private const val KEY_LENGTH = 32
+
+        /**
+         * PBKDF2 iteration count.
+         *
+         * 600,000 is the OWASP-recommended minimum for PBKDF2-HMAC-SHA256
+         * as of 2023. This provides adequate brute-force resistance for
+         * passphrase-derived keys on modern hardware.
+         */
+        private const val ITERATIONS = 600_000
     }
 
-    private fun pbkdf2HmacSha256(
-        password: ByteArray,
-        salt: ByteArray,
-        iterations: Int,
-        outputLength: Int,
-    ): ByteArray {
-        val blockCount = (outputLength + SHA256_DIGEST_SIZE - 1) / SHA256_DIGEST_SIZE
-        val derivedKey = ByteArray(blockCount * SHA256_DIGEST_SIZE)
+    /**
+     * Derive a 256-bit key from [password] and [salt] using PBKDF2-HMAC-SHA256.
+     *
+     * @param password The user-supplied passphrase.
+     * @param salt     A cryptographically-random salt (at least 16 bytes recommended).
+     * @return A 32-byte derived key.
+     * @throws IllegalArgumentException if [salt] is empty.
+     * @throws IllegalStateException if the native CCKeyDerivationPBKDF call fails.
+     */
+    actual fun deriveKey(password: String, salt: ByteArray): ByteArray {
+        require(salt.isNotEmpty()) { "Salt must not be empty" }
 
-        for (blockIndex in 1..blockCount) {
-            var u = hmacSha256(password, salt + intToBigEndian(blockIndex))
-            val accumulator = u.copyOf()
+        val derivedKey = ByteArray(KEY_LENGTH)
+        val passwordBytes = password.encodeToByteArray()
 
-            repeat(iterations - 1) {
-                u = hmacSha256(password, u)
-                for (byteIndex in accumulator.indices) {
-                    accumulator[byteIndex] =
-                        (accumulator[byteIndex].toInt() xor u[byteIndex].toInt()).toByte()
+        passwordBytes.usePinned { pinnedPassword ->
+            salt.usePinned { pinnedSalt ->
+                derivedKey.usePinned { pinnedKey ->
+                    val result = CCKeyDerivationPBKDF(
+                        kCCPBKDF2,
+                        pinnedPassword.addressOf(0).reinterpret(),
+                        passwordBytes.size.convert(),
+                        pinnedSalt.addressOf(0).reinterpret(),
+                        salt.size.convert(),
+                        kCCPRFHmacAlgSHA256,
+                        ITERATIONS.toUInt(),
+                        pinnedKey.addressOf(0).reinterpret(),
+                        KEY_LENGTH.convert(),
+                    )
+                    check(result == kCCSuccess) {
+                        "PBKDF2 key derivation failed with error code: $result"
+                    }
                 }
             }
-
-            accumulator.copyInto(
-                destination = derivedKey,
-                destinationOffset = (blockIndex - 1) * SHA256_DIGEST_SIZE,
-            )
         }
 
-        return derivedKey.copyOf(outputLength)
-    }
-
-    private fun hmacSha256(key: ByteArray, message: ByteArray): ByteArray {
-        val normalizedKey = if (key.size > HMAC_BLOCK_SIZE_BYTES) {
-            Sha256.digest(key)
-        } else {
-            key
-        }
-
-        val keyBlock = ByteArray(HMAC_BLOCK_SIZE_BYTES)
-        normalizedKey.copyInto(keyBlock)
-
-        val innerPad = ByteArray(HMAC_BLOCK_SIZE_BYTES) { index ->
-            (keyBlock[index].toInt() xor INNER_PAD_BYTE).toByte()
-        }
-        val outerPad = ByteArray(HMAC_BLOCK_SIZE_BYTES) { index ->
-            (keyBlock[index].toInt() xor OUTER_PAD_BYTE).toByte()
-        }
-
-        val innerHash = Sha256.digest(innerPad + message)
-        return Sha256.digest(outerPad + innerHash)
-    }
-
-    private fun intToBigEndian(value: Int): ByteArray = byteArrayOf(
-        (value ushr 24).toByte(),
-        (value ushr 16).toByte(),
-        (value ushr 8).toByte(),
-        value.toByte(),
-    )
-
-    private companion object {
-        const val PBKDF2_ITERATIONS: Int = 100_000
-        const val DERIVED_KEY_SIZE_BYTES: Int = 32
-        const val SHA256_DIGEST_SIZE: Int = 32
-        const val HMAC_BLOCK_SIZE_BYTES: Int = 64
-        const val INNER_PAD_BYTE: Int = 0x36
-        const val OUTER_PAD_BYTE: Int = 0x5C
+        return derivedKey
     }
 }

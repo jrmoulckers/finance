@@ -46,7 +46,7 @@ val syncModule = module {
     single<SequenceTracker> { InMemorySequenceTracker() }
 
     // ── Delta sync manager ──────────────────────────────────────────
-    single { DeltaSyncManager(get()) }
+    single { DeltaSyncManager(get(), get<SequenceTracker>(), get()) }
 
     // ── Token management ────────────────────────────────────────────
     single { TokenStorage() }

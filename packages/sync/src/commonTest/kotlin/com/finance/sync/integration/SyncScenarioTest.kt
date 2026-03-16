@@ -198,4 +198,157 @@ class SyncScenarioTest {
         val hasGap = harness.deviceB.detectSequenceGap()
         assertTrue(hasGap, "Device B should detect a sequence gap when sequence 2 is missing")
     }
+
+    // ── Multi-table sync ────────────────────────────────────────
+
+    @Test
+    fun test_multi_table_sync_transactions_accounts_categories() = runTest {
+        // Device A creates entities across three different tables
+        harness.deviceA.put(
+            entityType = "account",
+            entityId = "acc-001",
+            payload = """{"name":"Checking","balance_cents":500000}""",
+        )
+        harness.deviceA.put(
+            entityType = "category",
+            entityId = "cat-001",
+            payload = """{"name":"Groceries","icon":"cart"}""",
+        )
+        harness.deviceA.put(
+            entityType = "transaction",
+            entityId = "txn-001",
+            payload = """{"amount_cents":4200,"account_id":"acc-001","category_id":"cat-001","payee":"Supermarket"}""",
+        )
+        harness.deviceA.put(
+            entityType = "transaction",
+            entityId = "txn-002",
+            payload = """{"amount_cents":1500,"account_id":"acc-001","category_id":"cat-001","payee":"Corner Store"}""",
+        )
+
+        // Device B pulls all changes across all tables
+        val applied = harness.deviceB.pullRemoteChanges()
+
+        assertEquals(4, applied.size, "Device B should receive all 4 mutations across 3 tables")
+
+        // Verify each entity type is present in Device B's local DB
+        val accounts = harness.deviceB.database.getAll("account")
+        assertEquals(1, accounts.size, "Device B should have 1 account")
+        assertTrue(accounts[0].payload.contains("Checking"))
+
+        val categories = harness.deviceB.database.getAll("category")
+        assertEquals(1, categories.size, "Device B should have 1 category")
+        assertTrue(categories[0].payload.contains("Groceries"))
+
+        val transactions = harness.deviceB.database.getAll("transaction")
+        assertEquals(2, transactions.size, "Device B should have 2 transactions")
+    }
+
+    // ── Update after initial sync ───────────────────────────────
+
+    @Test
+    fun test_update_after_initial_sync_propagates() = runTest {
+        val testClock = TestClock()
+        val updateHarness = SyncIntegrationTestHarness(clock = testClock)
+
+        // Device A creates a transaction
+        updateHarness.deviceA.put(
+            entityType = "transaction",
+            entityId = "txn-update",
+            payload = """{"amount_cents":1000,"payee":"Original Payee"}""",
+        )
+
+        // Device B syncs it
+        updateHarness.deviceB.pullRemoteChanges()
+        val original = updateHarness.deviceB.database.get("transaction", "txn-update")
+        assertNotNull(original)
+        assertTrue(original.payload.contains("Original Payee"))
+
+        // Advance clock to ensure update has a later timestamp
+        testClock.advanceBy(1000)
+
+        // Device A updates the transaction
+        updateHarness.deviceA.put(
+            entityType = "transaction",
+            entityId = "txn-update",
+            payload = """{"amount_cents":2000,"payee":"Updated Payee"}""",
+            operation = MutationOperation.UPDATE,
+        )
+
+        // Device B pulls the update
+        val updates = updateHarness.deviceB.pullRemoteChanges()
+        assertEquals(1, updates.size, "Device B should receive the update")
+
+        val updated = updateHarness.deviceB.database.get("transaction", "txn-update")
+        assertNotNull(updated)
+        assertTrue(
+            updated.payload.contains("Updated Payee"),
+            "Device B should have the updated payee",
+        )
+    }
+
+    // ── Bi-directional sync ─────────────────────────────────────
+
+    @Test
+    fun test_bidirectional_sync_between_devices() = runTest {
+        // Device A creates a transaction
+        harness.deviceA.put(
+            entityType = "transaction",
+            entityId = "txn-from-a",
+            payload = """{"amount_cents":100,"payee":"From Device A"}""",
+        )
+
+        // Device B creates a different transaction
+        harness.deviceB.put(
+            entityType = "transaction",
+            entityId = "txn-from-b",
+            payload = """{"amount_cents":200,"payee":"From Device B"}""",
+        )
+
+        // Both pull changes
+        harness.deviceA.pullRemoteChanges()
+        harness.deviceB.pullRemoteChanges()
+
+        // Device A should now have both transactions
+        val aRecordFromB = harness.deviceA.database.get("transaction", "txn-from-b")
+        assertNotNull(aRecordFromB, "Device A should have Device B's transaction")
+        assertTrue(aRecordFromB.payload.contains("From Device B"))
+
+        // Device B should now have both transactions
+        val bRecordFromA = harness.deviceB.database.get("transaction", "txn-from-a")
+        assertNotNull(bRecordFromA, "Device B should have Device A's transaction")
+        assertTrue(bRecordFromA.payload.contains("From Device A"))
+    }
+
+    // ── Empty pull returns no changes ───────────────────────────
+
+    @Test
+    fun test_empty_pull_returns_no_changes() = runTest {
+        val applied = harness.deviceA.pullRemoteChanges()
+        assertEquals(0, applied.size, "Pull with no server changes should return empty list")
+    }
+
+    // ── Multiple records of same type ───────────────────────────
+
+    @Test
+    fun test_multiple_records_same_type_all_sync() = runTest {
+        // Device A creates 10 transactions
+        repeat(10) { i ->
+            harness.deviceA.put(
+                entityType = "transaction",
+                entityId = "txn-multi-$i",
+                payload = """{"amount_cents":${(i + 1) * 100},"payee":"Vendor $i"}""",
+            )
+        }
+
+        // Device B pulls all
+        val applied = harness.deviceB.pullRemoteChanges()
+        assertEquals(10, applied.size, "Device B should receive all 10 transactions")
+
+        // Verify each transaction exists in Device B's DB
+        repeat(10) { i ->
+            val record = harness.deviceB.database.get("transaction", "txn-multi-$i")
+            assertNotNull(record, "Transaction txn-multi-$i should exist on Device B")
+            assertTrue(record.payload.contains("Vendor $i"))
+        }
+    }
 }

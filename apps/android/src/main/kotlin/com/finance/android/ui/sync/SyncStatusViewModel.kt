@@ -89,6 +89,7 @@ class SyncStatusViewModel(
                 _syncStatus.value = status
 
                 when (status) {
+                    is SyncStatus.Connecting,
                     is SyncStatus.Connected,
                     is SyncStatus.Idle,
                     -> {
