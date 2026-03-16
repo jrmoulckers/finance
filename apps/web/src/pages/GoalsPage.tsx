@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useState } from 'react';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  ConfirmDialog,
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  LoadingSpinner,
+} from '../components/common';
 import { GoalForm } from '../components/forms';
 import type { CreateGoalInput } from '../db/repositories/goals';
 import { useGoals } from '../hooks';
+import type { Goal } from '../kmp/bridge';
 
 function getGoalIcon(iconName: string | null | undefined): string {
   switch (iconName) {
@@ -23,30 +30,74 @@ function getGoalIcon(iconName: string | null | undefined): string {
 
 export const GoalsPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { goals, loading, error, refresh, createGoal } = useGoals();
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null);
+  const [isDeletingGoal, setIsDeletingGoal] = useState(false);
+  const { goals, loading, error, refresh, createGoal, updateGoal, deleteGoal } = useGoals();
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount.amount, 0);
   const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount.amount, 0);
 
   const handleOpenForm = useCallback(() => {
+    setEditingGoal(null);
+    setIsFormOpen(true);
+  }, []);
+
+  const handleEditGoal = useCallback((goal: Goal) => {
+    setEditingGoal(goal);
     setIsFormOpen(true);
   }, []);
 
   const handleCloseForm = useCallback(() => {
+    setEditingGoal(null);
     setIsFormOpen(false);
+  }, []);
+
+  const handleRequestDelete = useCallback((goal: Goal) => {
+    setDeletingGoal(goal);
+  }, []);
+
+  const handleCancelDelete = useCallback(() => {
+    setDeletingGoal(null);
   }, []);
 
   const handleSubmitGoal = useCallback(
     async (data: CreateGoalInput) => {
-      const createdGoal = createGoal(data);
-      if (createdGoal === null) {
-        throw new Error('Failed to create goal.');
+      if (editingGoal !== null) {
+        const updatedGoal = updateGoal(editingGoal.id, data);
+        if (updatedGoal === null) {
+          throw new Error('Failed to update goal.');
+        }
+      } else {
+        const createdGoal = createGoal(data);
+        if (createdGoal === null) {
+          throw new Error('Failed to create goal.');
+        }
       }
 
+      setEditingGoal(null);
       setIsFormOpen(false);
-      refresh();
     },
-    [createGoal, refresh],
+    [createGoal, editingGoal, updateGoal],
   );
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (deletingGoal === null) {
+      return;
+    }
+
+    setIsDeletingGoal(true);
+
+    try {
+      const deletedGoal = deleteGoal(deletingGoal.id);
+      if (!deletedGoal) {
+        throw new Error('Failed to delete goal.');
+      }
+
+      setDeletingGoal(null);
+    } finally {
+      setIsDeletingGoal(false);
+    }
+  }, [deleteGoal, deletingGoal]);
 
   return (
     <>
@@ -146,25 +197,64 @@ export const GoalsPage: React.FC = () => {
                       style={{
                         display: 'flex',
                         justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 'var(--spacing-3)',
                         marginBottom: 'var(--spacing-3)',
                       }}
                     >
                       <h3 style={{ fontWeight: 'var(--font-weight-semibold)' }}>
                         <span aria-hidden="true">{getGoalIcon(goal.icon)}</span> {goal.name}
                       </h3>
-                      <span
+                      <div
                         style={{
-                          fontSize: 'var(--type-scale-caption-font-size)',
-                          color: 'var(--semantic-text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 'var(--spacing-2)',
                         }}
                       >
-                        {targetDate !== null
-                          ? targetDate.toLocaleDateString('en-US', {
-                              month: 'short',
-                              year: 'numeric',
-                            })
-                          : 'No target date'}
-                      </span>
+                        <span
+                          style={{
+                            fontSize: 'var(--type-scale-caption-font-size)',
+                            color: 'var(--semantic-text-secondary)',
+                          }}
+                        >
+                          {targetDate !== null
+                            ? targetDate.toLocaleDateString('en-US', {
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : 'No target date'}
+                        </span>
+                        <div
+                          style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-1)' }}
+                        >
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => handleEditGoal(goal)}
+                            aria-label={`Edit ${goal.name}`}
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => handleRequestDelete(goal)}
+                            aria-label={`Delete ${goal.name}`}
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M3 6h18" />
+                              <path d="M8 6V4h8v2" />
+                              <path d="M19 6l-1 14H6L5 6" />
+                              <path d="M10 11v6" />
+                              <path d="M14 11v6" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                     <div
                       style={{
@@ -231,7 +321,25 @@ export const GoalsPage: React.FC = () => {
           </section>
         </>
       )}
-      <GoalForm isOpen={isFormOpen} onCancel={handleCloseForm} onSubmit={handleSubmitGoal} />
+      <GoalForm
+        isOpen={isFormOpen}
+        onCancel={handleCloseForm}
+        onSubmit={handleSubmitGoal}
+        initialData={editingGoal ?? undefined}
+      />
+      <ConfirmDialog
+        isOpen={deletingGoal !== null}
+        title="Delete goal?"
+        message={
+          deletingGoal === null
+            ? ''
+            : `Are you sure you want to delete “${deletingGoal.name}”? This action cannot be undone.`
+        }
+        confirmLabel="Delete Goal"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        isLoading={isDeletingGoal}
+      />
     </>
   );
 };
