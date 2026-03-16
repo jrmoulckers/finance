@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import { useTransactions } from '../hooks/useTransactions';
+
 import { TransactionsPage } from './TransactionsPage';
 
 // Mock each hook file individually — the page imports from the individual
@@ -14,14 +16,24 @@ vi.mock('../hooks/useCategories', () => ({ useCategories: vi.fn() }));
 vi.mock('../hooks/useAccounts', () => ({ useAccounts: vi.fn() }));
 
 // TransactionForm renders unconditionally and calls useDatabase internally.
-// Stub it out so the test has no provider dependency.
+// Stub it out so the test has no provider dependency while still allowing
+// the page to surface the open state in interaction tests.
 vi.mock('../components/forms', () => ({
-  TransactionForm: () => null,
+  TransactionForm: ({ isOpen }: { isOpen: boolean }) =>
+    isOpen ? (
+      <div role="dialog" aria-label="Transaction form">
+        Transaction form
+      </div>
+    ) : null,
 }));
 
 const mockedUseTransactions = vi.mocked(useTransactions);
 const mockedUseCategories = vi.mocked(useCategories);
 const mockedUseAccounts = vi.mocked(useAccounts);
+const refreshTransactionsMock = vi.fn();
+const createTransactionMock = vi.fn();
+const updateTransactionMock = vi.fn();
+const deleteTransactionMock = vi.fn();
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-01T00:00:00Z',
@@ -32,6 +44,12 @@ const syncMetadata = {
 
 describe('TransactionsPage', () => {
   beforeEach(() => {
+    refreshTransactionsMock.mockReset();
+    createTransactionMock.mockReset();
+    updateTransactionMock.mockReset();
+    deleteTransactionMock.mockReset();
+    deleteTransactionMock.mockReturnValue(true);
+
     mockedUseTransactions.mockReturnValue({
       transactions: [
         {
@@ -94,10 +112,10 @@ describe('TransactionsPage', () => {
       ],
       loading: false,
       error: null,
-      refresh: vi.fn(),
-      createTransaction: vi.fn(),
-      updateTransaction: vi.fn(),
-      deleteTransaction: vi.fn(),
+      refresh: refreshTransactionsMock,
+      createTransaction: createTransactionMock,
+      updateTransaction: updateTransactionMock,
+      deleteTransaction: deleteTransactionMock,
     });
     mockedUseCategories.mockReturnValue({
       categories: [
@@ -200,5 +218,42 @@ describe('TransactionsPage', () => {
     expect(screen.getByRole('button', { name: 'Delete Grocery Store' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit Monthly Salary' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete Electric Bill' })).toBeInTheDocument();
+  });
+
+  it('shows edit and delete buttons for each transaction', () => {
+    render(<TransactionsPage />);
+
+    expect(screen.getAllByRole('button', { name: /^edit /i })).toHaveLength(3);
+    expect(screen.getAllByRole('button', { name: /^delete /i })).toHaveLength(3);
+  });
+
+  it('clicking edit opens the form', () => {
+    render(<TransactionsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /edit grocery store/i }));
+
+    expect(screen.getByRole('dialog', { name: /transaction form/i })).toBeInTheDocument();
+  });
+
+  it('clicking delete opens ConfirmDialog', () => {
+    render(<TransactionsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /delete grocery store/i }));
+
+    expect(screen.getByRole('alertdialog', { name: /delete transaction/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/are you sure you want to delete\s+"?grocery store"?/i),
+    ).toBeInTheDocument();
+  });
+
+  it('confirming delete calls deleteTransaction', () => {
+    render(<TransactionsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /delete grocery store/i }));
+
+    const dialog = screen.getByRole('alertdialog', { name: /delete transaction/i });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    expect(deleteTransactionMock).toHaveBeenCalledWith('transaction-1');
   });
 });

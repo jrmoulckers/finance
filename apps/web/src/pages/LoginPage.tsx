@@ -2,8 +2,10 @@
 
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
 import { useAuth } from '../auth/auth-context';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+
 import '../components/forms/forms.css';
 import '../styles/auth.css';
 
@@ -92,7 +94,7 @@ export const LoginPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      await loginWithPasskey();
+      await loginWithPasskey(email.trim() || undefined);
     } finally {
       setIsSubmitting(false);
     }
@@ -144,7 +146,6 @@ export const LoginPage: React.FC = () => {
                   setFieldErrors((current) => ({ ...current, email: undefined }));
                 }}
                 disabled={isBusy}
-                aria-label="Email address"
                 aria-invalid={fieldErrors.email ? 'true' : undefined}
                 aria-describedby={[
                   fieldErrors.email ? emailErrorId : null,
@@ -176,7 +177,6 @@ export const LoginPage: React.FC = () => {
                   setFieldErrors((current) => ({ ...current, password: undefined }));
                 }}
                 disabled={isBusy}
-                aria-label="Password"
                 aria-invalid={fieldErrors.password ? 'true' : undefined}
                 aria-describedby={[
                   fieldErrors.password ? passwordErrorId : null,

@@ -1,14 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-/**
- * Reusable confirmation dialog for destructive or high-impact actions.
- *
- * Renders a compact, centered alert dialog with accessible labeling,
- * keyboard support, focus trapping, body scroll locking, and a loading
- * state for asynchronous confirmation flows.
- *
- * References: issue #487
- */
 import { useCallback, useEffect, useId, useRef, type KeyboardEvent } from 'react';
 
 import { announce, useFocusTrap } from '../../accessibility/aria';

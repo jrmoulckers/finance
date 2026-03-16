@@ -9,8 +9,10 @@
 
 import React, { useCallback, useId, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+
 import { useAuth, type AuthContextValue } from '../auth/auth-context';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+
 import '../styles/auth.css';
 
 /** Minimum password length enforced by client-side validation. */
@@ -235,7 +237,7 @@ export const SignupPage: React.FC = () => {
 
           <div className="auth-field">
             <label className="auth-field__label" htmlFor={confirmPasswordId}>
-              Confirm password
+              Confirm Password
             </label>
             <input
               id={confirmPasswordId}
