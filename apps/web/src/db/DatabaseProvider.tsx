@@ -5,7 +5,8 @@ import { ErrorBanner, LoadingSpinner } from '../components/common';
 import { seedDatabase } from './seed';
 import { initDatabase, type SqliteDb } from './sqlite-wasm';
 
-const DatabaseContext = createContext<SqliteDb | null>(null);
+/** React context that stores the shared SQLite-WASM database instance. */
+export const DatabaseContext = createContext<SqliteDb | null>(null);
 DatabaseContext.displayName = 'DatabaseContext';
 
 interface DatabaseProviderProps {

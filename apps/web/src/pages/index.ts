@@ -6,3 +6,5 @@ export { TransactionsPage } from './TransactionsPage';
 export { BudgetsPage } from './BudgetsPage';
 export { GoalsPage } from './GoalsPage';
 export { SettingsPage } from './SettingsPage';
+export { LoginPage } from './LoginPage';
+export { SignupPage } from './SignupPage';

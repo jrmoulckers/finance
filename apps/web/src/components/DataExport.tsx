@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useRef, useState } from 'react';
+import { useDatabase } from '../db/DatabaseProvider';
+import type { SqliteDb } from '../db/sqlite-wasm';
+import { getAllAccounts } from '../db/repositories/accounts';
+import { getAllTransactions } from '../db/repositories/transactions';
+import { getAllBudgets } from '../db/repositories/budgets';
+import { getAllGoals } from '../db/repositories/goals';
+import { getAllCategories } from '../db/repositories/categories';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,6 +19,16 @@ export type ExportFormat = 'json' | 'csv';
 /** Current state of the export operation. */
 type ExportStatus = 'idle' | 'exporting' | 'success' | 'error';
 
+type ExportRecord = Record<string, unknown>;
+
+interface ExportData {
+  accounts: ReturnType<typeof getAllAccounts>;
+  transactions: ReturnType<typeof getAllTransactions>;
+  budgets: ReturnType<typeof getAllBudgets>;
+  goals: ReturnType<typeof getAllGoals>;
+  categories: ReturnType<typeof getAllCategories>;
+}
+
 export interface DataExportProps {
   className?: string;
 }
@@ -20,49 +37,75 @@ export interface DataExportProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Generate mock financial data for export.
- *
- * TODO: Replace with real data from SQLite-WASM / KMP shared logic once the
- * DataExportService (packages/core/export) is integrated on the JS target.
- */
-function gatherExportData(): Record<string, unknown>[] {
-  return [
-    { id: 'txn-1', date: '2024-03-06', payee: 'Grocery Store', category: 'Food', amount: -67.42 },
-    { id: 'txn-2', date: '2024-03-06', payee: 'Monthly Salary', category: 'Income', amount: 4500 },
-    {
-      id: 'txn-3',
-      date: '2024-03-05',
-      payee: 'Electric Bill',
-      category: 'Utilities',
-      amount: -124,
-    },
-    { id: 'txn-4', date: '2024-03-05', payee: 'Coffee Shop', category: 'Dining', amount: -5.75 },
-    { id: 'txn-5', date: '2024-03-04', payee: 'Gas Station', category: 'Transport', amount: -48.3 },
-  ];
+/** Gather all exportable financial data from the local SQLite-WASM database. */
+function gatherExportData(db: SqliteDb): ExportData {
+  return {
+    accounts: getAllAccounts(db),
+    transactions: getAllTransactions(db),
+    budgets: getAllBudgets(db),
+    goals: getAllGoals(db),
+    categories: getAllCategories(db),
+  };
+}
+
+/** Safely read the shared database instance when the provider may be unavailable. */
+function useExportDatabase(): SqliteDb | null {
+  try {
+    return useDatabase();
+  } catch {
+    return null;
+  }
+}
+
+/** Return `true` when at least one exported collection contains records. */
+function hasExportData(data: ExportData): boolean {
+  return Object.values(data).some((records) => records.length > 0);
 }
 
 /** Serialize records to JSON string. */
-function serializeJson(data: Record<string, unknown>[]): string {
-  return JSON.stringify({ exportedAt: new Date().toISOString(), transactions: data }, null, 2);
+function serializeJson(data: ExportData): string {
+  return JSON.stringify({ exportedAt: new Date().toISOString(), data }, null, 2);
 }
 
-/** Serialize records to CSV string with header row. */
-function serializeCsv(data: Record<string, unknown>[]): string {
-  if (data.length === 0) return '';
-  const headers = Object.keys(data[0]);
-  const rows = data.map((row) =>
-    headers
-      .map((h) => {
-        const val = String(row[h] ?? '');
-        // Escape values containing commas, quotes, or newlines
-        return val.includes(',') || val.includes('"') || val.includes('\n')
-          ? `"${val.replace(/"/g, '""')}"`
-          : val;
-      })
-      .join(','),
+/** Serialize a single value for safe CSV output. */
+function serializeCsvValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const serializedValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  return serializedValue.includes(',') ||
+    serializedValue.includes('"') ||
+    serializedValue.includes('\n')
+    ? `"${serializedValue.replace(/"/g, '""')}"`
+    : serializedValue;
+}
+
+/** Serialize a homogeneous record collection to CSV with a header row. */
+function serializeRecordCollection(records: ExportRecord[]): string {
+  if (records.length === 0) {
+    return '';
+  }
+
+  const headers = Object.keys(records[0]);
+  const rows = records.map((record) =>
+    headers.map((header) => serializeCsvValue(record[header])).join(','),
   );
   return [headers.join(','), ...rows].join('\n');
+}
+
+/** Serialize exported data collections to a multi-section CSV string. */
+function serializeCsv(data: ExportData): string {
+  return (Object.entries(data) as [keyof ExportData, ExportData[keyof ExportData]][])
+    .map(([tableName, records]) => {
+      const lines = [`# Table: ${String(tableName)}`, `# Records: ${records.length}`];
+      const section = serializeRecordCollection(records as unknown as ExportRecord[]);
+      if (section) {
+        lines.push(section);
+      }
+      return lines.join('\n');
+    })
+    .join('\n\n');
 }
 
 /** Trigger a browser file download from a Blob. */
@@ -97,6 +140,7 @@ function downloadBlob(content: string, filename: string, mimeType: string): void
  * - Full keyboard navigation
  */
 export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
+  const db = useExportDatabase();
   const [status, setStatus] = useState<ExportStatus>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [lastFormat, setLastFormat] = useState<ExportFormat | null>(null);
@@ -105,43 +149,49 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
   const jsonBtnRef = useRef<HTMLButtonElement>(null);
   const csvBtnRef = useRef<HTMLButtonElement>(null);
 
-  const handleExport = useCallback(async (format: ExportFormat) => {
-    setStatus('exporting');
-    setErrorMessage('');
-    setLastFormat(format);
+  const handleExport = useCallback(
+    async (format: ExportFormat) => {
+      setStatus('exporting');
+      setErrorMessage('');
+      setLastFormat(format);
 
-    try {
-      // Simulate a brief processing delay for UX feedback (real export may
-      // involve reading from SQLite-WASM which is async).
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      try {
+        // Simulate a brief processing delay for UX feedback while queries run.
+        await new Promise((resolve) => setTimeout(resolve, 400));
 
-      const data = gatherExportData();
+        if (!db) {
+          setStatus('error');
+          setErrorMessage('Database is still initializing. Please wait a moment and try again.');
+          return;
+        }
 
-      if (data.length === 0) {
+        const data = gatherExportData(db);
+        if (!hasExportData(data)) {
+          setStatus('error');
+          setErrorMessage('No data available to export.');
+          return;
+        }
+
+        const timestamp = new Date().toISOString().slice(0, 10);
+        if (format === 'json') {
+          const content = serializeJson(data);
+          downloadBlob(content, `finance-export-${timestamp}.json`, 'application/json');
+        } else {
+          const content = serializeCsv(data);
+          downloadBlob(content, `finance-export-${timestamp}.csv`, 'text/csv');
+        }
+
+        setStatus('success');
+
+        // Auto-clear success after a few seconds
+        setTimeout(() => setStatus('idle'), 4000);
+      } catch {
         setStatus('error');
-        setErrorMessage('No data available to export.');
-        return;
+        setErrorMessage('Export failed. Please try again.');
       }
-
-      const timestamp = new Date().toISOString().slice(0, 10);
-
-      if (format === 'json') {
-        const content = serializeJson(data);
-        downloadBlob(content, `finance-export-${timestamp}.json`, 'application/json');
-      } else {
-        const content = serializeCsv(data);
-        downloadBlob(content, `finance-export-${timestamp}.csv`, 'text/csv');
-      }
-
-      setStatus('success');
-
-      // Auto-clear success after a few seconds
-      setTimeout(() => setStatus('idle'), 4000);
-    } catch {
-      setStatus('error');
-      setErrorMessage('Export failed. Please try again.');
-    }
-  }, []);
+    },
+    [db],
+  );
 
   const handleDismissError = useCallback(() => {
     setStatus('idle');
@@ -155,6 +205,7 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
   }, [lastFormat]);
 
   const isExporting = status === 'exporting';
+  const isDatabaseUnavailable = db === null;
 
   return (
     <div className={`data-export ${className}`.trim()}>
@@ -166,7 +217,9 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
           marginBottom: 'var(--spacing-4)',
         }}
       >
-        Download your financial data for backup or use in other applications.
+        {isDatabaseUnavailable
+          ? 'Database is not available. Please wait for it to initialize.'
+          : 'Download your financial data for backup or use in other applications.'}
       </p>
 
       {/* Export buttons */}
@@ -182,7 +235,7 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
         <button
           ref={jsonBtnRef}
           type="button"
-          disabled={isExporting}
+          disabled={isExporting || isDatabaseUnavailable}
           onClick={() => handleExport('json')}
           aria-describedby="data-export-description"
           style={{
@@ -194,8 +247,8 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
             borderRadius: 'var(--border-radius-md)',
             background: 'none',
             color: 'var(--semantic-interactive-default)',
-            cursor: isExporting ? 'not-allowed' : 'pointer',
-            opacity: isExporting ? 0.6 : 1,
+            cursor: isExporting || isDatabaseUnavailable ? 'not-allowed' : 'pointer',
+            opacity: isExporting || isDatabaseUnavailable ? 0.6 : 1,
             fontSize: 'var(--type-scale-body-font-size)',
             fontWeight: 'var(--font-weight-medium)',
           }}
@@ -216,7 +269,7 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
         <button
           ref={csvBtnRef}
           type="button"
-          disabled={isExporting}
+          disabled={isExporting || isDatabaseUnavailable}
           onClick={() => handleExport('csv')}
           aria-describedby="data-export-description"
           style={{
@@ -228,8 +281,8 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
             borderRadius: 'var(--border-radius-md)',
             background: 'none',
             color: 'var(--semantic-interactive-default)',
-            cursor: isExporting ? 'not-allowed' : 'pointer',
-            opacity: isExporting ? 0.6 : 1,
+            cursor: isExporting || isDatabaseUnavailable ? 'not-allowed' : 'pointer',
+            opacity: isExporting || isDatabaseUnavailable ? 0.6 : 1,
             fontSize: 'var(--type-scale-body-font-size)',
             fontWeight: 'var(--font-weight-medium)',
           }}
