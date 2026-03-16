@@ -45,7 +45,7 @@ All security audit items must pass before release. A single FAIL-level item bloc
 
 All accessibility audit items must pass on every platform before release.
 
-- [ ] **Accessibility audit passed** — Complete the [WCAG 2.2 AA Accessibility Checklist](../audits/accessibility-checklist.md) on all four platforms.
+- [ ] **Accessibility audit passed** — Complete WCAG 2.2 AA accessibility audit on all four platforms (see [Accessibility Features Guide](../guides/accessibility.md)).
   - [ ] Screen reader verification: TalkBack (Android), VoiceOver (iOS), NVDA/JAWS (Web), Narrator (Windows)
   - [ ] All interactive elements announced with correct roles and descriptive labels
   - [ ] Financial amounts read correctly by screen readers
@@ -136,7 +136,7 @@ All accessibility audit items must pass on every platform before release.
 
 ## Documentation
 
-- [ ] **User documentation published** — the [User Guide](../user-guide/README.md) is complete, accurate, and accessible from in-app help.
+- [ ] **User documentation published** — the [User Guides](../guides/getting-started.md) are complete, accurate, and accessible from in-app help.
   - [ ] Getting started guide covers account creation, first account, first transaction
   - [ ] All features documented: accounts, transactions, budgeting, goals, reports, data management, settings
   - [ ] FAQ answers common questions: offline support, multi-device, security, sharing
@@ -169,12 +169,12 @@ All accessibility audit items must pass on every platform before release.
 
 ## References
 
-- [User Guide](../user-guide/README.md) — End-user documentation
+- [User Guides](../guides/getting-started.md) — End-user documentation
 - [Release Process](release-process.md) — Release workflows, versioning, hotfix, and rollback
 - [App Store Submission Guide](app-store-submission.md) — Submission metadata, checklists, and field values
 - [App Store Preparation Guide](app-store-preparation.md) — Developer account setup and store requirements
 - [Performance Guide](performance.md) — Performance targets and benchmarking
 - [Security Checklist](../audits/security-checklist.md) — OWASP MASVS L1 audit
-- [Accessibility Checklist](../audits/accessibility-checklist.md) — WCAG 2.2 AA audit
+- [Accessibility Guide](../guides/accessibility.md) — WCAG 2.2 AA features and testing
 - [System Architecture Roadmap](../architecture/roadmap.md) — Phase definitions and technology decisions
 - [CI/CD Strategy (ADR-0006)](../architecture/0006-cicd-strategy.md) — Pipeline architecture

@@ -8,9 +8,9 @@ You are working in the `apps/` directory, which contains platform-specific appli
 
 ## Platform Subdirectories
 
-- `apps/ios/` — iOS, iPadOS, macOS, watchOS — **SwiftUI**, KMP via Swift Export, Apple Keychain for secure storage, VoiceOver accessibility
+- `apps/ios/` — iOS, iPadOS, macOS, watchOS — **SwiftUI**, KMP integration planned via Swift Export (currently pure Swift), Apple Keychain for secure storage, VoiceOver accessibility
 - `apps/android/` — Android phones, tablets, Wear OS — **Jetpack Compose**, KMP direct dependency, Material 3 design system, TalkBack accessibility
-- `apps/web/` — Progressive Web App — **Kotlin/JS or TypeScript + React**, SQLite-WASM for local storage, ARIA attributes for accessibility, PWA with service worker
+- `apps/web/` — Progressive Web App — **TypeScript + React** (Kotlin/JS integration planned via `src/kmp/`), SQLite via wa-sqlite for local storage, ARIA attributes for accessibility, PWA with service worker
 - `apps/windows/` — Windows 11 native app — **Compose Desktop (JVM)**, Windows Hello for biometric auth, Narrator accessibility
 
 ## Guidelines

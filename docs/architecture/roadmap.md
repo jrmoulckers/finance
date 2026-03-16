@@ -569,12 +569,12 @@ All technology decisions from Phase 0 have been confirmed and documented as ADRs
 
 ### Research Documents
 
-- [Cross-Platform Framework Research](../../.github/research/cross-platform.md) — KMP, React Native, Flutter, .NET MAUI evaluation
-- [Backend & Sync Architecture Research](../../.github/research/backend-sync.md) — Supabase, Firebase, PowerSync, ElectricSQL, Custom, PocketBase
-- [Local Database & Storage Research](../../.github/research/local-storage.md) — SQLite, Realm, WatermelonDB, MMKV, IndexedDB, Drift
-- [Authentication & Security Research](../../.github/research/auth-security.md) — OAuth 2.0/PKCE, Passkeys, biometrics, encryption, RBAC, compliance
-- [Design System & UI Architecture Research](../../.github/research/design-system.md) — Design tokens, accessibility, financial UI patterns, charting
-- [CI/CD & Release Strategy Research](../../.github/research/cicd.md) — GitHub Actions, Turborepo, Fastlane, testing strategy, cost optimization
+- [ADR-0001: Cross-Platform Framework](./0001-cross-platform-framework.md) — KMP, React Native, Flutter, .NET MAUI evaluation
+- [ADR-0002: Backend & Sync Architecture](./0002-backend-sync-architecture.md) — Supabase, Firebase, PowerSync, ElectricSQL, Custom, PocketBase
+- [ADR-0003: Local Database & Storage](./0003-local-storage-strategy.md) — SQLite, Realm, WatermelonDB, MMKV, IndexedDB, Drift
+- [ADR-0004: Authentication & Security](./0004-auth-security-architecture.md) — OAuth 2.0/PKCE, Passkeys, biometrics, encryption, RBAC, compliance
+- [ADR-0005: Design System & UI Architecture](./0005-design-system-approach.md) — Design tokens, accessibility, financial UI patterns, charting
+- [ADR-0006: CI/CD & Release Strategy](./0006-cicd-strategy.md) — GitHub Actions, Turborepo, Fastlane, testing strategy, cost optimization
 
 ### Project Documents
 
