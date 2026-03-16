@@ -6,8 +6,17 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.BuildConfig
+import com.finance.android.data.repository.AccountRepository
+import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
+import com.finance.android.data.repository.GoalRepository
 import com.finance.android.data.repository.TransactionRepository
+import com.finance.core.export.CsvExportSerializer
+import com.finance.core.export.DataExportService
+import com.finance.core.export.ExportData
+import com.finance.core.export.ExportOutcome
+import com.finance.core.export.JsonExportSerializer
 import com.finance.models.types.SyncId
 import com.finance.sync.auth.AuthManager
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -94,7 +103,7 @@ data class SettingsUiState(
     val highContrastEnabled: Boolean = false,
 
     // About
-    val appVersion: String = "1.0.0",
+    val appVersion: String = BuildConfig.VERSION_NAME,
 
     // Export
     val isExporting: Boolean = false,
@@ -140,8 +149,11 @@ internal object SettingsPreferences {
  *
  * @param prefs Local preferences store for settings persistence.
  * @param biometricChecker Abstraction to query biometric hardware availability.
+ * @param accountRepository Source for account data used in data export.
  * @param transactionRepository Source for transaction data used in data export.
- * @param categoryRepository Source for category data used to resolve category names in export.
+ * @param budgetRepository Source for budget data used in data export.
+ * @param categoryRepository Source for category data used in data export.
+ * @param goalRepository Source for goal data used in data export.
  * @param authManager Shared auth manager for sign-out and session management.
  * @param defaultDarkModeEnabled Whether dark mode should default to the current system theme
  *   when the user has not chosen an explicit preference yet.
@@ -149,8 +161,11 @@ internal object SettingsPreferences {
 class SettingsViewModel(
     private val prefs: SharedPreferences,
     private val biometricChecker: BiometricAvailabilityChecker,
+    private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
+    private val budgetRepository: BudgetRepository,
     private val categoryRepository: CategoryRepository,
+    private val goalRepository: GoalRepository,
     private val authManager: AuthManager,
     private val defaultDarkModeEnabled: Boolean,
 ) : ViewModel() {
@@ -275,21 +290,23 @@ class SettingsViewModel(
             _events.emit(SettingsEvent.ExportStarted)
 
             try {
-                val serialized = buildExportContent(format)
+                when (val outcome = buildExport(format)) {
+                    is ExportOutcome.Success -> {
+                        val export = outcome.export
+                        _events.emit(
+                            SettingsEvent.ExportReady(
+                                fileName = export.filename,
+                                mimeType = export.format.mimeType,
+                                content = export.content,
+                            ),
+                        )
+                        _events.emit(SettingsEvent.ShowToast("Export ready — choose where to save"))
+                    }
 
-                val timestamp = java.text.SimpleDateFormat(
-                    "yyyy-MM-dd",
-                    java.util.Locale.US,
-                ).format(java.util.Date())
-                val extension = format.label.lowercase()
-                val fileName = "finance-export-$timestamp.$extension"
-                val mimeType = when (format) {
-                    ExportFormat.JSON -> "application/json"
-                    ExportFormat.CSV -> "text/csv"
+                    is ExportOutcome.Failure -> {
+                        _events.emit(SettingsEvent.ExportFailed(outcome.error.message))
+                    }
                 }
-
-                _events.emit(SettingsEvent.ExportReady(fileName, mimeType, serialized))
-                _events.emit(SettingsEvent.ShowToast("Export ready — choose where to save"))
             } catch (_: Exception) {
                 _events.emit(SettingsEvent.ExportFailed("Export failed. Please try again."))
             } finally {
@@ -299,44 +316,31 @@ class SettingsViewModel(
     }
 
     /**
-     * Builds export content from the repository layer.
+     * Builds export content from the repository layer using the shared KMP service.
      *
-     * Queries all transactions and categories, then serializes them
-     * into the requested [format]. The content itself is never logged
-     * to avoid leaking financial data.
+     * Queries all repositories with the placeholder household ID, then delegates
+     * serialization to [DataExportService] so Android and other platforms share
+     * the same export schema.
      */
-    private suspend fun buildExportContent(format: ExportFormat): String {
-        val transactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-        val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-        val categoryMap = categories.associateBy { it.id }
-
-        return when (format) {
-            ExportFormat.JSON -> buildString {
-                appendLine("{")
-                appendLine("""  "exportedAt": "${java.time.Instant.now()}",""")
-                appendLine("""  "transactions": [""")
-                transactions.forEachIndexed { i, txn ->
-                    val comma = if (i < transactions.lastIndex) "," else ""
-                    val catName = (txn.categoryId?.let { categoryMap[it]?.name } ?: "Uncategorized")
-                        .replace("\\", "\\\\").replace("\"", "\\\"")
-                    val payee = txn.payee?.replace("\\", "\\\\")?.replace("\"", "\\\"") ?: ""
-                    appendLine(
-                        """    {"id":"${txn.id.value}","date":"${txn.date}","payee":"$payee","category":"$catName","type":"${txn.type}","currency":"${txn.currency.code}"}$comma""",
-                    )
-                }
-                appendLine("  ]")
-                appendLine("}")
-            }
-            ExportFormat.CSV -> buildString {
-                appendLine("id,date,payee,category,type,currency")
-                transactions.forEach { txn ->
-                    val catName = (txn.categoryId?.let { categoryMap[it]?.name } ?: "Uncategorized")
-                        .let { "\"${it.replace("\"", "\"\"")}\"" }
-                    val payee = txn.payee?.let { "\"${it.replace("\"", "\"\"")}\"" } ?: ""
-                    appendLine("${txn.id.value},${txn.date},$payee,$catName,${txn.type},${txn.currency.code}")
-                }
-            }
+    private suspend fun buildExport(format: ExportFormat): ExportOutcome {
+        val exportData = ExportData(
+            accounts = accountRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first(),
+            transactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first(),
+            categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first(),
+            budgets = budgetRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first(),
+            goals = goalRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first(),
+        )
+        val serializer = when (format) {
+            ExportFormat.JSON -> JsonExportSerializer()
+            ExportFormat.CSV -> CsvExportSerializer()
         }
+
+        return DataExportService.export(
+            data = exportData,
+            serializer = serializer,
+            userId = PLACEHOLDER_HOUSEHOLD_ID,
+            appVersion = BuildConfig.VERSION_NAME,
+        )
     }
 
     // -- Account deletion -----------------------------------------------------

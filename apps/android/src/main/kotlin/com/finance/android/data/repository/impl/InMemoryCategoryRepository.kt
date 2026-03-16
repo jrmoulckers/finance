@@ -3,6 +3,7 @@
 package com.finance.android.data.repository.impl
 
 import com.finance.android.data.repository.CategoryRepository
+import com.finance.android.ui.data.SampleData
 import com.finance.models.Category
 import com.finance.models.types.SyncId
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +24,7 @@ import kotlinx.datetime.Clock
  */
 class InMemoryCategoryRepository : CategoryRepository {
 
-    private val store = MutableStateFlow<List<Category>>(emptyList())
+    private val store = MutableStateFlow(SampleData.categories.toList())
 
     /** All non-deleted records. */
     private fun List<Category>.active(): List<Category> =

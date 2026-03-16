@@ -3,6 +3,7 @@
 package com.finance.android.data.repository.impl
 
 import com.finance.android.data.repository.AccountRepository
+import com.finance.android.ui.data.SampleData
 import com.finance.models.Account
 import com.finance.models.types.Cents
 import com.finance.models.types.SyncId
@@ -24,7 +25,7 @@ import kotlinx.datetime.Clock
  */
 class InMemoryAccountRepository : AccountRepository {
 
-    private val store = MutableStateFlow<List<Account>>(emptyList())
+    private val store = MutableStateFlow(SampleData.accounts.toList())
 
     /** All non-deleted records. */
     private fun List<Account>.active(): List<Account> =

@@ -16,10 +16,9 @@ enum class ExportFormat(val extension: String, val mimeType: String) {
     JSON("json", "application/json"),
 
     /**
-     * CSV export — actually produces a ZIP archive containing one CSV per entity type.
-     * The [extension] is "zip" to reflect the real file format.
+     * CSV export containing metadata and all entities as RFC 4180-compliant text.
      */
-    CSV("zip", "text/csv"),
+    CSV("csv", "text/csv"),
 }
 
 /**
@@ -61,7 +60,7 @@ data class ExportEntityCounts(
  * Successful export result containing the serialized content and integrity data.
  *
  * @property content The serialized data — a JSON string for [ExportFormat.JSON],
- *                   or a base64-encoded ZIP for [ExportFormat.CSV].
+ *                   or RFC 4180-compliant CSV text for [ExportFormat.CSV].
  * @property format  The format that produced [content].
  * @property filename Suggested filename (e.g., "finance-export-2026-03-15.json").
  * @property metadata Provenance and entity-count metadata.

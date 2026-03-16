@@ -3,6 +3,7 @@
 package com.finance.android.data.repository.impl
 
 import com.finance.android.data.repository.TransactionRepository
+import com.finance.android.ui.data.SampleData
 import com.finance.models.Transaction
 import com.finance.models.types.SyncId
 import kotlinx.coroutines.flow.Flow
@@ -24,7 +25,7 @@ import kotlinx.datetime.LocalDate
  */
 class InMemoryTransactionRepository : TransactionRepository {
 
-    private val store = MutableStateFlow<List<Transaction>>(emptyList())
+    private val store = MutableStateFlow(SampleData.transactions.toList())
 
     /** All non-deleted records. */
     private fun List<Transaction>.active(): List<Transaction> =

@@ -3,6 +3,7 @@
 package com.finance.android.data.repository.impl
 
 import com.finance.android.data.repository.BudgetRepository
+import com.finance.android.ui.data.SampleData
 import com.finance.models.Budget
 import com.finance.models.types.SyncId
 import kotlinx.coroutines.flow.Flow
@@ -25,7 +26,7 @@ import kotlinx.datetime.toLocalDateTime
  */
 class InMemoryBudgetRepository : BudgetRepository {
 
-    private val store = MutableStateFlow<List<Budget>>(emptyList())
+    private val store = MutableStateFlow(SampleData.budgets.toList())
 
     /** All non-deleted records. */
     private fun List<Budget>.active(): List<Budget> =

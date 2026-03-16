@@ -3,6 +3,7 @@
 package com.finance.android.data.repository.impl
 
 import com.finance.android.data.repository.GoalRepository
+import com.finance.android.ui.data.SampleData
 import com.finance.models.Goal
 import com.finance.models.GoalStatus
 import com.finance.models.types.Cents
@@ -25,7 +26,7 @@ import kotlinx.datetime.Clock
  */
 class InMemoryGoalRepository : GoalRepository {
 
-    private val store = MutableStateFlow<List<Goal>>(emptyList())
+    private val store = MutableStateFlow(SampleData.goals.toList())
 
     /** All non-deleted records. */
     private fun List<Goal>.active(): List<Goal> =

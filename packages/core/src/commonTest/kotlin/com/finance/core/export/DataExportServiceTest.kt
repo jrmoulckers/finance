@@ -402,7 +402,7 @@ class DataExportServiceTest {
         )
 
         assertIs<ExportOutcome.Success>(outcome)
-        assertEquals("finance-export-2026-03-15.zip", outcome.export.filename)
+        assertEquals("finance-export-2026-03-15.csv", outcome.export.filename)
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -538,7 +538,7 @@ class DataExportServiceTest {
     @Test
     fun generateFilename_csvFormat() {
         val filename = DataExportService.generateFilename(ExportFormat.CSV, fixedInstant)
-        assertEquals("finance-export-2026-03-15.zip", filename)
+        assertEquals("finance-export-2026-03-15.csv", filename)
     }
 
     @Test

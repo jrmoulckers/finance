@@ -14,8 +14,8 @@ package com.finance.core.export
  *
  * Implementations:
  * - JSON serializer (issue #350) — produces a formatted JSON string.
- * - CSV serializer (issue #355) — produces a base64-encoded ZIP containing
- *   individual CSVs per entity type.
+ * - CSV serializer (issue #355) — produces a multi-section RFC 4180-compliant
+ *   CSV string.
  *
  * @see DataExportService for orchestration
  */
@@ -28,7 +28,7 @@ interface ExportSerializer {
      * Serializes export data with metadata into a string representation.
      *
      * For [ExportFormat.JSON]: produces a pretty-printed JSON string.
-     * For [ExportFormat.CSV]: produces a base64-encoded ZIP containing individual CSVs.
+     * For [ExportFormat.CSV]: produces a multi-section RFC 4180-compliant CSV string.
      *
      * @param data The financial data to serialize (pre-filtered, no deleted records).
      * @param metadata Export metadata to include in the output.

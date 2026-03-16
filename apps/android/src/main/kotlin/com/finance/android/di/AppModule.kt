@@ -93,8 +93,11 @@ val appModule = module {
         SettingsViewModel(
             prefs = get(),
             biometricChecker = get(),
+            accountRepository = get(),
             transactionRepository = get(),
+            budgetRepository = get(),
             categoryRepository = get(),
+            goalRepository = get(),
             authManager = get<AuthManager>(),
             defaultDarkModeEnabled = (
                 androidContext().resources.configuration.uiMode and
