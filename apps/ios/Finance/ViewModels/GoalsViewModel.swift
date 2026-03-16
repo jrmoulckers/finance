@@ -12,11 +12,12 @@ import Foundation
 @Observable
 @MainActor
 final class GoalsViewModel {
-    private let repository: GoalRepository
+    let repository: GoalRepository
 
     var goals: [GoalItem] = []
     var isLoading = false
     var showingCreateGoal = false
+    var editingGoal: GoalItem?
 
     init(repository: GoalRepository) {
         self.repository = repository

@@ -18,6 +18,9 @@ final class TransactionsViewModel {
     var isLoading = false
     var searchText = ""
     var showingCreateTransaction = false
+    var editingTransaction: TransactionItem?
+    var showingDeleteConfirmation = false
+    var pendingDeleteId: String?
 
     /// Transactions grouped by calendar day, most recent first.
     struct DateGroup: Identifiable {
@@ -66,5 +69,12 @@ final class TransactionsViewModel {
         }
         // Remove from local state for immediate UI feedback
         transactions.removeAll { $0.id == id }
+        pendingDeleteId = nil
+    }
+
+    /// Triggers the delete confirmation alert for the given transaction.
+    func confirmDelete(id: String) {
+        pendingDeleteId = id
+        showingDeleteConfirmation = true
     }
 }

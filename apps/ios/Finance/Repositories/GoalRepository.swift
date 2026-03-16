@@ -17,4 +17,10 @@ protocol GoalRepository: Sendable {
 
     /// Returns all goals regardless of status.
     func getGoals() async throws -> [GoalItem]
+
+    /// Persists a new goal.
+    func createGoal(_ goal: GoalItem) async throws
+
+    /// Updates an existing goal.
+    func updateGoal(_ goal: GoalItem) async throws
 }

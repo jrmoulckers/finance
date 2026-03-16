@@ -41,7 +41,21 @@ struct GoalsView: View {
                     .accessibilityHint(String(localized: "Opens a form to create a new financial goal"))
                 }
             }
-            .sheet(isPresented: $viewModel.showingCreateGoal) { createGoalPlaceholder }
+            .sheet(isPresented: $viewModel.showingCreateGoal, onDismiss: {
+                Task { await viewModel.loadGoals() }
+            }) {
+                GoalCreateView(viewModel: GoalCreateViewModel(
+                    repository: viewModel.repository
+                ))
+            }
+            .sheet(item: $viewModel.editingGoal, onDismiss: {
+                Task { await viewModel.loadGoals() }
+            }) { goal in
+                GoalCreateView(viewModel: GoalCreateViewModel(
+                    repository: viewModel.repository,
+                    goal: goal
+                ))
+            }
             .refreshable { await viewModel.loadGoals() }
             .task { await viewModel.loadGoals() }
         }
@@ -118,30 +132,12 @@ struct GoalsView: View {
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .onTapGesture { viewModel.editingGoal = goal }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(goal.name)
         .accessibilityValue(String(localized: "\(Int(goal.progress * 100)) percent complete, \(goal.status.displayName)"))
-        .accessibilityHint(goal.isComplete ? String(localized: "Goal has been completed") : String(localized: "Goal is in progress"))
-    }
-
-    private var createGoalPlaceholder: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Text(String(localized: "Goal creation will be connected to KMP shared logic."))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .navigationTitle(String(localized: "Create Goal"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { viewModel.showingCreateGoal = false }
-                        .accessibilityLabel(String(localized: "Cancel"))
-                        .accessibilityHint(String(localized: "Dismisses the goal creation form"))
-                }
-            }
-        }
+        .accessibilityHint(goal.isComplete ? String(localized: "Goal has been completed. Tap to edit.") : String(localized: "Goal is in progress. Tap to edit."))
     }
 }
 
