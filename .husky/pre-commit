@@ -1,9 +1,1 @@
-#!/bin/sh
-# Auto-format staged files before commit.
-# Runs prettier --write on staged files matching common extensions,
-# then re-stages the formatted versions.
-STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|json|css|md|yml|yaml)$' | tr '\n' ' ')
-if [ -n "$STAGED" ]; then
-  npx prettier --write $STAGED
-  echo "$STAGED" | xargs git add
-fi
+npx lint-staged
