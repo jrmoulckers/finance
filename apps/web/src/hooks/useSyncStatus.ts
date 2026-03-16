@@ -78,7 +78,11 @@ export interface UseSyncStatusResult {
 // ---------------------------------------------------------------------------
 
 export function useSyncStatus(): UseSyncStatusResult {
-  const isOnline = useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getServerOnlineSnapshot);
+  const isOnline = useSyncExternalStore(
+    subscribeOnline,
+    getOnlineSnapshot,
+    getServerOnlineSnapshot,
+  );
 
   const [pendingMutations, setPendingMutations] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
@@ -170,7 +174,6 @@ export function useSyncStatus(): UseSyncStatusResult {
 
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // -------------------------------------------------------------------------
@@ -179,9 +182,7 @@ export function useSyncStatus(): UseSyncStatusResult {
 
   useEffect(() => {
     // Check whether Background Sync is supported.
-    const hasBackgroundSync =
-      'serviceWorker' in navigator &&
-      'SyncManager' in self;
+    const hasBackgroundSync = 'serviceWorker' in navigator && 'SyncManager' in self;
 
     if (!hasBackgroundSync && isOnline) {
       // Poll periodically to flush queued mutations.
@@ -196,7 +197,6 @@ export function useSyncStatus(): UseSyncStatusResult {
         periodicTimerRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
 
   // -------------------------------------------------------------------------
