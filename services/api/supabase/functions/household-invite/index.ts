@@ -219,14 +219,11 @@ serve(async (req: Request): Promise<Response> => {
           return errorResponse(req, 'invite_code is required');
         }
 
-        const { data, error: rpcError } = await supabase.rpc(
-          'accept_household_invitation',
-          {
-            p_invite_code: invite_code,
-            p_user_id: user.id,
-            p_user_email: user.email,
-          },
-        );
+        const { data, error: rpcError } = await supabase.rpc('accept_household_invitation', {
+          p_invite_code: invite_code,
+          p_user_id: user.id,
+          p_user_email: user.email,
+        });
 
         if (rpcError) {
           console.error('accept_household_invitation RPC failed:', rpcError.message);
