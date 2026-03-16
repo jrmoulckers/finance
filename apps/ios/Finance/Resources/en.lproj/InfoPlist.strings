@@ -1,0 +1,11 @@
+/* InfoPlist.strings — Finance (English, Base)
+   SPDX-License-Identifier: BUSL-1.1
+
+   Localized Info.plist values displayed by iOS to the user.
+*/
+
+/* App display name shown on the Home Screen and in Settings */
+"CFBundleDisplayName" = "Finance";
+
+/* Face ID usage description shown in the system biometric prompt */
+"NSFaceIDUsageDescription" = "Finance uses Face ID to protect your financial data and authenticate sensitive operations.";
