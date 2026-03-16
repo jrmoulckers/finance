@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Passkey Authentication Edge Function (#69)
+ * Passkey Authentication Edge Function (#69, #362)
  *
  * Implements the WebAuthn authentication ceremony:
  *   1. POST /passkey-authenticate?step=options  → Generate authentication options (challenge)
- *   2. POST /passkey-authenticate?step=verify   → Validate assertion and return session
+ *   2. POST /passkey-authenticate?step=verify   → Validate assertion and return JWT session
+ *
+ * Security fixes (#362):
+ *   - A-5:   Mint a proper Supabase JWT session instead of returning raw user_id
+ *   - API-9: Scope challenge lookup to specific challenge value (not global "most recent")
+ *   - Enforce challenge expiry (5 min) and one-time use
  *
  * Uses @simplewebauthn/server for WebAuthn ceremony logic.
  *
@@ -23,6 +28,7 @@ import {
   verifyAuthenticationResponse,
 } from 'https://esm.sh/@simplewebauthn/server@9.0.3';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { errorResponse, internalErrorResponse, jsonResponse } from '../_shared/response.ts';
 import type {
   AuthenticatorTransportFuture,
   VerifiedAuthenticationResponse,
@@ -35,6 +41,23 @@ interface StoredCredential {
   public_key: string;
   counter: number;
   transports: string[] | null;
+}
+
+/** Maximum age for a WebAuthn challenge before it expires (#362). */
+const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Decode a base64url-encoded string to a Uint8Array.
+ *
+ * Used to parse the clientDataJSON from the WebAuthn assertion so we can
+ * extract the challenge value for scoped database lookup (#362, API-9).
+ */
+function base64urlToBytes(base64url: string): Uint8Array {
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  const padNeeded = base64.length % 4;
+  const padded = padNeeded ? base64 + '='.repeat(4 - padNeeded) : base64;
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (c) => c.charCodeAt(0));
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -74,6 +97,7 @@ serve(async (req: Request): Promise<Response> => {
         type: 'public-key';
         transports?: AuthenticatorTransportFuture[];
       }[] = [];
+      let resolvedUserId: string | null = null;
 
       if (email) {
         // If email is provided, look up user's credentials
@@ -85,6 +109,8 @@ serve(async (req: Request): Promise<Response> => {
           .single();
 
         if (userData) {
+          resolvedUserId = userData.id;
+
           const { data: creds } = await supabaseAdmin
             .from('passkey_credentials')
             .select('credential_id, transports')
@@ -107,17 +133,16 @@ serve(async (req: Request): Promise<Response> => {
         allowCredentials,
       });
 
-      // Store challenge — use a placeholder user_id for usernameless flow
-      // We'll associate it with the credential_id in the verify step
-      const challengeExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+      // Store challenge scoped to user when known (#362, API-9).
+      // For usernameless flows user_id is null; the challenge value
+      // itself is the lookup key in the verify step.
+      const challengeExpiry = new Date(Date.now() + CHALLENGE_TTL_MS);
 
-      // Store challenge keyed by the challenge value itself for lookup
       await supabaseAdmin.from('webauthn_challenges').insert({
         challenge: authenticationOptions.challenge,
         type: 'authentication',
         expires_at: challengeExpiry.toISOString(),
-        // user_id is nullable for usernameless flow
-        user_id: null,
+        user_id: resolvedUserId,
       });
 
       return new Response(JSON.stringify(authenticationOptions), {
@@ -125,18 +150,15 @@ serve(async (req: Request): Promise<Response> => {
         headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     } else if (step === 'verify') {
-      // Step 2: Verify authentication response
+      // Step 2: Verify authentication response and mint JWT session (#362)
       const body = await req.json();
       const credentialId = body.id as string;
 
       if (!credentialId) {
-        return new Response(JSON.stringify({ error: 'Missing credential ID' }), {
-          status: 400,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-        });
+        return errorResponse(req, 'Missing credential ID', 400);
       }
 
-      // Look up the stored credential
+      // ── Credential lookup ────────────────────────────────────────────
       const { data: storedCred, error: credError } = await supabaseAdmin
         .from('passkey_credentials')
         .select('*')
@@ -145,33 +167,46 @@ serve(async (req: Request): Promise<Response> => {
         .single();
 
       if (credError || !storedCred) {
-        return new Response(JSON.stringify({ error: 'Credential not found' }), {
-          status: 400,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-        });
+        return errorResponse(req, 'Credential not found', 400);
       }
 
       const credential = storedCred as StoredCredential;
 
-      // Find the most recent valid authentication challenge
-      const { data: challenges } = await supabaseAdmin
-        .from('webauthn_challenges')
-        .select('*')
-        .eq('type', 'authentication')
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (!challenges || challenges.length === 0) {
-        return new Response(JSON.stringify({ error: 'No valid challenge found' }), {
-          status: 400,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-        });
+      // ── Scoped challenge lookup (#362, API-9) ────────────────────────
+      // Extract the challenge from clientDataJSON so we look up by exact
+      // value — never "the most recent challenge globally".
+      if (!body.response?.clientDataJSON) {
+        return errorResponse(req, 'Missing clientDataJSON in response', 400);
       }
 
-      const expectedChallenge = challenges[0].challenge;
+      const clientDataBytes = base64urlToBytes(body.response.clientDataJSON);
+      const clientData = JSON.parse(new TextDecoder().decode(clientDataBytes));
+      const submittedChallenge = clientData.challenge as string | undefined;
 
-      // Decode the stored public key from base64
+      if (!submittedChallenge) {
+        return errorResponse(req, 'Missing challenge in client data', 400);
+      }
+
+      // Look up by exact challenge value + type + not-expired
+      const { data: challengeRow, error: challengeError } = await supabaseAdmin
+        .from('webauthn_challenges')
+        .select('*')
+        .eq('challenge', submittedChallenge)
+        .eq('type', 'authentication')
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (challengeError || !challengeRow) {
+        return errorResponse(req, 'Challenge not found, expired, or already used', 400);
+      }
+
+      // Delete challenge immediately — one-time use regardless of
+      // whether verification succeeds (#362, API-9).
+      await supabaseAdmin.from('webauthn_challenges').delete().eq('id', challengeRow.id);
+
+      const expectedChallenge = challengeRow.challenge as string;
+
+      // ── WebAuthn verification ────────────────────────────────────────
       const publicKeyBytes = Uint8Array.from(atob(credential.public_key), (c) => c.charCodeAt(0));
 
       const verification: VerifiedAuthenticationResponse = await verifyAuthenticationResponse({
@@ -189,48 +224,69 @@ serve(async (req: Request): Promise<Response> => {
       });
 
       if (!verification.verified) {
-        return new Response(JSON.stringify({ error: 'Authentication verification failed' }), {
-          status: 401,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-        });
+        return errorResponse(req, 'Authentication verification failed', 401);
       }
 
-      // Update the counter to prevent replay attacks
+      // ── Update credential counter (replay prevention) ────────────────
       await supabaseAdmin
         .from('passkey_credentials')
         .update({
           counter: verification.authenticationInfo.newCounter,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', credential.id);
 
-      // Clean up used challenge
-      await supabaseAdmin.from('webauthn_challenges').delete().eq('id', challenges[0].id);
+      // ── Mint Supabase JWT session (#362, A-5) ────────────────────────
+      // Resolve the auth user so we can generate a session.
+      const {
+        data: { user: authUser },
+        error: userError,
+      } = await supabaseAdmin.auth.admin.getUserById(credential.user_id);
 
-      // Generate a Supabase session for the authenticated user
-      // Use the admin API to create a session for the user
-      await supabaseAdmin.auth.admin.generateLink({
+      if (userError || !authUser?.email) {
+        console.error('Failed to resolve auth user for session');
+        return internalErrorResponse(req);
+      }
+
+      // Generate a magic-link token server-side (never sent to the user).
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'magiclink',
-        email: '', // Will be resolved from user_id
+        email: authUser.email,
       });
 
-      // Since we can't directly generate a session via admin API easily,
-      // we return a signed verification token that the client can exchange.
-      // In production, you'd use supabase.auth.admin.generateLink() or
-      // a custom JWT signed with the project's JWT secret.
+      if (linkError || !linkData?.properties?.hashed_token) {
+        console.error('Failed to generate session link');
+        return internalErrorResponse(req);
+      }
 
-      return new Response(
-        JSON.stringify({
-          verified: true,
-          user_id: credential.user_id,
-          // The client should use this to establish a Supabase session
-          // via a custom token exchange or magic link flow
-          message: 'Passkey authentication successful. Exchange for session.',
-        }),
-        {
-          status: 200,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      // Exchange the hashed token for a real session containing JWTs.
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabaseAdmin.auth.verifyOtp({
+        token_hash: linkData.properties.hashed_token,
+        type: 'magiclink',
+      });
+
+      if (sessionError || !session) {
+        console.error('Failed to mint session from OTP exchange');
+        return internalErrorResponse(req);
+      }
+
+      // Return a standard Supabase session payload — clients can use
+      // supabase.auth.setSession() with these tokens.
+      return jsonResponse(req, {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires_in: session.expires_in,
+        expires_at: session.expires_at,
+        token_type: 'bearer',
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          created_at: session.user.created_at,
         },
-      );
+      });
     } else {
       return new Response(
         JSON.stringify({
