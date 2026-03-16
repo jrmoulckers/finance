@@ -467,6 +467,10 @@
 .settings-item__value {
   color: var(--semantic-text-secondary);
 }
+.settings-item__value--muted {
+  opacity: 0.5;
+  font-style: italic;
+}
 .settings-item__control,
 .settings-item__status {
   display: inline-flex;

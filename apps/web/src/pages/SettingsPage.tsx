@@ -100,11 +100,6 @@ export const SettingsPage: React.FC = () => {
       initMonitoring();
     }
   }, []);
-
-  const handleComingSoon = useCallback((message: string) => {
-    window.alert(message);
-  }, []);
-
   const handleSignOut = useCallback(async () => {
     if (!isAuthenticated || isLoading) {
       return;
@@ -235,20 +230,22 @@ export const SettingsPage: React.FC = () => {
           <button
             type="button"
             className="settings-item settings-item--button"
-            onClick={() => handleComingSoon('Biometric lock settings are coming soon.')}
+            disabled
+            aria-disabled="true"
+            aria-label="Biometric lock — available in a future update"
           >
             <span className="settings-item__label">Biometric Lock</span>
-            <span className="settings-item__value">Off</span>
+            <span className="settings-item__value settings-item__value--muted">Coming soon</span>
           </button>
           <button
             type="button"
             className="settings-item settings-item--button"
-            onClick={() => handleComingSoon('Passkey management is coming soon.')}
+            disabled
+            aria-disabled="true"
+            aria-label="Passkey management — available in a future update"
           >
-            <span className="settings-item__label">Passkeys</span>
-            <span className="settings-item__value">
-              {user?.hasPasskey ? 'Registered' : 'Not set up'}
-            </span>
+            <span className="settings-item__label">Passkey Management</span>
+            <span className="settings-item__value settings-item__value--muted">Coming soon</span>
           </button>
           <button
             type="button"
@@ -302,10 +299,12 @@ export const SettingsPage: React.FC = () => {
           <button
             type="button"
             className="settings-item settings-item--button settings-item--destructive"
-            onClick={() => handleComingSoon('Account deletion is coming soon.')}
-            aria-label="Delete all data"
+            disabled
+            aria-disabled="true"
+            aria-label="Account deletion — available in a future update"
           >
-            <span className="settings-item__label">Delete All Data</span>
+            <span className="settings-item__label">Account Deletion</span>
+            <span className="settings-item__value settings-item__value--muted">Coming soon</span>
           </button>
         </div>
       </section>
