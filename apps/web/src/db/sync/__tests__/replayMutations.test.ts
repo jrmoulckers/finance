@@ -120,9 +120,7 @@ describe('replayMutations', () => {
   it('should treat a non-OK response as all mutations failed', async () => {
     await queue.enqueue(makeInput());
 
-    vi.mocked(fetch).mockResolvedValueOnce(
-      new Response('Internal Server Error', { status: 500 }),
-    );
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('Internal Server Error', { status: 500 }));
 
     const result = await replayMutations();
 

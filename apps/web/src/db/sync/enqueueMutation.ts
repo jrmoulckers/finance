@@ -96,8 +96,11 @@ function requestBackgroundSync(): void {
   void navigator.serviceWorker.ready
     .then((registration) => {
       if ('sync' in registration) {
-        return (registration as ServiceWorkerRegistration & { sync: { register(tag: string): Promise<void> } })
-          .sync.register(SYNC_TAG);
+        return (
+          registration as ServiceWorkerRegistration & {
+            sync: { register(tag: string): Promise<void> };
+          }
+        ).sync.register(SYNC_TAG);
       }
       // Fallback: ask the SW via postMessage.
       navigator.serviceWorker.controller?.postMessage({ type: 'REGISTER_SYNC' });
