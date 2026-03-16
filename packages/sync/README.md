@@ -41,6 +41,7 @@ The sync layer follows a **pull → conflict resolution → push** cycle:
 ## Components
 
 ### Core Types
+
 - **`SyncConfig`** — connection parameters, intervals, retry policy
 - **`SyncStatus`** — sealed class for engine state (Idle, Connecting, Syncing, Connected, Error, Disconnected)
 - **`SyncCredentials`** — bearer token, user ID, expiry, refresh token
@@ -49,6 +50,7 @@ The sync layer follows a **pull → conflict resolution → push** cycle:
 - **`SyncResult`** — sealed outcome of a sync cycle (Success / Failure)
 
 ### Auth Module (`auth/`)
+
 - **`AuthCredentials`** — sealed hierarchy (EmailPassword, OAuth+PKCE, Passkey, RefreshToken)
 - **`AuthSession`** — access + refresh tokens with expiry tracking
 - **`AuthManager`** — interface for sign-in / sign-out / token refresh
@@ -56,6 +58,7 @@ The sync layer follows a **pull → conflict resolution → push** cycle:
 - **`PKCEHelper`** — code verifier / challenge generation for OAuth flows
 
 ### Conflict Resolution (`conflict/`)
+
 - **`ConflictResolver`** — interface for resolving local vs. server conflicts
 - **`ConflictStrategy`** — per-table strategy mapping with four built-in resolvers:
   - `LastWriteWinsResolver` — server timestamp comparison
@@ -64,22 +67,26 @@ The sync layer follows a **pull → conflict resolution → push** cycle:
   - `ClientWinsResolver` — always keep local version
 
 ### Offline Queue (`queue/`)
+
 - **`MutationQueue`** — interface with FIFO ordering and operation-aware coalescing
 - **`InMemoryMutationQueue`** — thread-safe in-memory implementation using `Mutex`
 - **`QueueProcessor`** — batch processing with exponential backoff and dead-letter support
 
 ### Delta Sync (`delta/`)
+
 - **`DeltaSyncManager`** — incremental pull with pagination, conflict detection, batched push
 - **`SequenceTracker`** — persists per-table sync versions for resumable sync
 - **`SyncChecksum`** — CRC-32 integrity verification for pulled changes
 
 ### Encryption (`crypto/`)
+
 - **`FieldEncryptor`** — field-level AES-256-GCM encryption for sensitive financial data
 - **`EnvelopeEncryption`** — envelope pattern with data encryption keys (DEKs)
 - **`HouseholdKeyManager`** — per-household key management and rotation
 - **`CryptoShredder`** — secure data deletion via key destruction
 
 ### Public API
+
 - **`SyncEngine`** — interface for the sync lifecycle (connect / disconnect / sync)
 - **`DefaultSyncEngine`** — production orchestrator with periodic sync loop, credential refresh, exponential backoff, and health monitoring
 - **`SyncClient`** — high-level facade combining auth + sync engine + mutation queue
