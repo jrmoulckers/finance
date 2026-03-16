@@ -20,21 +20,33 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,12 +58,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.components.AmountInput
 import com.finance.android.ui.theme.FinanceTheme
+import com.finance.android.ui.viewmodel.BudgetCategoryOption
 import com.finance.android.ui.viewmodel.BudgetItemUi
 import com.finance.android.ui.viewmodel.BudgetsUiState
 import com.finance.android.ui.viewmodel.BudgetsViewModel
 import com.finance.core.budget.BudgetHealth
 import com.finance.models.BudgetPeriod
+import com.finance.models.types.Cents
 import com.finance.models.types.SyncId
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -69,39 +84,194 @@ fun BudgetsScreen(
     viewModel: BudgetsViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showCreateDialog by remember { mutableStateOf(false) }
 
-    when {
-        state.isLoading -> {
-            Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .semantics { contentDescription = "Loading budgets" },
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.semantics {
-                        contentDescription = "Loading indicator"
-                    },
-                )
-            }
+    if (state.isLoading) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .semantics { contentDescription = "Loading budgets" },
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.semantics {
+                    contentDescription = "Loading indicator"
+                },
+            )
         }
+        return
+    }
 
-        state.errorMessage != null -> {
+    Box(modifier = modifier.fillMaxSize()) {
+        if (state.errorMessage != null) {
             BudgetsErrorState(
                 message = state.errorMessage!!,
                 onRetry = viewModel::refresh,
-                modifier = modifier,
+                modifier = Modifier.fillMaxSize(),
             )
-        }
-
-        else -> {
+        } else {
             BudgetsContent(
                 state = state,
                 onRefresh = viewModel::refresh,
-                modifier = modifier,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        FloatingActionButton(
+            onClick = { showCreateDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .semantics { contentDescription = "Create new budget" },
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = null,
             )
         }
     }
+
+    if (showCreateDialog) {
+        CreateBudgetDialog(
+            categories = state.availableCategories,
+            onDismiss = { showCreateDialog = false },
+            onConfirm = { categoryId, monthlyLimitCents ->
+                viewModel.createBudget(
+                    categoryId = categoryId,
+                    monthlyLimit = Cents(monthlyLimitCents),
+                )
+                showCreateDialog = false
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CreateBudgetDialog(
+    categories: List<BudgetCategoryOption>,
+    onDismiss: () -> Unit,
+    onConfirm: (SyncId, Long) -> Unit,
+) {
+    var selectedCategory by remember { mutableStateOf<BudgetCategoryOption?>(categories.firstOrNull()) }
+    var isCategoryMenuExpanded by remember { mutableStateOf(false) }
+    var monthlyLimitCents by remember { mutableStateOf(0L) }
+    var validationMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Create budget",
+                modifier = Modifier.semantics { contentDescription = "Create budget dialog" },
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ExposedDropdownMenuBox(
+                    expanded = isCategoryMenuExpanded,
+                    onExpandedChange = { expanded ->
+                        if (categories.isNotEmpty()) {
+                            isCategoryMenuExpanded = expanded
+                        }
+                    },
+                ) {
+                    OutlinedTextField(
+                        value = selectedCategory?.name.orEmpty(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Budget category") },
+                        placeholder = {
+                            Text(
+                                if (categories.isEmpty()) {
+                                    "No categories available"
+                                } else {
+                                    "Select a category"
+                                },
+                            )
+                        },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryMenuExpanded)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .semantics { contentDescription = "Budget category selector" },
+                    )
+                    ExposedDropdownMenu(
+                        expanded = isCategoryMenuExpanded,
+                        onDismissRequest = { isCategoryMenuExpanded = false },
+                    ) {
+                        categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = category.name,
+                                        modifier = Modifier.semantics {
+                                            contentDescription = "Budget category: ${category.name}"
+                                        },
+                                    )
+                                },
+                                onClick = {
+                                    selectedCategory = category
+                                    validationMessage = null
+                                    isCategoryMenuExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+                AmountInput(
+                    amountCents = monthlyLimitCents,
+                    onAmountChange = {
+                        monthlyLimitCents = it
+                        validationMessage = null
+                    },
+                    label = "Monthly limit",
+                    modifier = Modifier.semantics {
+                        contentDescription = "Budget monthly limit input"
+                    },
+                )
+                if (validationMessage != null) {
+                    Text(
+                        text = validationMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Budget creation error: $validationMessage"
+                        },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    validationMessage = when {
+                        categories.isEmpty() -> "Create an expense category before adding a budget"
+                        selectedCategory == null -> "Select a budget category"
+                        monthlyLimitCents <= 0L -> "Enter a monthly limit"
+                        else -> null
+                    }
+
+                    if (validationMessage == null) {
+                        onConfirm(selectedCategory!!.id, monthlyLimitCents)
+                    }
+                },
+                modifier = Modifier.semantics { contentDescription = "Confirm budget creation" },
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.semantics { contentDescription = "Cancel budget creation" },
+            ) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

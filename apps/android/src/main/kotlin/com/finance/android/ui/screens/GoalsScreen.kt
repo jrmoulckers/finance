@@ -19,22 +19,31 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
@@ -42,14 +51,18 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.components.AmountInput
 import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.viewmodel.GoalItemUi
 import com.finance.android.ui.viewmodel.GoalsUiState
 import com.finance.android.ui.viewmodel.GoalsViewModel
+import com.finance.models.types.Cents
 import com.finance.models.types.SyncId
+import kotlinx.datetime.LocalDate
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -67,6 +80,7 @@ fun GoalsScreen(
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showCreateDialog by remember { mutableStateOf(false) }
 
     if (state.isLoading) {
         Box(
@@ -82,10 +96,144 @@ fun GoalsScreen(
         return
     }
 
-    GoalsContent(
-        state = state,
-        onRefresh = viewModel::refresh,
-        modifier = modifier,
+    Box(modifier = modifier.fillMaxSize()) {
+        GoalsContent(
+            state = state,
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.fillMaxSize(),
+        )
+        FloatingActionButton(
+            onClick = { showCreateDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .semantics { contentDescription = "Create new goal" },
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = null,
+            )
+        }
+    }
+
+    if (showCreateDialog) {
+        CreateGoalDialog(
+            onDismiss = { showCreateDialog = false },
+            onConfirm = { name, targetAmountCents, targetDate ->
+                viewModel.createGoal(
+                    name = name,
+                    targetAmount = Cents(targetAmountCents),
+                    targetDate = targetDate,
+                )
+                showCreateDialog = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun CreateGoalDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, Long, LocalDate?) -> Unit,
+) {
+    var goalName by remember { mutableStateOf("") }
+    var targetAmountCents by remember { mutableStateOf(0L) }
+    var targetDateText by remember { mutableStateOf("") }
+    var validationMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Create goal",
+                modifier = Modifier.semantics { contentDescription = "Create goal dialog" },
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = goalName,
+                    onValueChange = {
+                        goalName = it
+                        validationMessage = null
+                    },
+                    label = { Text("Goal name") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Goal name input" },
+                )
+                AmountInput(
+                    amountCents = targetAmountCents,
+                    onAmountChange = {
+                        targetAmountCents = it
+                        validationMessage = null
+                    },
+                    label = "Target amount",
+                    modifier = Modifier.semantics {
+                        contentDescription = "Goal target amount input"
+                    },
+                )
+                OutlinedTextField(
+                    value = targetDateText,
+                    onValueChange = {
+                        targetDateText = it
+                        validationMessage = null
+                    },
+                    label = { Text("Target date (optional)") },
+                    placeholder = { Text("YYYY-MM-DD") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Goal target date input" },
+                )
+                if (validationMessage != null) {
+                    Text(
+                        text = validationMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Goal creation error: $validationMessage"
+                        },
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val parsedTargetDate = when {
+                        targetDateText.isBlank() -> null
+                        else -> runCatching { LocalDate.parse(targetDateText.trim()) }.getOrNull()
+                    }
+
+                    validationMessage = when {
+                        goalName.isBlank() -> "Enter a goal name"
+                        targetAmountCents <= 0L -> "Enter a target amount"
+                        targetDateText.isNotBlank() && parsedTargetDate == null -> {
+                            "Enter the target date as YYYY-MM-DD"
+                        }
+                        else -> null
+                    }
+
+                    if (validationMessage == null) {
+                        onConfirm(goalName.trim(), targetAmountCents, parsedTargetDate)
+                    }
+                },
+                modifier = Modifier.semantics { contentDescription = "Confirm goal creation" },
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.semantics { contentDescription = "Cancel goal creation" },
+            ) {
+                Text("Cancel")
+            }
+        },
     )
 }
 

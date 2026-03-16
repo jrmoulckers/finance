@@ -90,6 +90,7 @@ data class SettingsUiState(
 
     // Accessibility
     val simplifiedViewEnabled: Boolean = false,
+    val darkModeEnabled: Boolean = false,
     val highContrastEnabled: Boolean = false,
 
     // About
@@ -112,7 +113,7 @@ data class SettingsUiState(
 // TODO(#434): Replace with authenticated user's household ID
 private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
 
-private object PrefKeys {
+internal object SettingsPreferences {
     const val FILE_NAME = "finance_settings"
     const val DEFAULT_CURRENCY = "default_currency"
     const val NOTIFICATIONS_ENABLED = "notifications_enabled"
@@ -120,6 +121,7 @@ private object PrefKeys {
     const val BIOMETRIC_ENABLED = "biometric_enabled"
     const val APP_LOCK_TIMEOUT = "app_lock_timeout"
     const val SIMPLIFIED_VIEW = "simplified_view"
+    const val DARK_MODE = "dark_mode"
     const val HIGH_CONTRAST = "high_contrast"
     const val USER_NAME = "user_name"
     const val USER_EMAIL = "user_email"
@@ -141,6 +143,8 @@ private object PrefKeys {
  * @param transactionRepository Source for transaction data used in data export.
  * @param categoryRepository Source for category data used to resolve category names in export.
  * @param authManager Shared auth manager for sign-out and session management.
+ * @param defaultDarkModeEnabled Whether dark mode should default to the current system theme
+ *   when the user has not chosen an explicit preference yet.
  */
 class SettingsViewModel(
     private val prefs: SharedPreferences,
@@ -148,6 +152,7 @@ class SettingsViewModel(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val authManager: AuthManager,
+    private val defaultDarkModeEnabled: Boolean,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -165,20 +170,21 @@ class SettingsViewModel(
     private fun loadPreferences() {
         _uiState.update { current ->
             current.copy(
-                userName = prefs.getString(PrefKeys.USER_NAME, "") ?: "",
-                userEmail = prefs.getString(PrefKeys.USER_EMAIL, "") ?: "",
-                defaultCurrency = prefs.getString(PrefKeys.DEFAULT_CURRENCY, null)
+                userName = prefs.getString(SettingsPreferences.USER_NAME, "") ?: "",
+                userEmail = prefs.getString(SettingsPreferences.USER_EMAIL, "") ?: "",
+                defaultCurrency = prefs.getString(SettingsPreferences.DEFAULT_CURRENCY, null)
                     ?.let { code -> SupportedCurrency.entries.firstOrNull { it.code == code } }
                     ?: SupportedCurrency.USD,
-                notificationsEnabled = prefs.getBoolean(PrefKeys.NOTIFICATIONS_ENABLED, true),
-                billRemindersEnabled = prefs.getBoolean(PrefKeys.BILL_REMINDERS_ENABLED, true),
-                biometricEnabled = prefs.getBoolean(PrefKeys.BIOMETRIC_ENABLED, false),
+                notificationsEnabled = prefs.getBoolean(SettingsPreferences.NOTIFICATIONS_ENABLED, true),
+                billRemindersEnabled = prefs.getBoolean(SettingsPreferences.BILL_REMINDERS_ENABLED, true),
+                biometricEnabled = prefs.getBoolean(SettingsPreferences.BIOMETRIC_ENABLED, false),
                 biometricAvailable = biometricChecker.isBiometricAvailable(),
-                appLockTimeout = prefs.getString(PrefKeys.APP_LOCK_TIMEOUT, null)
+                appLockTimeout = prefs.getString(SettingsPreferences.APP_LOCK_TIMEOUT, null)
                     ?.let { name -> AppLockTimeout.entries.firstOrNull { it.name == name } }
                     ?: AppLockTimeout.ONE_MINUTE,
-                simplifiedViewEnabled = prefs.getBoolean(PrefKeys.SIMPLIFIED_VIEW, false),
-                highContrastEnabled = prefs.getBoolean(PrefKeys.HIGH_CONTRAST, false),
+                simplifiedViewEnabled = prefs.getBoolean(SettingsPreferences.SIMPLIFIED_VIEW, false),
+                darkModeEnabled = prefs.getBoolean(SettingsPreferences.DARK_MODE, defaultDarkModeEnabled),
+                highContrastEnabled = prefs.getBoolean(SettingsPreferences.HIGH_CONTRAST, false),
             )
         }
     }
@@ -190,17 +196,17 @@ class SettingsViewModel(
     // -- Public actions -------------------------------------------------------
 
     fun setDefaultCurrency(currency: SupportedCurrency) {
-        updatePref { putString(PrefKeys.DEFAULT_CURRENCY, currency.code) }
+        updatePref { putString(SettingsPreferences.DEFAULT_CURRENCY, currency.code) }
         _uiState.update { it.copy(defaultCurrency = currency) }
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {
-        updatePref { putBoolean(PrefKeys.NOTIFICATIONS_ENABLED, enabled) }
+        updatePref { putBoolean(SettingsPreferences.NOTIFICATIONS_ENABLED, enabled) }
         _uiState.update { it.copy(notificationsEnabled = enabled) }
     }
 
     fun setBillRemindersEnabled(enabled: Boolean) {
-        updatePref { putBoolean(PrefKeys.BILL_REMINDERS_ENABLED, enabled) }
+        updatePref { putBoolean(SettingsPreferences.BILL_REMINDERS_ENABLED, enabled) }
         _uiState.update { it.copy(billRemindersEnabled = enabled) }
     }
 
@@ -213,22 +219,27 @@ class SettingsViewModel(
             }
             return
         }
-        updatePref { putBoolean(PrefKeys.BIOMETRIC_ENABLED, enabled) }
+        updatePref { putBoolean(SettingsPreferences.BIOMETRIC_ENABLED, enabled) }
         _uiState.update { it.copy(biometricEnabled = enabled) }
     }
 
     fun setAppLockTimeout(timeout: AppLockTimeout) {
-        updatePref { putString(PrefKeys.APP_LOCK_TIMEOUT, timeout.name) }
+        updatePref { putString(SettingsPreferences.APP_LOCK_TIMEOUT, timeout.name) }
         _uiState.update { it.copy(appLockTimeout = timeout) }
     }
 
     fun setSimplifiedViewEnabled(enabled: Boolean) {
-        updatePref { putBoolean(PrefKeys.SIMPLIFIED_VIEW, enabled) }
+        updatePref { putBoolean(SettingsPreferences.SIMPLIFIED_VIEW, enabled) }
         _uiState.update { it.copy(simplifiedViewEnabled = enabled) }
     }
 
+    fun setDarkModeEnabled(enabled: Boolean) {
+        updatePref { putBoolean(SettingsPreferences.DARK_MODE, enabled) }
+        _uiState.update { it.copy(darkModeEnabled = enabled) }
+    }
+
     fun setHighContrastEnabled(enabled: Boolean) {
-        updatePref { putBoolean(PrefKeys.HIGH_CONTRAST, enabled) }
+        updatePref { putBoolean(SettingsPreferences.HIGH_CONTRAST, enabled) }
         _uiState.update { it.copy(highContrastEnabled = enabled) }
     }
 

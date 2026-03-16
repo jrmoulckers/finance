@@ -10,6 +10,7 @@ import com.finance.android.data.repository.TransactionRepository
 import com.finance.core.budget.BudgetCalculator
 import com.finance.core.budget.BudgetHealth
 import com.finance.core.currency.CurrencyFormatter
+import com.finance.models.Budget
 import com.finance.models.BudgetPeriod
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
@@ -38,6 +39,7 @@ private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
  * @property totalBudgeted Formatted sum of all budget limits.
  * @property totalSpent Formatted sum of spending across all budgets.
  * @property overallHealth Aggregate health derived from individual budget statuses.
+ * @property availableCategories Expense categories available for new budgets.
  */
 data class BudgetsUiState(
     val isLoading: Boolean = true,
@@ -47,6 +49,13 @@ data class BudgetsUiState(
     val totalBudgeted: String = "",
     val totalSpent: String = "",
     val overallHealth: BudgetHealth = BudgetHealth.HEALTHY,
+    val availableCategories: List<BudgetCategoryOption> = emptyList(),
+)
+
+/** Simple category option for the create-budget dialog. */
+data class BudgetCategoryOption(
+    val id: SyncId,
+    val name: String,
 )
 
 /**
@@ -115,6 +124,38 @@ class BudgetsViewModel(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
+    /** Creates a new monthly budget for the selected category. */
+    fun createBudget(categoryId: SyncId, monthlyLimit: Cents) {
+        if (!monthlyLimit.isPositive()) return
+
+        viewModelScope.launch {
+            val now = Clock.System.now()
+            val category = categoryRepository.getById(categoryId)
+            val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
+            val budget = Budget(
+                id = SyncId("budget-${now.toEpochMilliseconds()}"),
+                householdId = PLACEHOLDER_HOUSEHOLD_ID,
+                categoryId = categoryId,
+                name = category?.name ?: "New Budget",
+                amount = monthlyLimit,
+                currency = Currency.USD,
+                period = BudgetPeriod.MONTHLY,
+                startDate = kotlinx.datetime.LocalDate(today.year, today.month, 1),
+                createdAt = now,
+                updatedAt = now,
+            )
+
+            try {
+                budgetRepository.insert(budget)
+                loadData()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = e.message ?: "Failed to create budget")
+                }
+            }
+        }
+    }
+
     private fun loadBudgets() {
         viewModelScope.launch {
             delay(300)
@@ -129,6 +170,15 @@ class BudgetsViewModel(
             val transactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
             val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
             val categoryMap = categories.associateBy { it.id }
+            val availableCategories = categories
+                .filterNot { it.isIncome }
+                .sortedBy { it.name }
+                .map { category ->
+                    BudgetCategoryOption(
+                        id = category.id,
+                        name = category.name,
+                    )
+                }
 
             val currency = Currency.USD
             val today = Clock.System.now()
@@ -181,6 +231,7 @@ class BudgetsViewModel(
                         currency,
                     ),
                     overallHealth = overallHealth,
+                    availableCategories = availableCategories,
                     errorMessage = null,
                 )
             }

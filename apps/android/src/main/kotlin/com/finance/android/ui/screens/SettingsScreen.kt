@@ -89,6 +89,7 @@ import java.io.File
  * @param onSetBiometric           Callback when biometric toggle changes.
  * @param onSetAppLockTimeout      Callback when app-lock timeout changes.
  * @param onSetSimplifiedView      Callback when simplified-view toggle changes.
+ * @param onSetDarkMode            Callback when dark-mode toggle changes.
  * @param onSetHighContrast        Callback when high-contrast toggle changes.
  * @param onExportClick            Callback when "Export data" is tapped.
  * @param onDeleteClick            Callback when "Delete account" is tapped.
@@ -112,6 +113,7 @@ fun SettingsScreen(
     onSetBiometric: (Boolean) -> Unit,
     onSetAppLockTimeout: (AppLockTimeout) -> Unit,
     onSetSimplifiedView: (Boolean) -> Unit,
+    onSetDarkMode: (Boolean) -> Unit,
     onSetHighContrast: (Boolean) -> Unit,
     onExportClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -166,50 +168,52 @@ fun SettingsScreen(
                 onSignOut = onSignOut,
             )
 
-            // ── Preferences ──────────────────────────────────────────────────
-            PreferencesSection(
-                currency = state.defaultCurrency,
-                notificationsEnabled = state.notificationsEnabled,
-                billRemindersEnabled = state.billRemindersEnabled,
-                onCurrencyChanged = onSetCurrency,
-                onNotificationsChanged = onSetNotifications,
-                onBillRemindersChanged = onSetBillReminders,
-            )
+        // ── Preferences ──────────────────────────────────────────────────
+        PreferencesSection(
+            currency = state.defaultCurrency,
+            notificationsEnabled = state.notificationsEnabled,
+            billRemindersEnabled = state.billRemindersEnabled,
+            onCurrencyChanged = onSetCurrency,
+            onNotificationsChanged = onSetNotifications,
+            onBillRemindersChanged = onSetBillReminders,
+        )
 
-            // ── Security ─────────────────────────────────────────────────────
-            SecuritySection(
-                biometricEnabled = state.biometricEnabled,
-                biometricAvailable = state.biometricAvailable,
-                appLockTimeout = state.appLockTimeout,
-                onBiometricChanged = onSetBiometric,
-                onAppLockTimeoutChanged = onSetAppLockTimeout,
-            )
+        // ── Security ─────────────────────────────────────────────────────
+        SecuritySection(
+            biometricEnabled = state.biometricEnabled,
+            biometricAvailable = state.biometricAvailable,
+            appLockTimeout = state.appLockTimeout,
+            onBiometricChanged = onSetBiometric,
+            onAppLockTimeoutChanged = onSetAppLockTimeout,
+        )
 
-            // ── Accessibility ────────────────────────────────────────────────
-            AccessibilitySection(
-                simplifiedViewEnabled = state.simplifiedViewEnabled,
-                highContrastEnabled = state.highContrastEnabled,
-                onSimplifiedViewChanged = onSetSimplifiedView,
-                onHighContrastChanged = onSetHighContrast,
-            )
+        // ── Accessibility ────────────────────────────────────────────────
+        AccessibilitySection(
+            simplifiedViewEnabled = state.simplifiedViewEnabled,
+            darkModeEnabled = state.darkModeEnabled,
+            highContrastEnabled = state.highContrastEnabled,
+            onSimplifiedViewChanged = onSetSimplifiedView,
+            onDarkModeChanged = onSetDarkMode,
+            onHighContrastChanged = onSetHighContrast,
+        )
 
-            // ── Data ─────────────────────────────────────────────────────────
-            DataSection(
-                onExportClick = onExportClick,
-                onDeleteClick = onDeleteClick,
-                isExporting = state.isExporting,
-            )
+        // ── Data ─────────────────────────────────────────────────────────
+        DataSection(
+            onExportClick = onExportClick,
+            onDeleteClick = onDeleteClick,
+            isExporting = state.isExporting,
+        )
 
-            // ── About ────────────────────────────────────────────────────────
-            AboutSection(
-                appVersion = state.appVersion,
-                onPrivacyPolicyClick = onPrivacyPolicyClick,
-                onTermsClick = onTermsClick,
-                onLicensesClick = onLicensesClick,
-            )
+        // ── About ────────────────────────────────────────────────────────
+        AboutSection(
+            appVersion = state.appVersion,
+            onPrivacyPolicyClick = onPrivacyPolicyClick,
+            onTermsClick = onTermsClick,
+            onLicensesClick = onLicensesClick,
+        )
 
-            Spacer(modifier = Modifier.height(24.dp))
-        }
+        Spacer(modifier = Modifier.height(24.dp))
+    }
     }
 
     // ── Dialogs ──────────────────────────────────────────────────────────────
@@ -508,8 +512,10 @@ private fun AppLockTimeoutSelector(
 @Composable
 private fun AccessibilitySection(
     simplifiedViewEnabled: Boolean,
+    darkModeEnabled: Boolean,
     highContrastEnabled: Boolean,
     onSimplifiedViewChanged: (Boolean) -> Unit,
+    onDarkModeChanged: (Boolean) -> Unit,
     onHighContrastChanged: (Boolean) -> Unit,
 ) {
     SectionHeader("Accessibility")
@@ -523,6 +529,15 @@ private fun AccessibilitySection(
                 description = "Reduce visual complexity for easier reading",
                 checked = simplifiedViewEnabled,
                 onCheckedChange = onSimplifiedViewChanged,
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+            SettingsToggleRow(
+                label = "Dark mode",
+                description = "Use a darker color palette throughout the app",
+                checked = darkModeEnabled,
+                onCheckedChange = onDarkModeChanged,
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
@@ -904,6 +919,7 @@ fun SettingsScreen(
         onSetBiometric = viewModel::setBiometricEnabled,
         onSetAppLockTimeout = viewModel::setAppLockTimeout,
         onSetSimplifiedView = viewModel::setSimplifiedViewEnabled,
+        onSetDarkMode = viewModel::setDarkModeEnabled,
         onSetHighContrast = viewModel::setHighContrastEnabled,
         onExportClick = viewModel::showExportDialog,
         onDeleteClick = viewModel::showDeleteDialog,
@@ -979,6 +995,7 @@ private fun SettingsScreenPreviewLight() {
                 onSetBiometric = {},
                 onSetAppLockTimeout = {},
                 onSetSimplifiedView = {},
+                onSetDarkMode = {},
                 onSetHighContrast = {},
                 onExportClick = {},
                 onDeleteClick = {},
@@ -1014,6 +1031,7 @@ private fun SettingsScreenPreviewDark() {
                 onSetBiometric = {},
                 onSetAppLockTimeout = {},
                 onSetSimplifiedView = {},
+                onSetDarkMode = {},
                 onSetHighContrast = {},
                 onExportClick = {},
                 onDeleteClick = {},
@@ -1063,6 +1081,7 @@ private fun previewState() = SettingsUiState(
     biometricAvailable = true,
     appLockTimeout = AppLockTimeout.ONE_MINUTE,
     simplifiedViewEnabled = false,
+    darkModeEnabled = false,
     highContrastEnabled = false,
     appVersion = "1.0.0",
 )

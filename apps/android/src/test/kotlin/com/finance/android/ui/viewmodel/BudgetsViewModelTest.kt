@@ -34,6 +34,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -503,6 +504,37 @@ class BudgetsViewModelTest {
         assertTrue(state.budgets.isEmpty(), "Expected empty budgets when repository has none")
         assertEquals(BudgetHealth.HEALTHY, state.overallHealth, "Default health should be HEALTHY")
         assertNull(state.errorMessage)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // create budget
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    fun `createBudget inserts monthly budget for selected category`() = runTest {
+        val category = createCategory("cat-new", "Groceries")
+        val budgetRepository = TestBudgetRepository()
+        val vm = BudgetsViewModel(
+            budgetRepository = budgetRepository,
+            transactionRepository = TestTransactionRepository(),
+            categoryRepository = TestCategoryRepository(listOf(category)),
+        )
+
+        advanceUntilIdle()
+
+        vm.createBudget(category.id, Cents(60_000L))
+        advanceUntilIdle()
+
+        val createdId = vm.uiState.value.budgets.single().id
+        val createdBudget = budgetRepository.getById(createdId)
+        assertNotNull(createdBudget)
+        assertEquals(SyncId("household-1"), createdBudget.householdId)
+        assertEquals(category.id, createdBudget.categoryId)
+        assertEquals("Groceries", createdBudget.name)
+        assertEquals(Cents(60_000L), createdBudget.amount)
+        assertEquals(Currency.USD, createdBudget.currency)
+        assertEquals(BudgetPeriod.MONTHLY, createdBudget.period)
+        assertEquals(LocalDate(today.year, today.month, 1), createdBudget.startDate)
     }
 
     // ═══════════════════════════════════════════════════════════════════

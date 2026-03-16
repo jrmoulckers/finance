@@ -38,7 +38,7 @@ class FinanceApplication : Application() {
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.DEBUG else Level.NONE)
             androidContext(this@FinanceApplication)
-            // TODO: Re-enable dataModule once the SQLCipher integration is stable again.
+            // TODO(#432): Re-enable dataModule once SQLCipher native dependency is added.
             modules(appModule, authModule)
         }
         Timber.i("Koin DI initialized")

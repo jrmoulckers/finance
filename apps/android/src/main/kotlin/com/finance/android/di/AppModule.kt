@@ -24,7 +24,9 @@ import com.finance.android.ui.viewmodel.GoalsViewModel
 import com.finance.android.ui.viewmodel.TransactionsViewModel
 import com.finance.core.monitoring.CrashReporter
 import com.finance.core.monitoring.MetricsCollector
+import com.finance.sync.auth.AuthManager
 import org.koin.android.ext.koin.androidContext
+import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.bind
@@ -68,7 +70,10 @@ val appModule = module {
 
     /** [SharedPreferences] used by [SettingsViewModel] for local persistence. */
     single<android.content.SharedPreferences> {
-        androidContext().getSharedPreferences("finance_settings", android.content.Context.MODE_PRIVATE)
+        androidContext().getSharedPreferences(
+            com.finance.android.ui.screens.SettingsPreferences.FILE_NAME,
+            android.content.Context.MODE_PRIVATE,
+        )
     }
 
     /** Biometric availability check — delegates to [androidx.biometric.BiometricManager]. */
@@ -84,5 +89,17 @@ val appModule = module {
     viewModelOf(::TransactionsViewModel)
     viewModelOf(::TransactionCreateViewModel)
     viewModelOf(::GoalsViewModel)
-    viewModelOf(::SettingsViewModel)
+    viewModel {
+        SettingsViewModel(
+            prefs = get(),
+            biometricChecker = get(),
+            transactionRepository = get(),
+            categoryRepository = get(),
+            authManager = get<AuthManager>(),
+            defaultDarkModeEnabled = (
+                androidContext().resources.configuration.uiMode and
+                    android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                ) == android.content.res.Configuration.UI_MODE_NIGHT_YES,
+        )
+    }
 }

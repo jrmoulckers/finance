@@ -2,11 +2,14 @@
 
 package com.finance.android
 
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +28,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,10 +44,12 @@ import androidx.navigation.compose.rememberNavController
 import com.finance.android.auth.AuthState
 import com.finance.android.auth.AuthViewModel
 import com.finance.android.auth.LoginScreen
+import com.finance.android.ui.accessibility.HighContrastTheme
 import com.finance.android.ui.navigation.FinanceBottomBar
 import com.finance.android.ui.navigation.FinanceNavHost
 import com.finance.android.ui.navigation.FinanceTopBar
 import com.finance.android.ui.navigation.Route
+import com.finance.android.ui.screens.SettingsPreferences
 import com.finance.android.ui.theme.FinanceTheme
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -58,11 +66,59 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            FinanceTheme {
-                FinanceApp()
+            val systemDarkTheme = isSystemInDarkTheme()
+            val sharedPreferences = remember {
+                getSharedPreferences(SettingsPreferences.FILE_NAME, Context.MODE_PRIVATE)
+            }
+            val darkModeEnabled = rememberBooleanPreference(
+                sharedPreferences = sharedPreferences,
+                key = SettingsPreferences.DARK_MODE,
+                defaultValue = systemDarkTheme,
+            )
+            val highContrastEnabled = rememberBooleanPreference(
+                sharedPreferences = sharedPreferences,
+                key = SettingsPreferences.HIGH_CONTRAST,
+                defaultValue = false,
+            )
+
+            if (highContrastEnabled) {
+                HighContrastTheme(darkTheme = darkModeEnabled) {
+                    FinanceApp()
+                }
+            } else {
+                FinanceTheme(darkTheme = darkModeEnabled) {
+                    FinanceApp()
+                }
             }
         }
     }
+}
+
+@Composable
+private fun rememberBooleanPreference(
+    sharedPreferences: SharedPreferences,
+    key: String,
+    defaultValue: Boolean,
+): Boolean {
+    var value by remember(sharedPreferences, key, defaultValue) {
+        mutableStateOf(sharedPreferences.getBoolean(key, defaultValue))
+    }
+
+    DisposableEffect(sharedPreferences, key, defaultValue) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { preferences, changedKey ->
+            if (changedKey == key) {
+                value = preferences.getBoolean(key, defaultValue)
+            }
+        }
+        sharedPreferences.registerOnSharedPreferenceChangeListener(listener)
+        value = sharedPreferences.getBoolean(key, defaultValue)
+
+        onDispose {
+            sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
+
+    return value
 }
 
 /**

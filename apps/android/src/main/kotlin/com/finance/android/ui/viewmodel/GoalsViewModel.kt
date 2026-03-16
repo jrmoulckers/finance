@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.finance.android.data.repository.GoalRepository
 import com.finance.core.currency.CurrencyFormatter
+import com.finance.models.Goal
 import com.finance.models.GoalStatus
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
@@ -17,6 +18,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 
 // TODO(#434): Replace with authenticated user's household ID
 private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
@@ -93,6 +96,40 @@ class GoalsViewModel(
             delay(600)
             loadData()
             _uiState.update { it.copy(isRefreshing = false) }
+        }
+    }
+
+    /** Creates a new goal using sensible defaults for the current household. */
+    fun createGoal(
+        name: String,
+        targetAmount: Cents,
+        targetDate: LocalDate? = null,
+    ) {
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank() || !targetAmount.isPositive()) return
+
+        viewModelScope.launch {
+            val now = Clock.System.now()
+            val goal = Goal(
+                id = SyncId("goal-${now.toEpochMilliseconds()}"),
+                householdId = PLACEHOLDER_HOUSEHOLD_ID,
+                name = trimmedName,
+                targetAmount = targetAmount,
+                currency = Currency.USD,
+                targetDate = targetDate,
+                status = GoalStatus.ACTIVE,
+                createdAt = now,
+                updatedAt = now,
+            )
+
+            try {
+                goalRepository.insert(goal)
+                loadData()
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = "Unable to create goal. Please try again.")
+                }
+            }
         }
     }
 

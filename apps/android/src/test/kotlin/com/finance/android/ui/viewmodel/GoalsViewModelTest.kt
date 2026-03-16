@@ -25,6 +25,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -509,6 +510,37 @@ class GoalsViewModelTest {
         assertEquals("Dec 25, 2023", GoalsViewModel.formatDate(LocalDate(2023, 12, 25)))
         assertEquals("Feb 29, 2024", GoalsViewModel.formatDate(LocalDate(2024, 2, 29)))
         assertEquals("Nov 5, 2025", GoalsViewModel.formatDate(LocalDate(2025, 11, 5)))
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // create goal
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test
+    fun `createGoal inserts active goal with defaults`() = runTest {
+        val repository = TestGoalRepository()
+        val vm = GoalsViewModel(
+            goalRepository = repository,
+        )
+
+        advanceUntilIdle()
+
+        vm.createGoal(
+            name = "Trip Fund",
+            targetAmount = Cents(125_000L),
+            targetDate = LocalDate(2026, 1, 15),
+        )
+        advanceUntilIdle()
+
+        val createdId = vm.uiState.value.goals.single().id
+        val createdGoal = repository.getById(createdId)
+        assertNotNull(createdGoal)
+        assertEquals(SyncId("household-1"), createdGoal.householdId)
+        assertEquals(GoalStatus.ACTIVE, createdGoal.status)
+        assertEquals(Currency.USD, createdGoal.currency)
+        assertEquals(Cents(125_000L), createdGoal.targetAmount)
+        assertEquals(LocalDate(2026, 1, 15), createdGoal.targetDate)
+        assertEquals(1, vm.uiState.value.activeCount)
     }
 
     // ═══════════════════════════════════════════════════════════════════
