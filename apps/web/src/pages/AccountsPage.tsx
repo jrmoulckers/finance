@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useMemo, useState } from 'react';
-import {
-  ConfirmDialog,
-  CurrencyDisplay,
-  EmptyState,
-  ErrorBanner,
-  LoadingSpinner,
-} from '../components/common';
+import { Link } from 'react-router-dom';
+import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { AccountForm } from '../components/forms';
 import { useAccounts } from '../hooks';
-import type { Account, AccountType } from '../kmp/bridge';
+import type { AccountType } from '../kmp/bridge';
 
 const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   CHECKING: 'Checking',
@@ -33,12 +28,8 @@ const ACCOUNT_TYPE_ORDER: AccountType[] = [
 ];
 
 export const AccountsPage: React.FC = () => {
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
-  const { accounts, loading, error, refresh, createAccount, updateAccount, deleteAccount } =
-    useAccounts();
+  const { accounts, loading, error, refresh, createAccount } = useAccounts();
 
   const accountGroups = useMemo(
     () =>
@@ -50,10 +41,6 @@ export const AccountsPage: React.FC = () => {
     [accounts],
   );
 
-  const selectedAccount =
-    selectedAccountId !== null
-      ? (accounts.find((account) => account.id === selectedAccountId) ?? null)
-      : null;
   const netWorth = accounts.reduce((sum, account) => sum + account.currentBalance.amount, 0);
   const headingStyle = {
     fontSize: 'var(--type-scale-headline-font-size)',
@@ -62,7 +49,6 @@ export const AccountsPage: React.FC = () => {
   } as const;
   const handleCloseForm = () => {
     setIsFormOpen(false);
-    setEditingAccount(null);
   };
 
   const pageHeader = (
@@ -81,7 +67,6 @@ export const AccountsPage: React.FC = () => {
         type="button"
         className="add-button"
         onClick={() => {
-          setEditingAccount(null);
           setIsFormOpen(true);
         }}
         aria-label="Add new account"
@@ -93,25 +78,11 @@ export const AccountsPage: React.FC = () => {
   const accountForm = (
     <AccountForm
       isOpen={isFormOpen}
-      initialData={editingAccount ?? undefined}
       onCancel={handleCloseForm}
       onSubmit={async (data) => {
-        if (editingAccount !== null) {
-          const updatedAccount = updateAccount(editingAccount.id, {
-            householdId: editingAccount.householdId,
-            name: data.name,
-            type: data.type,
-            currency: data.currency,
-            currentBalance: data.currentBalance,
-          });
-          if (updatedAccount === null) {
-            throw new Error('Failed to update account.');
-          }
-        } else {
-          const createdAccount = createAccount(data);
-          if (createdAccount === null) {
-            throw new Error('Failed to create account.');
-          }
+        const createdAccount = createAccount(data);
+        if (createdAccount === null) {
+          throw new Error('Failed to create account.');
         }
         handleCloseForm();
       }}
@@ -167,95 +138,6 @@ export const AccountsPage: React.FC = () => {
     );
   }
 
-  if (selectedAccount !== null) {
-    return (
-      <>
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => setSelectedAccountId(null)}
-          aria-label="Back"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h2>{selectedAccount.name}</h2>
-        <div
-          style={{
-            display: 'flex',
-            gap: 'var(--spacing-3)',
-            flexWrap: 'wrap',
-            marginBottom: 'var(--spacing-4)',
-          }}
-        >
-          <button
-            type="button"
-            className="form-button form-button--secondary"
-            onClick={() => {
-              setEditingAccount(selectedAccount);
-              setIsFormOpen(true);
-            }}
-            aria-label={`Edit ${selectedAccount.name}`}
-          >
-            ✏️ Edit
-          </button>
-          <button
-            type="button"
-            className="form-button confirm-dialog__confirm confirm-dialog__confirm--danger"
-            onClick={() => setDeletingAccount(selectedAccount)}
-            aria-label={`Delete ${selectedAccount.name}`}
-          >
-            🗑️ Delete
-          </button>
-        </div>
-        <article className="card" aria-label="Account details">
-          <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-4)' }}>
-            <div>
-              <dt className="card__title">Balance</dt>
-              <dd className="card__value">
-                <CurrencyDisplay
-                  amount={selectedAccount.currentBalance.amount}
-                  currency={selectedAccount.currency.code}
-                  colorize
-                />
-              </dd>
-            </div>
-            <div>
-              <dt className="card__title">Type</dt>
-              <dd>{ACCOUNT_TYPE_LABELS[selectedAccount.type]}</dd>
-            </div>
-          </dl>
-        </article>
-        {accountForm}
-        <ConfirmDialog
-          isOpen={deletingAccount !== null}
-          title="Delete account"
-          message={
-            deletingAccount !== null
-              ? `Are you sure you want to delete ${deletingAccount.name}?`
-              : ''
-          }
-          confirmLabel="Delete"
-          onCancel={() => setDeletingAccount(null)}
-          onConfirm={() => {
-            if (deletingAccount === null) {
-              return;
-            }
-
-            const deleted = deleteAccount(deletingAccount.id);
-            if (!deleted) {
-              return;
-            }
-
-            setDeletingAccount(null);
-            setSelectedAccountId(null);
-          }}
-        />
-      </>
-    );
-  }
-
   return (
     <>
       {pageHeader}
@@ -281,17 +163,15 @@ export const AccountsPage: React.FC = () => {
               <ul className="list-group" role="list">
                 {group.accounts.map((account) => (
                   <li key={account.id} role="listitem">
-                    <button
-                      type="button"
+                    <Link
+                      to={`/accounts/${account.id}`}
                       className="list-item"
                       style={{
+                        display: 'flex',
                         width: '100%',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        textAlign: 'left',
+                        textDecoration: 'none',
+                        color: 'inherit',
                       }}
-                      onClick={() => setSelectedAccountId(account.id)}
                       aria-label={account.name}
                     >
                       <div className="list-item__content">
@@ -309,7 +189,7 @@ export const AccountsPage: React.FC = () => {
                           colorize
                         />
                       </div>
-                    </button>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -318,30 +198,6 @@ export const AccountsPage: React.FC = () => {
         );
       })}
       {accountForm}
-      <ConfirmDialog
-        isOpen={deletingAccount !== null}
-        title="Delete account"
-        message={
-          deletingAccount !== null ? `Are you sure you want to delete ${deletingAccount.name}?` : ''
-        }
-        confirmLabel="Delete"
-        onCancel={() => setDeletingAccount(null)}
-        onConfirm={() => {
-          if (deletingAccount === null) {
-            return;
-          }
-
-          const deleted = deleteAccount(deletingAccount.id);
-          if (!deleted) {
-            return;
-          }
-
-          setDeletingAccount(null);
-          if (selectedAccountId === deletingAccount.id) {
-            setSelectedAccountId(null);
-          }
-        }}
-      />
     </>
   );
 };

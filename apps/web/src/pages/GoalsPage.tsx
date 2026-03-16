@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ConfirmDialog,
   CurrencyDisplay,
@@ -203,7 +204,13 @@ export const GoalsPage: React.FC = () => {
                       }}
                     >
                       <h3 style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                        <span aria-hidden="true">{getGoalIcon(goal.icon)}</span> {goal.name}
+                        <Link
+                          to={`/goals/${goal.id}`}
+                          style={{ textDecoration: 'none', color: 'inherit' }}
+                          aria-label={`View details for ${goal.name}`}
+                        >
+                          <span aria-hidden="true">{getGoalIcon(goal.icon)}</span> {goal.name}
+                        </Link>
                       </h3>
                       <div
                         style={{
