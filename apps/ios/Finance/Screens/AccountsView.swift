@@ -12,7 +12,7 @@ import SwiftUI
 struct AccountsView: View {
     @State private var viewModel: AccountsViewModel
 
-    init(viewModel: AccountsViewModel = AccountsViewModel(repository: MockAccountRepository())) {
+    init(viewModel: AccountsViewModel = AccountsViewModel(repository: KMPAccountRepository())) {
         _viewModel = State(initialValue: viewModel)
     }
 
