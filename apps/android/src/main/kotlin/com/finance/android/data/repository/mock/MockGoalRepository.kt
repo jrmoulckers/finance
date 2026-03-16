@@ -3,7 +3,6 @@
 package com.finance.android.data.repository.mock
 
 import com.finance.android.data.repository.GoalRepository
-import com.finance.android.ui.data.SampleData
 import com.finance.models.Goal
 import com.finance.models.GoalStatus
 import com.finance.models.types.Cents
@@ -23,20 +22,29 @@ import kotlinx.datetime.Clock
  */
 class MockGoalRepository : GoalRepository {
 
-    private val _goals = MutableStateFlow(SampleData.goals)
+    private val _goals = MutableStateFlow<List<Goal>>(emptyList())
 
-    override fun getAll(): Flow<List<Goal>> =
-        _goals.map { list -> list.filter { it.deletedAt == null } }
-
-    override fun getById(id: SyncId): Flow<Goal?> =
-        _goals.map { list -> list.find { it.id == id && it.deletedAt == null } }
-
-    override fun getActiveGoals(): Flow<List<Goal>> =
+    override fun observeAll(householdId: SyncId): Flow<List<Goal>> =
         _goals.map { list ->
-            list.filter { it.deletedAt == null && it.status == GoalStatus.ACTIVE }
+            list.filter { it.householdId == householdId && it.deletedAt == null }
         }
 
-    override suspend fun create(goal: Goal) {
+    override fun observeById(id: SyncId): Flow<Goal?> =
+        _goals.map { list -> list.find { it.id == id && it.deletedAt == null } }
+
+    override suspend fun getById(id: SyncId): Goal? =
+        _goals.value.find { it.id == id && it.deletedAt == null }
+
+    override fun observeActive(householdId: SyncId): Flow<List<Goal>> =
+        _goals.map { list ->
+            list.filter {
+                it.householdId == householdId &&
+                    it.deletedAt == null &&
+                    it.status == GoalStatus.ACTIVE
+            }
+        }
+
+    override suspend fun insert(goal: Goal) {
         _goals.update { it + goal }
     }
 
@@ -47,19 +55,39 @@ class MockGoalRepository : GoalRepository {
     }
 
     override suspend fun updateProgress(id: SyncId, currentAmount: Cents) {
+        val now = Clock.System.now()
         _goals.update { list ->
             list.map { goal ->
                 if (goal.id == id) goal.copy(
                     currentAmount = currentAmount,
-                    updatedAt = Clock.System.now(),
+                    updatedAt = now,
+                    isSynced = false,
                 ) else goal
             }
         }
     }
 
     override suspend fun delete(id: SyncId) {
+        val now = Clock.System.now()
         _goals.update { list ->
-            list.map { if (it.id == id) it.copy(deletedAt = Clock.System.now()) else it }
+            list.map { goal ->
+                if (goal.id == id) goal.copy(
+                    deletedAt = now,
+                    updatedAt = now,
+                    isSynced = false,
+                ) else goal
+            }
+        }
+    }
+
+    override suspend fun getUnsynced(householdId: SyncId): List<Goal> =
+        _goals.value.filter { it.householdId == householdId && !it.isSynced }
+
+    override suspend fun markSynced(ids: List<SyncId>) {
+        _goals.update { list ->
+            list.map { goal ->
+                if (goal.id in ids) goal.copy(isSynced = true) else goal
+            }
         }
     }
 }

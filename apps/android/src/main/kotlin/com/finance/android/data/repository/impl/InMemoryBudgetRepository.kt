@@ -96,8 +96,9 @@ class InMemoryBudgetRepository : BudgetRepository {
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date
             list.active()
                 .filter { budget ->
+                    val endDate = budget.endDate
                     budget.householdId == householdId &&
-                        (budget.endDate == null || budget.endDate >= today)
+                        (endDate == null || endDate >= today)
                 }
         }
 }

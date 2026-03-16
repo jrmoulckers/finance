@@ -25,6 +25,9 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
+// TODO(#434): Replace with authenticated user's household ID
+private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
+
 /**
  * UI state for the Budgets screen.
  *
@@ -122,9 +125,9 @@ class BudgetsViewModel(
 
     private suspend fun loadData() {
         try {
-            val budgets = budgetRepository.getAll().first()
-            val transactions = transactionRepository.getAll().first()
-            val categories = categoryRepository.getAll().first()
+            val budgets = budgetRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+            val transactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+            val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
             val categoryMap = categories.associateBy { it.id }
 
             val currency = Currency.USD

@@ -92,23 +92,26 @@ class GoalsViewModelTest {
     ) : GoalRepository {
         private val _goals = MutableStateFlow(initial)
 
-        override fun getAll(): Flow<List<Goal>> =
+        override fun observeAll(householdId: SyncId): Flow<List<Goal>> =
             _goals.map { list -> list.filter { it.deletedAt == null } }
 
-        override fun getById(id: SyncId): Flow<Goal?> =
+        override fun observeById(id: SyncId): Flow<Goal?> =
             _goals.map { list -> list.find { it.id == id && it.deletedAt == null } }
 
-        override fun getActiveGoals(): Flow<List<Goal>> =
+        override suspend fun getById(id: SyncId): Goal? =
+            _goals.value.find { it.id == id && it.deletedAt == null }
+
+        override fun observeActive(householdId: SyncId): Flow<List<Goal>> =
             _goals.map { list ->
                 list.filter { it.deletedAt == null && it.status == GoalStatus.ACTIVE }
             }
 
-        override suspend fun create(goal: Goal) {
-            _goals.value = _goals.value + goal
+        override suspend fun insert(entity: Goal) {
+            _goals.value = _goals.value + entity
         }
 
-        override suspend fun update(goal: Goal) {
-            _goals.value = _goals.value.map { if (it.id == goal.id) goal else it }
+        override suspend fun update(entity: Goal) {
+            _goals.value = _goals.value.map { if (it.id == entity.id) entity else it }
         }
 
         override suspend fun updateProgress(id: SyncId, currentAmount: Cents) {
@@ -125,6 +128,10 @@ class GoalsViewModelTest {
                 if (it.id == id) it.copy(deletedAt = Clock.System.now()) else it
             }
         }
+
+        override suspend fun getUnsynced(householdId: SyncId): List<Goal> = emptyList()
+
+        override suspend fun markSynced(ids: List<SyncId>) {}
     }
 
     // ═══════════════════════════════════════════════════════════════════

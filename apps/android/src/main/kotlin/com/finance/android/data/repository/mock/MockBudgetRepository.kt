@@ -25,28 +25,34 @@ class MockBudgetRepository : BudgetRepository {
 
     private val _budgets = MutableStateFlow(SampleData.budgets.toList())
 
-    override fun getAll(): Flow<List<Budget>> =
-        _budgets.map { list -> list.filter { it.deletedAt == null } }
+    override fun observeAll(householdId: SyncId): Flow<List<Budget>> =
+        _budgets.map { list ->
+            list.filter { it.householdId == householdId && it.deletedAt == null }
+        }
 
-    override fun getById(id: SyncId): Flow<Budget?> =
+    override fun observeById(id: SyncId): Flow<Budget?> =
         _budgets.map { list -> list.find { it.id == id && it.deletedAt == null } }
 
-    override fun getActiveBudgets(): Flow<List<Budget>> =
+    override suspend fun getById(id: SyncId): Budget? =
+        _budgets.value.find { it.id == id && it.deletedAt == null }
+
+    override fun observeActive(householdId: SyncId): Flow<List<Budget>> =
         _budgets.map { list ->
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             list.filter { budget ->
                 val end = budget.endDate
-                budget.deletedAt == null &&
+                budget.householdId == householdId &&
+                    budget.deletedAt == null &&
                     (end == null || end >= today)
             }
         }
 
-    override fun getByCategoryId(categoryId: SyncId): Flow<List<Budget>> =
+    override fun observeByCategory(categoryId: SyncId): Flow<List<Budget>> =
         _budgets.map { list ->
             list.filter { it.categoryId == categoryId && it.deletedAt == null }
         }
 
-    override suspend fun create(budget: Budget) {
+    override suspend fun insert(budget: Budget) {
         _budgets.update { it + budget }
     }
 
@@ -57,8 +63,26 @@ class MockBudgetRepository : BudgetRepository {
     }
 
     override suspend fun delete(id: SyncId) {
+        val now = Clock.System.now()
         _budgets.update { list ->
-            list.map { if (it.id == id) it.copy(deletedAt = Clock.System.now()) else it }
+            list.map { budget ->
+                if (budget.id == id) budget.copy(
+                    deletedAt = now,
+                    updatedAt = now,
+                    isSynced = false,
+                ) else budget
+            }
+        }
+    }
+
+    override suspend fun getUnsynced(householdId: SyncId): List<Budget> =
+        _budgets.value.filter { it.householdId == householdId && !it.isSynced }
+
+    override suspend fun markSynced(ids: List<SyncId>) {
+        _budgets.update { list ->
+            list.map { budget ->
+                if (budget.id in ids) budget.copy(isSynced = true) else budget
+            }
         }
     }
 }

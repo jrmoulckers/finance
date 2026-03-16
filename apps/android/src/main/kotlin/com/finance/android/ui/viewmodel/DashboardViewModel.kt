@@ -15,6 +15,7 @@ import com.finance.core.currency.CurrencyFormatter
 import com.finance.models.Transaction
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
+import com.finance.models.types.SyncId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +27,9 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+
+// TODO(#434): Replace with authenticated user's household ID
+private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
 
 data class DashboardUiState(
     val isLoading: Boolean = true,
@@ -91,10 +95,10 @@ class DashboardViewModel(
     }
 
     private suspend fun loadData() {
-        val accounts = accountRepository.getAll().first()
-        val transactions = transactionRepository.getAll().first()
-        val budgets = budgetRepository.getAll().first()
-        val categories = categoryRepository.getAll().first()
+        val accounts = accountRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+        val transactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+        val budgets = budgetRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+        val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
         val categoryMap = categories.associateBy { it.id }
 
         val currency = Currency.USD

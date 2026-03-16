@@ -7,11 +7,11 @@ import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.GoalRepository
 import com.finance.android.data.repository.TransactionRepository
-import com.finance.android.data.repository.mock.MockAccountRepository
-import com.finance.android.data.repository.mock.MockBudgetRepository
-import com.finance.android.data.repository.mock.MockCategoryRepository
-import com.finance.android.data.repository.mock.MockGoalRepository
-import com.finance.android.data.repository.mock.MockTransactionRepository
+import com.finance.android.data.repository.impl.InMemoryAccountRepository
+import com.finance.android.data.repository.impl.InMemoryBudgetRepository
+import com.finance.android.data.repository.impl.InMemoryCategoryRepository
+import com.finance.android.data.repository.impl.InMemoryGoalRepository
+import com.finance.android.data.repository.impl.InMemoryTransactionRepository
 import com.finance.android.logging.TimberCrashReporter
 import com.finance.android.ui.screens.BiometricAvailabilityChecker
 import com.finance.android.ui.screens.DefaultBiometricAvailabilityChecker
@@ -55,14 +55,14 @@ val appModule = module {
     }
 
     // ── Repositories ────────────────────────────────────────────────
-    // Mock implementations backed by SampleData.
+    // Temporary in-memory implementations.
     // Swap these to real SQLDelight-backed implementations later.
 
-    singleOf(::MockAccountRepository) bind AccountRepository::class
-    singleOf(::MockTransactionRepository) bind TransactionRepository::class
-    singleOf(::MockBudgetRepository) bind BudgetRepository::class
-    singleOf(::MockGoalRepository) bind GoalRepository::class
-    singleOf(::MockCategoryRepository) bind CategoryRepository::class
+    singleOf(::InMemoryAccountRepository) bind AccountRepository::class
+    singleOf(::InMemoryTransactionRepository) bind TransactionRepository::class
+    singleOf(::InMemoryBudgetRepository) bind BudgetRepository::class
+    singleOf(::InMemoryGoalRepository) bind GoalRepository::class
+    singleOf(::InMemoryCategoryRepository) bind CategoryRepository::class
 
     // ── Settings dependencies ───────────────────────────────────────
 

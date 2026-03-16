@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
+import com.finance.models.types.SyncId
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -106,6 +107,9 @@ data class SettingsUiState(
 // ---------------------------------------------------------------------------
 // Preferences keys
 // ---------------------------------------------------------------------------
+
+// TODO(#434): Replace with authenticated user's household ID
+private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
 
 private object PrefKeys {
     const val FILE_NAME = "finance_settings"
@@ -273,8 +277,8 @@ class SettingsViewModel(
      * to avoid leaking financial data.
      */
     private suspend fun buildExportContent(format: ExportFormat): String {
-        val transactions = transactionRepository.getAll().first()
-        val categories = categoryRepository.getAll().first()
+        val transactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+        val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
         val categoryMap = categories.associateBy { it.id }
 
         return when (format) {

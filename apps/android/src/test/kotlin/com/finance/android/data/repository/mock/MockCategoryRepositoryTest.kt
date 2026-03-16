@@ -49,10 +49,10 @@ class MockCategoryRepositoryTest {
     // -- Tests ----------------------------------------------------------------
 
     @Test
-    fun `getAll returns all non-deleted categories`() = runTest {
+    fun `observeAll returns all non-deleted categories`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
             assertTrue(list.isNotEmpty(), "SampleData should provide categories")
             assertTrue(list.all { it.deletedAt == null })
@@ -61,10 +61,10 @@ class MockCategoryRepositoryTest {
     }
 
     @Test
-    fun `getAll returns categories sorted by sortOrder`() = runTest {
+    fun `observeAll returns categories sorted by sortOrder`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
             val sortOrders = list.map { it.sortOrder }
             assertEquals(sortOrders.sorted(), sortOrders, "Categories should be sorted by sortOrder")
@@ -73,10 +73,10 @@ class MockCategoryRepositoryTest {
     }
 
     @Test
-    fun `getIncomeCategories filters correctly`() = runTest {
+    fun `observeIncome filters correctly`() = runTest {
         val repo = createRepo()
 
-        repo.getIncomeCategories().test {
+        repo.observeIncome(SyncId("household-1")).test {
             val list = awaitItem()
             assertTrue(list.isNotEmpty(), "SampleData has income categories")
             assertTrue(list.all { it.isIncome }, "All returned categories should be income")
@@ -85,10 +85,10 @@ class MockCategoryRepositoryTest {
     }
 
     @Test
-    fun `getExpenseCategories filters correctly`() = runTest {
+    fun `observeExpense filters correctly`() = runTest {
         val repo = createRepo()
 
-        repo.getExpenseCategories().test {
+        repo.observeExpense(SyncId("household-1")).test {
             val list = awaitItem()
             assertTrue(list.isNotEmpty(), "SampleData has expense categories")
             assertTrue(list.none { it.isIncome }, "No returned categories should be income")
@@ -100,10 +100,10 @@ class MockCategoryRepositoryTest {
     fun `income and expense categories are disjoint`() = runTest {
         val repo = createRepo()
 
-        repo.getIncomeCategories().test {
+        repo.observeIncome(SyncId("household-1")).test {
             val incomeIds = awaitItem().map { it.id }.toSet()
 
-            repo.getExpenseCategories().test {
+            repo.observeExpense(SyncId("household-1")).test {
                 val expenseIds = awaitItem().map { it.id }.toSet()
 
                 assertTrue(
@@ -117,10 +117,10 @@ class MockCategoryRepositoryTest {
     }
 
     @Test
-    fun `getById returns matching category`() = runTest {
+    fun `observeById returns matching category`() = runTest {
         val repo = createRepo()
 
-        repo.getById(SyncId("cat-groceries")).test {
+        repo.observeById(SyncId("cat-groceries")).test {
             val category = awaitItem()
             assertNotNull(category)
             assertEquals("Groceries", category.name)
@@ -129,10 +129,10 @@ class MockCategoryRepositoryTest {
     }
 
     @Test
-    fun `getById returns null for unknown id`() = runTest {
+    fun `observeById returns null for unknown id`() = runTest {
         val repo = createRepo()
 
-        repo.getById(SyncId("nonexistent")).test {
+        repo.observeById(SyncId("nonexistent")).test {
             val category = awaitItem()
             assertNull(category)
             cancelAndIgnoreRemainingEvents()
@@ -140,28 +140,28 @@ class MockCategoryRepositoryTest {
     }
 
     @Test
-    fun `getById returns null for deleted category`() = runTest {
+    fun `observeById returns null for deleted category`() = runTest {
         val repo = createRepo()
 
         repo.delete(SyncId("cat-groceries"))
 
-        repo.getById(SyncId("cat-groceries")).test {
+        repo.observeById(SyncId("cat-groceries")).test {
             val category = awaitItem()
-            assertNull(category, "Soft-deleted category should not appear via getById")
+            assertNull(category, "Soft-deleted category should not appear via observeById")
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `create adds category`() = runTest {
+    fun `insert adds category`() = runTest {
         val repo = createRepo()
         val newCategory = category("cat-new", name = "New Category")
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val before = awaitItem()
             val sizeBefore = before.size
 
-            repo.create(newCategory)
+            repo.insert(newCategory)
 
             val after = awaitItem()
             assertEquals(sizeBefore + 1, after.size)
@@ -175,7 +175,7 @@ class MockCategoryRepositoryTest {
         val repo = createRepo()
         val knownId = SyncId("cat-groceries")
 
-        repo.getById(knownId).test {
+        repo.observeById(knownId).test {
             val original = awaitItem()
             assertNotNull(original)
 
@@ -193,7 +193,7 @@ class MockCategoryRepositoryTest {
     fun `delete soft-deletes category`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val before = awaitItem()
             val sizeBefore = before.size
 
@@ -206,11 +206,11 @@ class MockCategoryRepositoryTest {
     }
 
     @Test
-    fun `deleted categories excluded from getIncomeCategories`() = runTest {
+    fun `deleted categories excluded from observeIncome`() = runTest {
         val repo = createRepo()
         val salaryId = SyncId("cat-salary")
 
-        repo.getIncomeCategories().test {
+        repo.observeIncome(SyncId("household-1")).test {
             val before = awaitItem()
             assertTrue(before.any { it.id == salaryId }, "Salary should exist initially")
 
@@ -226,13 +226,13 @@ class MockCategoryRepositoryTest {
     fun `Flow re-emits on mutations`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val initial = awaitItem()
             val initialSize = initial.size
 
             // Create
             val newCat = category("cat-flow-test", name = "Flow Test")
-            repo.create(newCat)
+            repo.insert(newCat)
             val afterCreate = awaitItem()
             assertEquals(initialSize + 1, afterCreate.size)
 
