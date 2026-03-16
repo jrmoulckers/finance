@@ -1,14 +1,42 @@
 # Finance — Supabase Backend (`services/api/`)
 
-This directory contains the Supabase project configuration and PostgreSQL migrations for the Finance app backend.
+This directory contains the Supabase project configuration, PostgreSQL migrations, and Edge Functions for the Finance app backend.
+
+## API Documentation
+
+Interactive API docs are generated from the [OpenAPI 3.0 specification](openapi.yaml).
+
+```bash
+cd services/api
+npm install
+npm run docs:api        # Preview at http://localhost:8080
+npm run docs:api:lint   # Validate the spec
+```
+
+See [`docs/README.md`](docs/README.md) for full details on viewing and updating the API documentation.
 
 ## Project Structure
 
 ```
 services/api/
 ├── README.md
+├── openapi.yaml                             # OpenAPI 3.0 API specification
+├── package.json                             # npm scripts (docs:api, etc.)
+├── docs/
+│   └── README.md                            # API documentation guide
+├── powersync/
+│   └── sync-rules.yaml                      # PowerSync selective replication rules
 └── supabase/
     ├── config.toml                          # Supabase CLI project config
+    ├── functions/                           # Edge Functions (Deno/TypeScript)
+    │   ├── _shared/                         # Shared utilities (CORS, auth, response)
+    │   ├── health-check/                    # GET  — System health status
+    │   ├── auth-webhook/                    # POST — Auth user-creation webhook
+    │   ├── passkey-register/                # POST — WebAuthn registration ceremony
+    │   ├── passkey-authenticate/            # POST — WebAuthn authentication ceremony
+    │   ├── household-invite/                # POST/GET/PUT — Invitation lifecycle
+    │   ├── account-deletion/                # DELETE — GDPR account erasure
+    │   └── data-export/                     # GET  — GDPR data portability
     └── migrations/
         ├── 20260306000001_initial_schema.sql # Tables, indexes, triggers
         └── 20260306000002_rls_policies.sql   # Row-Level Security policies
