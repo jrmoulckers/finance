@@ -226,6 +226,50 @@ empty. Runs inside a single transaction for atomicity.
 - 3 monthly budgets (Food, Transport, Entertainment)
 - 2 savings goals (Emergency Fund, Vacation)
 
+### Offline Mutation Queue (`db/sync/`)
+
+The sync layer provides a durable offline mutation queue backed by IndexedDB.
+When the user performs write operations (create, update, delete) while offline,
+mutations are enqueued for later replay when connectivity is restored.
+
+**Architecture:**
+
+```
+Repository write (SQLite) ──→ enqueueMutation() ──→ IndexedDB queue
+                                      │
+                                      ├── Service Worker (Background Sync API)
+                                      │         │
+                                      │         └── replayMutations() ──→ POST /api/sync/push
+                                      │
+                                      └── Main-thread fallback (online event / periodic timer)
+                                                │
+                                                └── replayMutations() ──→ POST /api/sync/push
+```
+
+**Key components:**
+
+| Module               | Purpose                                                    |
+| -------------------- | ---------------------------------------------------------- |
+| `types.ts`           | Shared types: `QueuedMutation`, `SyncStatus`, SW messages  |
+| `idb.ts`             | IndexedDB CRUD helpers for the mutation object store       |
+| `MutationQueue.ts`   | `WebMutationQueue` class: enqueue, dequeue, acknowledge    |
+| `enqueueMutation.ts` | Main-thread entry point + Background Sync registration     |
+| `replayMutations.ts` | Replay orchestrator: push to server, ack/retry/dead-letter |
+
+**Replay lifecycle:**
+
+1. `enqueueMutation()` writes the mutation to IndexedDB and requests a Background Sync.
+2. When connectivity is restored, the service worker's `sync` event fires.
+3. `replayMutations()` dequeues a batch (up to 50), POSTs them to the server.
+4. Successfully acknowledged mutations are removed from the queue.
+5. Failed mutations have their retry counter incremented (max 5 attempts).
+6. Mutations exceeding max retries are dead-lettered (removed).
+
+**Fallback for browsers without Background Sync:**
+
+- The `useSyncStatus` hook listens for the `online` event and replays directly.
+- A periodic timer (30s) flushes the queue while the device is online.
+
 ## Hooks
 
 All entity hooks follow a consistent pattern: they call `useDatabase()` to
@@ -243,6 +287,7 @@ loading/error/empty states gracefully.
 | `useCategories()`           | `UseCategoriesResult`    | All non-deleted categories (root and child). Includes CRUD mutations.                                                                                                                                                    |
 | `useDashboardData()`        | `UseDashboardDataResult` | Aggregated read-only snapshot: net worth, monthly income/spending, budget progress, recent transactions, and account totals by type.                                                                                     |
 | `useOfflineStatus()`        | `OfflineStatus`          | Network connectivity via `navigator.onLine` + `online`/`offline` events. Triggers Background Sync on reconnect.                                                                                                          |
+| `useSyncStatus()`           | `UseSyncStatusResult`    | Sync engine status: `isOnline`, `pendingMutations`, `lastSyncTime`, `isSyncing`, and `syncNow()` for manual replay.                                                                                                      |
 
 **Common return shape** (entity hooks):
 

@@ -4,28 +4,26 @@
  * Service Worker for the Finance PWA.
  *
  * Caching strategies:
- *   ΓÇó Cache-first ΓÇö static assets (JS, CSS, images, fonts, WASM)
- *   ΓÇó Network-first ΓÇö API calls (`/api/`)
+ *   - Cache-first -- static assets (JS, CSS, images, fonts, WASM)
+ *   - Network-first -- API calls (`/api/`)
  *
- * Background sync is registered for offline mutations so that queued
- * writes are replayed once the device regains connectivity.
+ * Offline mutation replay:
+ *   Listens for the Background Sync API `sync` event and replays queued
+ *   mutations from the IndexedDB-backed {@link WebMutationQueue}.  When
+ *   Background Sync is not available the main thread falls back to the
+ *   `online` event (see {@link useSyncStatus}).
  *
  * Cache versioning is enforced: when CACHE_VERSION changes, old caches
  * are automatically purged during activation.
  *
- * References: issue #58
+ * References: issues #58, #416
  */
 
 /// <reference lib="webworker" />
-
 declare const self: ServiceWorkerGlobalScope;
 
-import {
-  dequeueMutations,
-  getQueueSize,
-  removeMutation,
-  updateMutationRetryCount,
-} from '../db/mutation-queue';
+import { replayMutations } from '../db/sync/replayMutations';
+import { SYNC_TAG, type ClientToSwMessage, type SwToClientMessage } from '../db/sync/types';
 
 // ---------------------------------------------------------------------------
 // Cache configuration
@@ -37,13 +35,6 @@ const CACHE_VERSION = 'v1';
 /** Cache bucket names. */
 const STATIC_CACHE = `finance-static-${CACHE_VERSION}`;
 const API_CACHE = `finance-api-${CACHE_VERSION}`;
-
-/** Sync tag used for Background Sync registration. */
-const SYNC_TAG = 'finance-offline-mutations';
-const MAX_MUTATION_RETRIES = 3;
-const MUTATION_SYNC_ENDPOINT = '/api/sync/mutations';
-
-let isReplayingMutations = false;
 
 /**
  * App-shell resources to pre-cache during installation.
@@ -60,7 +51,7 @@ const APP_SHELL: string[] = ['/', '/index.html', '/manifest.json'];
 const STATIC_EXTENSIONS = /\.(js|css|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|webp|avif|wasm)$/i;
 
 // ---------------------------------------------------------------------------
-// Install ΓÇö pre-cache app shell
+// Install -- pre-cache app shell
 // ---------------------------------------------------------------------------
 
 self.addEventListener('install', (event: ExtendableEvent) => {
@@ -70,7 +61,7 @@ self.addEventListener('install', (event: ExtendableEvent) => {
 });
 
 // ---------------------------------------------------------------------------
-// Activate ΓÇö purge stale caches
+// Activate -- purge stale caches
 // ---------------------------------------------------------------------------
 
 self.addEventListener('activate', (event: ExtendableEvent) => {
@@ -90,7 +81,7 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
 });
 
 // ---------------------------------------------------------------------------
-// Fetch ΓÇö strategy router
+// Fetch -- strategy router
 // ---------------------------------------------------------------------------
 
 self.addEventListener('fetch', (event: FetchEvent) => {
@@ -102,60 +93,84 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
 
-  // API requests ΓåÆ network-first
+  // API requests -> network-first
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirst(request));
     return;
   }
 
-  // Static assets & app shell ΓåÆ cache-first
+  // Static assets & app shell -> cache-first
   if (isStaticAsset(url.pathname)) {
     event.respondWith(cacheFirst(request));
     return;
   }
 
-  // Navigation requests (HTML) ΓåÆ cache-first (SPA)
+  // Navigation requests (HTML) -> cache-first (SPA)
   if (request.mode === 'navigate') {
     event.respondWith(cacheFirst(request, '/index.html'));
     return;
   }
 
-  // Everything else ΓÇö try cache, fall back to network
+  // Everything else -- try cache, fall back to network
   event.respondWith(cacheFirst(request));
 });
 
 // ---------------------------------------------------------------------------
-// Background Sync
+// Background Sync -- replay offline mutations
 // ---------------------------------------------------------------------------
 
 self.addEventListener('sync', (event: SyncEvent) => {
   if (event.tag === SYNC_TAG) {
-    event.waitUntil(replayOfflineMutations());
+    event.waitUntil(replayMutations((message) => broadcastToClients(message)));
   }
 });
 
+// ---------------------------------------------------------------------------
+// Message handler -- main-thread <-> service-worker communication
+// ---------------------------------------------------------------------------
+
 /**
- * Register a background-sync so that pending mutations are retried
- * when the browser regains connectivity.
+ * Handle messages from the main thread.
  *
- * Called from the main thread via `postMessage`.
+ * Supported message types:
+ *   - `REGISTER_SYNC` -- register a Background Sync for mutation replay.
+ *   - `SKIP_WAITING` -- activate a waiting service worker immediately.
+ *   - `SYNC_NOW` -- immediately replay pending mutations (manual trigger).
+ *   - `GET_PENDING_COUNT` -- reply with the current pending mutation count.
  */
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
-  if (event.data?.type === 'REGISTER_SYNC') {
-    event.waitUntil(
-      self.registration.sync.register(SYNC_TAG).catch(() => {
-        // Background Sync not supported — replay immediately instead.
-        return replayOfflineMutations();
-      }),
-    );
-  }
+  const data = event.data as ClientToSwMessage | undefined;
+  if (!data?.type) return;
 
-  if (event.data?.type === 'REPLAY_MUTATIONS') {
-    event.waitUntil(replayOfflineMutations());
-  }
+  switch (data.type) {
+    case 'REGISTER_SYNC':
+      event.waitUntil(
+        self.registration.sync.register(SYNC_TAG).catch(() => {
+          // Background Sync not supported -- the main thread will
+          // retry via online/offline listeners instead.
+        }),
+      );
+      break;
 
-  if (event.data?.type === 'SKIP_WAITING') {
-    void self.skipWaiting();
+    case 'SKIP_WAITING':
+      void self.skipWaiting();
+      break;
+
+    case 'SYNC_NOW':
+      event.waitUntil(replayMutations((message) => broadcastToClients(message)));
+      break;
+
+    case 'GET_PENDING_COUNT': {
+      event.waitUntil(
+        (async () => {
+          const { WebMutationQueue } = await import('../db/sync/MutationQueue');
+          const queue = new WebMutationQueue();
+          const count = await queue.getPendingCount();
+          broadcastToClients({ type: 'PENDING_COUNT', count });
+        })(),
+      );
+      break;
+    }
   }
 });
 
@@ -189,7 +204,7 @@ async function cacheFirst(request: Request, fallbackUrl?: string): Promise<Respo
     }
     return response;
   } catch {
-    return new Response('Offline ΓÇö resource not cached', {
+    return new Response('Offline -- resource not cached', {
       status: 503,
       statusText: 'Service Unavailable',
       headers: { 'Content-Type': 'text/plain' },
@@ -231,99 +246,20 @@ function isStaticAsset(pathname: string): boolean {
   return STATIC_EXTENSIONS.test(pathname);
 }
 
-/* eslint-disable no-console -- replay attempts must be logged for offline diagnostics. */
-type MutationReplayMessage =
-  | { type: 'MUTATION_REPLAY_STARTED' }
-  | {
-      type: 'MUTATION_REPLAY_FINISHED';
-      queueSize: number;
-      succeeded: number;
-      failed: number;
-    };
+// ---------------------------------------------------------------------------
+// Client broadcast helper
+// ---------------------------------------------------------------------------
 
-async function broadcastMutationReplayMessage(message: MutationReplayMessage): Promise<void> {
-  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+/**
+ * Send a message to all controlled browser tabs so the UI can react to
+ * sync lifecycle events (started, completed, failed, pending count).
+ */
+async function broadcastToClients(message: SwToClientMessage): Promise<void> {
+  const clients = await self.clients.matchAll({ type: 'window' });
   for (const client of clients) {
     client.postMessage(message);
   }
 }
-
-/** Replay queued offline mutations against the placeholder sync API. */
-async function replayOfflineMutations(): Promise<void> {
-  if (isReplayingMutations) {
-    console.info('[finance-sw] Offline mutation replay already in progress.');
-    return;
-  }
-
-  isReplayingMutations = true;
-  let succeeded = 0;
-  let failed = 0;
-
-  await broadcastMutationReplayMessage({ type: 'MUTATION_REPLAY_STARTED' });
-
-  try {
-    const queuedMutations = await dequeueMutations();
-
-    if (queuedMutations.length === 0) {
-      console.info('[finance-sw] No queued offline mutations to replay.');
-      return;
-    }
-
-    for (const mutation of queuedMutations) {
-      try {
-        const response = await fetch(MUTATION_SYNC_ENDPOINT, {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(mutation),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Mutation replay failed with status ${response.status}.`);
-        }
-
-        await removeMutation(mutation.id);
-        succeeded += 1;
-      } catch (error) {
-        const nextRetryCount = mutation.retryCount + 1;
-        failed += 1;
-
-        if (nextRetryCount >= MAX_MUTATION_RETRIES) {
-          await removeMutation(mutation.id);
-          console.error(
-            `[finance-sw] Giving up on queued ${mutation.entity} ${mutation.type} mutation ${mutation.id} after ${nextRetryCount} attempts.`,
-            error,
-          );
-          continue;
-        }
-
-        await updateMutationRetryCount(mutation.id, nextRetryCount);
-        console.warn(
-          `[finance-sw] Failed to replay queued ${mutation.entity} ${mutation.type} mutation ${mutation.id}; retry ${nextRetryCount}/${MAX_MUTATION_RETRIES}.`,
-          error,
-        );
-      }
-    }
-
-    console.info(
-      `[finance-sw] Offline mutation replay finished. Succeeded: ${succeeded}, failed: ${failed}, remaining: ${await getQueueSize()}.`,
-    );
-  } catch (error) {
-    console.error('[finance-sw] Unexpected error while replaying offline mutations.', error);
-  } finally {
-    const queueSize = await getQueueSize().catch(() => 0);
-    isReplayingMutations = false;
-    await broadcastMutationReplayMessage({
-      type: 'MUTATION_REPLAY_FINISHED',
-      queueSize,
-      succeeded,
-      failed,
-    });
-  }
-}
-/* eslint-enable no-console */
 
 // ---------------------------------------------------------------------------
 // TypeScript SyncEvent augmentation (not yet in lib.webworker.d.ts)
