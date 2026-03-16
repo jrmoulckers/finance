@@ -36,6 +36,30 @@ interface WebhookPayload {
 }
 
 /**
+ * Constant-time string comparison to prevent timing attacks (A-6).
+ *
+ * Uses TextEncoder for proper byte-level encoding and XOR accumulation
+ * so that the comparison time depends only on the string length, not on
+ * where the first mismatch occurs.
+ *
+ * Note: the early return on length mismatch is an accepted trade-off —
+ * leaking the *length* of the secret is not exploitable in practice.
+ */
+function constantTimeEqual(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+
+  if (bufA.length !== bufB.length) return false;
+
+  let result = 0;
+  for (let i = 0; i < bufA.length; i++) {
+    result |= bufA[i] ^ bufB[i];
+  }
+  return result === 0;
+}
+
+/**
  * Verify that the webhook request is authentic using the shared secret.
  */
 function verifyWebhookSecret(req: Request): boolean {
@@ -50,17 +74,8 @@ function verifyWebhookSecret(req: Request): boolean {
     return false;
   }
 
-  // Bearer token comparison using constant-time-like approach
   const token = authHeader.replace('Bearer ', '');
-  if (token.length !== secret.length) {
-    return false;
-  }
-
-  let mismatch = 0;
-  for (let i = 0; i < token.length; i++) {
-    mismatch |= token.charCodeAt(i) ^ secret.charCodeAt(i);
-  }
-  return mismatch === 0;
+  return constantTimeEqual(token, secret);
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -116,8 +131,10 @@ serve(async (req: Request): Promise<Response> => {
     const displayName =
       record.raw_user_meta_data?.full_name ?? record.raw_user_meta_data?.name ?? null;
 
-    // Call the database function to create user, household, and membership
-    const { error } = await supabaseAdmin.rpc('handle_new_user_signup', {
+    // Call the database function to create user, household, and membership.
+    // The RPC is idempotent (M-6): duplicate webhook fires return
+    // { already_provisioned: true } instead of creating duplicate households.
+    const { data, error } = await supabaseAdmin.rpc('handle_new_user_signup', {
       p_user_id: record.id,
       p_email: record.email,
       p_name: displayName,
@@ -129,6 +146,28 @@ serve(async (req: Request): Promise<Response> => {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    const result = data as {
+      user_id: string;
+      household_id: string;
+      display_name: string;
+      already_provisioned?: boolean;
+    };
+
+    // Idempotent re-fire: user was already provisioned on a previous webhook
+    if (result?.already_provisioned) {
+      console.log('User already provisioned (idempotent re-fire):', record.id);
+      return new Response(
+        JSON.stringify({
+          message: 'User already provisioned',
+          user_id: record.id,
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     // Log success without exposing user data

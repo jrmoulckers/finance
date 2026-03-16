@@ -204,7 +204,13 @@ serve(async (req: Request): Promise<Response> => {
 
       case 'PUT': {
         // ===================================================================
-        // ACCEPT INVITATION
+        // ACCEPT INVITATION (API-8: atomic via database RPC)
+        // ===================================================================
+        // The entire check → insert membership → mark accepted flow runs
+        // inside a single PostgreSQL transaction with a SELECT ... FOR UPDATE
+        // lock on the invitation row, preventing race conditions such as:
+        //   • Two users accepting the same single-use invite concurrently
+        //   • The same user accepting twice (race past the membership check)
         // ===================================================================
         const body = await req.json();
         const { invite_code } = body;
@@ -213,84 +219,48 @@ serve(async (req: Request): Promise<Response> => {
           return errorResponse(req, 'invite_code is required');
         }
 
-        // Look up the invitation
-        const { data: invitation, error: lookupError } = await supabase
-          .from('household_invitations')
-          .select('*')
-          .eq('invite_code', invite_code)
-          .is('deleted_at', null)
-          .single();
-
-        if (lookupError || !invitation) {
-          return errorResponse(req, 'Invalid invitation code', 404);
-        }
-
-        // Validate invitation state
-        if (invitation.accepted_at) {
-          return errorResponse(req, 'This invitation has already been accepted', 410);
-        }
-
-        if (new Date(invitation.expires_at) < new Date()) {
-          return errorResponse(req, 'This invitation has expired', 410);
-        }
-
-        if (invitation.invited_email && invitation.invited_email !== user.email) {
-          return errorResponse(req, 'This invitation is for a different email address', 403);
-        }
-
-        // Check if user is already a member
-        const { data: existingMember } = await supabase
-          .from('household_members')
-          .select('id')
-          .eq('household_id', invitation.household_id)
-          .eq('user_id', user.id)
-          .is('deleted_at', null)
-          .single();
-
-        if (existingMember) {
-          return errorResponse(req, 'You are already a member of this household', 409);
-        }
-
-        // Add user to household in a transaction-like sequence
-        // 1. Create household membership
-        const { error: memberError } = await supabase.from('household_members').insert({
-          household_id: invitation.household_id,
-          user_id: user.id,
-          role: invitation.role,
+        const { data, error: rpcError } = await supabase.rpc('accept_household_invitation', {
+          p_invite_code: invite_code,
+          p_user_id: user.id,
+          p_user_email: user.email,
         });
 
-        if (memberError) {
-          console.error('Failed to add member:', memberError.message);
+        if (rpcError) {
+          console.error('accept_household_invitation RPC failed:', rpcError.message);
           return internalErrorResponse(req);
         }
 
-        // 2. Mark invitation as accepted
-        const { error: acceptError } = await supabase
-          .from('household_invitations')
-          .update({
-            accepted_at: new Date().toISOString(),
-            accepted_by: user.id,
-          })
-          .eq('id', invitation.id);
+        // The RPC returns { error: "<CODE>" } for application-level errors,
+        // or { household_id, household_name, role } on success.
+        const result = data as {
+          error?: string;
+          household_id?: string;
+          household_name?: string;
+          role?: string;
+        };
 
-        if (acceptError) {
-          console.error('Failed to mark invitation as accepted:', acceptError.message);
-          // Membership was already created, so this is a partial failure
-          // The invitation can be cleaned up later
+        if (result.error) {
+          switch (result.error) {
+            case 'INVITE_NOT_FOUND':
+              return errorResponse(req, 'Invalid invitation code', 404);
+            case 'INVITE_ALREADY_ACCEPTED':
+              return errorResponse(req, 'This invitation has already been accepted', 410);
+            case 'INVITE_EXPIRED':
+              return errorResponse(req, 'This invitation has expired', 410);
+            case 'INVITE_EMAIL_MISMATCH':
+              return errorResponse(req, 'This invitation is for a different email address', 403);
+            case 'ALREADY_MEMBER':
+              return errorResponse(req, 'You are already a member of this household', 409);
+            default:
+              return internalErrorResponse(req);
+          }
         }
-
-        // Get household name for response
-        const { data: household } = await supabase
-          .from('households')
-          .select('name')
-          .eq('id', invitation.household_id)
-          .single();
 
         return jsonResponse(req, {
           message: 'Invitation accepted',
-          household_id: invitation.household_id,
-          household_name: household?.name ?? 'Unknown',
-          role: invitation.role,
+          household_id: result.household_id,
+          household_name: result.household_name,
+          role: result.role,
         });
       }
 
