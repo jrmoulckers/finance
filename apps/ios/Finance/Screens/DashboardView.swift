@@ -12,6 +12,8 @@ import SwiftUI
 
 struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
+    @Environment(NetworkMonitor.self) private var networkMonitor: NetworkMonitor?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(viewModel: DashboardViewModel = DashboardViewModel(
         accountRepository: MockAccountRepository(),
@@ -23,15 +25,34 @@ struct DashboardView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    netWorthCard
-                    spendingSummaryCard
-                    budgetHealthSection
-                    recentTransactionsSection
+            VStack(spacing: 0) {
+                if let networkMonitor, !networkMonitor.isConnected {
+                    OfflineBannerView()
+                        .transition(
+                            reduceMotion
+                                ? .opacity
+                                : .move(edge: .top).combined(with: .opacity)
+                        )
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 20)
+                ScrollView {
+                    VStack(spacing: 20) {
+                        netWorthCard
+                        spendingSummaryCard
+                        budgetHealthSection
+                        recentTransactionsSection
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
+                }
+            }
+            .animation(reduceMotion ? nil : .default, value: networkMonitor?.isConnected)
+            .overlay(alignment: .top) {
+                if let error = viewModel.errorMessage {
+                    ErrorBannerView(message: error) {
+                        await viewModel.loadDashboard()
+                    }
+                    .padding(.top, 8)
+                }
             }
             .navigationTitle(String(localized: "Dashboard"))
             .refreshable { await viewModel.loadDashboard() }

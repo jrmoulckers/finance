@@ -3,7 +3,9 @@
 // TransactionsView.swift
 // Finance
 //
-// Date-grouped transaction list with search, swipe actions, and pull-to-refresh.
+// Date-grouped transaction list with search, advanced filtering,
+// swipe actions, and pull-to-refresh.
+// NavigationStack is provided by MainTabView for deep-link support (#470).
 
 import SwiftUI
 
@@ -11,46 +13,156 @@ import SwiftUI
 
 struct TransactionsView: View {
     @State private var viewModel: TransactionsViewModel
+    @State private var transactionToEdit: TransactionItem?
 
     init(viewModel: TransactionsViewModel = TransactionsViewModel(repository: MockTransactionRepository())) {
         _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if viewModel.filteredTransactions.isEmpty && !viewModel.isLoading {
-                    if viewModel.searchText.isEmpty {
-                        EmptyStateView(
-                            systemImage: "arrow.left.arrow.right",
-                            title: String(localized: "No Transactions"),
-                            message: String(localized: "Add your first transaction to start tracking your spending."),
-                            actionLabel: String(localized: "Add Transaction"),
-                            action: { viewModel.showingCreateTransaction = true }
-                        )
-                    } else {
-                        ContentUnavailableView.search(text: viewModel.searchText)
+        ZStack {
+            if viewModel.isLoading && viewModel.transactions.isEmpty {
+                ProgressView(String(localized: "Loading..."))
+                    .accessibilityLabel(String(localized: "Loading data"))
+            } else if let error = viewModel.errorMessage, viewModel.transactions.isEmpty {
+                ContentUnavailableView {
+                    Label(String(localized: "Something Went Wrong"), systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(error)
+                } actions: {
+                    Button(String(localized: "Try Again")) {
+                        Task { await viewModel.loadTransactions() }
                     }
+                }
+            } else if viewModel.filteredTransactions.isEmpty && !viewModel.isLoading {
+                if viewModel.searchText.isEmpty && !viewModel.filters.isActive {
+                    EmptyStateView(
+                        systemImage: "arrow.left.arrow.right",
+                        title: String(localized: "No Transactions"),
+                        message: String(localized: "Add your first transaction to start tracking your spending."),
+                        actionLabel: String(localized: "Add Transaction"),
+                        action: { viewModel.showingCreateTransaction = true }
+                    )
+                } else if viewModel.filters.isActive {
+                    ContentUnavailableView(
+                        String(localized: "No Matching Transactions"),
+                        systemImage: "line.3.horizontal.decrease.circle",
+                        description: Text(String(localized: "Try adjusting your filters to see more transactions."))
+                    )
                 } else {
-                    transactionsList
+                    ContentUnavailableView.search(text: viewModel.searchText)
+                }
+            } else {
+                transactionsList
+            }
+        }
+        .overlay(alignment: .top) {
+            if let error = viewModel.errorMessage, !viewModel.transactions.isEmpty {
+                ErrorBannerView(message: error) {
+                    await viewModel.loadTransactions()
                 }
             }
-            .navigationTitle(String(localized: "Transactions"))
-            .searchable(text: $viewModel.searchText, prompt: String(localized: "Search by payee, category, or account"))
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { viewModel.showingCreateTransaction = true } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel(String(localized: "Add transaction"))
-                    .accessibilityHint(String(localized: "Opens a form to create a new transaction"))
-                }
+        }
+        .safeAreaInset(edge: .top) {
+            if viewModel.filters.isActive {
+                filterChipBar
             }
-            .sheet(isPresented: $viewModel.showingCreateTransaction) { TransactionCreateView() }
-            .refreshable { await viewModel.loadTransactions() }
-            .task { await viewModel.loadTransactions() }
+        }
+        .navigationTitle(String(localized: "Transactions"))
+        .searchable(text: $viewModel.searchText, prompt: String(localized: "Search by payee, category, or account"))
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { viewModel.showingCreateTransaction = true } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel(String(localized: "Add transaction"))
+                .accessibilityHint(String(localized: "Opens a form to create a new transaction"))
+            }
+            ToolbarItem(placement: .secondaryAction) {
+                Button { viewModel.showFilterSheet = true } label: {
+                    filterButtonLabel
+                }
+                .accessibilityLabel(String(localized: "Filter transactions"))
+                .accessibilityHint(String(localized: "Opens the filter sheet to refine the transaction list"))
+            }
+        }
+        .sheet(isPresented: $viewModel.showingCreateTransaction) { TransactionCreateView() }
+        .sheet(isPresented: $viewModel.showFilterSheet) {
+            TransactionFilterView(
+                filters: $viewModel.filters,
+                availableCategories: viewModel.availableCategories
+            )
+        }
+        .sheet(item: $transactionToEdit, onDismiss: {
+            Task { await viewModel.loadTransactions() }
+        }) { transaction in
+            TransactionEditView(viewModel: TransactionEditViewModel(
+                transaction: transaction,
+                repository: MockTransactionRepository(),
+                accountRepository: MockAccountRepository()
+            ))
+        }
+        .refreshable { await viewModel.loadTransactions() }
+        .task { await viewModel.loadTransactions() }
+    }
+
+    // MARK: - Filter Button Label
+
+    @ViewBuilder
+    private var filterButtonLabel: some View {
+        if viewModel.activeFilterCount > 0 {
+            Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                .symbolRenderingMode(.hierarchical)
+                .overlay(alignment: .topTrailing) {
+                    Text("\(viewModel.activeFilterCount)")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white)
+                        .frame(minWidth: 16, minHeight: 16)
+                        .background(.red, in: Circle())
+                        .offset(x: 6, y: -6)
+                        .accessibilityHidden(true)
+                }
+                .accessibilityValue(String(localized: "\(viewModel.activeFilterCount) active filters"))
+        } else {
+            Image(systemName: "line.3.horizontal.decrease.circle")
         }
     }
+
+    // MARK: - Filter Chip Bar
+
+    private var filterChipBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.filters.activeChipLabels) { chip in
+                    FilterChipView(label: chip.label) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.removeFilterChip(chip)
+                        }
+                    }
+                }
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.clearAllFilters()
+                    }
+                } label: {
+                    Text(String(localized: "Clear All"))
+                        .font(.caption)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .frame(minHeight: 44)
+                        .foregroundStyle(.red)
+                }
+                .accessibilityLabel(String(localized: "Clear all filters"))
+                .accessibilityHint(String(localized: "Removes all active filters"))
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 4)
+        }
+        .background(.bar)
+    }
+
+    // MARK: - Transactions List
 
     private var transactionsList: some View {
         List {
@@ -68,12 +180,13 @@ struct TransactionsView: View {
                             }
                             .swipeActions(edge: .leading, allowsFullSwipe: false) {
                                 Button {
-                                    // TODO: Navigate to edit flow
+                                    transactionToEdit = transaction
                                 } label: {
                                     Label(String(localized: "Edit"), systemImage: "pencil")
                                 }
                                 .tint(.blue)
                                 .accessibilityLabel(String(localized: "Edit transaction"))
+                                .accessibilityHint(String(localized: "Opens the edit form for this transaction"))
                             }
                     }
                 } header: {
@@ -117,4 +230,8 @@ struct TransactionsView: View {
     }
 }
 
-#Preview { TransactionsView(viewModel: TransactionsViewModel(repository: MockTransactionRepository())) }
+#Preview {
+    NavigationStack {
+        TransactionsView(viewModel: TransactionsViewModel(repository: MockTransactionRepository()))
+    }
+}

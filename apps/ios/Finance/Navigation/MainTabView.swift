@@ -5,6 +5,8 @@
 //
 // Root TabView with 5 tabs matching the Android app: Dashboard, Accounts,
 // Transactions, Budgets, Goals. Uses SF Symbols icons and .tabItem modifiers.
+// Deep link navigation is driven by DeepLinkRouter via @Environment.
+// Refs #470
 
 import SwiftUI
 
@@ -13,79 +15,142 @@ import SwiftUI
 /// Uses `TabView` with 5 tabs following Apple HIG conventions:
 /// - SF Symbols for tab icons
 /// - `.tabItem` modifiers for tab configuration
-/// - Each tab wraps its own `NavigationStack`
+/// - Accounts and Transactions tabs use `NavigationStack(path:)` for
+///   deep-link-driven programmatic navigation via ``DeepLinkRouter``
+/// - Dashboard, Budgets, and Goals tabs manage their own `NavigationStack`
 struct MainTabView: View {
-    @State private var selectedTab: Tab = .dashboard
-
-    enum Tab: String, CaseIterable {
-        case dashboard, accounts, transactions, budgets, goals
-
-        var title: String {
-            switch self {
-            case .dashboard: String(localized: "Dashboard")
-            case .accounts: String(localized: "Accounts")
-            case .transactions: String(localized: "Transactions")
-            case .budgets: String(localized: "Budgets")
-            case .goals: String(localized: "Goals")
-            }
-        }
-
-        var systemImage: String {
-            switch self {
-            case .dashboard: "house"
-            case .accounts: "building.columns"
-            case .transactions: "arrow.left.arrow.right"
-            case .budgets: "chart.pie"
-            case .goals: "target"
-            }
-        }
-    }
+    @Environment(DeepLinkRouter.self) private var deepLinkRouter
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        @Bindable var router = deepLinkRouter
+
+        TabView(selection: $router.selectedTab) {
             DashboardView()
                 .tabItem {
-                    Label(Tab.dashboard.title, systemImage: Tab.dashboard.systemImage)
+                    Label(
+                        DeepLinkRouter.AppTab.dashboard.title,
+                        systemImage: DeepLinkRouter.AppTab.dashboard.systemImage
+                    )
                 }
-                .tag(Tab.dashboard)
-                .accessibilityLabel(Tab.dashboard.title)
+                .tag(DeepLinkRouter.AppTab.dashboard)
+                .accessibilityLabel(DeepLinkRouter.AppTab.dashboard.title)
                 .accessibilityHint(String(localized: "Shows your financial overview"))
 
-            AccountsView()
-                .tabItem {
-                    Label(Tab.accounts.title, systemImage: Tab.accounts.systemImage)
-                }
-                .tag(Tab.accounts)
-                .accessibilityLabel(Tab.accounts.title)
-                .accessibilityHint(String(localized: "Shows your accounts grouped by type"))
+            NavigationStack(path: $router.accountsPath) {
+                AccountsView()
+                    .navigationDestination(for: AccountRoute.self) { route in
+                        // TODO: Load account from KMP repository by ID (#470)
+                        accountDeepLinkPlaceholder(id: route.id)
+                    }
+            }
+            .tabItem {
+                Label(
+                    DeepLinkRouter.AppTab.accounts.title,
+                    systemImage: DeepLinkRouter.AppTab.accounts.systemImage
+                )
+            }
+            .tag(DeepLinkRouter.AppTab.accounts)
+            .accessibilityLabel(DeepLinkRouter.AppTab.accounts.title)
+            .accessibilityHint(String(localized: "Shows your accounts grouped by type"))
 
-            TransactionsView()
-                .tabItem {
-                    Label(Tab.transactions.title, systemImage: Tab.transactions.systemImage)
-                }
-                .tag(Tab.transactions)
-                .accessibilityLabel(Tab.transactions.title)
-                .accessibilityHint(String(localized: "Shows all your transactions"))
+            NavigationStack(path: $router.transactionsPath) {
+                TransactionsView()
+                    .navigationDestination(for: TransactionRoute.self) { route in
+                        // TODO: Load transaction from KMP repository by ID (#470)
+                        transactionDeepLinkPlaceholder(id: route.id)
+                    }
+            }
+            .tabItem {
+                Label(
+                    DeepLinkRouter.AppTab.transactions.title,
+                    systemImage: DeepLinkRouter.AppTab.transactions.systemImage
+                )
+            }
+            .tag(DeepLinkRouter.AppTab.transactions)
+            .accessibilityLabel(DeepLinkRouter.AppTab.transactions.title)
+            .accessibilityHint(String(localized: "Shows all your transactions"))
 
             BudgetsView()
                 .tabItem {
-                    Label(Tab.budgets.title, systemImage: Tab.budgets.systemImage)
+                    Label(
+                        DeepLinkRouter.AppTab.budgets.title,
+                        systemImage: DeepLinkRouter.AppTab.budgets.systemImage
+                    )
                 }
-                .tag(Tab.budgets)
-                .accessibilityLabel(Tab.budgets.title)
+                .tag(DeepLinkRouter.AppTab.budgets)
+                .accessibilityLabel(DeepLinkRouter.AppTab.budgets.title)
                 .accessibilityHint(String(localized: "Shows your budget categories and spending"))
 
             GoalsView()
                 .tabItem {
-                    Label(Tab.goals.title, systemImage: Tab.goals.systemImage)
+                    Label(
+                        DeepLinkRouter.AppTab.goals.title,
+                        systemImage: DeepLinkRouter.AppTab.goals.systemImage
+                    )
                 }
-                .tag(Tab.goals)
-                .accessibilityLabel(Tab.goals.title)
+                .tag(DeepLinkRouter.AppTab.goals)
+                .accessibilityLabel(DeepLinkRouter.AppTab.goals.title)
                 .accessibilityHint(String(localized: "Shows your financial goals and progress"))
         }
+        .alert(
+            String(localized: "Unsupported Link"),
+            isPresented: $router.showUnknownLinkAlert
+        ) {
+            Button(String(localized: "OK"), role: .cancel) {}
+                .accessibilityLabel(String(localized: "Dismiss"))
+        } message: {
+            if let url = deepLinkRouter.unknownLinkURL {
+                Text(String(localized: "The link could not be opened: \(url)"))
+            }
+        }
+    }
+
+    // MARK: - Deep Link Placeholders
+
+    /// Placeholder destination for account deep links until the KMP
+    /// repository layer supports loading accounts by ID.
+    private func accountDeepLinkPlaceholder(id: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: "building.columns")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            Text(String(localized: "Loading account…"))
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            Text(id)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .accessibilityLabel(String(localized: "Account identifier"))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .navigationTitle(String(localized: "Account"))
+        .accessibilityLabel(String(localized: "Loading account details"))
+    }
+
+    /// Placeholder destination for transaction deep links until the KMP
+    /// repository layer supports loading transactions by ID.
+    private func transactionDeepLinkPlaceholder(id: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: "arrow.left.arrow.right")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            Text(String(localized: "Loading transaction…"))
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            Text(id)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .accessibilityLabel(String(localized: "Transaction identifier"))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .navigationTitle(String(localized: "Transaction"))
+        .accessibilityLabel(String(localized: "Loading transaction details"))
     }
 }
 
 #Preview {
     MainTabView()
+        .environment(DeepLinkRouter())
 }
