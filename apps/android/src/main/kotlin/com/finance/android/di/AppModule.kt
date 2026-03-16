@@ -16,6 +16,7 @@ import com.finance.android.logging.TimberCrashReporter
 import com.finance.android.ui.screens.BiometricAvailabilityChecker
 import com.finance.android.ui.screens.DefaultBiometricAvailabilityChecker
 import com.finance.android.ui.screens.SettingsViewModel
+import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.android.ui.viewmodel.AccountsViewModel
 import com.finance.android.ui.viewmodel.BudgetsViewModel
 import com.finance.android.ui.viewmodel.DashboardViewModel
@@ -75,6 +76,9 @@ val appModule = module {
     single<BiometricAvailabilityChecker> {
         DefaultBiometricAvailabilityChecker(androidContext())
     }
+
+    /** Theme preference manager — provides reactive theme state for the whole app. */
+    single { ThemePreferenceManager(get()) }
 
     // ── ViewModels ──────────────────────────────────────────────────
 
