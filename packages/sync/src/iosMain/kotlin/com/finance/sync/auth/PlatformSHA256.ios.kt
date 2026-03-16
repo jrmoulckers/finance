@@ -2,18 +2,36 @@
 
 package com.finance.sync.auth
 
+import com.finance.sync.crypto.Sha256
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+import platform.Security.SecRandomCopyBytes
+import platform.Security.errSecSuccess
+import platform.Security.kSecRandomDefault
+
 /**
  * iOS actual for [PlatformSHA256].
  *
- * Stub — real implementation will use CryptoKit (SHA256 + SecRandomCopyBytes)
- * when the iOS app module is built.
+ * SHA-256 uses the shared pure-Kotlin implementation so the iOS source set can
+ * hash synchronously without introducing a CommonCrypto cinterop. Secure random
+ * bytes come from Security.framework's `SecRandomCopyBytes`.
  */
+@OptIn(ExperimentalForeignApi::class)
 actual object PlatformSHA256 {
-    actual fun sha256(input: ByteArray): ByteArray {
-        throw NotImplementedError("Platform crypto not yet implemented — iOS CryptoKit SHA256 binding required")
-    }
+    actual fun sha256(input: ByteArray): ByteArray = Sha256.digest(input)
 
     actual fun randomBytes(size: Int): ByteArray {
-        throw NotImplementedError("Platform crypto not yet implemented — iOS SecRandomCopyBytes binding required")
+        require(size >= 0) { "Random byte count must be non-negative, got $size" }
+        if (size == 0) {
+            return byteArrayOf()
+        }
+
+        val bytes = ByteArray(size)
+        bytes.usePinned { pinned ->
+            val status = SecRandomCopyBytes(kSecRandomDefault, size.toULong(), pinned.addressOf(0))
+            check(status == errSecSuccess) { "SecRandomCopyBytes failed with status: $status" }
+        }
+        return bytes
     }
 }

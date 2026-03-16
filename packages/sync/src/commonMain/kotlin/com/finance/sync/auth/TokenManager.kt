@@ -12,7 +12,7 @@ import kotlinx.datetime.Instant
  * and provides token expiry detection plus auto-refresh scheduling logic.
  *
  * **Security:** Tokens are stored in platform-secure storage:
- * - iOS: Keychain Services
+ * - iOS: App-managed Keychain Services (temporary in-memory KMP fallback until Swift Export wiring lands)
  * - Android: EncryptedSharedPreferences (AndroidX Security)
  * - JVM/Desktop: OS-specific credential store
  * - Web: HttpOnly cookies or in-memory (never localStorage)
