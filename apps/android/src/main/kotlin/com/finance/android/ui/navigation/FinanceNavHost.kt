@@ -63,7 +63,9 @@ sealed class Route(val route: String) {
      * OAuth callback deep link destination.
      *
      * Matches `https://finance.app/auth/callback?code=…&state=…`.
-     * TODO(#434): Wire to actual OAuth flow once auth module is implemented.
+     * When the user is unauthenticated, the callback is handled by
+     * [LoginScreen] and [AuthViewModel]. This route serves as a fallback
+     * for authenticated deep link navigation.
      */
     data object AuthCallback : Route("auth/callback")
 
@@ -183,17 +185,17 @@ fun FinanceNavHost(
 
         // ── Deep link destinations ──────────────────────────────────
 
-        // TODO(#434): Replace placeholder with actual OAuth handling once auth module
-        // is implemented. Currently logs the callback and navigates to Dashboard.
-        // The auth callback URL (https://finance.app/auth/callback?code=…&state=…)
-        // will be handled by AuthViewModel once the auth module is ready.
+        // OAuth callback deep link. When the user is authenticated and this
+        // deep link arrives (e.g. stale redirect), we redirect to Dashboard.
+        // Primary OAuth callback processing is handled by LoginScreen when
+        // the user is unauthenticated — see LoginScreen.kt and AuthViewModel.
         composable(
             route = Route.AuthCallback.route,
             deepLinks = listOf(
                 navDeepLink { uriPattern = "$DEEP_LINK_BASE/auth/callback" },
             ),
         ) {
-            Timber.d("Deep link: auth/callback received, redirecting to Dashboard")
+            Timber.d("Deep link: auth/callback received in nav graph, redirecting to Dashboard")
 
             LaunchedEffect(Unit) {
                 navController.navigate(Route.Dashboard.route) {

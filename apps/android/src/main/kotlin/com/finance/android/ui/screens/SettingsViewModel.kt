@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.models.types.SyncId
+import com.finance.sync.auth.AuthManager
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -139,12 +140,14 @@ private object PrefKeys {
  * @param biometricChecker Abstraction to query biometric hardware availability.
  * @param transactionRepository Source for transaction data used in data export.
  * @param categoryRepository Source for category data used to resolve category names in export.
+ * @param authManager Shared auth manager for sign-out and session management.
  */
 class SettingsViewModel(
     private val prefs: SharedPreferences,
     private val biometricChecker: BiometricAvailabilityChecker,
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
+    private val authManager: AuthManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -227,6 +230,21 @@ class SettingsViewModel(
     fun setHighContrastEnabled(enabled: Boolean) {
         updatePref { putBoolean(PrefKeys.HIGH_CONTRAST, enabled) }
         _uiState.update { it.copy(highContrastEnabled = enabled) }
+    }
+
+    // -- Sign out --------------------------------------------------------------
+
+    /**
+     * Sign out the current user.
+     *
+     * Delegates to [AuthManager.signOut] which clears both server-side
+     * and local tokens. The auth state change causes [FinanceApp] to
+     * automatically show the login screen — no explicit navigation needed.
+     */
+    fun signOut() {
+        viewModelScope.launch {
+            authManager.signOut()
+        }
     }
 
     // -- Export ----------------------------------------------------------------
@@ -348,6 +366,7 @@ class SettingsViewModel(
             // when implemented, inject KMP AccountService and call:
             //   accountService.deleteCurrentUser()
             // Then clear local state and navigate to login.
+            authManager.signOut()
             prefs.edit().clear().apply()
             _events.emit(SettingsEvent.ShowToast("Account deleted"))
             _events.emit(SettingsEvent.NavigateToLogin)
