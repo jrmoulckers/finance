@@ -5,6 +5,8 @@ package com.finance.android
 import android.app.Application
 import com.finance.android.di.appModule
 import com.finance.android.di.dataModule
+import com.finance.android.di.syncModule
+import com.finance.android.sync.SyncWorker
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -14,8 +16,8 @@ import timber.log.Timber
 /**
  * Finance application entry point.
  *
- * Initializes Koin DI, Timber logging, and crash reporting
- * before any Activity is created.
+ * Initializes Koin DI, Timber logging, crash reporting, and
+ * background sync scheduling before any Activity is created.
  */
 class FinanceApplication : Application() {
 
@@ -23,6 +25,7 @@ class FinanceApplication : Application() {
         super.onCreate()
         initLogging()
         initDependencyInjection()
+        initBackgroundSync()
     }
 
     private fun initLogging() {
@@ -36,8 +39,13 @@ class FinanceApplication : Application() {
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.DEBUG else Level.NONE)
             androidContext(this@FinanceApplication)
-            modules(appModule, dataModule)
+            modules(appModule, dataModule, syncModule)
         }
         Timber.i("Koin DI initialized")
+    }
+
+    private fun initBackgroundSync() {
+        SyncWorker.enqueuePeriodicSync(this)
+        Timber.i("Background sync scheduled")
     }
 }

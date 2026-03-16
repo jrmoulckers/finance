@@ -18,6 +18,14 @@ android {
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // PowerSync endpoint — override via gradle.properties or CI environment.
+        // e.g. -PPOWERSYNC_URL=https://your-instance.powersync.journeyapps.com
+        buildConfigField(
+            "String",
+            "POWERSYNC_URL",
+            "\"${project.findProperty("POWERSYNC_URL") ?: "https://placeholder.powersync.journeyapps.com"}\"",
+        )
     }
 
     buildFeatures {
