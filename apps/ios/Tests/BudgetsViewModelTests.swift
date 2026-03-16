@@ -69,6 +69,29 @@ final class BudgetsViewModelTests: XCTestCase {
 
         XCTAssertTrue(vm.budgets.isEmpty,
                       "Budgets should be empty when repository throws")
+        XCTAssertNotNil(vm.errorMessage,
+                        "Error message should be set when repository throws")
         XCTAssertFalse(vm.isLoading, "isLoading should be false after error")
+    }
+
+    // MARK: - Test: successful load clears errorMessage
+
+    @MainActor
+    func testSuccessfulLoadClearsErrorMessage() async {
+        let repo = StubBudgetRepository()
+        repo.errorToThrow = TestError.simulated
+        let vm = BudgetsViewModel(repository: repo)
+
+        await vm.loadBudgets()
+        XCTAssertNotNil(vm.errorMessage, "Error message should be set after failure")
+
+        repo.errorToThrow = nil
+        repo.budgetsToReturn = SampleData.allBudgets
+        await vm.loadBudgets()
+
+        XCTAssertNil(vm.errorMessage,
+                     "Error message should be cleared after successful load")
+        XCTAssertFalse(vm.budgets.isEmpty,
+                       "Budgets should be populated after successful reload")
     }
 }

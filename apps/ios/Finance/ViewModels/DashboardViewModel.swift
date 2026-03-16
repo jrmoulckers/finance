@@ -8,6 +8,7 @@
 // spending, budget health, and recent transactions.
 
 import Observation
+import os
 import SwiftUI
 
 @Observable
@@ -16,6 +17,10 @@ final class DashboardViewModel {
     private let accountRepository: AccountRepository
     private let transactionRepository: TransactionRepository
     private let budgetRepository: BudgetRepository
+    private let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "DashboardViewModel"
+    )
 
     var accounts: [AccountItem] = []
     var budgets: [BudgetItem] = []
@@ -63,7 +68,9 @@ final class DashboardViewModel {
             accounts = try await accountsResult
             recentTransactions = try await transactionsResult
             budgets = try await budgetsResult
+            errorMessage = nil
         } catch {
+            logger.error("Failed to load dashboard: \(error.localizedDescription, privacy: .public)")
             errorMessage = error.localizedDescription
         }
     }

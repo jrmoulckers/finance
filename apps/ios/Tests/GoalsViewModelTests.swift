@@ -52,6 +52,29 @@ final class GoalsViewModelTests: XCTestCase {
 
         XCTAssertTrue(vm.goals.isEmpty,
                       "Goals should be empty when repository throws")
+        XCTAssertNotNil(vm.errorMessage,
+                        "Error message should be set when repository throws")
         XCTAssertFalse(vm.isLoading, "isLoading should be false after error")
+    }
+
+    // MARK: - Test: successful load clears errorMessage
+
+    @MainActor
+    func testSuccessfulLoadClearsErrorMessage() async {
+        let repo = StubGoalRepository()
+        repo.errorToThrow = TestError.simulated
+        let vm = GoalsViewModel(repository: repo)
+
+        await vm.loadGoals()
+        XCTAssertNotNil(vm.errorMessage, "Error message should be set after failure")
+
+        repo.errorToThrow = nil
+        repo.goalsToReturn = SampleData.allGoals
+        await vm.loadGoals()
+
+        XCTAssertNil(vm.errorMessage,
+                     "Error message should be cleared after successful load")
+        XCTAssertFalse(vm.goals.isEmpty,
+                       "Goals should be populated after successful reload")
     }
 }

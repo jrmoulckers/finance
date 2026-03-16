@@ -18,8 +18,21 @@ struct GoalsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                if viewModel.goals.isEmpty && !viewModel.isLoading {
+            ZStack {
+                if viewModel.isLoading && viewModel.goals.isEmpty {
+                    ProgressView(String(localized: "Loading..."))
+                        .accessibilityLabel(String(localized: "Loading data"))
+                } else if let error = viewModel.errorMessage, viewModel.goals.isEmpty {
+                    ContentUnavailableView {
+                        Label(String(localized: "Something Went Wrong"), systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(error)
+                    } actions: {
+                        Button(String(localized: "Try Again")) {
+                            Task { await viewModel.loadGoals() }
+                        }
+                    }
+                } else if viewModel.goals.isEmpty {
                     EmptyStateView(
                         systemImage: "target",
                         title: String(localized: "No Goals"),
@@ -28,7 +41,16 @@ struct GoalsView: View {
                         action: { viewModel.showingCreateGoal = true }
                     )
                 } else {
-                    goalCards
+                    ScrollView {
+                        goalCards
+                    }
+                }
+            }
+            .overlay(alignment: .top) {
+                if let error = viewModel.errorMessage, !viewModel.goals.isEmpty {
+                    ErrorBannerView(message: error) {
+                        await viewModel.loadGoals()
+                    }
                 }
             }
             .navigationTitle(String(localized: "Goals"))

@@ -18,24 +18,48 @@ struct BudgetsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    monthSelector
-                    overallSummary
-                    if viewModel.budgets.isEmpty && !viewModel.isLoading {
-                        EmptyStateView(
-                            systemImage: "chart.pie",
-                            title: String(localized: "No Budgets"),
-                            message: String(localized: "Create a budget to start tracking your spending by category."),
-                            actionLabel: String(localized: "Create Budget"),
-                            action: { viewModel.showingCreateBudget = true }
-                        )
-                    } else {
-                        budgetCards
+            ZStack {
+                if viewModel.isLoading && viewModel.budgets.isEmpty {
+                    ProgressView(String(localized: "Loading..."))
+                        .accessibilityLabel(String(localized: "Loading data"))
+                } else if let error = viewModel.errorMessage, viewModel.budgets.isEmpty {
+                    ContentUnavailableView {
+                        Label(String(localized: "Something Went Wrong"), systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(error)
+                    } actions: {
+                        Button(String(localized: "Try Again")) {
+                            Task { await viewModel.loadBudgets() }
+                        }
+                    }
+                } else {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            monthSelector
+                            overallSummary
+                            if viewModel.budgets.isEmpty {
+                                EmptyStateView(
+                                    systemImage: "chart.pie",
+                                    title: String(localized: "No Budgets"),
+                                    message: String(localized: "Create a budget to start tracking your spending by category."),
+                                    actionLabel: String(localized: "Create Budget"),
+                                    action: { viewModel.showingCreateBudget = true }
+                                )
+                            } else {
+                                budgetCards
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 20)
                     }
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 20)
+            }
+            .overlay(alignment: .top) {
+                if let error = viewModel.errorMessage, !viewModel.budgets.isEmpty {
+                    ErrorBannerView(message: error) {
+                        await viewModel.loadBudgets()
+                    }
+                }
             }
             .navigationTitle(String(localized: "Budgets"))
             .toolbar {

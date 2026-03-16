@@ -6,16 +6,22 @@
 // ViewModel for the budgets screen. Loads budget categories from a
 // repository, supports month navigation, and computes aggregate totals.
 
-import Observation
 import Foundation
+import Observation
+import os
 
 @Observable
 @MainActor
 final class BudgetsViewModel {
     private let repository: BudgetRepository
+    private let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "BudgetsViewModel"
+    )
 
     var budgets: [BudgetItem] = []
     var isLoading = false
+    var errorMessage: String?
     var selectedMonth = Date()
     var showingCreateBudget = false
 
@@ -52,9 +58,10 @@ final class BudgetsViewModel {
 
         do {
             budgets = try await repository.getBudgets()
+            errorMessage = nil
         } catch {
-            // Error handling will be enhanced with KMP-backed repository
-            budgets = []
+            logger.error("Failed to load budgets: \(error.localizedDescription, privacy: .public)")
+            errorMessage = error.localizedDescription
         }
     }
 }

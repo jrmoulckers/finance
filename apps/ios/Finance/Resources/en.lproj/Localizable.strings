@@ -295,7 +295,6 @@
 "Goal Milestones" = "Goal Milestones";
 
 /* Security section */
-"Privacy policy content will be loaded here." = "Privacy policy content will be loaded here.";
 "Privacy Policy" = "Privacy Policy";
 
 /* Data section */
@@ -311,8 +310,11 @@
 
 /* About section */
 "Version" = "Version";
-"Open source licenses and acknowledgments will be listed here." = "Open source licenses and acknowledgments will be listed here.";
-"Acknowledgments" = "Acknowledgments";
+"About" = "About";
+"About Finance" = "About Finance";
+"Opens the about screen with app information" = "Opens the about screen with app information";
+"Open Source Licenses" = "Open Source Licenses";
+"Opens the open source license attributions" = "Opens the open source license attributions";
 "Settings" = "Settings";
 
 /* Settings accessibility */
@@ -332,6 +334,108 @@
 "Permanently deletes all your financial data" = "Permanently deletes all your financial data";
 "App version %@, build %@" = "App version %@, build %@";
 "Opens the open source acknowledgments" = "Opens the open source acknowledgments";
+
+
+/* ==========================================================================
+   Privacy Policy Screen
+   ========================================================================== */
+
+/* Effective date */
+"Effective: %@" = "Effective: %@";
+"Policy effective date: %@" = "Policy effective date: %@";
+
+/* Data We Collect section */
+"Data We Collect" = "Data We Collect";
+"Financial Transactions" = "Financial Transactions";
+"Amounts, payees, categories, dates, and notes for each transaction you enter." = "Amounts, payees, categories, dates, and notes for each transaction you enter.";
+"Account Information" = "Account Information";
+"Account names, types, and balances that you create within the app." = "Account names, types, and balances that you create within the app.";
+"Budget & Goal Data" = "Budget & Goal Data";
+"Budget categories, spending limits, goal targets, and progress you configure." = "Budget categories, spending limits, goal targets, and progress you configure.";
+"Device Identifiers" = "Device Identifiers";
+"An anonymous device identifier for sync purposes only. No advertising identifiers are collected." = "An anonymous device identifier for sync purposes only. No advertising identifiers are collected.";
+"All financial data is entered by you and stored locally on your device first. We do not access your bank accounts or import data automatically." = "All financial data is entered by you and stored locally on your device first. We do not access your bank accounts or import data automatically.";
+
+/* How We Use Your Data section */
+"How We Use Your Data" = "How We Use Your Data";
+"Personal Financial Tracking" = "Personal Financial Tracking";
+"Your data is used exclusively to provide you with financial tracking, budgeting, and goal progress features." = "Your data is used exclusively to provide you with financial tracking, budgeting, and goal progress features.";
+"Never Sold or Shared" = "Never Sold or Shared";
+"We never sell, rent, or share your financial data with third parties for advertising or marketing purposes." = "We never sell, rent, or share your financial data with third parties for advertising or marketing purposes.";
+"No Profiling" = "No Profiling";
+"We do not build advertising profiles or perform behavioral analysis on your financial data." = "We do not build advertising profiles or perform behavioral analysis on your financial data.";
+
+/* Data Storage & Security section */
+"Data Storage & Security" = "Data Storage & Security";
+"Local Encryption" = "Local Encryption";
+"All data is encrypted on your device using SQLCipher with AES-256 encryption. Your data is protected even if the device is compromised." = "All data is encrypted on your device using SQLCipher with AES-256 encryption. Your data is protected even if the device is compromised.";
+"Keychain Protected Secrets" = "Keychain Protected Secrets";
+"Authentication tokens and encryption keys are stored in the Apple Keychain, protected by the Secure Enclave when available." = "Authentication tokens and encryption keys are stored in the Apple Keychain, protected by the Secure Enclave when available.";
+"End-to-End Encrypted Sync" = "End-to-End Encrypted Sync";
+"When sync is enabled, data is encrypted on your device before transmission. The server cannot read your financial data." = "When sync is enabled, data is encrypted on your device before transmission. The server cannot read your financial data.";
+
+/* Third-Party Services section */
+"Third-Party Services" = "Third-Party Services";
+"Supabase" = "Supabase";
+"Used for authenticated data sync between your devices. Data is end-to-end encrypted before reaching Supabase servers." = "Used for authenticated data sync between your devices. Data is end-to-end encrypted before reaching Supabase servers.";
+"PowerSync" = "PowerSync";
+"Provides offline-first sync capability. Ensures your data is available without an internet connection and syncs when connectivity is restored." = "Provides offline-first sync capability. Ensures your data is available without an internet connection and syncs when connectivity is restored.";
+"No Analytics or Advertising" = "No Analytics or Advertising";
+"We do not use any analytics tracking, advertising networks, or third-party SDKs that collect your personal information." = "We do not use any analytics tracking, advertising networks, or third-party SDKs that collect your personal information.";
+
+/* Your Rights section */
+"Your Rights" = "Your Rights";
+"Export Your Data" = "Export Your Data";
+"Export all your financial data at any time in CSV or JSON format from Settings > Data > Export Data." = "Export all your financial data at any time in CSV or JSON format from Settings > Data > Export Data.";
+"Delete Your Data" = "Delete Your Data";
+"Delete all data from your device and our servers at any time from Settings > Data > Delete All Data." = "Delete all data from your device and our servers at any time from Settings > Data > Delete All Data.";
+"Data Portability" = "Data Portability";
+"Your exported data is in standard formats (CSV, JSON) that can be imported into other financial applications." = "Your exported data is in standard formats (CSV, JSON) that can be imported into other financial applications.";
+
+/* Data Retention section */
+"Data Retention" = "Data Retention";
+"Retained Until Deleted" = "Retained Until Deleted";
+"Your data is kept on your device and sync server until you choose to delete it. We do not impose automatic data expiration." = "Your data is kept on your device and sync server until you choose to delete it. We do not impose automatic data expiration.";
+"Account Deletion" = "Account Deletion";
+"When you delete your account, all data is removed from our sync servers within 30 days. Local data is deleted immediately from your device." = "When you delete your account, all data is removed from our sync servers within 30 days. Local data is deleted immediately from your device.";
+
+/* Contact section */
+"Contact" = "Contact";
+"Privacy Inquiries" = "Privacy Inquiries";
+"Privacy inquiries" = "Privacy inquiries";
+"Contact email for privacy questions" = "Contact email for privacy questions";
+"For questions about this privacy policy or your data, contact us at the email above." = "For questions about this privacy policy or your data, contact us at the email above.";
+
+/* Policy Updates section */
+"Policy Updates" = "Policy Updates";
+"Policy Changes" = "Policy Changes";
+"We will notify you of significant changes to this privacy policy through an in-app notification. Continued use of the app after changes constitutes acceptance." = "We will notify you of significant changes to this privacy policy through an in-app notification. Continued use of the app after changes constitutes acceptance.";
+
+
+/* ==========================================================================
+   About Screen
+   ========================================================================== */
+
+"Version %@ (%@)" = "Version %@ (%@)";
+"Finance is a privacy-first personal financial tracking app. Your data is encrypted locally and synced end-to-end across your devices. We never sell or share your financial information." = "Finance is a privacy-first personal financial tracking app. Your data is encrypted locally and synced end-to-end across your devices. We never sell or share your financial information.";
+"Terms of Service" = "Terms of Service";
+"Opens the terms of service" = "Opens the terms of service";
+"Legal" = "Legal";
+"Credits" = "Credits";
+"Built with SwiftUI and Kotlin Multiplatform" = "Built with SwiftUI and Kotlin Multiplatform";
+"Designed and developed by the Finance team." = "Designed and developed by the Finance team.";
+"Built with SwiftUI and Kotlin Multiplatform. Designed and developed by the Finance team." = "Built with SwiftUI and Kotlin Multiplatform. Designed and developed by the Finance team.";
+"Copyright" = "Copyright";
+"Copyright 2026 Jeffrey Moulckers" = "Copyright 2026 Jeffrey Moulckers";
+
+
+/* ==========================================================================
+   Open Source Licenses Screen
+   ========================================================================== */
+
+"Finance uses the following open-source libraries. We are grateful to the developers and communities behind these projects." = "Finance uses the following open-source libraries. We are grateful to the developers and communities behind these projects.";
+"License" = "License";
+"Expands to show the full license text" = "Expands to show the full license text";
 
 
 /* ==========================================================================
@@ -454,3 +558,78 @@
 "Transport" = "Transport";
 "Entertainment" = "Entertainment";
 "Shopping" = "Shopping";
+
+
+/* ==========================================================================
+   Onboarding — First-Launch Flow (#476)
+   ========================================================================== */
+
+/* Navigation & Controls */
+"Skip" = "Skip";
+"Skip onboarding" = "Skip onboarding";
+"Skips the introduction and goes to the app" = "Skips the introduction and goes to the app";
+"Next" = "Next";
+"Next page" = "Next page";
+"Moves to the next onboarding page" = "Moves to the next onboarding page";
+"Get Started" = "Get Started";
+"Completes onboarding and opens the app" = "Completes onboarding and opens the app";
+
+/* Page Indicator */
+"Page %lld of %lld" = "Page %lld of %lld";
+"Onboarding, page %lld of %lld" = "Onboarding, page %lld of %lld";
+
+/* Page Names (for VoiceOver) */
+"Welcome" = "Welcome";
+"Features" = "Features";
+"Security" = "Security";
+/* "Get Started" already defined above */
+
+/* Page 1 — Welcome */
+"Welcome to Finance" = "Welcome to Finance";
+"Your personal financial tracker — private, secure, and always with you." = "Your personal financial tracker — private, secure, and always with you.";
+
+/* Page 2 — Features */
+"Everything You Need" = "Everything You Need";
+"Track Spending" = "Track Spending";
+"See where your money goes with automatic categorization." = "See where your money goes with automatic categorization.";
+"Set Goals" = "Set Goals";
+"Save for what matters with visual progress tracking." = "Save for what matters with visual progress tracking.";
+"Budget Smart" = "Budget Smart";
+"Create budgets that adapt to your spending patterns." = "Create budgets that adapt to your spending patterns.";
+"Private by Design" = "Private by Design";
+"Your data is encrypted and never shared." = "Your data is encrypted and never shared.";
+
+/* Page 3 — Security */
+"Protect Your Finances" = "Protect Your Finances";
+"Use Face ID to quickly and securely unlock the app and protect your financial data." = "Use Face ID to quickly and securely unlock the app and protect your financial data.";
+"Use Touch ID to quickly and securely unlock the app and protect your financial data." = "Use Touch ID to quickly and securely unlock the app and protect your financial data.";
+"Use Optic ID to quickly and securely unlock the app and protect your financial data." = "Use Optic ID to quickly and securely unlock the app and protect your financial data.";
+"Enable biometric authentication to secure access to your financial data." = "Enable biometric authentication to secure access to your financial data.";
+"Enable %@" = "Enable %@";
+"Enables biometric authentication to lock the app" = "Enables biometric authentication to lock the app";
+"You can change this later in Settings." = "You can change this later in Settings.";
+"Biometric authentication is not available on this device. You can enable a passcode lock in Settings." = "Biometric authentication is not available on this device. You can enable a passcode lock in Settings.";
+"Biometric authentication is not available on this device." = "Biometric authentication is not available on this device.";
+
+/* Page 4 — Get Started */
+"You're All Set!" = "You're All Set!";
+"Here's what you can do first:" = "Here's what you can do first:";
+"Add your first account" = "Add your first account";
+"Record a transaction" = "Record a transaction";
+"Set a savings goal" = "Set a savings goal";
+
+/* Shared accessibility */
+"Enabled" = "Enabled";
+"Disabled" = "Disabled";
+
+
+/* ==========================================================================
+   Error Handling — Shared across screens (Refs #475)
+   ========================================================================== */
+
+"Loading..." = "Loading...";
+"Loading data" = "Loading data";
+"Something Went Wrong" = "Something Went Wrong";
+"Try Again" = "Try Again";
+"Error: %@" = "Error: %@";
+"Could not load data. Pull down to refresh." = "Could not load data. Pull down to refresh.";
