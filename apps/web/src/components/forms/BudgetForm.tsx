@@ -34,6 +34,7 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateBudgetInput } from '../../db/repositories/budgets';
 import type { Budget, BudgetPeriod, Category } from '../../kmp/bridge';
+import { budgetSchema } from '../../lib/validation';
 
 import './forms.css';
 
@@ -98,16 +99,24 @@ interface FormErrors {
   amount?: string;
 }
 
-function validate(categoryId: string, amountStr: string): FormErrors {
+function validate(categoryId: string, amountStr: string, period: BudgetPeriod): FormErrors {
   const errors: FormErrors = {};
+  const result = budgetSchema.safeParse({
+    categoryId,
+    amount: parseFloat(amountStr),
+    period,
+  });
 
-  if (!categoryId) {
-    errors.categoryId = 'Please select a category.';
-  }
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      if (issue.path[0] === 'categoryId') {
+        errors.categoryId = 'Please select a category.';
+      }
 
-  const parsed = parseFloat(amountStr);
-  if (!amountStr.trim() || Number.isNaN(parsed) || parsed <= 0) {
-    errors.amount = 'Amount must be greater than zero.';
+      if (issue.path[0] === 'amount') {
+        errors.amount = 'Amount must be greater than zero.';
+      }
+    }
   }
 
   return errors;
@@ -191,7 +200,7 @@ export function BudgetForm({
     async (e: FormEvent) => {
       e.preventDefault();
 
-      const fieldErrors = validate(categoryId, amount);
+      const fieldErrors = validate(categoryId, amount, period);
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
