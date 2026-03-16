@@ -4,6 +4,7 @@ package com.finance.android
 
 import android.app.Application
 import com.finance.android.di.appModule
+import com.finance.android.di.dataModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -35,7 +36,7 @@ class FinanceApplication : Application() {
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.DEBUG else Level.NONE)
             androidContext(this@FinanceApplication)
-            modules(appModule)
+            modules(appModule, dataModule)
         }
         Timber.i("Koin DI initialized")
     }

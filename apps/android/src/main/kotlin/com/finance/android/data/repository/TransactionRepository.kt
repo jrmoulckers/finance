@@ -8,44 +8,53 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
 
 /**
- * Repository for [Transaction] entities.
+ * Repository contract for [Transaction] entities.
  *
- * Provides reactive read streams via [Flow] and suspend write operations.
- * Filtering, search, and pagination are supported for the Transactions screen.
+ * Extends [BaseRepository] with transaction-specific queries such as
+ * filtering by account, category, or date range.
  */
-interface TransactionRepository {
-
-    /** Observe all non-deleted transactions, newest first. */
-    fun getAll(): Flow<List<Transaction>>
-
-    /** Observe a single transaction by its [SyncId], or `null` if not found. */
-    fun getById(id: SyncId): Flow<Transaction?>
-
-    /** Observe transactions belonging to a specific account. */
-    fun getByAccountId(accountId: SyncId): Flow<List<Transaction>>
-
-    /** Observe transactions in a specific category. */
-    fun getByCategoryId(categoryId: SyncId): Flow<List<Transaction>>
-
-    /** Observe transactions whose [Transaction.date] falls within [from]..[to]. */
-    fun getByDateRange(from: LocalDate, to: LocalDate): Flow<List<Transaction>>
+interface TransactionRepository : BaseRepository<Transaction> {
 
     /**
-     * Search transactions by payee or note content.
+     * Observes all non-deleted transactions for a given account,
+     * ordered by date descending.
      *
-     * @param query Case-insensitive search term.
+     * @param accountId The account to filter by.
      */
-    fun search(query: String): Flow<List<Transaction>>
+    fun observeByAccount(accountId: SyncId): Flow<List<Transaction>>
 
-    /** Observe distinct payee names for autocomplete suggestions. */
-    fun getPayeeHistory(): Flow<List<String>>
+    /**
+     * Observes all non-deleted transactions for a given category,
+     * ordered by date descending.
+     *
+     * @param categoryId The category to filter by.
+     */
+    fun observeByCategory(categoryId: SyncId): Flow<List<Transaction>>
 
-    /** Insert a new transaction. */
-    suspend fun create(transaction: Transaction)
+    /**
+     * Observes non-deleted transactions within a date range (inclusive),
+     * ordered by date descending.
+     *
+     * @param householdId The household to scope the query to.
+     * @param start The start date (inclusive).
+     * @param end The end date (inclusive).
+     */
+    fun observeByDateRange(
+        householdId: SyncId,
+        start: LocalDate,
+        end: LocalDate,
+    ): Flow<List<Transaction>>
 
-    /** Update an existing transaction. */
-    suspend fun update(transaction: Transaction)
-
-    /** Soft-delete a transaction by its [SyncId]. */
-    suspend fun delete(id: SyncId)
+    /**
+     * Fetches non-deleted transactions within a date range (inclusive).
+     *
+     * @param householdId The household to scope the query to.
+     * @param start The start date (inclusive).
+     * @param end The end date (inclusive).
+     */
+    suspend fun getByDateRange(
+        householdId: SyncId,
+        start: LocalDate,
+        end: LocalDate,
+    ): List<Transaction>
 }

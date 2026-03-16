@@ -4,6 +4,7 @@ package com.finance.android.data.repository.mock
 
 import app.cash.turbine.test
 import com.finance.models.Transaction
+import kotlinx.coroutines.flow.first
 import com.finance.models.TransactionStatus
 import com.finance.models.TransactionType
 import com.finance.models.types.Cents
@@ -65,10 +66,10 @@ class MockTransactionRepositoryTest {
     // -- Tests ----------------------------------------------------------------
 
     @Test
-    fun `getAll returns non-deleted transactions`() = runTest {
+    fun `observeAll returns non-deleted transactions`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
             assertTrue(list.isNotEmpty(), "SampleData should provide transactions")
             assertTrue(list.all { it.deletedAt == null })
@@ -77,10 +78,10 @@ class MockTransactionRepositoryTest {
     }
 
     @Test
-    fun `getAll returns transactions sorted by date descending`() = runTest {
+    fun `observeAll returns transactions sorted by date descending`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
             val dates = list.map { it.date }
             assertEquals(dates.sortedDescending(), dates, "Transactions should be newest first")
@@ -89,11 +90,11 @@ class MockTransactionRepositoryTest {
     }
 
     @Test
-    fun `getByAccountId filters correctly`() = runTest {
+    fun `observeByAccount filters correctly`() = runTest {
         val repo = createRepo()
         val accountId = SyncId("acc-checking")
 
-        repo.getByAccountId(accountId).test {
+        repo.observeByAccount(accountId).test {
             val list = awaitItem()
             assertTrue(list.isNotEmpty(), "SampleData has checking transactions")
             assertTrue(list.all { it.accountId == accountId })
@@ -102,10 +103,10 @@ class MockTransactionRepositoryTest {
     }
 
     @Test
-    fun `getByAccountId returns empty for unknown account`() = runTest {
+    fun `observeByAccount returns empty for unknown account`() = runTest {
         val repo = createRepo()
 
-        repo.getByAccountId(SyncId("acc-nonexistent")).test {
+        repo.observeByAccount(SyncId("acc-nonexistent")).test {
             val list = awaitItem()
             assertTrue(list.isEmpty())
             cancelAndIgnoreRemainingEvents()
@@ -113,11 +114,11 @@ class MockTransactionRepositoryTest {
     }
 
     @Test
-    fun `getByCategoryId filters correctly`() = runTest {
+    fun `observeByCategory filters correctly`() = runTest {
         val repo = createRepo()
         val categoryId = SyncId("cat-groceries")
 
-        repo.getByCategoryId(categoryId).test {
+        repo.observeByCategory(categoryId).test {
             val list = awaitItem()
             assertTrue(list.isNotEmpty(), "SampleData has grocery transactions")
             assertTrue(list.all { it.categoryId == categoryId })
@@ -126,12 +127,12 @@ class MockTransactionRepositoryTest {
     }
 
     @Test
-    fun `getByDateRange returns transactions within range`() = runTest {
+    fun `observeByDateRange returns transactions within range`() = runTest {
         val repo = createRepo()
         val from = today.minus(2, DateTimeUnit.DAY)
         val to = today
 
-        repo.getByDateRange(from, to).test {
+        repo.observeByDateRange(SyncId("household-1"), from, to).test {
             val list = awaitItem()
             assertTrue(list.isNotEmpty(), "Should have transactions in the last 2 days")
             assertTrue(list.all { it.date in from..to }, "All dates should be within range")
@@ -140,12 +141,12 @@ class MockTransactionRepositoryTest {
     }
 
     @Test
-    fun `getByDateRange returns empty for future range`() = runTest {
+    fun `observeByDateRange returns empty for future range`() = runTest {
         val repo = createRepo()
         val futureStart = LocalDate(2099, 1, 1)
         val futureEnd = LocalDate(2099, 12, 31)
 
-        repo.getByDateRange(futureStart, futureEnd).test {
+        repo.observeByDateRange(SyncId("household-1"), futureStart, futureEnd).test {
             val list = awaitItem()
             assertTrue(list.isEmpty(), "No transactions should exist in the far future")
             cancelAndIgnoreRemainingEvents()
@@ -153,54 +154,58 @@ class MockTransactionRepositoryTest {
     }
 
     @Test
-    fun `search matches payee text case-insensitively`() = runTest {
+    fun `observeAll contains Starbucks transaction`() = runTest {
         val repo = createRepo()
 
-        repo.search("starbucks").test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
-            assertTrue(list.isNotEmpty(), "SampleData contains a Starbucks transaction")
-            assertTrue(list.all { it.payee?.contains("Starbucks", ignoreCase = true) == true })
+            val matches = list.filter { it.payee?.contains("Starbucks", ignoreCase = true) == true }
+            assertTrue(matches.isNotEmpty(), "SampleData contains a Starbucks transaction")
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `search matches note text`() = runTest {
+    fun `observeAll contains transaction with note`() = runTest {
         val repo = createRepo()
 
-        // Create a transaction with a note, then search for it
         val txn = transaction("txn-note-test", payee = "SomePayee", note = "Birthday dinner")
-        repo.create(txn)
+        repo.insert(txn)
 
-        repo.search("birthday").test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
-            assertTrue(list.isNotEmpty(), "Should find transaction by note text")
-            assertTrue(list.any { it.id == SyncId("txn-note-test") })
+            val matches = list.filter { it.note?.contains("Birthday", ignoreCase = true) == true }
+            assertTrue(matches.isNotEmpty(), "Should find transaction by note text")
+            assertTrue(matches.any { it.id == SyncId("txn-note-test") })
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `search returns empty for no matches`() = runTest {
+    fun `observeAll has no transactions matching gibberish`() = runTest {
         val repo = createRepo()
 
-        repo.search("zzz-no-match-zzz").test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
-            assertTrue(list.isEmpty(), "No transactions should match gibberish query")
+            val matches = list.filter {
+                it.payee?.contains("zzz-no-match-zzz", ignoreCase = true) == true ||
+                    it.note?.contains("zzz-no-match-zzz", ignoreCase = true) == true
+            }
+            assertTrue(matches.isEmpty(), "No transactions should match gibberish query")
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `create adds transaction`() = runTest {
+    fun `insert adds transaction`() = runTest {
         val repo = createRepo()
         val newTxn = transaction("txn-new", payee = "New Store")
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val before = awaitItem()
             val sizeBefore = before.size
 
-            repo.create(newTxn)
+            repo.insert(newTxn)
 
             val after = awaitItem()
             assertEquals(sizeBefore + 1, after.size)
@@ -216,18 +221,18 @@ class MockTransactionRepositoryTest {
 
         repo.delete(targetId)
 
-        repo.getById(targetId).test {
+        repo.observeById(targetId).test {
             val result = awaitItem()
-            assertNull(result, "Soft-deleted transaction should not appear via getById")
+            assertNull(result, "Soft-deleted transaction should not appear via observeById")
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `deleted transactions excluded from getAll`() = runTest {
+    fun `deleted transactions excluded from observeAll`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val before = awaitItem()
             val sizeBefore = before.size
             val targetId = before.first().id
@@ -241,30 +246,28 @@ class MockTransactionRepositoryTest {
     }
 
     @Test
-    fun `getPayeeHistory returns distinct sorted payees`() = runTest {
+    fun `observeAll provides distinct payees`() = runTest {
         val repo = createRepo()
 
-        repo.getPayeeHistory().test {
-            val payees = awaitItem()
-            assertTrue(payees.isNotEmpty())
-            assertEquals(payees.sorted(), payees, "Payees should be alphabetically sorted")
-            assertEquals(payees.distinct(), payees, "Payees should be distinct")
-            cancelAndIgnoreRemainingEvents()
-        }
+        val payees = repo.observeAll(SyncId("household-1")).first()
+            .mapNotNull { it.payee }
+            .distinct()
+        assertTrue(payees.isNotEmpty())
+        assertEquals(payees.distinct(), payees, "Payees should be distinct")
     }
 
     @Test
     fun `Flow re-emits on mutations`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             // Initial emission
             val initial = awaitItem()
             val initialSize = initial.size
 
             // Create → new emission
             val newTxn = transaction("txn-flow-test", payee = "Flow Test Payee")
-            repo.create(newTxn)
+            repo.insert(newTxn)
             val afterCreate = awaitItem()
             assertEquals(initialSize + 1, afterCreate.size)
 

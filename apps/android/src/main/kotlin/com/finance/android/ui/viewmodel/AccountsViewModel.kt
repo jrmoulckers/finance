@@ -12,6 +12,7 @@ import com.finance.models.AccountType
 import com.finance.models.Transaction
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
+import com.finance.models.types.SyncId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+// TODO(#434): Replace with authenticated user's household ID
+private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
 
 data class AccountGroup(
     val type: AccountType,
@@ -54,7 +58,7 @@ class AccountsViewModel(
     private fun loadAccounts() {
         viewModelScope.launch {
             delay(200)
-            val accounts = accountRepository.getAll().first()
+            val accounts = accountRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
             val currency = Currency.USD
             if (accounts.isEmpty()) {
                 _uiState.update { it.copy(isLoading = false, isEmpty = true) }
@@ -76,7 +80,7 @@ class AccountsViewModel(
 
     fun selectAccount(account: Account) {
         viewModelScope.launch {
-            val txns = transactionRepository.getByAccountId(account.id).first()
+            val txns = transactionRepository.observeByAccount(account.id).first()
                 .sortedByDescending { it.date }
             _uiState.update { it.copy(selectedAccount = account, selectedAccountTransactions = txns) }
         }

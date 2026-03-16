@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+// TODO(#434): Replace with authenticated user's household ID
+private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
+
 /**
  * UI state for the Goals screen.
  *
@@ -103,7 +106,7 @@ class GoalsViewModel(
 
     private suspend fun loadData() {
         try {
-            val goals = goalRepository.getAll().first()
+            val goals = goalRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
             val currency = Currency.USD
 
             val goalItems = goals.map { goal ->

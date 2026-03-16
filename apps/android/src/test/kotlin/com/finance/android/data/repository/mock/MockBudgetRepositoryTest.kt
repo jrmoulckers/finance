@@ -61,10 +61,10 @@ class MockBudgetRepositoryTest {
     // -- Tests ----------------------------------------------------------------
 
     @Test
-    fun `getAll returns non-deleted budgets`() = runTest {
+    fun `observeAll returns non-deleted budgets`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
             assertTrue(list.isNotEmpty(), "SampleData should provide budgets")
             assertTrue(list.all { it.deletedAt == null })
@@ -73,10 +73,10 @@ class MockBudgetRepositoryTest {
     }
 
     @Test
-    fun `getById returns matching budget`() = runTest {
+    fun `observeById returns matching budget`() = runTest {
         val repo = createRepo()
 
-        repo.getById(SyncId("bud-groceries")).test {
+        repo.observeById(SyncId("bud-groceries")).test {
             val budget = awaitItem()
             assertNotNull(budget)
             assertEquals("Groceries", budget.name)
@@ -85,10 +85,10 @@ class MockBudgetRepositoryTest {
     }
 
     @Test
-    fun `getById returns null for unknown id`() = runTest {
+    fun `observeById returns null for unknown id`() = runTest {
         val repo = createRepo()
 
-        repo.getById(SyncId("nonexistent")).test {
+        repo.observeById(SyncId("nonexistent")).test {
             val budget = awaitItem()
             assertNull(budget)
             cancelAndIgnoreRemainingEvents()
@@ -96,11 +96,11 @@ class MockBudgetRepositoryTest {
     }
 
     @Test
-    fun `getActiveBudgets filters by active status`() = runTest {
+    fun `observeActive filters by active status`() = runTest {
         val repo = createRepo()
 
         // SampleData budgets have no endDate → all should be active
-        repo.getActiveBudgets().test {
+        repo.observeActive(SyncId("household-1")).test {
             val list = awaitItem()
             assertTrue(list.isNotEmpty(), "SampleData budgets with no endDate should be active")
             cancelAndIgnoreRemainingEvents()
@@ -108,7 +108,7 @@ class MockBudgetRepositoryTest {
     }
 
     @Test
-    fun `getActiveBudgets excludes budgets with past endDate`() = runTest {
+    fun `observeActive excludes budgets with past endDate`() = runTest {
         val repo = createRepo()
 
         // Create a budget that has already ended
@@ -118,9 +118,9 @@ class MockBudgetRepositoryTest {
             name = "Expired Budget",
             endDate = pastEnd,
         )
-        repo.create(expiredBudget)
+        repo.insert(expiredBudget)
 
-        repo.getActiveBudgets().test {
+        repo.observeActive(SyncId("household-1")).test {
             val list = awaitItem()
             assertNull(
                 list.find { it.id == SyncId("bud-expired") },
@@ -131,7 +131,7 @@ class MockBudgetRepositoryTest {
     }
 
     @Test
-    fun `getActiveBudgets includes budgets with future endDate`() = runTest {
+    fun `observeActive includes budgets with future endDate`() = runTest {
         val repo = createRepo()
 
         val futureEnd = LocalDate(2099, 12, 31)
@@ -140,9 +140,9 @@ class MockBudgetRepositoryTest {
             name = "Future Budget",
             endDate = futureEnd,
         )
-        repo.create(futureBudget)
+        repo.insert(futureBudget)
 
-        repo.getActiveBudgets().test {
+        repo.observeActive(SyncId("household-1")).test {
             val list = awaitItem()
             assertNotNull(
                 list.find { it.id == SyncId("bud-future") },
@@ -153,11 +153,11 @@ class MockBudgetRepositoryTest {
     }
 
     @Test
-    fun `getByCategoryId filters correctly`() = runTest {
+    fun `observeByCategory filters correctly`() = runTest {
         val repo = createRepo()
         val categoryId = SyncId("cat-groceries")
 
-        repo.getByCategoryId(categoryId).test {
+        repo.observeByCategory(categoryId).test {
             val list = awaitItem()
             assertTrue(list.isNotEmpty(), "SampleData has a groceries budget")
             assertTrue(list.all { it.categoryId == categoryId })
@@ -166,15 +166,15 @@ class MockBudgetRepositoryTest {
     }
 
     @Test
-    fun `create adds budget to list`() = runTest {
+    fun `insert adds budget to list`() = runTest {
         val repo = createRepo()
         val newBudget = budget("bud-new", name = "New Budget")
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val before = awaitItem()
             val sizeBefore = before.size
 
-            repo.create(newBudget)
+            repo.insert(newBudget)
 
             val after = awaitItem()
             assertEquals(sizeBefore + 1, after.size)
@@ -188,7 +188,7 @@ class MockBudgetRepositoryTest {
         val repo = createRepo()
         val knownId = SyncId("bud-groceries")
 
-        repo.getById(knownId).test {
+        repo.observeById(knownId).test {
             val original = awaitItem()
             assertNotNull(original)
 
@@ -209,18 +209,18 @@ class MockBudgetRepositoryTest {
 
         repo.delete(targetId)
 
-        repo.getById(targetId).test {
+        repo.observeById(targetId).test {
             val result = awaitItem()
-            assertNull(result, "Soft-deleted budget should not appear via getById")
+            assertNull(result, "Soft-deleted budget should not appear via observeById")
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `deleted budgets excluded from getAll`() = runTest {
+    fun `deleted budgets excluded from observeAll`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val before = awaitItem()
             val sizeBefore = before.size
 
@@ -236,13 +236,13 @@ class MockBudgetRepositoryTest {
     fun `Flow re-emits on mutations`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val initial = awaitItem()
             val initialSize = initial.size
 
             // Create
             val newBudget = budget("bud-flow-test", name = "Flow Test Budget")
-            repo.create(newBudget)
+            repo.insert(newBudget)
             val afterCreate = awaitItem()
             assertEquals(initialSize + 1, afterCreate.size)
 

@@ -23,6 +23,9 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 
+// TODO(#434): Replace with authenticated user's household ID
+private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
+
 data class TransactionFilter(
     val searchQuery: String = "",
     val type: TransactionType? = null,
@@ -126,8 +129,8 @@ class TransactionsViewModel(
         val filter = _uiState.value.filter
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
-        val allTransactions = transactionRepository.getAll().first()
-        val categories = categoryRepository.getAll().first()
+        val allTransactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+        val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
         val categoryMap = categories.associateBy { it.id }
 
         var filtered = allTransactions

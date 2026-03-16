@@ -54,9 +54,9 @@ class MockAccountRepositoryTest {
     // -- Tests ----------------------------------------------------------------
 
     @Test
-    fun `getAll returns non-deleted accounts sorted by sortOrder`() = runTest {
+    fun `observeAll returns non-deleted accounts sorted by sortOrder`() = runTest {
         val repo = createRepo()
-        val accounts = repo.getAll()
+        val accounts = repo.observeAll(SyncId("household-1"))
 
         accounts.test {
             val list = awaitItem()
@@ -71,11 +71,11 @@ class MockAccountRepositoryTest {
     }
 
     @Test
-    fun `getById returns matching account`() = runTest {
+    fun `observeById returns matching account`() = runTest {
         val repo = createRepo()
         val knownId = SyncId("acc-checking")
 
-        repo.getById(knownId).test {
+        repo.observeById(knownId).test {
             val account = awaitItem()
             assertNotNull(account, "Should find the checking account from SampleData")
             assertEquals(knownId, account.id)
@@ -85,10 +85,10 @@ class MockAccountRepositoryTest {
     }
 
     @Test
-    fun `getById returns null for unknown id`() = runTest {
+    fun `observeById returns null for unknown id`() = runTest {
         val repo = createRepo()
 
-        repo.getById(SyncId("nonexistent-id")).test {
+        repo.observeById(SyncId("nonexistent-id")).test {
             val account = awaitItem()
             assertNull(account, "Unknown ID should return null")
             cancelAndIgnoreRemainingEvents()
@@ -96,38 +96,40 @@ class MockAccountRepositoryTest {
     }
 
     @Test
-    fun `getByType filters by account type`() = runTest {
+    fun `observeAll contains savings accounts`() = runTest {
         val repo = createRepo()
 
-        repo.getByType(AccountType.SAVINGS).test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
-            assertTrue(list.isNotEmpty(), "SampleData has savings accounts")
-            assertTrue(list.all { it.type == AccountType.SAVINGS })
+            val savings = list.filter { it.type == AccountType.SAVINGS }
+            assertTrue(savings.isNotEmpty(), "SampleData has savings accounts")
+            assertTrue(savings.all { it.type == AccountType.SAVINGS })
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `getByType returns empty for type with no accounts`() = runTest {
+    fun `observeAll contains no loan accounts`() = runTest {
         val repo = createRepo()
 
-        repo.getByType(AccountType.LOAN).test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
-            assertTrue(list.isEmpty(), "SampleData has no loan accounts")
+            val loans = list.filter { it.type == AccountType.LOAN }
+            assertTrue(loans.isEmpty(), "SampleData has no loan accounts")
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `create adds account to list`() = runTest {
+    fun `insert adds account to list`() = runTest {
         val repo = createRepo()
         val newAccount = account("acc-new", name = "New Savings", type = AccountType.SAVINGS)
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val before = awaitItem()
             val sizeBefore = before.size
 
-            repo.create(newAccount)
+            repo.insert(newAccount)
 
             val after = awaitItem()
             assertEquals(sizeBefore + 1, after.size, "List should grow by 1")
@@ -141,7 +143,7 @@ class MockAccountRepositoryTest {
         val repo = createRepo()
         val knownId = SyncId("acc-checking")
 
-        repo.getById(knownId).test {
+        repo.observeById(knownId).test {
             val original = awaitItem()
             assertNotNull(original)
 
@@ -162,18 +164,18 @@ class MockAccountRepositoryTest {
 
         repo.delete(targetId)
 
-        repo.getById(targetId).test {
+        repo.observeById(targetId).test {
             val result = awaitItem()
-            assertNull(result, "Soft-deleted account should not appear via getById")
+            assertNull(result, "Soft-deleted account should not appear via observeById")
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `deleted accounts excluded from getAll`() = runTest {
+    fun `deleted accounts excluded from observeAll`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val before = awaitItem()
             val sizeBefore = before.size
             val targetId = before.first().id
@@ -181,7 +183,7 @@ class MockAccountRepositoryTest {
             repo.delete(targetId)
 
             val after = awaitItem()
-            assertEquals(sizeBefore - 1, after.size, "Deleted account should be excluded from getAll")
+            assertEquals(sizeBefore - 1, after.size, "Deleted account should be excluded from observeAll")
             assertNull(after.find { it.id == targetId }, "Deleted account ID should not appear")
             cancelAndIgnoreRemainingEvents()
         }
@@ -191,14 +193,14 @@ class MockAccountRepositoryTest {
     fun `Flow re-emits on mutations`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             // Initial emission
             val initial = awaitItem()
             val initialSize = initial.size
 
             // Create → new emission
             val newAccount = account("acc-flow-test", name = "Flow Test")
-            repo.create(newAccount)
+            repo.insert(newAccount)
             val afterCreate = awaitItem()
             assertEquals(initialSize + 1, afterCreate.size)
 

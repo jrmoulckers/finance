@@ -3,41 +3,34 @@
 package com.finance.android.data.repository
 
 import com.finance.models.Goal
-import com.finance.models.GoalStatus
 import com.finance.models.types.Cents
 import com.finance.models.types.SyncId
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Repository for [Goal] entities.
+ * Repository contract for [Goal] entities.
  *
- * Provides reactive read streams via [Flow] and suspend write operations.
+ * Extends [BaseRepository] with goal-specific queries such as
+ * filtering active goals and updating savings progress.
  */
-interface GoalRepository {
-
-    /** Observe all non-deleted goals. */
-    fun getAll(): Flow<List<Goal>>
-
-    /** Observe a single goal by its [SyncId], or `null` if not found. */
-    fun getById(id: SyncId): Flow<Goal?>
-
-    /** Observe goals whose [Goal.status] is [GoalStatus.ACTIVE]. */
-    fun getActiveGoals(): Flow<List<Goal>>
-
-    /** Insert a new goal. */
-    suspend fun create(goal: Goal)
-
-    /** Update an existing goal. */
-    suspend fun update(goal: Goal)
+interface GoalRepository : BaseRepository<Goal> {
 
     /**
-     * Update only the [Goal.currentAmount] for a given goal.
+     * Observes all non-deleted goals with [Goal.status] of
+     * [com.finance.models.GoalStatus.ACTIVE] for a household.
+     *
+     * @param householdId The household to scope the query to.
+     */
+    fun observeActive(householdId: SyncId): Flow<List<Goal>>
+
+    /**
+     * Updates the current saved amount for a goal.
+     *
+     * Marks the goal as unsynced so the change is pushed on the
+     * next sync cycle.
      *
      * @param id The goal's [SyncId].
-     * @param currentAmount The new progress amount in [Cents].
+     * @param currentAmount The updated saved amount in [Cents].
      */
     suspend fun updateProgress(id: SyncId, currentAmount: Cents)
-
-    /** Soft-delete a goal by its [SyncId]. */
-    suspend fun delete(id: SyncId)
 }

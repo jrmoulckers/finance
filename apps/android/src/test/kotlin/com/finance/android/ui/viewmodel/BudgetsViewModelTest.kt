@@ -132,25 +132,28 @@ class BudgetsViewModelTest {
     ) : BudgetRepository {
         private val _budgets = MutableStateFlow(initial)
 
-        override fun getAll(): Flow<List<Budget>> =
+        override fun observeAll(householdId: SyncId): Flow<List<Budget>> =
             _budgets.map { list -> list.filter { it.deletedAt == null } }
 
-        override fun getById(id: SyncId): Flow<Budget?> =
+        override fun observeById(id: SyncId): Flow<Budget?> =
             _budgets.map { list -> list.find { it.id == id && it.deletedAt == null } }
 
-        override fun getActiveBudgets(): Flow<List<Budget>> = getAll()
+        override suspend fun getById(id: SyncId): Budget? =
+            _budgets.value.find { it.id == id && it.deletedAt == null }
 
-        override fun getByCategoryId(categoryId: SyncId): Flow<List<Budget>> =
+        override fun observeActive(householdId: SyncId): Flow<List<Budget>> = observeAll(householdId)
+
+        override fun observeByCategory(categoryId: SyncId): Flow<List<Budget>> =
             _budgets.map { list ->
                 list.filter { it.categoryId == categoryId && it.deletedAt == null }
             }
 
-        override suspend fun create(budget: Budget) {
-            _budgets.value = _budgets.value + budget
+        override suspend fun insert(entity: Budget) {
+            _budgets.value = _budgets.value + entity
         }
 
-        override suspend fun update(budget: Budget) {
-            _budgets.value = _budgets.value.map { if (it.id == budget.id) budget else it }
+        override suspend fun update(entity: Budget) {
+            _budgets.value = _budgets.value.map { if (it.id == entity.id) entity else it }
         }
 
         override suspend fun delete(id: SyncId) {
@@ -158,6 +161,10 @@ class BudgetsViewModelTest {
                 if (it.id == id) it.copy(deletedAt = Clock.System.now()) else it
             }
         }
+
+        override suspend fun getUnsynced(householdId: SyncId): List<Budget> = emptyList()
+
+        override suspend fun markSynced(ids: List<SyncId>) {}
     }
 
     /**
@@ -168,34 +175,42 @@ class BudgetsViewModelTest {
     ) : TransactionRepository {
         private val _transactions = MutableStateFlow(initial)
 
-        override fun getAll(): Flow<List<Transaction>> =
+        override fun observeAll(householdId: SyncId): Flow<List<Transaction>> =
             _transactions.map { list -> list.filter { it.deletedAt == null } }
 
-        override fun getById(id: SyncId): Flow<Transaction?> =
+        override fun observeById(id: SyncId): Flow<Transaction?> =
             _transactions.map { list -> list.find { it.id == id } }
 
-        override fun getByAccountId(accountId: SyncId): Flow<List<Transaction>> =
+        override suspend fun getById(id: SyncId): Transaction? =
+            _transactions.value.find { it.id == id }
+
+        override fun observeByAccount(accountId: SyncId): Flow<List<Transaction>> =
             _transactions.map { list -> list.filter { it.accountId == accountId } }
 
-        override fun getByCategoryId(categoryId: SyncId): Flow<List<Transaction>> =
+        override fun observeByCategory(categoryId: SyncId): Flow<List<Transaction>> =
             _transactions.map { list -> list.filter { it.categoryId == categoryId } }
 
-        override fun getByDateRange(from: LocalDate, to: LocalDate): Flow<List<Transaction>> =
-            _transactions.map { list -> list.filter { it.date in from..to } }
+        override fun observeByDateRange(
+            householdId: SyncId,
+            start: LocalDate,
+            end: LocalDate,
+        ): Flow<List<Transaction>> =
+            _transactions.map { list -> list.filter { it.date in start..end } }
 
-        override fun search(query: String): Flow<List<Transaction>> =
-            _transactions.map { emptyList() }
+        override suspend fun getByDateRange(
+            householdId: SyncId,
+            start: LocalDate,
+            end: LocalDate,
+        ): List<Transaction> =
+            _transactions.value.filter { it.date in start..end }
 
-        override fun getPayeeHistory(): Flow<List<String>> =
-            _transactions.map { emptyList() }
-
-        override suspend fun create(transaction: Transaction) {
-            _transactions.value = _transactions.value + transaction
+        override suspend fun insert(entity: Transaction) {
+            _transactions.value = _transactions.value + entity
         }
 
-        override suspend fun update(transaction: Transaction) {
+        override suspend fun update(entity: Transaction) {
             _transactions.value =
-                _transactions.value.map { if (it.id == transaction.id) transaction else it }
+                _transactions.value.map { if (it.id == entity.id) entity else it }
         }
 
         override suspend fun delete(id: SyncId) {
@@ -203,6 +218,10 @@ class BudgetsViewModelTest {
                 if (it.id == id) it.copy(deletedAt = Clock.System.now()) else it
             }
         }
+
+        override suspend fun getUnsynced(householdId: SyncId): List<Transaction> = emptyList()
+
+        override suspend fun markSynced(ids: List<SyncId>) {}
     }
 
     /**
@@ -213,25 +232,31 @@ class BudgetsViewModelTest {
     ) : CategoryRepository {
         private val _categories = MutableStateFlow(initial)
 
-        override fun getAll(): Flow<List<Category>> =
+        override fun observeAll(householdId: SyncId): Flow<List<Category>> =
             _categories.map { list -> list.filter { it.deletedAt == null } }
 
-        override fun getById(id: SyncId): Flow<Category?> =
+        override fun observeById(id: SyncId): Flow<Category?> =
             _categories.map { list -> list.find { it.id == id } }
 
-        override fun getIncomeCategories(): Flow<List<Category>> =
+        override suspend fun getById(id: SyncId): Category? =
+            _categories.value.find { it.id == id }
+
+        override fun observeByParent(parentId: SyncId?): Flow<List<Category>> =
+            _categories.map { list -> list.filter { it.parentId == parentId && it.deletedAt == null } }
+
+        override fun observeIncome(householdId: SyncId): Flow<List<Category>> =
             _categories.map { list -> list.filter { it.isIncome } }
 
-        override fun getExpenseCategories(): Flow<List<Category>> =
+        override fun observeExpense(householdId: SyncId): Flow<List<Category>> =
             _categories.map { list -> list.filter { !it.isIncome } }
 
-        override suspend fun create(category: Category) {
-            _categories.value = _categories.value + category
+        override suspend fun insert(entity: Category) {
+            _categories.value = _categories.value + entity
         }
 
-        override suspend fun update(category: Category) {
+        override suspend fun update(entity: Category) {
             _categories.value =
-                _categories.value.map { if (it.id == category.id) category else it }
+                _categories.value.map { if (it.id == entity.id) entity else it }
         }
 
         override suspend fun delete(id: SyncId) {
@@ -239,6 +264,10 @@ class BudgetsViewModelTest {
                 if (it.id == id) it.copy(deletedAt = Clock.System.now()) else it
             }
         }
+
+        override suspend fun getUnsynced(householdId: SyncId): List<Category> = emptyList()
+
+        override suspend fun markSynced(ids: List<SyncId>) {}
     }
 
     // ═══════════════════════════════════════════════════════════════════

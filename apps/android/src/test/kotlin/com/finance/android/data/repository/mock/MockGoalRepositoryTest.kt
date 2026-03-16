@@ -57,10 +57,10 @@ class MockGoalRepositoryTest {
     // -- Tests ----------------------------------------------------------------
 
     @Test
-    fun `getAll returns empty initially`() = runTest {
+    fun `observeAll returns empty initially`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
             assertTrue(list.isEmpty(), "GoalRepository starts with no data")
             cancelAndIgnoreRemainingEvents()
@@ -68,12 +68,12 @@ class MockGoalRepositoryTest {
     }
 
     @Test
-    fun `getAll returns non-deleted goals`() = runTest {
+    fun `observeAll returns non-deleted goals`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-1", name = "Vacation"))
-        repo.create(goal("goal-2", name = "Car"))
+        repo.insert(goal("goal-1", name = "Vacation"))
+        repo.insert(goal("goal-2", name = "Car"))
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
             assertEquals(2, list.size)
             assertTrue(list.all { it.deletedAt == null })
@@ -82,11 +82,11 @@ class MockGoalRepositoryTest {
     }
 
     @Test
-    fun `getById returns matching goal`() = runTest {
+    fun `observeById returns matching goal`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-1", name = "Emergency Fund"))
+        repo.insert(goal("goal-1", name = "Emergency Fund"))
 
-        repo.getById(SyncId("goal-1")).test {
+        repo.observeById(SyncId("goal-1")).test {
             val result = awaitItem()
             assertNotNull(result)
             assertEquals("Emergency Fund", result.name)
@@ -95,10 +95,10 @@ class MockGoalRepositoryTest {
     }
 
     @Test
-    fun `getById returns null for unknown id`() = runTest {
+    fun `observeById returns null for unknown id`() = runTest {
         val repo = createRepo()
 
-        repo.getById(SyncId("nonexistent")).test {
+        repo.observeById(SyncId("nonexistent")).test {
             val result = awaitItem()
             assertNull(result)
             cancelAndIgnoreRemainingEvents()
@@ -106,14 +106,14 @@ class MockGoalRepositoryTest {
     }
 
     @Test
-    fun `getActiveGoals filters by active status`() = runTest {
+    fun `observeActive filters by active status`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-active", name = "Active Goal", status = GoalStatus.ACTIVE))
-        repo.create(goal("goal-paused", name = "Paused Goal", status = GoalStatus.PAUSED))
-        repo.create(goal("goal-completed", name = "Completed Goal", status = GoalStatus.COMPLETED))
-        repo.create(goal("goal-cancelled", name = "Cancelled Goal", status = GoalStatus.CANCELLED))
+        repo.insert(goal("goal-active", name = "Active Goal", status = GoalStatus.ACTIVE))
+        repo.insert(goal("goal-paused", name = "Paused Goal", status = GoalStatus.PAUSED))
+        repo.insert(goal("goal-completed", name = "Completed Goal", status = GoalStatus.COMPLETED))
+        repo.insert(goal("goal-cancelled", name = "Cancelled Goal", status = GoalStatus.CANCELLED))
 
-        repo.getActiveGoals().test {
+        repo.observeActive(SyncId("household-1")).test {
             val list = awaitItem()
             assertEquals(1, list.size, "Only ACTIVE goals should be returned")
             assertEquals(SyncId("goal-active"), list.first().id)
@@ -122,12 +122,12 @@ class MockGoalRepositoryTest {
     }
 
     @Test
-    fun `getActiveGoals excludes deleted goals even if status is ACTIVE`() = runTest {
+    fun `observeActive excludes deleted goals even if status is ACTIVE`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-1", name = "Active Goal", status = GoalStatus.ACTIVE))
+        repo.insert(goal("goal-1", name = "Active Goal", status = GoalStatus.ACTIVE))
         repo.delete(SyncId("goal-1"))
 
-        repo.getActiveGoals().test {
+        repo.observeActive(SyncId("household-1")).test {
             val list = awaitItem()
             assertTrue(list.isEmpty(), "Soft-deleted active goals should not appear")
             cancelAndIgnoreRemainingEvents()
@@ -137,11 +137,11 @@ class MockGoalRepositoryTest {
     @Test
     fun `updateProgress modifies goal currentAmount`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-1", name = "Savings Goal", targetCents = 500_000L, currentCents = 0L))
+        repo.insert(goal("goal-1", name = "Savings Goal", targetCents = 500_000L, currentCents = 0L))
 
         repo.updateProgress(SyncId("goal-1"), Cents(150_000L))
 
-        repo.getById(SyncId("goal-1")).test {
+        repo.observeById(SyncId("goal-1")).test {
             val result = awaitItem()
             assertNotNull(result)
             assertEquals(Cents(150_000L), result.currentAmount)
@@ -153,12 +153,12 @@ class MockGoalRepositoryTest {
     fun `updateProgress updates updatedAt timestamp`() = runTest {
         val repo = createRepo()
         val originalGoal = goal("goal-1", name = "Timestamp Goal")
-        repo.create(originalGoal)
+        repo.insert(originalGoal)
         val originalUpdatedAt = originalGoal.updatedAt
 
         repo.updateProgress(SyncId("goal-1"), Cents(25_000L))
 
-        repo.getById(SyncId("goal-1")).test {
+        repo.observeById(SyncId("goal-1")).test {
             val result = awaitItem()
             assertNotNull(result)
             assertTrue(
@@ -170,14 +170,14 @@ class MockGoalRepositoryTest {
     }
 
     @Test
-    fun `create adds goal`() = runTest {
+    fun `insert adds goal`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val before = awaitItem()
             assertTrue(before.isEmpty())
 
-            repo.create(goal("goal-new", name = "New Goal"))
+            repo.insert(goal("goal-new", name = "New Goal"))
 
             val after = awaitItem()
             assertEquals(1, after.size)
@@ -189,9 +189,9 @@ class MockGoalRepositoryTest {
     @Test
     fun `update replaces existing goal`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-1", name = "Original Name"))
+        repo.insert(goal("goal-1", name = "Original Name"))
 
-        repo.getById(SyncId("goal-1")).test {
+        repo.observeById(SyncId("goal-1")).test {
             val original = awaitItem()
             assertNotNull(original)
 
@@ -208,26 +208,26 @@ class MockGoalRepositoryTest {
     @Test
     fun `delete soft-deletes goal`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-1", name = "To Delete"))
+        repo.insert(goal("goal-1", name = "To Delete"))
 
         repo.delete(SyncId("goal-1"))
 
-        repo.getById(SyncId("goal-1")).test {
+        repo.observeById(SyncId("goal-1")).test {
             val result = awaitItem()
-            assertNull(result, "Soft-deleted goal should not appear via getById")
+            assertNull(result, "Soft-deleted goal should not appear via observeById")
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `deleted goals excluded from getAll`() = runTest {
+    fun `deleted goals excluded from observeAll`() = runTest {
         val repo = createRepo()
-        repo.create(goal("goal-1", name = "Keep"))
-        repo.create(goal("goal-2", name = "Remove"))
+        repo.insert(goal("goal-1", name = "Keep"))
+        repo.insert(goal("goal-2", name = "Remove"))
 
         repo.delete(SyncId("goal-2"))
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             val list = awaitItem()
             assertEquals(1, list.size)
             assertEquals(SyncId("goal-1"), list.first().id)
@@ -239,13 +239,13 @@ class MockGoalRepositoryTest {
     fun `Flow re-emits on create and delete`() = runTest {
         val repo = createRepo()
 
-        repo.getAll().test {
+        repo.observeAll(SyncId("household-1")).test {
             // Initial → empty
             val initial = awaitItem()
             assertTrue(initial.isEmpty())
 
             // Create → 1 goal
-            repo.create(goal("goal-flow", name = "Flow Goal"))
+            repo.insert(goal("goal-flow", name = "Flow Goal"))
             val afterCreate = awaitItem()
             assertEquals(1, afterCreate.size)
 

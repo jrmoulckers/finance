@@ -23,25 +23,43 @@ class MockCategoryRepository : CategoryRepository {
 
     private val _categories = MutableStateFlow(SampleData.categories.toList())
 
-    override fun getAll(): Flow<List<Category>> =
+    override fun observeAll(householdId: SyncId): Flow<List<Category>> =
         _categories.map { list ->
-            list.filter { it.deletedAt == null }.sortedBy { it.sortOrder }
+            list.filter { it.householdId == householdId && it.deletedAt == null }
+                .sortedBy { it.sortOrder }
         }
 
-    override fun getById(id: SyncId): Flow<Category?> =
+    override fun observeById(id: SyncId): Flow<Category?> =
         _categories.map { list -> list.find { it.id == id && it.deletedAt == null } }
 
-    override fun getIncomeCategories(): Flow<List<Category>> =
+    override suspend fun getById(id: SyncId): Category? =
+        _categories.value.find { it.id == id && it.deletedAt == null }
+
+    override fun observeByParent(parentId: SyncId?): Flow<List<Category>> =
         _categories.map { list ->
-            list.filter { it.isIncome && it.deletedAt == null }.sortedBy { it.sortOrder }
+            list.filter { it.parentId == parentId && it.deletedAt == null }
+                .sortedBy { it.sortOrder }
         }
 
-    override fun getExpenseCategories(): Flow<List<Category>> =
+    override fun observeIncome(householdId: SyncId): Flow<List<Category>> =
         _categories.map { list ->
-            list.filter { !it.isIncome && it.deletedAt == null }.sortedBy { it.sortOrder }
+            list.filter {
+                it.householdId == householdId &&
+                    it.isIncome &&
+                    it.deletedAt == null
+            }.sortedBy { it.sortOrder }
         }
 
-    override suspend fun create(category: Category) {
+    override fun observeExpense(householdId: SyncId): Flow<List<Category>> =
+        _categories.map { list ->
+            list.filter {
+                it.householdId == householdId &&
+                    !it.isIncome &&
+                    it.deletedAt == null
+            }.sortedBy { it.sortOrder }
+        }
+
+    override suspend fun insert(category: Category) {
         _categories.update { it + category }
     }
 
@@ -52,8 +70,26 @@ class MockCategoryRepository : CategoryRepository {
     }
 
     override suspend fun delete(id: SyncId) {
+        val now = Clock.System.now()
         _categories.update { list ->
-            list.map { if (it.id == id) it.copy(deletedAt = Clock.System.now()) else it }
+            list.map { category ->
+                if (category.id == id) category.copy(
+                    deletedAt = now,
+                    updatedAt = now,
+                    isSynced = false,
+                ) else category
+            }
+        }
+    }
+
+    override suspend fun getUnsynced(householdId: SyncId): List<Category> =
+        _categories.value.filter { it.householdId == householdId && !it.isSynced }
+
+    override suspend fun markSynced(ids: List<SyncId>) {
+        _categories.update { list ->
+            list.map { category ->
+                if (category.id in ids) category.copy(isSynced = true) else category
+            }
         }
     }
 }

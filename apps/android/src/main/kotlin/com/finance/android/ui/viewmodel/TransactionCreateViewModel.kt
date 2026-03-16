@@ -28,6 +28,9 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
+// TODO(#434): Replace with authenticated user's household ID
+private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
+
 enum class CreateStep(val index: Int, val label: String) {
     AMOUNT(0, "Amount & Payee"),
     CATEGORY(1, "Category & Account"),
@@ -83,9 +86,11 @@ class TransactionCreateViewModel(
 
     init {
         viewModelScope.launch {
-            val cats = categoryRepository.getAll().first()
-            val accts = accountRepository.getAll().first()
-            payeeHistory = transactionRepository.getPayeeHistory().first()
+            val cats = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+            val accts = accountRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+            payeeHistory = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+                .mapNotNull { it.payee }
+                .distinct()
             categoryMap = cats.associateBy { it.id }
             accountMap = accts.associateBy { it.id }
             _uiState.update { it.copy(categories = cats, accounts = accts,
@@ -176,7 +181,7 @@ class TransactionCreateViewModel(
                 Cents(s.amountCents) else Cents(-s.amountCents)
             val transaction = Transaction(
                 id = SyncId("txn-${now.toEpochMilliseconds()}"),
-                householdId = SyncId("household-1"),
+                householdId = PLACEHOLDER_HOUSEHOLD_ID,
                 accountId = s.selectedAccountId!!,
                 categoryId = s.selectedCategoryId,
                 type = s.transactionType,
@@ -190,7 +195,7 @@ class TransactionCreateViewModel(
                 createdAt = now,
                 updatedAt = now,
             )
-            transactionRepository.create(transaction)
+            transactionRepository.insert(transaction)
             _uiState.update { it.copy(isSaving = false, isSaved = true) }
         }
     }

@@ -51,6 +51,13 @@ dependencies {
     // Date/time utilities
     implementation(libs.kotlinx.datetime)
 
+    // SQLDelight (runtime + coroutines extensions for repository implementations)
+    implementation(libs.sqldelight.runtime)
+    implementation(libs.sqldelight.coroutines)
+
+    // Serialization (Transaction tags JSON encoding)
+    implementation(libs.kotlinx.serialization.json)
+
     // Compose BOM — manages all Compose library versions
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)

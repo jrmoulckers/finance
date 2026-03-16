@@ -24,52 +24,55 @@ class MockTransactionRepository : TransactionRepository {
 
     private val _transactions = MutableStateFlow(SampleData.transactions.toList())
 
-    override fun getAll(): Flow<List<Transaction>> =
+    override fun observeAll(householdId: SyncId): Flow<List<Transaction>> =
         _transactions.map { list ->
-            list.filter { it.deletedAt == null }.sortedByDescending { it.date }
+            list.filter { it.householdId == householdId && it.deletedAt == null }
+                .sortedByDescending { it.date }
         }
 
-    override fun getById(id: SyncId): Flow<Transaction?> =
+    override fun observeById(id: SyncId): Flow<Transaction?> =
         _transactions.map { list -> list.find { it.id == id && it.deletedAt == null } }
 
-    override fun getByAccountId(accountId: SyncId): Flow<List<Transaction>> =
+    override suspend fun getById(id: SyncId): Transaction? =
+        _transactions.value.find { it.id == id && it.deletedAt == null }
+
+    override fun observeByAccount(accountId: SyncId): Flow<List<Transaction>> =
         _transactions.map { list ->
             list.filter { it.accountId == accountId && it.deletedAt == null }
                 .sortedByDescending { it.date }
         }
 
-    override fun getByCategoryId(categoryId: SyncId): Flow<List<Transaction>> =
+    override fun observeByCategory(categoryId: SyncId): Flow<List<Transaction>> =
         _transactions.map { list ->
             list.filter { it.categoryId == categoryId && it.deletedAt == null }
                 .sortedByDescending { it.date }
         }
 
-    override fun getByDateRange(from: LocalDate, to: LocalDate): Flow<List<Transaction>> =
+    override fun observeByDateRange(
+        householdId: SyncId,
+        start: LocalDate,
+        end: LocalDate,
+    ): Flow<List<Transaction>> =
         _transactions.map { list ->
-            list.filter { it.deletedAt == null && it.date in from..to }
-                .sortedByDescending { it.date }
-        }
-
-    override fun search(query: String): Flow<List<Transaction>> =
-        _transactions.map { list ->
-            val q = query.lowercase()
-            list.filter { txn ->
-                txn.deletedAt == null && (
-                    txn.payee?.lowercase()?.contains(q) == true ||
-                    txn.note?.lowercase()?.contains(q) == true
-                )
+            list.filter {
+                it.householdId == householdId &&
+                    it.deletedAt == null &&
+                    it.date in start..end
             }.sortedByDescending { it.date }
         }
 
-    override fun getPayeeHistory(): Flow<List<String>> =
-        _transactions.map { list ->
-            list.filter { it.deletedAt == null }
-                .mapNotNull { it.payee }
-                .distinct()
-                .sorted()
-        }
+    override suspend fun getByDateRange(
+        householdId: SyncId,
+        start: LocalDate,
+        end: LocalDate,
+    ): List<Transaction> =
+        _transactions.value.filter {
+            it.householdId == householdId &&
+                it.deletedAt == null &&
+                it.date in start..end
+        }.sortedByDescending { it.date }
 
-    override suspend fun create(transaction: Transaction) {
+    override suspend fun insert(transaction: Transaction) {
         _transactions.update { it + transaction }
     }
 
@@ -80,8 +83,26 @@ class MockTransactionRepository : TransactionRepository {
     }
 
     override suspend fun delete(id: SyncId) {
+        val now = Clock.System.now()
         _transactions.update { list ->
-            list.map { if (it.id == id) it.copy(deletedAt = Clock.System.now()) else it }
+            list.map { transaction ->
+                if (transaction.id == id) transaction.copy(
+                    deletedAt = now,
+                    updatedAt = now,
+                    isSynced = false,
+                ) else transaction
+            }
+        }
+    }
+
+    override suspend fun getUnsynced(householdId: SyncId): List<Transaction> =
+        _transactions.value.filter { it.householdId == householdId && !it.isSynced }
+
+    override suspend fun markSynced(ids: List<SyncId>) {
+        _transactions.update { list ->
+            list.map { transaction ->
+                if (transaction.id in ids) transaction.copy(isSynced = true) else transaction
+            }
         }
     }
 }

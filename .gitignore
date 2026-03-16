@@ -93,4 +93,5 @@ coverage/
 
 # === Build caches ===
 .turbo/
+.kotlin/
 kotlin-js-store/
