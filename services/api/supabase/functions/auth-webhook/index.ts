@@ -18,6 +18,7 @@
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { createLogger, type Logger } from '../_shared/logger.ts';
 
 interface WebhookPayload {
   type: string;
@@ -62,10 +63,10 @@ function constantTimeEqual(a: string, b: string): boolean {
 /**
  * Verify that the webhook request is authentic using the shared secret.
  */
-function verifyWebhookSecret(req: Request): boolean {
+function verifyWebhookSecret(req: Request, logger: Logger): boolean {
   const secret = Deno.env.get('AUTH_WEBHOOK_SECRET');
   if (!secret) {
-    console.error('AUTH_WEBHOOK_SECRET not configured');
+    logger.error('AUTH_WEBHOOK_SECRET not configured');
     return false;
   }
 
@@ -79,8 +80,12 @@ function verifyWebhookSecret(req: Request): boolean {
 }
 
 serve(async (req: Request): Promise<Response> => {
+  const logger = createLogger('auth-webhook');
+  logger.info('Request received', { method: req.method });
+
   // Only accept POST
   if (req.method !== 'POST') {
+    logger.warn('Method not allowed', { method: req.method, httpStatus: 405 });
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { 'Content-Type': 'application/json' },
@@ -88,7 +93,8 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   // Verify webhook authenticity
-  if (!verifyWebhookSecret(req)) {
+  if (!verifyWebhookSecret(req, logger)) {
+    logger.warn('Webhook authentication failed', { httpStatus: 401 });
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
@@ -100,6 +106,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // Only handle INSERT events on auth.users (new signups)
     if (payload.type !== 'INSERT') {
+      logger.info('Event ignored', { eventType: payload.type });
       return new Response(JSON.stringify({ message: 'Event ignored' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -113,7 +120,7 @@ serve(async (req: Request): Promise<Response> => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !serviceRoleKey) {
-      console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+      logger.error('Missing required environment variables');
       return new Response(JSON.stringify({ error: 'Server configuration error' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -141,7 +148,7 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     if (error) {
-      console.error('Error provisioning user:', error.message);
+      logger.error('Failed to provision user', { errorMessage: error.message });
       return new Response(JSON.stringify({ error: 'Failed to provision user' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -171,7 +178,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // Log success without exposing user data
-    console.log('User provisioned successfully:', record.id);
+    logger.info('User provisioned successfully', { userId: record.id, httpStatus: 201 });
 
     return new Response(
       JSON.stringify({
@@ -184,7 +191,7 @@ serve(async (req: Request): Promise<Response> => {
       },
     );
   } catch (err) {
-    console.error('Webhook processing error:', (err as Error).message);
+    logger.error('Webhook processing error', { errorMessage: (err as Error).message });
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

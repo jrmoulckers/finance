@@ -19,6 +19,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { createLogger } from '../_shared/logger.ts';
 
 /** Individual service status. */
 type ServiceStatus = 'connected' | 'operational' | 'unavailable' | 'error';
@@ -116,8 +117,12 @@ serve(async (req: Request): Promise<Response> => {
     return handleCorsPreflightRequest();
   }
 
+  const logger = createLogger('health-check');
+  logger.info('Request received', { method: req.method });
+
   // Only accept GET requests
   if (req.method !== 'GET') {
+    logger.warn('Method not allowed', { method: req.method, httpStatus: 405 });
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: {
@@ -132,7 +137,7 @@ serve(async (req: Request): Promise<Response> => {
 
   if (!supabaseUrl || !serviceRoleKey) {
     // Do NOT reveal which variable is missing — just report degraded
-    console.error('Health check: missing required environment variables');
+    logger.error('Missing required environment variables');
     const errorResponse: HealthCheckResponse = {
       status: 'degraded',
       timestamp: new Date().toISOString(),
@@ -170,8 +175,16 @@ serve(async (req: Request): Promise<Response> => {
     version: '1.0.0',
   };
 
+  const httpStatus = isHealthy ? 200 : 503;
+  logger.info('Health check completed', {
+    healthStatus: response.status,
+    httpStatus,
+    database: databaseStatus,
+    auth: authStatus,
+  });
+
   return new Response(JSON.stringify(response), {
-    status: isHealthy ? 200 : 503,
+    status: httpStatus,
     headers: {
       ...corsHeaders,
       'Content-Type': 'application/json',

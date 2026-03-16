@@ -21,6 +21,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { createLogger } from '../_shared/logger.ts';
 import {
   createdResponse,
   errorResponse,
@@ -46,6 +47,9 @@ serve(async (req: Request): Promise<Response> => {
     return handleCorsPreflightRequest(req);
   }
 
+  const logger = createLogger('household-invite');
+  logger.info('Request received', { method: req.method });
+
   try {
     // All operations require authentication
     let user;
@@ -56,6 +60,8 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const supabase = createAdminClient();
+
+    logger.setUserId(user.id);
 
     switch (req.method) {
       case 'POST': {
@@ -127,9 +133,11 @@ serve(async (req: Request): Promise<Response> => {
           .single();
 
         if (insertError) {
-          console.error('Failed to create invitation:', insertError.message);
+          logger.error('Failed to create invitation', { errorMessage: insertError.message });
           return internalErrorResponse(req);
         }
+
+        logger.info('Invitation created', { httpStatus: 201 });
 
         return createdResponse(req, {
           id: invitation.id,
@@ -144,6 +152,7 @@ serve(async (req: Request): Promise<Response> => {
         // ===================================================================
         // VALIDATE INVITE CODE
         // ===================================================================
+        logger.info('Validating invite code');
         const url = new URL(req.url);
         const code = url.searchParams.get('code');
 
@@ -191,6 +200,8 @@ serve(async (req: Request): Promise<Response> => {
           return errorResponse(req, 'This invitation is for a different email address', 403);
         }
 
+        logger.info('Invite code validated', { httpStatus: 200 });
+
         // Return household info (safe subset only)
         const householdInfo = invitation.households as unknown as { id: string; name: string };
         return jsonResponse(req, {
@@ -212,6 +223,7 @@ serve(async (req: Request): Promise<Response> => {
         //   • Two users accepting the same single-use invite concurrently
         //   • The same user accepting twice (race past the membership check)
         // ===================================================================
+        logger.info('Accepting invitation');
         const body = await req.json();
         const { invite_code } = body;
 
@@ -226,7 +238,9 @@ serve(async (req: Request): Promise<Response> => {
         });
 
         if (rpcError) {
-          console.error('accept_household_invitation RPC failed:', rpcError.message);
+          logger.error('accept_household_invitation RPC failed', {
+            errorMessage: rpcError.message,
+          });
           return internalErrorResponse(req);
         }
 
@@ -256,6 +270,8 @@ serve(async (req: Request): Promise<Response> => {
           }
         }
 
+        logger.info('Invitation accepted', { httpStatus: 200, role: result.role });
+
         return jsonResponse(req, {
           message: 'Invitation accepted',
           household_id: result.household_id,
@@ -268,7 +284,7 @@ serve(async (req: Request): Promise<Response> => {
         return methodNotAllowedResponse(req);
     }
   } catch (err) {
-    console.error('Household invite error:', (err as Error).message);
+    logger.error('Household invite error', { errorMessage: (err as Error).message });
     return internalErrorResponse(req);
   }
 });
