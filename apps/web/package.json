@@ -36,6 +36,7 @@
     "@types/react-dom": "^19.1.5",
     "@types/sql.js": "^1.4.9",
     "@vitejs/plugin-react": "^4.5.2",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^28.1.0",
     "nanoid": "^5.1.6",
     "source-map-js": "^1.2.1",
