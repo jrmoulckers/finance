@@ -54,12 +54,12 @@ hardcoded. No endpoint exposes another user's financial data.
 
 #### H-1: PowerSync sync rules do not filter `deleted_at` — revoked members can still sync data
 
-| Attribute   | Value                                          |
-| ----------- | ---------------------------------------------- |
-| **File**    | `services/api/powersync/sync-rules.yaml`       |
-| **Lines**   | 4, 13                                          |
-| **OWASP**   | A01:2021 – Broken Access Control               |
-| **Affects** | All household-scoped financial data via sync    |
+| Attribute   | Value                                        |
+| ----------- | -------------------------------------------- |
+| **File**    | `services/api/powersync/sync-rules.yaml`     |
+| **Lines**   | 4, 13                                        |
+| **OWASP**   | A01:2021 – Broken Access Control             |
+| **Affects** | All household-scoped financial data via sync |
 
 **Description:**
 The `by_household` bucket parameter query is:
@@ -71,6 +71,7 @@ SELECT household_id FROM household_members WHERE user_id = token_parameters.user
 This query does **not** include `AND deleted_at IS NULL`. When a user is removed from
 a household (their `household_members.deleted_at` is set), the PowerSync sync pipeline
 will continue to include that household's data in the user's sync bucket until:
+
 - Their JWT expires and is refreshed (at which point `auth.household_ids()` no longer
   includes the household), **and**
 - The PowerSync connection is re-established.
@@ -111,12 +112,12 @@ bucket_definitions:
 
 #### H-2: `household_invitations` UPDATE RLS policy allows any member to modify invitations
 
-| Attribute   | Value                                                     |
-| ----------- | --------------------------------------------------------- |
+| Attribute   | Value                                                             |
+| ----------- | ----------------------------------------------------------------- |
 | **File**    | `services/api/supabase/migrations/20260306000003_auth_config.sql` |
-| **Lines**   | 127–131                                                   |
-| **OWASP**   | A01:2021 – Broken Access Control                          |
-| **Affects** | Household invitation integrity, potential role escalation  |
+| **Lines**   | 127–131                                                           |
+| **OWASP**   | A01:2021 – Broken Access Control                                  |
+| **Affects** | Household invitation integrity, potential role escalation         |
 
 **Description:**
 The UPDATE policy on `household_invitations` checks only household membership:
@@ -134,6 +135,7 @@ any household member can update invitation records via direct PostgREST access
 (bypassing the Edge Function's ownership check).
 
 **Attack scenario:**
+
 1. Household owner Alice creates an invitation with `role = 'member'` for an external
    user.
 2. Existing member Bob (who has `role = 'member'`) directly calls the PostgREST API
@@ -171,11 +173,11 @@ CREATE POLICY household_invitations_update ON household_invitations
 
 #### M-1: No rate limiting on authentication endpoints
 
-| Attribute   | Value                                                 |
-| ----------- | ----------------------------------------------------- |
+| Attribute   | Value                                                        |
+| ----------- | ------------------------------------------------------------ |
 | **Files**   | `passkey-register/index.ts`, `passkey-authenticate/index.ts` |
-| **OWASP**   | A07:2021 – Identification and Authentication Failures |
-| **Affects** | Auth availability, brute-force resistance              |
+| **OWASP**   | A07:2021 – Identification and Authentication Failures        |
+| **Affects** | Auth availability, brute-force resistance                    |
 
 **Description:**
 The passkey registration and authentication Edge Functions have no rate limiting.
@@ -184,6 +186,7 @@ The data-export endpoint correctly implements rate limiting via the
 security-sensitive — lack equivalent protection.
 
 An attacker could:
+
 - Flood `passkey-register?step=options` to fill the `webauthn_challenges` table
   with garbage entries.
 - Flood `passkey-authenticate?step=options` to generate unlimited challenges,
@@ -196,22 +199,22 @@ Functions lack built-in middleware, use the same database-backed pattern as data
 or consider an upstream rate limiter (e.g., Cloudflare, Supabase's built-in rate
 limiting if available).
 
-| Endpoint              | Recommended Limit         |
-| --------------------- | ------------------------- |
-| `passkey-register`    | 5 requests / user / hour  |
-| `passkey-authenticate`| 10 requests / IP / minute |
-| `household-invite`    | 20 requests / user / hour |
-| `account-deletion`    | 3 requests / user / day   |
+| Endpoint               | Recommended Limit         |
+| ---------------------- | ------------------------- |
+| `passkey-register`     | 5 requests / user / hour  |
+| `passkey-authenticate` | 10 requests / IP / minute |
+| `household-invite`     | 20 requests / user / hour |
+| `account-deletion`     | 3 requests / user / day   |
 
 ---
 
 #### M-2: Passkey authentication challenge lookup is globally scoped — DoS and confusion risk
 
-| Attribute   | Value                                                  |
-| ----------- | ------------------------------------------------------ |
-| **File**    | `services/api/supabase/functions/passkey-authenticate/index.ts` |
-| **Lines**   | 157–163                                                |
-| **OWASP**   | A07:2021 – Identification and Authentication Failures  |
+| Attribute | Value                                                           |
+| --------- | --------------------------------------------------------------- |
+| **File**  | `services/api/supabase/functions/passkey-authenticate/index.ts` |
+| **Lines** | 157–163                                                         |
+| **OWASP** | A07:2021 – Identification and Authentication Failures           |
 
 **Description:**
 During the verification step of passkey authentication, the challenge is looked up
@@ -231,6 +234,7 @@ This retrieves the **most recent** unexpired authentication challenge **globally
 (across all users/sessions), because `user_id` is `null` for usernameless flows.
 
 **Issues:**
+
 1. **DoS vector:** An attacker can flood `?step=options` to continuously generate
    new challenges. Legitimate users' challenges become stale because the verify step
    always picks the newest global challenge, causing their authentication to fail.
@@ -266,11 +270,11 @@ const { data: challenges } = await supabaseAdmin
 
 #### M-3: Invitation `role` parameter not validated against allowed values
 
-| Attribute   | Value                                                |
-| ----------- | ---------------------------------------------------- |
-| **File**    | `services/api/supabase/functions/household-invite/index.ts` |
-| **Lines**   | 66, 119–125                                          |
-| **OWASP**   | A03:2021 – Injection / A04:2021 – Insecure Design   |
+| Attribute | Value                                                       |
+| --------- | ----------------------------------------------------------- |
+| **File**  | `services/api/supabase/functions/household-invite/index.ts` |
+| **Lines** | 66, 119–125                                                 |
+| **OWASP** | A03:2021 – Injection / A04:2021 – Insecure Design           |
 
 **Description:**
 The POST handler destructures `role` from the request body with a default of
@@ -314,11 +318,11 @@ ALTER TABLE household_invitations
 
 #### M-4: Health-check endpoint imports non-existent CORS exports
 
-| Attribute   | Value                                              |
-| ----------- | -------------------------------------------------- |
+| Attribute   | Value                                                   |
+| ----------- | ------------------------------------------------------- |
 | **File**    | `services/api/supabase/functions/health-check/index.ts` |
-| **Line**    | 21                                                 |
-| **Affects** | Health-check CORS validation, runtime stability     |
+| **Line**    | 21                                                      |
+| **Affects** | Health-check CORS validation, runtime stability         |
 
 **Description:**
 The health-check endpoint imports `corsHeaders` and `handleCorsPreflightRequest`
@@ -331,10 +335,12 @@ import { corsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 However, `_shared/cors.ts` exports `getCorsHeaders` (a function taking a `Request`)
 and `handleCorsPreflightRequest` (also takes a `Request`). There is no `corsHeaders`
 named export. Throughout the health-check handler:
+
 - `corsHeaders` is used as a static object (`...corsHeaders`) — line 126, 146, etc.
 - `handleCorsPreflightRequest()` is called without arguments — line 116.
 
 This means either:
+
 1. The health-check will fail at import time (named export not found), making the
    endpoint non-functional.
 2. If Deno resolves `corsHeaders` as `undefined`, all responses will lack CORS
@@ -357,11 +363,11 @@ headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
 
 #### M-5: RLS policies on data tables do not filter soft-deleted records
 
-| Attribute   | Value                                                     |
-| ----------- | --------------------------------------------------------- |
+| Attribute   | Value                                                              |
+| ----------- | ------------------------------------------------------------------ |
 | **File**    | `services/api/supabase/migrations/20260306000002_rls_policies.sql` |
-| **Affects** | accounts, categories, transactions, budgets, goals         |
-| **OWASP**   | A01:2021 – Broken Access Control                           |
+| **Affects** | accounts, categories, transactions, budgets, goals                 |
+| **OWASP**   | A01:2021 – Broken Access Control                                   |
 
 **Description:**
 All household-scoped RLS SELECT policies use the pattern:
@@ -371,7 +377,7 @@ USING (household_id = ANY(auth.household_ids()))
 ```
 
 None of them include `AND deleted_at IS NULL`. While `auth.household_ids()` itself
-correctly filters `deleted_at IS NULL` on the *membership* check, the *data* tables
+correctly filters `deleted_at IS NULL` on the _membership_ check, the _data_ tables
 do not filter soft-deleted records. This means:
 
 - Soft-deleted accounts, transactions, budgets, goals, and categories remain visible
@@ -393,10 +399,10 @@ document this decision and consider adding a time-boxed window (e.g., records wi
 
 #### M-6: `handle_new_user_signup` can create duplicate households on webhook replay
 
-| Attribute   | Value                                                     |
-| ----------- | --------------------------------------------------------- |
-| **File**    | `services/api/supabase/migrations/20260306000003_auth_config.sql` |
-| **Lines**   | 279–316                                                   |
+| Attribute | Value                                                             |
+| --------- | ----------------------------------------------------------------- |
+| **File**  | `services/api/supabase/migrations/20260306000003_auth_config.sql` |
+| **Lines** | 279–316                                                           |
 
 **Description:**
 The `handle_new_user_signup` function uses `ON CONFLICT (id) DO NOTHING` for the
@@ -436,10 +442,10 @@ END IF;
 
 #### L-1: No scheduled cleanup of expired WebAuthn challenges
 
-| Attribute   | Value                                                     |
-| ----------- | --------------------------------------------------------- |
-| **File**    | `services/api/supabase/migrations/20260306000003_auth_config.sql` |
-| **Table**   | `webauthn_challenges`                                     |
+| Attribute | Value                                                             |
+| --------- | ----------------------------------------------------------------- |
+| **File**  | `services/api/supabase/migrations/20260306000003_auth_config.sql` |
+| **Table** | `webauthn_challenges`                                             |
 
 **Description:**
 Expired challenges are cleaned up only when a specific challenge is consumed during
@@ -462,11 +468,11 @@ DELETE FROM webauthn_challenges WHERE expires_at < now() - interval '1 day';
 
 #### L-2: Data export includes other household members' UUIDs
 
-| Attribute   | Value                                                |
-| ----------- | ---------------------------------------------------- |
-| **File**    | `services/api/supabase/functions/data-export/index.ts` |
-| **Lines**   | 54                                                   |
-| **Regulation** | GDPR Art. 20 — Data Portability                   |
+| Attribute      | Value                                                  |
+| -------------- | ------------------------------------------------------ |
+| **File**       | `services/api/supabase/functions/data-export/index.ts` |
+| **Lines**      | 54                                                     |
+| **Regulation** | GDPR Art. 20 — Data Portability                        |
 
 **Description:**
 The `household_members` table is exported with `filterBy: 'household_id'`,
@@ -484,10 +490,10 @@ in the export (e.g., "data portability includes the user's relationship context"
 
 #### L-3: Constant-time comparison in auth-webhook is best-effort
 
-| Attribute   | Value                                              |
-| ----------- | -------------------------------------------------- |
-| **File**    | `services/api/supabase/functions/auth-webhook/index.ts` |
-| **Lines**   | 55–63                                              |
+| Attribute | Value                                                   |
+| --------- | ------------------------------------------------------- |
+| **File**  | `services/api/supabase/functions/auth-webhook/index.ts` |
+| **Lines** | 55–63                                                   |
 
 **Description:**
 The `verifyWebhookSecret` function implements a manual XOR-based comparison loop:
@@ -519,9 +525,9 @@ return crypto.subtle.timingSafeEqual(a, b);
 
 #### L-4: `households` table not synced via PowerSync
 
-| Attribute   | Value                                      |
-| ----------- | ------------------------------------------ |
-| **File**    | `services/api/powersync/sync-rules.yaml`   |
+| Attribute | Value                                    |
+| --------- | ---------------------------------------- |
+| **File**  | `services/api/powersync/sync-rules.yaml` |
 
 **Description:**
 The `by_household` bucket syncs accounts, transactions, categories, budgets, and
@@ -547,10 +553,10 @@ by_household:
 
 #### L-5: `audit_log` old_values/new_values JSONB columns could store sensitive financial data
 
-| Attribute   | Value                                                     |
-| ----------- | --------------------------------------------------------- |
-| **File**    | `services/api/supabase/migrations/20260306000003_auth_config.sql` |
-| **Lines**   | 184–196                                                   |
+| Attribute | Value                                                             |
+| --------- | ----------------------------------------------------------------- |
+| **File**  | `services/api/supabase/migrations/20260306000003_auth_config.sql` |
+| **Lines** | 184–196                                                           |
 
 **Description:**
 The `audit_log` table has `old_values JSONB` and `new_values JSONB` columns. If
@@ -575,31 +581,31 @@ changed column names, timestamp).
 
 ### Priority 1 — Fix Before Next Release
 
-| ID   | Finding                                          | Effort   |
-| ---- | ------------------------------------------------ | -------- |
-| H-1  | Add `deleted_at IS NULL` to PowerSync sync rules | Small    |
-| H-2  | Restrict `household_invitations` UPDATE RLS to owner | Small |
-| M-2  | Scope passkey auth challenge lookup by challenge value | Medium |
-| M-3  | Validate `role` and `expires_in_hours` in invite endpoint | Small |
+| ID  | Finding                                                   | Effort |
+| --- | --------------------------------------------------------- | ------ |
+| H-1 | Add `deleted_at IS NULL` to PowerSync sync rules          | Small  |
+| H-2 | Restrict `household_invitations` UPDATE RLS to owner      | Small  |
+| M-2 | Scope passkey auth challenge lookup by challenge value    | Medium |
+| M-3 | Validate `role` and `expires_in_hours` in invite endpoint | Small  |
 
 ### Priority 2 — Fix Within Sprint
 
-| ID   | Finding                                          | Effort   |
-| ---- | ------------------------------------------------ | -------- |
-| M-1  | Implement rate limiting on auth endpoints        | Medium   |
-| M-4  | Fix health-check CORS imports                    | Small    |
-| M-5  | Decide on soft-delete visibility in RLS & document | Small  |
-| M-6  | Add idempotency to `handle_new_user_signup`      | Small    |
+| ID  | Finding                                            | Effort |
+| --- | -------------------------------------------------- | ------ |
+| M-1 | Implement rate limiting on auth endpoints          | Medium |
+| M-4 | Fix health-check CORS imports                      | Small  |
+| M-5 | Decide on soft-delete visibility in RLS & document | Small  |
+| M-6 | Add idempotency to `handle_new_user_signup`        | Small  |
 
 ### Priority 3 — Address When Convenient
 
-| ID   | Finding                                          | Effort   |
-| ---- | ------------------------------------------------ | -------- |
-| L-1  | Schedule cleanup of expired WebAuthn challenges  | Small    |
-| L-2  | Review data export household_members scope       | Small    |
-| L-3  | Use `crypto.subtle.timingSafeEqual` in webhook   | Small    |
-| L-4  | Add `households` to PowerSync sync rules         | Small    |
-| L-5  | Document audit_log JSONB content policy          | Small    |
+| ID  | Finding                                         | Effort |
+| --- | ----------------------------------------------- | ------ |
+| L-1 | Schedule cleanup of expired WebAuthn challenges | Small  |
+| L-2 | Review data export household_members scope      | Small  |
+| L-3 | Use `crypto.subtle.timingSafeEqual` in webhook  | Small  |
+| L-4 | Add `households` to PowerSync sync rules        | Small  |
+| L-5 | Document audit_log JSONB content policy         | Small  |
 
 ---
 
@@ -611,26 +617,28 @@ within a time window) is effective and can be generalized to other endpoints.
 
 ### Recommended Configuration
 
-| Endpoint                | Method     | Limit              | Window   | Key         | Notes                          |
-| ----------------------- | ---------- | ------------------ | -------- | ----------- | ------------------------------ |
-| `health-check`          | GET        | 60 req             | 1 min    | IP          | Prevent monitoring abuse       |
-| `auth-webhook`          | POST       | N/A                | N/A      | N/A         | Already secret-gated           |
-| `passkey-register`      | POST       | 5 req              | 1 hour   | User ID     | Prevent challenge flooding     |
-| `passkey-authenticate`  | POST       | 10 req             | 1 min    | IP          | Prevent brute-force probing    |
-| `household-invite`      | POST       | 20 req             | 1 hour   | User ID     | Prevent invite spam            |
-| `household-invite`      | PUT        | 30 req             | 1 hour   | User ID     | Prevent accept flooding        |
-| `account-deletion`      | DELETE     | 3 req              | 24 hours | User ID     | Prevent accidental repeats     |
-| `data-export`           | GET        | 10 req             | 1 hour   | User ID     | Already implemented ✓          |
+| Endpoint               | Method | Limit  | Window   | Key     | Notes                       |
+| ---------------------- | ------ | ------ | -------- | ------- | --------------------------- |
+| `health-check`         | GET    | 60 req | 1 min    | IP      | Prevent monitoring abuse    |
+| `auth-webhook`         | POST   | N/A    | N/A      | N/A     | Already secret-gated        |
+| `passkey-register`     | POST   | 5 req  | 1 hour   | User ID | Prevent challenge flooding  |
+| `passkey-authenticate` | POST   | 10 req | 1 min    | IP      | Prevent brute-force probing |
+| `household-invite`     | POST   | 20 req | 1 hour   | User ID | Prevent invite spam         |
+| `household-invite`     | PUT    | 30 req | 1 hour   | User ID | Prevent accept flooding     |
+| `account-deletion`     | DELETE | 3 req  | 24 hours | User ID | Prevent accidental repeats  |
+| `data-export`          | GET    | 10 req | 1 hour   | User ID | Already implemented ✓       |
 
 ### Implementation Approach
 
 **Option A: Database-backed (like data-export)**
+
 - Create a `rate_limit_log` table or reuse `audit_log`.
 - Check row count within window before processing.
 - Pros: No external dependencies, works with Supabase Edge Functions.
 - Cons: Adds a DB query per request.
 
 **Option B: Upstream proxy**
+
 - Configure rate limiting at the CDN/proxy layer (Cloudflare, AWS ALB, etc.).
 - Pros: No application code changes, handles IP-based limiting well.
 - Cons: Cannot rate-limit by User ID without header inspection.
@@ -667,34 +675,34 @@ The following security practices are well-implemented and deserve recognition:
 
 ## Appendix A: RLS Coverage Matrix
 
-| Table                    | RLS Enabled | SELECT | INSERT | UPDATE | DELETE | Notes                          |
-| ------------------------ | ----------- | ------ | ------ | ------ | ------ | ------------------------------ |
-| `users`                  | ✅          | ✅     | ✅     | ✅     | ✅     | Self-only                      |
-| `households`             | ✅          | ✅     | ✅     | ✅     | ✅     | Member read, owner write       |
-| `household_members`      | ✅          | ✅     | ✅     | ✅     | ✅     | Member read, owner write       |
-| `accounts`               | ✅          | ✅     | ✅     | ✅     | ✅     | Household-scoped               |
-| `categories`             | ✅          | ✅     | ✅     | ✅     | ✅     | Household-scoped               |
-| `transactions`           | ✅          | ✅     | ✅     | ✅     | ✅     | Household-scoped               |
-| `budgets`                | ✅          | ✅     | ✅     | ✅     | ✅     | Household-scoped               |
-| `goals`                  | ✅          | ✅     | ✅     | ✅     | ✅     | Household-scoped               |
-| `passkey_credentials`    | ✅          | ✅     | ✅     | ✅     | ✅     | Self-only                      |
-| `household_invitations`  | ✅          | ✅     | ✅     | ⚠️     | ✅     | UPDATE too permissive (H-2)    |
-| `webauthn_challenges`    | ✅          | ✅     | ✅     | —      | ✅     | Self-only, no UPDATE policy    |
-| `audit_log`              | ✅          | ✅     | —      | —      | —      | Read-only, service-role insert |
-| `sync_health_logs`       | ✅          | ✅     | ✅*    | —      | —      | *Insert: service_role only     |
-| `data_export_audit_log`  | ✅          | ✅     | —      | —      | —      | Read-only user, service insert |
+| Table                   | RLS Enabled | SELECT | INSERT | UPDATE | DELETE | Notes                          |
+| ----------------------- | ----------- | ------ | ------ | ------ | ------ | ------------------------------ |
+| `users`                 | ✅          | ✅     | ✅     | ✅     | ✅     | Self-only                      |
+| `households`            | ✅          | ✅     | ✅     | ✅     | ✅     | Member read, owner write       |
+| `household_members`     | ✅          | ✅     | ✅     | ✅     | ✅     | Member read, owner write       |
+| `accounts`              | ✅          | ✅     | ✅     | ✅     | ✅     | Household-scoped               |
+| `categories`            | ✅          | ✅     | ✅     | ✅     | ✅     | Household-scoped               |
+| `transactions`          | ✅          | ✅     | ✅     | ✅     | ✅     | Household-scoped               |
+| `budgets`               | ✅          | ✅     | ✅     | ✅     | ✅     | Household-scoped               |
+| `goals`                 | ✅          | ✅     | ✅     | ✅     | ✅     | Household-scoped               |
+| `passkey_credentials`   | ✅          | ✅     | ✅     | ✅     | ✅     | Self-only                      |
+| `household_invitations` | ✅          | ✅     | ✅     | ⚠️     | ✅     | UPDATE too permissive (H-2)    |
+| `webauthn_challenges`   | ✅          | ✅     | ✅     | —      | ✅     | Self-only, no UPDATE policy    |
+| `audit_log`             | ✅          | ✅     | —      | —      | —      | Read-only, service-role insert |
+| `sync_health_logs`      | ✅          | ✅     | ✅\*   | —      | —      | \*Insert: service_role only    |
+| `data_export_audit_log` | ✅          | ✅     | —      | —      | —      | Read-only user, service insert |
 
 ## Appendix B: Edge Function Auth Matrix
 
-| Endpoint              | Auth Required | Auth Method    | RBAC Check              | CORS Validated |
-| --------------------- | ------------- | -------------- | ----------------------- | -------------- |
-| `health-check`        | No            | —              | —                       | ⚠️ (M-4)      |
-| `auth-webhook`        | Yes           | Shared secret  | Webhook secret match    | N/A (no CORS)  |
-| `passkey-register`    | Yes           | JWT            | Self-only               | ✅             |
-| `passkey-authenticate`| No*           | —              | Credential ownership    | ✅             |
-| `household-invite`    | Yes           | JWT            | Owner for POST          | ✅             |
-| `account-deletion`    | Yes           | JWT            | Self-only + confirmation| ✅             |
-| `data-export`         | Yes           | JWT            | Self-only               | ✅             |
+| Endpoint               | Auth Required | Auth Method   | RBAC Check               | CORS Validated |
+| ---------------------- | ------------- | ------------- | ------------------------ | -------------- |
+| `health-check`         | No            | —             | —                        | ⚠️ (M-4)       |
+| `auth-webhook`         | Yes           | Shared secret | Webhook secret match     | N/A (no CORS)  |
+| `passkey-register`     | Yes           | JWT           | Self-only                | ✅             |
+| `passkey-authenticate` | No\*          | —             | Credential ownership     | ✅             |
+| `household-invite`     | Yes           | JWT           | Owner for POST           | ✅             |
+| `account-deletion`     | Yes           | JWT           | Self-only + confirmation | ✅             |
+| `data-export`          | Yes           | JWT           | Self-only                | ✅             |
 
-*Passkey authentication is a pre-auth flow — the user is not yet authenticated.
+\*Passkey authentication is a pre-auth flow — the user is not yet authenticated.
 Authentication is established by proving possession of the passkey credential.
