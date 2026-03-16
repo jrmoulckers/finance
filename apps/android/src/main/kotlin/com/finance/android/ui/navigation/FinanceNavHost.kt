@@ -25,12 +25,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
+import com.finance.android.ui.screens.AccountCreateScreen
 import com.finance.android.ui.screens.AccountsScreen
 import com.finance.android.ui.screens.BudgetsScreen
 import com.finance.android.ui.screens.DashboardScreen
 import com.finance.android.ui.screens.GoalsScreen
 import com.finance.android.ui.screens.SettingsScreen
 import com.finance.android.ui.screens.TransactionCreateScreen
+import com.finance.android.ui.screens.TransactionDetailScreen
 import com.finance.android.ui.screens.TransactionsScreen
 import timber.log.Timber
 
@@ -46,6 +48,7 @@ private const val DEEP_LINK_BASE = "https://finance.app"
 sealed class Route(val route: String) {
     data object Dashboard : Route("dashboard")
     data object Accounts : Route("accounts")
+    data object AccountCreate : Route("accounts/create")
     data object Transactions : Route("transactions")
     data object Budgets : Route("budgets")
     data object Goals : Route("goals")
@@ -86,6 +89,17 @@ sealed class Route(val route: String) {
      */
     data object TransactionDetail : Route("transaction/{id}") {
         fun createRoute(id: String): String = "transaction/$id"
+    }
+
+    /**
+     * Transaction edit destination.
+     *
+     * Navigated to from [TransactionDetailScreen] when the user taps the Edit action.
+     * Reuses [TransactionCreateScreen] with the ViewModel pre-loaded from the existing
+     * transaction via [SavedStateHandle][androidx.lifecycle.SavedStateHandle].
+     */
+    data object TransactionEdit : Route("transactions/{id}/edit") {
+        fun createRoute(id: String): String = "transactions/$id/edit"
     }
 }
 
@@ -129,11 +143,27 @@ fun FinanceNavHost(
                 onAccountClick = { id ->
                     navController.navigate(Route.AccountDetail.createRoute(id))
                 },
+                onAddAccount = {
+                    navController.navigate(Route.AccountCreate.route) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 
         composable(Route.Transactions.route) {
-            TransactionsScreen()
+            TransactionsScreen(
+                onTransactionClick = { id ->
+                    navController.navigate(Route.TransactionDetail.createRoute(id.value)) {
+                        launchSingleTop = true
+                    }
+                },
+                onEditTransaction = { id ->
+                    navController.navigate(Route.TransactionEdit.createRoute(id.value)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
 
         composable(Route.Budgets.route) {
@@ -156,6 +186,13 @@ fun FinanceNavHost(
             )
         }
 
+        composable(Route.AccountCreate.route) {
+            AccountCreateScreen(
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
         composable(
             route = Route.AccountDetail.route,
             arguments = listOf(navArgument("id") { type = NavType.StringType }),
@@ -175,6 +212,20 @@ fun FinanceNavHost(
                     nullable = true
                     defaultValue = null
                 },
+            ),
+        ) {
+            TransactionCreateScreen(
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // Transaction edit — reuses TransactionCreateScreen; the ViewModel pre-populates
+        // all form fields from the stored transaction via SavedStateHandle key "id".
+        composable(
+            route = Route.TransactionEdit.route,
+            arguments = listOf(
+                navArgument("id") { type = NavType.StringType },
             ),
         ) {
             TransactionCreateScreen(
@@ -282,38 +333,16 @@ fun FinanceNavHost(
             ),
         ) { backStackEntry ->
             val transactionId = backStackEntry.arguments?.getString("id").orEmpty()
-            Timber.d("Deep link: transaction detail for id=%s", transactionId)
+            Timber.d("Transaction detail: id=%s", transactionId)
 
-            // TODO: Build full TransactionDetailScreen with transaction data loading
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .semantics { contentDescription = "Transaction details" },
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(24.dp),
-                ) {
-                    Text(
-                        text = "Transaction Details",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Transaction Details heading"
-                        },
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "Transaction detail view coming soon.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Transaction detail view coming soon"
-                        },
-                    )
-                }
-            }
+            TransactionDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEdit = { syncId ->
+                    navController.navigate(Route.TransactionEdit.createRoute(syncId.value)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
     }
 }
