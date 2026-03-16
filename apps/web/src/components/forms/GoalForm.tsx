@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Accessible goal creation form.
+ * Accessible goal creation and editing form.
  *
- * Renders a modal dialog with fields for creating a new savings goal:
+ * Renders a modal dialog with fields for creating or editing a savings goal:
  * name (required), target amount (required), current amount (defaults to zero),
- * target date (optional, must be in the future), and description (optional).
+ * target date (optional), and description (optional).
  *
  * Validates input client-side with accessible error messages using
  * `aria-invalid` and `aria-describedby`. The household ID is resolved from the
@@ -16,7 +16,7 @@
  *
  * @module components/forms/GoalForm
  * @see {@link CreateGoalInput} from db/repositories/goals
- * References: issue #444
+ * References: issues #444, #487
  */
 
 import {
@@ -32,7 +32,7 @@ import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateGoalInput } from '../../db/repositories/goals';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
-import type { GoalStatus, SyncId } from '../../kmp/bridge';
+import type { Goal, GoalStatus, SyncId } from '../../kmp/bridge';
 
 import './forms.css';
 
@@ -46,6 +46,8 @@ export interface GoalFormProps {
   onCancel: () => void;
   /** Callback invoked with validated form data when the user submits. */
   onSubmit: (data: CreateGoalInput) => Promise<void>;
+  /** Existing goal data used to prefill the form when editing. */
+  initialData?: Goal;
 }
 
 interface FormErrors {
@@ -74,11 +76,24 @@ function tomorrowISO(): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Format a stored currency amount for a decimal text input. */
+function formatAmountForInput(amountInMinorUnits: number, decimalPlaces = 2): string {
+  const divisor = Math.pow(10, decimalPlaces);
+  return (amountInMinorUnits / divisor).toFixed(decimalPlaces);
+}
+
+/** Return an optional goal description when the runtime object includes one. */
+function getGoalDescription(goal?: Goal): string {
+  const goalWithDescription = goal as (Goal & { description?: string | null }) | undefined;
+  return goalWithDescription?.description ?? '';
+}
+
 function validate(
   name: string,
   targetAmountStr: string,
   currentAmountStr: string,
   targetDate: string,
+  requireFutureTargetDate: boolean,
 ): FormErrors {
   const errors: FormErrors = {};
 
@@ -98,7 +113,7 @@ function validate(
     }
   }
 
-  if (targetDate && targetDate <= todayISO()) {
+  if (requireFutureTargetDate && targetDate && targetDate <= todayISO()) {
     errors.targetDate = 'Target date must be in the future.';
   }
 
@@ -122,15 +137,16 @@ function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): SyncId | null 
 }
 
 /**
- * Accessible modal form for creating a new financial goal.
+ * Accessible modal form for creating or editing a financial goal.
  *
  * Provides fields for name, target amount, current amount, target date, and
  * description. Validates input and surfaces errors with ARIA attributes.
  * Traps focus within the dialog while open.
  */
-export function GoalForm({ isOpen, onCancel, onSubmit }: GoalFormProps) {
+export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const isEditing = initialData !== undefined;
 
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
@@ -155,17 +171,25 @@ export function GoalForm({ isOpen, onCancel, onSubmit }: GoalFormProps) {
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen) {
-      setName('');
-      setTargetAmount('');
-      setCurrentAmount('0.00');
-      setTargetDate('');
-      setDescription('');
-      setErrors({});
-      setSubmitting(false);
-      setSubmitError(null);
+    if (!isOpen) {
+      return;
     }
-  }, [isOpen]);
+
+    const decimalPlaces = initialData?.currency.decimalPlaces ?? 2;
+
+    setName(initialData?.name ?? '');
+    setTargetAmount(
+      initialData ? formatAmountForInput(initialData.targetAmount.amount, decimalPlaces) : '',
+    );
+    setCurrentAmount(
+      initialData ? formatAmountForInput(initialData.currentAmount.amount, decimalPlaces) : '0.00',
+    );
+    setTargetDate(initialData?.targetDate ?? '');
+    setDescription(getGoalDescription(initialData));
+    setErrors({});
+    setSubmitting(false);
+    setSubmitError(null);
+  }, [initialData, isOpen]);
 
   const handleCancel = useCallback(() => {
     onCancel();
@@ -185,16 +209,16 @@ export function GoalForm({ isOpen, onCancel, onSubmit }: GoalFormProps) {
     async (event: FormEvent) => {
       event.preventDefault();
 
-      const fieldErrors = validate(name, targetAmount, currentAmount, targetDate);
+      const fieldErrors = validate(name, targetAmount, currentAmount, targetDate, !isEditing);
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
         return;
       }
 
-      const householdId = getFirstHouseholdId(db);
+      const householdId = initialData?.householdId ?? getFirstHouseholdId(db);
       if (!householdId) {
-        setSubmitError('No household found. Please create a household before adding goals.');
+        setSubmitError('No household found. Please create a household before saving goals.');
         return;
       }
 
@@ -204,7 +228,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit }: GoalFormProps) {
         targetAmount: { amount: Math.round(parseFloat(targetAmount) * 100) },
         currentAmount: { amount: Math.round(parseFloat(currentAmount || '0') * 100) },
         targetDate: targetDate || null,
-        status: DEFAULT_GOAL_STATUS,
+        status: initialData?.status ?? DEFAULT_GOAL_STATUS,
       };
 
       setSubmitting(true);
@@ -212,19 +236,20 @@ export function GoalForm({ isOpen, onCancel, onSubmit }: GoalFormProps) {
 
       try {
         await onSubmit(input);
-        setName('');
-        setTargetAmount('');
-        setCurrentAmount('0.00');
-        setTargetDate('');
-        setDescription('');
         setErrors({});
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : 'Failed to create goal.');
+        setSubmitError(
+          err instanceof Error
+            ? err.message
+            : isEditing
+              ? 'Failed to update goal.'
+              : 'Failed to create goal.',
+        );
       } finally {
         setSubmitting(false);
       }
     },
-    [name, targetAmount, currentAmount, targetDate, db, onSubmit],
+    [currentAmount, db, initialData, isEditing, name, onSubmit, targetAmount, targetDate],
   );
 
   if (!isOpen) {
@@ -235,7 +260,10 @@ export function GoalForm({ isOpen, onCancel, onSubmit }: GoalFormProps) {
   const hasTargetAmountError = Boolean(errors.targetAmount);
   const hasCurrentAmountError = Boolean(errors.currentAmount);
   const hasTargetDateError = Boolean(errors.targetDate);
-  const minimumTargetDate = tomorrowISO();
+  const minimumTargetDate = isEditing ? undefined : tomorrowISO();
+  const dialogTitle = isEditing ? 'Edit Goal' : 'Create Goal';
+  const submitLabel = isEditing ? 'Update Goal' : 'Create Goal';
+  const submittingLabel = isEditing ? 'Updating…' : 'Creating…';
 
   return (
     <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
@@ -249,7 +277,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit }: GoalFormProps) {
         aria-labelledby="goal-form-title"
       >
         <h2 id="goal-form-title" className="form-dialog__title">
-          Create Goal
+          {dialogTitle}
         </h2>
 
         {submitError && (
@@ -389,7 +417,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit }: GoalFormProps) {
               disabled={submitting}
               aria-busy={submitting}
             >
-              {submitting ? 'Creating…' : 'Create Goal'}
+              {submitting ? submittingLabel : submitLabel}
             </button>
           </div>
         </form>

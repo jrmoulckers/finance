@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Accessible transaction creation form.
+ * Accessible transaction form for creating and editing transactions.
  *
- * Renders a modal dialog with fields for creating a new financial transaction:
+ * Renders a modal dialog with fields for creating or editing a financial transaction:
  * amount (required, > 0), description (required, maps to `payee`), type
  * (radio group, default EXPENSE), category (optional select), account
  * (required select), date (default today), and notes (optional textarea).
@@ -18,7 +18,7 @@
  *
  * @module components/forms/TransactionForm
  * @see {@link CreateTransactionInput} from db/repositories/transactions
- * References: issue #445
+ * References: issues #445, #487
  */
 
 import {
@@ -32,7 +32,7 @@ import {
 
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
-import type { Account, Category, TransactionType } from '../../kmp/bridge';
+import type { Account, Category, Transaction, TransactionType } from '../../kmp/bridge';
 
 import './forms.css';
 
@@ -63,6 +63,8 @@ export interface TransactionFormProps {
   categories: Category[];
   /** Whether the form dialog is open. */
   isOpen: boolean;
+  /** Existing transaction data used to prefill the form in edit mode. */
+  initialData?: Transaction;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +78,14 @@ function todayISO(): string {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+/** Convert a stored transaction amount into a decimal string for the amount input. */
+function formatAmountForInput(transaction: Transaction): string {
+  const divisor = Math.pow(10, transaction.currency.decimalPlaces);
+  return (Math.abs(transaction.amount.amount) / divisor).toFixed(
+    transaction.currency.decimalPlaces,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +122,7 @@ function validate(amountStr: string, description: string, accountId: string): Fo
 // ---------------------------------------------------------------------------
 
 /**
- * Accessible modal form for creating a new financial transaction.
+ * Accessible modal form for creating or editing a financial transaction.
  *
  * Provides fields for amount, description, transaction type, category,
  * account, date, and notes. Validates input and surfaces errors with
@@ -124,6 +134,7 @@ export function TransactionForm({
   accounts,
   categories,
   isOpen,
+  initialData,
 }: TransactionFormProps) {
   // -- refs ----------------------------------------------------------------
   const panelRef = useRef<HTMLDivElement>(null);
@@ -154,21 +165,23 @@ export function TransactionForm({
     }
   }, [isOpen]);
 
-  // -- reset on open -------------------------------------------------------
+  // -- initialize on open --------------------------------------------------
   useEffect(() => {
-    if (isOpen) {
-      setAmount('');
-      setDescription('');
-      setTransactionType('EXPENSE');
-      setCategoryId('');
-      setAccountId('');
-      setDate(todayISO());
-      setNotes('');
-      setErrors({});
-      setSubmitting(false);
-      setSubmitError(null);
+    if (!isOpen) {
+      return;
     }
-  }, [isOpen]);
+
+    setAmount(initialData ? formatAmountForInput(initialData) : '');
+    setDescription(initialData?.payee ?? '');
+    setTransactionType(initialData?.type ?? 'EXPENSE');
+    setCategoryId(initialData?.categoryId ?? '');
+    setAccountId(initialData?.accountId ?? '');
+    setDate(initialData?.date ?? todayISO());
+    setNotes(initialData?.note ?? '');
+    setErrors({});
+    setSubmitting(false);
+    setSubmitError(null);
+  }, [initialData, isOpen]);
 
   // -- handlers ------------------------------------------------------------
 
@@ -185,6 +198,14 @@ export function TransactionForm({
     },
     [handleCancel],
   );
+
+  const isEditMode = initialData !== undefined;
+  const dialogTitle = isEditMode ? 'Edit Transaction' : 'New Transaction';
+  const submitButtonLabel = isEditMode ? 'Update Transaction' : 'Add Transaction';
+  const submittingLabel = isEditMode ? 'Updating…' : 'Adding…';
+  const submitFailureMessage = isEditMode
+    ? 'Failed to update transaction.'
+    : 'Failed to add transaction.';
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
@@ -233,12 +254,23 @@ export function TransactionForm({
         setNotes('');
         setErrors({});
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : 'Failed to create transaction.');
+        setSubmitError(err instanceof Error ? err.message : submitFailureMessage);
       } finally {
         setSubmitting(false);
       }
     },
-    [amount, description, accountId, accounts, transactionType, date, categoryId, notes, onSubmit],
+    [
+      amount,
+      description,
+      accountId,
+      accounts,
+      transactionType,
+      date,
+      categoryId,
+      notes,
+      onSubmit,
+      submitFailureMessage,
+    ],
   );
 
   // -- render --------------------------------------------------------------
@@ -265,7 +297,7 @@ export function TransactionForm({
         aria-labelledby="transaction-form-title"
       >
         <h2 id="transaction-form-title" className="form-dialog__title">
-          Create Transaction
+          {dialogTitle}
         </h2>
 
         {/* Form-level error */}
@@ -446,7 +478,7 @@ export function TransactionForm({
               disabled={submitting}
               aria-busy={submitting}
             >
-              {submitting ? 'Creating…' : 'Create Transaction'}
+              {submitting ? submittingLabel : submitButtonLabel}
             </button>
           </div>
         </form>

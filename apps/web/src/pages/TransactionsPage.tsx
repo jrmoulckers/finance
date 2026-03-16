@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  ConfirmDialog,
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  LoadingSpinner,
+} from '../components/common';
 import { TransactionForm } from '../components/forms';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts } from '../hooks/useAccounts';
@@ -19,10 +25,20 @@ function getTransactionDisplayAmount(transaction: Transaction): number {
   return transaction.amount.amount;
 }
 
+function getTransactionLabel(transaction: Transaction): string {
+  return (
+    transaction.payee?.trim() ||
+    transaction.note?.trim() ||
+    (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction')
+  );
+}
+
 export const TransactionsPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_CATEGORIES_FILTER);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
 
   const filters = useMemo(
     () => ({
@@ -38,6 +54,8 @@ export const TransactionsPage: React.FC = () => {
     error,
     refresh: refreshTransactions,
     createTransaction,
+    updateTransaction,
+    deleteTransaction,
   } = useTransactions(filters);
   const {
     categories,
@@ -60,17 +78,46 @@ export const TransactionsPage: React.FC = () => {
     refreshAccounts();
   };
 
+  const handleOpenCreateForm = useCallback(() => {
+    setEditingTransaction(null);
+    setIsFormOpen(true);
+  }, []);
+
+  const handleFormCancel = useCallback(() => {
+    setIsFormOpen(false);
+    setEditingTransaction(null);
+  }, []);
+
   const handleTransactionSubmit = useCallback(
     async (data: CreateTransactionInput): Promise<void> => {
-      const result = createTransaction(data);
-      if (result === null) {
-        throw new Error('Failed to create transaction. Please try again.');
+      if (editingTransaction !== null) {
+        const result = updateTransaction(editingTransaction.id, data);
+        if (result === null) {
+          throw new Error('Failed to update transaction. Please try again.');
+        }
+        setEditingTransaction(null);
+      } else {
+        const result = createTransaction(data);
+        if (result === null) {
+          throw new Error('Failed to create transaction. Please try again.');
+        }
       }
+
       setIsFormOpen(false);
       refreshTransactions();
     },
-    [createTransaction, refreshTransactions],
+    [createTransaction, editingTransaction, refreshTransactions, updateTransaction],
   );
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (deletingTransaction === null) {
+      return;
+    }
+
+    deleteTransaction(deletingTransaction.id);
+    setDeletingTransaction(null);
+    refreshTransactions();
+  }, [deleteTransaction, deletingTransaction, refreshTransactions]);
 
   const categoryFilters = useMemo(
     () => [
@@ -128,7 +175,7 @@ export const TransactionsPage: React.FC = () => {
         <button
           type="button"
           className="add-button"
-          onClick={() => setIsFormOpen(true)}
+          onClick={handleOpenCreateForm}
           aria-label="Add new transaction"
         >
           <span aria-hidden="true">+</span> Add Transaction
@@ -184,31 +231,57 @@ export const TransactionsPage: React.FC = () => {
               <h3 className="list-group__header">{group.label}</h3>
               <div className="card">
                 <ul className="list-group" role="list">
-                  {group.transactions.map((transaction) => (
-                    <li key={transaction.id} className="list-item" role="listitem">
-                      <div className="list-item__content">
-                        <p className="list-item__primary">
-                          {transaction.payee ??
-                            transaction.note ??
-                            (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction')}
-                        </p>
-                        <p className="list-item__secondary">
-                          {transaction.categoryId !== null
-                            ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
-                            : 'Uncategorized'}{' '}
-                          &middot; {accountNames.get(transaction.accountId) ?? 'Unknown account'}
-                        </p>
-                      </div>
-                      <div className="list-item__trailing">
-                        <CurrencyDisplay
-                          amount={getTransactionDisplayAmount(transaction)}
-                          currency={transaction.currency.code}
-                          colorize
-                          showSign
-                        />
-                      </div>
-                    </li>
-                  ))}
+                  {group.transactions.map((transaction) => {
+                    const transactionLabel = getTransactionLabel(transaction);
+
+                    return (
+                      <li key={transaction.id} className="list-item" role="listitem">
+                        <div className="list-item__content">
+                          <p className="list-item__primary">{transactionLabel}</p>
+                          <p className="list-item__secondary">
+                            {transaction.categoryId !== null
+                              ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
+                              : 'Uncategorized'}{' '}
+                            &middot; {accountNames.get(transaction.accountId) ?? 'Unknown account'}
+                          </p>
+                        </div>
+                        <div className="list-item__trailing transaction-list-item__trailing">
+                          <div className="transaction-list-item__amount">
+                            <CurrencyDisplay
+                              amount={getTransactionDisplayAmount(transaction)}
+                              currency={transaction.currency.code}
+                              colorize
+                              showSign
+                            />
+                          </div>
+                          <div
+                            className="transaction-item__actions"
+                            aria-label="Transaction actions"
+                          >
+                            <button
+                              type="button"
+                              className="icon-button transaction-item__action"
+                              onClick={() => {
+                                setEditingTransaction(transaction);
+                                setIsFormOpen(true);
+                              }}
+                              aria-label={`Edit ${transactionLabel}`}
+                            >
+                              <span aria-hidden="true">✏️</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button transaction-item__action transaction-item__action--delete"
+                              onClick={() => setDeletingTransaction(transaction)}
+                              aria-label={`Delete ${transactionLabel}`}
+                            >
+                              <span aria-hidden="true">🗑️</span>
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             </section>
@@ -219,8 +292,16 @@ export const TransactionsPage: React.FC = () => {
         isOpen={isFormOpen}
         accounts={accounts}
         categories={categories}
+        initialData={editingTransaction ?? undefined}
         onSubmit={handleTransactionSubmit}
-        onCancel={() => setIsFormOpen(false)}
+        onCancel={handleFormCancel}
+      />
+      <ConfirmDialog
+        isOpen={deletingTransaction !== null}
+        title="Delete Transaction"
+        message={`Are you sure you want to delete "${deletingTransaction ? getTransactionLabel(deletingTransaction) : 'this transaction'}"?`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeletingTransaction(null)}
       />
     </>
   );

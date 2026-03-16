@@ -619,9 +619,48 @@
   gap: var(--spacing-3);
   margin-bottom: var(--spacing-4);
 }
+.transaction-list-item__trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.transaction-list-item__amount {
+  text-align: right;
+}
+.transaction-item__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  opacity: 0.7;
+  transition: opacity var(--duration-fast, 100ms) ease;
+}
+.list-item:hover .transaction-item__actions,
+.list-item:focus-within .transaction-item__actions {
+  opacity: 1;
+}
+.transaction-item__action {
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
+  color: var(--semantic-text-secondary);
+  transition:
+    color var(--duration-fast, 100ms) ease,
+    background-color var(--duration-fast, 100ms) ease;
+}
+.transaction-item__action:hover,
+.transaction-item__action:focus-visible {
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+}
+.transaction-item__action--delete:hover,
+.transaction-item__action--delete:focus-visible {
+  color: var(--semantic-status-negative);
+}
 /* ─── End Transactions page ──────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .add-button,
+  .transaction-item__actions,
+  .transaction-item__action,
   .progress-bar__fill,
   .progress-ring__fill {
     transition: none;

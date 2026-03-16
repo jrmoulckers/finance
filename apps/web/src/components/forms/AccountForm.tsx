@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Accessible account creation form.
+ * Accessible account create/edit form.
  *
- * Renders a modal dialog with fields for creating a new financial account:
+ * Renders a modal dialog with fields for creating or editing a financial account:
  * name (required), type, currency, and initial balance. Validates input
  * client-side with accessible error messages (aria-invalid / aria-describedby).
  *
@@ -31,7 +31,7 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateAccountInput } from '../../db/repositories/accounts';
-import type { AccountType, SyncId } from '../../kmp/bridge';
+import type { Account, AccountType, SyncId } from '../../kmp/bridge';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 
 import './forms.css';
@@ -73,6 +73,8 @@ export interface AccountFormProps {
   onCancel: () => void;
   /** Whether the form dialog is open. */
   isOpen: boolean;
+  /** Existing account data used to populate the form when editing. */
+  initialData?: Account;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,18 +123,38 @@ function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): SyncId | null 
   return null;
 }
 
+function getInitialFormValues(initialData?: Account) {
+  if (!initialData) {
+    return {
+      name: '',
+      accountType: 'CHECKING' as AccountType,
+      currency: 'USD',
+      balance: '0.00',
+    };
+  }
+
+  return {
+    name: initialData.name,
+    accountType: initialData.type,
+    currency: initialData.currency.code,
+    balance: (
+      initialData.currentBalance.amount / Math.pow(10, initialData.currency.decimalPlaces)
+    ).toFixed(initialData.currency.decimalPlaces),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 /**
- * Accessible modal form for creating a new financial account.
+ * Accessible modal form for creating or editing a financial account.
  *
  * Provides fields for name, account type, currency, and initial balance.
  * Validates input and surfaces errors with ARIA attributes. Traps focus
  * within the dialog while open.
  */
-export function AccountForm({ onSubmit, onCancel, isOpen }: AccountFormProps) {
+export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: AccountFormProps) {
   // -- refs ----------------------------------------------------------------
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
@@ -166,15 +188,16 @@ export function AccountForm({ onSubmit, onCancel, isOpen }: AccountFormProps) {
   // -- reset on open -------------------------------------------------------
   useEffect(() => {
     if (isOpen) {
-      setName('');
-      setAccountType('CHECKING');
-      setCurrency('USD');
-      setBalance('0.00');
+      const initialValues = getInitialFormValues(initialData);
+      setName(initialValues.name);
+      setAccountType(initialValues.accountType);
+      setCurrency(initialValues.currency);
+      setBalance(initialValues.balance);
       setErrors({});
       setSubmitting(false);
       setSubmitError(null);
     }
-  }, [isOpen]);
+  }, [initialData, isOpen]);
 
   // -- handlers ------------------------------------------------------------
 
@@ -203,17 +226,15 @@ export function AccountForm({ onSubmit, onCancel, isOpen }: AccountFormProps) {
         return;
       }
 
-      // Resolve household ID
-      const householdId = getFirstHouseholdId(db);
+      const householdId = initialData?.householdId ?? getFirstHouseholdId(db);
       if (!householdId) {
         setSubmitError('No household found. Please create a household before adding accounts.');
         return;
       }
 
-      const balanceCents = Math.round(parseFloat(balance || '0') * 100);
-
       const currencyObj = CURRENCY_OPTIONS.find((c) => c.code === currency);
       const decimalPlaces = currency === 'JPY' ? 0 : 2;
+      const balanceCents = Math.round(parseFloat(balance || '0') * Math.pow(10, decimalPlaces));
 
       const input: CreateAccountInput = {
         householdId,
@@ -231,19 +252,25 @@ export function AccountForm({ onSubmit, onCancel, isOpen }: AccountFormProps) {
 
       try {
         await onSubmit(input);
-        // Reset form on success
-        setName('');
-        setAccountType('CHECKING');
-        setCurrency('USD');
-        setBalance('0.00');
+        const initialValues = getInitialFormValues();
+        setName(initialValues.name);
+        setAccountType(initialValues.accountType);
+        setCurrency(initialValues.currency);
+        setBalance(initialValues.balance);
         setErrors({});
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : 'Failed to create account.');
+        setSubmitError(
+          err instanceof Error
+            ? err.message
+            : initialData
+              ? 'Failed to update account.'
+              : 'Failed to create account.',
+        );
       } finally {
         setSubmitting(false);
       }
     },
-    [name, balance, accountType, currency, db, onSubmit],
+    [name, balance, accountType, currency, db, initialData, onSubmit],
   );
 
   // -- render --------------------------------------------------------------
@@ -269,7 +296,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen }: AccountFormProps) {
         aria-labelledby="account-form-title"
       >
         <h2 id="account-form-title" className="form-dialog__title">
-          Create Account
+          {initialData ? 'Edit Account' : 'Create Account'}
         </h2>
 
         {/* Form-level error */}
@@ -388,7 +415,13 @@ export function AccountForm({ onSubmit, onCancel, isOpen }: AccountFormProps) {
               disabled={submitting}
               aria-busy={submitting}
             >
-              {submitting ? 'Creating…' : 'Create Account'}
+              {submitting
+                ? initialData
+                  ? 'Updating…'
+                  : 'Creating…'
+                : initialData
+                  ? 'Update Account'
+                  : 'Create Account'}
             </button>
           </div>
         </form>

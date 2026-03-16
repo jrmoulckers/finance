@@ -193,4 +193,12 @@ describe('TransactionsPage', () => {
     expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
     expect(screen.getByText('Electric Bill')).toBeInTheDocument();
   });
+
+  it('displays edit and delete actions for each transaction', () => {
+    render(<TransactionsPage />);
+    expect(screen.getByRole('button', { name: 'Edit Grocery Store' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Grocery Store' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit Monthly Salary' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Electric Bill' })).toBeInTheDocument();
+  });
 });

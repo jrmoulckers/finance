@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  ConfirmDialog,
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  LoadingSpinner,
+} from '../components/common';
 import { BudgetForm } from '../components/forms';
 import type { CreateBudgetInput } from '../db/repositories/budgets';
 import { useBudgets, useCategories } from '../hooks';
+import type { Budget } from '../kmp/bridge';
 
 function getBudgetIcon(iconName: string | null | undefined): string {
   switch (iconName) {
@@ -24,7 +31,8 @@ function getBudgetIcon(iconName: string | null | undefined): string {
 }
 
 export const BudgetsPage: React.FC = () => {
-  const { budgets, loading, error, refresh, createBudget } = useBudgets();
+  const { budgets, loading, error, refresh, createBudget, updateBudget, deleteBudget } =
+    useBudgets();
   const {
     categories,
     loading: categoriesLoading,
@@ -33,6 +41,8 @@ export const BudgetsPage: React.FC = () => {
   } = useCategories();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [deletingBudget, setDeletingBudget] = useState<Budget | null>(null);
 
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -46,32 +56,66 @@ export const BudgetsPage: React.FC = () => {
     refreshCategories();
   };
 
-  /** Open the Create Budget dialog. */
+  /** Open the budget dialog in create mode. */
   const handleAddBudget = useCallback(() => {
+    setEditingBudget(null);
     setIsFormOpen(true);
   }, []);
 
-  /** Close the Create Budget dialog without saving. */
-  const handleFormCancel = useCallback(() => {
-    setIsFormOpen(false);
+  /** Open the budget dialog in edit mode for the selected budget. */
+  const handleEditBudget = useCallback((budget: Budget) => {
+    setEditingBudget(budget);
+    setIsFormOpen(true);
   }, []);
 
-  /**
-   * Submit a new budget.  `createBudget` from the hook is synchronous and
-   * already triggers an internal refresh on success, so we only need to close
-   * the form here.
-   */
+  /** Open the delete confirmation dialog for the selected budget. */
+  const handleDeleteBudget = useCallback((budget: Budget) => {
+    setDeletingBudget(budget);
+  }, []);
+
+  /** Close the budget form dialog without saving. */
+  const handleFormCancel = useCallback(() => {
+    setIsFormOpen(false);
+    setEditingBudget(null);
+  }, []);
+
+  /** Close the delete confirmation dialog without deleting. */
+  const handleDeleteCancel = useCallback(() => {
+    setDeletingBudget(null);
+  }, []);
+
+  /** Create or update a budget, depending on the active dialog mode. */
   const handleFormSubmit = useCallback(
     async (data: CreateBudgetInput) => {
-      const result = createBudget(data);
-      if (result === null) {
-        throw new Error('Failed to create budget.');
+      if (editingBudget) {
+        const updatedBudget = updateBudget(editingBudget.id, data);
+        if (updatedBudget === null) {
+          throw new Error('Failed to update budget.');
+        }
+      } else {
+        const createdBudget = createBudget(data);
+        if (createdBudget === null) {
+          throw new Error('Failed to create budget.');
+        }
       }
+
       setIsFormOpen(false);
-      refresh();
+      setEditingBudget(null);
     },
-    [createBudget, refresh],
+    [createBudget, editingBudget, updateBudget],
   );
+
+  /** Delete the selected budget after the user confirms the action. */
+  const handleDeleteConfirm = useCallback(() => {
+    if (!deletingBudget) {
+      return;
+    }
+
+    const deleted = deleteBudget(deletingBudget.id);
+    if (deleted) {
+      setDeletingBudget(null);
+    }
+  }, [deleteBudget, deletingBudget]);
 
   const totalBudgeted = budgets.reduce((sum, budget) => sum + budget.amount.amount, 0);
   const totalSpent = budgets.reduce((sum, budget) => sum + budget.spentAmount.amount, 0);
@@ -112,6 +156,19 @@ export const BudgetsPage: React.FC = () => {
         onCancel={handleFormCancel}
         onSubmit={handleFormSubmit}
         categories={categories}
+        initialData={editingBudget ?? undefined}
+      />
+      <ConfirmDialog
+        isOpen={deletingBudget !== null}
+        title="Delete Budget"
+        message={
+          deletingBudget
+            ? `Delete the ${deletingBudget.name} budget? This will remove it from your budgets list.`
+            : ''
+        }
+        confirmLabel="Delete Budget"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
       />
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
@@ -215,26 +272,81 @@ export const BudgetsPage: React.FC = () => {
                       </span>
                     </div>
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                        <span aria-hidden="true">{getBudgetIcon(category?.icon)}</span>{' '}
-                        {budget.name}
-                      </p>
-                      <p
+                      <div
                         style={{
-                          fontSize: 'var(--type-scale-caption-font-size)',
-                          color: 'var(--semantic-text-secondary)',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          justifyContent: 'space-between',
+                          gap: 'var(--spacing-3)',
                         }}
                       >
-                        <CurrencyDisplay
-                          amount={budget.spentAmount.amount}
-                          currency={budget.currency.code}
-                        />{' '}
-                        of{' '}
-                        <CurrencyDisplay
-                          amount={budget.amount.amount}
-                          currency={budget.currency.code}
-                        />
-                      </p>
+                        <div>
+                          <p style={{ fontWeight: 'var(--font-weight-semibold)' }}>
+                            <span aria-hidden="true">{getBudgetIcon(category?.icon)}</span>{' '}
+                            {budget.name}
+                          </p>
+                          <p
+                            style={{
+                              fontSize: 'var(--type-scale-caption-font-size)',
+                              color: 'var(--semantic-text-secondary)',
+                            }}
+                          >
+                            <CurrencyDisplay
+                              amount={budget.spentAmount.amount}
+                              currency={budget.currency.code}
+                            />{' '}
+                            of{' '}
+                            <CurrencyDisplay
+                              amount={budget.amount.amount}
+                              currency={budget.currency.code}
+                            />
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleEditBudget(budget)}
+                            aria-label={`Edit ${budget.name}`}
+                            title="Edit budget"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '2.25rem',
+                              height: '2.25rem',
+                              border: '1px solid var(--semantic-border-default)',
+                              borderRadius: 'var(--border-radius-md)',
+                              backgroundColor:
+                                'var(--semantic-surface-primary, var(--card-background))',
+                              color: 'var(--semantic-text-primary)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span aria-hidden="true">✏️</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteBudget(budget)}
+                            aria-label={`Delete ${budget.name}`}
+                            title="Delete budget"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '2.25rem',
+                              height: '2.25rem',
+                              border: '1px solid var(--semantic-border-default)',
+                              borderRadius: 'var(--border-radius-md)',
+                              backgroundColor:
+                                'var(--semantic-surface-primary, var(--card-background))',
+                              color: 'var(--semantic-status-negative)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span aria-hidden="true">🗑️</span>
+                          </button>
+                        </div>
+                      </div>
                       <p
                         style={{
                           fontSize: 'var(--type-scale-caption-font-size)',

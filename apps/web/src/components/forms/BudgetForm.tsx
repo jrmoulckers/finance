@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Accessible budget creation form.
+ * Accessible budget create/edit form.
  *
- * Renders a modal dialog with fields for creating a new budget:
+ * Renders a modal dialog with fields for creating or editing a budget:
  * category (required select), amount (required, dollars → cents),
  * period (select, default Monthly), and start date (default first of current
  * month).
@@ -19,7 +19,7 @@
  *
  * @module components/forms/BudgetForm
  * @see {@link CreateBudgetInput} from db/repositories/budgets
- * References: issue #461
+ * References: issue #461, #487
  */
 
 import {
@@ -33,7 +33,7 @@ import {
 
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateBudgetInput } from '../../db/repositories/budgets';
-import type { BudgetPeriod, Category } from '../../kmp/bridge';
+import type { Budget, BudgetPeriod, Category } from '../../kmp/bridge';
 
 import './forms.css';
 
@@ -67,6 +67,8 @@ export interface BudgetFormProps {
   onSubmit: (data: CreateBudgetInput) => Promise<void>;
   /** Available categories to assign the budget to. */
   categories: Category[];
+  /** Existing budget data used to prefill the form when editing. */
+  initialData?: Budget;
 }
 
 // ---------------------------------------------------------------------------
@@ -79,6 +81,12 @@ function firstOfCurrentMonthISO(): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   return `${year}-${month}-01`;
+}
+
+/** Convert a stored cents amount into a decimal string for the amount input. */
+function formatBudgetAmountForInput(budget: Budget): string {
+  const divisor = Math.pow(10, budget.currency.decimalPlaces);
+  return (budget.amount.amount / divisor).toFixed(budget.currency.decimalPlaces);
 }
 
 // ---------------------------------------------------------------------------
@@ -110,13 +118,19 @@ function validate(categoryId: string, amountStr: string): FormErrors {
 // ---------------------------------------------------------------------------
 
 /**
- * Accessible modal form for creating a new budget.
+ * Accessible modal form for creating or editing a budget.
  *
  * Provides fields for category, amount (dollars, converted to integer cents
  * before submission), period, and start date. Validates input and surfaces
  * errors with ARIA attributes. Traps focus within the dialog while open.
  */
-export function BudgetForm({ isOpen, onCancel, onSubmit, categories }: BudgetFormProps) {
+export function BudgetForm({
+  isOpen,
+  onCancel,
+  onSubmit,
+  categories,
+  initialData,
+}: BudgetFormProps) {
   // -- refs ----------------------------------------------------------------
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLSelectElement>(null);
@@ -129,6 +143,7 @@ export function BudgetForm({ isOpen, onCancel, onSubmit, categories }: BudgetFor
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const isEditMode = initialData !== undefined;
 
   // -- focus trap -----------------------------------------------------------
   useFocusTrap(panelRef, { active: isOpen, restoreFocus: true });
@@ -146,15 +161,15 @@ export function BudgetForm({ isOpen, onCancel, onSubmit, categories }: BudgetFor
   // -- reset on open -------------------------------------------------------
   useEffect(() => {
     if (isOpen) {
-      setCategoryId('');
-      setAmount('');
-      setPeriod('MONTHLY');
-      setStartDate(firstOfCurrentMonthISO());
+      setCategoryId(initialData?.categoryId ?? '');
+      setAmount(initialData ? formatBudgetAmountForInput(initialData) : '');
+      setPeriod(initialData?.period ?? 'MONTHLY');
+      setStartDate(initialData?.startDate ?? firstOfCurrentMonthISO());
       setErrors({});
       setSubmitting(false);
       setSubmitError(null);
     }
-  }, [isOpen]);
+  }, [initialData, isOpen]);
 
   // -- handlers ------------------------------------------------------------
 
@@ -209,19 +224,24 @@ export function BudgetForm({ isOpen, onCancel, onSubmit, categories }: BudgetFor
 
       try {
         await onSubmit(input);
-        // Reset form on success
         setCategoryId('');
         setAmount('');
         setPeriod('MONTHLY');
         setStartDate(firstOfCurrentMonthISO());
         setErrors({});
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : 'Failed to create budget.');
+        setSubmitError(
+          err instanceof Error
+            ? err.message
+            : isEditMode
+              ? 'Failed to update budget.'
+              : 'Failed to create budget.',
+        );
       } finally {
         setSubmitting(false);
       }
     },
-    [categoryId, amount, period, startDate, categories, onSubmit],
+    [categoryId, amount, period, startDate, categories, isEditMode, onSubmit],
   );
 
   // -- render --------------------------------------------------------------
@@ -247,7 +267,7 @@ export function BudgetForm({ isOpen, onCancel, onSubmit, categories }: BudgetFor
         aria-labelledby="budget-form-title"
       >
         <h2 id="budget-form-title" className="form-dialog__title">
-          Create Budget
+          {isEditMode ? 'Edit Budget' : 'Create Budget'}
         </h2>
 
         {/* Form-level error */}
@@ -371,7 +391,13 @@ export function BudgetForm({ isOpen, onCancel, onSubmit, categories }: BudgetFor
               disabled={submitting}
               aria-busy={submitting}
             >
-              {submitting ? 'Creating…' : 'Create Budget'}
+              {submitting
+                ? isEditMode
+                  ? 'Updating…'
+                  : 'Creating…'
+                : isEditMode
+                  ? 'Update Budget'
+                  : 'Create Budget'}
             </button>
           </div>
         </form>
