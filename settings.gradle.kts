@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-rootProject.name = "finance"
-
 pluginManagement {
     includeBuild("build-logic")
     repositories {
@@ -10,6 +8,23 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
+plugins {
+    id("com.gradle.develocity") version "3.19"
+}
+
+develocity {
+    buildScan {
+        termsOfUseUrl.set("https://gradle.com/help/legal-terms-of-use")
+        termsOfUseAgree.set("yes")
+        publishing.onlyIf {
+            System.getenv("CI") != null ||
+                gradle.startParameter.isBuildScan
+        }
+    }
+}
+
+rootProject.name = "finance"
 
 dependencyResolutionManagement {
     repositories {

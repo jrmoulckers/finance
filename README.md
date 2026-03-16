@@ -219,17 +219,18 @@ For VS Code configuration, Copilot agent setup, MCP servers, and commit conventi
 
 All commands are run from the repository root.
 
-| Command                | Description                                                                       |
-| ---------------------- | --------------------------------------------------------------------------------- |
-| `npm run build`        | Build everything — KMP packages first, then Turborepo tasks (design tokens, apps) |
-| `npm test`             | Run all tests — KMP JVM unit tests, then Turborepo test tasks                     |
-| `npm run build:kmp`    | Build only the Kotlin Multiplatform packages (skips JS browser tests)             |
-| `npm run test:kmp`     | Run KMP JVM tests only                                                            |
-| `npm run build:tokens` | Build design tokens — generates Swift, CSS, and Android XML outputs               |
-| `npm run lint`         | Run linters across all workspaces via Turborepo                                   |
-| `npm run type-check`   | Run TypeScript type checking across all workspaces                                |
-| `npm run format`       | Run formatters across all workspaces                                              |
-| `npm run clean`        | Clean all build artifacts (Gradle + Turborepo)                                    |
+| Command                  | Description                                                                       |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| `npm run build`          | Build everything — KMP packages first, then Turborepo tasks (design tokens, apps) |
+| `npm test`               | Run all tests — KMP JVM unit tests, then Turborepo test tasks                     |
+| `npm run build:kmp`      | Build only the Kotlin Multiplatform packages (skips JS browser tests)             |
+| `npm run build-scans`    | Run a full Gradle build with `--scan` to publish a local build scan on demand     |
+| `npm run test:kmp`       | Run KMP JVM tests only                                                            |
+| `npm run build:tokens`   | Build design tokens — generates Swift, CSS, and Android XML outputs               |
+| `npm run lint`           | Run linters across all workspaces via Turborepo                                   |
+| `npm run type-check`     | Run TypeScript type checking across all workspaces                                |
+| `npm run format`         | Run formatters across all workspaces                                              |
+| `npm run clean`          | Clean all build artifacts (Gradle + Turborepo)                                    |
 
 ### Running Gradle directly
 
@@ -251,6 +252,22 @@ node tools/gradle.js :packages:models:jvmTest
 # Build with full stack traces for debugging
 node tools/gradle.js build --stacktrace
 ```
+
+### Build scans
+
+Use a build scan when debugging slow builds, configuration cache misses, or CI performance regressions.
+
+```bash
+# Cross-platform wrapper (recommended)
+node tools/gradle.js build --scan
+
+# Native Gradle wrapper examples
+./gradlew build --scan
+.\gradlew.bat build --scan
+```
+
+- Local scans publish only when you opt in with `--scan`.
+- CI publishes scans automatically when the `CI` environment variable is set.
 
 ## AI-First Development
 

@@ -12,6 +12,7 @@
   "scripts": {
     "build": "npm run build:kmp && turbo run build",
     "build:kmp": "node tools/gradle.js build -x jsBrowserTest -x allTests",
+    "build-scans": "node tools/gradle.js build --scan",
     "build:tokens": "npm run build -w packages/design-tokens",
     "test": "npm run test:kmp && turbo run test",
     "test:kmp": "node tools/gradle.js :packages:core:jvmTest",
