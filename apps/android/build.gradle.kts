@@ -41,6 +41,10 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     lint {
         // Baseline captures pre-existing lint issues so they don't block CI.
         // Run `./gradlew :apps:android:updateLintBaseline` to regenerate.
@@ -70,6 +74,7 @@ dependencies {
     // SQLDelight (runtime + coroutines extensions for repository implementations)
     implementation(libs.sqldelight.runtime)
     implementation(libs.sqldelight.coroutines)
+    implementation(libs.sqlcipher.android)
 
     // Serialization (Transaction tags JSON encoding)
     implementation(libs.kotlinx.serialization.json)
@@ -130,6 +135,12 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    testImplementation(composeBom)
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.roborazzi.core)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit)
+    testImplementation(libs.robolectric)
 
     // Debug tooling
     debugImplementation(libs.compose.ui.tooling)
