@@ -12,6 +12,9 @@ persisting all data locally in SQLite-WASM.
 - [Hooks](#hooks)
 - [Pages](#pages)
 - [Components](#components)
+- [Form Patterns](#form-patterns)
+- [Offline-First Architecture](#offline-first-architecture)
+- [Testing](#testing)
 - [Development](#development)
 - [KMP Integration](#kmp-integration)
 - [Design Tokens](#design-tokens)
@@ -295,12 +298,15 @@ Shared UI primitives used across all pages:
 
 ### Forms (`components/forms/`)
 
-CRUD forms for data entry:
+Accessible modal forms for creating financial entities. All four forms follow
+the same structural pattern described in [Form Patterns](#form-patterns) below.
 
-| Component         | Purpose                                                               |
-| ----------------- | --------------------------------------------------------------------- |
-| `AccountForm`     | Create or edit an account (name, type, currency, balance)             |
-| `TransactionForm` | Create or edit a transaction (amount, date, payee, category, account) |
+| Component         | Purpose                                                                          |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `AccountForm`     | Create an account (name, type, currency, initial balance)                        |
+| `TransactionForm` | Create a transaction (amount, description, type, category, account, date, notes) |
+| `BudgetForm`      | Create a budget (category, amount, period, start date)                           |
+| `GoalForm`        | Create a savings goal (name, target amount, current amount, target date)         |
 
 ### Layout (`components/layout/`)
 
@@ -313,6 +319,288 @@ App shell and navigation:
 | `BottomNavigation`  | Mobile bottom tab bar                                       |
 | `FocusManager`      | Manages focus on route transitions for accessibility        |
 | `SkipToContent`     | Skip-to-content link for keyboard users                     |
+
+## Form Patterns
+
+All four form components (`AccountForm`, `TransactionForm`, `BudgetForm`,
+`GoalForm`) follow a consistent architecture. This section documents the
+conventions used across every form.
+
+### Dialog Structure
+
+Each form renders as a modal dialog with a backdrop, focus trap, and keyboard
+support. When `isOpen` is `false` the component returns `null` (no DOM).
+
+```tsx
+<div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
+  <div className="form-dialog__backdrop" aria-hidden="true" onClick={handleCancel} />
+  <div
+    ref={panelRef}
+    className="form-dialog__panel"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="<form>-form-title"
+  >
+    <h2 id="<form>-form-title" className="form-dialog__title">Create …</h2>
+    {submitError && <div className="form-banner-error" role="alert">{submitError}</div>}
+    <form onSubmit={handleSubmit} noValidate>
+      {/* fields */}
+      <div className="form-actions">
+        <button type="button" className="form-button form-button--secondary" …>Cancel</button>
+        <button type="submit" className="form-button form-button--primary" …>Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+```
+
+### Props Interface
+
+Every form accepts at minimum:
+
+| Prop       | Type                                   | Description                                    |
+| ---------- | -------------------------------------- | ---------------------------------------------- |
+| `isOpen`   | `boolean`                              | Whether the dialog is visible                  |
+| `onCancel` | `() => void`                           | Called when the user cancels or presses Escape |
+| `onSubmit` | `(data: CreateInput) => Promise<void>` | Called with validated data on form submission  |
+
+Some forms accept additional props (e.g., `TransactionForm` receives
+`accounts` and `categories` arrays; `BudgetForm` receives `categories`).
+
+### Validation
+
+Validation runs client-side before submission. Each form defines a local
+`validate()` function that returns a `FormErrors` object (empty when valid).
+
+```ts
+interface FormErrors {
+  name?: string;
+  amount?: string;
+  // ... one optional string per field
+}
+
+function validate(name: string, amountStr: string): FormErrors {
+  const errors: FormErrors = {};
+  if (!name.trim()) errors.name = 'Account name is required.';
+  // ...
+  return errors;
+}
+```
+
+Errors are surfaced with ARIA attributes so screen readers announce them:
+
+```tsx
+<input
+  aria-invalid={hasError}
+  aria-describedby={hasError ? 'field-name-error' : undefined}
+  aria-required="true"
+/>;
+{
+  hasError && (
+    <span id="field-name-error" className="form-error" role="alert">
+      {errors.name}
+    </span>
+  );
+}
+```
+
+### Submission Flow
+
+1. `handleSubmit` calls `validate()` and sets field errors if any exist.
+2. If valid, resolves context (household ID, account, category) from props or
+   the database.
+3. Converts dollar amounts to integer cents:
+   `Math.round(parseFloat(amountStr) * 100)`.
+4. Calls `onSubmit(input)` (async). Sets `submitting = true` and disables
+   buttons.
+5. On success, resets all fields. On error, displays a `form-banner-error`
+   alert.
+6. `submitting` flag is cleared in a `finally` block.
+
+### Focus Management
+
+- `useFocusTrap(panelRef, { active: isOpen, restoreFocus: true })` traps
+  keyboard focus within the dialog while open.
+- The first input is autofocused on open via `requestAnimationFrame`.
+- Escape key closes the dialog via `handleKeyDown`.
+
+### State Reset
+
+All form fields reset to defaults when `isOpen` transitions to `true` (via a
+`useEffect` keyed on `isOpen`). This ensures stale data from a previous
+submission does not leak into a reopened form.
+
+### Household ID Resolution
+
+Forms that need a `householdId` resolve it in one of two ways:
+
+| Strategy              | Used By                   | How It Works                                        |
+| --------------------- | ------------------------- | --------------------------------------------------- |
+| Database query        | `AccountForm`, `GoalForm` | Queries `SELECT id FROM household` via `queryOne()` |
+| Derived from account  | `TransactionForm`         | Uses `selectedAccount.householdId`                  |
+| Derived from category | `BudgetForm`              | Uses `selectedCategory.householdId`                 |
+
+### Styling
+
+All forms share `components/forms/forms.css` which provides:
+
+- Modal dialog layout with backdrop and slide-in animation
+- Consistent input, select, and textarea styling with design token variables
+- Error state borders (`form-input--error`)
+- Responsive stacking on viewports ≤ 480 px
+- Dark mode, reduced motion, and high contrast adaptations
+
+## Offline-First Architecture
+
+The web app is designed to work fully without network connectivity. All data
+lives in the browser, and mutations are applied immediately to the local
+database.
+
+### Data Flow
+
+```
+User Action
+    │
+    ▼
+Page Component  ─── calls hook mutation (e.g., createTransaction) ───►
+    │                                                                  │
+    │                                                                  ▼
+    │                                                          React Hook
+    │                                                          (useTransactions)
+    │                                                                  │
+    │                                                                  ▼
+    │                                                          Repository
+    │                                                          (transactions.ts)
+    │                                                                  │
+    │                                                                  ▼
+    │                                                          SQLite-WASM
+    │                                                          (OPFS / IndexedDB)
+    │                                                                  │
+    ◄──────────── hook refreshes state, component re-renders ─────────┘
+```
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant P as Page Component
+    participant H as React Hook
+    participant R as Repository
+    participant DB as SQLite-WASM
+
+    U->>P: Clicks "Create"
+    P->>H: createTransaction(input)
+    H->>R: repoCreateTransaction(db, input)
+    R->>DB: INSERT INTO "transaction" …
+    DB-->>R: row inserted
+    R-->>H: Transaction object
+    H->>H: refresh() → re-fetch data
+    H-->>P: updated transactions array
+    P-->>U: UI re-renders with new data
+```
+
+### Sync Readiness
+
+Every write operation sets `is_synced = 0` and `sync_version = 1` on the
+affected row. When server sync is implemented, the sync engine reads rows
+where `is_synced = 0` and pushes them upstream. After a successful server
+acknowledgment, `is_synced` flips to `1`.
+
+Soft deletes (`deleted_at` timestamp instead of `DELETE`) preserve tombstones
+for conflict resolution during sync.
+
+### Network Detection
+
+The `useOfflineStatus` hook uses `useSyncExternalStore` with
+`navigator.onLine` to detect connectivity changes. When the browser comes
+back online, it posts a `REGISTER_SYNC` message to the service worker to
+trigger Background Sync replay of queued mutations.
+
+The `OfflineBanner` component renders a non-intrusive banner with
+`role="status"` and `aria-live="polite"` when the device is offline.
+
+## Testing
+
+### Test Stack
+
+- **Vitest** — test runner (configuration in `vitest.config.ts`)
+- **@testing-library/react** — DOM-based component rendering
+- **@testing-library/jest-dom** — custom matchers (`toBeInTheDocument`, etc.)
+- **jsdom** — browser environment simulation
+
+### Test Location
+
+Tests are co-located with their source files using the `*.test.tsx` naming
+convention. Page tests live in `src/pages/` alongside the page components.
+
+### Mock Patterns
+
+Page tests mock the data hooks so they run without a `DatabaseProvider` or
+real SQLite database. The standard pattern:
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useAccounts } from '../hooks';
+import { AccountsPage } from './AccountsPage';
+
+// 1. Mock the hooks module
+vi.mock('../hooks', () => ({
+  useAccounts: vi.fn(),
+}));
+
+// 2. Mock form components that depend on DatabaseProvider
+vi.mock('../components/forms', () => ({
+  AccountForm: () => null,
+}));
+
+const mockedUseAccounts = vi.mocked(useAccounts);
+
+describe('AccountsPage', () => {
+  beforeEach(() => {
+    // 3. Set return values for each test
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        {
+          id: 'account-1',
+          householdId: 'household-1',
+          name: 'Primary Checking',
+          type: 'CHECKING',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: 452000 },
+          isArchived: false,
+          sortOrder: 1,
+          icon: 'bank',
+          color: '#2563EB',
+          createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+          deletedAt: null,
+          syncVersion: 1,
+          isSynced: true,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+  });
+
+  it('renders account data', () => {
+    render(<AccountsPage />);
+    expect(screen.getByText('Primary Checking')).toBeInTheDocument();
+  });
+});
+```
+
+**Key testing conventions:**
+
+- Mock hooks, not repositories — tests should not reach into the data layer.
+- Mock form components that internally call `useDatabase()` to avoid provider
+  dependency.
+- Include full sync metadata in mock objects to match the real entity shape.
+- Test three states for every page: loading, error, and data-present.
 
 ## Development
 
