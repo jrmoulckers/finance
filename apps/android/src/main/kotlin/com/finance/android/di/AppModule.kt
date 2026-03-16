@@ -20,6 +20,7 @@ import com.finance.android.ui.viewmodel.AccountsViewModel
 import com.finance.android.ui.viewmodel.BudgetsViewModel
 import com.finance.android.ui.viewmodel.DashboardViewModel
 import com.finance.android.ui.viewmodel.TransactionCreateViewModel
+import com.finance.android.ui.viewmodel.TransactionDetailViewModel
 import com.finance.android.ui.viewmodel.GoalsViewModel
 import com.finance.android.ui.viewmodel.TransactionsViewModel
 import com.finance.core.monitoring.CrashReporter
@@ -83,6 +84,7 @@ val appModule = module {
     viewModelOf(::BudgetsViewModel)
     viewModelOf(::TransactionsViewModel)
     viewModelOf(::TransactionCreateViewModel)
+    viewModelOf(::TransactionDetailViewModel)
     viewModelOf(::GoalsViewModel)
     viewModelOf(::SettingsViewModel)
 }

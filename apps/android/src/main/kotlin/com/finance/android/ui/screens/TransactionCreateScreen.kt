@@ -109,8 +109,8 @@ fun TransactionCreateScreen(
     if (state.isSaved) { onSaved(); return }
 
     Scaffold(topBar = {
-        TopAppBar(title = { Text("New Transaction", modifier = Modifier.semantics {
-            contentDescription = "New Transaction, ${state.currentStep.label}" }) },
+        TopAppBar(title = { Text(if (state.isEditing) "Edit Transaction" else "New Transaction", modifier = Modifier.semantics {
+            contentDescription = "${if (state.isEditing) "Edit" else "New"} Transaction, ${state.currentStep.label}" }) },
             navigationIcon = {
                 IconButton(onClick = { if (state.currentStep == CreateStep.AMOUNT) onBack() else viewModel.previousStep() },
                     modifier = Modifier.semantics { contentDescription = if (state.currentStep == CreateStep.AMOUNT) "Cancel" else "Previous step" }) {
@@ -132,7 +132,7 @@ fun TransactionCreateScreen(
                     CreateStep.CONFIRM -> ConfirmStep(state)
                 }
             }
-            ActionBar(state.currentStep, state.isSaving, viewModel::nextStep, viewModel::save, Modifier.padding(16.dp))
+            ActionBar(state.currentStep, state.isSaving, state.isEditing, viewModel::nextStep, viewModel::save, Modifier.padding(16.dp))
         }
     }
 }
@@ -298,21 +298,22 @@ private fun CRow(label: String, value: String) {
 }
 
 @Composable
-private fun ActionBar(step: CreateStep, saving: Boolean, onNext: () -> Unit, onSave: () -> Unit, modifier: Modifier = Modifier) {
+private fun ActionBar(step: CreateStep, saving: Boolean, isEditing: Boolean, onNext: () -> Unit, onSave: () -> Unit, modifier: Modifier = Modifier) {
+    val saveLabel = if (isEditing) "Update Transaction" else "Save Transaction"
+    val savingLabel = if (isEditing) "Updating transaction" else "Saving transaction"
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         if (step == CreateStep.CONFIRM) {
             Button(onSave, enabled = !saving, modifier = Modifier.fillMaxWidth().semantics {
-                contentDescription = if (saving) "Saving transaction" else "Save transaction" }) {
+                contentDescription = if (saving) savingLabel else saveLabel }) {
                 if (saving) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(Modifier.width(8.dp)); Text("Saving...") }
-                else { Icon(Icons.Filled.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Save Transaction") }
+                    Spacer(Modifier.width(8.dp)); Text(if (isEditing) "Updating..." else "Saving...") }
+                else { Icon(Icons.Filled.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(saveLabel) }
             }
         } else {
             Button(onNext, Modifier.fillMaxWidth().semantics { contentDescription = "Continue to next step" }) { Text("Continue") }
         }
     }
 }
-
 private fun catIcon(name: String?): ImageVector = when (name) {
     "shopping_cart" -> Icons.Filled.LocalGroceryStore; "restaurant" -> Icons.Filled.Fastfood
     "directions_car" -> Icons.Filled.DirectionsCar; "movie" -> Icons.Filled.Movie

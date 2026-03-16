@@ -31,6 +31,7 @@ import com.finance.android.ui.screens.DashboardScreen
 import com.finance.android.ui.screens.GoalsScreen
 import com.finance.android.ui.screens.SettingsScreen
 import com.finance.android.ui.screens.TransactionCreateScreen
+import com.finance.android.ui.screens.TransactionDetailScreen
 import com.finance.android.ui.screens.TransactionsScreen
 import timber.log.Timber
 
@@ -87,6 +88,16 @@ sealed class Route(val route: String) {
     data object TransactionDetail : Route("transaction/{id}") {
         fun createRoute(id: String): String = "transaction/$id"
     }
+
+    /**
+     * Transaction edit destination.
+     *
+     * Reuses [TransactionCreateScreen] with the ViewModel pre-loaded from the existing
+     * transaction via SavedStateHandle.
+     */
+    data object TransactionEdit : Route("transactions/{id}/edit") {
+        fun createRoute(id: String): String = "transactions/$id/edit"
+    }
 }
 
 /**
@@ -133,7 +144,18 @@ fun FinanceNavHost(
         }
 
         composable(Route.Transactions.route) {
-            TransactionsScreen()
+            TransactionsScreen(
+                onTransactionClick = { id ->
+                    navController.navigate(Route.TransactionDetail.createRoute(id.value)) {
+                        launchSingleTop = true
+                    }
+                },
+                onEditTransaction = { id ->
+                    navController.navigate(Route.TransactionEdit.createRoute(id.value)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
 
         composable(Route.Budgets.route) {
@@ -175,6 +197,19 @@ fun FinanceNavHost(
                     nullable = true
                     defaultValue = null
                 },
+            ),
+        ) {
+            TransactionCreateScreen(
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // Transaction edit — reuses TransactionCreateScreen; ViewModel pre-populates fields from SavedStateHandle.
+        composable(
+            route = Route.TransactionEdit.route,
+            arguments = listOf(
+                navArgument("id") { type = NavType.StringType },
             ),
         ) {
             TransactionCreateScreen(
@@ -282,38 +317,16 @@ fun FinanceNavHost(
             ),
         ) { backStackEntry ->
             val transactionId = backStackEntry.arguments?.getString("id").orEmpty()
-            Timber.d("Deep link: transaction detail for id=%s", transactionId)
+            Timber.d("Transaction detail: id=%s", transactionId)
 
-            // TODO: Build full TransactionDetailScreen with transaction data loading
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .semantics { contentDescription = "Transaction details" },
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(24.dp),
-                ) {
-                    Text(
-                        text = "Transaction Details",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Transaction Details heading"
-                        },
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "Transaction detail view coming soon.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Transaction detail view coming soon"
-                        },
-                    )
-                }
-            }
+            TransactionDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEdit = { syncId ->
+                    navController.navigate(Route.TransactionEdit.createRoute(syncId.value)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
     }
 }
