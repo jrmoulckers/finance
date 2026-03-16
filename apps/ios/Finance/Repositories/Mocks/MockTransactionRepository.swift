@@ -88,4 +88,9 @@ struct MockTransactionRepository: TransactionRepository {
     func deleteTransaction(id: String) async throws {
         // No-op for mock — ViewModel manages local state removal.
     }
+
+    func updateTransaction(_ transaction: TransactionItem) async throws {
+        // No-op for mock — simulates a successful update.
+        try? await Task.sleep(for: .milliseconds(300))
+    }
 }

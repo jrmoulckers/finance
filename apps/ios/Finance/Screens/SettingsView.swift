@@ -37,6 +37,22 @@ struct SettingsView: View {
             } message: { error in
                 Text(error.localizedDescription)
             }
+            .alert(
+                String(localized: "Export Error"),
+                isPresented: $viewModel.showingExportError
+            ) {
+                Button(String(localized: "OK"), role: .cancel) {}
+                    .accessibilityLabel(String(localized: "Dismiss export error"))
+            } message: {
+                if let errorMessage = viewModel.exportError {
+                    Text(errorMessage)
+                }
+            }
+            .sheet(isPresented: $viewModel.showExportSheet) {
+                if let fileURL = viewModel.exportFileURL {
+                    ShareSheet(activityItems: [fileURL])
+                }
+            }
         }
     }
 
@@ -116,12 +132,7 @@ struct SettingsView: View {
             }
 
             NavigationLink {
-                ScrollView {
-                    Text(String(localized: "Privacy policy content will be loaded here."))
-                        .font(.body).foregroundStyle(.secondary).padding()
-                }
-                .navigationTitle(String(localized: "Privacy Policy"))
-                .navigationBarTitleDisplayMode(.inline)
+                PrivacyPolicyView()
             } label: {
                 Label(String(localized: "Privacy Policy"), systemImage: "hand.raised")
             }
@@ -134,13 +145,21 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         Section(String(localized: "Data")) {
+            Picker(String(localized: "Export Format"), selection: $viewModel.exportFormat) {
+                ForEach(DataExportService.ExportFormat.allCases, id: \.self) { format in
+                    Text(format.displayName).tag(format)
+                }
+            }
+            .accessibilityLabel(String(localized: "Export format"))
+            .accessibilityHint(String(localized: "Select CSV or JSON format for data export"))
+
             Button {
                 Task {
                     let authorized = await viewModel.authenticateForExport(
                         using: biometricManager
                     )
                     if authorized {
-                        viewModel.showingExportConfirmation = true
+                        await viewModel.exportData()
                     }
                 }
             } label: {
@@ -160,19 +179,6 @@ struct SettingsView: View {
             .disabled(viewModel.isExporting)
             .accessibilityLabel(String(localized: "Export data"))
             .accessibilityHint(String(localized: "Exports all your financial data as a file"))
-            .confirmationDialog(
-                String(localized: "Export Data"),
-                isPresented: $viewModel.showingExportConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button(String(localized: "Export as CSV")) { Task { await viewModel.exportData() } }
-                    .accessibilityLabel(String(localized: "Export as CSV"))
-                Button(String(localized: "Export as JSON")) { Task { await viewModel.exportData() } }
-                    .accessibilityLabel(String(localized: "Export as JSON"))
-                Button(String(localized: "Cancel"), role: .cancel) {}
-            } message: {
-                Text(String(localized: "Choose your preferred export format."))
-            }
 
             Button(role: .destructive) {
                 viewModel.showingDeleteConfirmation = true
@@ -200,24 +206,51 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section(String(localized: "About")) {
+            NavigationLink {
+                AboutView()
+            } label: {
+                Label(String(localized: "About Finance"), systemImage: "info.circle")
+            }
+            .accessibilityLabel(String(localized: "About Finance"))
+            .accessibilityHint(String(localized: "Opens the about screen with app information"))
+
             LabeledContent(String(localized: "Version")) {
                 Text("\(viewModel.appVersion) (\(viewModel.buildNumber))").foregroundStyle(.secondary)
             }
             .accessibilityLabel(String(localized: "App version \(viewModel.appVersion), build \(viewModel.buildNumber)"))
 
             NavigationLink {
-                ScrollView {
-                    Text(String(localized: "Open source licenses and acknowledgments will be listed here."))
-                        .font(.body).foregroundStyle(.secondary).padding()
-                }
-                .navigationTitle(String(localized: "Acknowledgments"))
-                .navigationBarTitleDisplayMode(.inline)
+                LicensesView()
             } label: {
-                Label(String(localized: "Acknowledgments"), systemImage: "heart")
+                Label(String(localized: "Open Source Licenses"), systemImage: "chevron.left.forwardslash.chevron.right")
             }
-            .accessibilityLabel(String(localized: "Acknowledgments"))
-            .accessibilityHint(String(localized: "Opens the open source acknowledgments"))
+            .accessibilityLabel(String(localized: "Open Source Licenses"))
+            .accessibilityHint(String(localized: "Opens the open source license attributions"))
         }
+    }
+}
+
+// MARK: - ShareSheet
+
+/// UIKit wrapper for `UIActivityViewController` used to share exported files.
+///
+/// UIKit is required here because SwiftUI does not provide a built-in
+/// equivalent for presenting a system share sheet with arbitrary file URLs.
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: nil
+        )
+    }
+
+    func updateUIViewController(
+        _ uiViewController: UIActivityViewController,
+        context: Context
+    ) {
+        // No updates needed — the share sheet is presented once and dismissed by the user.
     }
 }
 
