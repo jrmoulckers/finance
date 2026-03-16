@@ -1,0 +1,258 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Shared auth page styles (Login, Signup, etc.)
+ *
+ * Provides a vertically-and-horizontally centred card layout that sits
+ * outside of the main AppLayout shell.  Re-uses design-token custom
+ * properties for colour, spacing, typography and border-radius so that
+ * light / dark themes and high-contrast mode work automatically.
+ */
+
+/* ─── Full-viewport wrapper ──────────────────────────────────────────────── */
+
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--spacing-4);
+  background: var(--semantic-background-primary);
+}
+
+/* ─── Centred card ───────────────────────────────────────────────────────── */
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--spacing-6);
+  background: var(--card-background);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-border-radius);
+  box-shadow: var(--card-shadow);
+}
+
+/* ─── Branding ───────────────────────────────────────────────────────────── */
+
+.auth-brand {
+  text-align: center;
+  margin-bottom: var(--spacing-6);
+}
+
+.auth-brand__name {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  color: var(--semantic-interactive-default);
+  margin-bottom: var(--spacing-2);
+}
+
+.auth-brand__tagline {
+  font-size: var(--type-scale-body-font-size, 1rem);
+  color: var(--semantic-text-secondary);
+}
+
+/* ─── Form elements ──────────────────────────────────────────────────────── */
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.auth-field__label {
+  font-size: var(--type-scale-label-font-size);
+  font-weight: var(--type-scale-label-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.auth-field__input {
+  padding: var(--input-padding-y, 0.5rem) var(--input-padding-x, 0.75rem);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-border-radius);
+  background: var(--input-background);
+  color: var(--input-text);
+  font: inherit;
+}
+
+.auth-field__input:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.auth-field__input[aria-invalid='true'] {
+  border-color: var(--semantic-border-error);
+}
+
+.auth-field__hint {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.auth-field__error {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-status-negative);
+}
+
+/* ─── Primary submit button ──────────────────────────────────────────────── */
+
+.auth-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: var(--spacing-2);
+  min-height: 44px;
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--semantic-interactive-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast, 100ms) ease,
+    border-color var(--duration-fast, 100ms) ease;
+}
+
+.auth-passkey-button {
+  width: 100%;
+}
+
+.auth-submit:hover:not(:disabled) {
+  background: var(--semantic-interactive-hover);
+  border-color: var(--semantic-interactive-hover);
+}
+
+.auth-submit:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.auth-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ─── Error / status banners ─────────────────────────────────────────────── */
+
+.auth-error {
+  padding: var(--spacing-3);
+  border-radius: var(--border-radius-md);
+  background: var(--color-red-50, #fef2f2);
+  color: var(--semantic-status-negative);
+  font-size: var(--type-scale-body-font-size, 1rem);
+  text-align: center;
+}
+
+.auth-info {
+  padding: var(--spacing-3);
+  border-radius: var(--border-radius-md);
+  background: var(--color-blue-50, #eff6ff);
+  color: var(--semantic-status-info, var(--semantic-interactive-default));
+  font-size: var(--type-scale-body-font-size, 1rem);
+  text-align: center;
+}
+
+/* ─── Divider (separator between auth methods) ──────────────────────────── */
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: var(--spacing-4) 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--semantic-border-default, #e5e7eb);
+}
+
+.auth-divider__text {
+  padding: 0 var(--spacing-3);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  color: var(--semantic-text-secondary);
+}
+
+/* ─── Footer link ────────────────────────────────────────────────────────── */
+
+.auth-footer {
+  text-align: center;
+  margin-top: var(--spacing-4);
+  font-size: var(--type-scale-body-font-size, 1rem);
+  color: var(--semantic-text-secondary);
+}
+
+.auth-footer__link {
+  color: var(--semantic-interactive-default);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+}
+
+.auth-footer__link:hover {
+  text-decoration: underline;
+  color: var(--semantic-interactive-hover);
+}
+
+.auth-footer__link:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--border-radius-sm, 2px);
+}
+
+/* ─── Reduced-motion ─────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .auth-page {
+    padding: var(--spacing-3);
+  }
+
+  .auth-card {
+    padding: var(--spacing-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-submit {
+    transition: none;
+  }
+}
+
+/* ─── High-contrast ──────────────────────────────────────────────────────── */
+
+@media (prefers-contrast: more) {
+  .auth-card {
+    border-width: 2px;
+  }
+
+  .auth-field__input {
+    border-width: 2px;
+  }
+}
+
+/* ─── Dark-mode error/info box overrides ─────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .auth-error {
+    background: rgba(239, 68, 68, 0.12);
+  }
+
+  html:not([data-theme='light']) .auth-info {
+    background: rgba(59, 130, 246, 0.12);
+  }
+}
