@@ -2,13 +2,14 @@
 name: financial-modeling
 description: >
   Financial calculation and modeling knowledge for budgeting, transaction
-  processing, goal tracking, and reporting. Use for topics related to money,
-  budget, transaction, currency, financial calculation, balance, or accounting.
+  processing, goal tracking, reporting, and data export. Use for topics related
+  to money, budget, transaction, currency, financial calculation, balance, or
+  accounting.
 ---
 
 # Financial Modeling Skill
 
-This skill provides domain knowledge for implementing correct financial calculations and models in the Finance application.
+This skill provides domain knowledge for implementing correct financial calculations, reporting, and export flows in the Finance application.
 
 ## Money Representation
 
@@ -20,117 +21,69 @@ RIGHT: let balanceCents = 1999      // integer cents — exact representation
 RIGHT: let balance = Decimal("19.99") // fixed-precision decimal
 ```
 
-- Store monetary values as **integers in the smallest currency unit** (cents, pence, etc.)
-- Alternatively, use a fixed-precision decimal type if the language provides one
-- Display formatting is a UI concern — format at the presentation layer only
+- Store monetary values as integers in the smallest currency unit.
+- Keep the ISO 4217 currency code alongside every amount.
+- Convert `Cents` to a decimal display string only when serializing or rendering.
 
-### Currency Handling
+## Current Export Module
 
-- Always store the **ISO 4217 currency code** alongside every monetary value
-- Never assume a default currency
-- Exchange rates are time-sensitive — store the rate AND the timestamp
-- Multi-currency accounts need a base currency for reporting
+The repository now has a dedicated export module in `packages/core/src/commonMain/kotlin/com/finance/core/export/`.
 
-```
-Transaction {
-  amount: 1999,          // integer cents
-  currency: "USD",       // ISO 4217
-  exchangeRate: null,    // null if same as account currency
-  exchangeDate: null
-}
-```
+### Core Types
 
-## Budgeting Models
+- `DataExportService.kt` — object singleton that orchestrates export generation.
+- `ExportSerializer.kt` — format contract for export implementations.
+- `JsonExportSerializer.kt` — JSON envelope serializer.
+- `CsvExportSerializer.kt` — multi-section CSV serializer.
+- `ExportData.kt` — input container for accounts, transactions, categories, budgets, and goals.
+- `ExportTypes.kt` — `ExportResult`, `ExportMetadata`, `ExportProgress`, `ExportOutcome`, and `ExportError`.
+- `Sha256.kt` — multiplatform SHA-256 implementation used for checksums and anonymized user IDs.
 
-### Envelope / Zero-Based (YNAB-style)
+### DataExportService Responsibilities
 
-- Every dollar has a job — income is allocated to categories
-- Categories can be overspent (negative available)
-- Overspending rolls over or is covered from other categories
-- Budget period is typically monthly but should be configurable
+- Runs the export pipeline in four phases: `GATHERING_DATA`, `SERIALIZING`, `COMPUTING_CHECKSUM`, and `COMPLETE`.
+- Builds `ExportMetadata` with entity counts, schema version, export timestamp, and a SHA-256 user hash.
+- Computes a SHA-256 checksum for every export payload before returning `ExportResult`.
+- Returns `ExportOutcome.Success` or `ExportOutcome.Failure` instead of throwing business-logic errors.
 
-### Budget Calculations
+## Serialization Rules
 
-```
-available = allocated - spent + rolledOver
-spent = sum(transactions in category for period)
-rolledOver = previous period's remaining (if carry-over enabled)
-```
+- `ExportSerializer` implementations are responsible for stripping sync-internal fields such as `syncVersion` and `isSynced`.
+- Dates and timestamps are serialized as ISO 8601 strings.
+- JSON exports wrap data in an envelope with metadata and entity counts.
+- CSV exports emit metadata plus separate sections for accounts, transactions, categories, budgets, and goals.
+- Monetary values are serialized as decimal display strings paired with currency codes.
 
-### Budget Alerts
+## Integrity and Privacy
 
-- Threshold-based alerts (80% spent, 100% spent, overspent)
-- Trend alerts (spending pace ahead of historical average)
-- Goal progress alerts (on track, behind, ahead)
+- `Sha256.hexDigest(...)` is the canonical checksum implementation for exports.
+- `DataExportService.hashUserId(...)` prefixes anonymized IDs as `sha256:<digest>`.
+- Export checksums are returned with `ExportResult` so downstream consumers can verify integrity.
+- Export callers must pre-filter soft-deleted records before constructing `ExportData`.
 
-## Transaction Processing
+## Financial Modeling Guidance
 
-### Transaction Types
+### Budgeting
 
-- **Income** — Money coming in (salary, refund, gift)
-- **Expense** — Money going out (purchase, bill, fee)
-- **Transfer** — Money between accounts (always creates two linked entries)
-- **Split** — A single transaction split across multiple categories
+- Use zero-based or envelope-style allocation semantics for category budgets.
+- Keep rollover and overspending rules explicit rather than implicit.
+- Recalculate availability from allocations, spending, and carry-over values.
 
-### Transaction Categorization
+### Goals
 
-- Support hierarchical categories (Food > Groceries > Organic)
-- Auto-categorization based on payee history
-- Allow manual override that feeds back into learning
-- Support multiple tags in addition to categories
+- Track goal amounts in minor units.
+- Recompute projections whenever contributions, deadlines, or funding sources change.
+- Show both percentage progress and absolute values.
 
-### Recurring Transactions
+### Reporting
 
-- Store the schedule definition, not future instances
-- Generate upcoming instances on-demand (for display and budgeting)
-- Handle variable amounts (estimated vs. actual)
-- Support skip, modify single instance, modify series
+- Net worth remains: assets minus liabilities.
+- Spending analysis should compare actuals to budget and highlight pacing over time.
+- Export output is part of the reporting surface because portability is a compliance feature, not just a transport concern.
 
-## Goal Tracking
+## Testing Focus
 
-```
-Goal {
-  targetAmount: 500000,     // $5,000.00 in cents
-  currentAmount: 125000,    // $1,250.00 saved so far
-  deadline: "2026-12-31",   // target date
-  monthlyTarget: 41667,     // calculated: remaining / months left
-}
-```
-
-- Recalculate projections whenever contributions change
-- Support multiple funding sources (dedicated account, virtual allocation)
-- Show progress as percentage AND absolute values
-- Consider compound interest for savings goals
-
-## Reporting
-
-### Net Worth
-
-```
-netWorth = sum(asset accounts) - sum(liability accounts)
-```
-
-- Track over time for trend analysis
-- Exclude closed accounts from active calculations but preserve history
-
-### Spending Analysis
-
-- Category breakdown (pie/bar chart data)
-- Trend over time (monthly spending per category)
-- Comparison to budget (actual vs. planned)
-- Income vs. expense ratio
-
-## Rounding Rules
-
-- Use **banker's rounding** (round half to even) for financial calculations
-- When splitting amounts, allocate the remainder to the last item
-- Example: $10.00 split 3 ways = $3.34 + $3.33 + $3.33
-
-## Testing Financial Logic
-
-- Test boundary conditions (zero amounts, maximum values, negative balances)
-- Test currency conversion with known exchange rates
-- Test rounding with amounts that produce fractional cents
-- Test budget rollover across period boundaries
-- Test split transactions sum to the original total
-- Use property-based testing where applicable (sum of splits = total, etc.)
+- Test rounding boundaries, negative amounts, zero values, and high-value totals.
+- Test serializer output for deterministic ordering and stable schemas.
+- Test checksum generation with known fixtures.
+- Test that exported data never includes sync-only fields or raw user IDs.

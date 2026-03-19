@@ -3,73 +3,73 @@ name: edge-sync
 description: >
   Knowledge about edge computing, offline-first architecture, and data
   synchronization patterns. Use for topics related to sync, offline,
-  conflict resolution, CRDT, delta sync, replication, or edge computing.
+  conflict resolution, delta sync, replication, or edge computing.
 ---
 
 # Edge Sync Skill
 
-This skill provides domain knowledge for implementing the edge-first data synchronization architecture used by the Finance application.
+This skill provides implementation-aware guidance for the Finance app's current offline-first sync stack.
 
-## Architecture Overview
+## Current Sync Footprint
 
-Finance follows an edge-first / offline-first architecture:
+- Shared sync primitives live in `packages/sync/src/commonMain/kotlin/com/finance/sync/`.
+- Android wiring lives in `apps/android/src/main/kotlin/com/finance/android/sync/` and `apps/android/src/main/kotlin/com/finance/android/di/SyncModule.kt`.
+- Web offline replay lives in `apps/web/src/db/sync/` plus `apps/web/src/sw/service-worker.ts`.
+- PowerSync selective replication rules live in `services/api/powersync/sync-rules.yaml`.
 
-```
-┌─────────────────┐         ┌─────────────────┐
-│  Client Device   │  sync   │   Backend API    │
-│  (edge compute)  │◄───────►│  (sync layer)    │
-│                  │         │                  │
-│  ┌────────────┐  │         │  ┌────────────┐  │
-│  │ Local DB   │  │         │  │ Central DB │  │
-│  │ (SQLite/   │  │         │  │ (PostgreSQL│  │
-│  │  Realm/etc)│  │         │  │  or similar)│ │
-│  └────────────┘  │         │  └────────────┘  │
-└─────────────────┘         └─────────────────┘
-```
+## Shared Sync Components
 
-## Key Patterns
+- `SyncEngine.kt` defines the connection lifecycle and status flow.
+- `SyncProvider.kt` abstracts the backend implementation so the shared layer stays PowerSync-compatible without hard-coding a single SDK.
+- `SyncMutation.kt`, `SyncChange.kt`, `SyncStatus.kt`, `SyncConfig.kt`, and `SyncCredentials.kt` hold the cross-platform sync contract.
+- `QueueProcessor.kt` drains queued mutations with retry and exponential backoff.
+- `DeltaSyncManager.kt` tracks per-table sequence numbers, detects gaps, and validates `__checksum` fields before advancing state.
 
-### Offline-First
+## Conflict Resolution
 
-- The app must be fully functional without network connectivity
-- All CRUD operations happen against the local database first
-- Sync is opportunistic — happens when connectivity is available
-- User should never be blocked by network state
+- `packages/sync/src/commonMain/kotlin/com/finance/sync/conflict/ConflictStrategy.kt` ships four production strategies:
+  - `LAST_WRITE_WINS` via `LastWriteWinsResolver.kt`
+  - `MERGE` via `MergeResolver.kt`
+  - `CLIENT_WINS` via `ClientWinsResolver.kt`
+  - `SERVER_WINS` via `ServerWinsResolver.kt`
+- Table defaults: `budgets`, `goals`, and `households` use merge; other tables fall back to last-write-wins. `CLIENT_WINS` and `SERVER_WINS` are available for custom override.
+- `MergeResolver.kt` performs field-level reconciliation and flags unresolved collisions; `LastWriteWinsResolver.kt` uses timestamp/server ordering.
 
-### Conflict Resolution Strategy
+## Queue and Delta Sync Details
 
-- Use **last-write-wins (LWW) with vector clocks** for simple fields
-- Use **operational transforms or CRDTs** for complex data (budgets, shared items)
-- Present merge conflicts to the user only when automatic resolution isn't possible
-- Always preserve both versions in conflict — never silently discard data
+- `MutationQueue.kt` plus `InMemoryMutationQueue.kt` provide ordered offline buffering with entity-key deduplication.
+- `QueueProcessor.kt` retries failed pushes with exponential backoff and drops permanently failed mutations after the retry ceiling.
+- `DeltaSyncManager.kt` works with `SequenceTracker` implementations such as `InMemorySequenceTracker` and can request table-level or global full resyncs.
 
-### Delta Sync Protocol
+## Android Integration
 
-- Track changes with monotonic sequence numbers per client
-- Sync only changed records since last successful sync
-- Use checksum verification to detect data corruption
-- Support full re-sync as a recovery mechanism
+- `apps/android/src/main/kotlin/com/finance/android/di/SyncModule.kt` wires `SyncConfig`, `DeltaSyncManager`, `MutationQueue`, token storage, and `AndroidSyncManager`.
+- Android reads the sync endpoint from `BuildConfig.POWERSYNC_URL` in `apps/android/build.gradle.kts`.
+- `AndroidSyncManager.kt` wraps the shared `SyncEngine` for Compose and WorkManager-friendly lifecycle control and exposes `StateFlow` sync state.
+- PowerSync is currently represented as the configured endpoint and sync-rules contract; the shared package still talks through `SyncProvider` rather than a hard-coded PowerSync client type.
 
-### Sync Queue
+## Web Offline Mutation Queue
 
-- Maintain an ordered queue of pending changes
-- Retry with exponential backoff on failure
-- Deduplicate operations before sending
-- Support batch operations to minimize network calls
+- `apps/web/src/db/sync/MutationQueue.ts` implements a durable `WebMutationQueue` backed by IndexedDB.
+- `enqueueMutation.ts` records local writes and requests replay when the browser regains connectivity.
+- `replayMutations.ts` replays batches, acknowledges successes, retries failures, and dead-letters exhausted mutations.
+- `apps/web/src/sw/service-worker.ts` replays queued mutations from the service worker, with an online-event fallback on the main thread.
+- `apps/web/README.md` documents the queue architecture and replay lifecycle.
 
-## Implementation Guidelines
+## Sync Client and Auth
 
-1. **Local database** — Use a platform-appropriate embedded database (SQLite, Realm, Core Data, Room)
-2. **Change tracking** — Every mutable record needs a `lastModified` timestamp and `syncVersion` counter
-3. **Soft deletes** — Never hard-delete synced records; mark as deleted and propagate
-4. **Idempotency** — All sync operations must be idempotent (safe to retry)
-5. **Compression** — Compress sync payloads for bandwidth efficiency
-6. **Background sync** — Use platform background task APIs (BackgroundTasks on iOS, WorkManager on Android)
+- `SyncClient.kt` provides the production sync client coordinating `SyncEngine`, `MutationQueue`, and `DeltaSyncManager`.
+- `packages/sync/src/commonMain/kotlin/com/finance/sync/auth/` contains `AuthManager.kt`, `AuthSession.kt`, `AuthCredentials.kt`, `PKCEHelper.kt`, and `TokenManager.kt` for cross-platform auth integration.
+- Platform-specific token storage and SHA-256 implementations live in `iosMain`, `androidMain`, `jsMain`, and `jvmMain`.
 
-## Testing Approach
+## Cryptography
 
-- Test offline scenarios (create while offline, sync when online)
-- Test conflict scenarios (same record modified on two devices)
-- Test interruption scenarios (sync interrupted mid-transfer)
-- Test large dataset sync (performance with thousands of transactions)
-- Simulate network conditions (latency, packet loss, disconnection)
+- `packages/sync/src/commonMain/kotlin/com/finance/sync/crypto/` contains envelope encryption (`EnvelopeEncryption.kt`), field-level encryption (`FieldEncryptor.kt`), crypto-shredding (`CryptoShredder.kt`), household key management (`HouseholdKeyManager.kt`), and key derivation/rotation.
+
+## Test Harness
+
+- `packages/sync/src/commonTest/` contains 35+ test files covering all sync modules.
+- `SyncIntegrationTestHarness.kt` provides a simulated `SyncClient` for multi-device integration tests.
+- `DefaultSyncEngineTest.kt` and `SyncClientTest.kt` verify the production engine lifecycle.
+- `OfflineResilienceTest.kt` and `SyncScenarioTest.kt` cover integration scenarios.
+- Treat code under `packages/sync/src/` as the source of truth for sync capabilities.

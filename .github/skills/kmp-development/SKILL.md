@@ -13,123 +13,100 @@ This skill provides domain knowledge for building and maintaining the Kotlin Mul
 
 ## KMP Project Structure
 
-Each KMP module follows the standard source-set hierarchy:
+Use the checked-in package layouts rather than generic KMP source-set examples.
 
 ```
-packages/core/
-├── build.gradle.kts
-└── src/
-    ├── commonMain/kotlin/      # Shared business logic (pure Kotlin)
-    ├── commonTest/kotlin/      # Shared tests
-    ├── androidMain/kotlin/     # Android-specific implementations
-    ├── iosMain/kotlin/         # iOS-specific implementations (via K/N)
-    ├── jvmMain/kotlin/         # JVM desktop/server implementations
-    ├── jsMain/kotlin/          # Kotlin/JS browser/Node implementations
-    └── wasmJsMain/kotlin/      # Kotlin/Wasm (WasmJS) implementations
+packages/core/src/
+├── commonMain
+├── commonTest
+├── iosMain
+├── jsMain
+└── jvmMain
+
+packages/models/src/
+├── androidMain
+├── commonMain
+├── commonTest
+├── iosMain
+├── jsMain
+└── jvmMain
+
+packages/sync/src/
+├── androidMain
+├── commonMain
+├── commonTest
+├── iosMain
+├── jsMain
+├── jsTest
+└── jvmMain
 ```
 
-### Source-Set Dependency Graph
+### Source-Set Notes
 
-```
-                  commonMain
-                 /    |    \
-            jvmMain iosMain  nativeMain
-           /          |          \
-    androidMain   iosArm64Main  linuxMain
-                  iosX64Main
-                  iosSimulatorArm64Main
-
-    jsMain       wasmJsMain
-```
-
-- **commonMain** — Pure Kotlin only. No `java.*`, `android.*`, or platform imports allowed.
-- **androidMain** — Android SDK access, Room/SQLite Android driver, WorkManager.
-- **iosMain** — Intermediate source set shared across all iOS targets (arm64, x64, simulatorArm64).
-- **jvmMain** — JVM-specific code for desktop or backend (JDBC driver, JVM coroutines).
-- **jsMain** — Kotlin/JS for web, compiled to JavaScript via IR backend.
-- **wasmJsMain** — Kotlin/Wasm targeting browser via WasmJS, shares APIs with jsMain where possible.
+- `commonMain` stays platform-neutral: no `java.*`, `android.*`, or Apple framework imports.
+- `packages/core` currently has no checked-in `src/androidMain` directory, although `packages/core/build.gradle.kts` conditionally adds `androidMain` dependencies when the Android SDK is available.
+- `packages/models` and `packages/sync` both carry Android-specific code under `androidMain`.
+- `jsMain` in the shared packages is for browser-safe shared Kotlin code, not the primary web UI. `apps/web/` is currently TypeScript + React.
+- There is no checked-in `wasmJsMain` target today.
 
 ## Gradle Configuration Patterns
 
 ### Version Catalogs
 
-All dependency versions are centralized in `gradle/libs.versions.toml`:
-
-```toml
-[versions]
-kotlin = "2.1.21"
-coroutines = "1.10.2"
-sqldelight = "2.0.2"
-ktor = "3.1.3"
-serialization = "1.8.1"
-datetime = "0.6.2"
-
-[libraries]
-kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
-sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
-ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
-
-[plugins]
-kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-```
+Dependency versions remain centralized in `gradle/libs.versions.toml`.
 
 ### Composite Builds
 
-The monorepo uses Gradle composite builds (included builds) so that convention plugins and shared build logic are developed as standalone projects:
+The monorepo currently includes the shared packages, the Windows app, and the Android app when the SDK is available:
 
 ```kotlin
 // settings.gradle.kts
-includeBuild("build-logic")   // convention plugins
+includeBuild("build-logic")
 include(":packages:core")
 include(":packages:models")
 include(":packages:sync")
-include(":apps:android")
-include(":apps:ios-export")
+include(":apps:windows")
+
+if (androidSdkAvailable) {
+    include(":apps:android")
+}
 ```
 
 ### Convention Plugins
 
-Reusable build configuration lives in `build-logic/`:
+Reusable build configuration lives in `build-logic/src/main/kotlin/finance.kmp.library.gradle.kts`:
 
 ```kotlin
-// build-logic/src/main/kotlin/finance.kmp-library.gradle.kts
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
+    id("org.jetbrains.kotlinx.kover")
 }
+
+val androidSdkAvailable = ...
+project.extra["androidSdkAvailable"] = androidSdkAvailable
 
 kotlin {
-    androidTarget()
-    iosArm64()
-    iosX64()
-    iosSimulatorArm64()
+    jvmToolchain(21)
     jvm()
-    js(IR) { browser(); nodejs() }
-    wasmJs { browser() }
-
-    sourceSets {
-        commonMain.dependencies {
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.serialization.json)
-            implementation(libs.kotlinx.datetime)
-        }
-        commonTest.dependencies {
-            implementation(kotlin("test"))
-        }
+    if (androidSdkAvailable) {
+        androidTarget()
     }
+    iosArm64()
+    iosSimulatorArm64()
+    iosX64()
+    js(IR) {
+        browser()
+    }
+    applyDefaultHierarchyTemplate()
 }
 ```
 
-Apply in module `build.gradle.kts`:
+Current implications:
 
-```kotlin
-plugins {
-    id("finance.kmp-library")
-}
-```
+- All shared packages apply `id("finance.kmp.library")`.
+- Android targets are enabled only when the SDK is available via environment variables or `local.properties`.
+- The current convention plugin does **not** configure `nodejs()` or `wasmJs()`.
+- Package build files add their own source-set dependencies on top of the shared convention.
 
 ## Expect/Actual Declaration Patterns
 
@@ -155,9 +132,6 @@ actual fun randomUUID(): String = UUID.randomUUID().toString()
 
 // jsMain
 actual fun randomUUID(): String = js("crypto.randomUUID()") as String
-
-// wasmJsMain
-actual fun randomUUID(): String = js("crypto.randomUUID()").toString()
 ```
 
 ### Example: Platform Logger
@@ -368,102 +342,33 @@ class TransactionRepository(private val db: FinanceDatabase) {
 }
 ```
 
-## Swift Export Configuration for iOS
+## iOS Interop Status
 
-### Exporting the KMP Framework
+### Swift Export Is Planned, Not Current
 
-```kotlin
-// packages/ios-export/build.gradle.kts
-kotlin {
-    listOf(iosArm64(), iosX64(), iosSimulatorArm64()).forEach { target ->
-        target.binaries.framework {
-            baseName = "FinanceShared"
-            isStatic = true
-            export(project(":packages:core"))
-            export(project(":packages:models"))
-        }
-    }
-}
-```
+- The iOS app is currently described as pure SwiftUI in the repo instructions.
+- Do not assume a checked-in `packages/ios-export/` module exists today.
+- Treat Swift Export and SKIE guidance as future-facing design notes until an actual export module is added.
 
-### Swift-Friendly API Design
+### When iOS Interop Work Starts
 
-- Use `@ObjCName` to give Kotlin declarations Swift-friendly names.
-- Wrap `Flow` emissions with a Swift-consumable helper (e.g., `CFlow` or `SKIE`).
-- Avoid generics at the API boundary — Swift interop with Kotlin generics is limited.
-- Use sealed classes/interfaces carefully; they map to Swift enums via SKIE or manual wrappers.
+- Keep Swift-facing APIs small and explicit.
+- Prefer wrapper types for `Flow`, suspend functions, and sealed hierarchies.
+- Export only the shared modules that truly need to cross the bridge.
 
-```kotlin
-@ObjCName("FinanceAccount")
-data class Account(
-    val id: AccountId,
-    val name: String,
-    val balanceCents: Long,
-)
-```
+## JavaScript Target Notes for Shared Modules
 
-### SKIE Integration
+### Shared Kotlin JS Target
 
-SKIE (by Touchlab) improves Swift interop for Kotlin `Flow`, sealed classes, and suspend functions:
+- The current convention plugin configures `js(IR) { browser() }` for shared packages.
+- Use `jsMain` for browser-safe shared Kotlin logic and multiplatform tests.
+- `packages/sync` additionally includes `jsTest` for JS-specific verification.
 
-```kotlin
-// build.gradle.kts
-plugins {
-    id("co.touchlab.skie") version "0.10.1"
-}
-```
+### Current Web Reality
 
-## Kotlin/JS and Kotlin/Wasm Configuration for Web
-
-### Kotlin/JS
-
-```kotlin
-kotlin {
-    js(IR) {
-        browser {
-            commonWebpackConfig {
-                cssSupport { enabled.set(true) }
-                outputFileName = "finance.js"
-            }
-            testTask {
-                useKarma { useChromeHeadless() }
-            }
-        }
-        binaries.executable()
-    }
-}
-```
-
-### Kotlin/Wasm (WasmJS)
-
-```kotlin
-kotlin {
-    wasmJs {
-        browser {
-            commonWebpackConfig {
-                outputFileName = "finance.wasm.js"
-            }
-        }
-        binaries.executable()
-    }
-}
-```
-
-### Shared Web Source Set
-
-To share code between jsMain and wasmJsMain:
-
-```kotlin
-kotlin {
-    sourceSets {
-        val webMain by creating {
-            dependsOn(commonMain.get())
-        }
-        jsMain.get().dependsOn(webMain)
-        wasmJsMain.get().dependsOn(webMain)
-    }
-}
-```
+- `apps/web/` is a TypeScript + React application, not a Kotlin/JS UI.
+- Shared KMP JS targets support library code and future integration points, but the primary web product surface lives in the web workspace.
+- There is no checked-in `wasmJsMain` source set or Kotlin/Wasm target in the current build logic.
 
 ## Testing Patterns
 
@@ -536,12 +441,24 @@ The `packages/core/src/commonMain/kotlin/com/finance/core/monitoring/` directory
 
 These are `commonMain` interfaces with `expect`/`actual` platform bindings — keep implementations in the appropriate platform source sets.
 
+## Data Export Module (packages/core)
+
+`packages/core/src/commonMain/kotlin/com/finance/core/export/` is the current shared export module.
+
+- `DataExportService.kt` orchestrates client-side export generation.
+- `ExportSerializer.kt` defines the serializer contract.
+- `JsonExportSerializer.kt` and `CsvExportSerializer.kt` implement the current formats.
+- `ExportData.kt` and `ExportTypes.kt` define the input/output model.
+- `Sha256.kt` provides the checksum and anonymized user-hash primitive used by exports.
+
 ## Conflict Resolution
 
 The sync engine uses `ConflictStrategy.resolverFor(tableName)` to select the correct resolver per table:
 
 - **`LastWriteWinsResolver`** — Default for most tables. Compares `updated_at` timestamps; newest write wins.
 - **`MergeResolver`** — Used for complex records (e.g., budgets with multiple sub-fields). Merges non-conflicting field changes and flags true conflicts for user resolution.
+- **`ClientWinsResolver`** — Always picks the local record. Useful for user-preference data.
+- **`ServerWinsResolver`** — Always picks the remote record. Useful for admin-managed data.
 
 ```kotlin
 // Usage in sync engine
@@ -651,36 +568,40 @@ value class Money(val cents: Long) {
 
 ```
 packages/
-├── core/                          # Business logic & database
-│   ├── build.gradle.kts          # Applies finance.kmp-library plugin
-│   └── src/
-│       ├── commonMain/kotlin/dev/finance/core/
-│       │   ├── repository/       # AccountRepository, TransactionRepository
-│       │   ├── usecase/          # Domain use cases
-│       │   └── di/              # Koin/manual DI modules
-│       ├── commonMain/sqldelight/finance/db/
-│       │   ├── Account.sq
-│       │   ├── Transaction.sq
-│       │   └── Budget.sq
-│       ├── androidMain/kotlin/   # Android SQLite driver
-│       └── iosMain/kotlin/       # Native SQLite driver
-│
-├── models/                        # Pure data models (no platform deps)
+├── core/
 │   ├── build.gradle.kts
 │   └── src/
-│       └── commonMain/kotlin/dev/finance/models/
-│           ├── Account.kt        # Account data class + AccountId
-│           ├── Transaction.kt    # Transaction + TransactionId + Money
-│           ├── Budget.kt         # Budget + BudgetId + BudgetPeriod
-│           └── Household.kt     # Household + HouseholdId
+│       ├── commonMain/kotlin/com/finance/core/
+│       │   ├── export/
+│       │   │   ├── DataExportService.kt
+│       │   │   ├── ExportSerializer.kt
+│       │   │   ├── JsonExportSerializer.kt
+│       │   │   ├── CsvExportSerializer.kt
+│       │   │   └── Sha256.kt
+│       │   ├── monitoring/
+│       │   └── validation/
+│       ├── iosMain/kotlin/com/finance/core/
+│       ├── jsMain/kotlin/com/finance/core/
+│       └── jvmMain/kotlin/com/finance/core/
 │
-├── sync/                          # PowerSync / sync engine integration
+├── models/
 │   ├── build.gradle.kts
 │   └── src/
-│       ├── commonMain/kotlin/dev/finance/sync/
-│       │   ├── SyncEngine.kt    # Sync orchestration
-│       │   ├── SyncStatus.kt    # Connected, Syncing, Error states
-│       │   └── ConflictResolver.kt
-│       ├── androidMain/kotlin/   # Android background sync (WorkManager)
-│       └── iosMain/kotlin/       # iOS background sync (BGTaskScheduler)
+│       ├── androidMain/kotlin/com/finance/
+│       ├── commonMain/kotlin/com/finance/models/
+│       ├── iosMain/kotlin/com/finance/
+│       ├── jsMain/kotlin/com/finance/
+│       └── jvmMain/kotlin/com/finance/
+│
+└── sync/
+    ├── build.gradle.kts
+    └── src/
+        ├── androidMain/kotlin/com/finance/sync/
+        ├── commonMain/kotlin/com/finance/sync/
+        │   ├── conflict/
+        │   ├── delta/
+        │   └── queue/
+        ├── iosMain/kotlin/com/finance/sync/
+        ├── jsMain/kotlin/com/finance/sync/
+        └── jvmMain/kotlin/com/finance/sync/
 ```
