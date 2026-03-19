@@ -25,7 +25,10 @@ services/api/
     │   ├── 20260306000001_initial_schema.sql
     │   ├── 20260306000002_rls_policies.sql
     │   ├── 20260306000003_auth_config.sql
-    │   └── 20260315000001_export_audit_log.sql
+    │   ├── 20260307000001_monitoring.sql
+    │   ├── 20260315000001_export_audit_log.sql
+    │   ├── 20260316000001_edge_function_security.sql
+    │   └── 20260316000001_fix_invitation_rls.sql
     └── functions/
         ├── _shared/
         │   ├── auth.ts

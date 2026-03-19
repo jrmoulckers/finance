@@ -457,6 +457,8 @@ The sync engine uses `ConflictStrategy.resolverFor(tableName)` to select the cor
 
 - **`LastWriteWinsResolver`** — Default for most tables. Compares `updated_at` timestamps; newest write wins.
 - **`MergeResolver`** — Used for complex records (e.g., budgets with multiple sub-fields). Merges non-conflicting field changes and flags true conflicts for user resolution.
+- **`ClientWinsResolver`** — Always picks the local record. Useful for user-preference data.
+- **`ServerWinsResolver`** — Always picks the remote record. Useful for admin-managed data.
 
 ```kotlin
 // Usage in sync engine
