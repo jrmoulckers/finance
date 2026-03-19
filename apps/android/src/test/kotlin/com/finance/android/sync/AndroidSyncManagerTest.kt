@@ -4,6 +4,9 @@ package com.finance.android.sync
 
 import app.cash.turbine.test
 import com.finance.sync.SyncCredentials
+import com.finance.sync.SyncError
+import com.finance.sync.SyncPhase
+import com.finance.sync.SyncProgress
 import com.finance.sync.SyncStatus
 import com.finance.sync.queue.InMemoryMutationQueue
 import com.finance.sync.MutationOperation
@@ -50,7 +53,7 @@ class AndroidSyncManagerTest {
         override val isConnected: StateFlow<Boolean> = _isConnected
 
         var syncFlow: Flow<SyncStatus> = flow {
-            emit(SyncStatus.Syncing())
+            emit(SyncStatus.Syncing(SyncProgress(phase = SyncPhase.PULLING, processedRecords = 0, totalRecords = null)))
             emit(SyncStatus.Connected)
         }
 
@@ -124,7 +127,7 @@ class AndroidSyncManagerTest {
     @Test
     fun `SyncEngine sync emits Error on failure`() = runTest {
         val engine = FakeSyncEngine()
-        val testError = RuntimeException("sync failed")
+        val testError = SyncError.Unknown(cause = "sync failed")
         engine.syncFlow = flow {
             emit(SyncStatus.Error(testError))
         }
@@ -132,7 +135,7 @@ class AndroidSyncManagerTest {
         engine.sync().test {
             val status = awaitItem()
             assertTrue(status is SyncStatus.Error)
-            assertEquals("sync failed", (status as SyncStatus.Error).exception.message)
+            assertEquals("sync failed", (status as SyncStatus.Error).error.let { (it as SyncError.Unknown).cause })
             awaitComplete()
         }
     }

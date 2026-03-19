@@ -105,6 +105,7 @@ import java.io.File
 fun SettingsScreen(
     state: SettingsUiState,
     onNavigateBack: () -> Unit,
+    onSignOut: () -> Unit,
     onSetCurrency: (SupportedCurrency) -> Unit,
     onSetNotifications: (Boolean) -> Unit,
     onSetBillReminders: (Boolean) -> Unit,
@@ -159,7 +160,11 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // ── Profile ──────────────────────────────────────────────────────
-            ProfileSection(userName = state.userName, userEmail = state.userEmail)
+            ProfileSection(
+                userName = state.userName,
+                userEmail = state.userEmail,
+                onSignOut = onSignOut,
+            )
 
             // ── Preferences ──────────────────────────────────────────────────
             PreferencesSection(
@@ -249,7 +254,7 @@ private fun SectionHeader(title: String) {
 // ── Profile ──────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ProfileSection(userName: String, userEmail: String) {
+private fun ProfileSection(userName: String, userEmail: String, onSignOut: () -> Unit) {
     SectionHeader("Profile")
     Card(
         modifier = Modifier
@@ -300,6 +305,22 @@ private fun ProfileSection(userName: String, userEmail: String) {
                     },
                 )
             }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+        TextButton(
+            onClick = onSignOut,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .semantics { contentDescription = "Sign out of your account" },
+        ) {
+            Text(
+                text = "Sign out",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.labelLarge,
+            )
         }
     }
 }
@@ -876,6 +897,7 @@ fun SettingsScreen(
     SettingsScreen(
         state = state,
         onNavigateBack = onNavigateBack,
+        onSignOut = viewModel::signOut,
         onSetCurrency = viewModel::setDefaultCurrency,
         onSetNotifications = viewModel::setNotificationsEnabled,
         onSetBillReminders = viewModel::setBillRemindersEnabled,
@@ -950,6 +972,7 @@ private fun SettingsScreenPreviewLight() {
             SettingsScreen(
                 state = previewState(),
                 onNavigateBack = {},
+                onSignOut = {},
                 onSetCurrency = {},
                 onSetNotifications = {},
                 onSetBillReminders = {},
@@ -984,6 +1007,7 @@ private fun SettingsScreenPreviewDark() {
             SettingsScreen(
                 state = previewState(),
                 onNavigateBack = {},
+                onSignOut = {},
                 onSetCurrency = {},
                 onSetNotifications = {},
                 onSetBillReminders = {},

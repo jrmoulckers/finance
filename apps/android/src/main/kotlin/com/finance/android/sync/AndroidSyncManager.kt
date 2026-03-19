@@ -5,6 +5,9 @@ package com.finance.android.sync
 import android.content.Context
 import com.finance.sync.SyncEngine
 import com.finance.sync.SyncCredentials
+import com.finance.sync.SyncError
+import com.finance.sync.SyncPhase
+import com.finance.sync.SyncProgress
 import com.finance.sync.SyncStatus
 import com.finance.sync.queue.MutationQueue
 import kotlinx.coroutines.CoroutineScope
@@ -88,7 +91,9 @@ class AndroidSyncManager(
                 }
                 .catch { error ->
                     Timber.e(error, "Sync loop error")
-                    _syncStatus.value = SyncStatus.Error(error)
+                    _syncStatus.value = SyncStatus.Error(
+                        SyncError.NetworkError(error.message ?: "Unknown sync error"),
+                    )
                 }
                 .launchIn(this)
 
@@ -117,7 +122,9 @@ class AndroidSyncManager(
      */
     suspend fun syncNow(credentials: SyncCredentials) = withContext(Dispatchers.IO) {
         Timber.i("Running one-shot sync")
-        _syncStatus.value = SyncStatus.Syncing()
+        _syncStatus.value = SyncStatus.Syncing(
+            SyncProgress(phase = SyncPhase.PULLING, processedRecords = 0, totalRecords = null),
+        )
 
         try {
             if (!syncEngine.isConnected.value) {
@@ -131,7 +138,9 @@ class AndroidSyncManager(
                 }
                 .catch { error ->
                     Timber.e(error, "One-shot sync error")
-                    _syncStatus.value = SyncStatus.Error(error)
+                    _syncStatus.value = SyncStatus.Error(
+                        SyncError.NetworkError(error.message ?: "Unknown sync error"),
+                    )
                 }
                 .collect { /* consume until completed */ }
         } finally {

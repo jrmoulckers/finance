@@ -172,4 +172,103 @@ class PKCEHelperTest {
     private fun assertFalse(condition: Boolean, message: String) {
         assertTrue(!condition, message)
     }
+
+    // =========================================================================
+    // generateState tests
+    // =========================================================================
+
+    @Test
+    fun `generateState produces string of requested length`() {
+        val state = PKCEHelper.generateState(32)
+        assertEquals(32, state.length, "State should be exactly 32 characters")
+    }
+
+    @Test
+    fun `generateState with custom length`() {
+        val state = PKCEHelper.generateState(16)
+        assertEquals(16, state.length, "State should be exactly 16 characters")
+    }
+
+    @Test
+    fun `generateState produces only base64url-safe characters`() {
+        val base64urlPattern = Regex("^[A-Za-z0-9\\-_]+$")
+        repeat(10) {
+            val state = PKCEHelper.generateState()
+            assertTrue(
+                base64urlPattern.matches(state),
+                "State should contain only base64url-safe characters: $state",
+            )
+        }
+    }
+
+    @Test
+    fun `generateState produces different values each call`() {
+        val states = (1..5).map { PKCEHelper.generateState() }.toSet()
+        assertTrue(
+            states.size > 1,
+            "Expected unique state values but got duplicates",
+        )
+    }
+
+    @Test
+    fun `generateState rejects non-positive length`() {
+        assertFailsWith<IllegalArgumentException> {
+            PKCEHelper.generateState(0)
+        }
+    }
+
+    @Test
+    fun `generateState rejects negative length`() {
+        assertFailsWith<IllegalArgumentException> {
+            PKCEHelper.generateState(-1)
+        }
+    }
+
+    @Test
+    fun `generateState with length 1 produces single character`() {
+        val state = PKCEHelper.generateState(1)
+        assertEquals(1, state.length)
+    }
+
+    @Test
+    fun `generateState does not contain padding characters`() {
+        repeat(10) {
+            val state = PKCEHelper.generateState()
+            assertFalse(
+                state.contains("="),
+                "State must not contain base64 padding: $state",
+            )
+        }
+    }
+
+    // =========================================================================
+    // Code verifier + challenge integration
+    // =========================================================================
+
+    @Test
+    fun `verifier and challenge are always different`() {
+        val verifier = PKCEHelper.generateCodeVerifier()
+        val challenge = PKCEHelper.generateCodeChallenge(verifier)
+        assertTrue(
+            verifier != challenge,
+            "Verifier and challenge must differ (S256 transform)",
+        )
+    }
+
+    @Test
+    fun `different verifiers produce different challenges`() {
+        val verifier1 = PKCEHelper.generateCodeVerifier()
+        val verifier2 = PKCEHelper.generateCodeVerifier()
+        val challenge1 = PKCEHelper.generateCodeChallenge(verifier1)
+        val challenge2 = PKCEHelper.generateCodeChallenge(verifier2)
+        // With overwhelming probability different verifiers produce different challenges
+        assertTrue(
+            verifier1 != verifier2,
+            "Verifiers should differ (randomness)",
+        )
+        assertTrue(
+            challenge1 != challenge2,
+            "Challenges from different verifiers should differ",
+        )
+    }
 }

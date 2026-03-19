@@ -7,28 +7,43 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.core.util.Consumer
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.finance.android.auth.AuthState
+import com.finance.android.auth.AuthViewModel
+import com.finance.android.auth.LoginScreen
 import com.finance.android.ui.navigation.FinanceBottomBar
 import com.finance.android.ui.navigation.FinanceNavHost
 import com.finance.android.ui.navigation.FinanceTopBar
 import com.finance.android.ui.navigation.Route
 import com.finance.android.ui.theme.FinanceTheme
+import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * Single-activity host for the Compose UI.
@@ -53,10 +68,69 @@ class MainActivity : ComponentActivity() {
 /**
  * Root composable for the Finance app.
  *
- * Provides [Scaffold] with the top bar, bottom navigation, FAB, and [NavHost].
+ * Observes [AuthViewModel.authState] to gate content:
+ * - [AuthState.Loading] → splash / loading indicator
+ * - [AuthState.Unauthenticated] or [AuthState.Error] → [LoginScreen]
+ * - [AuthState.Authenticated] → main [Scaffold] with nav host
+ *
+ * This ensures the login screen is shown without the app chrome
+ * (top bar, bottom bar, FAB) while the authenticated experience
+ * retains the full navigation shell.
  */
 @Composable
 fun FinanceApp(modifier: Modifier = Modifier) {
+    val authViewModel: AuthViewModel = koinViewModel()
+    val authState by authViewModel.authState.collectAsState()
+
+    when (authState) {
+        is AuthState.Loading -> {
+            AuthLoadingScreen(modifier = modifier)
+        }
+        is AuthState.Unauthenticated, is AuthState.Error -> {
+            LoginScreen(viewModel = authViewModel)
+        }
+        is AuthState.Authenticated -> {
+            AuthenticatedContent(modifier = modifier)
+        }
+    }
+}
+
+/**
+ * Loading screen displayed while restoring a persisted auth session.
+ */
+@Composable
+private fun AuthLoadingScreen(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.semantics {
+                contentDescription = "Loading, please wait"
+                liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+            },
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Loading…",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.semantics {
+                contentDescription = "Application is loading"
+            },
+        )
+    }
+}
+
+/**
+ * Main app content shown after successful authentication.
+ *
+ * Provides [Scaffold] with the top bar, bottom navigation, FAB,
+ * and [FinanceNavHost]. Deep link intents are forwarded to the
+ * nav controller for routing.
+ */
+@Composable
+private fun AuthenticatedContent(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route

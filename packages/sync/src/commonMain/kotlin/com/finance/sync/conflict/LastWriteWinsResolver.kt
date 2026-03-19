@@ -2,6 +2,7 @@
 
 package com.finance.sync.conflict
 
+import com.finance.sync.MutationOperation
 import com.finance.sync.SyncChange
 
 /**
@@ -11,6 +12,16 @@ import com.finance.sync.SyncChange
  * If both timestamps are identical, the server timestamp ([SyncChange.serverTimestamp])
  * is used as a tiebreaker — the server-authoritative change wins because the
  * server timestamp is assigned after the client timestamp.
+ *
+ * ## Delete handling
+ *
+ * - If the server issued a DELETE, the delete is always honoured (intent to
+ *   remove is preserved).
+ * - If the local side issued a DELETE but the server did not, the version
+ *   comparison decides: a higher server version means the server "revived"
+ *   the record, so the server update wins; otherwise the local delete wins.
+ * - If both sides deleted, the higher-version delete is used (or the server's
+ *   on a tie).
  */
 class LastWriteWinsResolver : ConflictResolver {
 
@@ -37,6 +48,47 @@ class LastWriteWinsResolver : ConflictResolver {
                 // Absolute tie (extremely unlikely) → prefer remote (server authority).
                 else -> remote
             }
+        }
+    }
+
+    /**
+     * High-level conflict resolution using [SyncConflict] metadata.
+     *
+     * Resolution order:
+     * 1. If the server operation is DELETE → [ConflictResolution.Delete].
+     * 2. If the local operation is DELETE and server is not → compare versions.
+     *    Higher server version means the server revived the record; otherwise
+     *    the local delete intent wins.
+     * 3. Compare `syncVersion`: higher version wins.
+     * 4. On equal versions the server wins (tie-breaker — server is source of truth).
+     */
+    override fun resolveConflict(conflict: SyncConflict): ConflictResolution {
+        // 1. Server DELETE always wins — honour the intent to remove.
+        if (conflict.serverOperation == MutationOperation.DELETE) {
+            return ConflictResolution.Delete
+        }
+
+        // 2. Local DELETE vs. server non-DELETE.
+        if (conflict.localOperation == MutationOperation.DELETE) {
+            // If the server has a strictly higher version, the record was
+            // "revived" — accept the server's update.
+            return if (conflict.serverVersion > conflict.localVersion) {
+                ConflictResolution.AcceptServer(conflict.serverData)
+            } else {
+                ConflictResolution.Delete
+            }
+        }
+
+        // 3. Both are non-DELETE — compare sync versions.
+        return when {
+            conflict.serverVersion > conflict.localVersion ->
+                ConflictResolution.AcceptServer(conflict.serverData)
+
+            conflict.localVersion > conflict.serverVersion ->
+                ConflictResolution.AcceptLocal(conflict.localData)
+
+            // 4. Equal versions — server wins as tie-breaker.
+            else -> ConflictResolution.AcceptServer(conflict.serverData)
         }
     }
 }

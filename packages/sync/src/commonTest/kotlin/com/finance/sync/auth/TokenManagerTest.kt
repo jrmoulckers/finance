@@ -2,6 +2,7 @@
 
 package com.finance.sync.auth
 
+import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.test.Test
@@ -189,6 +190,149 @@ class TokenManagerTest {
     @Test
     fun `millisUntilRefresh returns 0 for expired tokens`() {
         val session = createSession(expiresAtMillis = clock.nowMillis - 10_000L)
+        assertEquals(0L, tokenManager.millisUntilRefresh(session))
+    }
+
+    // =========================================================================
+    // getValidToken (suspend)
+    // =========================================================================
+
+    @Test
+    fun `getValidToken returns access token when stored and not expired`() = runTest {
+        val session = createSession(expiresAtMillis = clock.nowMillis + 3600_000L)
+        tokenManager.storeTokens(session)
+
+        val token = tokenManager.getValidToken()
+        assertNotNull(token)
+        assertEquals("access-token-123", token)
+    }
+
+    @Test
+    fun `getValidToken returns null when no token is stored`() = runTest {
+        val token = tokenManager.getValidToken()
+        assertNull(token, "Should return null when no session is stored")
+    }
+
+    @Test
+    fun `getValidToken returns null when stored token is expired`() = runTest {
+        val session = createSession(expiresAtMillis = clock.nowMillis - 1_000L)
+        tokenManager.storeTokens(session)
+
+        val token = tokenManager.getValidToken()
+        assertNull(token, "Should return null for an expired token")
+    }
+
+    @Test
+    fun `getValidToken returns null at exact expiry boundary`() = runTest {
+        val session = createSession(expiresAtMillis = clock.nowMillis)
+        tokenManager.storeTokens(session)
+
+        val token = tokenManager.getValidToken()
+        assertNull(token, "Should return null when token expires at exactly now")
+    }
+
+    @Test
+    fun `getValidToken reflects clock advancement`() = runTest {
+        val session = createSession(expiresAtMillis = clock.nowMillis + 5_000L)
+        tokenManager.storeTokens(session)
+
+        // Token is valid now
+        assertNotNull(tokenManager.getValidToken())
+
+        // Advance clock past expiry
+        clock.nowMillis += 6_000L
+        assertNull(tokenManager.getValidToken(), "Token should be invalid after clock advances past expiry")
+    }
+
+    // =========================================================================
+    // storeSession (suspend wrapper)
+    // =========================================================================
+
+    @Test
+    fun `storeSession persists tokens via TokenStorage`() = runTest {
+        val session = createSession(
+            accessToken = "suspend-access-token",
+            refreshToken = "suspend-refresh-token",
+            userId = "user-suspend",
+        )
+
+        tokenManager.storeSession(session)
+
+        val retrieved = tokenManager.retrieveTokens()
+        assertNotNull(retrieved)
+        assertEquals("suspend-access-token", retrieved.accessToken)
+        assertEquals("suspend-refresh-token", retrieved.refreshToken)
+        assertEquals("user-suspend", retrieved.userId)
+        assertEquals(session.expiresAt, retrieved.expiresAt)
+    }
+
+    @Test
+    fun `storeSession overwrites previously stored session`() = runTest {
+        tokenManager.storeSession(createSession(accessToken = "first"))
+        tokenManager.storeSession(createSession(accessToken = "second"))
+
+        val retrieved = tokenManager.retrieveTokens()
+        assertNotNull(retrieved)
+        assertEquals("second", retrieved.accessToken)
+    }
+
+    // =========================================================================
+    // clearSession (suspend wrapper)
+    // =========================================================================
+
+    @Test
+    fun `clearSession removes all tokens from storage`() = runTest {
+        tokenManager.storeSession(createSession())
+        assertNotNull(tokenManager.retrieveTokens(), "Token should exist before clearing")
+
+        tokenManager.clearSession()
+        assertNull(tokenManager.retrieveTokens(), "Token should be null after clearSession")
+    }
+
+    @Test
+    fun `clearSession is safe to call when nothing is stored`() = runTest {
+        // Should not throw
+        tokenManager.clearSession()
+        assertNull(tokenManager.retrieveTokens())
+    }
+
+    @Test
+    fun `clearSession then getValidToken returns null`() = runTest {
+        val session = createSession(expiresAtMillis = clock.nowMillis + 3600_000L)
+        tokenManager.storeSession(session)
+        assertNotNull(tokenManager.getValidToken(), "Should have a valid token")
+
+        tokenManager.clearSession()
+        assertNull(tokenManager.getValidToken(), "getValidToken should return null after clearSession")
+    }
+
+    // =========================================================================
+    // Edge cases
+    // =========================================================================
+
+    @Test
+    fun `multiple store-clear cycles work correctly`() = runTest {
+        repeat(3) { i ->
+            val session = createSession(accessToken = "token-$i")
+            tokenManager.storeSession(session)
+            assertEquals("token-$i", tokenManager.retrieveTokens()?.accessToken)
+            tokenManager.clearSession()
+            assertNull(tokenManager.retrieveTokens())
+        }
+    }
+
+    @Test
+    fun `isTokenExpired and shouldRefresh agree for already-expired token`() {
+        val session = createSession(expiresAtMillis = clock.nowMillis - 60_000L)
+        assertTrue(tokenManager.isTokenExpired(session), "Token should be expired")
+        assertTrue(tokenManager.shouldRefresh(session), "Should also need refresh")
+    }
+
+    @Test
+    fun `millisUntilRefresh matches shouldRefresh boundary`() {
+        // At exactly the threshold: shouldRefresh is true and delay is 0
+        val session = createSession(expiresAtMillis = clock.nowMillis + 120_000L)
+        assertTrue(tokenManager.shouldRefresh(session))
         assertEquals(0L, tokenManager.millisUntilRefresh(session))
     }
 }
