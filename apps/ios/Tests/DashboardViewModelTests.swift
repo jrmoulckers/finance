@@ -113,4 +113,109 @@ final class DashboardViewModelTests: XCTestCase {
                         "Error message should be set when a repository throws")
         XCTAssertFalse(vm.isLoading, "isLoading should be false after error")
     }
+    // MARK: - Test: empty data shows zeros for all aggregates
+
+    @MainActor
+    func testEmptyDataShowsZeros() async {
+        let vm = makeDashboardVM(accounts: [], transactions: [], budgets: [])
+
+        await vm.loadDashboard()
+
+        XCTAssertEqual(vm.netWorth, 0,
+                       "Net worth should be 0 with no accounts")
+        XCTAssertEqual(vm.monthlyIncome, 0,
+                       "Monthly income should be 0 with no transactions")
+        XCTAssertEqual(vm.monthlyExpenses, 0,
+                       "Monthly expenses should be 0 with no transactions")
+        XCTAssertTrue(vm.accounts.isEmpty, "Accounts should be empty")
+        XCTAssertTrue(vm.recentTransactions.isEmpty, "Recent transactions should be empty")
+        XCTAssertTrue(vm.budgets.isEmpty, "Budgets should be empty")
+    }
+
+    // MARK: - Test: net worth with only negative balances
+
+    @MainActor
+    func testNetWorthWithOnlyNegativeBalances() async {
+        let creditCard = AccountItem(
+            id: "cc1", name: "Card A",
+            balanceMinorUnits: -500_00, currencyCode: "USD",
+            type: .creditCard, icon: "creditcard", isArchived: false
+        )
+        let loan = AccountItem(
+            id: "l1", name: "Car Loan",
+            balanceMinorUnits: -15_000_00, currencyCode: "USD",
+            type: .loan, icon: "percent", isArchived: false
+        )
+        let vm = makeDashboardVM(accounts: [creditCard, loan], transactions: [], budgets: [])
+
+        await vm.loadDashboard()
+
+        XCTAssertEqual(vm.netWorth, -15_500_00,
+                       "Net worth should be negative when all balances are negative")
+    }
+
+    // MARK: - Test: net worth with a single account
+
+    @MainActor
+    func testNetWorthWithSingleAccount() async {
+        let vm = makeDashboardVM(
+            accounts: [SampleData.checkingAccount],
+            transactions: [],
+            budgets: []
+        )
+
+        await vm.loadDashboard()
+
+        XCTAssertEqual(vm.netWorth, SampleData.checkingAccount.balanceMinorUnits,
+                       "Net worth should equal the single account's balance")
+    }
+
+    // MARK: - Test: transaction error only sets errorMessage
+
+    @MainActor
+    func testTransactionErrorOnlySetsErrorMessage() async {
+        let vm = makeDashboardVM(transactionError: TestError.simulated)
+
+        await vm.loadDashboard()
+
+        XCTAssertNotNil(vm.errorMessage,
+                         "Error message should be set when transaction repository throws")
+        XCTAssertFalse(vm.isLoading, "isLoading should be false after error")
+    }
+
+    // MARK: - Test: budget error only sets errorMessage
+
+    @MainActor
+    func testBudgetErrorOnlySetsErrorMessage() async {
+        let vm = makeDashboardVM(budgetError: TestError.simulated)
+
+        await vm.loadDashboard()
+
+        XCTAssertNotNil(vm.errorMessage,
+                         "Error message should be set when budget repository throws")
+        XCTAssertFalse(vm.isLoading, "isLoading should be false after error")
+    }
+
+    // MARK: - Test: recent transactions limited to 5
+
+    @MainActor
+    func testRecentTransactionsLimitedToFive() async {
+        // Create 8 transactions so the limit of 5 is exercised
+        var manyTransactions: [TransactionItem] = []
+        for i in 0..<8 {
+            manyTransactions.append(TransactionItem(
+                id: "tx\(i)", payee: "Payee \(i)",
+                category: "General", accountName: "Checking",
+                amountMinorUnits: -10_00 * Int64(i + 1), currencyCode: "USD",
+                date: Date(timeIntervalSince1970: Double(1_700_000_000 + i * 86400)),
+                type: .expense, status: .cleared
+            ))
+        }
+        let vm = makeDashboardVM(transactions: manyTransactions)
+
+        await vm.loadDashboard()
+
+        XCTAssertEqual(vm.recentTransactions.count, 5,
+                       "Dashboard should show at most 5 recent transactions")
+    }
 }
