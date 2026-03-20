@@ -2,6 +2,7 @@
 
 import React, { useCallback } from 'react';
 import { BottomNavigation, SidebarNavigation } from './Navigation';
+import { InstallBanner } from '../common/InstallBanner';
 export interface AppLayoutProps {
   activePath: string;
   onNavigate: (path: string) => void;
@@ -35,6 +36,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       <main id="main-content" className="app-main" aria-label={pageTitle}>
         {children}
       </main>
+      <InstallBanner />
       <BottomNavigation activePath={activePath} onNavigate={onNavigate} />
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { useBudgets, useCategories } from '../hooks';
 import { BudgetsPage } from './BudgetsPage';
 
@@ -153,19 +154,31 @@ describe('BudgetsPage', () => {
   });
 
   it('renders without crashing', () => {
-    render(<BudgetsPage />);
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Budgets')).toBeInTheDocument();
   });
 
   it('displays budget summary labels', () => {
-    render(<BudgetsPage />);
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Budgeted')).toBeInTheDocument();
     expect(screen.getByText('Spent')).toBeInTheDocument();
     expect(screen.getByText('Remaining')).toBeInTheDocument();
   });
 
   it('displays budget category names', () => {
-    render(<BudgetsPage />);
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Food')).toBeInTheDocument();
     expect(screen.getByText('Housing')).toBeInTheDocument();
     expect(screen.getByText('Transport')).toBeInTheDocument();
@@ -173,7 +186,11 @@ describe('BudgetsPage', () => {
   });
 
   it('has accessible progress indicators', () => {
-    render(<BudgetsPage />);
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
     const progressBars = screen.getAllByRole('progressbar');
     expect(progressBars.length).toBe(4);
   });

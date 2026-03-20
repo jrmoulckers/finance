@@ -70,8 +70,11 @@ export const SettingsPage: React.FC = () => {
     () => localStorage.getItem(MONITORING_CONSENT_STORAGE_KEY) === 'true',
   );
 
-  const { isAuthenticated, isLoading, logout, user } = useAuth();
+  const { isAuthenticated, isLoading, logout, user, registerNewPasskey, webAuthnSupported } =
+    useAuth();
   const { isOffline } = useOfflineStatus();
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
+  const [passkeyMessage, setPasskeyMessage] = useState<string | null>(null);
 
   const handleThemeChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextTheme = event.target.value as ThemePreference;
@@ -104,6 +107,40 @@ export const SettingsPage: React.FC = () => {
   const handleComingSoon = useCallback((message: string) => {
     window.alert(message);
   }, []);
+
+  const handlePasskeyRegistration = useCallback(async () => {
+    if (!isAuthenticated || isPasskeyLoading) {
+      return;
+    }
+
+    if (!webAuthnSupported) {
+      setPasskeyMessage('Passkeys are not supported in this browser.');
+      return;
+    }
+
+    setPasskeyMessage(null);
+    setIsPasskeyLoading(true);
+
+    try {
+      await registerNewPasskey();
+      setPasskeyMessage('Passkey registered successfully.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Passkey registration failed.';
+
+      // Handle user cancellation gracefully.
+      if (
+        message.includes('cancelled') ||
+        message.includes('canceled') ||
+        message.includes('NotAllowedError')
+      ) {
+        setPasskeyMessage('Passkey registration was cancelled.');
+      } else {
+        setPasskeyMessage(message);
+      }
+    } finally {
+      setIsPasskeyLoading(false);
+    }
+  }, [isAuthenticated, isPasskeyLoading, webAuthnSupported, registerNewPasskey]);
 
   const handleSignOut = useCallback(async () => {
     if (!isAuthenticated || isLoading) {
@@ -243,13 +280,22 @@ export const SettingsPage: React.FC = () => {
           <button
             type="button"
             className="settings-item settings-item--button"
-            onClick={() => handleComingSoon('Passkey management is coming soon.')}
+            onClick={() => {
+              void handlePasskeyRegistration();
+            }}
+            disabled={!isAuthenticated || isPasskeyLoading}
+            aria-label={user?.hasPasskey ? 'Passkeys — registered' : 'Passkeys — set up a passkey'}
           >
             <span className="settings-item__label">Passkeys</span>
             <span className="settings-item__value">
-              {user?.hasPasskey ? 'Registered' : 'Not set up'}
+              {isPasskeyLoading ? 'Registering…' : user?.hasPasskey ? '✓ Registered' : 'Set up'}
             </span>
           </button>
+          {passkeyMessage && (
+            <div className="settings-item settings-item--static" role="status" aria-live="polite">
+              <span className="settings-item__value">{passkeyMessage}</span>
+            </div>
+          )}
           <button
             type="button"
             className="settings-item settings-item--button"

@@ -657,6 +657,61 @@
   color: var(--semantic-status-negative);
 }
 /* ─── End Transactions page ──────────────────────────────────────────────── */
+
+/* ─── Install banner ─────────────────────────────────────────────────────── */
+.install-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--semantic-background-secondary);
+  border-top: 1px solid var(--semantic-border-default);
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  color: var(--semantic-text-primary);
+}
+.install-banner__text {
+  margin: 0;
+  flex: 1;
+}
+.install-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-shrink: 0;
+}
+.install-banner__button {
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--border-radius-md);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.install-banner__button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+.install-banner__button--primary {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  border-color: var(--semantic-interactive-default);
+}
+.install-banner__button--primary:hover {
+  background: var(--semantic-interactive-hover);
+  border-color: var(--semantic-interactive-hover);
+}
+.install-banner__button--dismiss {
+  background: none;
+  color: var(--semantic-text-secondary);
+  border-color: var(--semantic-border-default);
+}
+.install-banner__button--dismiss:hover {
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+}
+/* ─── End Install banner ─────────────────────────────────────────────────── */
+
 @media (prefers-reduced-motion: reduce) {
   .add-button,
   .transaction-item__actions,

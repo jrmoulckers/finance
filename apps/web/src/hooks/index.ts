@@ -11,3 +11,5 @@ export { useOfflineStatus } from './useOfflineStatus';
 export { useMutationQueue } from './useMutationQueue';
 export { useSyncStatus } from './useSyncStatus';
 export type { UseSyncStatusResult } from './useSyncStatus';
+export { useInstallPrompt } from './useInstallPrompt';
+export type { UseInstallPromptResult } from './useInstallPrompt';

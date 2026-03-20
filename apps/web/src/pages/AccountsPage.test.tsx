@@ -2,6 +2,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { useAccounts } from '../hooks';
 import { AccountsPage } from './AccountsPage';
 
@@ -91,12 +92,20 @@ describe('AccountsPage', () => {
   });
 
   it('renders without crashing', () => {
-    render(<AccountsPage />);
+    render(
+      <MemoryRouter>
+        <AccountsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Accounts')).toBeInTheDocument();
   });
 
   it('displays account categories', () => {
-    render(<AccountsPage />);
+    render(
+      <MemoryRouter>
+        <AccountsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Checking')).toBeInTheDocument();
     expect(screen.getByText('Savings')).toBeInTheDocument();
     expect(screen.getByText('Credit Cards')).toBeInTheDocument();
@@ -104,7 +113,11 @@ describe('AccountsPage', () => {
   });
 
   it('displays individual accounts', () => {
-    render(<AccountsPage />);
+    render(
+      <MemoryRouter>
+        <AccountsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Primary Checking')).toBeInTheDocument();
     expect(screen.getByText('Emergency Fund')).toBeInTheDocument();
     expect(screen.getByText('Travel Card')).toBeInTheDocument();
@@ -112,7 +125,11 @@ describe('AccountsPage', () => {
   });
 
   it('shows net worth text', () => {
-    render(<AccountsPage />);
+    render(
+      <MemoryRouter>
+        <AccountsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText(/net worth/i)).toBeInTheDocument();
   });
 });

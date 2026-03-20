@@ -77,7 +77,7 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText('alex@example.com')).toBeInTheDocument();
     expect(screen.getByText('Online — synced')).toBeInTheDocument();
-    expect(screen.getByText('Registered')).toBeInTheDocument();
+    expect(screen.getByText('✓ Registered')).toBeInTheDocument();
   });
 
   it('shows offline sync messaging when the app is offline', () => {
