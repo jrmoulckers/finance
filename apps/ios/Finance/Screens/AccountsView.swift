@@ -44,6 +44,10 @@ struct AccountsView: View {
             .sheet(isPresented: $viewModel.showingAddAccount) { addAccountPlaceholder }
             .refreshable { await viewModel.loadAccounts() }
             .task { await viewModel.loadAccounts() }
+            .errorAlert(
+                errorMessage: Bindable(viewModel).errorMessage,
+                retryAction: { await viewModel.loadAccounts() }
+            )
         }
     }
 

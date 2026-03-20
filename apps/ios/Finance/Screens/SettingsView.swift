@@ -37,6 +37,9 @@ struct SettingsView: View {
             } message: { error in
                 Text(error.localizedDescription)
             }
+            .errorAlert(
+                errorMessage: $viewModel.exportError
+            )
         }
     }
 
@@ -165,9 +168,9 @@ struct SettingsView: View {
                 isPresented: $viewModel.showingExportConfirmation,
                 titleVisibility: .visible
             ) {
-                Button(String(localized: "Export as CSV")) { Task { await viewModel.exportData() } }
+                Button(String(localized: "Export as CSV")) { Task { await viewModel.exportData(format: .csv) } }
                     .accessibilityLabel(String(localized: "Export as CSV"))
-                Button(String(localized: "Export as JSON")) { Task { await viewModel.exportData() } }
+                Button(String(localized: "Export as JSON")) { Task { await viewModel.exportData(format: .json) } }
                     .accessibilityLabel(String(localized: "Export as JSON"))
                 Button(String(localized: "Cancel"), role: .cancel) {}
             } message: {

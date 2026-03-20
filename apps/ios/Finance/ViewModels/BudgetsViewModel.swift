@@ -18,6 +18,7 @@ final class BudgetsViewModel {
     var isLoading = false
     var selectedMonth = Date()
     var showingCreateBudget = false
+    var errorMessage: String?
 
     var totalBudgeted: Int64 { budgets.reduce(0) { $0 + $1.limitMinorUnits } }
     var totalSpent: Int64 { budgets.reduce(0) { $0 + $1.spentMinorUnits } }
@@ -53,7 +54,7 @@ final class BudgetsViewModel {
         do {
             budgets = try await repository.getBudgets()
         } catch {
-            // Error handling will be enhanced with KMP-backed repository
+            errorMessage = error.localizedDescription
             budgets = []
         }
     }

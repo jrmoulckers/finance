@@ -44,6 +44,10 @@ struct GoalsView: View {
             .sheet(isPresented: $viewModel.showingCreateGoal) { createGoalPlaceholder }
             .refreshable { await viewModel.loadGoals() }
             .task { await viewModel.loadGoals() }
+            .errorAlert(
+                errorMessage: Bindable(viewModel).errorMessage,
+                retryAction: { await viewModel.loadGoals() }
+            )
         }
     }
 

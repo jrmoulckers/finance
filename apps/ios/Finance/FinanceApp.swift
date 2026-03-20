@@ -15,6 +15,9 @@ import SwiftUI
 struct FinanceApp: App {
     @State private var biometricManager = BiometricAuthManager()
     @State private var isLocked = true
+    @State private var showOnboarding = !UserDefaults.standard.bool(
+        forKey: OnboardingView.hasCompletedOnboardingKey
+    )
     @Environment(\.scenePhase) private var scenePhase
 
     private static let logger = Logger(
@@ -30,16 +33,23 @@ struct FinanceApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                ContentView()
-                    .environment(biometricManager)
-                    .accessibilityHidden(biometricLockEnabled && isLocked)
-
-                if biometricLockEnabled && isLocked {
-                    LockScreenView(
-                        biometricManager: biometricManager,
-                        onUnlock: { isLocked = false }
-                    )
+                if showOnboarding {
+                    OnboardingView(onComplete: {
+                        showOnboarding = false
+                    })
                     .transition(.opacity)
+                } else {
+                    ContentView()
+                        .environment(biometricManager)
+                        .accessibilityHidden(biometricLockEnabled && isLocked)
+
+                    if biometricLockEnabled && isLocked {
+                        LockScreenView(
+                            biometricManager: biometricManager,
+                            onUnlock: { isLocked = false }
+                        )
+                        .transition(.opacity)
+                    }
                 }
             }
             .onChange(of: scenePhase) { _, newPhase in

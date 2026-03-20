@@ -27,6 +27,9 @@ final class SettingsViewModel {
     var showingDeleteConfirmation = false
     var biometricError: BiometricError?
     var showingBiometricError = false
+    var exportError: String?
+
+    private let exportService: DataExportService
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -38,6 +41,17 @@ final class SettingsViewModel {
         ("CAD", "Canadian Dollar"), ("JPY", "Japanese Yen"),
         ("AUD", "Australian Dollar"), ("CHF", "Swiss Franc"),
     ]
+
+    init(
+        exportService: DataExportService = DataExportService(
+            accountRepository: MockAccountRepository(),
+            transactionRepository: MockTransactionRepository(),
+            budgetRepository: MockBudgetRepository(),
+            goalRepository: MockGoalRepository()
+        )
+    ) {
+        self.exportService = exportService
+    }
 
     func loadSettings() async {
         biometricEnabled = UserDefaults.standard.bool(
@@ -112,10 +126,17 @@ final class SettingsViewModel {
         }
     }
 
-    func exportData() async {
+    func exportData(format: ExportFormat) async {
         isExporting = true
         defer { isExporting = false }
-        // TODO: Implement data export via KMP shared logic
-        try? await Task.sleep(for: .seconds(1))
+
+        do {
+            let fileURL = try await exportService.export(format: format)
+            Self.logger.info("Export succeeded: \(format.rawValue, privacy: .public)")
+            ShareSheetPresenter.present(fileURL: fileURL)
+        } catch {
+            Self.logger.error("Export failed: \(error.localizedDescription, privacy: .public)")
+            exportError = error.localizedDescription
+        }
     }
 }

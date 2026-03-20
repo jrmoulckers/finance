@@ -49,6 +49,10 @@ struct TransactionsView: View {
             .sheet(isPresented: $viewModel.showingCreateTransaction) { TransactionCreateView() }
             .refreshable { await viewModel.loadTransactions() }
             .task { await viewModel.loadTransactions() }
+            .errorAlert(
+                errorMessage: Bindable(viewModel).errorMessage,
+                retryAction: { await viewModel.loadTransactions() }
+            )
         }
     }
 
