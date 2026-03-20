@@ -8,122 +8,92 @@ description: >
 
 # Developer Onboarding Skill
 
-This skill provides knowledge for setting up the Finance development environment and onboarding new contributors.
+This skill provides the current setup and workflow guidance for the Finance monorepo.
 
 ## Prerequisites Checklist
 
 | Tool                | Minimum Version | Install Guide                  | Purpose                   |
 | ------------------- | --------------- | ------------------------------ | ------------------------- |
 | Git                 | 2.40+           | https://git-scm.com/           | Version control           |
-| Node.js             | 22+             | https://nodejs.org/            | Build tools, MCP servers  |
+| Node.js             | 22+             | https://nodejs.org/            | Workspace tooling         |
+| npm                 | 10+             | Bundled with Node.js           | Monorepo scripts          |
 | VS Code             | 1.99+           | https://code.visualstudio.com/ | Primary editor            |
 | GitHub Copilot      | Latest          | VS Code Marketplace            | AI completions + chat     |
 | GitHub Copilot Chat | Latest          | VS Code Marketplace            | Agent mode, custom agents |
 
-### Platform-Specific Prerequisites (Add as needed)
-
-| Platform  | Tools                        | Status                |
-| --------- | ---------------------------- | --------------------- |
-| iOS/macOS | Xcode 16+, Swift 6+          | 📋 Not yet configured |
-| Android   | Android Studio, Kotlin 2+    | 📋 Not yet configured |
-| Web       | Already covered by Node.js   | ✅ Ready              |
-| Windows   | Visual Studio 2022+, .NET 9+ | 📋 Not yet configured |
-
-## First-Time Setup Steps
+## First-Time Setup
 
 ```bash
-# 1. Clone
 git clone https://github.com/jrmoulckers/finance.git
 cd finance
-
-# 2. Install Node.js dependencies
 npm install
-
-# 3. Open in VS Code
 code .
-
-# 4. Wait for VS Code to prompt for recommended extensions
-# 5. Accept all extension install recommendations
-
-# 6. Open Copilot Chat (Ctrl+Shift+I or Cmd+Shift+I)
-# 7. Enable Agent Mode if not already enabled
-# 8. VS Code will prompt for GitHub PAT when MCP GitHub server is first used
 ```
+
+After install:
+
+- Husky hooks are installed via the root `prepare` script.
+- VS Code should recommend the workspace extensions.
+- Copilot Chat can then use the repo's custom agents, skills, and instructions.
+
+## Current Local Quality Gates
+
+### Lint-Staged and Pre-Commit
+
+- Root `package.json` includes `lint-staged`.
+- `.husky/pre-commit` runs `npx lint-staged`.
+- Staged JavaScript and TypeScript files are auto-fixed with `eslint --fix` and `prettier --write`.
+- Staged Markdown, JSON, YAML, CSS, HTML, Kotlin, and Gradle Kotlin files are auto-formatted with Prettier.
+
+### Pre-Push Guardrail
+
+- `.husky/pre-push` requires interactive confirmation before pushing.
+- Non-interactive sessions are blocked automatically unless a human explicitly uses `git push --no-verify`.
+- This is why AI agents cannot rely on ordinary `git push` flows in this repository.
+
+## Useful Scripts
+
+- `npm run ci:check` — format check, lint, and type-check.
+- `npm run ready-for-pr` — `ci:check` plus KMP tests.
+- `npm run lint:fix` — full-repo ESLint and Prettier autofix.
+- `npm run test:kmp` — runs the shared Kotlin tests currently wired into the root workflow.
 
 ## MCP Server Verification
 
 After opening the workspace, verify MCP servers are running:
 
-1. Open Command Palette: `Ctrl+Shift+P` / `Cmd+Shift+P`
-2. Type: `MCP: List Servers`
-3. You should see these servers:
-   - `github` — GitHub API access (requires PAT)
-   - `sequential-thinking` — Step-by-step reasoning
-   - `memory` — Persistent context across sessions
-   - `filesystem` — File system access for Copilot
-   - `context7` — Live documentation injection
+1. Open Command Palette.
+2. Run `MCP: List Servers`.
+3. Confirm the expected servers are available for GitHub, memory, sequential thinking, and documentation lookup.
 
-If a server shows as stopped, right-click → Start, or check the Output panel for errors.
+If a server is stopped, inspect the VS Code Output panel before retrying.
 
-## GitHub PAT Scopes
+## GitHub PAT Guidance
 
-When prompted for a Personal Access Token for the GitHub MCP server, create a **read-only** token at https://github.com/settings/tokens with these scopes **only**:
+When the GitHub MCP server requests a token, prefer a fine-grained read-only token scoped to `jrmoulckers/finance` with read access to contents, issues, pull requests, and metadata.
 
-- `public_repo` — Read access to public repos (or `repo` read-only via fine-grained token)
-- `read:org` — Read organization membership
+Avoid full `repo` access unless a human intentionally needs write capability outside the MCP flow.
 
-⚠️ **Do NOT grant `repo` (full access)** — this would allow AI agents to push code, merge PRs, and modify repo settings through the MCP server, bypassing local git hooks and advisory restrictions.
+## Helpful References
 
-### Recommended: Fine-Grained Personal Access Token
-
-For maximum safety, use a [fine-grained PAT](https://github.com/settings/personal-access-tokens/new) scoped to the `jrmoulckers/finance` repository with:
-
-- **Repository access:** Only `jrmoulckers/finance`
-- **Contents:** Read-only
-- **Issues:** Read-only
-- **Pull requests:** Read-only
-- **Metadata:** Read-only
-
-This ensures the MCP server can search and read but **cannot mutate** any remote state.
-
-## Project Status
-
-All 8 development phases are **complete** — the project is at v0.1.0 pre-launch. CI enforces **ESLint + Prettier** on all PRs, and releases follow the **Changesets** flow (version PR → merge → tag → GitHub Release).
-
-## Useful Resources
-
-- **Workflow Cheat Sheet** — `docs/guides/workflow-cheatsheet.md` covers the day-to-day development workflow: branching, commits, CI checks, and release steps.
-- **Troubleshooting Template** — Located alongside the cheat sheet, includes KMP-specific gotchas (missing `actual` declarations, `java.*` in `commonMain`, Gradle sync failures) and common CI fix recipes.
-- **README** — The root `README.md` reflects the current project status, architecture overview, and quick-start instructions.
+- `README.md` — project overview and root workflow.
+- `docs/guides/workflow-cheatsheet.md` — daily branch, commit, validation, and release workflow.
+- `.github/CONTRIBUTING.md` — contributor expectations, including pre-PR validation.
+- `tools/README.md` — hook behavior and local tooling overview.
 
 ## Common Onboarding Issues
 
-### MCP servers won't start
+### Hooks do not run
 
-- **Cause:** Node.js not installed or wrong version
-- **Fix:** Install Node.js 22+ and restart VS Code
+- Re-run `npm install` so the `prepare` script reinstalls Husky.
+- Confirm the `.husky/` directory exists in the repo root.
 
-### Copilot Chat doesn't show agent mode
+### Auto-formatting does not happen on commit
 
-- **Cause:** Extension outdated or setting disabled
-- **Fix:** Update Copilot Chat extension, ensure `github.copilot.chat.agent.enabled` is `true` in settings
+- Make sure files are staged before committing; `lint-staged` only processes staged files.
+- Check that Prettier and ESLint are installed from the root workspace.
 
-### Extensions not auto-installing
+### CI-style validation fails locally
 
-- **Cause:** VS Code didn't detect `.vscode/extensions.json`
-- **Fix:** Open Command Palette → `Extensions: Show Recommended Extensions` → Install All
-
-### `npm ci` fails in CI
-
-- **Cause:** No `package-lock.json` in repo
-- **Fix:** Run `npm install` locally and commit the generated `package-lock.json`
-
-## Verifying Setup Works
-
-After setup, test by opening Copilot Chat and asking:
-
-```
-@architect What is the current architecture of this project?
-```
-
-If the agent responds with relevant context about the Finance monorepo, your AI setup is working correctly.
+- Start with `npm run ci:check` for formatting, lint, and type errors.
+- Use `npm run ready-for-pr` before handing work off for review.
