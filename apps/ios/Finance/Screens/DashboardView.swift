@@ -14,9 +14,9 @@ struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
 
     init(viewModel: DashboardViewModel = DashboardViewModel(
-        accountRepository: MockAccountRepository(),
-        transactionRepository: MockTransactionRepository(),
-        budgetRepository: MockBudgetRepository()
+        accountRepository: KMPAccountRepository(),
+        transactionRepository: KMPTransactionRepository(),
+        budgetRepository: KMPBudgetRepository()
     )) {
         _viewModel = State(initialValue: viewModel)
     }
