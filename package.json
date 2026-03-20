@@ -21,6 +21,7 @@
     "type-check": "turbo run type-check",
     "format": "npx prettier --write .",
     "format:check": "npx prettier --check .",
+    "ready-for-pr": "npm run format:check && npm run lint && npm run type-check && npm run test:kmp",
     "ci:check": "npm run format:check && npm run lint && npm run type-check",
     "clean": "node tools/gradle.js clean && turbo run clean",
     "setup": "node tools/setup.js",
