@@ -157,9 +157,7 @@ console.log(`\n${fmt.bold('🚀 Finance — Pre-PR Validation')}`);
 console.log(`${'─'.repeat(48)}`);
 
 if (!kotlinChanged) {
-  console.log(
-    fmt.dim('  No Kotlin file changes detected — KMP steps will be skipped.'),
-  );
+  console.log(fmt.dim('  No Kotlin file changes detected — KMP steps will be skipped.'));
   console.log(fmt.dim('  Use --all to force all checks.'));
 }
 
@@ -202,11 +200,7 @@ console.log(fmt.bold('  Results:\n'));
 
 for (const r of results) {
   const icon =
-    r.status === 'pass'
-      ? fmt.green('✓')
-      : r.status === 'fail'
-        ? fmt.red('✗')
-        : fmt.yellow('○');
+    r.status === 'pass' ? fmt.green('✓') : r.status === 'fail' ? fmt.red('✗') : fmt.yellow('○');
   const time = r.status === 'skip' ? fmt.dim('skipped') : fmt.dim(formatMs(r.duration));
   console.log(`  ${icon}  ${r.name}  ${time}`);
 }
@@ -224,6 +218,4 @@ if (failed > 0) {
   process.exit(1);
 }
 
-console.log(
-  `\n${fmt.green('✅')} All checks passed — you're ready to open a PR!\n`,
-);
+console.log(`\n${fmt.green('✅')} All checks passed — you're ready to open a PR!\n`);
