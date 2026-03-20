@@ -12,12 +12,13 @@ import Foundation
 @Observable
 @MainActor
 final class BudgetsViewModel {
-    private let repository: BudgetRepository
+    let repository: BudgetRepository
 
     var budgets: [BudgetItem] = []
     var isLoading = false
     var selectedMonth = Date()
     var showingCreateBudget = false
+    var editingBudget: BudgetItem?
 
     var totalBudgeted: Int64 { budgets.reduce(0) { $0 + $1.limitMinorUnits } }
     var totalSpent: Int64 { budgets.reduce(0) { $0 + $1.spentMinorUnits } }

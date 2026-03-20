@@ -52,6 +52,7 @@ struct GoalItem: Identifiable, Sendable {
     let targetMinorUnits: Int64
     let currencyCode: String
     let targetDate: Date?
+    let notes: String
     let status: GoalStatusUI
     let icon: String
     let color: Color
@@ -67,4 +68,28 @@ struct GoalItem: Identifiable, Sendable {
 
     /// Amount still needed to reach the target.
     var remainingMinorUnits: Int64 { max(0, targetMinorUnits - currentMinorUnits) }
+
+    init(
+        id: String,
+        name: String,
+        currentMinorUnits: Int64,
+        targetMinorUnits: Int64,
+        currencyCode: String,
+        targetDate: Date?,
+        notes: String = "",
+        status: GoalStatusUI,
+        icon: String,
+        color: Color
+    ) {
+        self.id = id
+        self.name = name
+        self.currentMinorUnits = currentMinorUnits
+        self.targetMinorUnits = targetMinorUnits
+        self.currencyCode = currencyCode
+        self.targetDate = targetDate
+        self.notes = notes
+        self.status = status
+        self.icon = icon
+        self.color = color
+    }
 }

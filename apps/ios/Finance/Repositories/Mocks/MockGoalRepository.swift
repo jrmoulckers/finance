@@ -45,4 +45,14 @@ struct MockGoalRepository: GoalRepository {
             ),
         ]
     }
+
+    func createGoal(_ goal: GoalItem) async throws {
+        // No-op for mock — simulates a successful save.
+        try? await Task.sleep(for: .milliseconds(300))
+    }
+
+    func updateGoal(_ goal: GoalItem) async throws {
+        // No-op for mock — simulates a successful update.
+        try? await Task.sleep(for: .milliseconds(300))
+    }
 }
