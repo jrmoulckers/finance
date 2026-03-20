@@ -25,7 +25,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
@@ -39,18 +38,14 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -127,98 +122,69 @@ fun SettingsScreen(
     onTermsClick: () -> Unit = {},
     onLicensesClick: () -> Unit = {},
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        modifier = Modifier.semantics { contentDescription = "Settings screen title" },
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.semantics { contentDescription = "Navigate back" },
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            // ── Profile ──────────────────────────────────────────────────────
-            ProfileSection(
-                userName = state.userName,
-                userEmail = state.userEmail,
-                onSignOut = onSignOut,
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        // ── Profile ──────────────────────────────────────────────────────
+        ProfileSection(
+            userName = state.userName,
+            userEmail = state.userEmail,
+            onSignOut = onSignOut,
+        )
 
-            // ── Appearance ───────────────────────────────────────────────────────
-            AppearanceSection(
-                themePreference = state.themePreference,
-                onThemePreferenceChanged = onSetThemePreference,
-            )
+        // ── Appearance ───────────────────────────────────────────────────
+        AppearanceSection(
+            themePreference = state.themePreference,
+            onThemePreferenceChanged = onSetThemePreference,
+        )
 
-            // ── Preferences ──────────────────────────────────────────────────
-            PreferencesSection(
-                currency = state.defaultCurrency,
-                notificationsEnabled = state.notificationsEnabled,
-                billRemindersEnabled = state.billRemindersEnabled,
-                onCurrencyChanged = onSetCurrency,
-                onNotificationsChanged = onSetNotifications,
-                onBillRemindersChanged = onSetBillReminders,
-            )
+        // ── Preferences ──────────────────────────────────────────────────
+        PreferencesSection(
+            currency = state.defaultCurrency,
+            notificationsEnabled = state.notificationsEnabled,
+            billRemindersEnabled = state.billRemindersEnabled,
+            onCurrencyChanged = onSetCurrency,
+            onNotificationsChanged = onSetNotifications,
+            onBillRemindersChanged = onSetBillReminders,
+        )
 
-            // ── Security ─────────────────────────────────────────────────────
-            SecuritySection(
-                biometricEnabled = state.biometricEnabled,
-                biometricAvailable = state.biometricAvailable,
-                appLockTimeout = state.appLockTimeout,
-                onBiometricChanged = onSetBiometric,
-                onAppLockTimeoutChanged = onSetAppLockTimeout,
-            )
+        // ── Security ─────────────────────────────────────────────────────
+        SecuritySection(
+            biometricEnabled = state.biometricEnabled,
+            biometricAvailable = state.biometricAvailable,
+            appLockTimeout = state.appLockTimeout,
+            onBiometricChanged = onSetBiometric,
+            onAppLockTimeoutChanged = onSetAppLockTimeout,
+        )
 
-            // ── Accessibility ────────────────────────────────────────────────
-            AccessibilitySection(
-                simplifiedViewEnabled = state.simplifiedViewEnabled,
-                highContrastEnabled = state.highContrastEnabled,
-                onSimplifiedViewChanged = onSetSimplifiedView,
-                onHighContrastChanged = onSetHighContrast,
-            )
+        // ── Accessibility ────────────────────────────────────────────────
+        AccessibilitySection(
+            simplifiedViewEnabled = state.simplifiedViewEnabled,
+            highContrastEnabled = state.highContrastEnabled,
+            onSimplifiedViewChanged = onSetSimplifiedView,
+            onHighContrastChanged = onSetHighContrast,
+        )
 
-            // ── Data ─────────────────────────────────────────────────────────
-            DataSection(
-                onExportClick = onExportClick,
-                onDeleteClick = onDeleteClick,
-                isExporting = state.isExporting,
-            )
+        // ── Data ─────────────────────────────────────────────────────────
+        DataSection(
+            onExportClick = onExportClick,
+            onDeleteClick = onDeleteClick,
+            isExporting = state.isExporting,
+        )
 
-            // ── About ────────────────────────────────────────────────────────
-            AboutSection(
-                appVersion = state.appVersion,
-                onPrivacyPolicyClick = onPrivacyPolicyClick,
-                onTermsClick = onTermsClick,
-                onLicensesClick = onLicensesClick,
-            )
+        // ── About ────────────────────────────────────────────────────────
+        AboutSection(
+            appVersion = state.appVersion,
+            onPrivacyPolicyClick = onPrivacyPolicyClick,
+            onTermsClick = onTermsClick,
+            onLicensesClick = onLicensesClick,
+        )
 
-            Spacer(modifier = Modifier.height(24.dp))
-        }
+        Spacer(modifier = Modifier.height(24.dp))
     }
 
     // ── Dialogs ──────────────────────────────────────────────────────────────
