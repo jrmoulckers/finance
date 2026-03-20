@@ -14,8 +14,8 @@ struct TransactionCreateView: View {
     @State private var viewModel: TransactionCreateViewModel
 
     init(viewModel: TransactionCreateViewModel = TransactionCreateViewModel(
-        transactionRepository: MockTransactionRepository(),
-        accountRepository: MockAccountRepository()
+        transactionRepository: RepositoryProvider.shared.transactions,
+        accountRepository: RepositoryProvider.shared.accounts
     )) {
         _viewModel = State(initialValue: viewModel)
     }
