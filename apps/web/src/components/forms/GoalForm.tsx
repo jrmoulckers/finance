@@ -33,6 +33,7 @@ import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateGoalInput } from '../../db/repositories/goals';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import type { Goal, GoalStatus, SyncId } from '../../kmp/bridge';
+import { goalSchema } from '../../lib/validation';
 
 import './forms.css';
 
@@ -96,14 +97,21 @@ function validate(
   requireFutureTargetDate: boolean,
 ): FormErrors {
   const errors: FormErrors = {};
+  const result = goalSchema.safeParse({
+    name: name.trim(),
+    targetAmount: parseFloat(targetAmountStr),
+  });
 
-  if (!name.trim()) {
-    errors.name = 'Goal name is required.';
-  }
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      if (issue.path[0] === 'name') {
+        errors.name = 'Goal name is required.';
+      }
 
-  const parsedTargetAmount = parseFloat(targetAmountStr);
-  if (!targetAmountStr.trim() || Number.isNaN(parsedTargetAmount) || parsedTargetAmount <= 0) {
-    errors.targetAmount = 'Target amount must be greater than zero.';
+      if (issue.path[0] === 'targetAmount') {
+        errors.targetAmount = 'Target amount must be greater than zero.';
+      }
+    }
   }
 
   if (currentAmountStr.trim() !== '') {
