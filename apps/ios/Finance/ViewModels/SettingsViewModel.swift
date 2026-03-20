@@ -27,6 +27,13 @@ final class SettingsViewModel {
     var showingDeleteConfirmation = false
     var biometricError: BiometricError?
     var showingBiometricError = false
+    var errorMessage: String?
+
+    /// Whether a general error alert should be presented.
+    var showError: Bool { errorMessage != nil }
+
+    /// Clears the current error message, dismissing the alert.
+    func dismissError() { errorMessage = nil }
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",

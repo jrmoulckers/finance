@@ -454,3 +454,35 @@
 "Transport" = "Transport";
 "Entertainment" = "Entertainment";
 "Shopping" = "Shopping";
+
+
+/* ==========================================================================
+   Error Handling
+   ========================================================================== */
+
+"Error" = "Error";
+"Retry" = "Retry";
+"Dismiss" = "Dismiss";
+"Loading" = "Loading";
+"Failed to load dashboard. Please try again." = "Failed to load dashboard. Please try again.";
+"Failed to load accounts. Please try again." = "Failed to load accounts. Please try again.";
+"Failed to delete account. Please try again." = "Failed to delete account. Please try again.";
+"Failed to load transactions. Please try again." = "Failed to load transactions. Please try again.";
+"Failed to delete transaction. Please try again." = "Failed to delete transaction. Please try again.";
+"Failed to load budgets. Please try again." = "Failed to load budgets. Please try again.";
+"Failed to load goals. Please try again." = "Failed to load goals. Please try again.";
+"No internet connection. Please check your network and try again." = "No internet connection. Please check your network and try again.";
+
+
+/* ==========================================================================
+   VoiceOver — Enhanced Accessibility
+   ========================================================================== */
+
+"Double tap to view details" = "Double tap to view details";
+"No data available" = "No data available";
+"%lld percent of total budget used" = "%lld percent of total budget used";
+"No budget set" = "No budget set";
+"Goal has been completed. Double tap to view details." = "Goal has been completed. Double tap to view details.";
+"Goal is in progress. Double tap to view details." = "Goal is in progress. Double tap to view details.";
+"Spending trend chart showing monthly spending over time" = "Spending trend chart showing monthly spending over time";
+"Budget progress showing amount spent versus limit" = "Budget progress showing amount spent versus limit";

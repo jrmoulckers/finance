@@ -42,6 +42,8 @@ struct EmptyStateView: View {
                 .accessibilityHint(String(localized: "Creates a new item"))
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(localized: "\(title). \(message)"))
     }
 }
 
