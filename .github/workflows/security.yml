@@ -24,7 +24,7 @@ jobs:
       github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
         if: github.event_name == 'pull_request'
         with:
@@ -37,7 +37,7 @@ jobs:
               - 'gradle/**'
               - 'settings.gradle*'
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
-        uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
+        uses: github/codeql-action/init@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
           languages: java-kotlin
           queries: +security-and-quality
@@ -51,7 +51,7 @@ jobs:
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
         run: ./gradlew build -x test -x jsBrowserTest -x allTests --no-daemon
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
-        uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
+        uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
           category: '/language:java-kotlin'
 
@@ -61,11 +61,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
+      - uses: github/codeql-action/init@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
           languages: javascript-typescript
           queries: +security-and-quality
-      - uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
+      - uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
           category: '/language:javascript-typescript'
 
