@@ -69,6 +69,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
+import com.finance.android.ui.theme.ThemePreference
 import org.koin.compose.viewmodel.koinViewModel
 import java.io.File
 
@@ -79,10 +80,11 @@ import java.io.File
 /**
  * Full-featured Settings screen.
  *
- * Sections: Profile · Preferences · Security · Accessibility · Data · About.
+ * Sections: Profile · Appearance · Preferences · Security · Accessibility · Data · About.
  *
  * @param state          Current [SettingsUiState] — typically collected from [SettingsViewModel].
  * @param onNavigateBack Called when the user taps the back button in the top bar.
+ * @param onSetThemePreference      Callback when theme preference changes.
  * @param onSetCurrency            Callback when default currency changes.
  * @param onSetNotifications       Callback when notification toggle changes.
  * @param onSetBillReminders       Callback when bill-reminder toggle changes.
@@ -106,6 +108,7 @@ fun SettingsScreen(
     state: SettingsUiState,
     onNavigateBack: () -> Unit,
     onSignOut: () -> Unit,
+    onSetThemePreference: (ThemePreference) -> Unit,
     onSetCurrency: (SupportedCurrency) -> Unit,
     onSetNotifications: (Boolean) -> Unit,
     onSetBillReminders: (Boolean) -> Unit,
@@ -164,6 +167,12 @@ fun SettingsScreen(
                 userName = state.userName,
                 userEmail = state.userEmail,
                 onSignOut = onSignOut,
+            )
+
+            // ── Appearance ───────────────────────────────────────────────────────
+            AppearanceSection(
+                themePreference = state.themePreference,
+                onThemePreferenceChanged = onSetThemePreference,
             )
 
             // ── Preferences ──────────────────────────────────────────────────
@@ -251,6 +260,76 @@ private fun SectionHeader(title: String) {
     )
 }
 
+
+// ── Appearance ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun AppearanceSection(
+    themePreference: ThemePreference,
+    onThemePreferenceChanged: (ThemePreference) -> Unit,
+) {
+    SectionHeader("Appearance")
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "Appearance settings card" },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ThemePreferenceDropdown(
+                selected = themePreference,
+                onSelected = onThemePreferenceChanged,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemePreferenceDropdown(
+    selected: ThemePreference,
+    onSelected: (ThemePreference) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.semantics { contentDescription = "Theme mode selector" },
+    ) {
+        OutlinedTextField(
+            value = selected.label,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Theme") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            ThemePreference.entries.forEach { preference ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = preference.label,
+                            modifier = Modifier.semantics {
+                                contentDescription = "Select ${preference.label} theme"
+                            },
+                        )
+                    },
+                    onClick = {
+                        onSelected(preference)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
 // ── Profile ──────────────────────────────────────────────────────────────────
 
 @Composable
@@ -898,6 +977,7 @@ fun SettingsScreen(
         state = state,
         onNavigateBack = onNavigateBack,
         onSignOut = viewModel::signOut,
+        onSetThemePreference = viewModel::setThemePreference,
         onSetCurrency = viewModel::setDefaultCurrency,
         onSetNotifications = viewModel::setNotificationsEnabled,
         onSetBillReminders = viewModel::setBillRemindersEnabled,
@@ -973,6 +1053,7 @@ private fun SettingsScreenPreviewLight() {
                 state = previewState(),
                 onNavigateBack = {},
                 onSignOut = {},
+                onSetThemePreference = {},
                 onSetCurrency = {},
                 onSetNotifications = {},
                 onSetBillReminders = {},
@@ -1008,6 +1089,7 @@ private fun SettingsScreenPreviewDark() {
                 state = previewState(),
                 onNavigateBack = {},
                 onSignOut = {},
+                onSetThemePreference = {},
                 onSetCurrency = {},
                 onSetNotifications = {},
                 onSetBillReminders = {},
@@ -1056,6 +1138,7 @@ private fun DeleteDialogPreview() {
 private fun previewState() = SettingsUiState(
     userName = "Alex Johnson",
     userEmail = "alex@example.com",
+    themePreference = ThemePreference.SYSTEM,
     defaultCurrency = SupportedCurrency.USD,
     notificationsEnabled = true,
     billRemindersEnabled = false,

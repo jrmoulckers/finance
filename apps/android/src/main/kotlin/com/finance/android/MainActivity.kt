@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -43,6 +44,9 @@ import com.finance.android.ui.navigation.FinanceNavHost
 import com.finance.android.ui.navigation.FinanceTopBar
 import com.finance.android.ui.navigation.Route
 import com.finance.android.ui.theme.FinanceTheme
+import com.finance.android.ui.theme.ThemePreference
+import com.finance.android.ui.theme.ThemePreferenceManager
+import org.koin.android.ext.android.inject
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -54,11 +58,20 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 class MainActivity : ComponentActivity() {
 
+    private val themePreferenceManager: ThemePreferenceManager by inject()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            FinanceTheme {
+            val themePreference by themePreferenceManager.themePreference.collectAsState()
+            val darkTheme = when (themePreference) {
+                ThemePreference.LIGHT -> false
+                ThemePreference.DARK -> true
+                ThemePreference.SYSTEM -> isSystemInDarkTheme()
+            }
+
+            FinanceTheme(darkTheme = darkTheme) {
                 FinanceApp()
             }
         }
