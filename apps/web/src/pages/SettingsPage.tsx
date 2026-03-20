@@ -5,11 +5,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth/auth-context';
 import { DataExport } from '../components/DataExport';
 import { useOfflineStatus } from '../hooks/useOfflineStatus';
+import { initMonitoring } from '../lib/monitoring';
 
 const APP_VERSION = '0.1.0';
 const THEME_STORAGE_KEY = 'finance-theme';
 const CURRENCY_STORAGE_KEY = 'finance-currency';
 const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
+const MONITORING_CONSENT_STORAGE_KEY = 'finance-monitoring-consent';
 
 type ThemePreference = 'light' | 'dark' | 'system';
 type CurrencyPreference = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
@@ -64,6 +66,9 @@ export const SettingsPage: React.FC = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     () => localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) !== 'false',
   );
+  const [monitoringEnabled, setMonitoringEnabled] = useState(
+    () => localStorage.getItem(MONITORING_CONSENT_STORAGE_KEY) === 'true',
+  );
 
   const { isAuthenticated, isLoading, logout, user } = useAuth();
   const { isOffline } = useOfflineStatus();
@@ -84,6 +89,16 @@ export const SettingsPage: React.FC = () => {
     const nextNotificationsEnabled = event.target.checked;
     localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, String(nextNotificationsEnabled));
     setNotificationsEnabled(nextNotificationsEnabled);
+  }, []);
+
+  const handleMonitoringChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextMonitoringEnabled = event.target.checked;
+    localStorage.setItem(MONITORING_CONSENT_STORAGE_KEY, String(nextMonitoringEnabled));
+    setMonitoringEnabled(nextMonitoringEnabled);
+
+    if (nextMonitoringEnabled) {
+      initMonitoring();
+    }
   }, []);
 
   const handleComingSoon = useCallback((message: string) => {
@@ -190,6 +205,19 @@ export const SettingsPage: React.FC = () => {
               checked={notificationsEnabled}
               onChange={handleNotificationsChange}
               aria-label="Notifications"
+              className="settings-item__checkbox"
+            />
+          </div>
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="s-monitoring">
+              Error Reporting
+            </label>
+            <input
+              type="checkbox"
+              id="s-monitoring"
+              checked={monitoringEnabled}
+              onChange={handleMonitoringChange}
+              aria-label="Send anonymous error reports to help improve the app"
               className="settings-item__checkbox"
             />
           </div>
