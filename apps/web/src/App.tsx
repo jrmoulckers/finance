@@ -16,8 +16,15 @@ const PAGE_TITLES: Record<string, string> = {
   '/settings': 'Settings',
 };
 
-/** Routes that should render WITHOUT AppLayout (pre-auth pages). */
-const STANDALONE_ROUTES = ['/login', '/signup'];
+/** Routes that are wrapped in AppLayout (authenticated main app pages). */
+const AUTHENTICATED_ROUTES = new Set([
+  '/dashboard',
+  '/accounts',
+  '/transactions',
+  '/budgets',
+  '/goals',
+  '/settings',
+]);
 
 /**
  * Root application component.
@@ -32,14 +39,11 @@ export const App: FC = () => {
   const location = useLocation();
   const activePath = location.pathname === '/' ? '/' : location.pathname;
   const pageTitle = PAGE_TITLES[activePath] ?? 'Finance';
-  const isStandalonePage = STANDALONE_ROUTES.includes(activePath);
+  const isStandalonePage = !AUTHENTICATED_ROUTES.has(activePath);
 
-  if (isStandalonePage) {
-    // Render pre-auth pages without AppLayout
-    return <AppRoutes />;
-  }
-
-  return (
+  return isStandalonePage ? (
+    <AppRoutes />
+  ) : (
     <AppLayout activePath={activePath} onNavigate={(path) => navigate(path)} pageTitle={pageTitle}>
       <AppRoutes />
     </AppLayout>
