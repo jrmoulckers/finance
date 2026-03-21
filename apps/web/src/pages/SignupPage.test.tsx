@@ -77,4 +77,20 @@ describe('SignupPage', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Passwords do not match');
   });
+
+  it('shows an availability message after valid submission when signup is unavailable', async () => {
+    renderSignupPage();
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'alex@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText('Confirm Password'), {
+      target: { value: 'password123' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+
+    expect(
+      await screen.findByText('Account creation is not yet available. Please check back soon.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign up' })).toBeEnabled();
+  });
 });

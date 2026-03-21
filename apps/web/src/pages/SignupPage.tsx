@@ -41,7 +41,7 @@ type SignupCapableAuth = AuthContextValue & {
  * Standalone signup page for the web app.
  *
  * The current auth context does not expose a registration action, so the page
- * validates the form and shows a friendly "coming soon" message until signup
+ * validates the form and shows a friendly availability message until signup
  * support is wired into the backend and auth context.
  */
 export const SignupPage: React.FC = () => {
@@ -120,22 +120,21 @@ export const SignupPage: React.FC = () => {
         return;
       }
 
+      if (!signupAction) {
+        setSubmitMessage({
+          type: 'info',
+          text: 'Account creation is not yet available. Please check back soon.',
+        });
+        return;
+      }
+
       setIsSubmitting(true);
 
       try {
-        if (signupAction) {
-          await signupAction(email.trim(), password);
-          setSubmitMessage({
-            type: 'info',
-            text: 'Account created. You can now sign in.',
-          });
-          return;
-        }
-
-        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        await signupAction(email.trim(), password);
         setSubmitMessage({
           type: 'info',
-          text: 'Registration coming soon. Please check back later.',
+          text: 'Account created. You can now sign in.',
         });
       } catch (error) {
         setSubmitMessage({
