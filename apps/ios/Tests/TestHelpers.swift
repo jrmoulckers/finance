@@ -52,6 +52,7 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
     var errorToThrow: Error?
     private(set) var deletedTransactionIds: [String] = []
     private(set) var createdTransactions: [TransactionItem] = []
+    private(set) var updatedTransactions: [TransactionItem] = []
 
     func getTransactions() async throws -> [TransactionItem] {
         if let error = errorToThrow { throw error }
@@ -73,6 +74,11 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
         createdTransactions.append(transaction)
     }
 
+    func updateTransaction(_ transaction: TransactionItem) async throws {
+        if let error = errorToThrow { throw error }
+        updatedTransactions.append(transaction)
+    }
+
     func deleteTransaction(id: String) async throws {
         if let error = errorToThrow { throw error }
         deletedTransactionIds.append(id)
@@ -85,10 +91,22 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
 final class StubBudgetRepository: BudgetRepository, @unchecked Sendable {
     var budgetsToReturn: [BudgetItem] = []
     var errorToThrow: Error?
+    private(set) var createdBudgets: [BudgetItem] = []
+    private(set) var updatedBudgets: [BudgetItem] = []
 
     func getBudgets() async throws -> [BudgetItem] {
         if let error = errorToThrow { throw error }
         return budgetsToReturn
+    }
+
+    func createBudget(_ budget: BudgetItem) async throws {
+        if let error = errorToThrow { throw error }
+        createdBudgets.append(budget)
+    }
+
+    func updateBudget(_ budget: BudgetItem) async throws {
+        if let error = errorToThrow { throw error }
+        updatedBudgets.append(budget)
     }
 }
 
@@ -98,10 +116,22 @@ final class StubBudgetRepository: BudgetRepository, @unchecked Sendable {
 final class StubGoalRepository: GoalRepository, @unchecked Sendable {
     var goalsToReturn: [GoalItem] = []
     var errorToThrow: Error?
+    private(set) var createdGoals: [GoalItem] = []
+    private(set) var updatedGoals: [GoalItem] = []
 
     func getGoals() async throws -> [GoalItem] {
         if let error = errorToThrow { throw error }
         return goalsToReturn
+    }
+
+    func createGoal(_ goal: GoalItem) async throws {
+        if let error = errorToThrow { throw error }
+        createdGoals.append(goal)
+    }
+
+    func updateGoal(_ goal: GoalItem) async throws {
+        if let error = errorToThrow { throw error }
+        updatedGoals.append(goal)
     }
 }
 

@@ -50,7 +50,32 @@ struct TransactionsView: View {
                     .accessibilityHint(String(localized: "Opens a form to create a new transaction"))
                 }
             }
-            .sheet(isPresented: $viewModel.showingCreateTransaction) { TransactionCreateView() }
+            .sheet(isPresented: $viewModel.showingCreateTransaction, onDismiss: {
+                Task { await viewModel.loadTransactions() }
+            }) {
+                TransactionCreateView()
+            }
+            .sheet(item: $viewModel.editingTransaction, onDismiss: {
+                Task { await viewModel.loadTransactions() }
+            }) { transaction in
+                TransactionCreateView(viewModel: TransactionCreateViewModel(
+                    transactionRepository: MockTransactionRepository(),
+                    accountRepository: MockAccountRepository(),
+                    transaction: transaction
+                ))
+            }
+            .alert(String(localized: "Delete Transaction"), isPresented: $viewModel.showingDeleteConfirmation) {
+                Button(String(localized: "Cancel"), role: .cancel) {
+                    viewModel.pendingDeleteId = nil
+                }
+                Button(String(localized: "Delete"), role: .destructive) {
+                    if let id = viewModel.pendingDeleteId {
+                        Task { await viewModel.deleteTransaction(id: id) }
+                    }
+                }
+            } message: {
+                Text(String(localized: "Are you sure you want to delete this transaction? This action cannot be undone."))
+            }
             .refreshable { await viewModel.loadTransactions() }
             .task { await viewModel.loadTransactions() }
             .alert(String(localized: "Error"), isPresented: Binding(
@@ -71,9 +96,11 @@ struct TransactionsView: View {
                 Section {
                     ForEach(group.transactions) { transaction in
                         transactionRow(transaction)
+                            .contentShape(Rectangle())
+                            .onTapGesture { viewModel.editingTransaction = transaction }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    Task { await viewModel.deleteTransaction(id: transaction.id) }
+                                    viewModel.confirmDelete(id: transaction.id)
                                 } label: {
                                     Label(String(localized: "Delete"), systemImage: "trash")
                                 }
@@ -81,7 +108,7 @@ struct TransactionsView: View {
                             }
                             .swipeActions(edge: .leading, allowsFullSwipe: false) {
                                 Button {
-                                    // TODO: Navigate to edit flow
+                                    viewModel.editingTransaction = transaction
                                 } label: {
                                     Label(String(localized: "Edit"), systemImage: "pencil")
                                 }
@@ -126,7 +153,7 @@ struct TransactionsView: View {
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(transaction.payee), \(transaction.category), \(transaction.accountName)")
-        .accessibilityHint(String(localized: "Swipe for edit and delete actions"))
+        .accessibilityHint(String(localized: "Tap to edit. Swipe for more actions."))
     }
 }
 

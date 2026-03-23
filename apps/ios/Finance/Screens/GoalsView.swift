@@ -49,7 +49,21 @@ struct GoalsView: View {
                     .accessibilityHint(String(localized: "Opens a form to create a new financial goal"))
                 }
             }
-            .sheet(isPresented: $viewModel.showingCreateGoal) { createGoalPlaceholder }
+            .sheet(isPresented: $viewModel.showingCreateGoal, onDismiss: {
+                Task { await viewModel.loadGoals() }
+            }) {
+                GoalCreateView(viewModel: GoalCreateViewModel(
+                    repository: viewModel.repository
+                ))
+            }
+            .sheet(item: $viewModel.editingGoal, onDismiss: {
+                Task { await viewModel.loadGoals() }
+            }) { goal in
+                GoalCreateView(viewModel: GoalCreateViewModel(
+                    repository: viewModel.repository,
+                    goal: goal
+                ))
+            }
             .refreshable { await viewModel.loadGoals() }
             .task { await viewModel.loadGoals() }
             .alert(String(localized: "Error"), isPresented: Binding(
@@ -135,10 +149,12 @@ struct GoalsView: View {
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .onTapGesture { viewModel.editingGoal = goal }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(goal.name)
         .accessibilityValue(String(localized: "\(Int(goal.progress * 100)) percent complete, \(goal.status.displayName)"))
-        .accessibilityHint(goal.isComplete ? String(localized: "Goal has been completed. Double tap to view details.") : String(localized: "Goal is in progress. Double tap to view details."))
+        .accessibilityHint(goal.isComplete ? String(localized: "Goal has been completed. Double tap to edit.") : String(localized: "Goal is in progress. Double tap to edit."))
     }
 
     private var createGoalPlaceholder: some View {
