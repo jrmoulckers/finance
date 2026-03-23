@@ -48,7 +48,8 @@ struct TransactionsView: View {
                     Button { viewModel.showingCreateTransaction = true } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel(String(localized: "Add transaction"))
+                    .accessibilityIdentifier("add_transaction_button")
+                        .accessibilityLabel(String(localized: "Add transaction"))
                     .accessibilityHint(String(localized: "Opens a form to create a new transaction"))
                 }
             }
