@@ -1,7 +1,7 @@
 # System Architecture Roadmap — Finance
 
-> **Status:** All 8 development phases COMPLETE — pre-launch (v0.1.0)
-> **Last Updated:** 2026-03-11
+> **Status:** Phases 0-8 complete — Stages 9-12 in planning (post-launch)
+> **Last Updated:** 2026-03-23
 > **Purpose:** Source-of-truth for issue creation and development planning
 
 ---
@@ -472,6 +472,87 @@ Implement the Windows desktop app.
 - Implement Windows notification integration — toast notifications for budget alerts, bill reminders
 - Set up MSIX packaging for Microsoft Store distribution
 - Set up Windows CI workflow — build + test on windows-latest runners
+
+---
+
+## Post-Launch Stages
+
+> **Status:** Planning — these stages execute after v0.1.0 ships
+> **Milestone mapping:** Stage 8 → v0.1-beta, Stages 9-12 → v1.0 / post-launch
+
+### Stage 8: Polish & Beta Release ✅
+
+Harden, document, and ship v0.1-beta to testers.
+
+- Fix Prettier formatting and lint-staged configuration across the repository
+- Commit and PR all uncommitted security audit and compliance documents
+- Activate iOS CI pipeline — remove gating, validate Swift builds
+- Enable Playwright E2E tests in web CI workflow
+- Triage open issue backlog — validate milestones, labels, and duplicates
+- Set up docker-compose for local Supabase development and testing
+- Configure Gradle build scans (Develocity) for build performance visibility
+- Fix health-check Edge Function CORS import (getCorsHeaders migration)
+
+### Stage 9: UX Polish & Delight
+
+Elevate the user experience with animations, accessibility, and interaction refinements.
+
+- Implement celebratory animations library — confetti for goals met, smooth transitions (#313)
+- Achieve sub-100ms microinteraction feedback on all tap/click targets (#314)
+- Build customizable dashboard widgets — users arrange their own overview (#315)
+- Implement spending watchlists with proactive alerts (#316)
+- Create cognitive accessibility mode — simplified layouts, larger text, reduced choices (#317)
+- Add bulk transaction editing — multi-select, batch categorize/delete (#318)
+- Implement quick-entry transaction mode — 3-tap entry from any screen (#319)
+- Add contextual financial tips — non-intrusive education based on user actions (#320)
+- Create responsive breakpoint system for adaptive layouts (#309)
+
+**Acceptance criteria:** All interactions < 100ms response. WCAG 2.2 AA passes on all platforms. Dashboard customization persists across sessions.
+
+### Stage 10: AI & Intelligence
+
+Add on-device intelligence for categorization, predictions, and recommendations.
+
+- Implement on-device AI auto-categorization using transaction patterns (#321)
+- Add natural language transaction input — "spent $12 at Starbucks" (#322)
+- Build anomaly detection for unusual transactions (#323)
+- Implement predictive end-of-month balance based on spending patterns (#324)
+- Add smart subscription detection from recurring transaction analysis (#325)
+- Generate personalized savings suggestions from spending data (#326)
+- Create AI budget recommendations based on income and goals (#327)
+- Implement spending forecast with confidence intervals (#328)
+
+**Acceptance criteria:** Auto-categorization > 85% accuracy on user's own data. All AI runs on-device (no financial data sent to cloud). Predictions include confidence intervals. Users can correct/override all AI decisions.
+
+### Stage 11: Security Hardening
+
+Production-grade security for a financial application.
+
+- Implement certificate pinning on all platforms (#329)
+- Add runtime application self-protection (RASP) (#330)
+- Set up device attestation and integrity verification (#331)
+- Implement rate limiting on all Edge Functions (#332)
+- Add liveness detection for biometric authentication (#333)
+- Implement session binding and device fingerprinting (#334)
+- Configure automated penetration testing in CI (#335)
+- Launch bug bounty program with SECURITY.md disclosure policy (#336)
+
+**Acceptance criteria:** All OWASP MASVS L2 controls pass. Rate limits enforced on every Edge Function. Pen test runs on every release candidate. SECURITY.md published with responsible disclosure process.
+
+### Stage 12: Monetization & Growth
+
+Sustainable revenue model with privacy-preserving premium features.
+
+- Implement freemium tier feature gating — core features free forever (#337)
+- Build premium subscription IAP across all platforms (#338)
+- Create family/household premium plan with shared budgets (#339)
+- Develop privacy-as-premium marketing positioning (#340)
+- Add optional tip jar for development support (#341)
+- Implement referral program with privacy-safe tracking (#342)
+- Create enterprise/team expense tracking plan (#343)
+- Add annual subscription discount option (#344)
+
+**Acceptance criteria:** Free tier fully functional offline with no artificial limits. Premium features enhance (not gate) core experience. IAP works on iOS, Android, and web. Enterprise plan supports SSO and admin dashboard.
 - Configure MS Store Submission API for automated flight ring uploads
 
 ### Phase 7: Advanced Features ✅
