@@ -11,6 +11,8 @@
     "lint": "eslint src/ --ext .ts,.tsx",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "clean": "rimraf dist",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
@@ -25,6 +27,7 @@
     "wa-sqlite": "^1.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@storybook/addon-a11y": "^10.2.19",
     "@storybook/react": "^10.2.19",
     "@storybook/react-vite": "^10.2.19",
