@@ -18,6 +18,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.finance.android.ui.accessibility.highContrastColorScheme
 
 /**
  * Finance Material 3 color schemes.
@@ -147,16 +148,19 @@ val FinanceTypography = Typography(
  * composition local accessible via [FinanceTheme.spacing].
  *
  * @param darkTheme Whether to use the dark color scheme.
+ * @param highContrast Whether to use WCAG AAA high-contrast color schemes.
  * @param dynamicColor Whether to use Android 12+ dynamic colors (Material You).
  * @param content The composable content to theme.
  */
 @Composable
 fun FinanceTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    highContrast: Boolean = false,
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
+        highContrast -> highContrastColorScheme(darkTheme)
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
