@@ -2,6 +2,15 @@
 // KMPTypeAdapters.swift — Bidirectional type conversion between KMP and Swift UI models.
 import Foundation
 
+
+enum KMPDateConversion {
+    static func dateFromEpochMs(_ epochMs: Int64) -> Date { Date(timeIntervalSince1970: TimeInterval(epochMs) / 1_000.0) }
+    static func epochMsFromDate(_ date: Date) -> Int64 { Int64(date.timeIntervalSince1970 * 1_000.0) }
+    static func dateComponents(year: Int, month: Int, day: Int) -> DateComponents { DateComponents(year: year, month: month, day: day) }
+    static func dateFromComponents(_ dc: DateComponents) -> Date { Calendar.current.date(from: dc) ?? .now }
+    static func componentsFromDate(_ date: Date) -> DateComponents { Calendar.current.dateComponents([.year, .month, .day], from: date) }
+}
+
 extension TransactionItem {
     static func fromKMP(_ k: KMPTransaction, accountName: String, categoryName: String) -> TransactionItem {
         TransactionItem(id: k.id, payee: k.payee ?? "", category: categoryName, accountName: accountName,
