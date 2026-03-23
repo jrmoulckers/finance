@@ -31,6 +31,12 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from '../_shared/rate-limit.ts';
 import { methodNotAllowedResponse, streamingResponse } from '../_shared/response.ts';
 
 // ---------------------------------------------------------------------------
@@ -40,10 +46,6 @@ import { methodNotAllowedResponse, streamingResponse } from '../_shared/response
 /** Valid export formats. */
 const VALID_FORMATS = ['json', 'csv'] as const;
 type ExportFormat = (typeof VALID_FORMATS)[number];
-
-/** Rate limit: max exports per user within the time window. */
-const RATE_LIMIT_MAX = 10;
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 /** Maximum allowed Content-Length for the request (GET has no body). */
 const MAX_CONTENT_LENGTH = 1024; // 1 KB
@@ -148,18 +150,6 @@ function recordsToCsv(records: Record<string, unknown>[]): string {
   return lines.join('\n');
 }
 
-/**
- * Extract the client IP address from request headers (best-effort).
- * Returns null if not available.
- */
-function getClientIp(req: Request): string | null {
-  const forwarded = req.headers.get('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim() || null;
-  }
-  return req.headers.get('x-real-ip') || null;
-}
-
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
@@ -222,25 +212,12 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     // ------------------------------------------------------------------
-    // Rate limiting: max RATE_LIMIT_MAX exports per hour
+    // Rate limiting (#614): max 10 exports per user per hour
     // ------------------------------------------------------------------
-    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
-    const { count: recentExportCount, error: rateLimitError } = await supabase
-      .from('data_export_audit_log')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .gte('created_at', windowStart);
-
-    if (rateLimitError) {
-      // Log but don't block the request if rate-limit check fails
-      logger.error('Rate limit query failed', { errorMessage: rateLimitError.message });
-    } else if ((recentExportCount ?? 0) >= RATE_LIMIT_MAX) {
-      return exportErrorResponse(
-        req,
-        'RATE_LIMITED',
-        `Export limit exceeded. Maximum ${RATE_LIMIT_MAX} exports per hour.`,
-        429,
-      );
+    const rateLimitResult = await checkRateLimit(supabase, user.id, RATE_LIMITS['data-export']);
+    if (!rateLimitResult.allowed) {
+      logger.warn('Rate limit exceeded', { httpStatus: 429 });
+      return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['data-export']);
     }
 
     // ------------------------------------------------------------------
