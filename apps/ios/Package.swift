@@ -19,6 +19,7 @@ let package = Package(
     products: [
         .library(name: "FinanceApp", targets: ["FinanceApp"]),
         .library(name: "FinanceWatch", targets: ["FinanceWatch"]),
+        .library(name: "FinanceWidget", targets: ["FinanceWidget"]),
     ],
     targets: [
         .target(
@@ -30,6 +31,11 @@ let package = Package(
                 "Resources",
                 "FinanceApp.swift",
             ]
+        ),
+        .target(
+            name: "FinanceWidget",
+            dependencies: [],
+            path: "FinanceWidget"
         ),
         .target(
             name: "FinanceWatch",
