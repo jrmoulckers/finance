@@ -8,7 +8,7 @@ platform :ios do
 
   desc "Run tests"
   lane :test do
-    run_tests(scheme: "Finance", device: "iPhone 16")
+    run_tests(scheme: "Finance", device: "iPhone 16", code_coverage: true)
   end
 
   desc "Deploy to TestFlight"
