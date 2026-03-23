@@ -13,5 +13,7 @@ export { useServiceWorkerUpdate } from './useServiceWorkerUpdate';
 export type { UseServiceWorkerUpdateResult } from './useServiceWorkerUpdate';
 export { useSyncStatus } from './useSyncStatus';
 export type { UseSyncStatusResult } from './useSyncStatus';
+export { useInstallPrompt } from './useInstallPrompt';
+export type { UseInstallPromptResult } from './useInstallPrompt';
 export { useTransactions } from './useTransactions';
 export type { TransactionFilters } from './useTransactions';
