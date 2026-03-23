@@ -17,6 +17,9 @@ struct FinanceApp: App {
     @State private var deepLinkHandler = DeepLinkHandler()
     @State private var networkMonitor = NetworkMonitor()
     @State private var isLocked = true
+    @State private var showOnboarding = !UserDefaults.standard.bool(
+        forKey: OnboardingView.hasCompletedOnboardingKey
+    )
     @Environment(\.scenePhase) private var scenePhase
 
     private static let logger = Logger(
@@ -32,19 +35,26 @@ struct FinanceApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                ContentView(
-                    deepLinkHandler: deepLinkHandler,
-                    networkMonitor: networkMonitor
-                )
-                .environment(biometricManager)
-                .accessibilityHidden(biometricLockEnabled && isLocked)
-
-                if biometricLockEnabled && isLocked {
-                    LockScreenView(
-                        biometricManager: biometricManager,
-                        onUnlock: { isLocked = false }
-                    )
+                if showOnboarding {
+                    OnboardingView(onComplete: {
+                        showOnboarding = false
+                    })
                     .transition(.opacity)
+                } else {
+                    ContentView(
+                        deepLinkHandler: deepLinkHandler,
+                        networkMonitor: networkMonitor
+                    )
+                    .environment(biometricManager)
+                    .accessibilityHidden(biometricLockEnabled && isLocked)
+
+                    if biometricLockEnabled && isLocked {
+                        LockScreenView(
+                            biometricManager: biometricManager,
+                            onUnlock: { isLocked = false }
+                        )
+                        .transition(.opacity)
+                    }
                 }
             }
             .onOpenURL { url in
