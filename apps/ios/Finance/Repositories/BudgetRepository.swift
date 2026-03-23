@@ -23,4 +23,7 @@ protocol BudgetRepository: Sendable {
 
     /// Updates an existing budget.
     func updateBudget(_ budget: BudgetItem) async throws
+
+    /// Permanently deletes all budgets.
+    func deleteAllBudgets() async throws
 }
