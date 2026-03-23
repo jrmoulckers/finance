@@ -25,7 +25,6 @@ const MIN_PASSWORD_LENGTH = 8;
 /** Duration (ms) before auto-redirecting to /login after successful signup. */
 const REDIRECT_DELAY_MS = 2000;
 
-
 interface SignupFieldErrors {
   email?: string;
   password?: string;
