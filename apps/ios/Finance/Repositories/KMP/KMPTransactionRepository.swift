@@ -58,6 +58,11 @@ struct KMPTransactionRepository: TransactionRepository {
         #endif
     }
 
+
+    func getTransactions(offset: Int, limit: Int) async throws -> [TransactionItem] {
+        return try await fallbackRepository.getTransactions(offset: offset, limit: limit)
+    }
+
     func getTransactions(forAccountId accountId: String) async throws -> [TransactionItem] {
         #if canImport(FinanceCore)
         // TODO: Bridge to KMP shared logic
@@ -107,6 +112,11 @@ struct KMPTransactionRepository: TransactionRepository {
         #else
         Self.logger.debug("FinanceCore not available — delete is a no-op")
         #endif
+    }
+
+
+    func updateTransaction(_ transaction: TransactionItem) async throws {
+        try await fallbackRepository.updateTransaction(transaction)
     }
 
     // MARK: - Fallback

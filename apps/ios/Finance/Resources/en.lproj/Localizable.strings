@@ -486,3 +486,25 @@
 "Goal is in progress. Double tap to view details." = "Goal is in progress. Double tap to view details.";
 "Spending trend chart showing monthly spending over time" = "Spending trend chart showing monthly spending over time";
 "Budget progress showing amount spent versus limit" = "Budget progress showing amount spent versus limit";
+
+
+/* Transaction Detail (#647) */
+"Transaction Details" = "Transaction Details";
+"Time" = "Time";
+"Notes" = "Notes";
+"Receipt" = "Receipt";
+"Recurring" = "Recurring";
+"Recurring transaction" = "Recurring transaction";
+"Loading more transactions" = "Loading more transactions";
+"Tap to view details. Swipe for more actions." = "Tap to view details. Swipe for more actions.";
+"Edit Transaction" = "Edit Transaction";
+"Delete Transaction" = "Delete Transaction";
+"Permanently deletes this transaction" = "Permanently deletes this transaction";
+"Opens a form to edit this transaction" = "Opens a form to edit this transaction";
+"Attach Receipt Photo" = "Attach Receipt Photo";
+"Receipt photo" = "Receipt photo";
+"Remove Receipt" = "Remove Receipt";
+"Save notes" = "Save notes";
+"Edit notes" = "Edit notes";
+"Add a note" = "Add a note";
+"Transaction notes" = "Transaction notes";
