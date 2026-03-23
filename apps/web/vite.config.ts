@@ -28,8 +28,14 @@ export default defineConfig({
           chunkInfo.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+        manualChunks(id) {
+          if (
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/react-router-dom') ||
+            id.includes('node_modules/react/')
+          ) {
+            return 'vendor';
+          }
         },
       },
     },
