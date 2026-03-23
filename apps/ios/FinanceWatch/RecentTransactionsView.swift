@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-// RecentTransactionsView.swift - Recent transactions. Refs #30, #649
+// RecentTransactionsView.swift - Recent transactions list. Refs #30, #649
 import SwiftUI
 struct RecentTransactionsView: View {
     let manager: WatchConnectivityManager
@@ -34,9 +34,9 @@ struct RecentTransactionsView: View {
     private func formattedAmount(_ tx: WatchTransaction) -> String {
         let f = NumberFormatter(); f.numberStyle = .currency; f.currencyCode = manager.currencyCode; f.maximumFractionDigits = 2
         let signed = tx.isExpense ? -abs(tx.amountMinorUnits) : abs(tx.amountMinorUnits)
-        return f.string(from: NSNumber(value: Double(signed) / 100.0)) ?? "\(manager.currencyCode) \(Double(signed)/100.0)"
+        let v = Double(signed) / 100.0
+        return f.string(from: NSNumber(value: v)) ?? "\(manager.currencyCode) \(v)"
     }
     private func formattedDate(_ date: Date) -> String { date.formatted(.relative(presentation: .named)) }
 }
 #Preview("Recent Transactions") { let m = WatchConnectivityManager(); RecentTransactionsView(manager: m) }
-
