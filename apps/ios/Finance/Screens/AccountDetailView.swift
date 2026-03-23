@@ -25,7 +25,7 @@ struct AccountDetailView: View {
 
     init(
         account: AccountItem,
-        viewModel: AccountDetailViewModel = AccountDetailViewModel(repository: MockTransactionRepository())
+        viewModel: AccountDetailViewModel = AccountDetailViewModel(repository: KMPTransactionRepository())
     ) {
         self.account = account
         _viewModel = State(initialValue: viewModel)

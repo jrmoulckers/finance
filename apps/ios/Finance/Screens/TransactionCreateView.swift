@@ -14,8 +14,8 @@ struct TransactionCreateView: View {
     @State private var viewModel: TransactionCreateViewModel
 
     init(viewModel: TransactionCreateViewModel = TransactionCreateViewModel(
-        transactionRepository: MockTransactionRepository(),
-        accountRepository: MockAccountRepository()
+        transactionRepository: KMPTransactionRepository(),
+        accountRepository: KMPAccountRepository()
     )) {
         _viewModel = State(initialValue: viewModel)
     }

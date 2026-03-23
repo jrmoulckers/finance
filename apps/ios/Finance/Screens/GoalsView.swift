@@ -12,7 +12,7 @@ import SwiftUI
 struct GoalsView: View {
     @State private var viewModel: GoalsViewModel
 
-    init(viewModel: GoalsViewModel = GoalsViewModel(repository: MockGoalRepository())) {
+    init(viewModel: GoalsViewModel = GoalsViewModel(repository: KMPGoalRepository())) {
         _viewModel = State(initialValue: viewModel)
     }
 
