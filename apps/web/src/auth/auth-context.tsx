@@ -72,6 +72,8 @@ export interface AuthActions {
   logout: () => Promise<void>;
   /** Manually trigger a token refresh. */
   refresh: () => Promise<void>;
+  /** Create a new account with email and password. */
+  signupWithEmail: (email: string, password: string) => Promise<void>;
 }
 
 /** The shape of the auth context value. */
@@ -100,6 +102,8 @@ export interface AuthProviderConfig {
   refreshEndpoint: string;
   /** Backend endpoint for logout. */
   logoutEndpoint: string;
+  /** Backend endpoint for account registration. Defaults to '/api/auth/signup'. */
+  signupEndpoint?: string;
   /** Callback when the user should be redirected to login. */
   onUnauthenticated?: () => void;
 }
@@ -350,6 +354,36 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     }
   }, [config]);
 
+  const signupWithEmail = useCallback(
+    async (email: string, password: string): Promise<void> => {
+      setError(null);
+      setIsLoading(true);
+
+      try {
+        const endpoint = config.signupEndpoint ?? '/api/auth/signup';
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(body.error ?? 'Signup failed');
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+        setError(message);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [config.signupEndpoint],
+  );
+
   // -----------------------------------------------------------------------
   // Context Value (memoised to prevent unnecessary re-renders)
   // -----------------------------------------------------------------------
@@ -366,6 +400,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       registerNewPasskey,
       logout,
       refresh,
+      signupWithEmail,
     }),
     [
       isAuthenticated,
@@ -378,6 +413,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       registerNewPasskey,
       logout,
       refresh,
+      signupWithEmail,
     ],
   );
 

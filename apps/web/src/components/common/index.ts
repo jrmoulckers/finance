@@ -8,6 +8,7 @@ export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 export { ErrorBanner } from './ErrorBanner';
 export type { ErrorBannerProps } from './ErrorBanner';
+export { ErrorBoundary } from './ErrorBoundary';
 export { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 export type { KeyboardShortcutsModalProps } from './KeyboardShortcutsModal';
 export { LoadingSpinner } from './LoadingSpinner';
