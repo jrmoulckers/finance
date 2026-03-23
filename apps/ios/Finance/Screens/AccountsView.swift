@@ -12,7 +12,9 @@ import SwiftUI
 struct AccountsView: View {
     @State private var viewModel: AccountsViewModel
 
-    init(viewModel: AccountsViewModel = AccountsViewModel(repository: KMPAccountRepository())) {
+    init(viewModel: AccountsViewModel = AccountsViewModel(
+        repository: RepositoryProvider.shared.accounts
+    )) {
         _viewModel = State(initialValue: viewModel)
     }
 
@@ -127,4 +129,7 @@ struct AccountsView: View {
     }
 }
 
-#Preview { AccountsView(viewModel: AccountsViewModel(repository: MockAccountRepository())) }
+#Preview {
+    AccountsView(viewModel: AccountsViewModel(repository: MockAccountRepository()))
+        .environment(BiometricAuthManager())
+}

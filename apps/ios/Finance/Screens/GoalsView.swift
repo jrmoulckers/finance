@@ -12,7 +12,9 @@ import SwiftUI
 struct GoalsView: View {
     @State private var viewModel: GoalsViewModel
 
-    init(viewModel: GoalsViewModel = GoalsViewModel(repository: KMPGoalRepository())) {
+    init(viewModel: GoalsViewModel = GoalsViewModel(
+        repository: RepositoryProvider.shared.goals
+    )) {
         _viewModel = State(initialValue: viewModel)
     }
 
@@ -178,4 +180,7 @@ struct GoalsView: View {
     }
 }
 
-#Preview { GoalsView(viewModel: GoalsViewModel(repository: MockGoalRepository())) }
+#Preview {
+    GoalsView(viewModel: GoalsViewModel(repository: MockGoalRepository()))
+        .environment(BiometricAuthManager())
+}
