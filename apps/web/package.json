@@ -45,8 +45,8 @@
     "nanoid": "^5.1.7",
     "source-map-js": "^1.2.1",
     "storybook": "^10.2.19",
-    "typescript": "^5.8.3",
-    "vite": "^8.0.1",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.2",
     "vitest": "^4.1.0"
   }
 }
