@@ -8,16 +8,30 @@
 
 import Observation
 import Foundation
+import os
 
 @Observable
 @MainActor
 final class BudgetsViewModel {
-    private let repository: BudgetRepository
+    let repository: BudgetRepository
+
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "BudgetsViewModel"
+    )
 
     var budgets: [BudgetItem] = []
     var isLoading = false
     var selectedMonth = Date()
     var showingCreateBudget = false
+    var editingBudget: BudgetItem?
+    var errorMessage: String?
+
+    /// Whether an error alert should be presented.
+    var showError: Bool { errorMessage != nil }
+
+    /// Clears the current error message, dismissing the alert.
+    func dismissError() { errorMessage = nil }
 
     var totalBudgeted: Int64 { budgets.reduce(0) { $0 + $1.limitMinorUnits } }
     var totalSpent: Int64 { budgets.reduce(0) { $0 + $1.spentMinorUnits } }
@@ -53,7 +67,8 @@ final class BudgetsViewModel {
         do {
             budgets = try await repository.getBudgets()
         } catch {
-            // Error handling will be enhanced with KMP-backed repository
+            errorMessage = String(localized: "Failed to load budgets. Please try again.")
+            Self.logger.error("Budgets load failed: \(error.localizedDescription, privacy: .public)")
             budgets = []
         }
     }

@@ -8,6 +8,7 @@
 // spending, budget health, and recent transactions.
 
 import Observation
+import os
 import SwiftUI
 
 @Observable
@@ -17,12 +18,23 @@ final class DashboardViewModel {
     private let transactionRepository: TransactionRepository
     private let budgetRepository: BudgetRepository
 
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "DashboardViewModel"
+    )
+
     var accounts: [AccountItem] = []
     var budgets: [BudgetItem] = []
     var recentTransactions: [TransactionItem] = []
     var isLoading = false
     var errorMessage: String?
     var currencyCode: String = "USD"
+
+    /// Whether an error alert should be presented.
+    var showError: Bool { errorMessage != nil }
+
+    /// Clears the current error message, dismissing the alert.
+    func dismissError() { errorMessage = nil }
 
     /// Computed from the sum of all account balances.
     var netWorth: Int64 { accounts.reduce(0) { $0 + $1.balanceMinorUnits } }
@@ -64,7 +76,8 @@ final class DashboardViewModel {
             recentTransactions = try await transactionsResult
             budgets = try await budgetsResult
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = String(localized: "Failed to load dashboard. Please try again.")
+            Self.logger.error("Dashboard load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

@@ -1,0 +1,543 @@
+/* Localizable.strings — Finance (Spanish)
+   SPDX-License-Identifier: BUSL-1.1
+
+   Spanish localization for the Finance iOS app.
+   Organized by screen / feature area with comment headers.
+*/
+
+
+/* ==========================================================================
+   App — Root / ContentView
+   ========================================================================== */
+
+"Finance" = "Finanzas";
+"Your financial life, unified." = "Tu vida financiera, unificada.";
+"SwiftUI + KMP — coming soon" = "SwiftUI + KMP — próximamente";
+
+
+/* ==========================================================================
+   Navigation — MainTabView (Tab Titles)
+   ========================================================================== */
+
+"Dashboard" = "Inicio";
+"Accounts" = "Cuentas";
+"Transactions" = "Transacciones";
+"Budgets" = "Presupuestos";
+"Goals" = "Metas";
+
+/* Tab accessibility hints */
+"Shows your financial overview" = "Muestra tu resumen financiero";
+"Shows your accounts grouped by type" = "Muestra tus cuentas agrupadas por tipo";
+"Shows all your transactions" = "Muestra todas tus transacciones";
+"Shows your budget categories and spending" = "Muestra tus categorías de presupuesto y gastos";
+"Shows your financial goals and progress" = "Muestra tus metas financieras y progreso";
+
+
+/* ==========================================================================
+   Dashboard Screen
+   ========================================================================== */
+
+"Net Worth" = "Patrimonio neto";
+"This Month" = "Este mes";
+"Income" = "Ingresos";
+"Expenses" = "Gastos";
+"Net" = "Neto";
+"Budget Health" = "Salud del presupuesto";
+"Recent Transactions" = "Transacciones recientes";
+"See All" = "Ver todo";
+"No Recent Transactions" = "Sin transacciones recientes";
+"Your latest transactions will appear here." = "Tus últimas transacciones aparecerán aquí.";
+
+/* Dashboard accessibility */
+"Monthly spending summary" = "Resumen de gastos mensuales";
+"See all transactions" = "Ver todas las transacciones";
+"Opens the full transactions list" = "Abre la lista completa de transacciones";
+"%lld percent of budget used" = "%lld por ciento del presupuesto utilizado";
+
+
+/* ==========================================================================
+   Accounts Screen
+   ========================================================================== */
+
+/* Account type display names */
+"Checking" = "Cuenta corriente";
+"Savings" = "Ahorros";
+"Credit Cards" = "Tarjetas de crédito";
+"Cash" = "Efectivo";
+"Investments" = "Inversiones";
+"Loans" = "Préstamos";
+"Other" = "Otro";
+
+/* Empty state */
+"No Accounts" = "Sin cuentas";
+"Add your first account to start tracking your finances." = "Agrega tu primera cuenta para comenzar a rastrear tus finanzas.";
+
+/* Actions and toolbar */
+"Add Account" = "Agregar cuenta";
+"Add account" = "Agregar cuenta";
+"Delete" = "Eliminar";
+
+/* Placeholder form */
+"Account creation will be connected to KMP shared logic." = "La creación de cuentas se conectará a la lógica compartida de KMP.";
+
+/* Accounts accessibility */
+"Opens a form to create a new account" = "Abre un formulario para crear una cuenta nueva";
+"Delete %@" = "Eliminar %@";
+"Shows account details and transaction history" = "Muestra los detalles de la cuenta y el historial de transacciones";
+"Dismisses the add account form" = "Cierra el formulario de agregar cuenta";
+
+
+/* ==========================================================================
+   Account Detail Screen
+   ========================================================================== */
+
+"Current Balance" = "Saldo actual";
+"No Transactions" = "Sin transacciones";
+"Transactions for this account will appear here." = "Las transacciones de esta cuenta aparecerán aquí.";
+
+/* Account detail accessibility (interpolated) */
+"%@, %@" = "%@, %@";
+
+
+/* ==========================================================================
+   Transactions Screen
+   ========================================================================== */
+
+/* Transaction status */
+"Pending" = "Pendiente";
+"Cleared" = "Liquidada";
+"Reconciled" = "Conciliada";
+"Void" = "Anulada";
+
+/* Empty state */
+"Add your first transaction to start tracking your spending." = "Agrega tu primera transacción para comenzar a rastrear tus gastos.";
+"Add Transaction" = "Agregar transacción";
+
+/* Search */
+"Search by payee, category, or account" = "Buscar por beneficiario, categoría o cuenta";
+
+/* Swipe actions */
+"Edit" = "Editar";
+
+/* Transactions accessibility */
+"Add transaction" = "Agregar transacción";
+"Opens a form to create a new transaction" = "Abre un formulario para crear una nueva transacción";
+"Delete transaction" = "Eliminar transacción";
+"Edit transaction" = "Editar transacción";
+"Swipe for edit and delete actions" = "Desliza para editar o eliminar";
+
+
+/* ==========================================================================
+   Transaction Create Screen
+   ========================================================================== */
+
+/* Step titles */
+"Type" = "Tipo";
+"Details" = "Detalles";
+"Review" = "Revisar";
+
+/* Transaction types */
+"Expense" = "Gasto";
+"Transfer" = "Transferencia";
+
+/* Navigation & actions */
+"New Transaction" = "Nueva transacción";
+"Back" = "Atrás";
+"Next" = "Siguiente";
+"Save Transaction" = "Guardar transacción";
+"Cancel" = "Cancelar";
+"OK" = "Aceptar";
+
+/* Validation errors */
+"Validation Error" = "Error de validación";
+"Please enter a valid amount." = "Por favor ingresa un monto válido.";
+"Please enter a payee." = "Por favor ingresa un beneficiario.";
+"Please select an account." = "Por favor selecciona una cuenta.";
+
+/* Step 1: Type selection */
+"What type of transaction?" = "¿Qué tipo de transacción?";
+
+/* Step 2: Details — form section headers */
+"Amount" = "Monto";
+"Payee" = "Beneficiario";
+"Account" = "Cuenta";
+"Category" = "Categoría";
+"Date" = "Fecha";
+"Note (optional)" = "Nota (opcional)";
+"Note" = "Nota";
+
+/* Step 2: Details — placeholders */
+"0.00" = "0.00";
+"Who was this payment to?" = "¿A quién fue este pago?";
+"Add a note..." = "Agregar nota...";
+"Select Account" = "Seleccionar cuenta";
+"Select Category" = "Seleccionar categoría";
+
+/* Step 3: Review */
+"Transaction Summary" = "Resumen de transacción";
+
+/* Transaction create accessibility */
+"Step %lld: %@" = "Paso %lld: %@";
+"Current step" = "Paso actual";
+"Selected" = "Seleccionado";
+"Selects %@ as the transaction type" = "Selecciona %@ como tipo de transacción";
+"Transaction amount" = "Monto de la transacción";
+"Enter the amount in dollars" = "Ingresa el monto en dólares";
+"Payee name" = "Nombre del beneficiario";
+"Transaction date" = "Fecha de la transacción";
+"Dismisses the transaction form without saving" = "Cierra el formulario de transacción sin guardar";
+"Goes to the previous step" = "Regresa al paso anterior";
+"Saves the transaction and closes the form" = "Guarda la transacción y cierra el formulario";
+"Advances to the next step" = "Avanza al siguiente paso";
+
+
+/* ==========================================================================
+   Budgets Screen
+   ========================================================================== */
+
+/* Budget status text */
+"Over budget" = "Sobre el presupuesto";
+"On track" = "En curso";
+
+/* Budget period */
+"Monthly" = "Mensual";
+
+/* Budget summary labels */
+"Spent" = "Gastado";
+"Budgeted" = "Presupuestado";
+"Remaining" = "Restante";
+"of" = "de";
+
+/* Empty state */
+"No Budgets" = "Sin presupuestos";
+"Create a budget to start tracking your spending by category." = "Crea un presupuesto para comenzar a rastrear tus gastos por categoría.";
+"Create Budget" = "Crear presupuesto";
+
+/* Placeholder form */
+"Budget creation will be connected to KMP shared logic." = "La creación de presupuestos se conectará a la lógica compartida de KMP.";
+
+/* Budgets accessibility */
+"Create budget" = "Crear presupuesto";
+"Opens a form to create a new budget" = "Abre un formulario para crear un nuevo presupuesto";
+"Previous month" = "Mes anterior";
+"Shows budgets for the previous month" = "Muestra presupuestos del mes anterior";
+"Next month" = "Mes siguiente";
+"Shows budgets for the next month" = "Muestra presupuestos del mes siguiente";
+"Overall budget summary" = "Resumen general del presupuesto";
+"%lld percent spent, %@" = "%lld por ciento gastado, %@";
+"Dismisses the budget creation form" = "Cierra el formulario de creación de presupuesto";
+
+
+/* ==========================================================================
+   Goals Screen
+   ========================================================================== */
+
+/* Goal status */
+"Active" = "Activa";
+"Paused" = "Pausada";
+"Completed" = "Completada";
+"Cancelled" = "Cancelada";
+
+/* Goal labels */
+"Target" = "Objetivo";
+"Remaining:" = "Restante:";
+"Goal completed!" = "¡Meta completada!";
+
+/* Empty state */
+"No Goals" = "Sin metas";
+"Set a financial goal to start saving toward something meaningful." = "Establece una meta financiera para comenzar a ahorrar para algo significativo.";
+"Create Goal" = "Crear meta";
+
+/* Placeholder form */
+"Goal creation will be connected to KMP shared logic." = "La creación de metas se conectará a la lógica compartida de KMP.";
+
+/* Goals accessibility */
+"Create goal" = "Crear meta";
+"Opens a form to create a new financial goal" = "Abre un formulario para crear una nueva meta financiera";
+"%lld percent complete, %@" = "%lld por ciento completado, %@";
+"Goal has been completed" = "La meta ha sido completada";
+"Goal is in progress" = "La meta está en progreso";
+"Dismisses the goal creation form" = "Cierra el formulario de creación de meta";
+
+/* Sample goal names (used in placeholder data) */
+"Emergency Fund" = "Fondo de emergencia";
+"Vacation" = "Vacaciones";
+"New Laptop" = "Nuevo portátil";
+"Home Down Payment" = "Enganche de vivienda";
+
+
+/* ==========================================================================
+   Settings Screen
+   ========================================================================== */
+
+/* Section headers */
+"General" = "General";
+"Notifications" = "Notificaciones";
+"Security" = "Seguridad";
+"Data" = "Datos";
+"About" = "Acerca de";
+
+/* General section */
+"Currency" = "Moneda";
+
+/* Biometric type display names */
+"Face ID" = "Face ID";
+"Touch ID" = "Touch ID";
+"Biometric Authentication" = "Autenticación biométrica";
+
+/* Notifications section */
+"Enable Notifications" = "Activar notificaciones";
+"Budget Alerts" = "Alertas de presupuesto";
+"Goal Milestones" = "Hitos de metas";
+
+/* Security section */
+"Privacy policy content will be loaded here." = "El contenido de la política de privacidad se cargará aquí.";
+"Privacy Policy" = "Política de privacidad";
+
+/* Data section */
+"Exporting..." = "Exportando...";
+"Export Data" = "Exportar datos";
+"Export as CSV" = "Exportar como CSV";
+"Export as JSON" = "Exportar como JSON";
+"Choose your preferred export format." = "Elige tu formato de exportación preferido.";
+"Delete All Data" = "Eliminar todos los datos";
+"Delete All Data?" = "¿Eliminar todos los datos?";
+"Delete Everything" = "Eliminar todo";
+"This will permanently delete all accounts, transactions, budgets, and goals. This action cannot be undone." = "Esto eliminará permanentemente todas las cuentas, transacciones, presupuestos y metas. Esta acción no se puede deshacer.";
+
+/* About section */
+"Version" = "Versión";
+"Open source licenses and acknowledgments will be listed here." = "Las licencias de código abierto y agradecimientos se listarán aquí.";
+"Acknowledgments" = "Agradecimientos";
+"Settings" = "Configuración";
+
+/* Settings accessibility */
+"Default currency" = "Moneda predeterminada";
+"Select your preferred currency for displaying amounts" = "Selecciona tu moneda preferida para mostrar montos";
+"Enable notifications" = "Activar notificaciones";
+"Toggles push notifications for the app" = "Activa o desactiva las notificaciones push de la app";
+"Budget alerts" = "Alertas de presupuesto";
+"Receive alerts when approaching budget limits" = "Recibe alertas al acercarte a los límites del presupuesto";
+"Goal milestones" = "Hitos de metas";
+"Receive notifications for goal progress milestones" = "Recibe notificaciones de hitos de progreso de metas";
+"Require biometric authentication to open the app" = "Requiere autenticación biométrica para abrir la app";
+"Opens the privacy policy" = "Abre la política de privacidad";
+"Export data" = "Exportar datos";
+"Exports all your financial data as a file" = "Exporta todos tus datos financieros como un archivo";
+"Delete all data" = "Eliminar todos los datos";
+"Permanently deletes all your financial data" = "Elimina permanentemente todos tus datos financieros";
+"App version %@, build %@" = "Versión de app %@, compilación %@";
+"Opens the open source acknowledgments" = "Abre los agradecimientos de código abierto";
+
+
+/* ==========================================================================
+   Components — CurrencyLabel
+   ========================================================================== */
+
+"Income of %@" = "Ingreso de %@";
+"Expense of %@" = "Gasto de %@";
+
+
+/* ==========================================================================
+   Components — ProgressRing
+   ========================================================================== */
+
+"%@, %@ complete" = "%@, %@ completado";
+"%@ complete" = "%@ completado";
+
+
+/* ==========================================================================
+   Components — EmptyStateView
+   ========================================================================== */
+
+"Creates a new item" = "Crea un nuevo elemento";
+
+
+/* ==========================================================================
+   Accessibility — AccessibilityModifiers
+   ========================================================================== */
+
+"Balance: %@" = "Saldo: %@";
+
+
+/* ==========================================================================
+   Charts — SpendingChart
+   ========================================================================== */
+
+"Spending by Category" = "Gastos por categoría";
+"Spending by category bar chart" = "Gráfico de barras de gastos por categoría";
+
+
+/* ==========================================================================
+   Charts — TrendChart
+   ========================================================================== */
+
+"Trend" = "Tendencia";
+"Series" = "Serie";
+"Selected: %@" = "Seleccionado: %@";
+"Financial trend line chart" = "Gráfico de línea de tendencia financiera";
+
+
+/* ==========================================================================
+   Charts — BudgetProgressChart
+   ========================================================================== */
+
+"Budget Progress" = "Progreso del presupuesto";
+"Budget utilisation gauges" = "Indicadores de utilización del presupuesto";
+"%@ spent, %@ of %@" = "%@ gastado, %@ de %@";
+
+
+/* ==========================================================================
+   Charts — CategoryBreakdownChart
+   ========================================================================== */
+
+"Category Breakdown" = "Desglose por categoría";
+"Category breakdown donut chart" = "Gráfico de dona de desglose por categoría";
+
+
+/* ==========================================================================
+   Security — BiometricAuthManager
+   ========================================================================== */
+
+"Verify your identity to access Finance" = "Verifica tu identidad para acceder a Finanzas";
+"Biometric authentication is not available on this device." = "La autenticación biométrica no está disponible en este dispositivo.";
+"No biometric credentials are enrolled. Please set up Face ID or Touch ID in Settings." = "No hay credenciales biométricas registradas. Configura Face ID o Touch ID en Ajustes.";
+"Biometric authentication is locked out. Please use your device passcode to re-enable it." = "La autenticación biométrica está bloqueada. Usa el código de tu dispositivo para reactivarla.";
+"Authentication failed: %@" = "Autenticación fallida: %@";
+"Authentication was cancelled." = "La autenticación fue cancelada.";
+"An unexpected error occurred: %@" = "Ocurrió un error inesperado: %@";
+"Authentication did not succeed." = "La autenticación no fue exitosa.";
+
+
+/* ==========================================================================
+   Security — AppleSignInManager
+   ========================================================================== */
+
+"Apple Sign-In did not return an identity token." = "El inicio de sesión con Apple no devolvió un token de identidad.";
+"The identity token from Apple could not be decoded." = "No se pudo decodificar el token de identidad de Apple.";
+"Apple Sign-In failed: %@" = "El inicio de sesión con Apple falló: %@";
+"Apple Sign-In was cancelled." = "El inicio de sesión con Apple fue cancelado.";
+"Failed to create a session: %@" = "No se pudo crear la sesión: %@";
+"A sign-in is already in progress." = "Ya hay un inicio de sesión en progreso.";
+"Unexpected credential type received." = "Se recibió un tipo de credencial inesperado.";
+
+
+/* ==========================================================================
+   Security — KeychainManager
+   ========================================================================== */
+
+"Keychain save failed (status %lld)." = "Error al guardar en Keychain (estado %lld).";
+"Keychain load failed (status %lld)." = "Error al cargar de Keychain (estado %lld).";
+"Keychain delete failed (status %lld)." = "Error al eliminar de Keychain (estado %lld).";
+"Keychain returned data in an unexpected format." = "Keychain devolvió datos en un formato inesperado.";
+"Secure Enclave is not available on this device." = "Secure Enclave no está disponible en este dispositivo.";
+
+
+/* ==========================================================================
+   Sample / Placeholder Category Names
+   ========================================================================== */
+
+"Groceries" = "Supermercado";
+"Dining Out" = "Restaurantes";
+"Transport" = "Transporte";
+"Entertainment" = "Entretenimiento";
+"Shopping" = "Compras";
+
+
+/* ==========================================================================
+   Error Handling
+   ========================================================================== */
+
+"Error" = "Error";
+"Retry" = "Reintentar";
+"Dismiss" = "Cerrar";
+"Loading" = "Cargando";
+"Failed to load dashboard. Please try again." = "No se pudo cargar el inicio. Por favor inténtalo de nuevo.";
+"Failed to load accounts. Please try again." = "No se pudieron cargar las cuentas. Por favor inténtalo de nuevo.";
+"Failed to delete account. Please try again." = "No se pudo eliminar la cuenta. Por favor inténtalo de nuevo.";
+"Failed to load transactions. Please try again." = "No se pudieron cargar las transacciones. Por favor inténtalo de nuevo.";
+"Failed to delete transaction. Please try again." = "No se pudo eliminar la transacción. Por favor inténtalo de nuevo.";
+"Failed to load budgets. Please try again." = "No se pudieron cargar los presupuestos. Por favor inténtalo de nuevo.";
+"Failed to load goals. Please try again." = "No se pudieron cargar las metas. Por favor inténtalo de nuevo.";
+"No internet connection. Please check your network and try again." = "Sin conexión a internet. Por favor revisa tu red e inténtalo de nuevo.";
+
+
+/* ==========================================================================
+   VoiceOver — Enhanced Accessibility
+   ========================================================================== */
+
+"Double tap to view details" = "Toca dos veces para ver detalles";
+"No data available" = "No hay datos disponibles";
+"%lld percent of total budget used" = "%lld por ciento del presupuesto total utilizado";
+"No budget set" = "Sin presupuesto establecido";
+"Goal has been completed. Double tap to view details." = "La meta ha sido completada. Toca dos veces para ver detalles.";
+"Goal is in progress. Double tap to view details." = "La meta está en progreso. Toca dos veces para ver detalles.";
+"Spending trend chart showing monthly spending over time" = "Gráfico de tendencia de gastos mostrando los gastos mensuales a lo largo del tiempo";
+"Budget progress showing amount spent versus limit" = "Progreso del presupuesto mostrando el monto gastado versus el límite";
+
+
+/* ==========================================================================
+   Lock Screen
+   ========================================================================== */
+
+"Finance is Locked" = "Finanzas está bloqueada";
+"Authenticate to access your financial data." = "Autentícate para acceder a tus datos financieros.";
+"Authenticates to unlock the app" = "Se autentica para desbloquear la app";
+"Unlock with Face ID" = "Desbloquear con Face ID";
+"Unlock with Touch ID" = "Desbloquear con Touch ID";
+"Unlock with Optic ID" = "Desbloquear con Optic ID";
+"Unlock" = "Desbloquear";
+"Authentication Failed" = "Autenticación fallida";
+"Try Again" = "Intentar de nuevo";
+"Try again" = "Intentar de nuevo";
+"App lock screen" = "Pantalla de bloqueo de la app";
+"Authenticate to unlock Finance" = "Autentícate para desbloquear Finanzas";
+
+/* Settings — Biometric */
+"Verify your identity to enable biometric lock" = "Verifica tu identidad para activar el bloqueo biométrico";
+"Verify your identity to disable biometric lock" = "Verifica tu identidad para desactivar el bloqueo biométrico";
+"Enabled" = "Activado";
+"Disabled" = "Desactivado";
+"Biometric authentication is not available on this device" = "La autenticación biométrica no está disponible en este dispositivo";
+"Biometric authentication is not available. Enroll Face ID or Touch ID in device Settings." = "La autenticación biométrica no está disponible. Configura Face ID o Touch ID en los Ajustes del dispositivo.";
+"Authentication Error" = "Error de autenticación";
+"Dismiss error" = "Cerrar error";
+
+/* Settings — Data Export */
+"Verify your identity to export financial data" = "Verifica tu identidad para exportar datos financieros";
+
+/* Budget & Goal Create/Edit */
+"Edit Budget" = "Editar presupuesto";
+"Edit Goal" = "Editar meta";
+"Create Goal" = "Crear meta";
+"Update" = "Actualizar";
+"Save" = "Guardar";
+"Edit Transaction" = "Editar transacción";
+"Update Transaction" = "Actualizar transacción";
+"Tap to edit. Swipe for more actions." = "Toca para editar. Desliza para más acciones.";
+"Delete Transaction" = "Eliminar transacción";
+"Are you sure you want to delete this transaction? This action cannot be undone." = "¿Estás seguro de que deseas eliminar esta transacción? Esta acción no se puede deshacer.";
+
+/* Account Detail — Biometric */
+"View Account Number" = "Ver número de cuenta";
+"Hide Account Number" = "Ocultar número de cuenta";
+"View account number" = "Ver número de cuenta";
+"Hide account number" = "Ocultar número de cuenta";
+"Hides the account number" = "Oculta el número de cuenta";
+"Requires authentication to reveal the account number" = "Requiere autenticación para revelar el número de cuenta";
+"Account Number" = "Número de cuenta";
+"Account number ending in 4242" = "Número de cuenta que termina en 4242";
+"Authenticate to view account number" = "Autentícate para ver el número de cuenta";
+
+/* Budget periods */
+"Weekly" = "Semanal";
+"Biweekly" = "Quincenal";
+"Quarterly" = "Trimestral";
+"Yearly" = "Anual";
+
+/* Budget/Goal validation */
+"Please select a category." = "Por favor selecciona una categoría.";
+"Please enter a valid amount greater than zero." = "Por favor ingresa un monto válido mayor que cero.";
+"Please enter a goal name." = "Por favor ingresa un nombre para la meta.";
+"Please enter a valid target amount greater than zero." = "Por favor ingresa un monto objetivo válido mayor que cero.";
+"Current amount cannot be negative." = "El monto actual no puede ser negativo.";

@@ -12,14 +12,18 @@ import SwiftUI
 struct TransactionsView: View {
     @State private var viewModel: TransactionsViewModel
 
-    init(viewModel: TransactionsViewModel = TransactionsViewModel(repository: MockTransactionRepository())) {
+    init(viewModel: TransactionsViewModel = TransactionsViewModel(repository: KMPTransactionRepository())) {
         _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
         NavigationStack {
             Group {
-                if viewModel.filteredTransactions.isEmpty && !viewModel.isLoading {
+                if viewModel.isLoading && viewModel.transactions.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel(String(localized: "Loading"))
+                } else if viewModel.filteredTransactions.isEmpty && !viewModel.isLoading {
                     if viewModel.searchText.isEmpty {
                         EmptyStateView(
                             systemImage: "arrow.left.arrow.right",
@@ -49,6 +53,15 @@ struct TransactionsView: View {
             .sheet(isPresented: $viewModel.showingCreateTransaction) { TransactionCreateView() }
             .refreshable { await viewModel.loadTransactions() }
             .task { await viewModel.loadTransactions() }
+            .alert(String(localized: "Error"), isPresented: Binding(
+                get: { viewModel.showError },
+                set: { if !$0 { viewModel.dismissError() } }
+            )) {
+                Button(String(localized: "Retry")) { Task { await viewModel.loadTransactions() } }
+                Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
         }
     }
 

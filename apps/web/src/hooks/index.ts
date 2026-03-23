@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export { useAccounts } from './useAccounts';
-export { useTransactions } from './useTransactions';
-export type { TransactionFilters } from './useTransactions';
 export { useBudgets } from './useBudgets';
-export { useGoals } from './useGoals';
 export { useCategories } from './useCategories';
 export { useDashboardData } from './useDashboardData';
-export { useOfflineStatus } from './useOfflineStatus';
+export { useGoals } from './useGoals';
+export { useKeyboardShortcuts } from './useKeyboardShortcuts';
+export type { UseKeyboardShortcutsResult } from './useKeyboardShortcuts';
 export { useMutationQueue } from './useMutationQueue';
+export { useOfflineStatus } from './useOfflineStatus';
+export { useServiceWorkerUpdate } from './useServiceWorkerUpdate';
+export type { UseServiceWorkerUpdateResult } from './useServiceWorkerUpdate';
 export { useSyncStatus } from './useSyncStatus';
 export type { UseSyncStatusResult } from './useSyncStatus';
 export { useInstallPrompt } from './useInstallPrompt';
 export type { UseInstallPromptResult } from './useInstallPrompt';
+export { useTransactions } from './useTransactions';
+export type { TransactionFilters } from './useTransactions';
