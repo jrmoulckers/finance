@@ -20,6 +20,13 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { createAdminClient } from '../_shared/auth.ts';
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from '../_shared/rate-limit.ts';
 
 /** Individual service status. */
 type ServiceStatus = 'connected' | 'operational' | 'unavailable' | 'error';
@@ -155,6 +162,23 @@ serve(async (req: Request): Promise<Response> => {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
+  }
+
+  // Rate limiting (IP-based, #614)
+  try {
+    const rateLimitClient = createAdminClient();
+    const clientIp = getClientIp(req) ?? 'unknown';
+    const rateLimitResult = await checkRateLimit(
+      rateLimitClient,
+      clientIp,
+      RATE_LIMITS['health-check'],
+    );
+    if (!rateLimitResult.allowed) {
+      logger.warn('Rate limit exceeded', { httpStatus: 429 });
+      return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['health-check']);
+    }
+  } catch {
+    // Rate limiting failure must not block health checks — fail open
   }
 
   // Run health checks concurrently

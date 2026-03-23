@@ -30,6 +30,12 @@ import {
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { errorResponse, internalErrorResponse, jsonResponse } from '../_shared/response.ts';
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from '../_shared/rate-limit.ts';
 import type {
   AuthenticatorTransportFuture,
   VerifiedAuthenticationResponse,
@@ -86,6 +92,18 @@ serve(async (req: Request): Promise<Response> => {
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // Rate limiting (IP-based, pre-auth, #614)
+  const clientIp = getClientIp(req) ?? 'unknown';
+  const rateLimitResult = await checkRateLimit(
+    supabaseAdmin,
+    clientIp,
+    RATE_LIMITS['passkey-authenticate'],
+  );
+  if (!rateLimitResult.allowed) {
+    logger.warn('Rate limit exceeded', { httpStatus: 429 });
+    return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['passkey-authenticate']);
+  }
 
   const url = new URL(req.url);
   const step = url.searchParams.get('step');

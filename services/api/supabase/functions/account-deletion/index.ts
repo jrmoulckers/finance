@@ -27,6 +27,7 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import {
   errorResponse,
   internalErrorResponse,
@@ -69,6 +70,17 @@ serve(async (req: Request): Promise<Response> => {
 
     logger.setUserId(user.id);
     logger.info('Account deletion requested');
+
+    // Rate limiting (user-based, #614)
+    const rateLimitResult = await checkRateLimit(
+      supabase,
+      user.id,
+      RATE_LIMITS['account-deletion'],
+    );
+    if (!rateLimitResult.allowed) {
+      logger.warn('Rate limit exceeded', { httpStatus: 429 });
+      return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['account-deletion']);
+    }
 
     // Parse request body for confirmation
     let body: Record<string, unknown> = {};
