@@ -10,7 +10,7 @@
     "docs:api:bundle": "npx @redocly/cli bundle openapi.yaml -o docs/openapi-bundled.yaml"
   },
   "devDependencies": {
-    "@redocly/cli": "^1.34.3",
+    "@redocly/cli": "^2.24.1",
     "yaml": "^2.8.2"
   }
 }
