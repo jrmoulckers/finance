@@ -64,6 +64,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
+import com.finance.core.export.ExportFormat
 import com.finance.android.ui.theme.ThemePreference
 import org.koin.compose.viewmodel.koinViewModel
 import java.io.File
@@ -791,9 +792,9 @@ private fun ExportDataDialog(
                         onClick = { onFormatSelected(format) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .semantics { contentDescription = "Export as ${format.label}" },
+                            .semantics { contentDescription = "Export as ${format.name}" },
                     ) {
-                        Text(format.label)
+                        Text(format.name)
                     }
                 }
             }

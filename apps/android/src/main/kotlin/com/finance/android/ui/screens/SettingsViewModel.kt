@@ -6,12 +6,22 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.data.repository.AccountRepository
+import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
+import com.finance.android.data.repository.GoalRepository
 import com.finance.android.data.repository.TransactionRepository
+import com.finance.core.export.CsvExportSerializer
+import com.finance.core.export.DataExportService
+import com.finance.core.export.ExportData
+import com.finance.core.export.ExportFormat
+import com.finance.core.export.ExportOutcome
+import com.finance.core.export.JsonExportSerializer
 import com.finance.android.ui.theme.ThemePreference
 import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.models.types.SyncId
 import com.finance.sync.auth.AuthManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -21,6 +31,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 // ---------------------------------------------------------------------------
 // State types
@@ -44,12 +56,6 @@ enum class AppLockTimeout(val label: String, val seconds: Long) {
     ONE_MINUTE("1 minute", 60),
     FIVE_MINUTES("5 minutes", 300),
     NEVER("Never", -1),
-}
-
-/** Supported export formats. */
-enum class ExportFormat(val label: String) {
-    JSON("JSON"),
-    CSV("CSV"),
 }
 
 /** One-shot events emitted by the view-model. */
@@ -144,8 +150,11 @@ private object PrefKeys {
  * @param prefs Local preferences store for settings persistence.
  * @param biometricChecker Abstraction to query biometric hardware availability.
  * @param transactionRepository Source for transaction data used in data export.
- * @param categoryRepository Source for category data used to resolve category names in export.
-* @param authManager Shared auth manager for sign-out and session management.
+ * @param categoryRepository Source for category data used in data export.
+ * @param accountRepository Source for account data used in data export.
+ * @param budgetRepository Source for budget data used in data export.
+ * @param goalRepository Source for goal data used in data export.
+ * @param authManager Shared auth manager for sign-out and session management.
  * @param themePreferenceManager Reactive manager for the user's theme preference.
  */
 class SettingsViewModel(
@@ -153,6 +162,9 @@ class SettingsViewModel(
     private val biometricChecker: BiometricAvailabilityChecker,
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
+    private val accountRepository: AccountRepository,
+    private val budgetRepository: BudgetRepository,
+    private val goalRepository: GoalRepository,
     private val authManager: AuthManager,
     private val themePreferenceManager: ThemePreferenceManager,
 ) : ViewModel() {
@@ -277,22 +289,29 @@ class SettingsViewModel(
             _events.emit(SettingsEvent.ExportStarted)
 
             try {
-                val serialized = buildExportContent(format)
-
-                val timestamp = java.text.SimpleDateFormat(
-                    "yyyy-MM-dd",
-                    java.util.Locale.US,
-                ).format(java.util.Date())
-                val extension = format.label.lowercase()
-                val fileName = "finance-export-$timestamp.$extension"
-                val mimeType = when (format) {
-                    ExportFormat.JSON -> "application/json"
-                    ExportFormat.CSV -> "text/csv"
+                val outcome = withContext(Dispatchers.IO) {
+                    buildExportResult(format)
                 }
 
-                _events.emit(SettingsEvent.ExportReady(fileName, mimeType, serialized))
-                _events.emit(SettingsEvent.ShowToast("Export ready — choose where to save"))
-            } catch (_: Exception) {
+                when (outcome) {
+                    is ExportOutcome.Success -> {
+                        val export = outcome.export
+                        _events.emit(
+                            SettingsEvent.ExportReady(
+                                fileName = export.filename,
+                                mimeType = export.format.mimeType,
+                                content = export.content,
+                            ),
+                        )
+                        _events.emit(SettingsEvent.ShowToast("Export ready — choose where to save"))
+                    }
+                    is ExportOutcome.Failure -> {
+                        Timber.w("Data export failed: %s", outcome.error.message)
+                        _events.emit(SettingsEvent.ExportFailed(outcome.error.message))
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Unexpected error during data export")
                 _events.emit(SettingsEvent.ExportFailed("Export failed. Please try again."))
             } finally {
                 _uiState.update { it.copy(isExporting = false) }
@@ -301,46 +320,47 @@ class SettingsViewModel(
     }
 
     /**
-     * Builds export content from the repository layer.
+     * Gathers all financial data from repositories and delegates to
+     * [DataExportService] for serialization and integrity checks.
      *
-     * Queries all transactions and categories, then serializes them
-     * into the requested [format]. The content itself is never logged
-     * to avoid leaking financial data.
+     * Runs on [Dispatchers.IO] — the caller is responsible for switching
+     * context before invoking this method.
+     *
+     * Queries accounts, transactions, categories, budgets, and goals
+     * from their respective repositories. Soft-deleted records are
+     * already excluded by [BaseRepository.observeAll].
      */
-    private suspend fun buildExportContent(format: ExportFormat): String {
-        val transactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-        val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-        val categoryMap = categories.associateBy { it.id }
+    private suspend fun buildExportResult(format: ExportFormat): ExportOutcome {
+        val householdId = PLACEHOLDER_HOUSEHOLD_ID
 
-        return when (format) {
-            ExportFormat.JSON -> buildString {
-                appendLine("{")
-                appendLine("""  "exportedAt": "${java.time.Instant.now()}",""")
-                appendLine("""  "transactions": [""")
-                transactions.forEachIndexed { i, txn ->
-                    val comma = if (i < transactions.lastIndex) "," else ""
-                    val catName = (txn.categoryId?.let { categoryMap[it]?.name } ?: "Uncategorized")
-                        .replace("\\", "\\\\").replace("\"", "\\\"")
-                    val payee = txn.payee?.replace("\\", "\\\\")?.replace("\"", "\\\"") ?: ""
-                    appendLine(
-                        """    {"id":"${txn.id.value}","date":"${txn.date}","payee":"$payee","category":"$catName","type":"${txn.type}","currency":"${txn.currency.code}"}$comma""",
-                    )
-                }
-                appendLine("  ]")
-                appendLine("}")
-            }
-            ExportFormat.CSV -> buildString {
-                appendLine("id,date,payee,category,type,currency")
-                transactions.forEach { txn ->
-                    val catName = (txn.categoryId?.let { categoryMap[it]?.name } ?: "Uncategorized")
-                        .let { "\"${it.replace("\"", "\"\"")}\"" }
-                    val payee = txn.payee?.let { "\"${it.replace("\"", "\"\"")}\"" } ?: ""
-                    appendLine("${txn.id.value},${txn.date},$payee,$catName,${txn.type},${txn.currency.code}")
-                }
-            }
+        val accounts = accountRepository.observeAll(householdId).first()
+        val transactions = transactionRepository.observeAll(householdId).first()
+        val categories = categoryRepository.observeAll(householdId).first()
+        val budgets = budgetRepository.observeAll(householdId).first()
+        val goals = goalRepository.observeAll(householdId).first()
+
+        val exportData = ExportData(
+            accounts = accounts,
+            transactions = transactions,
+            categories = categories,
+            budgets = budgets,
+            goals = goals,
+        )
+
+        val serializer = when (format) {
+            ExportFormat.JSON -> JsonExportSerializer()
+            ExportFormat.CSV -> CsvExportSerializer()
         }
-    }
 
+        Timber.d("Starting data export (format=%s, records=%d)", format.name, exportData.totalRecords)
+
+        return DataExportService.export(
+            data = exportData,
+            serializer = serializer,
+            userId = householdId, // TODO(#434): Use authenticated user ID
+            appVersion = _uiState.value.appVersion,
+        )
+    }
     // -- Account deletion -----------------------------------------------------
 
     fun showDeleteDialog() {
