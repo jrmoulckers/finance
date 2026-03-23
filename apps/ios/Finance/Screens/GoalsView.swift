@@ -18,17 +18,25 @@ struct GoalsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                if viewModel.goals.isEmpty && !viewModel.isLoading {
-                    EmptyStateView(
-                        systemImage: "target",
-                        title: String(localized: "No Goals"),
-                        message: String(localized: "Set a financial goal to start saving toward something meaningful."),
-                        actionLabel: String(localized: "Create Goal"),
-                        action: { viewModel.showingCreateGoal = true }
-                    )
+            Group {
+                if viewModel.isLoading && viewModel.goals.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel(String(localized: "Loading"))
                 } else {
-                    goalCards
+                    ScrollView {
+                        if viewModel.goals.isEmpty && !viewModel.isLoading {
+                            EmptyStateView(
+                                systemImage: "target",
+                                title: String(localized: "No Goals"),
+                                message: String(localized: "Set a financial goal to start saving toward something meaningful."),
+                                actionLabel: String(localized: "Create Goal"),
+                                action: { viewModel.showingCreateGoal = true }
+                            )
+                        } else {
+                            goalCards
+                        }
+                    }
                 }
             }
             .navigationTitle(String(localized: "Goals"))
@@ -44,6 +52,15 @@ struct GoalsView: View {
             .sheet(isPresented: $viewModel.showingCreateGoal) { createGoalPlaceholder }
             .refreshable { await viewModel.loadGoals() }
             .task { await viewModel.loadGoals() }
+            .alert(String(localized: "Error"), isPresented: Binding(
+                get: { viewModel.showError },
+                set: { if !$0 { viewModel.dismissError() } }
+            )) {
+                Button(String(localized: "Retry")) { Task { await viewModel.loadGoals() } }
+                Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
         }
     }
 
@@ -121,7 +138,7 @@ struct GoalsView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(goal.name)
         .accessibilityValue(String(localized: "\(Int(goal.progress * 100)) percent complete, \(goal.status.displayName)"))
-        .accessibilityHint(goal.isComplete ? String(localized: "Goal has been completed") : String(localized: "Goal is in progress"))
+        .accessibilityHint(goal.isComplete ? String(localized: "Goal has been completed. Double tap to view details.") : String(localized: "Goal is in progress. Double tap to view details."))
     }
 
     private var createGoalPlaceholder: some View {

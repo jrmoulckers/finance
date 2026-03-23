@@ -23,19 +23,36 @@ struct DashboardView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    netWorthCard
-                    spendingSummaryCard
-                    budgetHealthSection
-                    recentTransactionsSection
+            Group {
+                if viewModel.isLoading && viewModel.accounts.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel(String(localized: "Loading"))
+                } else {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            netWorthCard
+                            spendingSummaryCard
+                            budgetHealthSection
+                            recentTransactionsSection
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 20)
+                    }
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 20)
             }
             .navigationTitle(String(localized: "Dashboard"))
             .refreshable { await viewModel.loadDashboard() }
             .task { await viewModel.loadDashboard() }
+            .alert(String(localized: "Error"), isPresented: Binding(
+                get: { viewModel.showError },
+                set: { if !$0 { viewModel.dismissError() } }
+            )) {
+                Button(String(localized: "Retry")) { Task { await viewModel.loadDashboard() } }
+                Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
         }
     }
 

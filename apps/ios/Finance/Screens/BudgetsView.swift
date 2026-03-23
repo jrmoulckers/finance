@@ -18,24 +18,32 @@ struct BudgetsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    monthSelector
-                    overallSummary
-                    if viewModel.budgets.isEmpty && !viewModel.isLoading {
-                        EmptyStateView(
-                            systemImage: "chart.pie",
-                            title: String(localized: "No Budgets"),
-                            message: String(localized: "Create a budget to start tracking your spending by category."),
-                            actionLabel: String(localized: "Create Budget"),
-                            action: { viewModel.showingCreateBudget = true }
-                        )
-                    } else {
-                        budgetCards
+            Group {
+                if viewModel.isLoading && viewModel.budgets.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel(String(localized: "Loading"))
+                } else {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            monthSelector
+                            overallSummary
+                            if viewModel.budgets.isEmpty && !viewModel.isLoading {
+                                EmptyStateView(
+                                    systemImage: "chart.pie",
+                                    title: String(localized: "No Budgets"),
+                                    message: String(localized: "Create a budget to start tracking your spending by category."),
+                                    actionLabel: String(localized: "Create Budget"),
+                                    action: { viewModel.showingCreateBudget = true }
+                                )
+                            } else {
+                                budgetCards
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 20)
                     }
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 20)
             }
             .navigationTitle(String(localized: "Budgets"))
             .toolbar {
@@ -50,6 +58,15 @@ struct BudgetsView: View {
             .sheet(isPresented: $viewModel.showingCreateBudget) { createBudgetPlaceholder }
             .refreshable { await viewModel.loadBudgets() }
             .task { await viewModel.loadBudgets() }
+            .alert(String(localized: "Error"), isPresented: Binding(
+                get: { viewModel.showError },
+                set: { if !$0 { viewModel.dismissError() } }
+            )) {
+                Button(String(localized: "Retry")) { Task { await viewModel.loadBudgets() } }
+                Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
         }
     }
 
@@ -99,6 +116,11 @@ struct BudgetsView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "Overall budget summary"))
+        .accessibilityValue(
+            viewModel.totalBudgeted > 0
+                ? String(localized: "\(Int(Double(viewModel.totalSpent) / Double(viewModel.totalBudgeted) * 100)) percent of total budget used")
+                : String(localized: "No budget set")
+        )
     }
 
     // MARK: - Budget Cards
@@ -137,6 +159,7 @@ struct BudgetsView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(budget.name)
         .accessibilityValue(String(localized: "\(Int(budget.progress * 100)) percent spent, \(budget.statusText)"))
+        .accessibilityHint(String(localized: "Double tap to view details"))
     }
 
     private var createBudgetPlaceholder: some View {

@@ -103,6 +103,13 @@ final class SettingsViewModel {
 
     /// Controls visibility of the biometric error alert.
     var showingBiometricError = false
+    var errorMessage: String?
+
+    /// Whether a general error alert should be presented.
+    var showError: Bool { errorMessage != nil }
+
+    /// Clears the current error message, dismissing the alert.
+    func dismissError() { errorMessage = nil }
 
     // MARK: - Sync State
 
