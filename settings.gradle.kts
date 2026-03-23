@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("UnstableApiUsage")
+
 rootProject.name = "finance"
 
 pluginManagement {
@@ -8,6 +10,19 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+    }
+}
+
+plugins {
+    id("com.gradle.develocity") version "4.3.2"
+}
+
+develocity {
+    buildScan {
+        termsOfUseUrl.set("https://gradle.com/help/legal-terms-of-use")
+        termsOfUseAgree.set("yes")
+        // Publish scans on CI, opt-in locally
+        publishing.onlyIf { System.getenv("CI") != null }
     }
 }
 

@@ -1,0 +1,15 @@
+{
+  "data_types": [
+    {
+      "data_type": "Financial Info",
+      "data_type_id": "FINANCIAL_INFO",
+      "data_purposes": ["APP_FUNCTIONALITY"],
+      "data_protections": ["DATA_STORED_ON_DEVICE"],
+      "linked_to_user": false,
+      "used_for_tracking": false,
+      "collection_description": "Financial data (accounts, transactions, budgets, goals) is stored locally on the user's device. This data never leaves the device unless the user explicitly enables optional cloud sync. Data is not linked to user identity and is not used for tracking."
+    }
+  ],
+  "privacy_policy_url": "https://finance.app/privacy",
+  "notes": "Finance is a privacy-first app. All financial data is stored locally on-device using an embedded SQLite database. No analytics SDKs, advertising frameworks, or tracking tools are included. Optional cloud sync (Supabase) is user-initiated and transmits data only to the user's own configured backend. No data is sold, shared with third parties, or used for advertising purposes."
+}

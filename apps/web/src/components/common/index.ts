@@ -14,4 +14,5 @@ export { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 export type { KeyboardShortcutsModalProps } from './KeyboardShortcutsModal';
 export { LoadingSpinner } from './LoadingSpinner';
 export type { LoadingSpinnerProps } from './LoadingSpinner';
+export { SyncStatusBar } from './SyncStatusBar';
 export { UpdateBanner } from './UpdateBanner';

@@ -17,6 +17,7 @@ struct AccountDetailView: View {
     @State private var showAccountNumber = false
     @State private var biometricError: BiometricError?
     @State private var showingBiometricError = false
+    @State private var editingTransaction: TransactionItem?
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -41,6 +42,17 @@ struct AccountDetailView: View {
                 Section {
                     ForEach(group.transactions) { transaction in
                         transactionRow(transaction)
+                            .contentShape(Rectangle())
+                            .onTapGesture { editingTransaction = transaction }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button {
+                                    editingTransaction = transaction
+                                } label: {
+                                    Label(String(localized: "Edit"), systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                                .accessibilityLabel(String(localized: "Edit transaction"))
+                            }
                     }
                 } header: {
                     Text(group.date, style: .date)
@@ -79,6 +91,13 @@ struct AccountDetailView: View {
                 .accessibilityLabel(String(localized: "Dismiss error"))
         } message: { error in
             Text(error.localizedDescription)
+        }
+        .sheet(item: $editingTransaction, onDismiss: {
+            Task { await viewModel.loadTransactions(accountId: account.id) }
+        }) { transaction in
+            TransactionEditView(transaction: transaction) {
+                Task { await viewModel.loadTransactions(accountId: account.id) }
+            }
         }
     }
 
@@ -196,6 +215,7 @@ struct AccountDetailView: View {
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(transaction.payee), \(transaction.category)")
+        .accessibilityHint(String(localized: "Tap to edit. Swipe for more actions."))
     }
 }
 

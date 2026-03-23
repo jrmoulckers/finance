@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -47,8 +46,8 @@ enum class TopLevelDestination(
     Transactions(
         route = Route.Transactions.route,
         icon = Icons.Filled.SwapHoriz,
-        label = "Transactions",
-        a11yDescription = "Navigate to Transactions",
+        label = "Activity",
+        a11yDescription = "View transaction activity",
     ),
     Budgets(
         route = Route.Budgets.route,
@@ -83,9 +82,7 @@ fun FinanceBottomBar(
 
     NavigationBar(modifier = modifier) {
         TopLevelDestination.entries.forEach { destination ->
-            val selected = currentDestination?.hierarchy?.any {
-                it.route == destination.route
-            } == true
+            val selected = currentDestination?.route == destination.route
 
             NavigationBarItem(
                 selected = selected,

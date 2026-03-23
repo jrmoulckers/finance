@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: BUSL-1.1
-
 // swift-tools-version: 5.10
+// SPDX-License-Identifier: BUSL-1.1
 // Package.swift
 //
-// Swift Package Manager manifest for the Finance iOS & watchOS targets.
+// Swift Package Manager manifest for the Finance iOS, watchOS, and App Clip targets.
+// The App Clip provides quick transaction entry (#648).
 // The iOS app uses Swift Charts for financial data visualisation (#28).
 // The watchOS companion app displays balance, transactions, and budgets (#30).
 //
@@ -33,6 +33,8 @@ let package = Package(
     products: [
         .library(name: "FinanceApp", targets: ["FinanceApp"]),
         .library(name: "FinanceWatch", targets: ["FinanceWatch"]),
+        .library(name: "FinanceShared", targets: ["FinanceShared"]),
+        .library(name: "FinanceClip", targets: ["FinanceClip"]),
     ],
     targets: [
         // KMP shared framework — contains models, core, and sync modules.

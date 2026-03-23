@@ -17,3 +17,5 @@ export { useInstallPrompt } from './useInstallPrompt';
 export type { UseInstallPromptResult } from './useInstallPrompt';
 export { useTransactions } from './useTransactions';
 export type { TransactionFilters } from './useTransactions';
+export { useImport } from './useImport';
+export type { ImportStep, UseImportResult, ImportProgress, ImportSummary } from './useImport';

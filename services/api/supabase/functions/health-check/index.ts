@@ -18,8 +18,15 @@
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
-import { corsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { createAdminClient } from '../_shared/auth.ts';
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from '../_shared/rate-limit.ts';
 
 /** Individual service status. */
 type ServiceStatus = 'connected' | 'operational' | 'unavailable' | 'error';
@@ -114,7 +121,7 @@ async function checkAuth(supabaseUrl: string, serviceRoleKey: string): Promise<S
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return handleCorsPreflightRequest();
+    return handleCorsPreflightRequest(req);
   }
 
   const logger = createLogger('health-check');
@@ -126,7 +133,7 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: {
-        ...corsHeaders,
+        ...getCorsHeaders(req),
         'Content-Type': 'application/json',
       },
     });
@@ -150,11 +157,28 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify(errorResponse), {
       status: 503,
       headers: {
-        ...corsHeaders,
+        ...getCorsHeaders(req),
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
+  }
+
+  // Rate limiting (IP-based, #614)
+  try {
+    const rateLimitClient = createAdminClient();
+    const clientIp = getClientIp(req) ?? 'unknown';
+    const rateLimitResult = await checkRateLimit(
+      rateLimitClient,
+      clientIp,
+      RATE_LIMITS['health-check'],
+    );
+    if (!rateLimitResult.allowed) {
+      logger.warn('Rate limit exceeded', { httpStatus: 429 });
+      return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['health-check']);
+    }
+  } catch {
+    // Rate limiting failure must not block health checks — fail open
   }
 
   // Run health checks concurrently
@@ -186,7 +210,7 @@ serve(async (req: Request): Promise<Response> => {
   return new Response(JSON.stringify(response), {
     status: httpStatus,
     headers: {
-      ...corsHeaders,
+      ...getCorsHeaders(req),
       'Content-Type': 'application/json',
       // Prevent caching of health status — always fresh
       'Cache-Control': 'no-cache, no-store, must-revalidate',

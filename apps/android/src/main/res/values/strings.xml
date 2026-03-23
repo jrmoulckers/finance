@@ -1,4 +1,355 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Finance</string>
+
+    <!-- Navigation -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_accounts">Accounts</string>
+    <string name="nav_transactions">Transactions</string>
+    <string name="nav_budgets">Budgets</string>
+    <string name="nav_goals">Goals</string>
+    <string name="a11y_navigate_to_dashboard">Navigate to Dashboard</string>
+    <string name="a11y_navigate_to_accounts">Navigate to Accounts</string>
+    <string name="a11y_navigate_to_transactions">Navigate to Transactions</string>
+    <string name="a11y_navigate_to_budgets">Navigate to Budgets</string>
+    <string name="a11y_navigate_to_goals">Navigate to Goals</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_net_worth">Net Worth</string>
+    <string name="dashboard_today">Today</string>
+    <string name="dashboard_this_month">This Month</string>
+    <string name="dashboard_budget_health">Budget Health</string>
+    <string name="dashboard_recent_transactions">Recent Transactions</string>
+    <string name="dashboard_no_recent_transactions">No recent transactions</string>
+    <string name="dashboard_add_transaction">Add Transaction</string>
+    <string name="dashboard_view_all">View All</string>
+    <string name="dashboard_budget_healthy">healthy</string>
+    <string name="dashboard_budget_warning">warning</string>
+    <string name="dashboard_budget_over">over budget</string>
+    <string name="a11y_loading_dashboard">Loading dashboard</string>
+    <string name="a11y_loading_indicator">Loading indicator</string>
+    <string name="a11y_net_worth_label">Net Worth label</string>
+    <string name="a11y_budget_health_section">Budget Health section</string>
+    <string name="a11y_recent_transactions_section">Recent Transactions section</string>
+    <string name="a11y_add_new_transaction">Add new transaction</string>
+    <string name="a11y_view_all_transactions">View all transactions</string>
+
+    <!-- Accounts -->
+    <string name="accounts_title">Accounts</string>
+    <string name="accounts_no_accounts_yet">No accounts yet</string>
+    <string name="accounts_add_first">Add your first account to get started</string>
+    <string name="accounts_current_balance">Current Balance</string>
+    <string name="accounts_type_label">Type</string>
+    <string name="accounts_currency_label">Currency</string>
+    <string name="accounts_status_label">Status</string>
+    <string name="accounts_status_active">Active</string>
+    <string name="accounts_status_archived">Archived</string>
+    <string name="accounts_transaction_history">Transaction History</string>
+    <string name="accounts_no_transactions">No transactions for this account</string>
+    <string name="accounts_uncategorized">Uncategorized</string>
+    <string name="accounts_unknown_payee">Unknown</string>
+    <string name="a11y_loading_accounts">Loading accounts</string>
+    <string name="a11y_add_new_account">Add new account</string>
+    <string name="a11y_navigate_back">Navigate back</string>
+    <string name="a11y_no_accounts_empty">No accounts yet. Add your first account.</string>
+    <string name="a11y_transaction_history_section">Transaction History section</string>
+
+    <!-- Transactions -->
+    <string name="transactions_title">Transactions</string>
+    <string name="transactions_search_placeholder">Search payees, categories…</string>
+    <string name="transactions_filter_all">All</string>
+    <string name="transactions_filter_expenses">Expenses</string>
+    <string name="transactions_filter_income">Income</string>
+    <string name="transactions_filter_transfers">Transfers</string>
+    <string name="transactions_filter_clear">Clear</string>
+    <string name="transactions_no_transactions_yet">No transactions yet</string>
+    <string name="transactions_add_first">Add your first transaction to get started</string>
+    <string name="transactions_no_matching">No matching transactions</string>
+    <string name="transactions_try_adjusting">Try adjusting your filters</string>
+    <string name="a11y_loading_transactions">Loading transactions</string>
+    <string name="a11y_search_transactions">Search transactions</string>
+    <string name="a11y_clear_search">Clear search</string>
+    <string name="a11y_close_search">Close search</string>
+    <string name="a11y_open_search">Open search</string>
+    <string name="a11y_filter_all">Filter: All</string>
+    <string name="a11y_filter_expenses">Filter: Expenses</string>
+    <string name="a11y_filter_income">Filter: Income</string>
+    <string name="a11y_filter_transfers">Filter: Transfers</string>
+    <string name="a11y_clear_all_filters">Clear all filters</string>
+    <string name="a11y_loading_more">Loading more</string>
+
+    <!-- Transaction Create -->
+    <string name="transaction_create_type">Transaction Type</string>
+    <string name="transaction_create_amount">Amount</string>
+    <string name="transaction_create_payee">Payee</string>
+    <string name="transaction_create_payee_placeholder">e.g. Whole Foods</string>
+    <string name="transaction_create_category">Category</string>
+    <string name="transaction_create_account">Account</string>
+    <string name="transaction_create_from_account">From Account</string>
+    <string name="transaction_create_to_account">To Account</string>
+    <string name="transaction_create_destination_account">Destination Account</string>
+    <string name="transaction_create_date">Date</string>
+    <string name="transaction_create_note_optional">Note (optional)</string>
+    <string name="transaction_create_note_label">Note</string>
+    <string name="transaction_create_note_placeholder">Add a note…</string>
+    <string name="transaction_create_review">Review Transaction</string>
+    <string name="transaction_create_type_expense">Expense</string>
+    <string name="transaction_create_type_income">Income</string>
+    <string name="transaction_create_type_transfer">Transfer</string>
+    <string name="transaction_create_save">Save Transaction</string>
+    <string name="transaction_create_saving">Saving…</string>
+    <string name="transaction_create_continue">Continue</string>
+    <string name="a11y_transaction_type_selector">Transaction type selector</string>
+    <string name="a11y_amount_in_dollars">Amount in dollars</string>
+    <string name="a11y_payee_name">Payee name</string>
+    <string name="a11y_select_category">Select a category</string>
+    <string name="a11y_optional_note">Optional note</string>
+    <string name="a11y_review_transaction">Review your transaction</string>
+    <string name="a11y_saving_transaction">Saving transaction</string>
+    <string name="a11y_save_transaction">Save transaction</string>
+    <string name="a11y_continue_next_step">Continue to next step</string>
+
+    <!-- Budgets -->
+    <string name="budgets_title">Budgets</string>
+    <string name="budgets_overview">Budget Overview</string>
+    <string name="budgets_your_budgets">Your Budgets</string>
+    <string name="budgets_spent">Spent</string>
+    <string name="budgets_budgeted">Budgeted</string>
+    <string name="budgets_on_track">On track</string>
+    <string name="budgets_approaching_limits">Approaching limits</string>
+    <string name="budgets_over_budget">Over budget</string>
+    <string name="budgets_healthy">healthy</string>
+    <string name="budgets_warning">warning</string>
+    <string name="budgets_over">over budget</string>
+    <string name="budgets_percent_used">%1$d%% used</string>
+    <string name="budgets_no_budgets_yet">No budgets yet</string>
+    <string name="budgets_create_first">Create your first budget to start tracking spending</string>
+    <string name="budgets_error_title">Something went wrong</string>
+    <string name="budgets_retry">Retry</string>
+    <string name="budgets_period_weekly">Weekly</string>
+    <string name="budgets_period_biweekly">Biweekly</string>
+    <string name="budgets_period_monthly">Monthly</string>
+    <string name="budgets_period_quarterly">Quarterly</string>
+    <string name="budgets_period_yearly">Yearly</string>
+    <string name="a11y_loading_budgets">Loading budgets</string>
+    <string name="a11y_create_new_budget">Create new budget</string>
+    <string name="a11y_budget_overview_label">Budget Overview label</string>
+    <string name="a11y_your_budgets_section">Your Budgets section</string>
+    <string name="a11y_retry_loading_budgets">Retry loading budgets</string>
+
+    <!-- Goals -->
+    <string name="goals_title">Goals</string>
+    <string name="goals_current">Current</string>
+    <string name="goals_remaining">Remaining</string>
+    <string name="goals_target">Target</string>
+    <string name="goals_no_goals_yet">No goals yet</string>
+    <string name="goals_create_first">Create your first savings goal to get started</string>
+    <string name="goals_goal_completed">Goal completed</string>
+    <string name="goals_goal_icon">Goal icon</string>
+    <string name="a11y_loading_goals">Loading goals</string>
+    <string name="a11y_create_new_goal">Create new goal</string>
+    <string name="a11y_retry_loading_goals">Retry loading goals</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_profile">Profile</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_preferences">Preferences</string>
+    <string name="settings_security">Security</string>
+    <string name="settings_accessibility">Accessibility</string>
+    <string name="settings_data">Data</string>
+    <string name="settings_about">About</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_default_currency">Default currency</string>
+    <string name="settings_budget_alerts">Budget alert notifications</string>
+    <string name="settings_budget_alerts_desc">Receive alerts when nearing budget limits</string>
+    <string name="settings_bill_reminders">Bill reminders</string>
+    <string name="settings_bill_reminders_desc">Get reminded before upcoming bill due dates</string>
+    <string name="settings_biometric">Biometric authentication</string>
+    <string name="settings_biometric_desc_available">Use fingerprint or face to unlock the app</string>
+    <string name="settings_biometric_desc_unavailable">Biometric authentication is not available on this device</string>
+    <string name="settings_app_lock_timeout">App lock timeout</string>
+    <string name="settings_simplified_view">Simplified view</string>
+    <string name="settings_simplified_view_desc">Reduce visual complexity for easier reading</string>
+    <string name="settings_high_contrast">High contrast mode</string>
+    <string name="settings_high_contrast_desc">Increase contrast for better visibility</string>
+    <string name="settings_export_data">Export data</string>
+    <string name="settings_exporting">Exporting…</string>
+    <string name="settings_delete_account">Delete account</string>
+    <string name="settings_sign_out">Sign out</string>
+    <string name="settings_app_version">App version</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <string name="settings_terms_of_service">Terms of Service</string>
+    <string name="settings_open_source_licenses">Open Source Licenses</string>
+    <string name="settings_user_name_placeholder">User Name</string>
+    <string name="settings_user_email_placeholder">user@example.com</string>
+    <string name="a11y_appearance_settings_card">Appearance settings card</string>
+    <string name="a11y_theme_mode_selector">Theme mode selector</string>
+    <string name="a11y_profile_info_card">Profile information card</string>
+    <string name="a11y_user_avatar_placeholder">User avatar placeholder</string>
+    <string name="a11y_sign_out_of_account">Sign out of your account</string>
+    <string name="a11y_default_currency_selector">Default currency selector</string>
+    <string name="a11y_app_lock_timeout_selector">App lock timeout selector</string>
+    <string name="a11y_export_financial_data">Export your financial data</string>
+    <string name="a11y_delete_account_permanently">Delete your account permanently</string>
+    <string name="a11y_view_privacy_policy">View privacy policy</string>
+    <string name="a11y_view_terms_of_service">View terms of service</string>
+    <string name="a11y_view_open_source_licenses">View open source licenses</string>
+
+    <!-- Settings: Export Dialog -->
+    <string name="export_dialog_title">Export Data</string>
+    <string name="export_dialog_choose_format">Choose an export format:</string>
+    <string name="export_dialog_cancel">Cancel</string>
+    <string name="export_share_subject">Finance Data Export</string>
+    <string name="export_share_chooser">Share export file</string>
+    <string name="export_share_failed">Could not share the export file</string>
+
+    <!-- Settings: Delete Account Dialog -->
+    <string name="delete_dialog_title">Delete Account</string>
+    <string name="delete_dialog_warning">This action is permanent and cannot be undone. All your financial data will be deleted.</string>
+    <string name="delete_dialog_type_confirm">Type DELETE to confirm:</string>
+    <string name="delete_dialog_placeholder">DELETE</string>
+    <string name="delete_dialog_confirm_button">Delete Account</string>
+    <string name="delete_dialog_cancel">Cancel</string>
+    <string name="a11y_delete_dialog">Delete account confirmation dialog</string>
+    <string name="a11y_delete_dialog_warning">Warning: this action is permanent and cannot be undone</string>
+    <string name="a11y_delete_type_confirm">Type the word DELETE to confirm account deletion</string>
+    <string name="a11y_delete_text_input">Deletion confirmation text input</string>
+    <string name="a11y_confirm_delete">Confirm account deletion</string>
+    <string name="a11y_enable_delete">Type DELETE to enable account deletion</string>
+    <string name="a11y_cancel_delete">Cancel account deletion</string>
+    <string name="a11y_cancel_export">Cancel export</string>
+
+    <!-- Auth / Login -->
+    <string name="login_welcome">Welcome to Finance</string>
+    <string name="login_subtitle">Sign in to sync your financial data securely across devices.</string>
+    <string name="login_sign_in_google">Sign in with Google</string>
+    <string name="login_sign_in_passkey">Sign in with Passkey</string>
+    <string name="login_error">Something went wrong. Please try again.</string>
+    <string name="login_terms">By signing in, you agree to our Terms of Service and Privacy Policy.</string>
+    <string name="login_signing_in">Signing in…</string>
+    <string name="a11y_sign_in_error">Sign-in error. Please try again.</string>
+    <string name="a11y_signing_in_wait">Signing in, please wait</string>
+    <string name="a11y_sign_in_progress">Sign-in progress indicator</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to Finance</string>
+    <string name="onboarding_welcome_subtitle">Track spending, set budgets, and reach your financial goals — all in one place.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_done">Done</string>
+    <string name="onboarding_currency_title">What currency do you use?</string>
+    <string name="onboarding_currency_subtitle">You can change this later in settings.</string>
+    <string name="onboarding_account_title">Set up your first account</string>
+    <string name="onboarding_account_subtitle">This is usually your main checking or savings account.</string>
+    <string name="onboarding_account_name_label">Account name</string>
+    <string name="onboarding_account_name_placeholder">e.g. My Checking</string>
+    <string name="onboarding_account_type">Account type</string>
+    <string name="onboarding_starting_balance">Starting balance</string>
+    <string name="onboarding_budget_title">Set your first budget</string>
+    <string name="onboarding_budget_category_label">Category</string>
+    <string name="onboarding_monthly_budget">Monthly budget</string>
+    <string name="onboarding_done_title">You\'re all set!</string>
+    <string name="onboarding_summary_currency">Currency</string>
+    <string name="onboarding_summary_account">Account</string>
+    <string name="onboarding_summary_balance">Balance</string>
+    <string name="onboarding_summary_budget">Budget</string>
+    <string name="a11y_finance_app_logo">Finance app logo</string>
+    <string name="a11y_onboarding_get_started">Get Started button. Begins onboarding setup.</string>
+    <string name="a11y_go_back_previous_step">Go back to previous step</string>
+    <string name="a11y_skip_onboarding">Skip onboarding and go to the app</string>
+    <string name="a11y_continue_final_step">Continue to final step</string>
+    <string name="a11y_finish_onboarding">Finish onboarding and enter the app</string>
+    <string name="a11y_setup_complete_checkmark">Setup complete checkmark</string>
+    <string name="a11y_account_name_input">Account name input field</string>
+    <string name="a11y_account_type_selection">Account type selection</string>
+
+    <!-- Sync Status -->
+    <string name="sync_status_title">Sync Status</string>
+    <string name="sync_status_synced">Synced</string>
+    <string name="sync_status_syncing">Syncing</string>
+    <string name="sync_status_offline">Offline</string>
+    <string name="sync_status_error">Error</string>
+    <string name="sync_now">Sync Now</string>
+    <string name="sync_syncing">Syncing…</string>
+    <string name="sync_last_synced">Last synced %1$s</string>
+    <string name="sync_no_changes_waiting">No changes waiting to sync</string>
+    <string name="sync_one_change_waiting">1 change waiting to sync</string>
+    <string name="sync_n_changes_waiting">%1$d changes waiting to sync</string>
+    <string name="sync_conflicts">Conflicts</string>
+    <string name="sync_conflict_mine">Mine</string>
+    <string name="sync_conflict_theirs">Theirs</string>
+    <string name="sync_keep_mine">Keep Mine</string>
+    <string name="sync_keep_theirs">Keep Theirs</string>
+    <string name="sync_cancel">Cancel</string>
+    <string name="sync_offline_explanation">You are currently offline. Changes you make will be saved locally and synced automatically when your connection is restored.</string>
+    <string name="sync_completing_sign_in">Completing sign in…</string>
+    <string name="a11y_sync_status_synced">Sync status: synced</string>
+    <string name="a11y_sync_status_syncing">Sync status: syncing</string>
+    <string name="a11y_sync_status_offline">Sync status: offline</string>
+    <string name="a11y_sync_status_error">Sync status: error</string>
+    <string name="a11y_sync_in_progress">Sync in progress</string>
+    <string name="a11y_sync_now">Sync now</string>
+    <string name="a11y_conflicts_requiring_resolution">Conflicts requiring resolution</string>
+    <string name="a11y_processing_sign_in">Processing sign in</string>
+    <string name="a11y_sign_in_progress_indicator">Sign in progress indicator</string>
+
+    <!-- Offline Banner -->
+    <string name="offline_banner_text">Working offline — changes will sync when connected</string>
+    <string name="a11y_offline_banner">Working offline. Changes will sync when connected.</string>
+    <string name="a11y_dismiss_offline_banner">Dismiss offline banner</string>
+
+    <!-- Deep Links / Placeholders -->
+    <string name="household_invitation_title">Household Invitation</string>
+    <string name="household_invitation_coming_soon">Invitation support coming soon.</string>
+    <string name="transaction_detail_title">Transaction Details</string>
+    <string name="transaction_detail_coming_soon">Transaction detail view coming soon.</string>
+
+    <!-- Empty States (reusable components) -->
+    <string name="empty_no_transactions">No transactions yet</string>
+    <string name="empty_no_transactions_desc">Add your first transaction to start tracking your finances.</string>
+    <string name="empty_add_transaction">Add transaction</string>
+    <string name="empty_no_budgets">No budgets set</string>
+    <string name="empty_no_budgets_desc">Create one to track your spending and stay on top of your goals.</string>
+    <string name="empty_create_budget">Create budget</string>
+    <string name="empty_no_goals">No goals yet</string>
+    <string name="empty_no_goals_desc">Set a savings target to work toward something meaningful.</string>
+    <string name="empty_set_goal">Set a goal</string>
+    <string name="empty_no_accounts">No accounts added</string>
+    <string name="empty_no_accounts_desc">Add an account to get started with your financial overview.</string>
+    <string name="empty_add_account">Add account</string>
+
+    <!-- Error States (reusable components) -->
+    <string name="error_working_offline">Working offline — changes sync when connected</string>
+    <string name="error_retry">Retry</string>
+    <string name="error_resolve">Resolve</string>
+    <string name="error_dismiss">Dismiss</string>
+    <string name="error_sync_conflict_title">Sync conflict detected</string>
+    <string name="error_sync_conflict_desc">Some of your local changes conflict with data on the server. You can resolve the conflict now or dismiss and handle it later.</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
+
+    <!-- Loading States (reusable components) -->
+    <string name="loading">Loading</string>
+    <string name="loading_with_ellipsis">Loading…</string>
+    <string name="refreshing">Refreshing</string>
+    <string name="pull_to_refresh">Pull down to refresh</string>
+
+    <!-- Common / Shared -->
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="back">Back</string>
+    <string name="done">Done</string>
+    <string name="selected">Selected</string>
+    <string name="not_selected">Not selected</string>
+    <string name="enabled">enabled</string>
+    <string name="disabled">disabled</string>
+    <string name="amount_placeholder">0.00</string>
+
+    <!-- Theme Preferences -->
+    <string name="theme_system">Follow system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
 </resources>

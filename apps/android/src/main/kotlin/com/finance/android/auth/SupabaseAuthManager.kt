@@ -227,6 +227,56 @@ class SupabaseAuthManager(
         }
     }
 
+    // ── Sign-up (email + password) ──────────────────────────────────────
+
+    /**
+     * Register a new user with email and password via Supabase Auth.
+     *
+     * On success, stores tokens, updates [currentSession], and sets
+     * [isAuthenticated] to `true`. On failure, returns the error —
+     * callers should inspect the message for duplicate-email detection.
+     *
+     * **Security:** credentials are transmitted over TLS; passwords and
+     * tokens are NEVER logged.
+     *
+     * @param email    The new user's email address.
+     * @param password The new user's password.
+     * @return [Result.success] with the new [AuthSession], or
+     *         [Result.failure] with the error.
+     */
+    suspend fun signUp(email: String, password: String): Result<AuthSession> {
+        Timber.d("Sign-up requested for new account")
+        return runCatching {
+            val response = httpClient.post("$supabaseUrl/auth/v1/signup") {
+                contentType(ContentType.Application.Json)
+                setBody("""{"email":"$email","password":"$password"}""")
+            }
+            if (!response.status.isSuccess()) {
+                val body = response.bodyAsText()
+                // Supabase returns 422 for duplicate email registrations.
+                if (response.status.value == 422 || body.contains("already registered", ignoreCase = true)) {
+                    throw EmailAlreadyExistsException()
+                }
+                throw IllegalStateException(
+                    "Sign-up failed with status ${response.status.value}",
+                )
+            }
+            parseAuthResponse(response.bodyAsText())
+        }.onSuccess { session ->
+            tokenManager.storeTokens(session)
+            _currentSession.value = session
+            _isAuthenticated.value = true
+            Timber.i("Sign-up successful — new account created")
+        }.onFailure { error ->
+            Timber.e(error, "Sign-up failed")
+        }
+    }
+
+    /**
+     * Thrown when a sign-up attempt uses an email that is already registered.
+     */
+    class EmailAlreadyExistsException : Exception("An account with this email already exists")
+
     // ── Private sign-in implementations ─────────────────────────────────
 
     private suspend fun signInWithEmail(

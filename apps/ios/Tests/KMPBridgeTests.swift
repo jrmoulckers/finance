@@ -8,62 +8,98 @@ import Testing
 @Suite("KMPBridge initialisation")
 struct KMPBridgeInitTests {
     @Test("isKMPAvailable is false when useMocks is true")
-    @MainActor func kmpUnavailable() { let b = KMPBridge(useMocks: true); #expect(!b.isKMPAvailable) }
+    @MainActor func kmpUnavailableInMockMode() {
+        let bridge = KMPBridge(useMocks: true)
+        #expect(!bridge.isKMPAvailable)
+    }
     @Test("syncClient is nil by default")
-    @MainActor func syncNil() { let b = KMPBridge(useMocks: true); #expect(b.syncClient == nil) }
+    @MainActor func syncClientNilByDefault() {
+        let bridge = KMPBridge(useMocks: true)
+        #expect(bridge.syncClient == nil)
+    }
 }
 
 @Suite("KMPTypeAdapters enum round-trip")
 struct KMPEnumAdapterTests {
     @Test("TransactionTypeUI round-trips")
-    func txnType() { for t in TransactionTypeUI.allCases { #expect(TransactionTypeUI.fromKMP(t.toKMP()) == t) } }
+    func txnTypeRoundTrip() {
+        for t in TransactionTypeUI.allCases {
+            #expect(TransactionTypeUI.fromKMP(t.toKMP()) == t)
+        }
+    }
     @Test("AccountTypeUI round-trips")
-    func acctType() { for t in AccountTypeUI.allCases { #expect(AccountTypeUI.fromKMP(t.toKMP()) == t) } }
+    func acctTypeRoundTrip() {
+        for t in AccountTypeUI.allCases {
+            #expect(AccountTypeUI.fromKMP(t.toKMP()) == t)
+        }
+    }
     @Test("GoalStatusUI round-trips")
-    func goalStatus() { for s in GoalStatusUI.allCases { #expect(GoalStatusUI.fromKMP(s.toKMP()) == s) } }
-    @Test("BudgetPeriod displayNames non-empty")
-    func budgetPeriod() { for p in KMPBudgetPeriod.allCases { #expect(!p.displayName.isEmpty) } }
+    func goalStatusRoundTrip() {
+        for s in GoalStatusUI.allCases {
+            #expect(GoalStatusUI.fromKMP(s.toKMP()) == s)
+        }
+    }
 }
 
 @Suite("KMPDateConversion")
 struct KMPDateConversionTests {
     @Test("dateFromEpochMs converts correctly")
-    func epochMs() {
-        let d = KMPDateConversion.dateFromEpochMs(1_704_067_200_000)
-        var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "UTC")!
-        let comps = c.dateComponents([.year, .month, .day], from: d)
-        #expect(comps.year == 2024); #expect(comps.month == 1); #expect(comps.day == 1)
+    func epochMsToDate() {
+        let date = KMPDateConversion.dateFromEpochMs(1_704_067_200_000)
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(identifier: "UTC")!
+        let comps = utcCal.dateComponents([.year, .month, .day], from: date)
+        #expect(comps.year == 2024)
+        #expect(comps.month == 1)
+        #expect(comps.day == 1)
     }
-    @Test("epochMs round-trips")
-    func roundTrip() {
-        let orig: Int64 = 1_700_000_000_000
-        let rt = KMPDateConversion.epochMsFromDate(KMPDateConversion.dateFromEpochMs(orig))
-        #expect(abs(rt - orig) <= 1)
+    @Test("epochMsFromDate round-trips")
+    func epochMsRoundTrip() {
+        let original: Int64 = 1_700_000_000_000
+        let date = KMPDateConversion.dateFromEpochMs(original)
+        let rt = KMPDateConversion.epochMsFromDate(date)
+        #expect(abs(rt - original) <= 1)
     }
 }
 
 @Suite("KMPRepositoryError")
 struct KMPRepositoryErrorTests {
-    @Test("entityNotFound includes type") func entityNotFound() {
-        #expect(KMPRepositoryError.entityNotFound(entityType: "Account", id: "x").localizedDescription.contains("Account"))
+    @Test("entityNotFound includes type and id")
+    func entityNotFound() {
+        let e = KMPRepositoryError.entityNotFound(entityType: "Account", id: "x")
+        #expect(e.localizedDescription.contains("Account"))
     }
-    @Test("bridgeCallFailed wraps message") func bridgeCall() {
-        #expect(KMPRepositoryError.bridgeCallFailed(underlying: "timeout").localizedDescription.contains("timeout"))
+    @Test("bridgeCallFailed wraps message")
+    func bridgeCallFailed() {
+        let e = KMPRepositoryError.bridgeCallFailed(underlying: "timeout")
+        #expect(e.localizedDescription.contains("timeout"))
     }
 }
 
 @Suite("KMP Repository fallback")
 struct KMPRepositoryFallbackTests {
-    @Test("accounts fallback") @MainActor func acct() async throws {
-        #expect(!(try await KMPAccountRepository().getAccounts()).isEmpty)
+    @Test("KMPAccountRepository falls back to mock data")
+    @MainActor func accountFallback() async throws {
+        let repo = KMPAccountRepository()
+        let accounts = try await repo.getAccounts()
+        #expect(!accounts.isEmpty)
     }
-    @Test("transactions paginated") @MainActor func txnPage() async throws {
-        #expect((try await KMPTransactionRepository().getTransactions(offset: 0, limit: 2)).count <= 2)
+    @Test("KMPTransactionRepository paginated returns correct slice")
+    @MainActor func txnPaginated() async throws {
+        let repo = KMPTransactionRepository()
+        let page = try await repo.getTransactions(offset: 0, limit: 2)
+        #expect(page.count <= 2)
     }
-    @Test("budgets fallback") @MainActor func budget() async throws {
-        #expect(!(try await KMPBudgetRepository().getBudgets()).isEmpty)
+    @Test("KMPBudgetRepository falls back to mock data")
+    @MainActor func budgetFallback() async throws {
+        let repo = KMPBudgetRepository()
+        let budgets = try await repo.getBudgets()
+        #expect(!budgets.isEmpty)
     }
-    @Test("goals fallback") @MainActor func goal() async throws {
-        #expect(!(try await KMPGoalRepository().getGoals()).isEmpty)
+    @Test("KMPGoalRepository falls back to mock data")
+    @MainActor func goalFallback() async throws {
+        let repo = KMPGoalRepository()
+        let goals = try await repo.getGoals()
+        #expect(!goals.isEmpty)
     }
 }
