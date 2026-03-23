@@ -3,13 +3,40 @@ import SwiftUI
 
 /// Root view of the Finance application.
 ///
-/// Displays the main tab navigation backed by KMP-bridged repositories.
-/// Biometric lock gating is handled at the `FinanceApp` level — this
-/// view is only visible once the user has been authenticated (or if
-/// biometric lock is disabled).
+/// Hosts the `MainTabView` and injects infrastructure services
+/// (deep linking, network monitoring) into the SwiftUI environment
+/// for consumption by child views.
 struct ContentView: View {
+    @Bindable var deepLinkHandler: DeepLinkHandler
+    @State var networkMonitor: NetworkMonitor
+
+    init(
+        deepLinkHandler: DeepLinkHandler = DeepLinkHandler(),
+        networkMonitor: NetworkMonitor = NetworkMonitor()
+    ) {
+        self.deepLinkHandler = deepLinkHandler
+        self.networkMonitor = networkMonitor
+    }
+
     var body: some View {
-        MainTabView()
+        MainTabView(
+            selectedTab: $deepLinkHandler.selectedTab.withDefault(.dashboard)
+        )
+        .environment(networkMonitor)
+        .environment(deepLinkHandler)
+    }
+}
+
+// MARK: - Optional Binding Helper
+
+private extension Binding where Value == MainTabView.Tab? {
+    /// Converts an optional `Tab?` binding to a non-optional `Tab` binding
+    /// using a default value when the source is `nil`.
+    func withDefault(_ defaultValue: MainTabView.Tab) -> Binding<MainTabView.Tab> {
+        Binding<MainTabView.Tab>(
+            get: { self.wrappedValue ?? defaultValue },
+            set: { self.wrappedValue = $0 }
+        )
     }
 }
 
