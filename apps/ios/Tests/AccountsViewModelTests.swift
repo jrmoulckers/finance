@@ -102,4 +102,78 @@ final class AccountsViewModelTests: XCTestCase {
                       "Account groups should be empty when repository throws")
         XCTAssertFalse(vm.isLoading, "isLoading should be false after error")
     }
+
+    // MARK: - Test: load with empty repository returns no groups
+
+    @MainActor
+    func testLoadAccountsWithEmptyRepository() async {
+        let repo = StubAccountRepository()
+        repo.accountsToReturn = []
+        let vm = AccountsViewModel(repository: repo)
+
+        await vm.loadAccounts()
+
+        XCTAssertTrue(vm.accountGroups.isEmpty,
+                       "Account groups should be empty when no accounts exist")
+        XCTAssertFalse(vm.isLoading, "isLoading should be false after loading")
+    }
+
+    // MARK: - Test: delete account with repository error still removes from local state
+
+    @MainActor
+    func testDeleteAccountWithRepositoryError() async {
+        let repo = StubAccountRepository()
+        repo.accountsToReturn = SampleData.allAccounts
+        let vm = AccountsViewModel(repository: repo)
+
+        await vm.loadAccounts()
+
+        // Configure error for the delete call
+        repo.errorToThrow = TestError.simulated
+
+        let countBefore = vm.accountGroups.flatMap(\.accounts).count
+        await vm.deleteAccount(id: "a1")
+
+        // Local state should still be updated for immediate UI feedback
+        let countAfter = vm.accountGroups.flatMap(\.accounts).count
+        XCTAssertEqual(countAfter, countBefore - 1,
+                       "Local state should remove the account even on repository error")
+    }
+
+    // MARK: - Test: deleting a non-existent account leaves list unchanged
+
+    @MainActor
+    func testDeleteNonExistentAccountLeavesListUnchanged() async {
+        let repo = StubAccountRepository()
+        repo.accountsToReturn = SampleData.allAccounts
+        let vm = AccountsViewModel(repository: repo)
+
+        await vm.loadAccounts()
+
+        let countBefore = vm.accountGroups.flatMap(\.accounts).count
+
+        await vm.deleteAccount(id: "nonexistent")
+
+        let countAfter = vm.accountGroups.flatMap(\.accounts).count
+        XCTAssertEqual(countAfter, countBefore,
+                       "Deleting a non-existent account should not change the list")
+    }
+
+    // MARK: - Test: load accounts with single type produces one group
+
+    @MainActor
+    func testLoadAccountsSingleTypeGroup() async {
+        let repo = StubAccountRepository()
+        repo.accountsToReturn = [SampleData.savingsAccount, SampleData.emergencyFundAccount]
+        let vm = AccountsViewModel(repository: repo)
+
+        await vm.loadAccounts()
+
+        XCTAssertEqual(vm.accountGroups.count, 1,
+                       "Should have exactly 1 group when all accounts share a type")
+        XCTAssertEqual(vm.accountGroups.first?.type, .savings,
+                       "The single group should be savings")
+        XCTAssertEqual(vm.accountGroups.first?.accounts.count, 2,
+                       "The savings group should contain both accounts")
+    }
 }

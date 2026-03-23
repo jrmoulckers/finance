@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import {
   ConfirmDialog,
@@ -250,7 +251,13 @@ export const TransactionsPage: React.FC = () => {
                     return (
                       <li key={transaction.id} className="list-item" role="listitem">
                         <div className="list-item__content">
-                          <p className="list-item__primary">{transactionLabel}</p>
+                          <Link
+                            to={`/transactions/${transaction.id}`}
+                            style={{ textDecoration: 'none', color: 'inherit' }}
+                            aria-label={`View details for ${transactionLabel}`}
+                          >
+                            <p className="list-item__primary">{transactionLabel}</p>
+                          </Link>
                           <p className="list-item__secondary">
                             {transaction.categoryId !== null
                               ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')

@@ -14,6 +14,8 @@ import SwiftUI
 @main
 struct FinanceApp: App {
     @State private var biometricManager = BiometricAuthManager()
+    @State private var deepLinkHandler = DeepLinkHandler()
+    @State private var networkMonitor = NetworkMonitor()
     @State private var isLocked = true
     @State private var showOnboarding = !UserDefaults.standard.bool(
         forKey: OnboardingView.hasCompletedOnboardingKey
@@ -39,9 +41,12 @@ struct FinanceApp: App {
                     })
                     .transition(.opacity)
                 } else {
-                    ContentView()
-                        .environment(biometricManager)
-                        .accessibilityHidden(biometricLockEnabled && isLocked)
+                    ContentView(
+                        deepLinkHandler: deepLinkHandler,
+                        networkMonitor: networkMonitor
+                    )
+                    .environment(biometricManager)
+                    .accessibilityHidden(biometricLockEnabled && isLocked)
 
                     if biometricLockEnabled && isLocked {
                         LockScreenView(
@@ -51,6 +56,12 @@ struct FinanceApp: App {
                         .transition(.opacity)
                     }
                 }
+            }
+            .onOpenURL { url in
+                Self.logger.info(
+                    "Received URL: \(url.absoluteString, privacy: .public)"
+                )
+                deepLinkHandler.handle(url)
             }
             .onChange(of: scenePhase) { _, newPhase in
                 handleScenePhaseChange(newPhase)

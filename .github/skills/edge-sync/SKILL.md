@@ -27,11 +27,12 @@ This skill provides implementation-aware guidance for the Finance app's current 
 
 ## Conflict Resolution
 
-- `packages/sync/src/commonMain/kotlin/com/finance/sync/conflict/ConflictStrategy.kt` currently ships two production strategies:
+- `packages/sync/src/commonMain/kotlin/com/finance/sync/conflict/ConflictStrategy.kt` ships four production strategies:
   - `LAST_WRITE_WINS` via `LastWriteWinsResolver.kt`
   - `MERGE` via `MergeResolver.kt`
-- Table defaults: `budgets`, `goals`, and `households` use merge; other tables fall back to last-write-wins.
-- There are no checked-in `ClientWins` or `ServerWins` strategy classes today, so do not assume those implementations exist.
+  - `CLIENT_WINS` via `ClientWinsResolver.kt`
+  - `SERVER_WINS` via `ServerWinsResolver.kt`
+- Table defaults: `budgets`, `goals`, and `households` use merge; other tables fall back to last-write-wins. `CLIENT_WINS` and `SERVER_WINS` are available for custom override.
 - `MergeResolver.kt` performs field-level reconciliation and flags unresolved collisions; `LastWriteWinsResolver.kt` uses timestamp/server ordering.
 
 ## Queue and Delta Sync Details
@@ -55,8 +56,20 @@ This skill provides implementation-aware guidance for the Finance app's current 
 - `apps/web/src/sw/service-worker.ts` replays queued mutations from the service worker, with an online-event fallback on the main thread.
 - `apps/web/README.md` documents the queue architecture and replay lifecycle.
 
-## Test Harness and Current Limits
+## Sync Client and Auth
 
-- `packages/sync/src/commonTest/kotlin/com/finance/sync/integration/SyncIntegrationTestHarness.kt` contains a simulated `SyncClient` used for multi-device integration tests.
-- No checked-in `DefaultSyncEngine` implementation exists yet. If you need a production engine, start from `SyncEngine` and `SyncProvider` instead of referencing a nonexistent file.
-- `packages/sync/README.md` still says the package is scaffolded; treat code under `packages/sync/src/` as the source of truth.
+- `SyncClient.kt` provides the production sync client coordinating `SyncEngine`, `MutationQueue`, and `DeltaSyncManager`.
+- `packages/sync/src/commonMain/kotlin/com/finance/sync/auth/` contains `AuthManager.kt`, `AuthSession.kt`, `AuthCredentials.kt`, `PKCEHelper.kt`, and `TokenManager.kt` for cross-platform auth integration.
+- Platform-specific token storage and SHA-256 implementations live in `iosMain`, `androidMain`, `jsMain`, and `jvmMain`.
+
+## Cryptography
+
+- `packages/sync/src/commonMain/kotlin/com/finance/sync/crypto/` contains envelope encryption (`EnvelopeEncryption.kt`), field-level encryption (`FieldEncryptor.kt`), crypto-shredding (`CryptoShredder.kt`), household key management (`HouseholdKeyManager.kt`), and key derivation/rotation.
+
+## Test Harness
+
+- `packages/sync/src/commonTest/` contains 35+ test files covering all sync modules.
+- `SyncIntegrationTestHarness.kt` provides a simulated `SyncClient` for multi-device integration tests.
+- `DefaultSyncEngineTest.kt` and `SyncClientTest.kt` verify the production engine lifecycle.
+- `OfflineResilienceTest.kt` and `SyncScenarioTest.kt` cover integration scenarios.
+- Treat code under `packages/sync/src/` as the source of truth for sync capabilities.

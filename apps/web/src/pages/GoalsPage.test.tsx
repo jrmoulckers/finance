@@ -2,6 +2,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { useGoals } from '../hooks';
 import { GoalsPage } from './GoalsPage';
 
@@ -95,18 +96,30 @@ describe('GoalsPage', () => {
   });
 
   it('renders without crashing', () => {
-    render(<GoalsPage />);
+    render(
+      <MemoryRouter>
+        <GoalsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole('heading', { level: 2, name: 'Goals' })).toBeInTheDocument();
   });
 
   it('displays goals summary', () => {
-    render(<GoalsPage />);
+    render(
+      <MemoryRouter>
+        <GoalsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Saved')).toBeInTheDocument();
     expect(screen.getByText('Target')).toBeInTheDocument();
   });
 
   it('displays individual goal names', () => {
-    render(<GoalsPage />);
+    render(
+      <MemoryRouter>
+        <GoalsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Emergency Fund')).toBeInTheDocument();
     expect(screen.getByText('Vacation')).toBeInTheDocument();
     expect(screen.getByText('New Laptop')).toBeInTheDocument();
@@ -114,7 +127,11 @@ describe('GoalsPage', () => {
   });
 
   it('has accessible progress bars', () => {
-    render(<GoalsPage />);
+    render(
+      <MemoryRouter>
+        <GoalsPage />
+      </MemoryRouter>,
+    );
     const progressBars = screen.getAllByRole('progressbar');
     expect(progressBars.length).toBe(4);
   });

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ConfirmDialog,
   CurrencyDisplay,
@@ -282,8 +283,14 @@ export const BudgetsPage: React.FC = () => {
                       >
                         <div>
                           <p style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                            <span aria-hidden="true">{getBudgetIcon(category?.icon)}</span>{' '}
-                            {budget.name}
+                            <Link
+                              to={`/budgets/${budget.id}`}
+                              style={{ textDecoration: 'none', color: 'inherit' }}
+                              aria-label={`View details for ${budget.name}`}
+                            >
+                              <span aria-hidden="true">{getBudgetIcon(category?.icon)}</span>{' '}
+                              {budget.name}
+                            </Link>
                           </p>
                           <p
                             style={{

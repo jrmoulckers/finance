@@ -7,6 +7,7 @@ import { OfflineBanner } from '../OfflineBanner';
 import { useKeyboardShortcuts } from '../../hooks';
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
+import { InstallBanner } from '../common/InstallBanner';
 
 export interface AppLayoutProps {
   activePath: string;
@@ -80,6 +81,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </main>
         <BottomNavigation activePath={activePath} onNavigate={onNavigate} />
       </div>
+      <InstallBanner />
       <KeyboardShortcutsModal isOpen={showHelp} onClose={closeKeyboardShortcuts} />
     </div>
   );
