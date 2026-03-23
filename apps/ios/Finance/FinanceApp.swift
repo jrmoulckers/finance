@@ -2,6 +2,7 @@
 
 import os
 import SwiftUI
+import WatchConnectivity
 
 /// Finance — a cross-platform financial tracking application.
 ///
@@ -21,6 +22,7 @@ struct FinanceApp: App {
     @State private var authService = AuthenticationService()
     @State private var deepLinkHandler = DeepLinkHandler()
     @State private var networkMonitor = NetworkMonitor()
+    @State private var watchDataSender = WatchDataSender()
     @State private var isLocked = true
     @State private var showOnboarding = !UserDefaults.standard.bool(
         forKey: OnboardingView.hasCompletedOnboardingKey
@@ -100,6 +102,9 @@ struct FinanceApp: App {
             Self.logger.debug("Scene entered background")
             if biometricLockEnabled {
                 isLocked = true
+            }
+            Task {
+                await watchDataSender.sendLatestData()
             }
         case .inactive:
             Self.logger.debug("Scene became inactive")
