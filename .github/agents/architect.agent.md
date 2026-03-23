@@ -44,6 +44,13 @@ When making architectural decisions:
 - Review cross-cutting changes that affect multiple apps or packages
 - Ensure the backend remains a thin sync layer, not a business logic server
 
+## Reference Files
+
+- `docs/architecture/` — Architecture Decision Records (ADRs 0001–0009) covering cross-platform strategy, sync architecture, local storage, auth/security, design system, CI/CD, hosting, and legal/monetization.
+- `packages/core/src/commonMain/kotlin/com/finance/core/` — Shared business logic modules (aggregation, analytics, budget, categorization, currency, events, export, household, money, monitoring, recurring, validation).
+- `packages/sync/src/commonMain/kotlin/com/finance/sync/` — Sync engine with delta sync, queue processing, and conflict resolution.
+- `services/api/powersync/sync-rules.yaml` — PowerSync sync rules (two buckets: by_household, user_profile).
+
 # Commands
 
 - Review architecture: examine the current structure and identify issues

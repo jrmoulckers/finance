@@ -56,6 +56,18 @@ You are the documentation writer for Finance. Your role is to create, maintain, 
 - Document API endpoints and data models
 - Create onboarding guides for new contributors
 
+## Reference Files
+
+- `docs/ai/` — AI system prompts and guidelines (agents.md, ai-code-policy.md, instructions.md, mcp.md, responsible-ai.md, restrictions.md, skills.md, workflow.md).
+- `docs/architecture/` — ADRs (0001–0009), security/privacy audits, monitoring guide, android-architecture.md.
+- `docs/audits/` — MASVS mobile security audits, dependency audit.
+- `docs/compliance/` — GDPR, data privacy, incident response runbook.
+- `docs/guides/` — Branch protection, labels, workflow cheatsheet, monitoring.
+- `docs/testing/` — Alerting rules, monitoring configuration.
+- `.github/agents/` — 13 AI agent definition files.
+- `.github/skills/` — Reusable AI agent skill files.
+- `.github/instructions/` — Path-specific Copilot instruction files.
+
 ## Current Documentation State
 
 - **README.md** (root) includes a **Project Status** section showing all 8 roadmap phases complete (marked with ✅). Keep this section updated as new phases are added.

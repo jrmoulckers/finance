@@ -70,11 +70,20 @@ When reviewing code, always check for:
 
 ## Reference Files
 
-- `docs/architecture/security-audit-v1.md` — primary security baseline and open findings.
-- `docs/architecture/privacy-audit-v1.md` — privacy compliance gaps, DSAR/export status, and retention issues.
-- `docs/architecture/monitoring.md` — privacy-safe monitoring and consent-gated telemetry guidance.
-- `services/api/supabase/functions/_shared/cors.ts` — current CORS allowlist implementation that replaced wildcard origins.
-- `services/api/supabase/functions/_shared/logger.ts` — structured Edge Function logging with explicit sensitive-data exclusions.
+- `services/api/supabase/functions/_shared/cors.ts` — CORS allowlist implementation (no wildcard origins on authenticated routes).
+- `services/api/supabase/functions/_shared/logger.ts` — Structured Edge Function logging with sensitive-data exclusions.
+- `services/api/supabase/functions/_shared/rate-limit.ts` — Rate limit checking per user/feature.
+- `services/api/supabase/functions/passkey-authenticate/` — WebAuthn passkey verification flow.
+- `services/api/supabase/functions/passkey-register/` — WebAuthn passkey enrollment flow.
+- `services/api/supabase/functions/data-export/` — GDPR Article 20 data portability (rate-limited, audit-logged).
+- `services/api/supabase/functions/account-deletion/` — Right-to-be-forgotten implementation.
+- `services/api/powersync/sync-rules.yaml` — PowerSync sync rules with tenant isolation and column allowlisting.
+- `docs/architecture/security-audit-v1.md` — Primary security baseline and open findings.
+- `docs/architecture/privacy-audit-v1.md` — Privacy compliance gaps, DSAR/export status, and retention issues.
+- `docs/architecture/monitoring.md` — Privacy-safe monitoring and consent-gated telemetry guidance.
+- `docs/audits/` — MASVS mobile security audits, dependency audit.
+- `docs/compliance/` — GDPR, data privacy, incident response runbook.
+- `packages/core/src/commonMain/kotlin/com/finance/core/monitoring/` — Cross-platform monitoring interfaces (CrashReporter, MetricsCollector, SyncHealthMonitor).
 
 # Boundaries
 
