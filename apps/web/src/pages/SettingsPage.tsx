@@ -4,8 +4,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from '../auth/auth-context';
 import { DataExport } from '../components/DataExport';
+import { useCategories } from '../hooks/useCategories';
 import { useOfflineStatus } from '../hooks/useOfflineStatus';
+import { useSpendingWatchlist } from '../hooks/useSpendingWatchlist';
 import { initMonitoring } from '../lib/monitoring';
+
+import '../styles/watchlist.css';
 
 const APP_VERSION = '0.1.0';
 const THEME_STORAGE_KEY = 'finance-theme';
@@ -73,8 +77,14 @@ export const SettingsPage: React.FC = () => {
   const { isAuthenticated, isLoading, logout, user, registerNewPasskey, webAuthnSupported } =
     useAuth();
   const { isOffline } = useOfflineStatus();
+  const { categories } = useCategories();
+  const { watchlists, addWatchlist, removeWatchlist, toggleActive } = useSpendingWatchlist();
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState<string | null>(null);
+
+  // Watchlist form state
+  const [watchlistCategoryId, setWatchlistCategoryId] = useState('');
+  const [watchlistThreshold, setWatchlistThreshold] = useState('');
 
   const handleThemeChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextTheme = event.target.value as ThemePreference;
@@ -93,6 +103,19 @@ export const SettingsPage: React.FC = () => {
     localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, String(nextNotificationsEnabled));
     setNotificationsEnabled(nextNotificationsEnabled);
   }, []);
+
+  const handleAddWatchlist = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!watchlistCategoryId || !watchlistThreshold) return;
+      const thresholdCents = Math.round(parseFloat(watchlistThreshold) * 100);
+      if (thresholdCents <= 0 || Number.isNaN(thresholdCents)) return;
+      addWatchlist(watchlistCategoryId, thresholdCents);
+      setWatchlistCategoryId('');
+      setWatchlistThreshold('');
+    },
+    [watchlistCategoryId, watchlistThreshold, addWatchlist],
+  );
 
   const handleMonitoringChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const nextMonitoringEnabled = event.target.checked;
@@ -254,6 +277,118 @@ export const SettingsPage: React.FC = () => {
               className="settings-item__checkbox"
             />
           </div>
+        </div>
+      </section>
+      <section aria-label="Spending Watchlists" className="page-section">
+        <div className="settings-group">
+          <h3 className="settings-group__title">Spending Watchlists</h3>
+          <form className="watchlist-add-form" onSubmit={handleAddWatchlist}>
+            <div className="watchlist-add-form__field">
+              <label className="watchlist-add-form__label" htmlFor="watchlist-category">
+                Category
+              </label>
+              <select
+                id="watchlist-category"
+                className="watchlist-add-form__select"
+                value={watchlistCategoryId}
+                onChange={(e) => setWatchlistCategoryId(e.target.value)}
+                aria-label="Watchlist category"
+              >
+                <option value="">Select category…</option>
+                {categories
+                  .filter((c) => !c.isIncome)
+                  .map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="watchlist-add-form__field">
+              <label className="watchlist-add-form__label" htmlFor="watchlist-threshold">
+                Monthly limit ($)
+              </label>
+              <input
+                id="watchlist-threshold"
+                type="number"
+                className="watchlist-add-form__input"
+                value={watchlistThreshold}
+                onChange={(e) => setWatchlistThreshold(e.target.value)}
+                placeholder="0.00"
+                min="0.01"
+                step="0.01"
+                aria-label="Monthly spending limit in dollars"
+              />
+            </div>
+            <button
+              type="submit"
+              className="watchlist-add-form__button"
+              disabled={!watchlistCategoryId || !watchlistThreshold}
+            >
+              Add Watchlist
+            </button>
+          </form>
+          {watchlists.length === 0 ? (
+            <p className="watchlist-section__empty">No spending watchlists configured</p>
+          ) : (
+            watchlists.map((ws) => (
+              <div key={ws.watchlist.id} className="watchlist-item">
+                <div className="watchlist-item__info">
+                  <div className="watchlist-item__category">{ws.watchlist.categoryName}</div>
+                  <div className="watchlist-item__amounts">
+                    ${(ws.currentSpending / 100).toFixed(2)} of $
+                    {(ws.watchlist.monthlyThreshold / 100).toFixed(2)}
+                  </div>
+                </div>
+                <div className="watchlist-item__progress">
+                  <div
+                    className="watchlist-progress-bar"
+                    role="progressbar"
+                    aria-valuenow={Math.min(ws.percentage, 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${ws.watchlist.categoryName} spending progress`}
+                  >
+                    <div
+                      className={`watchlist-progress-bar__fill watchlist-progress-bar__fill--${ws.status}`}
+                      style={{ width: `${Math.min(ws.percentage, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <span
+                  className={`watchlist-status-badge ${
+                    ws.watchlist.isActive
+                      ? `watchlist-status-badge--${ws.status}`
+                      : 'watchlist-status-badge--inactive'
+                  }`}
+                >
+                  {ws.watchlist.isActive ? ws.status : 'Inactive'}
+                </span>
+                <div className="watchlist-item__actions">
+                  <button
+                    type="button"
+                    className="watchlist-item__action-btn"
+                    onClick={() => toggleActive(ws.watchlist.id)}
+                    aria-label={
+                      ws.watchlist.isActive
+                        ? `Pause ${ws.watchlist.categoryName} watchlist`
+                        : `Resume ${ws.watchlist.categoryName} watchlist`
+                    }
+                  >
+                    {ws.watchlist.isActive ? 'Pause' : 'Resume'}
+                  </button>
+                  <button
+                    type="button"
+                    className="watchlist-item__action-btn watchlist-item__action-btn--danger"
+                    onClick={() => removeWatchlist(ws.watchlist.id)}
+                    aria-label={`Remove ${ws.watchlist.categoryName} watchlist`}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
       <section aria-label="Security" className="page-section">

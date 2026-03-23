@@ -2,9 +2,15 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 
-import { KeyboardShortcutsModal, QuickEntryFab, QuickEntryForm, UpdateBanner } from '../common';
+import {
+  KeyboardShortcutsModal,
+  QuickEntryFab,
+  QuickEntryForm,
+  UpdateBanner,
+  WatchlistAlertBanner,
+} from '../common';
 import { OfflineBanner } from '../OfflineBanner';
-import { useKeyboardShortcuts, useTransactions } from '../../hooks';
+import { useKeyboardShortcuts, useSpendingWatchlist, useTransactions } from '../../hooks';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
@@ -24,8 +30,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   children,
 }) => {
   const [quickEntryOpen, setQuickEntryOpen] = useState(false);
+  const [alertsDismissed, setAlertsDismissed] = useState(false);
   const { createTransaction } = useTransactions();
   const { showHelp, setShowHelp } = useKeyboardShortcuts();
+  const { alerts } = useSpendingWatchlist();
 
   // Global "N" keyboard shortcut to open quick entry
   useEffect(() => {
@@ -105,6 +113,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             </button>
           </div>
         </header>
+        {!alertsDismissed && alerts.length > 0 && (
+          <WatchlistAlertBanner alerts={alerts} onDismiss={() => setAlertsDismissed(true)} />
+        )}
         <main id="main-content" className="app-main" aria-label={pageTitle}>
           {children}
         </main>

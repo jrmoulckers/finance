@@ -8,19 +8,22 @@
  * 2. Income vs Expenses trend (TrendLineChart)
  * 3. Spending by category (CategoryPieChart + table)
  * 4. Top payees/merchants (table)
+ * 5. Balance Forecast — predictive end-of-month balance (BalanceForecastChart)
  *
  * Fully accessible: ARIA landmarks, keyboard-navigable period selector,
  * semantic tables with captions and scoped headers.
  *
- * References: issue #241
+ * References: issue #241, issue #324
  */
 
 import React, { useCallback, useMemo } from 'react';
 import { TrendLineChart } from '../components/charts';
 import { CategoryPieChart } from '../components/charts';
+import { BalanceForecastChart } from '../components/charts';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useInsights } from '../hooks/useInsights';
 import type { CategoryBreakdown } from '../hooks/useInsights';
+import { usePredictiveBalance } from '../hooks/usePredictiveBalance';
 import '../styles/insights.css';
 
 // ---------------------------------------------------------------------------
@@ -39,7 +42,7 @@ const PERIOD_LABELS: Record<number, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatCurrency(_cents: number, _currency = 'USD', _locale = 'en-US'): string {
+function formatCurrency(cents: number, currency = 'USD', locale = 'en-US'): string {
   const major = cents / 100;
   return new Intl.NumberFormat(locale, {
     style: 'currency',
@@ -93,6 +96,14 @@ export const InsightsPage: React.FC = () => {
     selectedPeriod,
     setSelectedPeriod,
   } = useInsights();
+
+  const {
+    projections,
+    endOfMonthBalance,
+    confidence,
+    daysRemaining,
+    loading: forecastLoading,
+  } = usePredictiveBalance();
 
   const handlePeriodChange = useCallback(
     (months: number) => {
@@ -376,6 +387,45 @@ export const InsightsPage: React.FC = () => {
                 title="No payee data"
                 description="Add transactions with payee names to see your top merchants."
               />
+            )}
+          </section>
+
+          {/* Section 5: Balance Forecast */}
+          <section className="insights-section" aria-label="Balance forecast">
+            <h3 className="insights-section__title">Balance Forecast</h3>
+
+            {forecastLoading ? (
+              <div className="insights-forecast-loading">
+                <LoadingSpinner label="Loading forecast" />
+              </div>
+            ) : (
+              <>
+                <div className="insights-forecast-summary">
+                  <div className="insights-forecast-summary__projected">
+                    <span className="insights-forecast-summary__label">Projected end-of-month</span>
+                    <span className="insights-forecast-summary__value">
+                      <CurrencyDisplay amount={endOfMonthBalance} />
+                    </span>
+                  </div>
+
+                  <div className="insights-forecast-summary__meta">
+                    <span
+                      className={`insights-confidence insights-confidence--${confidence}`}
+                      aria-label={`Confidence: ${confidence}`}
+                    >
+                      <span className="insights-confidence__dot" aria-hidden="true" />
+                      {confidence.charAt(0).toUpperCase() + confidence.slice(1)} confidence
+                    </span>
+                    <span className="insights-forecast-summary__days">
+                      {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
+                    </span>
+                  </div>
+                </div>
+
+                <div className="insights-chart-container">
+                  <BalanceForecastChart projections={projections} />
+                </div>
+              </>
             )}
           </section>
         </>

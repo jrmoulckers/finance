@@ -32,6 +32,43 @@ vi.mock('../hooks/useOfflineStatus', () => ({
   useOfflineStatus: () => offlineStatusMock,
 }));
 
+vi.mock('../hooks/useCategories', () => ({
+  useCategories: () => ({
+    categories: [
+      {
+        id: 'cat-1',
+        householdId: 'hh-1',
+        name: 'Groceries',
+        icon: null,
+        color: null,
+        parentId: null,
+        isIncome: false,
+        isSystem: false,
+        sortOrder: 1,
+      },
+    ],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    createCategory: vi.fn(),
+    updateCategory: vi.fn(),
+    deleteCategory: vi.fn(),
+  }),
+}));
+
+vi.mock('../hooks/useSpendingWatchlist', () => ({
+  useSpendingWatchlist: () => ({
+    watchlists: [],
+    loading: false,
+    error: null,
+    addWatchlist: vi.fn(),
+    removeWatchlist: vi.fn(),
+    updateThreshold: vi.fn(),
+    toggleActive: vi.fn(),
+    alerts: [],
+  }),
+}));
+
 import { SettingsPage } from './SettingsPage';
 
 describe('SettingsPage', () => {
@@ -62,6 +99,7 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.getByText('Preferences')).toBeInTheDocument();
+    expect(screen.getByText('Spending Watchlists')).toBeInTheDocument();
     expect(screen.getByText('Security')).toBeInTheDocument();
     expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('About')).toBeInTheDocument();
@@ -120,9 +158,16 @@ describe('SettingsPage', () => {
     render(<SettingsPage />);
 
     expect(screen.getByRole('region', { name: /preferences/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /spending watchlists/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /security/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /data/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /about/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /danger zone/i })).toBeInTheDocument();
+  });
+
+  it('shows empty state when no watchlists are configured', () => {
+    render(<SettingsPage />);
+
+    expect(screen.getByText('No spending watchlists configured')).toBeInTheDocument();
   });
 });

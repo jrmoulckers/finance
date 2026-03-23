@@ -32,3 +32,11 @@ export type {
   TopPayee,
   UseInsightsResult,
 } from './useInsights';
+export { useSpendingWatchlist } from './useSpendingWatchlist';
+export type {
+  Watchlist,
+  WatchlistStatus,
+  UseSpendingWatchlistResult,
+} from './useSpendingWatchlist';
+export { usePredictiveBalance } from './usePredictiveBalance';
+export type { BalanceProjection, UsePredictiveBalanceResult } from './usePredictiveBalance';

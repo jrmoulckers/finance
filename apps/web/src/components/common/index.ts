@@ -22,3 +22,5 @@ export { QuickEntryForm } from './QuickEntryForm';
 export type { QuickEntryFormProps } from './QuickEntryForm';
 export { SyncStatusBar } from './SyncStatusBar';
 export { UpdateBanner } from './UpdateBanner';
+export { WatchlistAlertBanner } from './WatchlistAlertBanner';
+export type { WatchlistAlertBannerProps } from './WatchlistAlertBanner';
