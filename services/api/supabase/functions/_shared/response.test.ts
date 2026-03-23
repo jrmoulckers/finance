@@ -14,7 +14,6 @@ import {
 import {
   assertStatus,
   assertJsonContentType,
-  assertJsonBody,
   assertNoContent,
   assertCorsHeaders,
 } from '../_test_helpers/assertions.ts';

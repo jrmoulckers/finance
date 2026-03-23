@@ -8,20 +8,15 @@
  * challenge lifecycle.
  */
 
-import { assertEquals, assertNotEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
+import { assertEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 import {
   assertStatus,
   assertJsonBody,
   assertErrorResponse,
   assertCorsHeaders,
 } from '../_test_helpers/assertions.ts';
-import { createMockRequest, createAuthenticatedRequest } from '../_test_helpers/mock-request.ts';
-import {
-  TEST_USER,
-  TEST_CREDENTIAL,
-  TEST_CHALLENGE,
-  TEST_ENV,
-} from '../_test_helpers/test-fixtures.ts';
+import { createMockRequest } from '../_test_helpers/mock-request.ts';
+import { TEST_USER, TEST_CREDENTIAL, TEST_ENV } from '../_test_helpers/test-fixtures.ts';
 
 // ---------------------------------------------------------------------------
 // Inline handler logic for isolated testing.
@@ -168,7 +163,7 @@ async function handlePasskeyRegister(req: Request, deps: MockDeps = {}): Promise
         },
       );
     }
-  } catch (err) {
+  } catch {
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...testCorsHeaders, 'Content-Type': 'application/json' },

@@ -7,17 +7,8 @@
  * accept (PUT), method restrictions, auth requirements, and error cases.
  */
 
-import {
-  assertEquals,
-  assertNotEquals,
-  assertStringIncludes,
-} from 'https://deno.land/std@0.208.0/testing/asserts.ts';
-import {
-  assertStatus,
-  assertJsonBody,
-  assertErrorResponse,
-  assertCorsHeaders,
-} from '../_test_helpers/assertions.ts';
+import { assertEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
+import { assertStatus, assertJsonBody, assertErrorResponse } from '../_test_helpers/assertions.ts';
 import { createMockRequest } from '../_test_helpers/mock-request.ts';
 import {
   TEST_USER,
@@ -219,7 +210,7 @@ async function handleHouseholdInvite(
       default:
         return errRes('Method not allowed', 405);
     }
-  } catch (err) {
+  } catch {
     return errRes('Internal server error', 500);
   }
 }

@@ -10,11 +10,7 @@
  * during each test.
  */
 
-import {
-  assertEquals,
-  assertStringIncludes,
-  assertMatch,
-} from 'https://deno.land/std@0.208.0/testing/asserts.ts';
+import { assertEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 import { assertIsoTimestamp, assertUuid } from '../_test_helpers/assertions.ts';
 import { createLogger } from './logger.ts';
 

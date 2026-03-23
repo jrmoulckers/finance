@@ -8,7 +8,7 @@
  * lifecycle (one-time use), and error handling.
  */
 
-import { assertEquals, assertNotEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
+import { assertEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 import {
   assertStatus,
   assertJsonBody,
@@ -165,7 +165,7 @@ async function handlePasskeyAuthenticate(req: Request, deps: MockAuthDeps = {}):
     } else {
       return errRes('Invalid step. Use ?step=options or ?step=verify');
     }
-  } catch (err) {
+  } catch {
     return errRes('Internal server error', 500);
   }
 }

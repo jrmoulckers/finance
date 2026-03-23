@@ -142,7 +142,7 @@ async function handleAuthWebhook(
       }),
       { status: 201, headers: { 'Content-Type': 'application/json' } },
     );
-  } catch (err) {
+  } catch {
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

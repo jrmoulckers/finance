@@ -9,9 +9,9 @@
  * These tests mock the Supabase client to avoid requiring a live instance.
  */
 
-import { assertEquals, assertRejects } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
+import { assertEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 import { createMockRequest, createAuthenticatedRequest } from '../_test_helpers/mock-request.ts';
-import { TEST_USER, TEST_ENV } from '../_test_helpers/test-fixtures.ts';
+import { TEST_USER } from '../_test_helpers/test-fixtures.ts';
 
 // ---------------------------------------------------------------------------
 // Because `auth.ts` calls `createAdminClient()` internally (which reads

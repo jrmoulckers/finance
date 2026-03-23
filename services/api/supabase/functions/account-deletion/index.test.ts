@@ -11,7 +11,6 @@
 import {
   assertEquals,
   assertStringIncludes,
-  assertMatch,
 } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 import {
   assertStatus,
@@ -24,7 +23,6 @@ import {
 import { createMockRequest } from '../_test_helpers/mock-request.ts';
 import {
   TEST_USER,
-  TEST_USER_2,
   TEST_HOUSEHOLD,
   TEST_HOUSEHOLD_2,
   TEST_MEMBERSHIP,
@@ -229,7 +227,7 @@ async function handleAccountDeletion(
       ),
       actions,
     };
-  } catch (err) {
+  } catch {
     return {
       response: new Response(JSON.stringify({ error: 'Internal server error' }), {
         status: 500,

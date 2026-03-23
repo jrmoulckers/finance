@@ -8,7 +8,7 @@
  */
 
 import { assertEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
-import { assertStatus, assertNoContent } from '../_test_helpers/assertions.ts';
+import { assertNoContent } from '../_test_helpers/assertions.ts';
 import { createMockRequest, createCorsPreflightRequest } from '../_test_helpers/mock-request.ts';
 
 // ---------------------------------------------------------------------------

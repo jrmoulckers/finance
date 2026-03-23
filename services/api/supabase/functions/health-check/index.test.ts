@@ -11,10 +11,7 @@
  * request-processing flow with mocked dependencies.
  */
 
-import {
-  assertEquals,
-  assertStringIncludes,
-} from 'https://deno.land/std@0.208.0/testing/asserts.ts';
+import { assertEquals } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
 import {
   assertStatus,
   assertJsonBody,
@@ -22,7 +19,6 @@ import {
   assertNoSensitiveDataLeakage,
 } from '../_test_helpers/assertions.ts';
 import { createMockRequest, createCorsPreflightRequest } from '../_test_helpers/mock-request.ts';
-import { TEST_ENV } from '../_test_helpers/test-fixtures.ts';
 
 // ---------------------------------------------------------------------------
 // Inline handler logic for isolated testing.
