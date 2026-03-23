@@ -342,6 +342,62 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * Keyboard shortcuts dialog
+ * ------------------------------------------------------------------------- */
+
+.keyboard-shortcuts__panel {
+  max-width: 560px;
+}
+
+.keyboard-shortcuts__title {
+  margin-bottom: var(--spacing-3);
+}
+
+.keyboard-shortcuts__description {
+  margin: 0 0 var(--spacing-4);
+  color: var(--semantic-text-secondary);
+  line-height: var(--line-height-relaxed, 1.5);
+}
+
+.keyboard-shortcuts__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.keyboard-shortcuts__table th,
+.keyboard-shortcuts__table td {
+  padding: var(--spacing-3);
+  border-top: 1px solid var(--semantic-border-default);
+  text-align: left;
+  vertical-align: top;
+}
+
+.keyboard-shortcuts__table thead th {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.keyboard-shortcuts__key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+  font-family: inherit;
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.keyboard-shortcuts__actions {
+  justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------------------
  * Form-level error banner
  * ------------------------------------------------------------------------- */
 

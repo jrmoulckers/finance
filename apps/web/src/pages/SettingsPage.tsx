@@ -5,11 +5,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth/auth-context';
 import { DataExport } from '../components/DataExport';
 import { useOfflineStatus } from '../hooks/useOfflineStatus';
+import { initMonitoring } from '../lib/monitoring';
 
 const APP_VERSION = '0.1.0';
 const THEME_STORAGE_KEY = 'finance-theme';
 const CURRENCY_STORAGE_KEY = 'finance-currency';
 const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
+const MONITORING_CONSENT_STORAGE_KEY = 'finance-monitoring-consent';
 
 type ThemePreference = 'light' | 'dark' | 'system';
 type CurrencyPreference = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
@@ -64,9 +66,15 @@ export const SettingsPage: React.FC = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     () => localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) !== 'false',
   );
+  const [monitoringEnabled, setMonitoringEnabled] = useState(
+    () => localStorage.getItem(MONITORING_CONSENT_STORAGE_KEY) === 'true',
+  );
 
-  const { isAuthenticated, isLoading, logout, user } = useAuth();
+  const { isAuthenticated, isLoading, logout, user, registerNewPasskey, webAuthnSupported } =
+    useAuth();
   const { isOffline } = useOfflineStatus();
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
+  const [passkeyMessage, setPasskeyMessage] = useState<string | null>(null);
 
   const handleThemeChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextTheme = event.target.value as ThemePreference;
@@ -86,9 +94,49 @@ export const SettingsPage: React.FC = () => {
     setNotificationsEnabled(nextNotificationsEnabled);
   }, []);
 
-  const handleComingSoon = useCallback((message: string) => {
-    window.alert(message);
+  const handleMonitoringChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextMonitoringEnabled = event.target.checked;
+    localStorage.setItem(MONITORING_CONSENT_STORAGE_KEY, String(nextMonitoringEnabled));
+    setMonitoringEnabled(nextMonitoringEnabled);
+
+    if (nextMonitoringEnabled) {
+      initMonitoring();
+    }
   }, []);
+
+  const handlePasskeyRegistration = useCallback(async () => {
+    if (!isAuthenticated || isPasskeyLoading) {
+      return;
+    }
+
+    if (!webAuthnSupported) {
+      setPasskeyMessage('Passkeys are not supported in this browser.');
+      return;
+    }
+
+    setPasskeyMessage(null);
+    setIsPasskeyLoading(true);
+
+    try {
+      await registerNewPasskey();
+      setPasskeyMessage('Passkey registered successfully.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Passkey registration failed.';
+
+      // Handle user cancellation gracefully.
+      if (
+        message.includes('cancelled') ||
+        message.includes('canceled') ||
+        message.includes('NotAllowedError')
+      ) {
+        setPasskeyMessage('Passkey registration was cancelled.');
+      } else {
+        setPasskeyMessage(message);
+      }
+    } finally {
+      setIsPasskeyLoading(false);
+    }
+  }, [isAuthenticated, isPasskeyLoading, webAuthnSupported, registerNewPasskey]);
 
   const handleSignOut = useCallback(async () => {
     if (!isAuthenticated || isLoading) {
@@ -193,6 +241,19 @@ export const SettingsPage: React.FC = () => {
               className="settings-item__checkbox"
             />
           </div>
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="s-monitoring">
+              Error Reporting
+            </label>
+            <input
+              type="checkbox"
+              id="s-monitoring"
+              checked={monitoringEnabled}
+              onChange={handleMonitoringChange}
+              aria-label="Send anonymous error reports to help improve the app"
+              className="settings-item__checkbox"
+            />
+          </div>
         </div>
       </section>
       <section aria-label="Security" className="page-section">
@@ -207,21 +268,32 @@ export const SettingsPage: React.FC = () => {
           <button
             type="button"
             className="settings-item settings-item--button"
-            onClick={() => handleComingSoon('Biometric lock settings are coming soon.')}
+            disabled
+            aria-disabled="true"
+            aria-label="Biometric lock — available in a future update"
           >
             <span className="settings-item__label">Biometric Lock</span>
-            <span className="settings-item__value">Off</span>
+            <span className="settings-item__value settings-item__value--muted">Coming soon</span>
           </button>
           <button
             type="button"
             className="settings-item settings-item--button"
-            onClick={() => handleComingSoon('Passkey management is coming soon.')}
+            onClick={() => {
+              void handlePasskeyRegistration();
+            }}
+            disabled={!isAuthenticated || isPasskeyLoading}
+            aria-label={user?.hasPasskey ? 'Passkeys — registered' : 'Passkeys — set up a passkey'}
           >
             <span className="settings-item__label">Passkeys</span>
             <span className="settings-item__value">
-              {user?.hasPasskey ? 'Registered' : 'Not set up'}
+              {isPasskeyLoading ? 'Registering…' : user?.hasPasskey ? '✓ Registered' : 'Set up'}
             </span>
           </button>
+          {passkeyMessage && (
+            <div className="settings-item settings-item--static" role="status" aria-live="polite">
+              <span className="settings-item__value">{passkeyMessage}</span>
+            </div>
+          )}
           <button
             type="button"
             className="settings-item settings-item--button"
@@ -274,10 +346,12 @@ export const SettingsPage: React.FC = () => {
           <button
             type="button"
             className="settings-item settings-item--button settings-item--destructive"
-            onClick={() => handleComingSoon('Account deletion is coming soon.')}
-            aria-label="Delete all data"
+            disabled
+            aria-disabled="true"
+            aria-label="Account deletion — available in a future update"
           >
-            <span className="settings-item__label">Delete All Data</span>
+            <span className="settings-item__label">Account Deletion</span>
+            <span className="settings-item__value settings-item__value--muted">Coming soon</span>
           </button>
         </div>
       </section>

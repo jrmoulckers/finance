@@ -5,21 +5,25 @@
  *
  * This page is rendered outside of `AppLayout` and reuses the shared
  * auth-card layout from `auth.css`.
+ *
+ * On successful registration the user sees a confirmation message and is
+ * automatically redirected to `/login` after two seconds.
  */
 
-import React, { useCallback, useId, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
-import { useAuth, type AuthContextValue } from '../auth/auth-context';
+import { useAuth } from '../auth/auth-context';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { signupSchema } from '../lib/validation';
 
 import '../styles/auth.css';
 
 /** Minimum password length enforced by client-side validation. */
 const MIN_PASSWORD_LENGTH = 8;
 
-/** Lightweight email format check for custom validation feedback. */
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Duration (ms) before auto-redirecting to /login after successful signup. */
+const REDIRECT_DELAY_MS = 2000;
 
 interface SignupFieldErrors {
   email?: string;
@@ -32,22 +36,15 @@ interface SubmitMessage {
   text: string;
 }
 
-type SignupCapableAuth = AuthContextValue & {
-  signup?: (email: string, password: string) => Promise<void>;
-  register?: (email: string, password: string) => Promise<void>;
-};
-
 /**
  * Standalone signup page for the web app.
  *
- * The current auth context does not expose a registration action, so the page
- * validates the form and shows a friendly "coming soon" message until signup
- * support is wired into the backend and auth context.
+ * Validates the form locally, then delegates to `signupWithEmail` from the
+ * auth context which POSTs to the configured signup endpoint.
  */
 export const SignupPage: React.FC = () => {
-  const auth = useAuth() as SignupCapableAuth;
-  const { error: authError, isLoading } = auth;
-  const signupAction = auth.signup ?? auth.register;
+  const navigate = useNavigate();
+  const { signupWithEmail, error: authError, isLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -64,6 +61,18 @@ export const SignupPage: React.FC = () => {
   const passwordHintId = `${uid}-password-hint`;
   const passwordErrorId = `${uid}-password-error`;
   const confirmPasswordErrorId = `${uid}-confirm-password-error`;
+
+  /** Ref to the pending redirect timer so it can be cancelled on unmount. */
+  const redirectTimerRef = useRef<number | null>(null);
+
+  // Cancel any pending redirect when the component unmounts.
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current !== null) {
+        window.clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
 
   const confirmPasswordError = useMemo(() => {
     if (fieldErrors.confirmPassword) {
@@ -87,24 +96,26 @@ export const SignupPage: React.FC = () => {
 
   const validate = useCallback((): boolean => {
     const errors: SignupFieldErrors = {};
-    const normalizedEmail = email.trim();
+    const result = signupSchema.safeParse({
+      email: email.trim(),
+      password,
+      confirmPassword,
+    });
 
-    if (!normalizedEmail) {
-      errors.email = 'Email is required.';
-    } else if (!EMAIL_PATTERN.test(normalizedEmail)) {
-      errors.email = 'Enter a valid email address.';
-    }
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        if (issue.path[0] === 'email') {
+          errors.email = 'Enter a valid email address.';
+        }
 
-    if (!password) {
-      errors.password = 'Password is required.';
-    } else if (password.length < MIN_PASSWORD_LENGTH) {
-      errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
-    }
+        if (issue.path[0] === 'password') {
+          errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+        }
 
-    if (!confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password.';
-    } else if (password !== confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match.';
+        if (issue.path[0] === 'confirmPassword') {
+          errors.confirmPassword = 'Passwords do not match.';
+        }
+      }
     }
 
     setFieldErrors(errors);
@@ -120,33 +131,38 @@ export const SignupPage: React.FC = () => {
         return;
       }
 
+      if (!signupWithEmail) {
+        setSubmitMessage({
+          type: 'info',
+          text: 'Account creation is not yet available. Please check back soon.',
+        });
+        return;
+      }
+
       setIsSubmitting(true);
 
       try {
-        if (signupAction) {
-          await signupAction(email.trim(), password);
-          setSubmitMessage({
-            type: 'info',
-            text: 'Account created. You can now sign in.',
-          });
-          return;
-        }
+        await signupWithEmail(email.trim(), password);
 
-        await new Promise((resolve) => window.setTimeout(resolve, 600));
         setSubmitMessage({
           type: 'info',
-          text: 'Registration coming soon. Please check back later.',
+          text: 'Account created! Please sign in.',
         });
-      } catch (error) {
+
+        // Redirect to login after a short delay so the user can read the message.
+        redirectTimerRef.current = window.setTimeout(() => {
+          navigate('/login');
+        }, REDIRECT_DELAY_MS);
+      } catch (err) {
         setSubmitMessage({
           type: 'error',
-          text: error instanceof Error ? error.message : 'Registration failed.',
+          text: err instanceof Error ? err.message : 'Registration failed.',
         });
       } finally {
         setIsSubmitting(false);
       }
     },
-    [email, password, signupAction, validate],
+    [email, navigate, password, signupWithEmail, validate],
   );
 
   const isBusy = isSubmitting || isLoading;

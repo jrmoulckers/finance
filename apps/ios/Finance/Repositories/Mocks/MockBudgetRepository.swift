@@ -46,4 +46,14 @@ struct MockBudgetRepository: BudgetRepository {
             ),
         ]
     }
+
+    func createBudget(_ budget: BudgetItem) async throws {
+        // No-op for mock — simulates a successful save.
+        try? await Task.sleep(for: .milliseconds(300))
+    }
+
+    func updateBudget(_ budget: BudgetItem) async throws {
+        // No-op for mock — simulates a successful update.
+        try? await Task.sleep(for: .milliseconds(300))
+    }
 }

@@ -12,23 +12,33 @@ import SwiftUI
 struct GoalsView: View {
     @State private var viewModel: GoalsViewModel
 
-    init(viewModel: GoalsViewModel = GoalsViewModel(repository: MockGoalRepository())) {
+    init(viewModel: GoalsViewModel = GoalsViewModel(
+        repository: RepositoryProvider.shared.goals
+    )) {
         _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                if viewModel.goals.isEmpty && !viewModel.isLoading {
-                    EmptyStateView(
-                        systemImage: "target",
-                        title: String(localized: "No Goals"),
-                        message: String(localized: "Set a financial goal to start saving toward something meaningful."),
-                        actionLabel: String(localized: "Create Goal"),
-                        action: { viewModel.showingCreateGoal = true }
-                    )
+            Group {
+                if viewModel.isLoading && viewModel.goals.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel(String(localized: "Loading"))
                 } else {
-                    goalCards
+                    ScrollView {
+                        if viewModel.goals.isEmpty && !viewModel.isLoading {
+                            EmptyStateView(
+                                systemImage: "target",
+                                title: String(localized: "No Goals"),
+                                message: String(localized: "Set a financial goal to start saving toward something meaningful."),
+                                actionLabel: String(localized: "Create Goal"),
+                                action: { viewModel.showingCreateGoal = true }
+                            )
+                        } else {
+                            goalCards
+                        }
+                    }
                 }
             }
             .navigationTitle(String(localized: "Goals"))
@@ -41,9 +51,32 @@ struct GoalsView: View {
                     .accessibilityHint(String(localized: "Opens a form to create a new financial goal"))
                 }
             }
-            .sheet(isPresented: $viewModel.showingCreateGoal) { createGoalPlaceholder }
+            .sheet(isPresented: $viewModel.showingCreateGoal, onDismiss: {
+                Task { await viewModel.loadGoals() }
+            }) {
+                GoalCreateView(viewModel: GoalCreateViewModel(
+                    repository: viewModel.repository
+                ))
+            }
+            .sheet(item: $viewModel.editingGoal, onDismiss: {
+                Task { await viewModel.loadGoals() }
+            }) { goal in
+                GoalCreateView(viewModel: GoalCreateViewModel(
+                    repository: viewModel.repository,
+                    goal: goal
+                ))
+            }
             .refreshable { await viewModel.loadGoals() }
             .task { await viewModel.loadGoals() }
+            .alert(String(localized: "Error"), isPresented: Binding(
+                get: { viewModel.showError },
+                set: { if !$0 { viewModel.dismissError() } }
+            )) {
+                Button(String(localized: "Retry")) { Task { await viewModel.loadGoals() } }
+                Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
         }
     }
 
@@ -118,10 +151,12 @@ struct GoalsView: View {
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .onTapGesture { viewModel.editingGoal = goal }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(goal.name)
         .accessibilityValue(String(localized: "\(Int(goal.progress * 100)) percent complete, \(goal.status.displayName)"))
-        .accessibilityHint(goal.isComplete ? String(localized: "Goal has been completed") : String(localized: "Goal is in progress"))
+        .accessibilityHint(goal.isComplete ? String(localized: "Goal has been completed. Double tap to edit.") : String(localized: "Goal is in progress. Double tap to edit."))
     }
 
     private var createGoalPlaceholder: some View {
@@ -145,4 +180,7 @@ struct GoalsView: View {
     }
 }
 
-#Preview { GoalsView(viewModel: GoalsViewModel(repository: MockGoalRepository())) }
+#Preview {
+    GoalsView(viewModel: GoalsViewModel(repository: MockGoalRepository()))
+        .environment(BiometricAuthManager())
+}

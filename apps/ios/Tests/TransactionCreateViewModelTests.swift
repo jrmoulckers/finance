@@ -130,4 +130,80 @@ final class TransactionCreateViewModelTests: XCTestCase {
         XCTAssertEqual(created?.status, .pending,
                        "New transactions should have pending status")
     }
+
+    // MARK: - Test: edit mode pre-fills fields
+
+    @MainActor
+    func testEditModePreFillsFields() async {
+        let transactionRepo = StubTransactionRepository()
+        let accountRepo = StubAccountRepository()
+        accountRepo.accountsToReturn = SampleData.allAccounts
+        let transaction = SampleData.expenseTransaction
+        let vm = TransactionCreateViewModel(
+            transactionRepository: transactionRepo,
+            accountRepository: accountRepo,
+            transaction: transaction
+        )
+
+        await vm.loadData()
+
+        XCTAssertTrue(vm.isEditing, "Should be in edit mode")
+        XCTAssertEqual(vm.payee, "Whole Foods",
+                       "Payee should be pre-filled")
+        XCTAssertEqual(vm.transactionType, .expense,
+                       "Transaction type should be pre-filled")
+        XCTAssertEqual(vm.navigationTitle, "Edit Transaction",
+                       "Title should reflect edit mode")
+        XCTAssertEqual(vm.saveButtonTitle, "Update Transaction",
+                       "Save button should say Update in edit mode")
+        XCTAssertNotNil(vm.selectedAccountId,
+                        "Account should be resolved after loadData")
+        XCTAssertNotNil(vm.selectedCategoryId,
+                        "Category should be resolved after loadData")
+    }
+
+    // MARK: - Test: edit mode calls updateTransaction
+
+    @MainActor
+    func testEditModeSavesAsUpdate() async {
+        let transactionRepo = StubTransactionRepository()
+        let accountRepo = StubAccountRepository()
+        accountRepo.accountsToReturn = SampleData.allAccounts
+        let transaction = SampleData.expenseTransaction
+        let vm = TransactionCreateViewModel(
+            transactionRepository: transactionRepo,
+            accountRepository: accountRepo,
+            transaction: transaction
+        )
+
+        await vm.loadData()
+        vm.payee = "Updated Payee"
+
+        let result = await vm.save()
+
+        XCTAssertTrue(result, "Update should succeed")
+        XCTAssertEqual(transactionRepo.updatedTransactions.count, 1,
+                       "Repository should have one updated transaction")
+        XCTAssertTrue(transactionRepo.createdTransactions.isEmpty,
+                      "Should not create when updating")
+        XCTAssertEqual(transactionRepo.updatedTransactions.first?.id, transaction.id,
+                       "Updated transaction should retain the original ID")
+        XCTAssertEqual(transactionRepo.updatedTransactions.first?.payee, "Updated Payee",
+                       "Updated transaction should have the new payee")
+        XCTAssertEqual(transactionRepo.updatedTransactions.first?.status, .cleared,
+                       "Updated transaction should preserve original status")
+    }
+
+    // MARK: - Test: create mode defaults
+
+    @MainActor
+    func testCreateModeDefaults() {
+        let (vm, _, _) = makeViewModel()
+
+        XCTAssertFalse(vm.isEditing, "Should not be in edit mode")
+        XCTAssertEqual(vm.navigationTitle, "New Transaction",
+                       "Title should reflect create mode")
+        XCTAssertEqual(vm.saveButtonTitle, "Save Transaction",
+                       "Save button should say Save Transaction in create mode")
+    }
 }

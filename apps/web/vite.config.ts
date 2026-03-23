@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
+
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -18,7 +19,15 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        sw: resolve(__dirname, 'src/sw/service-worker.ts'),
+      },
       output: {
+        entryFileNames: (chunkInfo) =>
+          chunkInfo.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
         },

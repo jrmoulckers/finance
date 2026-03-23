@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.Card
@@ -26,6 +27,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -63,6 +65,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalsScreen(
+    onCreateGoal: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
@@ -85,6 +88,7 @@ fun GoalsScreen(
     GoalsContent(
         state = state,
         onRefresh = viewModel::refresh,
+        onCreateGoal = onCreateGoal,
         modifier = modifier,
     )
 }
@@ -94,51 +98,69 @@ fun GoalsScreen(
 private fun GoalsContent(
     state: GoalsUiState,
     onRefresh: () -> Unit,
+    onCreateGoal: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PullToRefreshBox(
-        isRefreshing = state.isRefreshing,
-        onRefresh = onRefresh,
-        modifier = modifier.fillMaxSize(),
-    ) {
-        LazyColumn(
+    Box(modifier = modifier.fillMaxSize()) {
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // ── Error banner ────────────────────────────────────────
-            if (state.errorMessage != null) {
-                item(key = "error") {
-                    GoalsErrorBanner(
-                        message = state.errorMessage,
-                        onRetry = onRefresh,
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                // ── Error banner ────────────────────────────────────────
+                if (state.errorMessage != null) {
+                    item(key = "error") {
+                        GoalsErrorBanner(
+                            message = state.errorMessage,
+                            onRetry = onRefresh,
+                        )
+                    }
+                }
+
+                // ── Header ─────────────────────────────────────────────
+                item(key = "header") {
+                    GoalsSummaryHeader(
+                        activeCount = state.activeCount,
+                        completedCount = state.completedCount,
                     )
                 }
-            }
 
-            // ── Header ─────────────────────────────────────────────
-            item(key = "header") {
-                GoalsSummaryHeader(
-                    activeCount = state.activeCount,
-                    completedCount = state.completedCount,
-                )
-            }
-
-            // ── Empty state ─────────────────────────────────────────
-            if (state.goals.isEmpty() && state.errorMessage == null) {
-                item(key = "empty") {
-                    GoalsEmptyState()
+                // ── Empty state ─────────────────────────────────────────
+                if (state.goals.isEmpty() && state.errorMessage == null) {
+                    item(key = "empty") {
+                        GoalsEmptyState()
+                    }
                 }
-            }
 
-            // ── Goal cards ──────────────────────────────────────────
-            if (state.goals.isNotEmpty()) {
-                items(state.goals, key = { it.id.value }) { goal ->
-                    GoalCard(goal = goal)
+                // ── Goal cards ──────────────────────────────────────────
+                if (state.goals.isNotEmpty()) {
+                    items(state.goals, key = { it.id.value }) { goal ->
+                        GoalCard(goal = goal)
+                    }
                 }
-            }
 
-            item(key = "spacer") { Spacer(Modifier.height(80.dp)) }
+                item(key = "spacer") { Spacer(Modifier.height(80.dp)) }
+            }
+        }
+
+        FloatingActionButton(
+            onClick = onCreateGoal,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .semantics { contentDescription = "Create new goal" },
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = null,
+            )
         }
     }
 }
@@ -433,6 +455,7 @@ private fun GoalsScreenPreview() {
                 ),
             ),
             onRefresh = {},
+            onCreateGoal = {},
         )
     }
 }
@@ -449,6 +472,7 @@ private fun GoalsEmptyPreview() {
                 goals = emptyList(),
             ),
             onRefresh = {},
+            onCreateGoal = {},
         )
     }
 }
@@ -463,6 +487,7 @@ private fun GoalsErrorPreview() {
                 errorMessage = "Unable to load goals. Pull down to retry.",
             ),
             onRefresh = {},
+            onCreateGoal = {},
         )
     }
 }

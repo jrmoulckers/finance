@@ -17,4 +17,10 @@ protocol BudgetRepository: Sendable {
 
     /// Returns all budgets for the current or specified period.
     func getBudgets() async throws -> [BudgetItem]
+
+    /// Persists a new budget.
+    func createBudget(_ budget: BudgetItem) async throws
+
+    /// Updates an existing budget.
+    func updateBudget(_ budget: BudgetItem) async throws
 }

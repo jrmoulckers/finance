@@ -56,8 +56,6 @@ const STATIC_EXTENSIONS = /\.(js|css|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|we
 
 self.addEventListener('install', (event: ExtendableEvent) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(APP_SHELL)));
-  // Activate immediately without waiting for existing clients to close
-  void self.skipWaiting();
 });
 
 // ---------------------------------------------------------------------------

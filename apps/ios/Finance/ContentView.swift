@@ -1,43 +1,46 @@
 // SPDX-License-Identifier: BUSL-1.1
-
 import SwiftUI
 
 /// Root view of the Finance application.
 ///
-/// This placeholder will be replaced with a `TabView` containing
-/// Accounts, Transactions, Budgets, Goals, and Settings tabs once
-/// the KMP shared models are integrated via Swift Export.
+/// Hosts the `MainTabView` and injects infrastructure services
+/// (deep linking, network monitoring) into the SwiftUI environment
+/// for consumption by child views.
 struct ContentView: View {
+    @Bindable var deepLinkHandler: DeepLinkHandler
+    @State var networkMonitor: NetworkMonitor
+
+    init(
+        deepLinkHandler: DeepLinkHandler = DeepLinkHandler(),
+        networkMonitor: NetworkMonitor = NetworkMonitor()
+    ) {
+        self.deepLinkHandler = deepLinkHandler
+        self.networkMonitor = networkMonitor
+    }
+
     var body: some View {
-        NavigationStack {
-            VStack(spacing: FinanceSpacing.lg) {
-                Image(systemName: "banknote")
-                    .font(.system(size: 64))
-                    .foregroundStyle(FinanceColors.interactive)
-                    .accessibilityHidden(true)
+        MainTabView(
+            selectedTab: $deepLinkHandler.selectedTab.withDefault(.dashboard)
+        )
+        .environment(networkMonitor)
+        .environment(deepLinkHandler)
+    }
+}
 
-                Text(String(localized: "Finance"))
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundStyle(FinanceColors.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
+// MARK: - Optional Binding Helper
 
-                Text(String(localized: "Your financial life, unified."))
-                    .font(.body)
-                    .foregroundStyle(FinanceColors.textSecondary)
-
-                Text(String(localized: "SwiftUI + KMP — coming soon"))
-                    .font(.caption)
-                    .foregroundStyle(FinanceColors.textDisabled)
-            }
-            .padding(FinanceSpacing.xl)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(FinanceColors.backgroundPrimary)
-            .navigationTitle(String(localized: "Finance"))
-        }
+private extension Binding where Value == MainTabView.Tab? {
+    /// Converts an optional `Tab?` binding to a non-optional `Tab` binding
+    /// using a default value when the source is `nil`.
+    func withDefault(_ defaultValue: MainTabView.Tab) -> Binding<MainTabView.Tab> {
+        Binding<MainTabView.Tab>(
+            get: { self.wrappedValue ?? defaultValue },
+            set: { self.wrappedValue = $0 }
+        )
     }
 }
 
 #Preview {
     ContentView()
+        .environment(BiometricAuthManager())
 }

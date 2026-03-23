@@ -12,12 +12,17 @@ import { ProtectedRoute, useAuth } from './auth/auth-context';
  */
 const Dashboard = lazy(() => import('./pages/DashboardPage'));
 const Accounts = lazy(() => import('./pages/AccountsPage'));
+const AccountDetail = lazy(() => import('./pages/AccountDetailPage'));
 const Transactions = lazy(() => import('./pages/TransactionsPage'));
+const TransactionDetail = lazy(() => import('./pages/TransactionDetailPage'));
 const Budgets = lazy(() => import('./pages/BudgetsPage'));
+const BudgetDetail = lazy(() => import('./pages/BudgetDetailPage'));
 const Goals = lazy(() => import('./pages/GoalsPage'));
+const GoalDetail = lazy(() => import('./pages/GoalDetailPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
+const NotFound = lazy(() => import('./pages/NotFoundPage'));
 
 /**
  * Loading fallback shown while a lazy route chunk is being fetched.
@@ -105,11 +110,31 @@ export const AppRoutes: FC = () => (
       }
     />
     <Route
+      path="/accounts/:id"
+      element={
+        <AuthenticatedRoute>
+          <Suspense fallback={<PageLoader />}>
+            <AccountDetail />
+          </Suspense>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
       path="/transactions"
       element={
         <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Transactions />
+          </Suspense>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/transactions/:id"
+      element={
+        <AuthenticatedRoute>
+          <Suspense fallback={<PageLoader />}>
+            <TransactionDetail />
           </Suspense>
         </AuthenticatedRoute>
       }
@@ -125,11 +150,31 @@ export const AppRoutes: FC = () => (
       }
     />
     <Route
+      path="/budgets/:id"
+      element={
+        <AuthenticatedRoute>
+          <Suspense fallback={<PageLoader />}>
+            <BudgetDetail />
+          </Suspense>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
       path="/goals"
       element={
         <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Goals />
+          </Suspense>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/goals/:id"
+      element={
+        <AuthenticatedRoute>
+          <Suspense fallback={<PageLoader />}>
+            <GoalDetail />
           </Suspense>
         </AuthenticatedRoute>
       }
@@ -142,6 +187,14 @@ export const AppRoutes: FC = () => (
             <Settings />
           </Suspense>
         </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="*"
+      element={
+        <Suspense fallback={<PageLoader />}>
+          <NotFound />
+        </Suspense>
       }
     />
   </Routes>

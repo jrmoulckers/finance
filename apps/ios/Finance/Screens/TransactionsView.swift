@@ -12,14 +12,20 @@ import SwiftUI
 struct TransactionsView: View {
     @State private var viewModel: TransactionsViewModel
 
-    init(viewModel: TransactionsViewModel = TransactionsViewModel(repository: MockTransactionRepository())) {
+    init(viewModel: TransactionsViewModel = TransactionsViewModel(
+        repository: RepositoryProvider.shared.transactions
+    )) {
         _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
         NavigationStack {
             Group {
-                if viewModel.filteredTransactions.isEmpty && !viewModel.isLoading {
+                if viewModel.isLoading && viewModel.transactions.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel(String(localized: "Loading"))
+                } else if viewModel.filteredTransactions.isEmpty && !viewModel.isLoading {
                     if viewModel.searchText.isEmpty {
                         EmptyStateView(
                             systemImage: "arrow.left.arrow.right",
@@ -46,9 +52,43 @@ struct TransactionsView: View {
                     .accessibilityHint(String(localized: "Opens a form to create a new transaction"))
                 }
             }
-            .sheet(isPresented: $viewModel.showingCreateTransaction) { TransactionCreateView() }
+            .sheet(isPresented: $viewModel.showingCreateTransaction, onDismiss: {
+                Task { await viewModel.loadTransactions() }
+            }) {
+                TransactionCreateView()
+            }
+            .sheet(item: $viewModel.editingTransaction, onDismiss: {
+                Task { await viewModel.loadTransactions() }
+            }) { transaction in
+                TransactionCreateView(viewModel: TransactionCreateViewModel(
+                    transactionRepository: MockTransactionRepository(),
+                    accountRepository: MockAccountRepository(),
+                    transaction: transaction
+                ))
+            }
+            .alert(String(localized: "Delete Transaction"), isPresented: $viewModel.showingDeleteConfirmation) {
+                Button(String(localized: "Cancel"), role: .cancel) {
+                    viewModel.pendingDeleteId = nil
+                }
+                Button(String(localized: "Delete"), role: .destructive) {
+                    if let id = viewModel.pendingDeleteId {
+                        Task { await viewModel.deleteTransaction(id: id) }
+                    }
+                }
+            } message: {
+                Text(String(localized: "Are you sure you want to delete this transaction? This action cannot be undone."))
+            }
             .refreshable { await viewModel.loadTransactions() }
             .task { await viewModel.loadTransactions() }
+            .alert(String(localized: "Error"), isPresented: Binding(
+                get: { viewModel.showError },
+                set: { if !$0 { viewModel.dismissError() } }
+            )) {
+                Button(String(localized: "Retry")) { Task { await viewModel.loadTransactions() } }
+                Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
         }
     }
 
@@ -58,9 +98,11 @@ struct TransactionsView: View {
                 Section {
                     ForEach(group.transactions) { transaction in
                         transactionRow(transaction)
+                            .contentShape(Rectangle())
+                            .onTapGesture { viewModel.editingTransaction = transaction }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    Task { await viewModel.deleteTransaction(id: transaction.id) }
+                                    viewModel.confirmDelete(id: transaction.id)
                                 } label: {
                                     Label(String(localized: "Delete"), systemImage: "trash")
                                 }
@@ -68,7 +110,7 @@ struct TransactionsView: View {
                             }
                             .swipeActions(edge: .leading, allowsFullSwipe: false) {
                                 Button {
-                                    // TODO: Navigate to edit flow
+                                    viewModel.editingTransaction = transaction
                                 } label: {
                                     Label(String(localized: "Edit"), systemImage: "pencil")
                                 }
@@ -113,8 +155,11 @@ struct TransactionsView: View {
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(transaction.payee), \(transaction.category), \(transaction.accountName)")
-        .accessibilityHint(String(localized: "Swipe for edit and delete actions"))
+        .accessibilityHint(String(localized: "Tap to edit. Swipe for more actions."))
     }
 }
 
-#Preview { TransactionsView(viewModel: TransactionsViewModel(repository: MockTransactionRepository())) }
+#Preview {
+    TransactionsView(viewModel: TransactionsViewModel(repository: MockTransactionRepository()))
+        .environment(BiometricAuthManager())
+}

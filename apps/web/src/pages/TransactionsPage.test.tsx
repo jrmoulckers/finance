@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
@@ -189,31 +190,51 @@ describe('TransactionsPage', () => {
   });
 
   it('renders without crashing', () => {
-    render(<TransactionsPage />);
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Transactions')).toBeInTheDocument();
   });
 
   it('displays the search input', () => {
-    render(<TransactionsPage />);
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole('searchbox', { name: /search transactions/i })).toBeInTheDocument();
   });
 
   it('displays category filter chips', () => {
-    render(<TransactionsPage />);
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Food' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Income' })).toBeInTheDocument();
   });
 
   it('displays transaction descriptions', () => {
-    render(<TransactionsPage />);
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Grocery Store')).toBeInTheDocument();
     expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
     expect(screen.getByText('Electric Bill')).toBeInTheDocument();
   });
 
   it('displays edit and delete actions for each transaction', () => {
-    render(<TransactionsPage />);
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole('button', { name: 'Edit Grocery Store' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete Grocery Store' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit Monthly Salary' })).toBeInTheDocument();
@@ -221,14 +242,22 @@ describe('TransactionsPage', () => {
   });
 
   it('shows edit and delete buttons for each transaction', () => {
-    render(<TransactionsPage />);
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getAllByRole('button', { name: /^edit /i })).toHaveLength(3);
     expect(screen.getAllByRole('button', { name: /^delete /i })).toHaveLength(3);
   });
 
   it('clicking edit opens the form', () => {
-    render(<TransactionsPage />);
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /edit grocery store/i }));
 
@@ -236,7 +265,11 @@ describe('TransactionsPage', () => {
   });
 
   it('clicking delete opens ConfirmDialog', () => {
-    render(<TransactionsPage />);
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /delete grocery store/i }));
 
@@ -247,7 +280,11 @@ describe('TransactionsPage', () => {
   });
 
   it('confirming delete calls deleteTransaction', () => {
-    render(<TransactionsPage />);
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /delete grocery store/i }));
 

@@ -15,9 +15,15 @@ import SwiftUI
 /// - `.tabItem` modifiers for tab configuration
 /// - Each tab wraps its own `NavigationStack`
 struct MainTabView: View {
-    @State private var selectedTab: Tab = .dashboard
+    /// Binding to the currently selected tab, allowing external navigation
+    /// (e.g. deep links) to switch tabs programmatically.
+    @Binding var selectedTab: Tab
 
-    enum Tab: String, CaseIterable {
+    init(selectedTab: Binding<Tab> = .constant(.dashboard)) {
+        _selectedTab = selectedTab
+    }
+
+    enum Tab: String, Sendable, CaseIterable {
         case dashboard, accounts, transactions, budgets, goals
 
         var title: String {
@@ -88,4 +94,5 @@ struct MainTabView: View {
 
 #Preview {
     MainTabView()
+        .environment(BiometricAuthManager())
 }

@@ -25,7 +25,9 @@ struct AccountDetailView: View {
 
     init(
         account: AccountItem,
-        viewModel: AccountDetailViewModel = AccountDetailViewModel(repository: MockTransactionRepository())
+        viewModel: AccountDetailViewModel = AccountDetailViewModel(
+            repository: RepositoryProvider.shared.transactions
+        )
     ) {
         self.account = account
         _viewModel = State(initialValue: viewModel)
@@ -59,6 +61,15 @@ struct AccountDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .refreshable { await viewModel.loadTransactions(accountId: account.id) }
         .task { await viewModel.loadTransactions(accountId: account.id) }
+        .alert(String(localized: "Error"), isPresented: Binding(
+            get: { viewModel.showError },
+            set: { if !$0 { viewModel.dismissError() } }
+        )) {
+            Button(String(localized: "Retry")) { Task { await viewModel.loadTransactions(accountId: account.id) } }
+            Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
+        } message: {
+            Text(viewModel.errorMessage ?? "")
+        }
         .alert(
             String(localized: "Authentication Error"),
             isPresented: $showingBiometricError,
@@ -90,6 +101,7 @@ struct AccountDetailView: View {
             .padding(.vertical, 8)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(String(localized: "\(account.name), \(account.type.displayName)"))
+            .accessibilityHint(String(localized: "Double tap to view details"))
         }
     }
 
