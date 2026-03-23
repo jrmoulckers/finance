@@ -541,3 +541,33 @@
 "Please enter a goal name." = "Por favor ingresa un nombre para la meta.";
 "Please enter a valid target amount greater than zero." = "Por favor ingresa un monto objetivo válido mayor que cero.";
 "Current amount cannot be negative." = "El monto actual no puede ser negativo.";
+
+
+"privacy.header.subtitle" = "Tu privacidad es fundamental para Finance. Esta política explica qué datos recopilamos, cómo los almacenamos y protegemos, y los derechos que tienes sobre tu información.";
+"privacy.header.effectiveDate" = "Fecha de vigencia: marzo de 2026";
+"privacy.section.dataCollection.title" = "Recopilación de datos";
+"privacy.section.dataCollection.body" = "Finance recopila únicamente los datos que proporcionas explícitamente: cuentas financieras, transacciones, presupuestos, metas y categorías.";
+"privacy.section.dataStorage.title" = "Almacenamiento de datos";
+"privacy.section.dataStorage.body" = "Finance utiliza una arquitectura local con SQLCipher y cifrado AES-256 en reposo.";
+"privacy.section.cloudSync.title" = "Sincronización en la nube";
+"privacy.section.cloudSync.body" = "La sincronización en la nube es completamente opcional a través de Supabase.";
+"privacy.section.dataUsage.title" = "Uso de datos";
+"privacy.section.dataUsage.body" = "Tus datos se utilizan exclusivamente para seguimiento financiero personal. Nunca vendemos ni compartimos tus datos.";
+"privacy.section.thirdPartyServices.title" = "Servicios de terceros";
+"privacy.section.thirdPartyServices.body" = "Finance se integra con Supabase e Iniciar sesión con Apple. No incluye SDKs de análisis ni publicidad.";
+"privacy.section.dataSecurity.title" = "Seguridad de datos";
+"privacy.section.dataSecurity.body" = "Protegemos tus datos con cifrado SQLCipher, llavero de Apple, autenticación biométrica y TLS 1.3.";
+"privacy.section.gdprRights.title" = "Tus derechos (RGPD)";
+"privacy.section.gdprRights.body" = "Tienes derecho a acceso, rectificación, supresión, portabilidad y oposición. Contacta privacy@finance.app.";
+"privacy.section.ccpaRights.title" = "Derechos de privacidad de California";
+"privacy.section.ccpaRights.body" = "Derecho a saber, eliminar, corregir y optar por no participar. Finance no vende tu información personal.";
+"privacy.section.childrensPrivacy.title" = "Privacidad infantil";
+"privacy.section.childrensPrivacy.body" = "Finance no está dirigido a menores de 13 años. Contacta privacy@finance.app si crees que un menor proporcionó datos.";
+"privacy.section.dataDeletion.title" = "Eliminación de datos";
+"privacy.section.dataDeletion.body" = "Puedes eliminar todos tus datos desde Ajustes. La eliminación se propaga al servidor en 30 días.";
+"privacy.section.policyChanges.title" = "Cambios en esta política";
+"privacy.section.policyChanges.body" = "Proporcionaremos al menos 30 días de aviso antes de cambios sustanciales.";
+"privacy.section.contact.title" = "Contáctanos";
+"privacy.section.contact.body" = "Contacta privacy@finance.app para preguntas sobre privacidad.";
+"privacy.footer.lastUpdated" = "Última actualización: marzo de 2026";
+"privacy.footer.lastUpdated.accessibilityLabel" = "Política de privacidad actualizada en marzo de 2026";
