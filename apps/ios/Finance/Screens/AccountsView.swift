@@ -12,14 +12,18 @@ import SwiftUI
 struct AccountsView: View {
     @State private var viewModel: AccountsViewModel
 
-    init(viewModel: AccountsViewModel = AccountsViewModel(repository: MockAccountRepository())) {
+    init(viewModel: AccountsViewModel = AccountsViewModel(repository: KMPAccountRepository())) {
         _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
         NavigationStack {
             Group {
-                if viewModel.accountGroups.isEmpty && !viewModel.isLoading {
+                if viewModel.isLoading && viewModel.accountGroups.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel(String(localized: "Loading"))
+                } else if viewModel.accountGroups.isEmpty && !viewModel.isLoading {
                     EmptyStateView(
                         systemImage: "building.columns",
                         title: String(localized: "No Accounts"),
@@ -44,6 +48,15 @@ struct AccountsView: View {
             .sheet(isPresented: $viewModel.showingAddAccount) { addAccountPlaceholder }
             .refreshable { await viewModel.loadAccounts() }
             .task { await viewModel.loadAccounts() }
+            .alert(String(localized: "Error"), isPresented: Binding(
+                get: { viewModel.showError },
+                set: { if !$0 { viewModel.dismissError() } }
+            )) {
+                Button(String(localized: "Retry")) { Task { await viewModel.loadAccounts() } }
+                Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
         }
     }
 

@@ -8,15 +8,28 @@
 
 import Observation
 import Foundation
+import os
 
 @Observable
 @MainActor
 final class AccountsViewModel {
     private let repository: AccountRepository
 
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "AccountsViewModel"
+    )
+
     var accountGroups: [AccountGroup] = []
     var isLoading = false
     var showingAddAccount = false
+    var errorMessage: String?
+
+    /// Whether an error alert should be presented.
+    var showError: Bool { errorMessage != nil }
+
+    /// Clears the current error message, dismissing the alert.
+    func dismissError() { errorMessage = nil }
 
     init(repository: AccountRepository) {
         self.repository = repository
@@ -34,7 +47,8 @@ final class AccountsViewModel {
                 return AccountGroup(id: type.rawValue, type: type, accounts: items)
             }
         } catch {
-            // Error handling will be enhanced with KMP-backed repository
+            errorMessage = String(localized: "Failed to load accounts. Please try again.")
+            Self.logger.error("Accounts load failed: \(error.localizedDescription, privacy: .public)")
             accountGroups = []
         }
     }
@@ -43,7 +57,8 @@ final class AccountsViewModel {
         do {
             try await repository.deleteAccount(id: id)
         } catch {
-            // Deletion error handling will be enhanced with KMP-backed repository
+            errorMessage = String(localized: "Failed to delete account. Please try again.")
+            Self.logger.error("Account deletion failed: \(error.localizedDescription, privacy: .public)")
         }
         // Remove from local state for immediate UI feedback
         accountGroups = accountGroups.compactMap { group in

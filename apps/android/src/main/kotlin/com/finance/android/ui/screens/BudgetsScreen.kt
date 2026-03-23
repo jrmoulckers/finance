@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -27,6 +28,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -65,6 +67,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BudgetsScreen(
+    onCreateBudget: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: BudgetsViewModel = koinViewModel(),
 ) {
@@ -98,6 +101,7 @@ fun BudgetsScreen(
             BudgetsContent(
                 state = state,
                 onRefresh = viewModel::refresh,
+                onCreateBudget = onCreateBudget,
                 modifier = modifier,
             )
         }
@@ -109,43 +113,61 @@ fun BudgetsScreen(
 private fun BudgetsContent(
     state: BudgetsUiState,
     onRefresh: () -> Unit,
+    onCreateBudget: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PullToRefreshBox(
-        isRefreshing = state.isRefreshing,
-        onRefresh = onRefresh,
-        modifier = modifier.fillMaxSize(),
-    ) {
-        if (state.budgets.isEmpty()) {
-            BudgetsEmptyState()
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                item(key = "summary") {
-                    BudgetSummaryCard(
-                        totalBudgeted = state.totalBudgeted,
-                        totalSpent = state.totalSpent,
-                        overallHealth = state.overallHealth,
-                    )
+    Box(modifier = modifier.fillMaxSize()) {
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            if (state.budgets.isEmpty()) {
+                BudgetsEmptyState()
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    item(key = "summary") {
+                        BudgetSummaryCard(
+                            totalBudgeted = state.totalBudgeted,
+                            totalSpent = state.totalSpent,
+                            overallHealth = state.overallHealth,
+                        )
+                    }
+                    item(key = "list-header") {
+                        Text(
+                            text = "Your Budgets",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics {
+                                heading()
+                                contentDescription = "Your Budgets section"
+                            },
+                        )
+                    }
+                    items(state.budgets, key = { it.id.value }) { budget ->
+                        BudgetItemCard(budget)
+                    }
+                    item(key = "spacer") { Spacer(Modifier.height(80.dp)) }
                 }
-                item(key = "list-header") {
-                    Text(
-                        text = "Your Budgets",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.semantics {
-                            heading()
-                            contentDescription = "Your Budgets section"
-                        },
-                    )
-                }
-                items(state.budgets, key = { it.id.value }) { budget ->
-                    BudgetItemCard(budget)
-                }
-                item(key = "spacer") { Spacer(Modifier.height(80.dp)) }
             }
+        }
+
+        FloatingActionButton(
+            onClick = onCreateBudget,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .semantics { contentDescription = "Create new budget" },
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = null,
+            )
         }
     }
 }
@@ -451,6 +473,7 @@ private fun BudgetsScreenPreview() {
                 ),
             ),
             onRefresh = {},
+            onCreateBudget = {},
         )
     }
 }

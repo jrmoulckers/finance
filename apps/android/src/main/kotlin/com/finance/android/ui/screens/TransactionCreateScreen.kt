@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Category
@@ -54,17 +53,14 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -108,32 +104,21 @@ fun TransactionCreateScreen(
     val state by viewModel.uiState.collectAsState()
     if (state.isSaved) { onSaved(); return }
 
-    Scaffold(topBar = {
-        TopAppBar(title = { Text("New Transaction", modifier = Modifier.semantics {
-            contentDescription = "New Transaction, ${state.currentStep.label}" }) },
-            navigationIcon = {
-                IconButton(onClick = { if (state.currentStep == CreateStep.AMOUNT) onBack() else viewModel.previousStep() },
-                    modifier = Modifier.semantics { contentDescription = if (state.currentStep == CreateStep.AMOUNT) "Cancel" else "Previous step" }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                }
-            })
-    }) { innerPadding ->
-        Column(Modifier.fillMaxSize().padding(innerPadding)) {
-            StepIndicator(state.currentStep, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            if (state.errors.isNotEmpty()) ErrorMessages(state.errors, Modifier.padding(horizontal = 16.dp))
-            AnimatedContent(state.currentStep, transitionSpec = {
-                slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
-            }, label = "step", modifier = Modifier.weight(1f).fillMaxWidth()) { step ->
-                when (step) {
-                    CreateStep.AMOUNT -> AmountStep(state, viewModel::updateAmount, viewModel::updatePayee,
-                        viewModel::selectPayeeSuggestion, viewModel::updateTransactionType)
-                    CreateStep.CATEGORY -> CategoryStep(state, viewModel::selectCategory, viewModel::selectAccount,
-                        viewModel::selectTransferAccount, viewModel::updateNote)
-                    CreateStep.CONFIRM -> ConfirmStep(state)
-                }
+    Column(Modifier.fillMaxSize()) {
+        StepIndicator(state.currentStep, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        if (state.errors.isNotEmpty()) ErrorMessages(state.errors, Modifier.padding(horizontal = 16.dp))
+        AnimatedContent(state.currentStep, transitionSpec = {
+            slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
+        }, label = "step", modifier = Modifier.weight(1f).fillMaxWidth()) { step ->
+            when (step) {
+                CreateStep.AMOUNT -> AmountStep(state, viewModel::updateAmount, viewModel::updatePayee,
+                    viewModel::selectPayeeSuggestion, viewModel::updateTransactionType)
+                CreateStep.CATEGORY -> CategoryStep(state, viewModel::selectCategory, viewModel::selectAccount,
+                    viewModel::selectTransferAccount, viewModel::updateNote)
+                CreateStep.CONFIRM -> ConfirmStep(state)
             }
-            ActionBar(state.currentStep, state.isSaving, viewModel::nextStep, viewModel::save, Modifier.padding(16.dp))
         }
+        ActionBar(state.currentStep, state.isSaving, viewModel::nextStep, viewModel::save, Modifier.padding(16.dp))
     }
 }
 

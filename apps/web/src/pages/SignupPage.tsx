@@ -15,17 +15,16 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { signupSchema } from '../lib/validation';
 
 import '../styles/auth.css';
 
 /** Minimum password length enforced by client-side validation. */
 const MIN_PASSWORD_LENGTH = 8;
 
-/** Lightweight email format check for custom validation feedback. */
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /** Duration (ms) before auto-redirecting to /login after successful signup. */
 const REDIRECT_DELAY_MS = 2000;
+
 
 interface SignupFieldErrors {
   email?: string;
@@ -98,24 +97,26 @@ export const SignupPage: React.FC = () => {
 
   const validate = useCallback((): boolean => {
     const errors: SignupFieldErrors = {};
-    const normalizedEmail = email.trim();
+    const result = signupSchema.safeParse({
+      email: email.trim(),
+      password,
+      confirmPassword,
+    });
 
-    if (!normalizedEmail) {
-      errors.email = 'Email is required.';
-    } else if (!EMAIL_PATTERN.test(normalizedEmail)) {
-      errors.email = 'Enter a valid email address.';
-    }
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        if (issue.path[0] === 'email') {
+          errors.email = 'Enter a valid email address.';
+        }
 
-    if (!password) {
-      errors.password = 'Password is required.';
-    } else if (password.length < MIN_PASSWORD_LENGTH) {
-      errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
-    }
+        if (issue.path[0] === 'password') {
+          errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+        }
 
-    if (!confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password.';
-    } else if (password !== confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match.';
+        if (issue.path[0] === 'confirmPassword') {
+          errors.confirmPassword = 'Passwords do not match.';
+        }
+      }
     }
 
     setFieldErrors(errors);
@@ -128,6 +129,14 @@ export const SignupPage: React.FC = () => {
       setSubmitMessage(null);
 
       if (!validate()) {
+        return;
+      }
+
+      if (!signupWithEmail) {
+        setSubmitMessage({
+          type: 'info',
+          text: 'Account creation is not yet available. Please check back soon.',
+        });
         return;
       }
 

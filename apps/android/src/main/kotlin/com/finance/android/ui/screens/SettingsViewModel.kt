@@ -8,6 +8,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
+import com.finance.android.ui.theme.ThemePreference
+import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.models.types.SyncId
 import com.finance.sync.auth.AuthManager
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -78,6 +80,9 @@ data class SettingsUiState(
     val userName: String = "",
     val userEmail: String = "",
 
+    // Appearance
+    val themePreference: ThemePreference = ThemePreference.SYSTEM,
+
     // Preferences
     val defaultCurrency: SupportedCurrency = SupportedCurrency.USD,
     val notificationsEnabled: Boolean = true,
@@ -140,7 +145,8 @@ private object PrefKeys {
  * @param biometricChecker Abstraction to query biometric hardware availability.
  * @param transactionRepository Source for transaction data used in data export.
  * @param categoryRepository Source for category data used to resolve category names in export.
- * @param authManager Shared auth manager for sign-out and session management.
+* @param authManager Shared auth manager for sign-out and session management.
+ * @param themePreferenceManager Reactive manager for the user's theme preference.
  */
 class SettingsViewModel(
     private val prefs: SharedPreferences,
@@ -148,6 +154,7 @@ class SettingsViewModel(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val authManager: AuthManager,
+    private val themePreferenceManager: ThemePreferenceManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -167,6 +174,7 @@ class SettingsViewModel(
             current.copy(
                 userName = prefs.getString(PrefKeys.USER_NAME, "") ?: "",
                 userEmail = prefs.getString(PrefKeys.USER_EMAIL, "") ?: "",
+                themePreference = themePreferenceManager.themePreference.value,
                 defaultCurrency = prefs.getString(PrefKeys.DEFAULT_CURRENCY, null)
                     ?.let { code -> SupportedCurrency.entries.firstOrNull { it.code == code } }
                     ?: SupportedCurrency.USD,
@@ -192,6 +200,11 @@ class SettingsViewModel(
     fun setDefaultCurrency(currency: SupportedCurrency) {
         updatePref { putString(PrefKeys.DEFAULT_CURRENCY, currency.code) }
         _uiState.update { it.copy(defaultCurrency = currency) }
+    }
+
+    fun setThemePreference(preference: ThemePreference) {
+        themePreferenceManager.setThemePreference(preference)
+        _uiState.update { it.copy(themePreference = preference) }
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {

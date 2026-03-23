@@ -99,6 +99,8 @@ After the version PR is merged, a CI workflow:
 
 ## Versioning Strategy
 
+> **📖 For the full versioning reference** — including semver decision trees, pre-release channels (alpha/beta), platform build numbers, Git tag conventions, and branching strategy — see the dedicated [Versioning Strategy Guide](versioning-strategy.md).
+
 Finance uses **semantic versioning (semver)** with **independent versions per platform and package**. This means `apps/ios` can be at version `1.3.0` while `apps/android` is at `1.2.1` and `packages/core` is at `2.0.0`.
 
 ### Version Format by Platform
@@ -471,6 +473,7 @@ For mobile platforms, follow this promotion schedule (adjust based on monitoring
 
 ## References
 
+- [Versioning Strategy](versioning-strategy.md) — Semver rules, pre-release channels, platform build numbers, Git tags, and branching strategy
 - [Rollback Procedures](rollback-procedures.md) — Detailed rollback instructions for every platform, database, and sync
 - [ADR-0006: CI/CD Strategy](../architecture/0006-cicd-strategy.md) — Architectural decisions for the CI/CD pipeline
 - [Monitoring Architecture](../architecture/monitoring.md) — Error tracking, sync health, dashboards, and alerting

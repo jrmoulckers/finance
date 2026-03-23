@@ -186,4 +186,25 @@ describe('SignupPage', () => {
 
     expect(authState.signupWithEmail).not.toHaveBeenCalled();
   });
+
+  it('shows an availability message when signupWithEmail is not available', async () => {
+    const original = authState.signupWithEmail;
+    (authState as Record<string, unknown>).signupWithEmail = undefined;
+
+    renderSignupPage();
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'alex@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText('Confirm Password'), {
+      target: { value: 'password123' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+
+    expect(
+      await screen.findByText('Account creation is not yet available. Please check back soon.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign up' })).toBeEnabled();
+
+    authState.signupWithEmail = original;
+  });
 });

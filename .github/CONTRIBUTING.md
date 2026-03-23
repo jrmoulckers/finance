@@ -110,6 +110,45 @@ You can assign GitHub issues to `@copilot` to have the coding agent work autonom
 3. The agent creates a PR with proposed changes
 4. Review the PR in the repo's "Agents" tab
 
+## Building & Testing
+
+### Shared KMP Packages
+
+```bash
+npm run build:kmp    # Build Kotlin Multiplatform packages
+npm run test:kmp     # Run KMP JVM tests
+```
+
+### Platform-Specific Builds
+
+```bash
+# Web
+npm run build -w apps/web
+npm run test:web
+
+# Android (requires Android SDK + JDK 21)
+./gradlew :apps:android:assembleDebug :apps:android:lintDebug
+
+# iOS (macOS with Xcode only)
+cd apps/ios && swift build
+
+# Windows (JDK 21)
+./gradlew :apps:windows:run
+```
+
+### Before Submitting a PR
+
+Run the full validation script locally:
+
+```bash
+npm run ready-for-pr
+```
+
+This runs: format check → lint → type check → KMP tests.
+
+- **Pre-commit hook** automatically formats staged files via lint-staged
+- **Pre-push hook** requires interactive terminal confirmation (blocks CI bots)
+
 ## Code Standards
 
 ### Commit Messages

@@ -33,6 +33,7 @@ import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateAccountInput } from '../../db/repositories/accounts';
 import type { Account, AccountType, SyncId } from '../../kmp/bridge';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
+import { accountSchema } from '../../lib/validation';
 
 import './forms.css';
 
@@ -86,18 +87,30 @@ interface FormErrors {
   balance?: string;
 }
 
-function validate(name: string, balanceStr: string): FormErrors {
+function validate(
+  name: string,
+  balanceStr: string,
+  accountType: AccountType,
+  currencyCode: string,
+): FormErrors {
   const errors: FormErrors = {};
+  const parsedBalance = parseFloat(balanceStr);
+  const result = accountSchema.safeParse({
+    name: name.trim(),
+    type: accountType,
+    currencyCode,
+  });
 
-  if (!name.trim()) {
-    errors.name = 'Account name is required.';
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      if (issue.path[0] === 'name') {
+        errors.name = 'Account name is required.';
+      }
+    }
   }
 
-  if (balanceStr.trim() !== '') {
-    const parsed = parseFloat(balanceStr);
-    if (Number.isNaN(parsed)) {
-      errors.balance = 'Initial balance must be a valid number.';
-    }
+  if (balanceStr.trim() !== '' && Number.isNaN(parsedBalance)) {
+    errors.balance = 'Initial balance must be a valid number.';
   }
 
   return errors;
@@ -219,7 +232,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
     async (e: FormEvent) => {
       e.preventDefault();
 
-      const fieldErrors = validate(name, balance);
+      const fieldErrors = validate(name, balance, accountType, currency);
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
