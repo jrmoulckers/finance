@@ -104,21 +104,34 @@ fun TransactionCreateScreen(
     val state by viewModel.uiState.collectAsState()
     if (state.isSaved) { onSaved(); return }
 
-    Column(Modifier.fillMaxSize()) {
-        StepIndicator(state.currentStep, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-        if (state.errors.isNotEmpty()) ErrorMessages(state.errors, Modifier.padding(horizontal = 16.dp))
-        AnimatedContent(state.currentStep, transitionSpec = {
-            slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
-        }, label = "step", modifier = Modifier.weight(1f).fillMaxWidth()) { step ->
-            when (step) {
-                CreateStep.AMOUNT -> AmountStep(state, viewModel::updateAmount, viewModel::updatePayee,
-                    viewModel::selectPayeeSuggestion, viewModel::updateTransactionType)
-                CreateStep.CATEGORY -> CategoryStep(state, viewModel::selectCategory, viewModel::selectAccount,
-                    viewModel::selectTransferAccount, viewModel::updateNote)
-                CreateStep.CONFIRM -> ConfirmStep(state)
+    Scaffold(topBar = {
+        TopAppBar(title = { Text(if (state.isEditing) "Edit Transaction" else "New Transaction",
+            modifier = Modifier.semantics {
+            contentDescription = if (state.isEditing) "Edit Transaction, ${state.currentStep.label}"
+                else "New Transaction, ${state.currentStep.label}" }) },
+            navigationIcon = {
+                IconButton(onClick = { if (state.currentStep == CreateStep.AMOUNT) onBack() else viewModel.previousStep() },
+                    modifier = Modifier.semantics { contentDescription = if (state.currentStep == CreateStep.AMOUNT) "Cancel" else "Previous step" }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                }
+            })
+    }) { innerPadding ->
+        Column(Modifier.fillMaxSize().padding(innerPadding)) {
+            StepIndicator(state.currentStep, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            if (state.errors.isNotEmpty()) ErrorMessages(state.errors, Modifier.padding(horizontal = 16.dp))
+            AnimatedContent(state.currentStep, transitionSpec = {
+                slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
+            }, label = "step", modifier = Modifier.weight(1f).fillMaxWidth()) { step ->
+                when (step) {
+                    CreateStep.AMOUNT -> AmountStep(state, viewModel::updateAmount, viewModel::updatePayee,
+                        viewModel::selectPayeeSuggestion, viewModel::updateTransactionType)
+                    CreateStep.CATEGORY -> CategoryStep(state, viewModel::selectCategory, viewModel::selectAccount,
+                        viewModel::selectTransferAccount, viewModel::updateNote)
+                    CreateStep.CONFIRM -> ConfirmStep(state)
+                }
             }
+            ActionBar(state.currentStep, state.isSaving, state.isEditing, viewModel::nextStep, viewModel::save, Modifier.padding(16.dp))
         }
-        ActionBar(state.currentStep, state.isSaving, viewModel::nextStep, viewModel::save, Modifier.padding(16.dp))
     }
 }
 
@@ -283,14 +296,16 @@ private fun CRow(label: String, value: String) {
 }
 
 @Composable
-private fun ActionBar(step: CreateStep, saving: Boolean, onNext: () -> Unit, onSave: () -> Unit, modifier: Modifier = Modifier) {
+private fun ActionBar(step: CreateStep, saving: Boolean, isEditing: Boolean, onNext: () -> Unit, onSave: () -> Unit, modifier: Modifier = Modifier) {
+    val saveLabel = if (isEditing) "Update Transaction" else "Save Transaction"
+    val savingLabel = if (isEditing) "Updating transaction" else "Saving transaction"
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         if (step == CreateStep.CONFIRM) {
             Button(onSave, enabled = !saving, modifier = Modifier.fillMaxWidth().semantics {
-                contentDescription = if (saving) "Saving transaction" else "Save transaction" }) {
+                contentDescription = if (saving) savingLabel else saveLabel }) {
                 if (saving) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(Modifier.width(8.dp)); Text("Saving...") }
-                else { Icon(Icons.Filled.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Save Transaction") }
+                    Spacer(Modifier.width(8.dp)); Text(if (isEditing) "Updating..." else "Saving...") }
+                else { Icon(Icons.Filled.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(saveLabel) }
             }
         } else {
             Button(onNext, Modifier.fillMaxWidth().semantics { contentDescription = "Continue to next step" }) { Text("Continue") }

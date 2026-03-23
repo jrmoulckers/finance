@@ -70,6 +70,7 @@ dependencies {
     // SQLDelight (runtime + coroutines extensions for repository implementations)
     implementation(libs.sqldelight.runtime)
     implementation(libs.sqldelight.coroutines)
+    implementation(libs.sqlcipher.android)
 
     // Serialization (Transaction tags JSON encoding)
     implementation(libs.kotlinx.serialization.json)
