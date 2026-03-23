@@ -29,7 +29,11 @@ export default defineConfig({
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
         manualChunks(id) {
-          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom') || id.includes('node_modules/react/')) {
+          if (
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/react-router-dom') ||
+            id.includes('node_modules/react/')
+          ) {
             return 'vendor';
           }
         },
