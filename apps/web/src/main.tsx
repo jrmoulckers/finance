@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
 import { DatabaseProvider } from './db/DatabaseProvider';
+import { initMonitoring } from './lib/monitoring';
 import './theme/tokens.css';
 import './styles/responsive.css';
 
@@ -29,6 +30,8 @@ const authConfig = {
     }
   },
 };
+
+initMonitoring();
 
 createRoot(rootElement).render(
   <StrictMode>

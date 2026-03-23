@@ -367,6 +367,10 @@ App shell and navigation:
 
 ## Form Patterns
 
+### Validation (Zod schemas)
+
+`src/lib/validation.ts` centralizes shared Zod schemas for login, signup, transactions, accounts, budgets, and goals so every form can reuse the same shape checks. Keep new client-side validation in that module and add focused Vitest coverage in `src/lib/validation.test.ts`.
+
 All four form components (`AccountForm`, `TransactionForm`, `BudgetForm`,
 `GoalForm`) follow a consistent architecture. This section documents the
 conventions used across every form.
@@ -497,6 +501,10 @@ All forms share `components/forms/forms.css` which provides:
 
 ## Offline-First Architecture
 
+### Service worker update flow
+
+`useServiceWorkerUpdate()` watches for waiting service workers and surfaces the state through `UpdateBanner`, giving users a clear “Update now” path. Applying the update sends `SKIP_WAITING` to the worker and reloads the app after the new controller takes over.
+
 The web app is designed to work fully without network connectivity. All data
 lives in the browser, and mutations are applied immediately to the local
 database.
@@ -564,6 +572,10 @@ The `OfflineBanner` component renders a non-intrusive banner with
 `role="status"` and `aria-live="polite"` when the device is offline.
 
 ## Testing
+
+### E2E Testing (Playwright)
+
+Use Playwright for browser-level verification of core flows such as authentication, offline recovery, and navigation between lazy-loaded routes. When the suite is enabled locally, run it from `apps/web` with `npx playwright install` once and `npx playwright test` for regular execution.
 
 ### Test Stack
 
@@ -721,6 +733,10 @@ The app respects `prefers-color-scheme`, `prefers-reduced-motion`, and
 `prefers-contrast` media queries automatically.
 
 ## Accessibility
+
+### Keyboard shortcuts
+
+Press `?` anywhere outside editable fields to open the keyboard shortcuts help dialog, and press `Esc` to close it. The dialog uses focus trapping, semantic table markup, and an `alertdialog` role so keyboard and assistive technology users get the same guidance.
 
 - Semantic HTML is used as the primary accessibility mechanism
 - ARIA attributes are added only when native semantics are insufficient

@@ -91,8 +91,9 @@ You MUST NOT execute operations that delete, truncate, or irreversibly modify da
 
 - **Monorepo** with apps/, packages/, services/, docs/, tools/
 - **Edge-first**: Business logic runs on client devices; backend is for sync only
-- **Platforms**: iOS (SwiftUI), Android (Kotlin), Web (PWA), Windows 11
+- **Platforms**: iOS (SwiftUI; Swift Export bridge planned), Android (Kotlin), Web (TypeScript + React PWA), Windows 11
 - **Shared code** lives in packages/ (core logic, data models, sync engine)
+- **Current KMP package reality**: `packages/core` checks in `commonMain`, `commonTest`, `iosMain`, `jsMain`, and `jvmMain` source sets; `packages/models` and `packages/sync` also check in `androidMain`, and `packages/sync` also has `jsTest`
 - **Single backend API** in services/api/ for data synchronization
 
 ## Development Workflow (MANDATORY)
@@ -108,6 +109,12 @@ All code changes MUST follow this workflow:
 7. **Never merge PRs** — humans review and merge
 
 Branch naming: `feat/web-data-layer-443`, `fix/auth-refresh-127`, `docs/api-guide-86`
+
+Tooling notes:
+
+- `lint-staged` runs from `.husky/pre-commit` and auto-formats staged files before commit.
+- `.husky/pre-push` blocks non-interactive pushes unless a human explicitly uses `--no-verify`.
+- Use `npm run ci:check` for a fast validation pass and `npm run ready-for-pr` before review.
 
 ## Code Quality Requirements
 

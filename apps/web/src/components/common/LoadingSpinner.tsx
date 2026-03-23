@@ -15,6 +15,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     className={`loading-spinner ${className}`.trim()}
     role="status"
     aria-label={label}
+    aria-live="polite"
     style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
   >
     <svg

@@ -8,15 +8,27 @@
 
 import Observation
 import Foundation
+import os
 
 @Observable
 @MainActor
 final class AccountDetailViewModel {
     private let repository: TransactionRepository
 
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "AccountDetailViewModel"
+    )
+
     var transactions: [TransactionItem] = []
     var isLoading = false
     var errorMessage: String?
+
+    /// Whether an error alert should be presented.
+    var showError: Bool { errorMessage != nil }
+
+    /// Clears the current error message, dismissing the alert.
+    func dismissError() { errorMessage = nil }
 
     /// Transactions grouped by calendar day, most recent first.
     struct DateGroup: Identifiable {
@@ -44,7 +56,8 @@ final class AccountDetailViewModel {
         do {
             transactions = try await repository.getTransactions(forAccountId: accountId)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = String(localized: "Failed to load transactions. Please try again.")
+            Self.logger.error("Account detail load failed: \(error.localizedDescription, privacy: .public)")
             transactions = []
         }
     }

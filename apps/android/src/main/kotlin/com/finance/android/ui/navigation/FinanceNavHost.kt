@@ -137,11 +137,21 @@ fun FinanceNavHost(
         }
 
         composable(Route.Budgets.route) {
-            BudgetsScreen()
+            BudgetsScreen(
+                onCreateBudget = {
+                    Timber.d("FAB: Create new budget tapped")
+                    // TODO: navigate to BudgetCreate screen once route is defined
+                },
+            )
         }
 
         composable(Route.Goals.route) {
-            GoalsScreen()
+            GoalsScreen(
+                onCreateGoal = {
+                    Timber.d("FAB: Create new goal tapped")
+                    // TODO: navigate to GoalCreate screen once route is defined
+                },
+            )
         }
 
         // ── Secondary screens ───────────────────────────────────────

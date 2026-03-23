@@ -12,14 +12,12 @@ import { Link } from 'react-router-dom';
 
 import { useAuth, type AuthContextValue } from '../auth/auth-context';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { signupSchema } from '../lib/validation';
 
 import '../styles/auth.css';
 
 /** Minimum password length enforced by client-side validation. */
 const MIN_PASSWORD_LENGTH = 8;
-
-/** Lightweight email format check for custom validation feedback. */
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface SignupFieldErrors {
   email?: string;
@@ -41,7 +39,7 @@ type SignupCapableAuth = AuthContextValue & {
  * Standalone signup page for the web app.
  *
  * The current auth context does not expose a registration action, so the page
- * validates the form and shows a friendly "coming soon" message until signup
+ * validates the form and shows a friendly availability message until signup
  * support is wired into the backend and auth context.
  */
 export const SignupPage: React.FC = () => {
@@ -87,24 +85,26 @@ export const SignupPage: React.FC = () => {
 
   const validate = useCallback((): boolean => {
     const errors: SignupFieldErrors = {};
-    const normalizedEmail = email.trim();
+    const result = signupSchema.safeParse({
+      email: email.trim(),
+      password,
+      confirmPassword,
+    });
 
-    if (!normalizedEmail) {
-      errors.email = 'Email is required.';
-    } else if (!EMAIL_PATTERN.test(normalizedEmail)) {
-      errors.email = 'Enter a valid email address.';
-    }
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        if (issue.path[0] === 'email') {
+          errors.email = 'Enter a valid email address.';
+        }
 
-    if (!password) {
-      errors.password = 'Password is required.';
-    } else if (password.length < MIN_PASSWORD_LENGTH) {
-      errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
-    }
+        if (issue.path[0] === 'password') {
+          errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+        }
 
-    if (!confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password.';
-    } else if (password !== confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match.';
+        if (issue.path[0] === 'confirmPassword') {
+          errors.confirmPassword = 'Passwords do not match.';
+        }
+      }
     }
 
     setFieldErrors(errors);
@@ -120,22 +120,21 @@ export const SignupPage: React.FC = () => {
         return;
       }
 
+      if (!signupAction) {
+        setSubmitMessage({
+          type: 'info',
+          text: 'Account creation is not yet available. Please check back soon.',
+        });
+        return;
+      }
+
       setIsSubmitting(true);
 
       try {
-        if (signupAction) {
-          await signupAction(email.trim(), password);
-          setSubmitMessage({
-            type: 'info',
-            text: 'Account created. You can now sign in.',
-          });
-          return;
-        }
-
-        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        await signupAction(email.trim(), password);
         setSubmitMessage({
           type: 'info',
-          text: 'Registration coming soon. Please check back later.',
+          text: 'Account created. You can now sign in.',
         });
       } catch (error) {
         setSubmitMessage({

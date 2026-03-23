@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
+
 export interface NavItem {
   path: string;
   label: string;
   icon: React.ReactNode;
 }
+
 export const NAV_ITEMS: NavItem[] = [
   {
     path: '/',
@@ -53,20 +55,23 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
 ];
+
 export interface NavigationProps {
   activePath: string;
   onNavigate: (path: string) => void;
+  onOpenShortcuts?: () => void;
 }
+
 export const BottomNavigation: React.FC<NavigationProps> = ({ activePath, onNavigate }) => (
   <nav className="bottom-nav" aria-label="Main navigation">
     {NAV_ITEMS.map((item) => {
-      const a = activePath === item.path;
+      const isActive = activePath === item.path;
       return (
         <button
           key={item.path}
           type="button"
-          className={`nav-item${a ? ' nav-item--active' : ''}`}
-          aria-current={a ? 'page' : undefined}
+          className={`nav-item${isActive ? ' nav-item--active' : ''}`}
+          aria-current={isActive ? 'page' : undefined}
           aria-label={item.label}
           onClick={() => onNavigate(item.path)}
         >
@@ -77,8 +82,14 @@ export const BottomNavigation: React.FC<NavigationProps> = ({ activePath, onNavi
     })}
   </nav>
 );
-export const SidebarNavigation: React.FC<NavigationProps> = ({ activePath, onNavigate }) => {
-  const sa = activePath === '/settings';
+
+export const SidebarNavigation: React.FC<NavigationProps> = ({
+  activePath,
+  onNavigate,
+  onOpenShortcuts,
+}) => {
+  const isSettingsActive = activePath === '/settings';
+
   return (
     <aside className="app-sidebar" aria-label="Main navigation">
       <div className="app-sidebar__header">
@@ -87,13 +98,13 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({ activePath, onNav
       <nav className="app-sidebar__nav" aria-label="Primary">
         <ul className="sidebar-nav__list" role="list">
           {NAV_ITEMS.map((item) => {
-            const a = activePath === item.path;
+            const isActive = activePath === item.path;
             return (
               <li key={item.path} role="listitem">
                 <button
                   type="button"
-                  className={`sidebar-nav__item${a ? ' sidebar-nav__item--active' : ''}`}
-                  aria-current={a ? 'page' : undefined}
+                  className={`sidebar-nav__item${isActive ? ' sidebar-nav__item--active' : ''}`}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => onNavigate(item.path)}
                 >
                   <span className="sidebar-nav__item-icon">{item.icon}</span>
@@ -105,10 +116,26 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({ activePath, onNav
         </ul>
       </nav>
       <div className="app-sidebar__footer">
+        {onOpenShortcuts ? (
+          <button
+            type="button"
+            className="sidebar-nav__item"
+            aria-keyshortcuts="Shift+/"
+            onClick={onOpenShortcuts}
+          >
+            <span
+              className="sidebar-nav__item-icon sidebar-nav__item-icon--glyph"
+              aria-hidden="true"
+            >
+              ?
+            </span>
+            <span>Shortcuts</span>
+          </button>
+        ) : null}
         <button
           type="button"
-          className={`sidebar-nav__item${sa ? ' sidebar-nav__item--active' : ''}`}
-          aria-current={sa ? 'page' : undefined}
+          className={`sidebar-nav__item${isSettingsActive ? ' sidebar-nav__item--active' : ''}`}
+          aria-current={isSettingsActive ? 'page' : undefined}
           onClick={() => onNavigate('/settings')}
         >
           <span>Settings</span>
@@ -117,4 +144,5 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({ activePath, onNav
     </aside>
   );
 };
+
 export default BottomNavigation;

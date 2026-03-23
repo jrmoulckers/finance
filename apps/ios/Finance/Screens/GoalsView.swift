@@ -12,23 +12,31 @@ import SwiftUI
 struct GoalsView: View {
     @State private var viewModel: GoalsViewModel
 
-    init(viewModel: GoalsViewModel = GoalsViewModel(repository: MockGoalRepository())) {
+    init(viewModel: GoalsViewModel = GoalsViewModel(repository: KMPGoalRepository())) {
         _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                if viewModel.goals.isEmpty && !viewModel.isLoading {
-                    EmptyStateView(
-                        systemImage: "target",
-                        title: String(localized: "No Goals"),
-                        message: String(localized: "Set a financial goal to start saving toward something meaningful."),
-                        actionLabel: String(localized: "Create Goal"),
-                        action: { viewModel.showingCreateGoal = true }
-                    )
+            Group {
+                if viewModel.isLoading && viewModel.goals.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .accessibilityLabel(String(localized: "Loading"))
                 } else {
-                    goalCards
+                    ScrollView {
+                        if viewModel.goals.isEmpty && !viewModel.isLoading {
+                            EmptyStateView(
+                                systemImage: "target",
+                                title: String(localized: "No Goals"),
+                                message: String(localized: "Set a financial goal to start saving toward something meaningful."),
+                                actionLabel: String(localized: "Create Goal"),
+                                action: { viewModel.showingCreateGoal = true }
+                            )
+                        } else {
+                            goalCards
+                        }
+                    }
                 }
             }
             .navigationTitle(String(localized: "Goals"))
@@ -58,6 +66,15 @@ struct GoalsView: View {
             }
             .refreshable { await viewModel.loadGoals() }
             .task { await viewModel.loadGoals() }
+            .alert(String(localized: "Error"), isPresented: Binding(
+                get: { viewModel.showError },
+                set: { if !$0 { viewModel.dismissError() } }
+            )) {
+                Button(String(localized: "Retry")) { Task { await viewModel.loadGoals() } }
+                Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
         }
     }
 
@@ -137,7 +154,27 @@ struct GoalsView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(goal.name)
         .accessibilityValue(String(localized: "\(Int(goal.progress * 100)) percent complete, \(goal.status.displayName)"))
-        .accessibilityHint(goal.isComplete ? String(localized: "Goal has been completed. Tap to edit.") : String(localized: "Goal is in progress. Tap to edit."))
+        .accessibilityHint(goal.isComplete ? String(localized: "Goal has been completed. Double tap to edit.") : String(localized: "Goal is in progress. Double tap to edit."))
+    }
+
+    private var createGoalPlaceholder: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(String(localized: "Goal creation will be connected to KMP shared logic."))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle(String(localized: "Create Goal"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) { viewModel.showingCreateGoal = false }
+                        .accessibilityLabel(String(localized: "Cancel"))
+                        .accessibilityHint(String(localized: "Dismisses the goal creation form"))
+                }
+            }
+        }
     }
 }
 

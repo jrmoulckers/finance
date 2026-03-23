@@ -29,23 +29,38 @@ Finance aspires to re-think and re-vitalize the desire to track every financial 
 
 ## Project Status
 
-All 8 development phases are **complete**. The project is in pre-launch (v0.1.0).
+The Finance app is in **active development** with core infrastructure complete and platform apps in progress.
 
-| Phase | Name              | Status      |
-| ----- | ----------------- | ----------- |
-| 0     | Foundation        | ✅ Complete |
-| 1     | Core Engine       | ✅ Complete |
-| 2     | Sync & Backend    | ✅ Complete |
-| 3     | Android App       | ✅ Complete |
-| 4     | iOS App           | ✅ Complete |
-| 5     | Web PWA           | ✅ Complete |
-| 6     | Windows App       | ✅ Complete |
-| 7     | Advanced Features | ✅ Complete |
-| 8     | Polish & Launch   | ✅ Complete |
+### What's Built ✅
 
-**What's implemented:** KMP shared business logic, Supabase backend with RLS + E2E encryption, PowerSync offline-first sync, platform-native apps on all 4 targets, design token pipeline, CI/CD workflows, accessibility (WCAG 2.2 AA), biometric auth, multi-currency support, recurring transactions, and financial analytics.
+- **Core business logic** — Budgeting, categorization, analytics, multi-currency, recurring transactions (packages/core)
+- **Data models** — SQLDelight schemas with migrations, encrypted storage (packages/models)
+- **Sync engine** — Delta sync, conflict resolution, E2E encryption, mutation queue (packages/sync)
+- **Backend** — Supabase with RLS, 11 Edge Functions, 7 database migrations (services/api)
+- **Android app** — Jetpack Compose UI, Material 3, authentication, PowerSync integration
+- **iOS app** — SwiftUI screens, MVVM architecture, biometric auth
+- **Web PWA** — React + TypeScript, offline support, service worker
+- **CI/CD** — GitHub Actions for all platforms, CodeQL scanning, automated formatting
 
-**Current focus:** Tech debt cleanup, CI hardening, and launch preparation. See the [detailed roadmap](docs/architecture/roadmap.md) and [open issues](https://github.com/jrmoulckers/finance/issues) for what's next.
+### In Progress 🔄
+
+- Platform data wiring — connecting UI to real KMP data layer ([#432](https://github.com/jrmoulckers/finance/issues/432), [#414](https://github.com/jrmoulckers/finance/issues/414), [#444](https://github.com/jrmoulckers/finance/issues/444))
+- Sync pipeline — PowerSync rules, server sync endpoints
+- Security & privacy hardening — based on MASVS and GDPR audits
+
+| Phase | Name              | Status         |
+| ----- | ----------------- | -------------- |
+| 0     | Foundation        | ✅ Complete    |
+| 1     | Core Engine       | ✅ Complete    |
+| 2     | Sync & Backend    | 🔄 In Progress |
+| 3     | Android App       | 🔄 In Progress |
+| 4     | iOS App           | 🔄 In Progress |
+| 5     | Web PWA           | 🔄 In Progress |
+| 6     | Windows App       | 🔲 Planned     |
+| 7     | Advanced Features | 🔄 In Progress |
+| 8     | Polish & Launch   | 🔲 Planned     |
+
+See the [detailed roadmap](docs/architecture/roadmap.md) and [open issues](https://github.com/jrmoulckers/finance/issues) for what's next.
 
 ## Monorepo Health
 

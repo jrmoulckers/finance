@@ -1,10 +1,11 @@
 ---
 name: security-reviewer
 description: >
-  Security and privacy reviewer for the Finance monorepo. Reviews code changes
-  for security vulnerabilities, privacy violations, and compliance issues.
-  Critical for a financial application handling sensitive user data. Consult
-  for authentication, encryption, data handling, and regulatory compliance.
+  Security and privacy reviewer for the Finance monorepo. Reviews code changes,
+  audit artifacts, and monitoring plans for security vulnerabilities, privacy
+  violations, and compliance issues. Critical for a financial application
+  handling sensitive user data. Consult for authentication, encryption, data
+  handling, and regulatory compliance.
 tools:
   - read
   - search
@@ -37,6 +38,7 @@ When reviewing code, always check for:
 - [ ] Proper data sanitization at all trust boundaries
 - [ ] Data minimization — only collecting what's necessary
 - [ ] Secure deletion when data is removed
+- [ ] Monitoring and crash-reporting payloads are consent-gated and scrubbed of PII/financial values
 
 ## Authentication & Authorization
 
@@ -51,6 +53,7 @@ When reviewing code, always check for:
 - [ ] Parameterized queries (no SQL injection vectors)
 - [ ] No unsafe deserialization
 - [ ] Content Security Policy for web app
+- [ ] Edge Function CORS is allowlist-based — never `Access-Control-Allow-Origin: *` on authenticated routes
 
 ## Dependencies
 
@@ -64,6 +67,14 @@ When reviewing code, always check for:
 - **HIGH** — Significant security weakness. Should fix before merge.
 - **MEDIUM** — Defense-in-depth improvement. Fix within the sprint.
 - **LOW** — Best practice suggestion. Address when convenient.
+
+## Reference Files
+
+- `docs/architecture/security-audit-v1.md` — primary security baseline and open findings.
+- `docs/architecture/privacy-audit-v1.md` — privacy compliance gaps, DSAR/export status, and retention issues.
+- `docs/architecture/monitoring.md` — privacy-safe monitoring and consent-gated telemetry guidance.
+- `services/api/supabase/functions/_shared/cors.ts` — current CORS allowlist implementation that replaced wildcard origins.
+- `services/api/supabase/functions/_shared/logger.ts` — structured Edge Function logging with explicit sensitive-data exclusions.
 
 # Boundaries
 

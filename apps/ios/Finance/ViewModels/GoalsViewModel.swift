@@ -8,16 +8,29 @@
 
 import Observation
 import Foundation
+import os
 
 @Observable
 @MainActor
 final class GoalsViewModel {
     let repository: GoalRepository
 
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "GoalsViewModel"
+    )
+
     var goals: [GoalItem] = []
     var isLoading = false
     var showingCreateGoal = false
     var editingGoal: GoalItem?
+    var errorMessage: String?
+
+    /// Whether an error alert should be presented.
+    var showError: Bool { errorMessage != nil }
+
+    /// Clears the current error message, dismissing the alert.
+    func dismissError() { errorMessage = nil }
 
     init(repository: GoalRepository) {
         self.repository = repository
@@ -30,7 +43,8 @@ final class GoalsViewModel {
         do {
             goals = try await repository.getGoals()
         } catch {
-            // Error handling will be enhanced with KMP-backed repository
+            errorMessage = String(localized: "Failed to load goals. Please try again.")
+            Self.logger.error("Goals load failed: \(error.localizedDescription, privacy: .public)")
             goals = []
         }
     }
