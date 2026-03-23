@@ -14,8 +14,8 @@ struct TransactionCreateView: View {
     @State private var viewModel: TransactionCreateViewModel
 
     init(viewModel: TransactionCreateViewModel = TransactionCreateViewModel(
-        transactionRepository: KMPTransactionRepository(),
-        accountRepository: KMPAccountRepository()
+        transactionRepository: RepositoryProvider.shared.transactions,
+        accountRepository: RepositoryProvider.shared.accounts
     )) {
         _viewModel = State(initialValue: viewModel)
     }
@@ -35,7 +35,7 @@ struct TransactionCreateView: View {
                 .frame(maxHeight: .infinity)
                 bottomBar
             }
-            .navigationTitle(String(localized: "New Transaction"))
+            .navigationTitle(viewModel.navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -215,10 +215,10 @@ struct TransactionCreateView: View {
                     Task { if await viewModel.save() { dismiss() } }
                 } label: {
                     if viewModel.isSaving { ProgressView().frame(maxWidth: .infinity) }
-                    else { Text(String(localized: "Save Transaction")).frame(maxWidth: .infinity) }
+                    else { Text(viewModel.saveButtonTitle).frame(maxWidth: .infinity) }
                 }
                 .buttonStyle(.borderedProminent).disabled(viewModel.isSaving)
-                .accessibilityLabel(String(localized: "Save Transaction"))
+                .accessibilityLabel(viewModel.saveButtonTitle)
                 .accessibilityHint(String(localized: "Saves the transaction and closes the form"))
             } else {
                 Button { viewModel.advance() } label: {

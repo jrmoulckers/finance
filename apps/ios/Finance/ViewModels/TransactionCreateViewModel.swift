@@ -15,6 +15,12 @@ final class TransactionCreateViewModel {
     private let transactionRepository: TransactionRepository
     private let accountRepository: AccountRepository
 
+    /// The transaction being edited, or `nil` for create mode.
+    private let editingTransaction: TransactionItem?
+
+    /// Whether this form is editing an existing transaction.
+    var isEditing: Bool { editingTransaction != nil }
+
     var currentStep: Step = .type
 
     enum Step: Int, CaseIterable {
@@ -61,15 +67,37 @@ final class TransactionCreateViewModel {
 
     var amountMinorUnits: Int64 { Int64((Double(amountText) ?? 0) * 100) }
 
+    /// Navigation title for the form.
+    var navigationTitle: String {
+        isEditing ? String(localized: "Edit Transaction") : String(localized: "New Transaction")
+    }
+
+    /// Label for the save button on the review step.
+    var saveButtonTitle: String {
+        isEditing ? String(localized: "Update Transaction") : String(localized: "Save Transaction")
+    }
+
     init(
         transactionRepository: TransactionRepository,
-        accountRepository: AccountRepository
+        accountRepository: AccountRepository,
+        transaction: TransactionItem? = nil
     ) {
         self.transactionRepository = transactionRepository
         self.accountRepository = accountRepository
+        self.editingTransaction = transaction
+
+        if let transaction {
+            // Pre-fill fields from the existing transaction
+            transactionType = transaction.type
+            amountText = Self.formatAmountForEditing(abs(transaction.amountMinorUnits))
+            payee = transaction.payee
+            date = transaction.date
+            currencyCode = transaction.currencyCode
+            // Category and account IDs are resolved after loadData()
+        }
     }
 
-    /// Loads accounts for the account picker.
+    /// Loads accounts for the account picker and resolves edit mode references.
     func loadData() async {
         do {
             let accountItems = try await accountRepository.getAccounts()
@@ -77,6 +105,12 @@ final class TransactionCreateViewModel {
         } catch {
             // Fall back to empty accounts; user will see "Select Account" prompt
             accounts = []
+        }
+
+        // Resolve category and account IDs for edit mode
+        if let transaction = editingTransaction {
+            selectedCategoryId = categories.first { $0.name == transaction.category }?.id
+            selectedAccountId = accounts.first { $0.name == transaction.accountName }?.id
         }
     }
 
@@ -99,7 +133,7 @@ final class TransactionCreateViewModel {
         let accountName = accounts.first { $0.id == selectedAccountId }?.name ?? ""
 
         let transaction = TransactionItem(
-            id: UUID().uuidString,
+            id: editingTransaction?.id ?? UUID().uuidString,
             payee: payee,
             category: categoryName,
             accountName: accountName,
@@ -107,11 +141,15 @@ final class TransactionCreateViewModel {
             currencyCode: currencyCode,
             date: date,
             type: transactionType,
-            status: .pending
+            status: editingTransaction?.status ?? .pending
         )
 
         do {
-            try await transactionRepository.createTransaction(transaction)
+            if isEditing {
+                try await transactionRepository.updateTransaction(transaction)
+            } else {
+                try await transactionRepository.createTransaction(transaction)
+            }
             return true
         } catch {
             validationMessage = error.localizedDescription
@@ -137,5 +175,13 @@ final class TransactionCreateViewModel {
             return false
         }
         return true
+    }
+
+    // MARK: - Helpers
+
+    /// Formats minor units to a decimal string for editing (e.g., 2550 → "25.50").
+    private static func formatAmountForEditing(_ minorUnits: Int64) -> String {
+        let value = Double(minorUnits) / 100.0
+        return String(format: "%.2f", value)
     }
 }

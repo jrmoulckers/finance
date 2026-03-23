@@ -22,6 +22,7 @@ const GoalDetail = lazy(() => import('./pages/GoalDetailPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
+const NotFound = lazy(() => import('./pages/NotFoundPage'));
 
 /**
  * Loading fallback shown while a lazy route chunk is being fetched.
@@ -186,6 +187,14 @@ export const AppRoutes: FC = () => (
             <Settings />
           </Suspense>
         </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="*"
+      element={
+        <Suspense fallback={<PageLoader />}>
+          <NotFound />
+        </Suspense>
       }
     />
   </Routes>

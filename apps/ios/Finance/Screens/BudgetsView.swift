@@ -12,7 +12,9 @@ import SwiftUI
 struct BudgetsView: View {
     @State private var viewModel: BudgetsViewModel
 
-    init(viewModel: BudgetsViewModel = BudgetsViewModel(repository: KMPBudgetRepository())) {
+    init(viewModel: BudgetsViewModel = BudgetsViewModel(
+        repository: RepositoryProvider.shared.budgets
+    )) {
         _viewModel = State(initialValue: viewModel)
     }
 
@@ -55,7 +57,21 @@ struct BudgetsView: View {
                     .accessibilityHint(String(localized: "Opens a form to create a new budget"))
                 }
             }
-            .sheet(isPresented: $viewModel.showingCreateBudget) { createBudgetPlaceholder }
+            .sheet(isPresented: $viewModel.showingCreateBudget, onDismiss: {
+                Task { await viewModel.loadBudgets() }
+            }) {
+                BudgetCreateView(viewModel: BudgetCreateViewModel(
+                    repository: viewModel.repository
+                ))
+            }
+            .sheet(item: $viewModel.editingBudget, onDismiss: {
+                Task { await viewModel.loadBudgets() }
+            }) { budget in
+                BudgetCreateView(viewModel: BudgetCreateViewModel(
+                    repository: viewModel.repository,
+                    budget: budget
+                ))
+            }
             .refreshable { await viewModel.loadBudgets() }
             .task { await viewModel.loadBudgets() }
             .alert(String(localized: "Error"), isPresented: Binding(
@@ -156,31 +172,17 @@ struct BudgetsView: View {
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .contentShape(RoundedRectangle(cornerRadius: 12))
+        .onTapGesture { viewModel.editingBudget = budget }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(budget.name)
         .accessibilityValue(String(localized: "\(Int(budget.progress * 100)) percent spent, \(budget.statusText)"))
-        .accessibilityHint(String(localized: "Double tap to view details"))
+        .accessibilityHint(String(localized: "Double tap to edit this budget"))
     }
 
-    private var createBudgetPlaceholder: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Text(String(localized: "Budget creation will be connected to KMP shared logic."))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .navigationTitle(String(localized: "Create Budget"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { viewModel.showingCreateBudget = false }
-                        .accessibilityLabel(String(localized: "Cancel"))
-                        .accessibilityHint(String(localized: "Dismisses the budget creation form"))
-                }
-            }
-        }
-    }
 }
 
-#Preview { BudgetsView(viewModel: BudgetsViewModel(repository: MockBudgetRepository())) }
+#Preview {
+    BudgetsView(viewModel: BudgetsViewModel(repository: MockBudgetRepository()))
+        .environment(BiometricAuthManager())
+}
