@@ -161,84 +161,94 @@ function scrubString(value: string): string {
 // Monitoring Initialization
 // ============================================================================
 
+/** Storage key for the user's optional monitoring consent preference. */
+const MONITORING_CONSENT_KEY = 'finance-monitoring-consent';
+
+/**
+ * The web app always provides consent-aware monitoring helpers and privacy scrubbing.
+ * A Sentry transport can be layered on top of these helpers when the optional SDK is installed.
+ * Install @sentry/react to enable production error tracking.
+ */
+
 /** Whether monitoring has been initialized. */
 let isInitialized = false;
+
+/**
+ * Determine whether the user has opted in to anonymous error reporting.
+ *
+ * @returns True when monitoring consent is enabled in local storage.
+ */
+function hasMonitoringConsent(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return window.localStorage.getItem(MONITORING_CONSENT_KEY) === 'true';
+}
+
+/**
+ * Write a scrubbed local fallback message while the optional Sentry transport is unavailable.
+ *
+ * @param method - Console method to use for the fallback message.
+ * @param message - Human-readable message describing the monitoring event.
+ * @param details - Optional scrubbed metadata for local diagnostics.
+ */
+function logMonitoringFallback(
+  method: 'info' | 'debug' | 'error',
+  message: string,
+  details?: unknown,
+): void {
+  if (!hasMonitoringConsent()) {
+    return;
+  }
+
+  if (method === 'error') {
+    if (details === undefined) {
+      console.error(message);
+      return;
+    }
+
+    console.error(message, details);
+    return;
+  }
+
+  if (method === 'debug') {
+    if (details === undefined) {
+      console.debug(message);
+      return;
+    }
+
+    console.debug(message, details);
+    return;
+  }
+
+  if (details === undefined) {
+    console.info(message);
+    return;
+  }
+
+  console.info(message, details);
+}
 
 /**
  * Initialize monitoring and error tracking.
  *
  * Call this once from `main.tsx` before rendering the React app.
- * Initialization is gated on:
- * 1. The VITE_SENTRY_DSN environment variable being set
- * 2. User consent (to be wired when consent UI is implemented, #367)
- *
- * In development mode, errors are logged to the console instead.
+ * Initialization runs only after the user has explicitly opted in.
  */
 export function initMonitoring(): void {
-  if (isInitialized) return;
-
-  const dsn = import.meta.env.VITE_SENTRY_DSN;
-  // Will be used when Sentry initialization is uncommented (#367)
-  // const environment = import.meta.env.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE;
-
-  if (!dsn) {
-    if (import.meta.env.DEV) {
-      console.info(
-        '[Monitoring] Sentry DSN not configured. Error tracking disabled. ' +
-          'Set VITE_SENTRY_DSN in .env to enable.',
-      );
-    }
-    isInitialized = true;
+  if (isInitialized || !hasMonitoringConsent()) {
     return;
   }
 
-  // TODO (#367): Check user consent before initializing Sentry.
-  // Until consent UI is implemented, Sentry initialization is commented out
-  // to comply with GDPR requirements. Uncomment when consent flow is ready.
-  //
-  // import * as Sentry from '@sentry/browser';
-  //
-  // Sentry.init({
-  //   dsn,
-  //   environment,
-  //
-  //   // Privacy: never send default PII (IP address, cookies, user agent)
-  //   sendDefaultPii: false,
-  //
-  //   // Scrub financial data from all events before sending
-  //   beforeSend(event) {
-  //     return scrubFinancialData(event);
-  //   },
-  //
-  //   // Scrub financial data from breadcrumbs
-  //   beforeBreadcrumb(breadcrumb) {
-  //     if (breadcrumb.data) {
-  //       breadcrumb.data = scrubFinancialData(breadcrumb.data);
-  //     }
-  //     if (breadcrumb.message) {
-  //       breadcrumb.message = scrubString(breadcrumb.message);
-  //     }
-  //     return breadcrumb;
-  //   },
-  //
-  //   // Filter out noisy third-party errors
-  //   denyUrls: [
-  //     /extensions\//i,
-  //     /^chrome:\/\//i,
-  //     /^moz-extension:\/\//i,
-  //   ],
-  //
-  //   // Sample 100% of errors in production, adjust based on volume
-  //   sampleRate: 1.0,
-  //
-  //   // Performance monitoring: sample 10% of transactions
-  //   tracesSampleRate: 0.1,
-  //
-  //   // Integrations
-  //   integrations: [
-  //     Sentry.browserTracingIntegration(),
-  //   ],
-  // });
+  const environment = import.meta.env.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE;
+  const dsnConfigured = Boolean(import.meta.env.VITE_SENTRY_DSN);
+
+  logMonitoringFallback(
+    'info',
+    '[Monitoring] Consent granted, but Sentry is not configured. Install @sentry/react to enable production error tracking.',
+    { environment, dsnConfigured },
+  );
 
   isInitialized = true;
 }
@@ -250,24 +260,27 @@ export function initMonitoring(): void {
  *   MUST be a UUID or hash — NEVER an email, account ID, or real name.
  */
 export function setMonitoringUser(pseudonymousId: string): void {
-  // TODO: Uncomment when Sentry is initialized
-  // import * as Sentry from '@sentry/browser';
-  // Sentry.setUser({ id: pseudonymousId });
-  if (import.meta.env.DEV) {
-    console.debug('[Monitoring] User set:', pseudonymousId);
+  if (!hasMonitoringConsent()) {
+    return;
   }
+
+  logMonitoringFallback(
+    'debug',
+    '[Monitoring] User context updated for the local fallback logger.',
+    {
+      hasPseudonymousId: pseudonymousId.length > 0,
+    },
+  );
 }
 
 /**
  * Clear the current user context (call on logout).
  */
 export function clearMonitoringUser(): void {
-  // TODO: Uncomment when Sentry is initialized
-  // import * as Sentry from '@sentry/browser';
-  // Sentry.setUser(null);
-  if (import.meta.env.DEV) {
-    console.debug('[Monitoring] User cleared');
-  }
+  logMonitoringFallback(
+    'debug',
+    '[Monitoring] User context cleared for the local fallback logger.',
+  );
 }
 
 /**
@@ -280,14 +293,19 @@ export function clearMonitoringUser(): void {
  * @param context - Optional diagnostic context (must not contain PII or financial data).
  */
 export function captureError(error: Error, context?: Record<string, string>): void {
-  // TODO: Uncomment when Sentry is initialized
-  // import * as Sentry from '@sentry/browser';
-  // Sentry.captureException(error, {
-  //   extra: context ? scrubFinancialData(context) : undefined,
-  // });
-  if (import.meta.env.DEV) {
-    console.error('[Monitoring] Captured error:', error.message, context);
+  if (!hasMonitoringConsent()) {
+    return;
   }
+
+  logMonitoringFallback(
+    'error',
+    '[Monitoring] Captured error locally. Install @sentry/react to enable production error tracking.',
+    {
+      name: error.name,
+      message: scrubString(error.message),
+      context: context ? scrubFinancialData(context) : undefined,
+    },
+  );
 }
 
 /**
@@ -305,15 +323,12 @@ export function addBreadcrumb(
   category: string,
   data?: Record<string, string>,
 ): void {
-  // TODO: Uncomment when Sentry is initialized
-  // import * as Sentry from '@sentry/browser';
-  // Sentry.addBreadcrumb({
-  //   message: scrubString(message),
-  //   category,
-  //   data: data ? scrubFinancialData(data) : undefined,
-  //   level: 'info',
-  // });
-  if (import.meta.env.DEV) {
-    console.debug(`[Monitoring] Breadcrumb [${category}]:`, message, data);
+  if (!hasMonitoringConsent()) {
+    return;
   }
+
+  logMonitoringFallback('debug', `[Monitoring] Breadcrumb [${category}]`, {
+    message: scrubString(message),
+    data: data ? scrubFinancialData(data) : undefined,
+  });
 }

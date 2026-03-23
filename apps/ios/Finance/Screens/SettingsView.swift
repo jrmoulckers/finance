@@ -4,7 +4,8 @@
 // Finance
 //
 // Form-style settings with large navigation title. Covers currency,
-// notifications, biometric auth, data export, and about.
+// notifications, biometric auth, data export, sync status, and about.
+// Refs #565
 
 import os
 import SwiftUI
@@ -13,7 +14,11 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(BiometricAuthManager.self) private var biometricManager
-    @State private var viewModel = SettingsViewModel()
+    @State private var viewModel: SettingsViewModel
+
+    init(viewModel: SettingsViewModel = SettingsViewModel()) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,12 +26,21 @@ struct SettingsView: View {
                 generalSection
                 notificationsSection
                 securitySection
+                syncSection
                 dataSection
                 aboutSection
             }
             .navigationTitle(String(localized: "Settings"))
             .navigationBarTitleDisplayMode(.large)
             .task { await viewModel.loadSettings() }
+            .alert(String(localized: "Error"), isPresented: Binding(
+                get: { viewModel.showError },
+                set: { if !$0 { viewModel.dismissError() } }
+            )) {
+                Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
+            }
             .alert(
                 String(localized: "Authentication Error"),
                 isPresented: $viewModel.showingBiometricError,
@@ -36,6 +50,22 @@ struct SettingsView: View {
                     .accessibilityLabel(String(localized: "Dismiss error"))
             } message: { error in
                 Text(error.localizedDescription)
+            }
+            .alert(
+                String(localized: "Export Failed"),
+                isPresented: $viewModel.showingExportError
+            ) {
+                Button(String(localized: "OK"), role: .cancel) {}
+                    .accessibilityLabel(String(localized: "Dismiss error"))
+            } message: {
+                if let message = viewModel.exportErrorMessage {
+                    Text(message)
+                }
+            }
+            .sheet(isPresented: $viewModel.showingShareSheet) {
+                if let url = viewModel.exportedFileURL {
+                    ShareSheetView(fileURL: url)
+                }
             }
         }
     }
@@ -65,13 +95,13 @@ struct SettingsView: View {
             .accessibilityHint(String(localized: "Toggles push notifications for the app"))
 
             if viewModel.notificationsEnabled {
-                Toggle(isOn: $viewModel.budgetAlerts) {
+                Toggle(isOn: $viewModel.budgetAlertsEnabled) {
                     Label(String(localized: "Budget Alerts"), systemImage: "exclamationmark.triangle")
                 }
                 .accessibilityLabel(String(localized: "Budget alerts"))
                 .accessibilityHint(String(localized: "Receive alerts when approaching budget limits"))
 
-                Toggle(isOn: $viewModel.goalMilestones) {
+                Toggle(isOn: $viewModel.goalMilestonesEnabled) {
                     Label(String(localized: "Goal Milestones"), systemImage: "flag")
                 }
                 .accessibilityLabel(String(localized: "Goal milestones"))
@@ -130,6 +160,62 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Sync
+
+    private var syncSection: some View {
+        Section(String(localized: "Sync")) {
+            HStack {
+                Label(String(localized: "Last Synced"), systemImage: "arrow.triangle.2.circlepath")
+                Spacer()
+                if let lastSync = viewModel.lastSyncDate {
+                    Text(lastSync, style: .relative)
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                } else {
+                    Text(String(localized: "Never"))
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                viewModel.lastSyncDate != nil
+                    ? String(localized: "Last synced")
+                    : String(localized: "Never synced")
+            )
+
+            if viewModel.pendingChangesCount > 0 {
+                HStack {
+                    Label(String(localized: "Pending Changes"), systemImage: "clock.arrow.circlepath")
+                    Spacer()
+                    Text("\(viewModel.pendingChangesCount)")
+                        .foregroundStyle(.orange)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(
+                    String(localized: "\(viewModel.pendingChangesCount) pending changes")
+                )
+            }
+
+            Button {
+                Task { await viewModel.syncNow() }
+            } label: {
+                HStack {
+                    Label(String(localized: "Sync Now"), systemImage: "arrow.clockwise")
+                    Spacer()
+                    if viewModel.isSyncing {
+                        ProgressView()
+                    }
+                }
+            }
+            .disabled(viewModel.isSyncing)
+            .accessibilityLabel(String(localized: "Sync now"))
+            .accessibilityHint(String(localized: "Triggers a manual data sync with the server"))
+        }
+    }
+
     // MARK: - Data
 
     private var dataSection: some View {
@@ -165,10 +251,16 @@ struct SettingsView: View {
                 isPresented: $viewModel.showingExportConfirmation,
                 titleVisibility: .visible
             ) {
-                Button(String(localized: "Export as CSV")) { Task { await viewModel.exportData() } }
-                    .accessibilityLabel(String(localized: "Export as CSV"))
-                Button(String(localized: "Export as JSON")) { Task { await viewModel.exportData() } }
-                    .accessibilityLabel(String(localized: "Export as JSON"))
+                Button(String(localized: "Export as CSV")) {
+                    Task { await viewModel.exportData(format: .csv) }
+                }
+                .accessibilityLabel(String(localized: "Export as CSV"))
+
+                Button(String(localized: "Export as JSON")) {
+                    Task { await viewModel.exportData(format: .json) }
+                }
+                .accessibilityLabel(String(localized: "Export as JSON"))
+
                 Button(String(localized: "Cancel"), role: .cancel) {}
             } message: {
                 Text(String(localized: "Choose your preferred export format."))
@@ -219,6 +311,29 @@ struct SettingsView: View {
             .accessibilityHint(String(localized: "Opens the open source acknowledgments"))
         }
     }
+}
+
+// MARK: - ShareSheetView
+
+/// Wraps `UIActivityViewController` for presenting share actions.
+///
+/// UIKit is required here because SwiftUI's `ShareLink` does not support
+/// sharing arbitrary file URLs produced at runtime. This is the only UIKit
+/// usage in the settings flow.
+private struct ShareSheetView: UIViewControllerRepresentable {
+    let fileURL: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(
+            activityItems: [fileURL],
+            applicationActivities: nil
+        )
+    }
+
+    func updateUIViewController(
+        _ uiViewController: UIActivityViewController,
+        context: Context
+    ) {}
 }
 
 #Preview {

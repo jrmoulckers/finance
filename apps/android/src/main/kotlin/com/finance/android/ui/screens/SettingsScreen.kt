@@ -25,7 +25,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
@@ -39,18 +38,14 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +65,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import com.finance.core.export.ExportFormat
+import com.finance.android.ui.theme.ThemePreference
 import org.koin.compose.viewmodel.koinViewModel
 import java.io.File
 
@@ -80,10 +76,11 @@ import java.io.File
 /**
  * Full-featured Settings screen.
  *
- * Sections: Profile · Preferences · Security · Accessibility · Data · About.
+ * Sections: Profile · Appearance · Preferences · Security · Accessibility · Data · About.
  *
  * @param state          Current [SettingsUiState] — typically collected from [SettingsViewModel].
  * @param onNavigateBack Called when the user taps the back button in the top bar.
+ * @param onSetThemePreference      Callback when theme preference changes.
  * @param onSetCurrency            Callback when default currency changes.
  * @param onSetNotifications       Callback when notification toggle changes.
  * @param onSetBillReminders       Callback when bill-reminder toggle changes.
@@ -107,6 +104,7 @@ fun SettingsScreen(
     state: SettingsUiState,
     onNavigateBack: () -> Unit,
     onSignOut: () -> Unit,
+    onSetThemePreference: (ThemePreference) -> Unit,
     onSetCurrency: (SupportedCurrency) -> Unit,
     onSetNotifications: (Boolean) -> Unit,
     onSetBillReminders: (Boolean) -> Unit,
@@ -125,92 +123,69 @@ fun SettingsScreen(
     onTermsClick: () -> Unit = {},
     onLicensesClick: () -> Unit = {},
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        modifier = Modifier.semantics { contentDescription = "Settings screen title" },
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.semantics { contentDescription = "Navigate back" },
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            // ── Profile ──────────────────────────────────────────────────────
-            ProfileSection(
-                userName = state.userName,
-                userEmail = state.userEmail,
-                onSignOut = onSignOut,
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        // ── Profile ──────────────────────────────────────────────────────
+        ProfileSection(
+            userName = state.userName,
+            userEmail = state.userEmail,
+            onSignOut = onSignOut,
+        )
 
-            // ── Preferences ──────────────────────────────────────────────────
-            PreferencesSection(
-                currency = state.defaultCurrency,
-                notificationsEnabled = state.notificationsEnabled,
-                billRemindersEnabled = state.billRemindersEnabled,
-                onCurrencyChanged = onSetCurrency,
-                onNotificationsChanged = onSetNotifications,
-                onBillRemindersChanged = onSetBillReminders,
-            )
+        // ── Appearance ───────────────────────────────────────────────────
+        AppearanceSection(
+            themePreference = state.themePreference,
+            onThemePreferenceChanged = onSetThemePreference,
+        )
 
-            // ── Security ─────────────────────────────────────────────────────
-            SecuritySection(
-                biometricEnabled = state.biometricEnabled,
-                biometricAvailable = state.biometricAvailable,
-                appLockTimeout = state.appLockTimeout,
-                onBiometricChanged = onSetBiometric,
-                onAppLockTimeoutChanged = onSetAppLockTimeout,
-            )
+        // ── Preferences ──────────────────────────────────────────────────
+        PreferencesSection(
+            currency = state.defaultCurrency,
+            notificationsEnabled = state.notificationsEnabled,
+            billRemindersEnabled = state.billRemindersEnabled,
+            onCurrencyChanged = onSetCurrency,
+            onNotificationsChanged = onSetNotifications,
+            onBillRemindersChanged = onSetBillReminders,
+        )
 
-            // ── Accessibility ────────────────────────────────────────────────
-            AccessibilitySection(
-                simplifiedViewEnabled = state.simplifiedViewEnabled,
-                highContrastEnabled = state.highContrastEnabled,
-                onSimplifiedViewChanged = onSetSimplifiedView,
-                onHighContrastChanged = onSetHighContrast,
-            )
+        // ── Security ─────────────────────────────────────────────────────
+        SecuritySection(
+            biometricEnabled = state.biometricEnabled,
+            biometricAvailable = state.biometricAvailable,
+            appLockTimeout = state.appLockTimeout,
+            onBiometricChanged = onSetBiometric,
+            onAppLockTimeoutChanged = onSetAppLockTimeout,
+        )
 
-            // ── Data ─────────────────────────────────────────────────────────
-            DataSection(
-                onExportClick = onExportClick,
-                onDeleteClick = onDeleteClick,
-                isExporting = state.isExporting,
-            )
+        // ── Accessibility ────────────────────────────────────────────────
+        AccessibilitySection(
+            simplifiedViewEnabled = state.simplifiedViewEnabled,
+            highContrastEnabled = state.highContrastEnabled,
+            onSimplifiedViewChanged = onSetSimplifiedView,
+            onHighContrastChanged = onSetHighContrast,
+        )
 
-            // ── About ────────────────────────────────────────────────────────
-            AboutSection(
-                appVersion = state.appVersion,
-                onPrivacyPolicyClick = onPrivacyPolicyClick,
-                onTermsClick = onTermsClick,
-                onLicensesClick = onLicensesClick,
-            )
+        // ── Data ─────────────────────────────────────────────────────────
+        DataSection(
+            onExportClick = onExportClick,
+            onDeleteClick = onDeleteClick,
+            isExporting = state.isExporting,
+        )
 
-            Spacer(modifier = Modifier.height(24.dp))
-        }
+        // ── About ────────────────────────────────────────────────────────
+        AboutSection(
+            appVersion = state.appVersion,
+            onPrivacyPolicyClick = onPrivacyPolicyClick,
+            onTermsClick = onTermsClick,
+            onLicensesClick = onLicensesClick,
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 
     // ── Dialogs ──────────────────────────────────────────────────────────────
@@ -252,6 +227,76 @@ private fun SectionHeader(title: String) {
     )
 }
 
+
+// ── Appearance ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun AppearanceSection(
+    themePreference: ThemePreference,
+    onThemePreferenceChanged: (ThemePreference) -> Unit,
+) {
+    SectionHeader("Appearance")
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "Appearance settings card" },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ThemePreferenceDropdown(
+                selected = themePreference,
+                onSelected = onThemePreferenceChanged,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemePreferenceDropdown(
+    selected: ThemePreference,
+    onSelected: (ThemePreference) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.semantics { contentDescription = "Theme mode selector" },
+    ) {
+        OutlinedTextField(
+            value = selected.label,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Theme") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            ThemePreference.entries.forEach { preference ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = preference.label,
+                            modifier = Modifier.semantics {
+                                contentDescription = "Select ${preference.label} theme"
+                            },
+                        )
+                    },
+                    onClick = {
+                        onSelected(preference)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
 // ── Profile ──────────────────────────────────────────────────────────────────
 
 @Composable
@@ -899,6 +944,7 @@ fun SettingsScreen(
         state = state,
         onNavigateBack = onNavigateBack,
         onSignOut = viewModel::signOut,
+        onSetThemePreference = viewModel::setThemePreference,
         onSetCurrency = viewModel::setDefaultCurrency,
         onSetNotifications = viewModel::setNotificationsEnabled,
         onSetBillReminders = viewModel::setBillRemindersEnabled,
@@ -974,6 +1020,7 @@ private fun SettingsScreenPreviewLight() {
                 state = previewState(),
                 onNavigateBack = {},
                 onSignOut = {},
+                onSetThemePreference = {},
                 onSetCurrency = {},
                 onSetNotifications = {},
                 onSetBillReminders = {},
@@ -1009,6 +1056,7 @@ private fun SettingsScreenPreviewDark() {
                 state = previewState(),
                 onNavigateBack = {},
                 onSignOut = {},
+                onSetThemePreference = {},
                 onSetCurrency = {},
                 onSetNotifications = {},
                 onSetBillReminders = {},
@@ -1057,6 +1105,7 @@ private fun DeleteDialogPreview() {
 private fun previewState() = SettingsUiState(
     userName = "Alex Johnson",
     userEmail = "alex@example.com",
+    themePreference = ThemePreference.SYSTEM,
     defaultCurrency = SupportedCurrency.USD,
     notificationsEnabled = true,
     billRemindersEnabled = false,

@@ -17,6 +17,8 @@ import com.finance.core.export.ExportData
 import com.finance.core.export.ExportFormat
 import com.finance.core.export.ExportOutcome
 import com.finance.core.export.JsonExportSerializer
+import com.finance.android.ui.theme.ThemePreference
+import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.models.types.SyncId
 import com.finance.sync.auth.AuthManager
 import kotlinx.coroutines.Dispatchers
@@ -84,6 +86,9 @@ data class SettingsUiState(
     val userName: String = "",
     val userEmail: String = "",
 
+    // Appearance
+    val themePreference: ThemePreference = ThemePreference.SYSTEM,
+
     // Preferences
     val defaultCurrency: SupportedCurrency = SupportedCurrency.USD,
     val notificationsEnabled: Boolean = true,
@@ -150,6 +155,7 @@ private object PrefKeys {
  * @param budgetRepository Source for budget data used in data export.
  * @param goalRepository Source for goal data used in data export.
  * @param authManager Shared auth manager for sign-out and session management.
+ * @param themePreferenceManager Reactive manager for the user's theme preference.
  */
 class SettingsViewModel(
     private val prefs: SharedPreferences,
@@ -160,6 +166,7 @@ class SettingsViewModel(
     private val budgetRepository: BudgetRepository,
     private val goalRepository: GoalRepository,
     private val authManager: AuthManager,
+    private val themePreferenceManager: ThemePreferenceManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -179,6 +186,7 @@ class SettingsViewModel(
             current.copy(
                 userName = prefs.getString(PrefKeys.USER_NAME, "") ?: "",
                 userEmail = prefs.getString(PrefKeys.USER_EMAIL, "") ?: "",
+                themePreference = themePreferenceManager.themePreference.value,
                 defaultCurrency = prefs.getString(PrefKeys.DEFAULT_CURRENCY, null)
                     ?.let { code -> SupportedCurrency.entries.firstOrNull { it.code == code } }
                     ?: SupportedCurrency.USD,
@@ -204,6 +212,11 @@ class SettingsViewModel(
     fun setDefaultCurrency(currency: SupportedCurrency) {
         updatePref { putString(PrefKeys.DEFAULT_CURRENCY, currency.code) }
         _uiState.update { it.copy(defaultCurrency = currency) }
+    }
+
+    fun setThemePreference(preference: ThemePreference) {
+        themePreferenceManager.setThemePreference(preference)
+        _uiState.update { it.copy(themePreference = preference) }
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {

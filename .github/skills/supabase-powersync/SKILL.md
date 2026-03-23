@@ -15,53 +15,62 @@ This skill provides domain knowledge for configuring and developing against the 
 ### Project Structure
 
 ```
-services/supabase/
-├── config.toml                # Supabase CLI configuration
-├── seed.sql                   # Development seed data
-├── migrations/
-│   ├── 20250101000000_initial_schema.sql
-│   ├── 20250102000000_rls_policies.sql
-│   └── 20250103000000_add_budgets.sql
-└── functions/
-    ├── process-receipt/
-    │   └── index.ts
-    ├── export-data/
-    │   └── index.ts
-    └── _shared/
-        └── cors.ts
+services/api/
+├── openapi.yaml
+├── powersync/
+│   └── sync-rules.yaml
+└── supabase/
+    ├── config.toml
+    ├── migrations/
+    │   ├── 20260306000001_initial_schema.sql
+    │   ├── 20260306000002_rls_policies.sql
+    │   ├── 20260306000003_auth_config.sql
+    │   └── 20260315000001_export_audit_log.sql
+    └── functions/
+        ├── _shared/
+        │   ├── auth.ts
+        │   ├── cors.ts
+        │   ├── logger.ts
+        │   └── response.ts
+        ├── health-check/
+        ├── auth-webhook/
+        ├── account-deletion/
+        ├── household-invite/
+        ├── passkey-register/
+        ├── passkey-authenticate/
+        └── data-export/
 ```
 
 ### Local Development
 
 ```bash
+cd services/api
+
 # Start local Supabase stack
 supabase start
 
-# Apply migrations
-supabase db push
+# Apply pending migrations to the running stack
+supabase migration up
 
-# Deploy Edge Functions
-supabase functions deploy process-receipt
-supabase functions deploy export-data
-
-# Generate TypeScript types from schema
-supabase gen types typescript --local > packages/sync/src/jsMain/kotlin/types.d.ts
+# Serve current Edge Functions locally
+supabase functions serve data-export --env-file .env.local
+supabase functions serve health-check --env-file .env.local
 ```
 
 ### Environment Configuration
 
 ```toml
-# config.toml
+# supabase/config.toml
 [api]
 port = 54321
-schemas = ["public", "finance"]
+schemas = ["public", "auth", "storage"]
 
 [db]
 port = 54322
 
 [auth]
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["finance://auth/callback"]
+additional_redirect_urls = ["https://localhost:3000"]
 ```
 
 ## PostgreSQL Schema Design for Financial Data
@@ -77,144 +86,145 @@ additional_redirect_urls = ["finance://auth/callback"]
 ### Schema Definition
 
 ```sql
--- Households group users who share financial data
-CREATE TABLE household (
+CREATE TABLE users (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email         TEXT NOT NULL,
+    display_name  TEXT NOT NULL,
+    avatar_url    TEXT,
+    currency_code TEXT NOT NULL DEFAULT 'USD',
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at    TIMESTAMPTZ
+);
+
+CREATE TABLE households (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       TEXT NOT NULL,
+    created_by UUID NOT NULL REFERENCES users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMPTZ
 );
 
--- User profile linked to Supabase Auth
-CREATE TABLE user_profile (
-    id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    household_id UUID NOT NULL REFERENCES household(id),
-    display_name TEXT NOT NULL,
-    role         TEXT NOT NULL DEFAULT 'member',  -- 'owner', 'member'
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE accounts (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    household_id  UUID NOT NULL REFERENCES households(id),
+    name          TEXT NOT NULL,
+    type          TEXT NOT NULL,
+    currency_code TEXT NOT NULL DEFAULT 'USD',
+    balance_cents BIGINT NOT NULL DEFAULT 0,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at    TIMESTAMPTZ,
+    sync_version  BIGINT NOT NULL DEFAULT 0,
+    is_synced     BOOLEAN NOT NULL DEFAULT false
 );
 
-CREATE TABLE account (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    household_id UUID NOT NULL REFERENCES household(id),
-    name         TEXT NOT NULL,
-    type         TEXT NOT NULL CHECK (type IN ('checking', 'savings', 'credit', 'investment', 'cash')),
-    balance      BIGINT NOT NULL DEFAULT 0,       -- cents
-    currency     TEXT NOT NULL DEFAULT 'USD',
-    institution  TEXT,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at   TIMESTAMPTZ                      -- soft delete
+CREATE TABLE transactions (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    household_id        UUID NOT NULL REFERENCES households(id),
+    account_id          UUID NOT NULL REFERENCES accounts(id),
+    category_id         UUID REFERENCES categories(id),
+    amount_cents        BIGINT NOT NULL,
+    currency_code       TEXT NOT NULL DEFAULT 'USD',
+    payee               TEXT,
+    note                TEXT,
+    date                DATE NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at          TIMESTAMPTZ,
+    sync_version        BIGINT NOT NULL DEFAULT 0,
+    is_synced           BOOLEAN NOT NULL DEFAULT false
 );
 
-CREATE TABLE transaction (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    household_id UUID NOT NULL REFERENCES household(id),
-    account_id   UUID NOT NULL REFERENCES account(id),
-    amount       BIGINT NOT NULL,                  -- cents (negative = debit)
-    description  TEXT NOT NULL,
-    category     TEXT,
-    date         DATE NOT NULL,
-    notes        TEXT,
-    receipt_url  TEXT,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at   TIMESTAMPTZ
+CREATE TABLE budgets (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    household_id  UUID NOT NULL REFERENCES households(id),
+    category_id   UUID NOT NULL REFERENCES categories(id),
+    amount_cents  BIGINT NOT NULL,
+    currency_code TEXT NOT NULL DEFAULT 'USD',
+    period        TEXT NOT NULL,
+    start_date    DATE NOT NULL,
+    end_date      DATE,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at    TIMESTAMPTZ,
+    sync_version  BIGINT NOT NULL DEFAULT 0,
+    is_synced     BOOLEAN NOT NULL DEFAULT false
 );
-
-CREATE TABLE budget (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    household_id UUID NOT NULL REFERENCES household(id),
-    category     TEXT NOT NULL,
-    amount       BIGINT NOT NULL,                  -- cents per period
-    period       TEXT NOT NULL CHECK (period IN ('weekly', 'monthly', 'yearly')),
-    start_date   DATE NOT NULL,
-    end_date     DATE,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at   TIMESTAMPTZ
-);
-
--- Indexes
-CREATE INDEX idx_account_household ON account(household_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_transaction_household ON transaction(household_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_transaction_account ON transaction(account_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_transaction_date ON transaction(date DESC) WHERE deleted_at IS NULL;
-CREATE INDEX idx_budget_household ON budget(household_id) WHERE deleted_at IS NULL;
 ```
 
 ## Row-Level Security (RLS) Policy Patterns
 
 ### Household Isolation Pattern
 
-All RLS policies follow the same pattern: a user can only access rows belonging to their household.
+All RLS policies follow the same pattern: the authenticated user can only access rows tied to one of their active household memberships.
 
 ```sql
--- Helper function: get the current user's household_id
-CREATE OR REPLACE FUNCTION auth.household_id()
-RETURNS UUID AS $$
-    SELECT household_id FROM user_profile WHERE id = auth.uid()
+CREATE OR REPLACE FUNCTION auth.household_ids()
+RETURNS UUID[] AS $$
+    SELECT COALESCE(array_agg(household_id), ARRAY[]::UUID[])
+    FROM household_members
+    WHERE user_id = auth.uid()
+      AND deleted_at IS NULL
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 ```
 
 ### Account Policies
 
 ```sql
-ALTER TABLE account ENABLE ROW LEVEL SECURITY;
+ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their household accounts"
-    ON account FOR SELECT
-    USING (household_id = auth.household_id());
+CREATE POLICY accounts_select ON accounts
+    FOR SELECT
+    USING (household_id = ANY(auth.household_ids()));
 
-CREATE POLICY "Users can insert accounts for their household"
-    ON account FOR INSERT
-    WITH CHECK (household_id = auth.household_id());
+CREATE POLICY accounts_insert ON accounts
+    FOR INSERT
+    WITH CHECK (household_id = ANY(auth.household_ids()));
 
-CREATE POLICY "Users can update their household accounts"
-    ON account FOR UPDATE
-    USING (household_id = auth.household_id())
-    WITH CHECK (household_id = auth.household_id());
-
--- No DELETE policy — use soft delete (UPDATE deleted_at)
+CREATE POLICY accounts_update ON accounts
+    FOR UPDATE
+    USING (household_id = ANY(auth.household_ids()))
+    WITH CHECK (household_id = ANY(auth.household_ids()));
 ```
 
 ### Transaction Policies
 
 ```sql
-ALTER TABLE transaction ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their household transactions"
-    ON transaction FOR SELECT
-    USING (household_id = auth.household_id());
+CREATE POLICY transactions_select ON transactions
+    FOR SELECT
+    USING (household_id = ANY(auth.household_ids()));
 
-CREATE POLICY "Users can insert transactions for their household"
-    ON transaction FOR INSERT
-    WITH CHECK (household_id = auth.household_id());
+CREATE POLICY transactions_insert ON transactions
+    FOR INSERT
+    WITH CHECK (household_id = ANY(auth.household_ids()));
 
-CREATE POLICY "Users can update their household transactions"
-    ON transaction FOR UPDATE
-    USING (household_id = auth.household_id())
-    WITH CHECK (household_id = auth.household_id());
+CREATE POLICY transactions_update ON transactions
+    FOR UPDATE
+    USING (household_id = ANY(auth.household_ids()))
+    WITH CHECK (household_id = ANY(auth.household_ids()));
 ```
 
 ### Budget Policies
 
 ```sql
-ALTER TABLE budget ENABLE ROW LEVEL SECURITY;
+ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their household budgets"
-    ON budget FOR SELECT
-    USING (household_id = auth.household_id());
+CREATE POLICY budgets_select ON budgets
+    FOR SELECT
+    USING (household_id = ANY(auth.household_ids()));
 
-CREATE POLICY "Users can insert budgets for their household"
-    ON budget FOR INSERT
-    WITH CHECK (household_id = auth.household_id());
+CREATE POLICY budgets_insert ON budgets
+    FOR INSERT
+    WITH CHECK (household_id = ANY(auth.household_ids()));
 
-CREATE POLICY "Users can update their household budgets"
-    ON budget FOR UPDATE
-    USING (household_id = auth.household_id())
-    WITH CHECK (household_id = auth.household_id());
+CREATE POLICY budgets_update ON budgets
+    FOR UPDATE
+    USING (household_id = ANY(auth.household_ids()))
+    WITH CHECK (household_id = ANY(auth.household_ids()));
 ```
 
 ### Service Role Bypass
@@ -274,52 +284,41 @@ secret = "env(APPLE_CLIENT_SECRET)"
 ### Structure (Deno + TypeScript)
 
 ```typescript
-// functions/process-receipt/index.ts
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { corsHeaders } from '../_shared/cors.ts';
+// functions/data-export/index.ts
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { createAdminClient, requireAuth } from '../_shared/auth.ts';
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { createLogger } from '../_shared/logger.ts';
 
 serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return handleCorsPreflightRequest(req);
   }
 
+  const logger = createLogger('data-export');
+
   try {
-    // Verify auth
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (req.method !== 'GET') {
+      return new Response(JSON.stringify({ code: 'METHOD_NOT_ALLOWED' }), {
+        status: 405,
+        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
+    const user = await requireAuth(req);
+    logger.setUserId(user.id);
 
-    // Validate input
-    const { receiptUrl } = await req.json();
-    if (!receiptUrl || typeof receiptUrl !== 'string') {
-      return new Response(JSON.stringify({ error: 'Invalid input' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Process receipt (OCR, categorization, etc.)
-    const result = await processReceipt(receiptUrl);
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const supabase = createAdminClient();
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    logger.error('Unhandled edge function error', {
+      errorMessage: error instanceof Error ? error.message : 'unknown',
+    });
+    return new Response(JSON.stringify({ code: 'INTERNAL_ERROR' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 });
@@ -327,13 +326,21 @@ serve(async (req: Request) => {
 
 ### Shared CORS Configuration
 
-```typescript
-// functions/_shared/cors.ts
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-```
+- `services/api/supabase/functions/_shared/cors.ts` parses `ALLOWED_ORIGINS` from the environment.
+- Use `getCorsHeaders(req)` to echo back only approved origins.
+- Use `handleCorsPreflightRequest(req)` for `OPTIONS` requests.
+- Never use wildcard `Access-Control-Allow-Origin: *` in production Edge Functions.
+
+### Structured Logging
+
+- `services/api/supabase/functions/_shared/logger.ts` emits structured JSON logs with `timestamp`, `level`, `message`, `requestId`, `function`, optional `userId`, and `duration_ms`.
+- Create one logger per request with `createLogger(functionName)` and enrich it after auth with `setUserId(...)`.
+
+### Health Check Edge Function
+
+- `services/api/supabase/functions/health-check/index.ts` is the current public uptime endpoint.
+- It checks database connectivity plus Supabase Auth availability and returns `healthy` or `degraded` without exposing schema details.
+- It uses the same shared CORS and structured-logging helpers as the other Edge Functions.
 
 ### Validation Pattern
 
@@ -350,27 +357,23 @@ Always validate inputs at the Edge Function boundary before touching the databas
 PowerSync uses a YAML-based sync rules file to define which data syncs to each client:
 
 ```yaml
-# sync-rules.yaml
+# services/api/powersync/sync-rules.yaml
 bucket_definitions:
-  # Each user syncs their household's data
-  household_data:
+  by_household:
     parameters:
-      - SELECT household_id FROM user_profile WHERE id = token_parameters.user_id
+      - SELECT household_id FROM household_members WHERE user_id = token_parameters.user_id AND deleted_at IS NULL
     data:
-      - SELECT id, household_id, name, type, balance, currency, institution,
-        created_at, updated_at, deleted_at
-        FROM account
-        WHERE household_id = bucket.household_id
-
-      - SELECT id, household_id, account_id, amount, description, category,
-        date, notes, created_at, updated_at, deleted_at
-        FROM transaction
-        WHERE household_id = bucket.household_id
-
-      - SELECT id, household_id, category, amount, period, start_date,
-        end_date, created_at, updated_at, deleted_at
-        FROM budget
-        WHERE household_id = bucket.household_id
+      - SELECT * FROM accounts WHERE household_id = bucket.household_id AND deleted_at IS NULL
+      - SELECT * FROM transactions WHERE household_id = bucket.household_id AND deleted_at IS NULL
+      - SELECT * FROM categories WHERE household_id = bucket.household_id AND deleted_at IS NULL
+      - SELECT * FROM budgets WHERE household_id = bucket.household_id AND deleted_at IS NULL
+      - SELECT * FROM goals WHERE household_id = bucket.household_id AND deleted_at IS NULL
+  user_profile:
+    parameters:
+      - SELECT id AS user_id FROM users WHERE id = token_parameters.user_id AND deleted_at IS NULL
+    data:
+      - SELECT * FROM users WHERE id = bucket.user_id AND deleted_at IS NULL
+      - SELECT * FROM household_members WHERE user_id = bucket.user_id AND deleted_at IS NULL
 ```
 
 ### Key Sync Rules Concepts
@@ -380,137 +383,53 @@ bucket_definitions:
 - **Data queries** define which rows belong to each bucket instance.
 - PowerSync automatically tracks changes (INSERT, UPDATE, DELETE) and syncs deltas.
 
-## PowerSync SDK Integration
+## PowerSync Client Integration
 
-### Client-Side Setup (Kotlin)
+### Android Wiring
 
-```kotlin
-val powerSyncDatabase = PowerSyncDatabase(
-    factory = DatabaseDriverFactory(),
-    schema = Schema(
-        tables = listOf(
-            Table("account", listOf(
-                Column.text("household_id"),
-                Column.text("name"),
-                Column.text("type"),
-                Column.integer("balance"),
-                Column.text("currency"),
-                Column.text("institution"),
-                Column.text("created_at"),
-                Column.text("updated_at"),
-                Column.text("deleted_at"),
-            )),
-            Table("transaction", listOf(
-                Column.text("household_id"),
-                Column.text("account_id"),
-                Column.integer("amount"),
-                Column.text("description"),
-                Column.text("category"),
-                Column.text("date"),
-                Column.text("notes"),
-                Column.text("created_at"),
-                Column.text("updated_at"),
-                Column.text("deleted_at"),
-            )),
-            Table("budget", listOf(
-                Column.text("household_id"),
-                Column.text("category"),
-                Column.integer("amount"),
-                Column.text("period"),
-                Column.text("start_date"),
-                Column.text("end_date"),
-                Column.text("created_at"),
-                Column.text("updated_at"),
-                Column.text("deleted_at"),
-            )),
-        )
-    )
-)
+- `apps/android/build.gradle.kts` injects `BuildConfig.POWERSYNC_URL` so the app can point at the configured sync endpoint.
+- `apps/android/src/main/kotlin/com/finance/android/di/SyncModule.kt` wires `SyncConfig`, `DeltaSyncManager`, `MutationQueue`, token storage, and `AndroidSyncManager`.
+- `apps/android/src/main/kotlin/com/finance/android/sync/AndroidSyncManager.kt` wraps the shared `SyncEngine` and exposes sync state plus pending mutation counts as `StateFlow` values for the UI.
 
-// Connect to PowerSync service
-val connector = SupabaseConnector(supabaseClient)
-powerSyncDatabase.connect(connector)
-```
+### Shared Sync Abstractions
 
-### Sync Status Monitoring
+- `packages/sync/src/commonMain/kotlin/com/finance/sync/SyncProvider.kt` keeps the shared layer backend-agnostic.
+- `packages/sync/src/commonMain/kotlin/com/finance/sync/delta/DeltaSyncManager.kt` handles incremental sequence tracking and checksum verification.
+- `packages/sync/src/commonMain/kotlin/com/finance/sync/queue/QueueProcessor.kt` pushes queued mutations with retry/backoff behavior.
 
-```kotlin
-powerSyncDatabase.currentStatus.asFlow().collect { status ->
-    when {
-        status.connected && !status.downloading && !status.uploading ->
-            SyncState.Synced
-        status.downloading || status.uploading ->
-            SyncState.Syncing
-        !status.connected ->
-            SyncState.Offline
-        status.hasSyncError ->
-            SyncState.Error(status.syncError?.message ?: "Unknown")
-    }
-}
-```
+### Web Offline Replay
+
+- `apps/web/src/db/sync/MutationQueue.ts` implements the IndexedDB-backed offline mutation queue.
+- `apps/web/src/db/sync/replayMutations.ts` replays queued writes when connectivity returns.
+- `apps/web/src/sw/service-worker.ts` runs replay from the service worker when Background Sync is available.
 
 ## Conflict Resolution Strategy
 
-### Last-Write-Wins (LWW) with Timestamps
+The checked-in shared sync layer currently uses `packages/sync/src/commonMain/kotlin/com/finance/sync/conflict/ConflictStrategy.kt`.
 
-For most entities (accounts, transactions), use last-write-wins based on `updated_at`:
+### Current Strategies
 
-```sql
--- Server-side upsert with LWW
-INSERT INTO transaction (id, household_id, account_id, amount, description, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (id) DO UPDATE SET
-    account_id   = EXCLUDED.account_id,
-    amount       = EXCLUDED.amount,
-    description  = EXCLUDED.description,
-    updated_at   = EXCLUDED.updated_at
-WHERE transaction.updated_at < EXCLUDED.updated_at;
-```
+- `LAST_WRITE_WINS` via `LastWriteWinsResolver.kt` is the default for most tables.
+- `MERGE` via `MergeResolver.kt` is used for `budgets`, `goals`, and `households`.
+- There are no checked-in `ClientWins`, `ServerWins`, or CRDT-based budget implementations today.
 
-### CRDT for Shared Budgets
+### Practical Rules
 
-Budget amounts that multiple household members edit concurrently use a counter-based CRDT:
-
-```sql
--- Budget adjustments table (append-only log)
-CREATE TABLE budget_adjustment (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    budget_id    UUID NOT NULL REFERENCES budget(id),
-    user_id      UUID NOT NULL REFERENCES auth.users(id),
-    delta        BIGINT NOT NULL,    -- cents adjustment (+/-)
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Materialized budget amount = base + sum(adjustments)
-CREATE OR REPLACE VIEW budget_current AS
-SELECT
-    b.id,
-    b.category,
-    b.amount + COALESCE(SUM(ba.delta), 0) AS current_amount,
-    b.period
-FROM budget b
-LEFT JOIN budget_adjustment ba ON ba.budget_id = b.id
-GROUP BY b.id, b.category, b.amount, b.period;
-```
-
-### Conflict Rules
-
-1. **Simple fields** (name, description, category) — LWW by `updated_at`.
-2. **Counters** (budget amounts) — CRDT delta merge, never loses increments.
-3. **Soft deletes** — Delete always wins over update (tombstone propagation).
-4. **Never auto-resolve** — If both sides change `amount` on a transaction, flag for user review.
+1. Simple records fall back to timestamp-based last-write-wins.
+2. Shared/complex records use field-level merge when possible.
+3. Delta sync should preserve tombstones and checksum validation so bad batches can trigger a full resync.
+4. If you document future conflict strategies, label them clearly as planned rather than current.
 
 ## Migration Patterns
 
 ### Numbered Migrations
 
 ```
-services/supabase/migrations/
-├── 20250101000000_initial_schema.sql
-├── 20250102000000_rls_policies.sql
-├── 20250103000000_add_budgets.sql
-├── 20250115000000_add_receipt_url.sql
-└── 20250201000000_add_recurring_transactions.sql
+services/api/supabase/migrations/
+├── 20260306000001_initial_schema.sql
+├── 20260306000002_rls_policies.sql
+├── 20260306000003_auth_config.sql
+└── 20260315000001_export_audit_log.sql
 ```
 
 ### Migration Best Practices
@@ -528,16 +447,22 @@ services/supabase/migrations/
 ### Example Migration
 
 ```sql
--- 20250115000000_add_receipt_url.sql
+-- 20260315000001_export_audit_log.sql
+CREATE TABLE IF NOT EXISTS data_export_audit_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id),
+    export_format TEXT NOT NULL CHECK (export_format IN ('json', 'csv')),
+    status TEXT NOT NULL CHECK (status IN ('success', 'failure')),
+    error_message TEXT,
+    ip_address INET,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- migrate:up
-ALTER TABLE transaction ADD COLUMN IF NOT EXISTS receipt_url TEXT;
-CREATE INDEX IF NOT EXISTS idx_transaction_receipt ON transaction(receipt_url)
-    WHERE receipt_url IS NOT NULL;
+ALTER TABLE data_export_audit_log ENABLE ROW LEVEL SECURITY;
 
--- migrate:down
-DROP INDEX IF EXISTS idx_transaction_receipt;
-ALTER TABLE transaction DROP COLUMN IF EXISTS receipt_url;
+CREATE POLICY "Users can view own export logs"
+    ON data_export_audit_log FOR SELECT
+    USING (auth.uid() = user_id);
 ```
 
 ## Backup and Recovery Strategy
@@ -570,18 +495,18 @@ pg_restore -d "$DATABASE_URL" --no-owner --no-acl finance_backup_20250115.dump
 
 ```sql
 -- Partial indexes (only index non-deleted rows)
-CREATE INDEX idx_transaction_household_date
-    ON transaction(household_id, date DESC)
+CREATE INDEX idx_transactions_household_date
+    ON transactions(household_id, date DESC)
     WHERE deleted_at IS NULL;
 
 -- Composite index for common query patterns
-CREATE INDEX idx_transaction_account_date
-    ON transaction(account_id, date DESC)
+CREATE INDEX idx_transactions_account_date
+    ON transactions(account_id, date DESC)
     WHERE deleted_at IS NULL;
 
--- GIN index for full-text search on descriptions
-CREATE INDEX idx_transaction_description_fts
-    ON transaction USING GIN (to_tsvector('english', description));
+-- GIN index for text search over user-entered notes
+CREATE INDEX idx_transactions_note_fts
+    ON transactions USING GIN (to_tsvector('english', coalesce(note, '')));
 ```
 
 ### Materialized Views for Reports
@@ -591,16 +516,16 @@ CREATE INDEX idx_transaction_description_fts
 CREATE MATERIALIZED VIEW monthly_spending AS
 SELECT
     household_id,
-    date_trunc('month', date) AS month,
-    category,
-    SUM(amount) AS total_cents,
+    date_trunc('month', date::timestamp) AS month,
+    category_id,
+    SUM(amount_cents) AS total_cents,
     COUNT(*) AS transaction_count
-FROM transaction
-WHERE deleted_at IS NULL AND amount < 0
-GROUP BY household_id, date_trunc('month', date), category;
+FROM transactions
+WHERE deleted_at IS NULL AND amount_cents < 0
+GROUP BY household_id, date_trunc('month', date::timestamp), category_id;
 
 CREATE UNIQUE INDEX idx_monthly_spending_unique
-    ON monthly_spending(household_id, month, category);
+    ON monthly_spending(household_id, month, category_id);
 
 -- Refresh on a schedule (e.g., every hour via pg_cron)
 SELECT cron.schedule('refresh-monthly-spending', '0 * * * *',
@@ -616,67 +541,31 @@ SELECT cron.schedule('refresh-monthly-spending', '0 * * * *',
 
 ## Data Export for GDPR Compliance
 
-### Filtered pg_dump by User
+### Self-Service Export Edge Function
 
-```bash
-# Export all data for a specific household
-pg_dump "$DATABASE_URL" \
-    --no-owner --no-acl \
-    --table=account --table=transaction --table=budget \
-    --data-only \
-    -F p \
-    | psql -d temp_export_db
+`services/api/supabase/functions/data-export/index.ts` is the current portability implementation.
 
-# Then filter by household_id
-psql -d temp_export_db -c "
-    DELETE FROM account WHERE household_id != '$HOUSEHOLD_ID';
-    DELETE FROM transaction WHERE household_id != '$HOUSEHOLD_ID';
-    DELETE FROM budget WHERE household_id != '$HOUSEHOLD_ID';
-"
+- Supports `json` and `csv` responses.
+- Requires authentication via shared `_shared/auth.ts` helpers.
+- Limits output to the caller's user-scoped or household-scoped data.
+- Redacts sensitive columns before streaming results.
+- Uses origin-validated CORS and structured logging.
+- Enforces rate limiting at 10 exports per user per hour.
+- Writes success and failure records to `data_export_audit_log`.
 
-# Export filtered data as JSON
-psql -d temp_export_db -c "
-    SELECT json_agg(row_to_json(t)) FROM (
-        SELECT * FROM transaction WHERE household_id = '$HOUSEHOLD_ID'
-    ) t;
-" -o transactions_export.json
-```
+### Export Audit Log Migration
 
-### Edge Function for Self-Service Export
+`services/api/supabase/migrations/20260315000001_export_audit_log.sql` creates `data_export_audit_log` with:
 
-```typescript
-// functions/export-data/index.ts
-serve(async (req: Request) => {
-  const supabase = createClient(url, key, {
-    global: { headers: { Authorization: req.headers.get('Authorization')! } },
-  });
+- `user_id`, `export_format`, per-entity counts, `status`, `error_message`, `ip_address`, and `created_at`
+- RLS that lets users view only their own export-log rows
+- A `(user_id, created_at DESC)` index for rate-limit lookups and audit queries
 
-  const { data: profile } = await supabase.from('user_profile').select('household_id').single();
+### Shared Edge Utilities Used by Export
 
-  const householdId = profile.household_id;
-
-  const [accounts, transactions, budgets] = await Promise.all([
-    supabase.from('account').select('*').eq('household_id', householdId),
-    supabase.from('transaction').select('*').eq('household_id', householdId),
-    supabase.from('budget').select('*').eq('household_id', householdId),
-  ]);
-
-  const exportData = {
-    exported_at: new Date().toISOString(),
-    household_id: householdId,
-    accounts: accounts.data,
-    transactions: transactions.data,
-    budgets: budgets.data,
-  };
-
-  return new Response(JSON.stringify(exportData, null, 2), {
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Disposition': 'attachment; filename=finance-export.json',
-    },
-  });
-});
-```
+- `_shared/cors.ts` parses `ALLOWED_ORIGINS` and never uses wildcard CORS.
+- `_shared/logger.ts` emits structured JSON logs for auditability without leaking financial data.
+- `functions/health-check/index.ts` provides a separate uptime probe for database/auth availability.
 
 ### GDPR Right to Erasure
 

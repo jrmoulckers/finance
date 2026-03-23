@@ -33,6 +33,7 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
 import type { Account, Category, Transaction, TransactionType } from '../../kmp/bridge';
+import { transactionSchema } from '../../lib/validation';
 
 import './forms.css';
 
@@ -98,20 +99,36 @@ interface FormErrors {
   accountId?: string;
 }
 
-function validate(amountStr: string, description: string, accountId: string): FormErrors {
+function validate(
+  amountStr: string,
+  description: string,
+  accountId: string,
+  type: TransactionType,
+  date: string,
+): FormErrors {
   const errors: FormErrors = {};
+  const result = transactionSchema.safeParse({
+    description: description.trim(),
+    amount: parseFloat(amountStr),
+    type,
+    accountId,
+    date,
+  });
 
-  const parsed = parseFloat(amountStr);
-  if (!amountStr.trim() || Number.isNaN(parsed) || parsed <= 0) {
-    errors.amount = 'Amount must be greater than zero.';
-  }
+  if (!result.success) {
+    for (const issue of result.error.issues) {
+      if (issue.path[0] === 'amount') {
+        errors.amount = 'Amount must be greater than zero.';
+      }
 
-  if (!description.trim()) {
-    errors.description = 'Description is required.';
-  }
+      if (issue.path[0] === 'description') {
+        errors.description = 'Description is required.';
+      }
 
-  if (!accountId) {
-    errors.accountId = 'Please select an account.';
+      if (issue.path[0] === 'accountId') {
+        errors.accountId = 'Please select an account.';
+      }
+    }
   }
 
   return errors;
@@ -211,7 +228,7 @@ export function TransactionForm({
     async (e: FormEvent) => {
       e.preventDefault();
 
-      const fieldErrors = validate(amount, description, accountId);
+      const fieldErrors = validate(amount, description, accountId, transactionType, date);
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {

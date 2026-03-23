@@ -3,15 +3,12 @@
 package com.finance.android.ui.feedback
 
 import android.content.Context
-import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.core.content.getSystemService
 
 /**
@@ -37,12 +34,7 @@ class HapticFeedbackManager(
     var hapticsEnabled: Boolean = true,
 ) {
     private val vibrator: Vibrator? by lazy {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            context.getSystemService<VibratorManager>()?.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-        }
+        context.getSystemService<Vibrator>()
     }
 
     /**
@@ -69,81 +61,53 @@ class HapticFeedbackManager(
 
     /** Single confirm tick. */
     private fun vibrateConfirm(vib: Vibrator) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vib.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
-        } else {
-            @Suppress("DEPRECATION")
-            vib.vibrate(DURATION_CLICK_MS)
-        }
+        vib.vibrate(VibrationEffect.createOneShot(DURATION_CLICK_MS, AMPLITUDE_CONFIRM))
     }
 
     /** Two short ticks — budget warning. */
     private fun vibrateWarning(vib: Vibrator) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val effect = VibrationEffect.createWaveform(
+        vib.vibrate(
+            VibrationEffect.createWaveform(
                 longArrayOf(0, DURATION_TICK_MS, GAP_SHORT_MS, DURATION_TICK_MS),
-                -1, // no repeat
-            )
-            vib.vibrate(effect)
-        } else {
-            @Suppress("DEPRECATION")
-            vib.vibrate(longArrayOf(0, DURATION_TICK_MS, GAP_SHORT_MS, DURATION_TICK_MS), -1)
-        }
+                intArrayOf(0, AMPLITUDE_WARNING, 0, AMPLITUDE_WARNING),
+                -1,
+            ),
+        )
     }
 
     /** Heavy click followed by a confirm tick — goal milestone. */
     private fun vibrateGoalMilestone(vib: Vibrator) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vib.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
-            // The predefined effect is short; queue a confirm after a brief gap.
-            vib.vibrate(
-                VibrationEffect.createOneShot(DURATION_CLICK_MS, VibrationEffect.DEFAULT_AMPLITUDE),
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val effect = VibrationEffect.createWaveform(
+        vib.vibrate(
+            VibrationEffect.createWaveform(
                 longArrayOf(0, DURATION_HEAVY_MS, GAP_SHORT_MS, DURATION_CLICK_MS),
+                intArrayOf(0, AMPLITUDE_HEAVY, 0, AMPLITUDE_CONFIRM),
                 -1,
-            )
-            vib.vibrate(effect)
-        } else {
-            @Suppress("DEPRECATION")
-            vib.vibrate(longArrayOf(0, DURATION_HEAVY_MS, GAP_SHORT_MS, DURATION_CLICK_MS), -1)
-        }
+            ),
+        )
     }
 
     /** Single light tick — sync complete. */
     private fun vibrateLightTick(vib: Vibrator) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vib.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
-        } else {
-            @Suppress("DEPRECATION")
-            vib.vibrate(DURATION_TICK_MS)
-        }
+        vib.vibrate(VibrationEffect.createOneShot(DURATION_TICK_MS, AMPLITUDE_LIGHT))
     }
 
     /** Three sharp pulses — error / rejection. */
     private fun vibrateReject(vib: Vibrator) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val effect = VibrationEffect.createWaveform(
+        vib.vibrate(
+            VibrationEffect.createWaveform(
                 longArrayOf(
                     0, DURATION_REJECT_MS, GAP_SHORT_MS,
                     DURATION_REJECT_MS, GAP_SHORT_MS,
                     DURATION_REJECT_MS,
                 ),
-                -1,
-            )
-            vib.vibrate(effect)
-        } else {
-            @Suppress("DEPRECATION")
-            vib.vibrate(
-                longArrayOf(
-                    0, DURATION_REJECT_MS, GAP_SHORT_MS,
-                    DURATION_REJECT_MS, GAP_SHORT_MS,
-                    DURATION_REJECT_MS,
+                intArrayOf(
+                    0, AMPLITUDE_REJECT, 0,
+                    AMPLITUDE_REJECT, 0,
+                    AMPLITUDE_REJECT,
                 ),
                 -1,
-            )
-        }
+            ),
+        )
     }
 
     companion object {
@@ -152,6 +116,12 @@ class HapticFeedbackManager(
         private const val DURATION_HEAVY_MS = 80L
         private const val DURATION_REJECT_MS = 40L
         private const val GAP_SHORT_MS = 60L
+
+        private const val AMPLITUDE_LIGHT = 80
+        private const val AMPLITUDE_CONFIRM = 140
+        private const val AMPLITUDE_WARNING = 170
+        private const val AMPLITUDE_HEAVY = 255
+        private const val AMPLITUDE_REJECT = 220
     }
 }
 

@@ -77,7 +77,28 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText('alex@example.com')).toBeInTheDocument();
     expect(screen.getByText('Online — synced')).toBeInTheDocument();
-    expect(screen.getByText('Registered')).toBeInTheDocument();
+  });
+
+  it('renders future features as disabled buttons with accessible labels', () => {
+    render(<SettingsPage />);
+
+    const biometricLockButton = screen.getByRole('button', {
+      name: 'Biometric lock — available in a future update',
+    });
+    const passkeyManagementButton = screen.getByRole('button', {
+      name: 'Passkey management — available in a future update',
+    });
+    const accountDeletionButton = screen.getByRole('button', {
+      name: 'Account deletion — available in a future update',
+    });
+
+    expect(biometricLockButton).toBeDisabled();
+    expect(biometricLockButton).toHaveAttribute('aria-disabled', 'true');
+    expect(passkeyManagementButton).toBeDisabled();
+    expect(passkeyManagementButton).toHaveAttribute('aria-disabled', 'true');
+    expect(accountDeletionButton).toBeDisabled();
+    expect(accountDeletionButton).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getAllByText('Coming soon')).toHaveLength(3);
   });
 
   it('shows offline sync messaging when the app is offline', () => {

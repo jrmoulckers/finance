@@ -22,6 +22,7 @@
     "format": "npx prettier --write .",
     "format:check": "npx prettier --check .",
     "ci:check": "npm run format:check && npm run lint && npm run type-check",
+    "ready-for-pr": "node tools/ready-for-pr.js",
     "clean": "node tools/gradle.js clean && turbo run clean",
     "setup": "node tools/setup.js",
     "prepare": "husky",
@@ -58,8 +59,8 @@
   "devDependencies": {
     "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.30.0",
-    "@commitlint/cli": "^20.4.4",
-    "@commitlint/config-conventional": "^20.4.4",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.0.3",
     "husky": "^9.1.7",

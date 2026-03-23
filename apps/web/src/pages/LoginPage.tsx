@@ -5,11 +5,10 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { loginSchema } from '../lib/validation';
 
 import '../components/forms/forms.css';
 import '../styles/auth.css';
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface LoginFieldErrors {
   email?: string;
@@ -57,15 +56,21 @@ export const LoginPage: React.FC = () => {
 
     const nextFieldErrors: LoginFieldErrors = {};
     const normalizedEmail = email.trim();
+    const result = loginSchema.safeParse({
+      email: normalizedEmail,
+      password,
+    });
 
-    if (!normalizedEmail) {
-      nextFieldErrors.email = 'Email is required.';
-    } else if (!EMAIL_PATTERN.test(normalizedEmail)) {
-      nextFieldErrors.email = 'Enter a valid email address.';
-    }
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        if (issue.path[0] === 'email') {
+          nextFieldErrors.email = 'Enter a valid email address.';
+        }
 
-    if (!password) {
-      nextFieldErrors.password = 'Password is required.';
+        if (issue.path[0] === 'password') {
+          nextFieldErrors.password = 'Password must be at least 8 characters.';
+        }
+      }
     }
 
     setFieldErrors(nextFieldErrors);
