@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
@@ -78,6 +79,7 @@ import com.finance.models.types.Currency
 fun DashboardScreen(
     onAddTransaction: () -> Unit = {},
     onViewAllTransactions: () -> Unit = {},
+    onViewInsights: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DashboardViewModel = koinViewModel(),
 ) {
@@ -89,7 +91,7 @@ fun DashboardScreen(
         }
         return
     }
-    DashboardContent(state, viewModel::refresh, onAddTransaction, onViewAllTransactions, modifier)
+    DashboardContent(state, viewModel::refresh, onAddTransaction, onViewAllTransactions, onViewInsights, modifier)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,6 +99,7 @@ fun DashboardScreen(
 private fun DashboardContent(
     state: DashboardUiState, onRefresh: () -> Unit,
     onAddTransaction: () -> Unit, onViewAllTransactions: () -> Unit,
+    onViewInsights: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh,
@@ -105,6 +108,7 @@ private fun DashboardContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item(key = "net-worth") { NetWorthCard(state.netWorthFormatted) }
             item(key = "spending") { SpendingSummaryRow(state.todaySpendingFormatted, state.monthlySpendingFormatted) }
+            item(key = "insights") { InsightsCard(onViewInsights) }
             if (state.budgetStatuses.isNotEmpty()) {
                 item(key = "budget-hdr") {
                     Text("Budget Health", style = MaterialTheme.typography.titleMedium,
@@ -250,6 +254,47 @@ private fun QuickActionsRow(onAdd: () -> Unit, onViewAll: () -> Unit) {
     }
 }
 
+/** Card that navigates to the Analytics / Spending Insights screen. */
+@Composable
+private fun InsightsCard(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().semantics {
+            contentDescription = "View spending insights and analytics"
+        },
+    ) {
+        Row(
+            Modifier.padding(16.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Insights,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("Spending Insights", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+                    Text(
+                        "View trends and analytics",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Icon(
+                Icons.Filled.TrendingUp,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
 @Preview(showBackground = true, showSystemUi = true, name = "Dashboard - Light")
 @Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Dashboard - Dark")
 @Composable
@@ -264,7 +309,7 @@ private fun DashboardScreenPreview() {
                     BudgetStatusUi("Transport", "$89", "$200", "+$111", 0.45f, BudgetHealth.HEALTHY, null),
                 ),
                 recentTransactions = SampleData.transactions.take(5), currency = Currency.USD),
-            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {})
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {})
     }
 }
 
@@ -278,7 +323,7 @@ private fun DashboardLoadingPreview() {
                 netWorthFormatted = "$0.00", todaySpendingFormatted = "$0.00",
                 monthlySpendingFormatted = "$0.00", budgetStatuses = emptyList(),
                 recentTransactions = emptyList(), currency = Currency.USD),
-            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {})
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {})
     }
 }
 
@@ -296,6 +341,6 @@ private fun DashboardOverBudgetPreview() {
                     BudgetStatusUi("Groceries", "$580", "$600", "+$20", 0.97f, BudgetHealth.WARNING, null),
                 ),
                 recentTransactions = SampleData.transactions.take(3), currency = Currency.USD),
-            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {})
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {})
     }
 }
