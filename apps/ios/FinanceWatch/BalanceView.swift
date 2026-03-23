@@ -1,60 +1,30 @@
 // SPDX-License-Identifier: BUSL-1.1
-
-// BalanceView.swift
-// FinanceWatch
-//
-// Displays the total account balance at a glance on Apple Watch.
-// Data is provided by the WatchConnectivityManager from the paired iPhone.
-// Refs #30
-
+// BalanceView.swift - Total balance at a glance. Refs #30, #649
 import SwiftUI
-
 struct BalanceView: View {
     let manager: WatchConnectivityManager
-
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "banknote")
-                .font(.title2)
-                .foregroundStyle(.teal)
-                .accessibilityHidden(true)
-
-            Text(String(localized: "Total Balance"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityAddTraits(.isHeader)
-
-            Text(formattedBalance)
-                .font(.title2)
-                .fontWeight(.bold)
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
-                .accessibilityLabel(
-                    String(localized: "Total balance: \(formattedBalance)")
-                )
-
-            if !manager.hasReceivedData {
-                Text(String(localized: "Waiting for data from iPhone..."))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .combine)
+        ScrollView {
+            VStack(spacing: 12) {
+                Image(systemName: "banknote").font(.title2).foregroundStyle(.teal).accessibilityHidden(true)
+                Text(String(localized: "Total Balance")).font(.caption).foregroundStyle(.secondary).accessibilityAddTraits(.isHeader)
+                Text(formattedBalance).font(.title2).fontWeight(.bold).minimumScaleFactor(0.5).lineLimit(1)
+                    .accessibilityLabel(String(localized: "Total balance: \(formattedBalance)"))
+                if let lastUpdated = manager.lastUpdated {
+                    Text(String(localized: "Updated \(lastUpdated, style: .relative) ago"))
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .accessibilityLabel(String(localized: "Last updated \(lastUpdated, style: .relative) ago"))
+                }
+                if !manager.hasReceivedData {
+                    Text(String(localized: "Waiting for data from iPhone...")).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                }
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }.refreshable { manager.requestRefresh() }.accessibilityElement(children: .combine)
     }
-
     private var formattedBalance: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = manager.currencyCode
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: manager.totalBalance))
-            ?? "\(manager.currencyCode) \(manager.totalBalance)"
+        let f = NumberFormatter(); f.numberStyle = .currency; f.currencyCode = manager.currencyCode; f.maximumFractionDigits = 2
+        let v = Double(manager.balanceMinorUnits) / 100.0
+        return f.string(from: NSNumber(value: v)) ?? "\(manager.currencyCode) \(v)"
     }
 }
-
-#Preview("Balance View") {
-    let manager = WatchConnectivityManager()
-    BalanceView(manager: manager)
-}
+#Preview("Balance View") { let m = WatchConnectivityManager(); BalanceView(manager: m) }
