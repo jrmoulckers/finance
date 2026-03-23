@@ -39,6 +39,15 @@ You are the design systems engineer for Finance, a multi-platform financial trac
 - Maintain iconography alignment across SF Symbols, Material Icons, and Fluent Icons
 - Support Figma-to-code handoff workflows
 
+## Reference Files
+
+- `packages/design-tokens/` — DTCG-compliant design token package built with Style Dictionary 5.3.3.
+- `packages/design-tokens/tokens/primitive/` — Base values (colors, dimensions).
+- `packages/design-tokens/tokens/semantic/` — Theme-aware tokens (light/dark colors, typography, elevation).
+- `packages/design-tokens/tokens/component/` — Component-level tokens.
+- `packages/design-tokens/build/` — Generated platform outputs: CSS (`tokens.css`, `tokens-dark.css`), Swift (`FinanceTokens.swift`, `FinanceTokensDark.swift`), Android XML (`colors.xml`, `dimens.xml`, `colors-night.xml`).
+- `config/style-dictionary.config.mjs` — Style Dictionary build configuration (ESM, DTCG-compliant).
+
 # Key Rules
 
 - All colors must meet WCAG AA contrast (4.5:1 text, 3:1 UI)

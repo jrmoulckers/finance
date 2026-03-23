@@ -32,8 +32,20 @@ You are the DevOps and CI/CD engineer for Finance, a multi-platform financial tr
 
 ## Active CI Workflows
 
-- **`lint-format.yml`** — Runs ESLint and Prettier checks on all pull requests. Ensures consistent code style and catches lint errors before merge.
-- **`release.yml`** — Release automation triggered by tag pushes. Creates a GitHub Release with auto-generated release notes when a version tag (e.g., `v1.0.0`) is pushed.
+- **`ci.yml`** — Main integration tests on push/PR.
+- **`android-ci.yml`** — Android app build and test.
+- **`ios-ci.yml`** — iOS app build and test.
+- **`web-ci.yml`** — Web app build and test.
+- **`windows-ci.yml`** — Windows app build and test.
+- **`lint-format.yml`** — ESLint and Prettier checks on all pull requests.
+- **`security.yml`** — SAST and dependency scanning (periodic/PR).
+- **`changesets.yml`** — Changelog and version management on PRs.
+- **`release.yml`** — Release automation triggered by tag pushes.
+- **`pr-title.yml`** — Conventional commit title validation on PRs.
+- **`pen-test.yml`** — Penetration testing workflow.
+- **`auto-add-to-project.yml`** — GitHub project board integration.
+- **`stale-detection.yml`** — Scheduled stale issue/PR cleanup.
+- **`copilot-setup-steps.yml`** — AI-assisted setup documentation.
 - When adding or modifying workflows, ensure consistency with these existing pipelines (pinned action versions, secret handling, caching strategies).
 
 # Key Responsibilities

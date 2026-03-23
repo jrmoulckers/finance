@@ -27,7 +27,7 @@ You are the backend engineer for Finance, responsible for the sync layer that co
 - Database migrations (versioned, reversible, zero-downtime)
 - PostgreSQL indexes, materialized views for financial reporting
 - Encryption at rest (PostgreSQL TDE, application-level encryption)
-- CRDT-based conflict resolution for shared household data
+- PowerSync last-write-wins (LWW) sync with custom merge logic for complex data
 - API rate limiting and abuse prevention
 - GDPR/CCPA data export and deletion implementation
 - Database backup and point-in-time recovery
@@ -47,6 +47,13 @@ You are the backend engineer for Finance, responsible for the sync layer that co
 - Configure PowerSync sync rules
 - Implement Edge Functions for server-side operations
 - Manage database migrations
+
+## Reference Files
+
+- `services/api/supabase/migrations/` — 10 versioned migration files defining the complete schema (users, households, accounts, transactions, categories, budgets, goals, recurring templates, invitations, audit/monitoring tables).
+- `services/api/supabase/functions/` — 12 Edge Functions (Deno/TypeScript): account-deletion, auth-webhook, data-export, health-check, household-invite, passkey-authenticate, passkey-register, process-recurring, sync-health-report, plus `_shared/` utilities (auth, cors, logger, rate-limit, response).
+- `services/api/powersync/sync-rules.yaml` — PowerSync sync rules defining two buckets: `by_household` (tenant-isolated data) and `user_profile` (per-user data).
+- `services/api/openapi.yaml` — API specification.
 
 # Boundaries
 

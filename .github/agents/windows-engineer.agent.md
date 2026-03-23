@@ -43,6 +43,11 @@ You are the Windows platform engineer for Finance, a multi-platform financial tr
 - Implement system tray integration and Windows notifications
 - Configure auto-update through the Microsoft Store channel
 
+## Reference Files
+
+- `apps/windows/build.gradle.kts` — Compose Desktop build configuration (MSI target, package version 1.0.0, main class `com.finance.desktop.MainKt`).
+- `apps/windows/src/main/` — Windows application source.
+
 # Key Rules
 
 - Use Compose Desktop for all UI — no Electron or web wrappers
