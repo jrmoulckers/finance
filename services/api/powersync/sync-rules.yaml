@@ -1,16 +1,125 @@
+# =============================================================================
+# PowerSync Sync Rules — Finance App
+# =============================================================================
+#
+# Security Model
+# --------------
+# 1. Tenant isolation: All household data is scoped via the `by_household`
+#    bucket. A user only receives data for households where they are an active
+#    member (household_members row exists with matching user_id and no
+#    deleted_at). This mirrors the RLS policies on the Supabase side.
+#
+# 2. User-scoped data: Personal profile and credential metadata sync through
+#    the `user_profile` bucket, parameterised on the authenticated user's ID
+#    from the JWT (token_parameters.user_id).
+#
+# 3. Soft-delete filtering: Every query includes `deleted_at IS NULL` so that
+#    soft-deleted rows are never replicated to clients. Server-side cleanup
+#    jobs may hard-delete these rows later without affecting active clients.
+#
+# 4. Column allowlisting: We enumerate columns explicitly rather than using
+#    `SELECT *`. This prevents internal-only columns (`sync_version`,
+#    `is_synced`) from leaking to clients and ensures sensitive fields
+#    (e.g. `public_key` on passkey_credentials) are never transmitted.
+#
+# 5. Monetary values: All `_cents` columns are BIGINT (integer cents) with an
+#    accompanying `currency_code` (ISO 4217). Clients must never interpret
+#    these as floating-point values.
+# =============================================================================
+
 bucket_definitions:
+  # ---------------------------------------------------------------------------
+  # by_household — all data scoped to the households the user belongs to.
+  # A separate bucket instance is created per household_id, so a user in
+  # multiple households receives one bucket per household.
+  # ---------------------------------------------------------------------------
   by_household:
     parameters:
       - SELECT household_id FROM household_members WHERE user_id = token_parameters.user_id AND deleted_at IS NULL
+
     data:
-      - SELECT * FROM accounts WHERE household_id = bucket.household_id AND deleted_at IS NULL
-      - SELECT * FROM transactions WHERE household_id = bucket.household_id AND deleted_at IS NULL
-      - SELECT * FROM categories WHERE household_id = bucket.household_id AND deleted_at IS NULL
-      - SELECT * FROM budgets WHERE household_id = bucket.household_id AND deleted_at IS NULL
-      - SELECT * FROM goals WHERE household_id = bucket.household_id AND deleted_at IS NULL
+      # Household metadata
+      - SELECT id, name, created_by, created_at, updated_at, deleted_at FROM households WHERE id = bucket.household_id AND deleted_at IS NULL
+
+      # Financial accounts (checking, savings, credit cards, etc.)
+      - >
+        SELECT id, household_id, name, type, currency_code, balance_cents,
+               is_active, icon, color, sort_order,
+               created_at, updated_at, deleted_at
+        FROM accounts
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Transactions (debits, credits, transfers)
+      - >
+        SELECT id, household_id, account_id, category_id, amount_cents,
+               currency_code, type, payee, note, date, is_recurring,
+               recurring_rule, transfer_account_id, status,
+               created_at, updated_at, deleted_at
+        FROM transactions
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Spending / income categories
+      - >
+        SELECT id, household_id, name, icon, color, parent_id, is_income,
+               sort_order,
+               created_at, updated_at, deleted_at
+        FROM categories
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Budget allocations per category/period
+      - >
+        SELECT id, household_id, category_id, amount_cents, currency_code,
+               period, start_date, end_date,
+               created_at, updated_at, deleted_at
+        FROM budgets
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Savings goals
+      - >
+        SELECT id, household_id, name, target_cents, current_cents,
+               currency_code, target_date, icon, color,
+               created_at, updated_at, deleted_at
+        FROM goals
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Household invitations — lets members see pending/accepted invites
+      - >
+        SELECT id, household_id, invited_by, invite_code, invited_email,
+               role, expires_at, accepted_at, accepted_by,
+               created_at, updated_at, deleted_at
+        FROM household_invitations
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+  # ---------------------------------------------------------------------------
+  # user_profile — per-user data that is NOT household-scoped.
+  # Contains the user's own profile and their passkey credential metadata
+  # (public_key is intentionally excluded — it must never leave the server).
+  # ---------------------------------------------------------------------------
   user_profile:
     parameters:
       - SELECT id AS user_id FROM users WHERE id = token_parameters.user_id AND deleted_at IS NULL
+
     data:
-      - SELECT * FROM users WHERE id = bucket.user_id AND deleted_at IS NULL
-      - SELECT * FROM household_members WHERE user_id = bucket.user_id AND deleted_at IS NULL
+      # User profile
+      - >
+        SELECT id, email, display_name, avatar_url, currency_code,
+               created_at, updated_at, deleted_at
+        FROM users
+        WHERE id = bucket.user_id AND deleted_at IS NULL
+
+      # Household membership records for the authenticated user
+      - >
+        SELECT id, household_id, user_id, role, joined_at,
+               created_at, updated_at, deleted_at
+        FROM household_members
+        WHERE user_id = bucket.user_id AND deleted_at IS NULL
+
+      # Passkey credential metadata (for passkey management UI).
+      # SECURITY: public_key is deliberately excluded — clients only need
+      # device_type, transports, and timestamps to display credential info.
+      - >
+        SELECT id, user_id, credential_id, counter, device_type, backed_up,
+               transports,
+               created_at, updated_at, deleted_at
+        FROM passkey_credentials
+        WHERE user_id = bucket.user_id AND deleted_at IS NULL

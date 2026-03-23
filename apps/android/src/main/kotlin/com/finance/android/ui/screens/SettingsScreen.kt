@@ -66,6 +66,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import com.finance.core.export.ExportFormat
 import com.finance.android.ui.theme.ThemePreference
+import com.finance.android.ui.theme.ThemePreferenceManager
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import java.io.File
 
@@ -166,8 +168,10 @@ fun SettingsScreen(
         AccessibilitySection(
             simplifiedViewEnabled = state.simplifiedViewEnabled,
             highContrastEnabled = state.highContrastEnabled,
+            themePreference = state.themePreference,
             onSimplifiedViewChanged = onSetSimplifiedView,
             onHighContrastChanged = onSetHighContrast,
+            onThemePreferenceChanged = onSetThemePreference,
         )
 
         // ── Data ─────────────────────────────────────────────────────────
@@ -555,8 +559,10 @@ private fun AppLockTimeoutSelector(
 private fun AccessibilitySection(
     simplifiedViewEnabled: Boolean,
     highContrastEnabled: Boolean,
+    themePreference: ThemePreference,
     onSimplifiedViewChanged: (Boolean) -> Unit,
     onHighContrastChanged: (Boolean) -> Unit,
+    onThemePreferenceChanged: (ThemePreference) -> Unit,
 ) {
     SectionHeader("Accessibility")
     Card(
@@ -564,6 +570,56 @@ private fun AccessibilitySection(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // ── Dark mode selector ───────────────────────────────────────
+            Text(
+                text = "Dark mode",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Choose light, dark, or follow system setting",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Dark mode preference selector" },
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ThemePreference.entries.forEach { preference ->
+                    val isSelected = preference == themePreference
+                    if (isSelected) {
+                        Button(
+                            onClick = { /* already selected */ },
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics {
+                                    contentDescription =
+                                        "${preference.label} theme, selected"
+                                },
+                        ) {
+                            Text(text = preference.label)
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = { onThemePreferenceChanged(preference) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics {
+                                    contentDescription =
+                                        "Select ${preference.label} theme"
+                                },
+                        ) {
+                            Text(text = preference.label)
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
             SettingsToggleRow(
                 label = "Simplified view",
                 description = "Reduce visual complexity for easier reading",
@@ -916,6 +972,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     val viewModel: SettingsViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsState()
+    val themePreferenceManager: ThemePreferenceManager = koinInject()
+    val themePreference by themePreferenceManager.themePreference.collectAsState()
 
     // Collect one-shot events
     LaunchedEffect(Unit) {
@@ -944,14 +1002,14 @@ fun SettingsScreen(
         state = state,
         onNavigateBack = onNavigateBack,
         onSignOut = viewModel::signOut,
-        onSetThemePreference = viewModel::setThemePreference,
+        onSetThemePreference = themePreferenceManager::setThemePreference,
         onSetCurrency = viewModel::setDefaultCurrency,
         onSetNotifications = viewModel::setNotificationsEnabled,
         onSetBillReminders = viewModel::setBillRemindersEnabled,
         onSetBiometric = viewModel::setBiometricEnabled,
         onSetAppLockTimeout = viewModel::setAppLockTimeout,
         onSetSimplifiedView = viewModel::setSimplifiedViewEnabled,
-        onSetHighContrast = viewModel::setHighContrastEnabled,
+        onSetHighContrast = themePreferenceManager::setHighContrastEnabled,
         onExportClick = viewModel::showExportDialog,
         onDeleteClick = viewModel::showDeleteDialog,
         onExportFormat = viewModel::exportData,

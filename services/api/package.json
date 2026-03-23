@@ -7,7 +7,14 @@
   "scripts": {
     "docs:api": "npx @redocly/cli preview-docs openapi.yaml",
     "docs:api:lint": "npx @redocly/cli lint openapi.yaml",
-    "docs:api:bundle": "npx @redocly/cli bundle openapi.yaml -o docs/openapi-bundled.yaml"
+    "docs:api:bundle": "npx @redocly/cli bundle openapi.yaml -o docs/openapi-bundled.yaml",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "supabase:migrate": "supabase migration up",
+    "supabase:status": "supabase status",
+    "supabase:functions": "supabase functions serve",
+    "setup": "bash scripts/setup-local.sh"
   },
   "devDependencies": {
     "@redocly/cli": "^2.24.1",

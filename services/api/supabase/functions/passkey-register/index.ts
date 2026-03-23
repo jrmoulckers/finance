@@ -25,6 +25,7 @@ import {
 } from 'https://esm.sh/@simplewebauthn/server@9.0.3';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import type {
   GenerateRegistrationOptionsOpts,
   VerifiedRegistrationResponse,
@@ -97,6 +98,17 @@ serve(async (req: Request): Promise<Response> => {
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // Rate limiting (user-based, #614)
+  const rateLimitResult = await checkRateLimit(
+    supabaseAdmin,
+    user.id,
+    RATE_LIMITS['passkey-register'],
+  );
+  if (!rateLimitResult.allowed) {
+    logger.warn('Rate limit exceeded', { httpStatus: 429 });
+    return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['passkey-register']);
+  }
 
   try {
     if (step === 'options') {

@@ -25,10 +25,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
+import com.finance.android.ui.screens.AccountCreateScreen
 import com.finance.android.ui.screens.AccountsScreen
 import com.finance.android.ui.screens.AnalyticsScreen
+import com.finance.android.ui.screens.BudgetCreateScreen
 import com.finance.android.ui.screens.BudgetsScreen
 import com.finance.android.ui.screens.DashboardScreen
+import com.finance.android.ui.screens.GoalCreateScreen
 import com.finance.android.ui.screens.GoalsScreen
 import com.finance.android.ui.screens.SettingsScreen
 import com.finance.android.ui.screens.TransactionCreateScreen
@@ -59,6 +62,15 @@ sealed class Route(val route: String) {
             if (accountId != null) "transactions/create?accountId=$accountId"
             else "transactions/create"
     }
+
+    /** Account creation screen. */
+    data object AccountCreate : Route("account/create")
+
+    /** Budget creation screen. */
+    data object BudgetCreate : Route("budget/create")
+
+    /** Goal creation screen. */
+    data object GoalCreate : Route("goal/create")
 
     /**
      * OAuth callback deep link destination.
@@ -138,6 +150,11 @@ fun FinanceNavHost(
                 onAccountClick = { id ->
                     navController.navigate(Route.AccountDetail.createRoute(id))
                 },
+                onAddAccount = {
+                    navController.navigate(Route.AccountCreate.route) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 
@@ -148,8 +165,9 @@ fun FinanceNavHost(
         composable(Route.Budgets.route) {
             BudgetsScreen(
                 onCreateBudget = {
-                    Timber.d("FAB: Create new budget tapped")
-                    // TODO: navigate to BudgetCreate screen once route is defined
+                    navController.navigate(Route.BudgetCreate.route) {
+                        launchSingleTop = true
+                    }
                 },
             )
         }
@@ -157,8 +175,9 @@ fun FinanceNavHost(
         composable(Route.Goals.route) {
             GoalsScreen(
                 onCreateGoal = {
-                    Timber.d("FAB: Create new goal tapped")
-                    // TODO: navigate to GoalCreate screen once route is defined
+                    navController.navigate(Route.GoalCreate.route) {
+                        launchSingleTop = true
+                    }
                 },
             )
         }
@@ -201,6 +220,27 @@ fun FinanceNavHost(
             ),
         ) {
             TransactionCreateScreen(
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Route.AccountCreate.route) {
+            AccountCreateScreen(
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Route.BudgetCreate.route) {
+            BudgetCreateScreen(
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Route.GoalCreate.route) {
+            GoalCreateScreen(
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
             )
