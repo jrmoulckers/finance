@@ -28,6 +28,7 @@ private fun titleForRoute(route: String?): String = when (route) {
     Route.Transactions.route -> "Transactions"
     Route.Budgets.route -> "Budgets"
     Route.Goals.route -> "Goals"
+    Route.Analytics.route -> "Analytics"
     Route.Settings.route -> "Settings"
     Route.AccountDetail.route -> "Account Details"
     Route.TransactionCreate.route -> "New Transaction"
