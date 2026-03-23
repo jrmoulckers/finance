@@ -39,6 +39,9 @@ enum AppDeepLink: Sendable, Equatable {
     /// Navigate to a specific transaction detail screen.
     case transaction(id: String)
 
+    /// App Clip expense entry. Refs #648
+    case clipExpense(amount: Int64?, category: String?)
+
     /// An unrecognized link that doesn't match any known route.
     case unknown(url: URL)
 }
@@ -76,6 +79,7 @@ final class DeepLinkHandler {
     private static let invitePrefix = "/invite/"
     private static let accountPrefix = "/account/"
     private static let transactionPrefix = "/transaction/"
+    private static let clipExpensePath = "/clip/expense"
 
     // MARK: - Logger
 
@@ -104,6 +108,10 @@ final class DeepLinkHandler {
 
     /// The pending household invitation code, if any.
     private(set) var pendingInviteCode: String?
+
+    private(set) var hasPendingClipExpense = false
+    private(set) var pendingClipAmount: Int64?
+    private(set) var pendingClipCategory: String?
 
     // MARK: - Public API
 
@@ -138,6 +146,9 @@ final class DeepLinkHandler {
             clearAuthInviteState()
             pendingAccountId = id
             pendingTransactionId = nil
+            hasPendingClipExpense = false
+            pendingClipAmount = nil
+            pendingClipCategory = nil
             selectedTab = .accounts
             Self.logger.debug(
                 "Routing to account: \(id, privacy: .private)"
@@ -147,10 +158,22 @@ final class DeepLinkHandler {
             clearAuthInviteState()
             pendingTransactionId = id
             pendingAccountId = nil
+            hasPendingClipExpense = false
+            pendingClipAmount = nil
+            pendingClipCategory = nil
             selectedTab = .transactions
             Self.logger.debug(
                 "Routing to transaction: \(id, privacy: .private)"
             )
+
+        case .clipExpense(let amount, let category):
+            clearAuthInviteState()
+            clearEntityState()
+            hasPendingClipExpense = true
+            pendingClipAmount = amount
+            pendingClipCategory = category
+            selectedTab = .transactions
+            Self.logger.debug("Routing to clip expense entry")
 
         case .unknown:
             clearAllState()
@@ -192,6 +215,14 @@ final class DeepLinkHandler {
         if case .transaction = currentDeepLink {
             currentDeepLink = nil
         }
+    }
+
+    /// Clears the pending clip expense.
+    func consumeClipExpense() {
+        hasPendingClipExpense = false
+        pendingClipAmount = nil
+        pendingClipCategory = nil
+        if case .clipExpense = currentDeepLink { currentDeepLink = nil }
     }
 
     /// Resets all pending state.
@@ -269,6 +300,17 @@ final class DeepLinkHandler {
             }
         }
 
+        // Route: /clip/expense (#648)
+        if effectivePath.hasPrefix(Self.clipExpensePath) {
+            let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: true)?.queryItems
+            var amountMinorUnits: Int64?
+            if let amountString = queryItems?.first(where: { $0.name == "amount" })?.value, let amountDecimal = Decimal(string: amountString) {
+                amountMinorUnits = NSDecimalNumber(decimal: amountDecimal * 100).int64Value
+            }
+            let category = queryItems?.first(where: { $0.name == "category" })?.value
+            return .clipExpense(amount: amountMinorUnits, category: category?.isEmpty == true ? nil : category)
+        }
+
         return .unknown(url: url)
     }
 
@@ -284,6 +326,9 @@ final class DeepLinkHandler {
     private func clearEntityState() {
         pendingAccountId = nil
         pendingTransactionId = nil
+        hasPendingClipExpense = false
+        pendingClipAmount = nil
+        pendingClipCategory = nil
     }
 
     private func clearAuthInviteState() {
@@ -296,5 +341,18 @@ final class DeepLinkHandler {
         pendingInviteCode = nil
         pendingAccountId = nil
         pendingTransactionId = nil
+        hasPendingClipExpense = false
+        pendingClipAmount = nil
+        pendingClipCategory = nil
+    }
+
+    private func clearAllState() {
+        isProcessingAuthCallback = false
+        pendingInviteCode = nil
+        pendingAccountId = nil
+        pendingTransactionId = nil
+        hasPendingClipExpense = false
+        pendingClipAmount = nil
+        pendingClipCategory = nil
     }
 }

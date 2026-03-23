@@ -1,0 +1,15 @@
+Welcome to Finance 1.0!
+
+This is the initial release of Finance — your private, offline-first personal finance tracker.
+
+What's included:
+• Track accounts, transactions, budgets, and savings goals
+• Beautiful interactive charts powered by Swift Charts
+• Full offline support — no internet or account required
+• Face ID / Touch ID app lock for extra security
+• Apple Watch companion app with complications
+• Home Screen and Lock Screen widgets
+• Complete VoiceOver and Dynamic Type accessibility
+• Export your data as CSV or JSON anytime
+
+Your finances, your device, your privacy.

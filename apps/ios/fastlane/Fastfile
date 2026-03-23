@@ -11,9 +11,41 @@ platform :ios do
     run_tests(scheme: "Finance", device: "iPhone 16")
   end
 
+  desc "Capture screenshots for App Store"
+  lane :screenshots do
+    capture_screenshots(scheme: "FinanceUITests")
+  end
+
   desc "Deploy to TestFlight"
   lane :deploy_testflight do
     build_app(scheme: "Finance", export_method: "app-store")
     upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+
+  desc "Submit to App Store for review"
+  lane :deliver_appstore do
+    build_app(scheme: "Finance", export_method: "app-store")
+    deliver(
+      metadata_path: "./fastlane/metadata",
+      submit_for_review: false,
+      automatic_release: false,
+      force: true,
+      skip_screenshots: true,
+      precheck_include_in_app_purchases: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false
+      }
+    )
+  end
+
+  desc "Upload metadata only (no binary)"
+  lane :upload_metadata do
+    deliver(
+      metadata_path: "./fastlane/metadata",
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      force: true
+    )
   end
 end

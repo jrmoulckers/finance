@@ -42,6 +42,10 @@ final class StubAccountRepository: AccountRepository, @unchecked Sendable {
         if let error = errorToThrow { throw error }
         deletedAccountIds.append(id)
     }
+
+    func deleteAllAccounts() async throws {
+        if let error = errorToThrow { throw error }
+    }
 }
 
 // MARK: - Stub Transaction Repository
@@ -121,6 +125,10 @@ final class StubBudgetRepository: BudgetRepository, @unchecked Sendable {
     func updateBudget(_ budget: BudgetItem) async throws {
         if let error = errorToThrow { throw error }
         updatedBudgets.append(budget)
+    }
+
+    func deleteAllBudgets() async throws {
+        if let error = errorToThrow { throw error }
     }
 }
 
