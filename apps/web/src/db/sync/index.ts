@@ -2,7 +2,20 @@
 
 export { WebMutationQueue, type EnqueueInput } from './MutationQueue';
 export { enqueueMutation, getMutationQueue, getPendingMutationCount } from './enqueueMutation';
-export { replayMutations, type ReplayResult } from './replayMutations';
+export {
+  replayMutations,
+  type ReplayResult,
+  type SyncConfig,
+  getSyncConfig,
+} from './replayMutations';
+export {
+  clearResolvedConflicts,
+  getAllConflicts,
+  getUnresolvedConflicts,
+  resolveConflict,
+  storeConflicts,
+  type SyncConflict,
+} from './sync-conflict';
 export type {
   ClientToSwMessage,
   MutationOperation,
