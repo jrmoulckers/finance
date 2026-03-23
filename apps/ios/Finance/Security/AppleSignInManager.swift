@@ -5,7 +5,7 @@
 //
 // Sign in with Apple integration via ASAuthorizationController.
 // Converts Apple credentials to a Supabase auth session.
-// Refs #24
+// Refs #24, #650
 
 import AuthenticationServices
 import CryptoKit
