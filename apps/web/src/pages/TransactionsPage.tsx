@@ -4,6 +4,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import {
+  BulkActionsToolbar,
   ConfirmDialog,
   CurrencyDisplay,
   EmptyState,
@@ -13,9 +14,11 @@ import {
 import { TransactionForm } from '../components/forms';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts } from '../hooks/useAccounts';
+import { useBulkSelection } from '../hooks/useBulkSelection';
 import { useCategories } from '../hooks/useCategories';
 import { useTransactions } from '../hooks/useTransactions';
 import type { Transaction } from '../kmp/bridge';
+import '../styles/bulk-actions.css';
 
 const ALL_CATEGORIES_FILTER = '__all__';
 
@@ -42,6 +45,16 @@ export const TransactionsPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+
+  const {
+    selectedIds,
+    isSelected,
+    toggle: toggleSelection,
+    selectAll,
+    deselectAll,
+    selectedCount,
+  } = useBulkSelection();
 
   const filters = useMemo(
     () => ({
@@ -151,6 +164,86 @@ export const TransactionsPage: React.FC = () => {
     [accounts],
   );
 
+  // -----------------------------------------------------------------------
+  // Bulk action handlers
+  // -----------------------------------------------------------------------
+
+  const handleToggleSelectMode = useCallback(() => {
+    setIsSelectMode((prev) => {
+      if (prev) {
+        deselectAll();
+      }
+      return !prev;
+    });
+  }, [deselectAll]);
+
+  const handleSelectAll = useCallback(() => {
+    const allIds = transactions.map((t) => t.id);
+    selectAll(allIds);
+  }, [selectAll, transactions]);
+
+  const allSelected = transactions.length > 0 && transactions.every((t) => selectedIds.has(t.id));
+
+  const handleSelectAllToggle = useCallback(() => {
+    if (allSelected) {
+      deselectAll();
+    } else {
+      handleSelectAll();
+    }
+  }, [allSelected, deselectAll, handleSelectAll]);
+
+  const handleBulkDelete = useCallback(() => {
+    for (const id of selectedIds) {
+      deleteTransaction(id);
+    }
+    deselectAll();
+    refreshTransactions();
+  }, [deleteTransaction, deselectAll, refreshTransactions, selectedIds]);
+
+  const handleBulkCategorize = useCallback(
+    (categoryId: string) => {
+      for (const id of selectedIds) {
+        updateTransaction(id, { categoryId });
+      }
+      deselectAll();
+      refreshTransactions();
+    },
+    [deselectAll, refreshTransactions, selectedIds, updateTransaction],
+  );
+
+  const handleBulkExport = useCallback(() => {
+    const selected = transactions.filter((t) => selectedIds.has(t.id));
+    const header = 'Date,Payee,Amount,Type,Category,Account,Note';
+    const rows = selected.map((t) => {
+      const payee = (t.payee ?? '').replace(/"/g, '""');
+      const note = (t.note ?? '').replace(/"/g, '""');
+      const categoryName =
+        t.categoryId !== null
+          ? (categoryNames.get(t.categoryId) ?? 'Uncategorized')
+          : 'Uncategorized';
+      const accountName = accountNames.get(t.accountId) ?? 'Unknown';
+      const amount = getTransactionDisplayAmount(t);
+
+      return `${t.date},"${payee}",${amount},${t.type},"${categoryName}","${accountName}","${note}"`;
+    });
+
+    const csvContent = [header, ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'transactions-export.csv');
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [transactions, selectedIds, categoryNames, accountNames]);
+
+  const handleBulkDeselectAll = useCallback(() => {
+    deselectAll();
+  }, [deselectAll]);
+
   const groupedTransactions = useMemo(() => {
     const groups = new Map<string, Transaction[]>();
 
@@ -187,6 +280,15 @@ export const TransactionsPage: React.FC = () => {
         >
           Transactions
         </h2>
+        <button
+          type="button"
+          className={`select-mode-toggle${isSelectMode ? ' select-mode-toggle--active' : ''}`}
+          onClick={handleToggleSelectMode}
+          aria-pressed={isSelectMode}
+          aria-label={isSelectMode ? 'Exit select mode' : 'Enter select mode'}
+        >
+          <span aria-hidden="true">☑️</span> {isSelectMode ? 'Cancel' : 'Select'}
+        </button>
         <button
           type="button"
           className="add-button"
@@ -233,6 +335,18 @@ export const TransactionsPage: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {isSelectMode && selectedCount > 0 && (
+        <BulkActionsToolbar
+          selectedCount={selectedCount}
+          onCategorize={handleBulkCategorize}
+          onDelete={handleBulkDelete}
+          onExport={handleBulkExport}
+          onDeselectAll={handleBulkDeselectAll}
+          categories={categories}
+        />
+      )}
+
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
           <LoadingSpinner label="Loading transactions" />
@@ -250,6 +364,19 @@ export const TransactionsPage: React.FC = () => {
         />
       ) : (
         <div>
+          {isSelectMode && (
+            <div className="bulk-select-all-header">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={handleSelectAllToggle}
+                  aria-label="Select all transactions"
+                />
+                Select all
+              </label>
+            </div>
+          )}
           {groupedTransactions.map((group) => (
             <section key={group.date} className="page-section" aria-label={group.label}>
               <h3 className="list-group__header">{group.label}</h3>
@@ -260,6 +387,16 @@ export const TransactionsPage: React.FC = () => {
 
                     return (
                       <li key={transaction.id} className="list-item" role="listitem">
+                        {isSelectMode && (
+                          <div className="transaction-select-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={isSelected(transaction.id)}
+                              onChange={() => toggleSelection(transaction.id)}
+                              aria-label={`Select transaction: ${transactionLabel}`}
+                            />
+                          </div>
+                        )}
                         <div className="list-item__content">
                           <Link
                             to={`/transactions/${transaction.id}`}

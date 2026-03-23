@@ -20,6 +20,7 @@ const BudgetDetail = lazy(() => import('./pages/BudgetDetailPage'));
 const Goals = lazy(() => import('./pages/GoalsPage'));
 const GoalDetail = lazy(() => import('./pages/GoalDetailPage'));
 const Import = lazy(() => import('./pages/ImportPage'));
+const Recurring = lazy(() => import('./pages/RecurringPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
@@ -201,6 +202,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Import />
+          </Suspense>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/recurring"
+      element={
+        <AuthenticatedRoute>
+          <Suspense fallback={<PageLoader />}>
+            <Recurring />
           </Suspense>
         </AuthenticatedRoute>
       }

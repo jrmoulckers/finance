@@ -14,4 +14,5 @@ export { ImportPage } from './ImportPage';
 export { LoginPage } from './LoginPage';
 export { NotFoundPage } from './NotFoundPage';
 export { OnboardingPage } from './OnboardingPage';
+export { RecurringPage } from './RecurringPage';
 export { SignupPage } from './SignupPage';

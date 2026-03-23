@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export { useAccounts } from './useAccounts';
+export { useBulkSelection } from './useBulkSelection';
+export type { UseBulkSelectionResult } from './useBulkSelection';
 export { useBudgets } from './useBudgets';
 export { useCategories } from './useCategories';
 export { useDashboardData } from './useDashboardData';
@@ -21,3 +23,5 @@ export { useImport } from './useImport';
 export type { ImportStep, UseImportResult, ImportProgress, ImportSummary } from './useImport';
 export { useOnboarding } from './useOnboarding';
 export type { UseOnboardingResult } from './useOnboarding';
+export { useRecurringRules } from './useRecurringRules';
+export type { UseRecurringRulesResult } from './useRecurringRules';

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+export { BulkActionsToolbar } from './BulkActionsToolbar';
+export type { BulkActionsToolbarProps } from './BulkActionsToolbar';
 export { ConfirmDialog } from './ConfirmDialog';
 export type { ConfirmDialogProps } from './ConfirmDialog';
 export { CurrencyDisplay } from './CurrencyDisplay';

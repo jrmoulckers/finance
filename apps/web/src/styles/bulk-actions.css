@@ -1,0 +1,289 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Bulk actions toolbar and selection UI styles.
+ *
+ * Uses CSS custom properties from the design-tokens package for consistent
+ * theming. Provides toolbar layout, selection checkbox styling, and
+ * category picker dropdown.
+ *
+ * References: issue #318
+ */
+
+/* ---------------------------------------------------------------------------
+ * Toolbar
+ * ------------------------------------------------------------------------- */
+
+.bulk-actions-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  border-radius: var(--border-radius-md);
+  margin-bottom: var(--spacing-4);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1));
+  animation: bulk-toolbar-slide-in var(--duration-normal, 200ms) var(--easing-out, ease-out);
+}
+
+@keyframes bulk-toolbar-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bulk-actions-toolbar__count {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-semibold, 600);
+  white-space: nowrap;
+  margin-right: auto;
+}
+
+/* ---------------------------------------------------------------------------
+ * Toolbar buttons
+ * ------------------------------------------------------------------------- */
+
+.bulk-actions-toolbar__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: inherit;
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium, 500);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-fast, 100ms) ease,
+    border-color var(--duration-fast, 100ms) ease;
+}
+
+.bulk-actions-toolbar__button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.bulk-actions-toolbar__button:focus-visible {
+  outline: 2px solid var(--semantic-text-inverse, #fff);
+  outline-offset: 2px;
+}
+
+.bulk-actions-toolbar__button--danger {
+  border-color: var(--semantic-status-negative, #dc2626);
+  color: var(--semantic-text-inverse);
+}
+
+.bulk-actions-toolbar__button--danger:hover {
+  background: var(--semantic-status-negative, #dc2626);
+  border-color: var(--semantic-status-negative, #dc2626);
+}
+
+/* ---------------------------------------------------------------------------
+ * Deselect link
+ * ------------------------------------------------------------------------- */
+
+.bulk-actions-toolbar__deselect {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-2);
+  border: none;
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: inherit;
+  font-size: var(--type-scale-caption-font-size);
+  font-family: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--duration-fast, 100ms) ease;
+}
+
+.bulk-actions-toolbar__deselect:hover {
+  opacity: 0.8;
+}
+
+.bulk-actions-toolbar__deselect:focus-visible {
+  outline: 2px solid var(--semantic-text-inverse, #fff);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Select mode toggle
+ * ------------------------------------------------------------------------- */
+
+.select-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium, 500);
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast, 100ms) ease,
+    border-color var(--duration-fast, 100ms) ease;
+}
+
+.select-mode-toggle:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.select-mode-toggle:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.select-mode-toggle--active {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  border-color: var(--semantic-interactive-default);
+}
+
+.select-mode-toggle--active:hover {
+  background: var(--semantic-interactive-hover);
+}
+
+/* ---------------------------------------------------------------------------
+ * Checkboxes inside transaction list
+ * ------------------------------------------------------------------------- */
+
+.transaction-select-checkbox {
+  display: flex;
+  align-items: center;
+  margin-right: var(--spacing-3);
+  flex-shrink: 0;
+}
+
+.transaction-select-checkbox input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--semantic-interactive-default);
+  cursor: pointer;
+}
+
+.transaction-select-checkbox input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Select-all header
+ * ------------------------------------------------------------------------- */
+
+.bulk-select-all-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-bottom: 1px solid var(--semantic-border-default);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.bulk-select-all-header label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Category picker dropdown
+ * ------------------------------------------------------------------------- */
+
+.bulk-category-picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 110;
+  min-width: 200px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.15));
+  padding: var(--spacing-1) 0;
+  margin-top: var(--spacing-1);
+}
+
+.bulk-category-picker__item {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: none;
+  background: transparent;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.bulk-category-picker__item:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.bulk-category-picker__item:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: -2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .bulk-actions-toolbar {
+    animation: none;
+  }
+
+  .bulk-actions-toolbar__button,
+  .bulk-actions-toolbar__deselect,
+  .select-mode-toggle,
+  .bulk-category-picker__item {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .bulk-actions-toolbar {
+    border: 2px solid var(--semantic-border-focus);
+  }
+
+  .bulk-actions-toolbar__button {
+    border-width: 2px;
+  }
+
+  .select-mode-toggle {
+    border-width: 2px;
+  }
+
+  .bulk-category-picker {
+    border-width: 2px;
+  }
+}

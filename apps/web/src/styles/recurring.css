@@ -1,0 +1,340 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the recurring rules page and form preview section.
+ *
+ * Uses CSS custom properties from the design-tokens package for consistent
+ * theming. Provides layout for the rules list, status badges, frequency
+ * labels, preview section, and upcoming transactions view.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Page header
+ * ------------------------------------------------------------------------- */
+
+.recurring-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-6);
+}
+
+.recurring-header__title {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Rules list
+ * ------------------------------------------------------------------------- */
+
+.recurring-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.recurring-rule-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  transition: box-shadow var(--duration-fast, 100ms) ease;
+}
+
+.recurring-rule-card:hover {
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
+}
+
+.recurring-rule-card--inactive {
+  opacity: 0.6;
+}
+
+.recurring-rule-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.recurring-rule-card__description {
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  margin: 0;
+}
+
+.recurring-rule-card__amount {
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.recurring-rule-card__amount--expense {
+  color: var(--semantic-status-negative);
+}
+
+.recurring-rule-card__amount--income {
+  color: var(--semantic-status-positive);
+}
+
+.recurring-rule-card__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.recurring-rule-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Badges
+ * ------------------------------------------------------------------------- */
+
+.recurring-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.4;
+}
+
+.recurring-badge--frequency {
+  background: var(--color-blue-50, #eff6ff);
+  color: var(--color-blue-700, #1d4ed8);
+}
+
+.recurring-badge--active {
+  background: var(--color-green-50, #f0fdf4);
+  color: var(--color-green-700, #15803d);
+}
+
+.recurring-badge--paused {
+  background: var(--color-neutral-100, #f3f4f6);
+  color: var(--color-neutral-600, #4b5563);
+}
+
+/* ---------------------------------------------------------------------------
+ * Toggle button (active / paused)
+ * ------------------------------------------------------------------------- */
+
+.recurring-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: transparent;
+  font-size: var(--type-scale-caption-font-size);
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--semantic-text-secondary);
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.recurring-toggle:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.recurring-toggle:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Preview / upcoming section in form
+ * ------------------------------------------------------------------------- */
+
+.recurring-preview {
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-3);
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-md);
+}
+
+.recurring-preview__title {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--spacing-2) 0;
+}
+
+.recurring-preview__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.recurring-preview__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-1) 0;
+  font-size: var(--type-scale-body-font-size);
+}
+
+.recurring-preview__date {
+  color: var(--semantic-text-primary);
+}
+
+.recurring-preview__amount {
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Upcoming transactions section on page
+ * ------------------------------------------------------------------------- */
+
+.recurring-upcoming {
+  margin-top: var(--spacing-6);
+}
+
+.recurring-upcoming__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  margin: 0 0 var(--spacing-4) 0;
+}
+
+.recurring-upcoming__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.recurring-upcoming__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-3);
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.recurring-upcoming__item-description {
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+.recurring-upcoming__item-date {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.recurring-upcoming__item-amount {
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.recurring-upcoming__empty {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+  padding: var(--spacing-4) 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Responsive: small screens
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .recurring-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+  }
+
+  .recurring-rule-card__row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .recurring-rule-card__actions {
+    align-self: flex-end;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .recurring-badge--frequency {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--color-blue-300, #93c5fd);
+  }
+
+  html:not([data-theme='light']) .recurring-badge--active {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--color-green-300, #86efac);
+  }
+
+  html:not([data-theme='light']) .recurring-badge--paused {
+    background: rgba(107, 114, 128, 0.15);
+    color: var(--color-neutral-400, #9ca3af);
+  }
+}
+
+[data-theme='dark'] .recurring-badge--frequency {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--color-blue-300, #93c5fd);
+}
+
+[data-theme='dark'] .recurring-badge--active {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--color-green-300, #86efac);
+}
+
+[data-theme='dark'] .recurring-badge--paused {
+  background: rgba(107, 114, 128, 0.15);
+  color: var(--color-neutral-400, #9ca3af);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .recurring-rule-card,
+  .recurring-toggle {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .recurring-rule-card {
+    border-width: 2px;
+  }
+
+  .recurring-upcoming__item {
+    border-width: 2px;
+  }
+
+  .recurring-badge {
+    border: 1px solid currentColor;
+  }
+}
