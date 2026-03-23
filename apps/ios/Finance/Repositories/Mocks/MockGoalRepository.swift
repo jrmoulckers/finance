@@ -51,8 +51,6 @@ struct MockGoalRepository: GoalRepository {
         try? await Task.sleep(for: .milliseconds(300))
     }
 
-    func updateGoal(_ goal: GoalItem) async throws {
-        // No-op for mock — simulates a successful update.
-        try? await Task.sleep(for: .milliseconds(300))
-    }
+    func updateGoal(_ goal: GoalItem) async throws { try? await Task.sleep(for: .milliseconds(300)) }
+    func deleteAllGoals() async throws { }
 }

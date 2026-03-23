@@ -6,7 +6,7 @@
 // ViewModel for the settings screen. Manages user preferences for
 // currency, notifications, biometric auth, data export, and sync status.
 // Settings are persisted via UserDefaults so they survive app restarts.
-// Refs #565
+// Refs #565, #652
 
 import Foundation
 import Observation
@@ -25,6 +25,10 @@ private enum SettingsKeys {
     static let goalMilestones = "finance_goal_milestones"
     static let lastSyncDate = "finance_last_sync_date"
     static let pendingChangesCount = "finance_pending_changes_count"
+}
+
+enum DeletionConfirmationStep: Sendable {
+    case none, initialWarning, exportOffer, biometricAuth, typedConfirmation, deleting, completed
 }
 
 // MARK: - SettingsViewModel
@@ -93,8 +97,15 @@ final class SettingsViewModel {
 
     // MARK: - Delete Confirmation
 
-    /// Controls visibility of the destructive-delete confirmation dialog.
     var showingDeleteConfirmation = false
+    var deletionConfirmationStep: DeletionConfirmationStep = .none
+    var isDeletingData = false
+    var currentDeletionStep: DeletionStep?
+    var deletionError: String?
+    var showingDeletionError = false
+    var deleteConfirmationText = ""
+    var isDeleteConfirmationValid: Bool { deleteConfirmationText.trimmingCharacters(in: .whitespaces).uppercased() == "DELETE" }
+    var onDeletionCompleted: (() -> Void)?
 
     // MARK: - Biometric Error State
 
@@ -138,8 +149,9 @@ final class SettingsViewModel {
     private let budgetRepository: BudgetRepository
     private let goalRepository: GoalRepository
     private let exportService: DataExportService
+    private let deletionService: DataDeletionManaging
 
-    private static let logger = Logger(
+    private static let logger= Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
         category: "SettingsViewModel"
     )
@@ -161,6 +173,7 @@ final class SettingsViewModel {
         budgetRepository: BudgetRepository = MockBudgetRepository(),
         goalRepository: GoalRepository = MockGoalRepository(),
         exportService: DataExportService = DataExportService(),
+        deletionService: DataDeletionManaging? = nil,
         defaults: UserDefaults = .standard
     ) {
         self.accountRepository = accountRepository
@@ -168,6 +181,7 @@ final class SettingsViewModel {
         self.budgetRepository = budgetRepository
         self.goalRepository = goalRepository
         self.exportService = exportService
+        self.deletionService = deletionService ?? DataDeletionService(accountRepository: accountRepository, transactionRepository: transactionRepository, budgetRepository: budgetRepository, goalRepository: goalRepository, defaults: defaults)
         self.defaults = defaults
 
         // Hydrate persisted preferences (use sensible defaults for first launch)
@@ -315,6 +329,44 @@ final class SettingsViewModel {
             exportErrorMessage = error.localizedDescription
             showingExportError = true
         }
+    }
+
+    func beginDeletionFlow() { deletionConfirmationStep = .initialWarning; deleteConfirmationText = ""; deletionError = nil }
+    func proceedToExportOffer() { deletionConfirmationStep = .exportOffer }
+    func proceedToBiometricAuth() { deletionConfirmationStep = .biometricAuth }
+
+    func authenticateForDeletion(using manager: BiometricAuthManager) async {
+        do {
+            try await manager.authenticate(reason: String(localized: "Verify your identity to delete all data"))
+            deletionConfirmationStep = .typedConfirmation
+        } catch let error as BiometricError {
+            if case .cancelled = error { cancelDeletion(); return }
+            biometricError = error; showingBiometricError = true; cancelDeletion()
+        } catch {
+            biometricError = .unknown(underlying: error); showingBiometricError = true; cancelDeletion()
+        }
+    }
+
+    func deleteAllData() async {
+        guard isDeleteConfirmationValid else { return }
+        isDeletingData = true; deletionConfirmationStep = .deleting; deletionError = nil
+        do {
+            try await deletionService.deleteAllLocalData { [weak self] step in
+                Task { @MainActor in self?.currentDeletionStep = step }
+            }
+            currentDeletionStep = .serverRequest
+            do { try await deletionService.requestServerDeletion(userId: "current-user") } catch { }
+            isDeletingData = false; deletionConfirmationStep = .completed
+            onDeletionCompleted?()
+        } catch {
+            isDeletingData = false; deletionError = error.localizedDescription
+            showingDeletionError = true; deletionConfirmationStep = .none
+        }
+    }
+
+    func cancelDeletion() {
+        deletionConfirmationStep = .none; deleteConfirmationText = ""
+        isDeletingData = false; currentDeletionStep = nil; deletionError = nil
     }
 
     // MARK: - Sync

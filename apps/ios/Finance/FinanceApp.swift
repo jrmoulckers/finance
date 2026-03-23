@@ -3,7 +3,7 @@
 import os
 import SwiftUI
 
-/// Finance — a cross-platform financial tracking application.
+/// Finance ΓÇö a cross-platform financial tracking application.
 ///
 /// This is the SwiftUI entry point for iOS, iPadOS, and macOS (Catalyst).
 /// The app consumes shared business logic from the KMP `core` module and
@@ -11,14 +11,9 @@ import SwiftUI
 ///
 /// When biometric app lock is enabled in settings, the app shows a
 /// full-screen lock overlay on launch and when returning from background.
-///
-/// On launch the app checks for an existing auth session via
-/// `AuthenticationService`. When the scene returns to active, Apple
-/// credential state is re-verified to handle server-side revocations.
 @main
 struct FinanceApp: App {
     @State private var biometricManager = BiometricAuthManager()
-    @State private var authService = AuthenticationService()
     @State private var deepLinkHandler = DeepLinkHandler()
     @State private var networkMonitor = NetworkMonitor()
     @State private var isLocked = true
@@ -51,7 +46,6 @@ struct FinanceApp: App {
                         networkMonitor: networkMonitor
                     )
                     .environment(biometricManager)
-                    .environment(authService)
                     .accessibilityHidden(biometricLockEnabled && isLocked)
 
                     if biometricLockEnabled && isLocked {
@@ -76,13 +70,14 @@ struct FinanceApp: App {
                 if !biometricLockEnabled {
                     isLocked = false
                 }
-                await authService.checkExistingSession()
             }
         }
     }
 
-    /// Handles scene phase transitions for biometric lock management
-    /// and Apple credential state verification.
+    /// Handles scene phase transitions for biometric lock management.
+    ///
+    /// - `.active`: refreshes biometric availability (e.g. user enrolled
+    ///   Face ID while the app was backgrounded).
     /// - `.background`: re-locks the app when biometric lock is enabled so
     ///   the next foreground activation requires authentication.
     private func handleScenePhaseChange(_ phase: ScenePhase) {
@@ -90,12 +85,6 @@ struct FinanceApp: App {
         case .active:
             Self.logger.debug("Scene became active")
             biometricManager.refreshAvailability()
-            if let user = authService.currentUser {
-                Task {
-                    let valid = await authService.checkCredentialState(userID: user.id)
-                    if !valid { await authService.signOut() }
-                }
-            }
         case .background:
             Self.logger.debug("Scene entered background")
             if biometricLockEnabled {

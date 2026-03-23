@@ -46,7 +46,6 @@ struct MockAccountRepository: AccountRepository {
         try await getAccounts().first { $0.id == id }
     }
 
-    func deleteAccount(id: String) async throws {
-        // No-op for mock — ViewModel manages local state removal.
-    }
+    func deleteAccount(id: String) async throws { }
+    func deleteAllAccounts() async throws { }
 }
