@@ -135,6 +135,25 @@ final class StubGoalRepository: GoalRepository, @unchecked Sendable {
     }
 }
 
+// MARK: - Stub Biometric Auth Manager
+
+/// Configurable stub for biometric authentication in tests.
+///
+/// Allows tests to simulate success, failure, and cancellation scenarios
+/// without requiring physical biometric hardware.
+final class StubBiometricAuthManager: BiometricAuthManaging, @unchecked Sendable {
+    var canAuthenticateResult = true
+    var errorToThrow: BiometricError?
+
+    func canAuthenticate() -> Bool {
+        canAuthenticateResult
+    }
+
+    func authenticate(reason: String) async throws {
+        if let error = errorToThrow { throw error }
+    }
+}
+
 // MARK: - Sample Data Factory
 
 /// Deterministic sample data for use across all test files.
@@ -173,6 +192,12 @@ enum SampleData {
         id: "a5", name: "Emergency Fund",
         balanceMinorUnits: 10_000_00, currencyCode: "USD",
         type: .savings, icon: "banknote", isArchived: false
+    )
+
+    static let archivedAccount = AccountItem(
+        id: "a6", name: "Old Checking",
+        balanceMinorUnits: 0, currencyCode: "USD",
+        type: .checking, icon: "building.columns", isArchived: true
     )
 
     static let allAccounts: [AccountItem] = [
