@@ -518,3 +518,65 @@
 "Goal is in progress. Double tap to view details." = "Goal is in progress. Double tap to view details.";
 "Spending trend chart showing monthly spending over time" = "Spending trend chart showing monthly spending over time";
 "Budget progress showing amount spent versus limit" = "Budget progress showing amount spent versus limit";
+
+
+
+/* ==========================================================================
+   Privacy Policy — PrivacyPolicyView
+   ========================================================================== */
+
+/* Header */
+"privacy.header.subtitle" = "Your privacy is fundamental to Finance. This policy explains what data we collect, how we store and protect it, and the rights you have over your information. Finance is designed with a local-first architecture — your financial data stays on your device unless you choose otherwise.";
+"privacy.header.effectiveDate" = "Effective date: March 2026";
+
+/* Section: Data Collection */
+"privacy.section.dataCollection.title" = "Data Collection";
+"privacy.section.dataCollection.body" = "Finance collects only the data you explicitly provide: financial accounts, transactions, budgets, goals, and categories. We also collect basic account information (email address and display name) when you sign in. We do not collect browsing history, contacts, location data, or advertising identifiers. All financial data entry is initiated by you and remains under your control.";
+
+/* Section: Data Storage */
+"privacy.section.dataStorage.title" = "Data Storage";
+"privacy.section.dataStorage.body" = "Finance uses a local-first architecture. Your financial data is stored on your device in an encrypted SQLite database secured by SQLCipher with AES-256 encryption at rest. Sensitive credentials — including authentication tokens, refresh tokens, and encryption keys — are stored in the Apple Keychain with hardware-backed protection. Data is never written to UserDefaults, property lists, or unencrypted files.";
+
+/* Section: Cloud Sync */
+"privacy.section.cloudSync.title" = "Cloud Sync";
+"privacy.section.cloudSync.body" = "Cloud synchronization is entirely optional. If you enable sync, your data is transmitted to Supabase (our cloud infrastructure provider) using TLS 1.3 encryption in transit and AES-256 encryption at rest. You can disable sync at any time from Settings without losing any data. The app remains fully functional offline — sync exists solely to keep your data consistent across your devices.";
+
+/* Section: Data Usage */
+"privacy.section.dataUsage.title" = "Data Usage";
+"privacy.section.dataUsage.body" = "Your data is used exclusively to provide you with personal financial tracking features — accounts, transactions, budgets, goals, and reports. We never sell, rent, share, or monetize your personal or financial data. Your data is not used for advertising, profiling, or behavioral analytics. We do not build advertising profiles or share information with data brokers.";
+
+/* Section: Third-Party Services */
+"privacy.section.thirdPartyServices.title" = "Third-Party Services";
+"privacy.section.thirdPartyServices.body" = "Finance integrates with a limited number of third-party services, each disclosed here:\n\n• Supabase — provides cloud database hosting, authentication, and serverless functions when you enable cloud sync or sign in.\n• Apple Sign-In — provides secure, privacy-preserving authentication using your Apple ID.\n\nFinance does not include third-party analytics SDKs, advertising frameworks, or tracking libraries. If additional services are integrated in the future, this policy will be updated before they are activated.";
+
+/* Section: Data Security */
+"privacy.section.dataSecurity.title" = "Data Security";
+"privacy.section.dataSecurity.body" = "We protect your data with multiple layers of security:\n\n• Encryption at rest — your local database is encrypted with SQLCipher (AES-256).\n• Keychain storage — all tokens and encryption keys are stored in the Apple Keychain, protected by the Secure Enclave when available.\n• Biometric authentication — Face ID, Touch ID, or Optic ID can be used to protect app access and sensitive operations such as viewing account numbers or exporting data. Biometric data never leaves your device and is managed entirely by iOS.\n• Encryption in transit — all network communication uses HTTPS with TLS 1.3.\n• Row-level security — cloud data is isolated per user with database-level access controls.";
+
+/* Section: Your Rights (GDPR) */
+"privacy.section.gdprRights.title" = "Your Rights (GDPR)";
+"privacy.section.gdprRights.body" = "If you are in the European Economic Area, United Kingdom, or Switzerland, you have the following rights under the General Data Protection Regulation:\n\n• Access — request a copy of the personal data we hold about you.\n• Rectification — correct inaccurate or incomplete personal data.\n• Erasure — request deletion of your personal data, subject to legal exceptions.\n• Data portability — export your data in a structured, machine-readable format (CSV or JSON) from Settings → Data → Export Data.\n• Restriction — request that we limit processing of your data in certain circumstances.\n• Objection — object to processing based on legitimate interests.\n• Withdraw consent — withdraw consent for optional processing at any time.\n\nTo exercise these rights, contact us at privacy@finance.app. We will respond within 30 days as required by law.";
+
+/* Section: California Privacy Rights (CCPA) */
+"privacy.section.ccpaRights.title" = "California Privacy Rights";
+"privacy.section.ccpaRights.body" = "If you are a California resident, the California Consumer Privacy Act (CCPA) and California Privacy Rights Act (CPRA) provide you with additional rights:\n\n• Right to know — request the categories and specific pieces of personal information we collect, use, and disclose.\n• Right to delete — request deletion of personal information we have collected from you.\n• Right to correct — request correction of inaccurate personal information.\n• Right to opt out — opt out of the sale or sharing of personal information. Finance does not sell or share your personal information, so no opt-out action is needed.\n• Non-discrimination — we will never deny service, charge different prices, or provide a different level of service because you exercised your privacy rights.\n\nTo submit a request, contact us at privacy@finance.app.";
+
+/* Section: Children's Privacy */
+"privacy.section.childrensPrivacy.title" = "Children's Privacy";
+"privacy.section.childrensPrivacy.body" = "Finance is not directed at children under 13 years of age. We do not knowingly collect personal information from children under 13 in compliance with the Children's Online Privacy Protection Act (COPPA). If you believe a child under 13 has provided personal information to Finance, please contact us at privacy@finance.app so we can investigate and delete the information promptly.";
+
+/* Section: Data Deletion */
+"privacy.section.dataDeletion.title" = "Data Deletion";
+"privacy.section.dataDeletion.body" = "You can delete all your data at any time from Settings → Data → Delete All Data. This permanently removes all accounts, transactions, budgets, goals, and categories from your device. If cloud sync is enabled, deletion propagates to the server within 30 days. Server-side backups containing your data are purged on a rolling 30-day schedule. You may also request complete account deletion by contacting privacy@finance.app.";
+
+/* Section: Changes to This Policy */
+"privacy.section.policyChanges.title" = "Changes to This Policy";
+"privacy.section.policyChanges.body" = "We may update this privacy policy from time to time. If we make a material change, we will provide at least 30 days' notice before the updated policy takes effect. Notice may be provided through an in-app notification, a prompt within the app on next launch, or an update to the effective date shown at the top of this policy. Continued use of Finance after the updated policy takes effect constitutes acceptance of the changes.";
+
+/* Section: Contact */
+"privacy.section.contact.title" = "Contact Us";
+"privacy.section.contact.body" = "If you have questions, concerns, or requests regarding this privacy policy or your personal data, please contact us at privacy@finance.app. We aim to respond to all inquiries within 30 days. If you are in the EEA and believe your data protection rights have been violated, you also have the right to lodge a complaint with your local data protection authority.";
+
+/* Footer */
+"privacy.footer.lastUpdated" = "Last updated: March 2026";
+"privacy.footer.lastUpdated.accessibilityLabel" = "Privacy policy last updated March 2026";
