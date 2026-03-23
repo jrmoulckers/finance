@@ -1,0 +1,40 @@
+Finance — Your Private Financial Companion
+
+Take control of your money with Finance, the privacy-first personal finance app that works entirely on your device. No account required, no cloud dependency, no ads, and absolutely no data selling or tracking.
+
+WORKS OFFLINE, ALWAYS
+Finance is built edge-first. Every transaction, budget, and goal is stored locally on your device using a fast, embedded database. Open the app on an airplane, in a basement, or anywhere without signal — everything works instantly. Optional cloud sync via your own Supabase instance is available for those who want it, but it's never required.
+
+TRACK EVERYTHING THAT MATTERS
+• Accounts — Add checking, savings, credit cards, investments, and cash accounts. See your total net worth at a glance.
+• Transactions — Log income, expenses, and transfers with categories, notes, and receipt photos. Filter and search across your full history.
+• Budgets — Set monthly spending limits by category. Visual progress rings show exactly where you stand.
+• Goals — Save toward what matters — emergency fund, vacation, new car. Track progress with milestone celebrations.
+
+BEAUTIFUL CHARTS & INSIGHTS
+Visualize your spending trends, budget utilization, and net worth over time with interactive charts built using Swift Charts. Every chart is accessible — VoiceOver users can navigate data points with Audio Graphs.
+
+PRIVACY BY DESIGN
+Finance collects zero analytics, installs zero trackers, and sends zero data to third parties. Your financial information stays on your device, protected by Apple's hardware encryption. Lock the app with Face ID or Touch ID for an extra layer of security.
+
+APPLE WATCH COMPANION
+Check your account balances, view recent transactions, and monitor budget status right from your wrist. Complications keep your financial snapshot on your watch face.
+
+WIDGETS FOR HOME SCREEN & LOCK SCREEN
+Glanceable widgets show your current balance, today's spending, or budget remaining — no need to open the app.
+
+SIRI SHORTCUTS
+Use Siri to quickly log transactions or check your balances with your voice.
+
+ACCESSIBLE TO EVERYONE
+Finance is built with accessibility at its core. Full VoiceOver support with meaningful labels and custom rotors. Dynamic Type support at every text size, including the largest accessibility sizes. High-contrast color modes and Reduce Motion support ensure a comfortable experience for all users.
+
+EXPORT YOUR DATA, ANYTIME
+Your data belongs to you. Export everything as CSV or JSON whenever you want. Fully compliant with GDPR and CCPA data portability requirements.
+
+COMING SOON
+• Family and household support — shared budgets and accounts
+• Recurring transaction automation
+• Multi-currency support with live exchange rates
+
+No subscriptions, no premium tiers, no hidden costs. Finance is free, open, and built for people who believe their financial data should stay private.
