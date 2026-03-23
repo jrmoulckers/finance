@@ -4,6 +4,7 @@ package com.finance.android.ui.screens
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -79,6 +80,7 @@ import com.finance.models.types.SyncId
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionsScreen(
+    onTransactionClick: (SyncId) -> Unit = {},
     onEditTransaction: (SyncId) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: TransactionsViewModel = koinViewModel(),
@@ -93,7 +95,7 @@ fun TransactionsScreen(
     }
     TransactionsContent(state, viewModel::refresh, viewModel::updateSearch, viewModel::toggleSearch,
         viewModel::setTypeFilter, viewModel::clearFilters, viewModel::loadMore,
-        viewModel::deleteTransaction, onEditTransaction, modifier)
+        viewModel::deleteTransaction, onEditTransaction, onTransactionClick, modifier)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,7 +104,8 @@ private fun TransactionsContent(
     state: TransactionsUiState, onRefresh: () -> Unit, onSearch: (String) -> Unit,
     onToggleSearch: () -> Unit, onTypeFilter: (TransactionType?) -> Unit,
     onClearFilters: () -> Unit, onLoadMore: () -> Unit,
-    onDelete: (SyncId) -> Unit, onEdit: (SyncId) -> Unit, modifier: Modifier = Modifier,
+    onDelete: (SyncId) -> Unit, onEdit: (SyncId) -> Unit,
+    onTransactionClick: (SyncId) -> Unit, modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     val shouldLoad by remember { derivedStateOf {
@@ -123,7 +126,7 @@ private fun TransactionsContent(
             state.dateGroups.forEach { group ->
                 item(key = "hdr-${group.date}") { DateHeader(group.dateLabel) }
                 items(group.transactions, key = { it.id.value }) { txn ->
-                    SwipeableTxnItem(txn, { onDelete(txn.id) }, { onEdit(txn.id) })
+                    SwipeableTxnItem(txn, { onDelete(txn.id) }, { onEdit(txn.id) }, { onTransactionClick(txn.id) })
                     Spacer(Modifier.height(8.dp))
                 }
             }
@@ -186,7 +189,7 @@ private fun DateHeader(label: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeableTxnItem(txn: Transaction, onDelete: () -> Unit, onEdit: () -> Unit) {
+private fun SwipeableTxnItem(txn: Transaction, onDelete: () -> Unit, onEdit: () -> Unit, onClick: () -> Unit) {
     val dismiss = rememberSwipeToDismissBoxState(confirmValueChange = { v ->
         when (v) { SwipeToDismissBoxValue.StartToEnd -> { onEdit(); false }
             SwipeToDismissBoxValue.EndToStart -> { onDelete(); true }
@@ -206,18 +209,22 @@ private fun SwipeableTxnItem(txn: Transaction, onDelete: () -> Unit, onEdit: () 
         Box(Modifier.fillMaxSize().background(bg, MaterialTheme.shapes.medium).padding(horizontal = 20.dp), contentAlignment = align) {
             Icon(icon, when (dir) { SwipeToDismissBoxValue.StartToEnd -> "Edit"; SwipeToDismissBoxValue.EndToStart -> "Delete"; else -> null }, tint = tint)
         }
-    }, modifier = Modifier.semantics { contentDescription = buildTxnDesc(txn) }) { TxnListItem(txn) }
+    }, modifier = Modifier.semantics { contentDescription = buildTxnDesc(txn) }) { TxnListItem(txn, onClick) }
 }
 
 @Composable
-private fun TxnListItem(txn: Transaction) {
+private fun TxnListItem(txn: Transaction, onClick: () -> Unit) {
     val amt = CurrencyFormatter.format(txn.amount, txn.currency, showSign = true)
     val color = when (txn.type) { TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
         TransactionType.INCOME -> Color(0xFF2E7D32); TransactionType.TRANSFER -> MaterialTheme.colorScheme.tertiary }
     val payee = txn.payee ?: "Unknown"
     val cat = SampleData.categoryMap[txn.categoryId]?.name ?: "Uncategorized"
     val acct = SampleData.accountMap[txn.accountId]?.name ?: "Unknown"
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = "Open details for $payee", onClick = onClick),
+    ) {
         Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
@@ -269,7 +276,7 @@ private fun TransactionsPreview() {
                 TransactionDateGroup(kotlinx.datetime.LocalDate(2025, 3, 6), "Today", SampleData.transactions.take(3)),
                 TransactionDateGroup(kotlinx.datetime.LocalDate(2025, 3, 5), "Yesterday", SampleData.transactions.drop(3).take(3))),
                 filter = TransactionFilter(), totalCount = 20),
-            {}, {}, {}, {}, {}, {}, {}, {})
+            {}, {}, {}, {}, {}, {}, {}, {}, {})
     }
 }
 
