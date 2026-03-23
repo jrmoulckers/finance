@@ -25,3 +25,10 @@ export { useOnboarding } from './useOnboarding';
 export type { UseOnboardingResult } from './useOnboarding';
 export { useRecurringRules } from './useRecurringRules';
 export type { UseRecurringRulesResult } from './useRecurringRules';
+export { useInsights } from './useInsights';
+export type {
+  MonthlyBreakdown,
+  CategoryBreakdown,
+  TopPayee,
+  UseInsightsResult,
+} from './useInsights';

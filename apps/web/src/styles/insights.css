@@ -1,0 +1,257 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Insights page styles — token-based, responsive, dark-mode aware.
+ *
+ * Grid layout adapts from 1 → 2 → 4 columns across breakpoints.
+ * All values reference CSS custom properties from tokens.css.
+ */
+
+/* -------------------------------------------------------------------------
+ * Period selector (segmented control)
+ * ----------------------------------------------------------------------- */
+
+.insights-period-selector {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+}
+
+.insights-period-selector__option {
+  padding: var(--spacing-2) var(--spacing-4);
+  border: none;
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-label-font-size);
+  font-weight: var(--type-scale-label-font-weight);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--easing-default),
+    color var(--duration-fast) var(--easing-default);
+}
+
+.insights-period-selector__option:not(:last-child) {
+  border-right: 1px solid var(--semantic-border-default);
+}
+
+.insights-period-selector__option:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.insights-period-selector__option[aria-pressed='true'] {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  font-weight: var(--font-weight-semibold);
+}
+
+.insights-period-selector__option:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* -------------------------------------------------------------------------
+ * Header
+ * ----------------------------------------------------------------------- */
+
+.insights-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.insights-header__title {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  line-height: var(--type-scale-headline-line-height);
+  margin: 0;
+}
+
+/* -------------------------------------------------------------------------
+ * Summary cards
+ * ----------------------------------------------------------------------- */
+
+.insights-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.insights-summary-card {
+  padding: var(--spacing-4);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.insights-summary-card__label {
+  display: block;
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--type-scale-caption-font-weight);
+  color: var(--semantic-text-secondary);
+  margin-bottom: var(--spacing-1);
+}
+
+.insights-summary-card__value {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  line-height: var(--type-scale-title-line-height);
+  color: var(--semantic-text-primary);
+}
+
+.insights-summary-card__value--positive {
+  color: var(--semantic-status-positive);
+}
+
+.insights-summary-card__value--warning {
+  color: var(--semantic-status-warning);
+}
+
+.insights-summary-card__value--negative {
+  color: var(--semantic-status-negative);
+}
+
+/* -------------------------------------------------------------------------
+ * Section containers
+ * ----------------------------------------------------------------------- */
+
+.insights-section {
+  margin-bottom: var(--spacing-8);
+}
+
+.insights-section__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  line-height: var(--type-scale-title-line-height);
+  margin-bottom: var(--spacing-4);
+}
+
+/* -------------------------------------------------------------------------
+ * Tables (category + payee)
+ * ----------------------------------------------------------------------- */
+
+.insights-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-scale-body-font-size);
+}
+
+.insights-table caption {
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  padding-bottom: var(--spacing-2);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.insights-table thead th {
+  text-align: left;
+  padding: var(--spacing-2) var(--spacing-3);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+  border-bottom: 2px solid var(--semantic-border-default);
+  white-space: nowrap;
+}
+
+.insights-table tbody td {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--semantic-border-default);
+  vertical-align: middle;
+}
+
+.insights-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.insights-table .text-right {
+  text-align: right;
+}
+
+/* Trend indicators */
+.insights-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.insights-trend--up {
+  color: var(--semantic-status-negative);
+}
+
+.insights-trend--down {
+  color: var(--semantic-status-positive);
+}
+
+.insights-trend--stable {
+  color: var(--semantic-text-secondary);
+}
+
+.insights-trend__arrow {
+  font-size: 0.75em;
+}
+
+/* -------------------------------------------------------------------------
+ * Chart wrapper
+ * ----------------------------------------------------------------------- */
+
+.insights-chart-container {
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+/* -------------------------------------------------------------------------
+ * Responsive breakpoints
+ * ----------------------------------------------------------------------- */
+
+/* Tablet: 2-column summary grid */
+@media (min-width: 640px) {
+  .insights-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Desktop: 4-column summary grid */
+@media (min-width: 1024px) {
+  .insights-summary-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Dark mode
+ * ----------------------------------------------------------------------- */
+
+[data-theme='dark'] .insights-summary-card,
+[data-theme='dark'] .insights-chart-container {
+  background: var(--semantic-background-elevated);
+  border-color: var(--semantic-border-default);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .insights-summary-card,
+  html:not([data-theme='light']) .insights-chart-container {
+    background: var(--semantic-background-elevated);
+    border-color: var(--semantic-border-default);
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Reduced motion
+ * ----------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .insights-period-selector__option {
+    transition: none;
+  }
+}

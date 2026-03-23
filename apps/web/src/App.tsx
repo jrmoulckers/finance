@@ -13,6 +13,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/transactions': 'Transactions',
   '/budgets': 'Budgets',
   '/goals': 'Goals',
+  '/insights': 'Insights',
   '/settings': 'Settings',
 };
 
@@ -23,6 +24,7 @@ const AUTHENTICATED_ROUTES = new Set([
   '/transactions',
   '/budgets',
   '/goals',
+  '/insights',
   '/settings',
 ]);
 
