@@ -196,6 +196,38 @@
 
 
 /* ==========================================================================
+   Transaction Edit Screen
+   ========================================================================== */
+
+/* Navigation & actions */
+"Edit Transaction" = "Edit Transaction";
+"Save" = "Save";
+"Update Transaction" = "Update Transaction";
+"Delete Transaction" = "Delete Transaction";
+"Delete" = "Delete";
+
+/* Confirmation dialogs */
+"Save Changes" = "Save Changes";
+"Are you sure you want to save your changes to this transaction?" = "Are you sure you want to save your changes to this transaction?";
+"Are you sure you want to delete this transaction? This action cannot be undone." = "Are you sure you want to delete this transaction? This action cannot be undone.";
+
+/* Validation */
+"Transaction date cannot be in the future." = "Transaction date cannot be in the future.";
+
+/* Error messages */
+"Failed to update transaction. Please try again." = "Failed to update transaction. Please try again.";
+
+/* Transaction edit accessibility */
+"Transaction Type" = "Transaction Type";
+"Dismisses the edit form without saving changes" = "Dismisses the edit form without saving changes";
+"Confirms and saves your changes to this transaction" = "Confirms and saves your changes to this transaction";
+"Deleting transaction" = "Deleting transaction";
+"Permanently removes this transaction. Requires confirmation." = "Permanently removes this transaction. Requires confirmation.";
+"Tap to edit. Swipe for more actions." = "Tap to edit. Swipe for more actions.";
+"Edit" = "Edit";
+
+
+/* ==========================================================================
    Budgets Screen
    ========================================================================== */
 
