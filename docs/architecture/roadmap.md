@@ -553,6 +553,7 @@ Sustainable revenue model with privacy-preserving premium features.
 - Add annual subscription discount option (#344)
 
 **Acceptance criteria:** Free tier fully functional offline with no artificial limits. Premium features enhance (not gate) core experience. IAP works on iOS, Android, and web. Enterprise plan supports SSO and admin dashboard.
+
 - Configure MS Store Submission API for automated flight ring uploads
 
 ### Phase 7: Advanced Features ✅
