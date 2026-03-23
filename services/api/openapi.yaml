@@ -669,6 +669,42 @@ components:
                   Passkey credential metadata.  The `public_key` column
                   is redacted to `[REDACTED]`.
 
+    # -- Process Recurring ----------------------------------------------------
+    ProcessRecurringRequest:
+      type: object
+      properties:
+        as_of_date:
+          type: string
+          format: date
+          description: >-
+            ISO 8601 date (YYYY-MM-DD) to use as the "current date" for
+            determining which templates are due.  Defaults to today if
+            omitted.
+          example: '2026-03-23'
+
+    ProcessRecurringResponse:
+      type: object
+      required: [ok, generated_count, as_of_date, generated_at]
+      properties:
+        ok:
+          type: boolean
+          description: Always `true` on success.
+          example: true
+        generated_count:
+          type: integer
+          description: Number of transactions generated in this run.
+          example: 5
+        as_of_date:
+          type: string
+          format: date
+          description: The effective date used for generation.
+          example: '2026-03-23'
+        generated_at:
+          type: string
+          format: date-time
+          description: Server timestamp when generation completed.
+          example: '2026-03-23T02:00:00.000Z'
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -1647,6 +1683,84 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 error: 'Rate limit exceeded. Maximum 60 reports per hour.'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: 'Internal server error'
+
+  # =========================================================================
+  # Process Recurring Transactions
+  # =========================================================================
+  /process-recurring:
+    post:
+      operationId: processRecurring
+      summary: Generate transactions from recurring templates
+      description: >-
+        Server-to-server endpoint that generates transaction instances from
+        all active recurring templates whose `next_due_date` is on or before
+        the given `as_of_date` (defaults to today).
+
+
+        Designed to be called by a cron scheduler (pg_cron, external cron,
+        or manual invocation for testing).  Authenticates via `CRON_SECRET`
+        shared secret, **not** user JWT.
+
+
+        The underlying `generate_recurring_transactions` PL/pgSQL function
+        uses `FOR UPDATE SKIP LOCKED` for safe concurrent execution.
+      tags: [Recurring]
+      security:
+        - CronSecret: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessRecurringRequest'
+            example:
+              as_of_date: '2026-03-23'
+      responses:
+        '200':
+          description: >-
+            Recurring transactions processed successfully.  Returns a
+            summary of how many transactions were generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessRecurringResponse'
+              example:
+                ok: true
+                generated_count: 5
+                as_of_date: '2026-03-23'
+                generated_at: '2026-03-23T02:00:00.000Z'
+        '400':
+          description: Invalid request body or `as_of_date` format.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: 'Invalid as_of_date format. Expected ISO 8601 date: YYYY-MM-DD.'
+        '401':
+          description: Missing or invalid `CRON_SECRET` in Authorization header.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: 'Unauthorized'
+        '405':
+          description: Method not allowed (non-POST request).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: 'Method not allowed'
         '500':
           description: Internal server error.
           content:
