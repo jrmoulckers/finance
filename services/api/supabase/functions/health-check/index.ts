@@ -18,7 +18,7 @@
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
-import { corsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
 
 /** Individual service status. */
@@ -114,7 +114,7 @@ async function checkAuth(supabaseUrl: string, serviceRoleKey: string): Promise<S
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return handleCorsPreflightRequest();
+    return handleCorsPreflightRequest(req);
   }
 
   const logger = createLogger('health-check');
@@ -126,7 +126,7 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: {
-        ...corsHeaders,
+        ...getCorsHeaders(req),
         'Content-Type': 'application/json',
       },
     });
@@ -150,7 +150,7 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify(errorResponse), {
       status: 503,
       headers: {
-        ...corsHeaders,
+        ...getCorsHeaders(req),
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
@@ -186,7 +186,7 @@ serve(async (req: Request): Promise<Response> => {
   return new Response(JSON.stringify(response), {
     status: httpStatus,
     headers: {
-      ...corsHeaders,
+      ...getCorsHeaders(req),
       'Content-Type': 'application/json',
       // Prevent caching of health status — always fresh
       'Cache-Control': 'no-cache, no-store, must-revalidate',
