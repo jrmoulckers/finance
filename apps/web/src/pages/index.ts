@@ -10,6 +10,7 @@ export { BudgetDetailPage } from './BudgetDetailPage';
 export { GoalsPage } from './GoalsPage';
 export { GoalDetailPage } from './GoalDetailPage';
 export { SettingsPage } from './SettingsPage';
+export { ImportPage } from './ImportPage';
 export { LoginPage } from './LoginPage';
 export { NotFoundPage } from './NotFoundPage';
 export { SignupPage } from './SignupPage';
