@@ -71,7 +71,9 @@ class MainActivity : ComponentActivity() {
                 ThemePreference.SYSTEM -> isSystemInDarkTheme()
             }
 
-            FinanceTheme(darkTheme = darkTheme) {
+            val highContrast by themePreferenceManager.highContrastEnabled.collectAsState()
+
+            FinanceTheme(darkTheme = darkTheme, highContrast = highContrast) {
                 FinanceApp()
             }
         }
