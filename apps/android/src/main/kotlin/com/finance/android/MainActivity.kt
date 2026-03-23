@@ -26,6 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +42,8 @@ import androidx.navigation.compose.rememberNavController
 import com.finance.android.auth.AuthState
 import com.finance.android.auth.AuthViewModel
 import com.finance.android.auth.LoginScreen
+import com.finance.android.auth.SignupScreen
+import com.finance.android.auth.SignupViewModel
 import com.finance.android.ui.navigation.FinanceBottomBar
 import com.finance.android.ui.navigation.FinanceNavHost
 import com.finance.android.ui.navigation.FinanceTopBar
@@ -85,10 +90,14 @@ class MainActivity : ComponentActivity() {
  *
  * Observes [AuthViewModel.authState] to gate content:
  * - [AuthState.Loading] → splash / loading indicator
- * - [AuthState.Unauthenticated] or [AuthState.Error] → [LoginScreen]
+ * - [AuthState.Unauthenticated] or [AuthState.Error] → [LoginScreen] or [SignupScreen]
  * - [AuthState.Authenticated] → main [Scaffold] with nav host
  *
- * This ensures the login screen is shown without the app chrome
+ * Auth screens are toggled via a local `showSignup` flag rather than a
+ * full nav graph — the auth surface is small (two screens) and does
+ * not benefit from back-stack management.
+ *
+ * This ensures the login/signup screens are shown without the app chrome
  * (top bar, bottom bar, FAB) while the authenticated experience
  * retains the full navigation shell.
  */
@@ -96,13 +105,26 @@ class MainActivity : ComponentActivity() {
 fun FinanceApp(modifier: Modifier = Modifier) {
     val authViewModel: AuthViewModel = koinViewModel()
     val authState by authViewModel.authState.collectAsState()
+    var showSignup by rememberSaveable { mutableStateOf(false) }
 
     when (authState) {
         is AuthState.Loading -> {
             AuthLoadingScreen(modifier = modifier)
         }
         is AuthState.Unauthenticated, is AuthState.Error -> {
-            LoginScreen(viewModel = authViewModel)
+            if (showSignup) {
+                val signupViewModel: SignupViewModel = koinViewModel()
+                SignupScreen(
+                    viewModel = signupViewModel,
+                    onNavigateToLogin = { showSignup = false },
+                    onSignupSuccess = { showSignup = false },
+                )
+            } else {
+                LoginScreen(
+                    viewModel = authViewModel,
+                    onNavigateToSignup = { showSignup = true },
+                )
+            }
         }
         is AuthState.Authenticated -> {
             AuthenticatedContent(modifier = modifier)

@@ -61,11 +61,13 @@ import androidx.core.util.Consumer
  * - Loading and error states use live regions for announcements.
  * - Focus management ensures logical tab/switch-access order.
  *
- * @param viewModel The [AuthViewModel] managing authentication state.
+ * @param viewModel          The [AuthViewModel] managing authentication state.
+ * @param onNavigateToSignup Callback to navigate to the sign-up screen.
  */
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
+    onNavigateToSignup: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as ComponentActivity
@@ -121,6 +123,7 @@ fun LoginScreen(
                         isError = authState is AuthState.Error,
                         onSignInWithGoogle = { viewModel.signInWithGoogle(context) },
                         onSignInWithPasskey = { viewModel.signInWithPasskey(activity) },
+                        onNavigateToSignup = onNavigateToSignup,
                     )
                 }
             }
@@ -137,6 +140,7 @@ private fun LoginContent(
     isError: Boolean,
     onSignInWithGoogle: () -> Unit,
     onSignInWithPasskey: () -> Unit,
+    onNavigateToSignup: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -237,6 +241,22 @@ private fun LoginContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // ── Sign-up link ────────────────────────────────────────────────
+        TextButton(
+            onClick = onNavigateToSignup,
+            modifier = Modifier.semantics {
+                contentDescription = "Don't have an account? Sign up"
+            },
+        ) {
+            Text(
+                text = "Don't have an account? Sign up",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // ── Terms ───────────────────────────────────────────────────────
         Text(
             text = "By signing in, you agree to our Terms of Service and Privacy Policy.",
@@ -314,6 +334,7 @@ private fun LoginScreenPreviewLight() {
                 isError = false,
                 onSignInWithGoogle = {},
                 onSignInWithPasskey = {},
+                onNavigateToSignup = {},
             )
         }
     }
@@ -333,6 +354,7 @@ private fun LoginScreenPreviewDark() {
                 isError = false,
                 onSignInWithGoogle = {},
                 onSignInWithPasskey = {},
+                onNavigateToSignup = {},
             )
         }
     }
@@ -347,6 +369,7 @@ private fun LoginScreenPreviewError() {
                 isError = true,
                 onSignInWithGoogle = {},
                 onSignInWithPasskey = {},
+                onNavigateToSignup = {},
             )
         }
     }
