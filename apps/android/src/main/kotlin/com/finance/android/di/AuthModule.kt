@@ -4,6 +4,7 @@ package com.finance.android.di
 
 import com.finance.android.BuildConfig
 import com.finance.android.auth.AuthViewModel
+import com.finance.android.auth.SignupViewModel
 import com.finance.android.auth.SupabaseAuthManager
 import com.finance.sync.auth.AuthManager
 import com.finance.sync.auth.TokenManager
@@ -65,6 +66,7 @@ val authModule = module {
         )
     } bind AuthManager::class
 
-    // ── ViewModel ───────────────────────────────────────────────────────
+    // ── ViewModels ──────────────────────────────────────────────────────
     viewModelOf(::AuthViewModel)
+    viewModelOf(::SignupViewModel)
 }
