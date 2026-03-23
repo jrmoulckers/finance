@@ -1,0 +1,396 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Quick Entry FAB and form styles.
+ *
+ * Uses CSS custom properties from the design-tokens package for consistent
+ * theming. Provides FAB styling, slide-up panel (mobile), popover card
+ * (desktop), success toast animation, and motion/contrast adaptations.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Floating Action Button (FAB)
+ * ------------------------------------------------------------------------- */
+
+.quick-entry-fab {
+  position: fixed;
+  bottom: calc(var(--layout-bottom-nav-height, 56px) + var(--spacing-4));
+  right: var(--spacing-4);
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold, 700);
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.15));
+  transition:
+    transform var(--duration-fast, 100ms) ease,
+    box-shadow var(--duration-fast, 100ms) ease,
+    background-color var(--duration-fast, 100ms) ease;
+}
+
+.quick-entry-fab:hover {
+  background: var(--semantic-interactive-hover);
+  box-shadow: var(--shadow-xl, 0 14px 30px rgba(0, 0, 0, 0.2));
+  transform: scale(1.08);
+}
+
+.quick-entry-fab:active {
+  background: var(--semantic-interactive-pressed);
+  transform: scale(0.96);
+}
+
+.quick-entry-fab:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 3px;
+}
+
+.quick-entry-fab__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Form overlay & container
+ * ------------------------------------------------------------------------- */
+
+.quick-entry-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.quick-entry-overlay__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: -1;
+}
+
+/* ---------------------------------------------------------------------------
+ * Form panel
+ * ------------------------------------------------------------------------- */
+
+.quick-entry-panel {
+  position: relative;
+  width: 100%;
+  background: var(--semantic-background-primary);
+  border-top: 1px solid var(--semantic-border-default);
+  padding: var(--spacing-4);
+  padding-bottom: calc(var(--layout-bottom-nav-height, 56px) + var(--spacing-4));
+  animation: quick-entry-slide-up var(--duration-normal, 200ms) var(--easing-out, ease-out);
+}
+
+@keyframes quick-entry-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Panel header (title + close)
+ * ------------------------------------------------------------------------- */
+
+.quick-entry-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-3);
+}
+
+.quick-entry-panel__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.quick-entry-panel__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.quick-entry-panel__close:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.quick-entry-panel__close:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Form fields row
+ * ------------------------------------------------------------------------- */
+
+.quick-entry-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.quick-entry-fields .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Type toggle (Expense / Income)
+ * ------------------------------------------------------------------------- */
+
+.quick-entry-type-toggle {
+  display: inline-flex;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+}
+
+.quick-entry-type-toggle__btn {
+  padding: var(--spacing-1) var(--spacing-3);
+  border: none;
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast, 100ms) ease,
+    color var(--duration-fast, 100ms) ease;
+}
+
+.quick-entry-type-toggle__btn:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: -2px;
+}
+
+.quick-entry-type-toggle__btn--active {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+}
+
+.quick-entry-type-toggle__btn:not(.quick-entry-type-toggle__btn--active):hover {
+  background: var(--semantic-background-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Form actions
+ * ------------------------------------------------------------------------- */
+
+.quick-entry-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-3);
+}
+
+.quick-entry-actions .form-button {
+  flex: 1;
+}
+
+/* ---------------------------------------------------------------------------
+ * Success toast
+ * ------------------------------------------------------------------------- */
+
+.quick-entry-toast {
+  position: fixed;
+  bottom: calc(var(--layout-bottom-nav-height, 56px) + 80px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-4);
+  background: var(--semantic-status-positive, #16a34a);
+  color: var(--color-neutral-50, #ffffff);
+  border-radius: var(--border-radius-md);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1));
+  animation: quick-entry-toast-in var(--duration-normal, 200ms) var(--easing-out, ease-out);
+  pointer-events: none;
+}
+
+.quick-entry-toast__icon {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+@keyframes quick-entry-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Desktop: popover from FAB
+ * ------------------------------------------------------------------------- */
+
+@media (min-width: 769px) {
+  .quick-entry-fab {
+    bottom: var(--spacing-6);
+    right: var(--spacing-6);
+  }
+
+  .quick-entry-overlay {
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: var(--spacing-6);
+    padding-bottom: calc(var(--spacing-6) + 56px + var(--spacing-3));
+  }
+
+  .quick-entry-panel {
+    width: 420px;
+    border: 1px solid var(--semantic-border-default);
+    border-radius: var(--border-radius-lg, var(--border-radius-md));
+    box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.15));
+    padding: var(--spacing-5);
+    padding-bottom: var(--spacing-5);
+    animation: quick-entry-popover-in var(--duration-normal, 200ms) var(--easing-out, ease-out);
+  }
+
+  .quick-entry-fields {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .quick-entry-fields .form-group {
+    flex: 1 1 45%;
+    min-width: 0;
+  }
+
+  .quick-entry-fields .form-group--full {
+    flex: 1 1 100%;
+  }
+
+  .quick-entry-toast {
+    bottom: calc(var(--spacing-6) + 56px + var(--spacing-3) + 340px);
+    right: var(--spacing-6);
+    left: auto;
+    transform: none;
+  }
+
+  @keyframes quick-entry-popover-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes quick-entry-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .quick-entry-overlay__backdrop {
+    background: rgba(0, 0, 0, 0.7);
+  }
+}
+
+[data-theme='dark'] .quick-entry-overlay__backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-entry-fab {
+    transition: none;
+  }
+
+  .quick-entry-fab:hover {
+    transform: none;
+  }
+
+  .quick-entry-fab:active {
+    transform: none;
+  }
+
+  .quick-entry-panel {
+    animation: none;
+  }
+
+  .quick-entry-toast {
+    animation: none;
+  }
+
+  .quick-entry-type-toggle__btn,
+  .quick-entry-panel__close {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .quick-entry-fab {
+    border: 2px solid var(--semantic-border-focus);
+  }
+
+  .quick-entry-panel {
+    border-width: 2px;
+  }
+
+  .quick-entry-type-toggle {
+    border-width: 2px;
+  }
+
+  .quick-entry-type-toggle__btn--active {
+    font-weight: var(--font-weight-bold, 700);
+  }
+}

@@ -13,4 +13,5 @@ export { SettingsPage } from './SettingsPage';
 export { ImportPage } from './ImportPage';
 export { LoginPage } from './LoginPage';
 export { NotFoundPage } from './NotFoundPage';
+export { OnboardingPage } from './OnboardingPage';
 export { SignupPage } from './SignupPage';

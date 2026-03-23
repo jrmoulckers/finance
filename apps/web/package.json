@@ -15,7 +15,9 @@
     "test:e2e:ui": "playwright test --ui",
     "clean": "rimraf dist",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "analyze": "set ANALYZE=true && vite build",
+    "build:report": "vite build"
   },
   "dependencies": {
     "d3": "^7.9.0",
@@ -43,6 +45,7 @@
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.0.1",
     "nanoid": "^5.1.7",
+    "rollup-plugin-visualizer": "^7.0.1",
     "source-map-js": "^1.2.1",
     "storybook": "^10.2.19",
     "typescript": "^6.0.2",

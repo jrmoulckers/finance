@@ -19,3 +19,5 @@ export { useTransactions } from './useTransactions';
 export type { TransactionFilters } from './useTransactions';
 export { useImport } from './useImport';
 export type { ImportStep, UseImportResult, ImportProgress, ImportSummary } from './useImport';
+export { useOnboarding } from './useOnboarding';
+export type { UseOnboardingResult } from './useOnboarding';

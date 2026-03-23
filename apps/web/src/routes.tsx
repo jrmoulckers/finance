@@ -23,6 +23,7 @@ const Import = lazy(() => import('./pages/ImportPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
+const Onboarding = lazy(() => import('./pages/OnboardingPage'));
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
 
 /**
@@ -60,6 +61,10 @@ const RootRedirect: FC = () => {
     return <PageLoader />;
   }
 
+  if (isAuthenticated && localStorage.getItem('finance-onboarding-complete') !== 'true') {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
 };
 
@@ -88,6 +93,16 @@ export const AppRoutes: FC = () => (
         <Suspense fallback={<PageLoader />}>
           <Signup />
         </Suspense>
+      }
+    />
+    <Route
+      path="/onboarding"
+      element={
+        <AuthenticatedRoute>
+          <Suspense fallback={<PageLoader />}>
+            <Onboarding />
+          </Suspense>
+        </AuthenticatedRoute>
       }
     />
     <Route

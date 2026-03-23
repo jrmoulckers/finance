@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
-import { KeyboardShortcutsModal, UpdateBanner } from '../common';
+import { KeyboardShortcutsModal, QuickEntryFab, QuickEntryForm, UpdateBanner } from '../common';
 import { OfflineBanner } from '../OfflineBanner';
-import { useKeyboardShortcuts } from '../../hooks';
+import { useKeyboardShortcuts, useTransactions } from '../../hooks';
+import type { CreateTransactionInput } from '../../db/repositories/transactions';
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
 import { InstallBanner } from '../common/InstallBanner';
@@ -22,7 +23,35 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   pageTitle,
   children,
 }) => {
+  const [quickEntryOpen, setQuickEntryOpen] = useState(false);
+  const { createTransaction } = useTransactions();
   const { showHelp, setShowHelp } = useKeyboardShortcuts();
+
+  // Global "N" keyboard shortcut to open quick entry
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ignore when modifier keys are held or focus is in an input/textarea
+      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      const tag = (event.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if ((event.target as HTMLElement).isContentEditable) return;
+
+      if (event.key === 'n' || event.key === 'N') {
+        event.preventDefault();
+        setQuickEntryOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleQuickEntrySubmit = useCallback(
+    (data: CreateTransactionInput) => {
+      createTransaction(data);
+    },
+    [createTransaction],
+  );
 
   const openKeyboardShortcuts = useCallback(() => {
     setShowHelp(true);
@@ -81,6 +110,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </main>
         <BottomNavigation activePath={activePath} onNavigate={onNavigate} />
       </div>
+      <QuickEntryFab onOpen={() => setQuickEntryOpen(true)} />
+      <QuickEntryForm
+        isOpen={quickEntryOpen}
+        onClose={() => setQuickEntryOpen(false)}
+        onSubmit={handleQuickEntrySubmit}
+      />
       <InstallBanner />
       <KeyboardShortcutsModal isOpen={showHelp} onClose={closeKeyboardShortcuts} />
     </div>
