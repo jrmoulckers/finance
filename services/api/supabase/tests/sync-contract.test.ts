@@ -97,18 +97,6 @@ function extractTableName(query: string): string | null {
   return match ? match[1] : null;
 }
 
-/**
- * Extract all column names from the SELECT clause of a query.
- * Returns null if SELECT * is used (meaning all columns).
- */
-function extractSelectColumns(query: string): string[] | null {
-  const match = query.match(/\bSELECT\s+(.+?)\s+FROM\b/i);
-  if (!match) return null;
-  const selectClause = match[1].trim();
-  if (selectClause === '*') return null; // SELECT * — all columns
-  return selectClause.split(',').map((c) => c.trim());
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -133,7 +121,7 @@ Deno.test('sync-rules.yaml references only existing tables', async () => {
 
   // Extract all tables referenced in sync-rules data queries
   const referencedTables: string[] = [];
-  for (const [_bucketName, bucket] of Object.entries(rules.bucket_definitions)) {
+  for (const bucket of Object.values(rules.bucket_definitions)) {
     for (const query of [...bucket.parameters, ...bucket.data]) {
       const table = extractTableName(query);
       if (table) referencedTables.push(table);
@@ -241,7 +229,7 @@ Deno.test('all synced tables have RLS enabled in migrations', async () => {
 
   // Collect all tables referenced in sync-rules
   const syncedTables = new Set<string>();
-  for (const [_bucketName, bucket] of Object.entries(rules.bucket_definitions)) {
+  for (const bucket of Object.values(rules.bucket_definitions)) {
     for (const query of [...bucket.parameters, ...bucket.data]) {
       const table = extractTableName(query);
       if (table) syncedTables.add(table.toLowerCase());
