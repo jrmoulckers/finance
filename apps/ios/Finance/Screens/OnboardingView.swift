@@ -77,6 +77,7 @@ struct OnboardingView: View {
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityIdentifier("onboarding_skip")
                     .accessibilityLabel(String(localized: "Skip onboarding"))
                     .accessibilityHint(String(localized: "Skips the introduction and enters the app"))
                 }
@@ -108,6 +109,7 @@ struct OnboardingView: View {
                             .frame(maxWidth: .infinity, minHeight: FinanceSpacing.minTapTarget)
                     }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("onboarding_get_started")
                     .accessibilityLabel(String(localized: "Get Started"))
                     .accessibilityHint(String(localized: "Completes onboarding and enters the app"))
                 } else {
@@ -121,6 +123,7 @@ struct OnboardingView: View {
                             .frame(maxWidth: .infinity, minHeight: FinanceSpacing.minTapTarget)
                     }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("onboarding_continue")
                     .accessibilityLabel(String(localized: "Continue"))
                     .accessibilityHint(String(localized: "Advances to the next onboarding page"))
                 }
@@ -129,6 +132,7 @@ struct OnboardingView: View {
             .padding(.bottom, FinanceSpacing.xxl)
         }
         .background(FinanceColors.backgroundPrimary.ignoresSafeArea())
+        .accessibilityIdentifier("onboarding_view")
         .accessibilityLabel(String(localized: "Onboarding"))
     }
 

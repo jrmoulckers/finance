@@ -66,6 +66,7 @@ struct GoalCreateView: View {
     private var nameSection: some View {
         Section {
             TextField(String(localized: "Goal name"), text: $viewModel.name)
+                .accessibilityIdentifier("goal_name_field")
                 .accessibilityLabel(String(localized: "Goal name"))
                 .accessibilityHint(String(localized: "Enter a name for your financial goal"))
         } header: {
@@ -84,6 +85,7 @@ struct GoalCreateView: View {
                 TextField(String(localized: "0.00"), text: $viewModel.targetAmountText)
                     .font(.title2)
                     .keyboardType(.decimalPad)
+                    .accessibilityIdentifier("goal_target_amount_field")
                     .accessibilityLabel(String(localized: "Target amount"))
                     .accessibilityHint(String(localized: "Enter the target amount in dollars"))
             }

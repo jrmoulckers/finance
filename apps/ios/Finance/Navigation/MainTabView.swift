@@ -54,6 +54,7 @@ struct MainTabView: View {
                     Label(Tab.dashboard.title, systemImage: Tab.dashboard.systemImage)
                 }
                 .tag(Tab.dashboard)
+                .accessibilityIdentifier("tab_dashboard")
                 .accessibilityLabel(Tab.dashboard.title)
                 .accessibilityHint(String(localized: "Shows your financial overview"))
 
@@ -62,6 +63,7 @@ struct MainTabView: View {
                     Label(Tab.accounts.title, systemImage: Tab.accounts.systemImage)
                 }
                 .tag(Tab.accounts)
+                .accessibilityIdentifier("tab_accounts")
                 .accessibilityLabel(Tab.accounts.title)
                 .accessibilityHint(String(localized: "Shows your accounts grouped by type"))
 
@@ -70,6 +72,7 @@ struct MainTabView: View {
                     Label(Tab.transactions.title, systemImage: Tab.transactions.systemImage)
                 }
                 .tag(Tab.transactions)
+                .accessibilityIdentifier("tab_transactions")
                 .accessibilityLabel(Tab.transactions.title)
                 .accessibilityHint(String(localized: "Shows all your transactions"))
 
@@ -78,6 +81,7 @@ struct MainTabView: View {
                     Label(Tab.budgets.title, systemImage: Tab.budgets.systemImage)
                 }
                 .tag(Tab.budgets)
+                .accessibilityIdentifier("tab_budgets")
                 .accessibilityLabel(Tab.budgets.title)
                 .accessibilityHint(String(localized: "Shows your budget categories and spending"))
 
@@ -86,6 +90,7 @@ struct MainTabView: View {
                     Label(Tab.goals.title, systemImage: Tab.goals.systemImage)
                 }
                 .tag(Tab.goals)
+                .accessibilityIdentifier("tab_goals")
                 .accessibilityLabel(Tab.goals.title)
                 .accessibilityHint(String(localized: "Shows your financial goals and progress"))
         }

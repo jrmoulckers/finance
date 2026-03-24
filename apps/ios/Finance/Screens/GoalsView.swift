@@ -47,6 +47,7 @@ struct GoalsView: View {
                     Button { viewModel.showingCreateGoal = true } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityIdentifier("create_goal_button")
                     .accessibilityLabel(String(localized: "Create goal"))
                     .accessibilityHint(String(localized: "Opens a form to create a new financial goal"))
                 }
