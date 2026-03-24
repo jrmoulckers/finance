@@ -35,10 +35,7 @@ import {
   createWebhookEvent,
   VALID_EVENT_TYPES,
 } from '../_shared/webhook.ts';
-import type {
-  WebhookEndpoint,
-  WebhookDeliveryResult,
-} from '../_shared/webhook.ts';
+import type { WebhookEndpoint, WebhookDeliveryResult } from '../_shared/webhook.ts';
 
 // ===========================================================================
 // Inline handler logic for isolated testing (same pattern as household-invite)
@@ -256,8 +253,13 @@ async function handleManageWebhooks(
 
       case 'PUT': {
         const body = await req.json();
-        const { id: endpointId, url: newUrl, events: newEvents, description: newDesc, is_active } =
-          body;
+        const {
+          id: endpointId,
+          url: newUrl,
+          events: newEvents,
+          description: newDesc,
+          is_active,
+        } = body;
 
         if (!endpointId) {
           return errRes('id is required');
@@ -366,15 +368,18 @@ const TEST_ENDPOINT = {
 // HMAC Signing Tests (4 tests)
 // ===========================================================================
 
-Deno.test('webhook: signWebhookPayload produces consistent signatures for same payload+secret', async () => {
-  const payload = '{"type":"transaction.created","entity_id":"abc"}';
-  const secret = 'test-secret-key-1234567890';
+Deno.test(
+  'webhook: signWebhookPayload produces consistent signatures for same payload+secret',
+  async () => {
+    const payload = '{"type":"transaction.created","entity_id":"abc"}';
+    const secret = 'test-secret-key-1234567890';
 
-  const sig1 = await signWebhookPayload(payload, secret);
-  const sig2 = await signWebhookPayload(payload, secret);
+    const sig1 = await signWebhookPayload(payload, secret);
+    const sig2 = await signWebhookPayload(payload, secret);
 
-  assertEquals(sig1, sig2, 'Same payload+secret should produce identical signatures');
-});
+    assertEquals(sig1, sig2, 'Same payload+secret should produce identical signatures');
+  },
+);
 
 Deno.test('webhook: different secrets produce different signatures', async () => {
   const payload = '{"type":"transaction.created","entity_id":"abc"}';
@@ -420,30 +425,36 @@ Deno.test('webhook: empty payload is handled correctly', async () => {
 // Note: Actual HTTP fetch tests would require network access. These tests
 // validate the module's interface and structure using the mock handler.
 
-Deno.test('webhook: deliverWebhook interface — successful delivery returns success: true', async () => {
-  const result: WebhookDeliveryResult = {
-    success: true,
-    status_code: 200,
-    duration_ms: 120,
-  };
+Deno.test(
+  'webhook: deliverWebhook interface — successful delivery returns success: true',
+  async () => {
+    const result: WebhookDeliveryResult = {
+      success: true,
+      status_code: 200,
+      duration_ms: 120,
+    };
 
-  assertEquals(result.success, true);
-  assertEquals(result.status_code, 200);
-  assertExists(result.duration_ms);
-});
+    assertEquals(result.success, true);
+    assertEquals(result.status_code, 200);
+    assertExists(result.duration_ms);
+  },
+);
 
-Deno.test('webhook: deliverWebhook interface — failed delivery (non-2xx) returns success: false', () => {
-  const result: WebhookDeliveryResult = {
-    success: false,
-    status_code: 500,
-    error: 'HTTP 500',
-    duration_ms: 200,
-  };
+Deno.test(
+  'webhook: deliverWebhook interface — failed delivery (non-2xx) returns success: false',
+  () => {
+    const result: WebhookDeliveryResult = {
+      success: false,
+      status_code: 500,
+      error: 'HTTP 500',
+      duration_ms: 200,
+    };
 
-  assertEquals(result.success, false);
-  assertEquals(result.status_code, 500);
-  assertExists(result.error);
-});
+    assertEquals(result.success, false);
+    assertEquals(result.status_code, 500);
+    assertExists(result.error);
+  },
+);
 
 Deno.test('webhook: deliverWebhook interface — timeout returns error with duration', () => {
   const result: WebhookDeliveryResult = {
@@ -460,12 +471,9 @@ Deno.test('webhook: deliverWebhook interface — timeout returns error with dura
 
 Deno.test('webhook: delivery headers structure is correct', async () => {
   // Verify the expected headers structure
-  const event = createWebhookEvent(
-    'transaction.created',
-    TEST_HOUSEHOLD.id,
-    'entity-123',
-    { amount_changed: true },
-  );
+  const event = createWebhookEvent('transaction.created', TEST_HOUSEHOLD.id, 'entity-123', {
+    amount_changed: true,
+  });
 
   const endpoint: WebhookEndpoint = {
     id: TEST_ENDPOINT.id,
@@ -552,12 +560,9 @@ Deno.test('webhook: shouldRetry returns false when at or beyond max attempts', (
 // ===========================================================================
 
 Deno.test('webhook: createWebhookEvent includes all required fields', () => {
-  const event = createWebhookEvent(
-    'transaction.created',
-    TEST_HOUSEHOLD.id,
-    'entity-uuid-123',
-    { account_id: 'acc-123' },
-  );
+  const event = createWebhookEvent('transaction.created', TEST_HOUSEHOLD.id, 'entity-uuid-123', {
+    account_id: 'acc-123',
+  });
 
   assertEquals(event.type, 'transaction.created');
   assertEquals(event.household_id, TEST_HOUSEHOLD.id);

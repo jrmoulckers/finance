@@ -192,8 +192,7 @@ export async function deliverWebhook(
       const durationMs = Math.round(performance.now() - startTime);
 
       // Distinguish timeout from network error
-      const isTimeout =
-        fetchError instanceof DOMException && fetchError.name === 'AbortError';
+      const isTimeout = fetchError instanceof DOMException && fetchError.name === 'AbortError';
       const errorMessage = isTimeout
         ? `Timeout after ${DELIVERY_TIMEOUT_MS}ms`
         : `Network error: ${(fetchError as Error).message}`;

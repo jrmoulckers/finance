@@ -37,11 +37,7 @@ import {
   methodNotAllowedResponse,
   noContentResponse,
 } from '../_shared/response.ts';
-import {
-  createWebhookEvent,
-  deliverWebhook,
-  VALID_EVENT_TYPES,
-} from '../_shared/webhook.ts';
+import { createWebhookEvent, deliverWebhook, VALID_EVENT_TYPES } from '../_shared/webhook.ts';
 import type { WebhookEndpoint } from '../_shared/webhook.ts';
 
 serve(async (req: Request): Promise<Response> => {
@@ -79,11 +75,7 @@ serve(async (req: Request): Promise<Response> => {
     // -----------------------------------------------------------------------
     // Rate limiting (user-based, 30 req/min)
     // -----------------------------------------------------------------------
-    const rateLimitResult = await checkRateLimit(
-      supabase,
-      user.id,
-      RATE_LIMITS['manage-webhooks'],
-    );
+    const rateLimitResult = await checkRateLimit(supabase, user.id, RATE_LIMITS['manage-webhooks']);
     if (!rateLimitResult.allowed) {
       logger.warn('Rate limit exceeded', { httpStatus: 429 });
       return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['manage-webhooks']);
@@ -137,12 +129,9 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       // Send a test event
-      const testEvent = createWebhookEvent(
-        'test',
-        endpoint.household_id,
-        endpoint.id,
-        { message: 'Webhook test delivery' },
-      );
+      const testEvent = createWebhookEvent('test', endpoint.household_id, endpoint.id, {
+        message: 'Webhook test delivery',
+      });
 
       const deliveryEndpoint: WebhookEndpoint = {
         id: endpoint.id,
@@ -205,10 +194,7 @@ serve(async (req: Request): Promise<Response> => {
           (e: unknown) => typeof e !== 'string' || !VALID_EVENT_TYPES.has(e),
         );
         if (invalidEvents.length > 0) {
-          return errorResponse(
-            req,
-            `Invalid event types: ${invalidEvents.join(', ')}`,
-          );
+          return errorResponse(req, `Invalid event types: ${invalidEvents.join(', ')}`);
         }
 
         // Verify user is owner/admin of the household
@@ -313,7 +299,13 @@ serve(async (req: Request): Promise<Response> => {
         // UPDATE WEBHOOK ENDPOINT
         // ===================================================================
         const body = await req.json();
-        const { id: endpointId, url: newUrl, events: newEvents, description: newDesc, is_active } = body;
+        const {
+          id: endpointId,
+          url: newUrl,
+          events: newEvents,
+          description: newDesc,
+          is_active,
+        } = body;
 
         if (!endpointId) {
           return errorResponse(req, 'id is required');
@@ -366,10 +358,7 @@ serve(async (req: Request): Promise<Response> => {
             (e: unknown) => typeof e !== 'string' || !VALID_EVENT_TYPES.has(e),
           );
           if (invalidEvents.length > 0) {
-            return errorResponse(
-              req,
-              `Invalid event types: ${invalidEvents.join(', ')}`,
-            );
+            return errorResponse(req, `Invalid event types: ${invalidEvents.join(', ')}`);
           }
           updates.events = newEvents;
         }
