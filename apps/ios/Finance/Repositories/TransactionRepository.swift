@@ -18,6 +18,9 @@ protocol TransactionRepository: Sendable {
     /// Returns all transactions, most recent first.
     func getTransactions() async throws -> [TransactionItem]
 
+    /// Returns a page of transactions using offset-based pagination.
+    func getTransactions(offset: Int, limit: Int) async throws -> [TransactionItem]
+
     /// Returns transactions belonging to the given account.
     func getTransactions(forAccountId accountId: String) async throws -> [TransactionItem]
 

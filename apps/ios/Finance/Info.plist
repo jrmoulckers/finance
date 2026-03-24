@@ -18,7 +18,7 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>1.0.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
 
@@ -27,6 +27,8 @@
     <true/>
     <key>UILaunchScreen</key>
     <dict/>
+    <key>UILaunchStoryboardName</key>
+    <string></string>
 
     <!-- Supported interface orientations -->
     <key>UISupportedInterfaceOrientations</key>
@@ -43,6 +45,14 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
 
+    <!-- Multitasking support (iPad) -->
+    <key>UIRequiresFullScreen</key>
+    <false/>
+
+    <!-- Indirect input events (pointer, keyboard) -->
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+
     <!-- Scene configuration (multi-window) -->
     <key>UIApplicationSceneManifest</key>
     <dict>
@@ -53,6 +63,14 @@
     <!-- Privacy usage descriptions -->
     <key>NSFaceIDUsageDescription</key>
     <string>Finance uses Face ID to protect your financial data.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Finance uses the camera to capture receipt photos.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Finance uses your photo library to attach receipt images to transactions.</string>
+
+    <!-- Export compliance -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 
     <!-- Background task identifiers -->
     <key>BGTaskSchedulerPermittedIdentifiers</key>

@@ -14,7 +14,9 @@
     "supabase:migrate": "supabase migration up",
     "supabase:status": "supabase status",
     "supabase:functions": "supabase functions serve",
-    "setup": "bash scripts/setup-local.sh"
+    "setup": "bash scripts/setup-local.sh",
+    "test:sync-contract": "deno test --allow-read supabase/tests/sync-contract.test.ts",
+    "test:sync-integration": "psql postgresql://postgres:postgres@localhost:54322/postgres -f supabase/tests/sync-integration.test.sql"
   },
   "devDependencies": {
     "@redocly/cli": "^2.24.1",

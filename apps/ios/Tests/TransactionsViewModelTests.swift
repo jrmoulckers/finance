@@ -251,4 +251,51 @@ final class TransactionsViewModelTests: XCTestCase {
         XCTAssertNil(vm.pendingDeleteId,
                      "Pending delete ID should be nil after deletion completes")
     }
+
+
+    // MARK: - Pagination (#645)
+
+    @MainActor
+    func testLoadMoreAppendsTransactions() async {
+        let repo = StubTransactionRepository()
+        var txns: [TransactionItem] = []; for i in 0..<60 { txns.append(TransactionItem(id: "t\(i)", payee: "P\(i)", category: "S", accountName: "C", amountMinorUnits: -Int64(i * 100), currencyCode: "USD", date: Date(timeIntervalSince1970: Double(1_700_000_000 - i * 1000)), type: .expense, status: .cleared)) }
+        repo.transactionsToReturn = txns; let vm = TransactionsViewModel(repository: repo)
+        await vm.loadTransactions()
+        XCTAssertEqual(vm.transactions.count, TransactionsViewModel.pageSize)
+        XCTAssertTrue(vm.hasMorePages)
+        await vm.loadMore()
+        XCTAssertEqual(vm.transactions.count, txns.count)
+        XCTAssertFalse(vm.hasMorePages)
+    }
+
+    @MainActor
+    func testRefreshResetsPagination() async {
+        let repo = StubTransactionRepository()
+        var txns: [TransactionItem] = []; for i in 0..<60 { txns.append(TransactionItem(id: "t\(i)", payee: "P\(i)", category: "S", accountName: "C", amountMinorUnits: -Int64(i * 100), currencyCode: "USD", date: Date(timeIntervalSince1970: Double(1_700_000_000 - i * 1000)), type: .expense, status: .cleared)) }
+        repo.transactionsToReturn = txns; let vm = TransactionsViewModel(repository: repo)
+        await vm.loadTransactions(); await vm.loadMore()
+        XCTAssertEqual(vm.transactions.count, 60)
+        await vm.refresh()
+        XCTAssertEqual(vm.transactions.count, TransactionsViewModel.pageSize)
+    }
+
+    @MainActor
+    func testShouldLoadMoreNearEnd() async {
+        let repo = StubTransactionRepository()
+        var txns: [TransactionItem] = []; for i in 0..<20 { txns.append(TransactionItem(id: "t\(i)", payee: "P\(i)", category: "S", accountName: "C", amountMinorUnits: -Int64(i * 100), currencyCode: "USD", date: Date(timeIntervalSince1970: Double(1_700_000_000 - i * 1000)), type: .expense, status: .cleared)) }
+        repo.transactionsToReturn = txns; let vm = TransactionsViewModel(repository: repo)
+        await vm.loadTransactions()
+        XCTAssertFalse(vm.shouldLoadMore(for: vm.transactions[0]))
+        XCTAssertTrue(vm.shouldLoadMore(for: vm.transactions[vm.transactions.count - 1]))
+    }
+
+    @MainActor
+    func testHasMorePagesFalseWhenPartialPage() async {
+        let repo = StubTransactionRepository()
+        repo.transactionsToReturn = [SampleData.expenseTransaction, SampleData.incomeTransaction]
+        let vm = TransactionsViewModel(repository: repo)
+        await vm.loadTransactions()
+        XCTAssertFalse(vm.hasMorePages)
+        XCTAssertEqual(vm.currentPage, 2)
+    }
 }

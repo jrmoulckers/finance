@@ -1,6 +1,5 @@
-// SPDX-License-Identifier: BUSL-1.1
-
 // swift-tools-version: 5.10
+// SPDX-License-Identifier: BUSL-1.1
 // Package.swift
 //
 // Swift Package Manager manifest for the Finance iOS, watchOS, and App Clip targets.

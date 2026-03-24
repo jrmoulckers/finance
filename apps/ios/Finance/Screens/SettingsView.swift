@@ -120,6 +120,7 @@ struct SettingsView: View {
                     Text("\(code) — \(name)").tag(code)
                 }
             }
+            .accessibilityIdentifier("currency_picker")
             .accessibilityLabel(String(localized: "Default currency"))
             .accessibilityHint(String(localized: "Select your preferred currency for displaying amounts"))
         }
@@ -167,6 +168,7 @@ struct SettingsView: View {
                 )
             }
             .disabled(!biometricManager.isAvailable)
+            .accessibilityIdentifier("biometric_toggle")
             .accessibilityLabel(biometricManager.biometricType.displayName)
             .accessibilityHint(
                 biometricManager.isAvailable
