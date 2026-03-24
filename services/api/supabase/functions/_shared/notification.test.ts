@@ -21,8 +21,6 @@ import {
   renderEmailTemplate,
   sendEmail,
   type NotificationType,
-  type NotificationChannel,
-  type NotificationPayload,
   type EmailTemplate,
   type NotificationClient,
 } from './notification.ts';
@@ -121,7 +119,7 @@ function createThrowingClient(): NotificationClient {
 // checkNotificationPreference tests
 // ---------------------------------------------------------------------------
 
-Deno.test('checkNotificationPreference — returns true when no preferences row exists', async () => {
+Deno.test('checkNotificationPreference ΓÇö returns true when no preferences row exists', async () => {
   const client = createMockNotificationClient({
     preferencesResult: { data: null, error: { message: 'PGRST116' } },
   });
@@ -131,7 +129,7 @@ Deno.test('checkNotificationPreference — returns true when no preferences row 
   assertEquals(result, true);
 });
 
-Deno.test('checkNotificationPreference — returns false when invite_notifications is disabled', async () => {
+Deno.test('checkNotificationPreference ΓÇö returns false when invite_notifications is disabled', async () => {
   const client = createMockNotificationClient({
     preferencesResult: {
       data: {
@@ -150,7 +148,7 @@ Deno.test('checkNotificationPreference — returns false when invite_notificatio
   assertEquals(result, false);
 });
 
-Deno.test('checkNotificationPreference — returns true when invite_notifications is enabled', async () => {
+Deno.test('checkNotificationPreference ΓÇö returns true when invite_notifications is enabled', async () => {
   const client = createMockNotificationClient({
     preferencesResult: {
       data: {
@@ -169,7 +167,7 @@ Deno.test('checkNotificationPreference — returns true when invite_notification
   assertEquals(result, true);
 });
 
-Deno.test('checkNotificationPreference — returns false when email_enabled is false (global kill-switch)', async () => {
+Deno.test('checkNotificationPreference ΓÇö returns false when email_enabled is false (global kill-switch)', async () => {
   const client = createMockNotificationClient({
     preferencesResult: {
       data: {
@@ -188,7 +186,7 @@ Deno.test('checkNotificationPreference — returns false when email_enabled is f
   assertEquals(result, false);
 });
 
-Deno.test('checkNotificationPreference — returns false when export_notifications is disabled', async () => {
+Deno.test('checkNotificationPreference ΓÇö returns false when export_notifications is disabled', async () => {
   const client = createMockNotificationClient({
     preferencesResult: {
       data: {
@@ -207,7 +205,7 @@ Deno.test('checkNotificationPreference — returns false when export_notificatio
   assertEquals(result, false);
 });
 
-Deno.test('checkNotificationPreference — returns false when deletion_notifications is disabled', async () => {
+Deno.test('checkNotificationPreference ΓÇö returns false when deletion_notifications is disabled', async () => {
   const client = createMockNotificationClient({
     preferencesResult: {
       data: {
@@ -226,7 +224,7 @@ Deno.test('checkNotificationPreference — returns false when deletion_notificat
   assertEquals(result, false);
 });
 
-Deno.test('checkNotificationPreference — returns false when security_notifications is disabled', async () => {
+Deno.test('checkNotificationPreference ΓÇö returns false when security_notifications is disabled', async () => {
   const client = createMockNotificationClient({
     preferencesResult: {
       data: {
@@ -245,7 +243,7 @@ Deno.test('checkNotificationPreference — returns false when security_notificat
   assertEquals(result, false);
 });
 
-Deno.test('checkNotificationPreference — invite_accepted maps to invite_notifications column', async () => {
+Deno.test('checkNotificationPreference ΓÇö invite_accepted maps to invite_notifications column', async () => {
   const client = createMockNotificationClient({
     preferencesResult: {
       data: {
@@ -264,7 +262,7 @@ Deno.test('checkNotificationPreference — invite_accepted maps to invite_notifi
   assertEquals(result, false);
 });
 
-Deno.test('checkNotificationPreference — deletion_completed maps to deletion_notifications column', async () => {
+Deno.test('checkNotificationPreference ΓÇö deletion_completed maps to deletion_notifications column', async () => {
   const client = createMockNotificationClient({
     preferencesResult: {
       data: {
@@ -283,7 +281,7 @@ Deno.test('checkNotificationPreference — deletion_completed maps to deletion_n
   assertEquals(result, false);
 });
 
-Deno.test('checkNotificationPreference — fails open when database throws', async () => {
+Deno.test('checkNotificationPreference ΓÇö fails open when database throws', async () => {
   const client = createThrowingClient();
 
   const result = await checkNotificationPreference(client, 'user-123', 'security_alert');
@@ -295,7 +293,7 @@ Deno.test('checkNotificationPreference — fails open when database throws', asy
 // createNotification tests
 // ---------------------------------------------------------------------------
 
-Deno.test('createNotification — inserts into notification_log and returns id', async () => {
+Deno.test('createNotification ΓÇö inserts into notification_log and returns id', async () => {
   const client = createMockNotificationClient({
     preferencesResult: { data: null, error: { message: 'No rows' } },
     insertResult: { data: { id: 'notif-abc-123' }, error: null },
@@ -312,7 +310,7 @@ Deno.test('createNotification — inserts into notification_log and returns id',
   assertEquals(result!.id, 'notif-abc-123');
 });
 
-Deno.test('createNotification — returns null when preference is disabled (skipped)', async () => {
+Deno.test('createNotification ΓÇö returns null when preference is disabled (skipped)', async () => {
   const client = createMockNotificationClient({
     preferencesResult: {
       data: {
@@ -337,7 +335,7 @@ Deno.test('createNotification — returns null when preference is disabled (skip
   assertEquals(result, null);
 });
 
-Deno.test('createNotification — returns null when database insert fails', async () => {
+Deno.test('createNotification ΓÇö returns null when database insert fails', async () => {
   const client = createMockNotificationClient({
     preferencesResult: { data: null, error: { message: 'No rows' } },
     insertResult: { data: null, error: { message: 'Insert failed' } },
@@ -353,7 +351,7 @@ Deno.test('createNotification — returns null when database insert fails', asyn
   assertEquals(result, null);
 });
 
-Deno.test('createNotification — handles database exception gracefully', async () => {
+Deno.test('createNotification ΓÇö handles database exception gracefully', async () => {
   const client = createThrowingClient();
 
   const result = await createNotification(client, {
@@ -366,7 +364,7 @@ Deno.test('createNotification — handles database exception gracefully', async 
   assertEquals(result, null);
 });
 
-Deno.test('createNotification — defaults channel to email', async () => {
+Deno.test('createNotification ΓÇö defaults channel to email', async () => {
   let capturedInsertArgs: unknown = null;
 
   const client: NotificationClient = {
@@ -412,7 +410,7 @@ Deno.test('createNotification — defaults channel to email', async () => {
   assertEquals((capturedInsertArgs as Record<string, unknown>).channel, 'email');
 });
 
-Deno.test('createNotification — passes metadata through to insert', async () => {
+Deno.test('createNotification ΓÇö passes metadata through to insert', async () => {
   let capturedInsertArgs: unknown = null;
 
   const client: NotificationClient = {
@@ -468,43 +466,43 @@ Deno.test('createNotification — passes metadata through to insert', async () =
 // renderEmailTemplate tests
 // ---------------------------------------------------------------------------
 
-Deno.test('renderEmailTemplate — invite_received produces correct subject', () => {
+Deno.test('renderEmailTemplate ΓÇö invite_received produces correct subject', () => {
   const template = renderEmailTemplate('invite_received');
 
   assertEquals(template.subject, 'You have been invited to a household');
 });
 
-Deno.test('renderEmailTemplate — invite_accepted produces correct subject', () => {
+Deno.test('renderEmailTemplate ΓÇö invite_accepted produces correct subject', () => {
   const template = renderEmailTemplate('invite_accepted');
 
   assertEquals(template.subject, 'Household invitation accepted');
 });
 
-Deno.test('renderEmailTemplate — export_ready produces correct subject', () => {
+Deno.test('renderEmailTemplate ΓÇö export_ready produces correct subject', () => {
   const template = renderEmailTemplate('export_ready');
 
   assertEquals(template.subject, 'Your data export is ready');
 });
 
-Deno.test('renderEmailTemplate — deletion_scheduled produces correct subject', () => {
+Deno.test('renderEmailTemplate ΓÇö deletion_scheduled produces correct subject', () => {
   const template = renderEmailTemplate('deletion_scheduled');
 
   assertEquals(template.subject, 'Account deletion scheduled');
 });
 
-Deno.test('renderEmailTemplate — deletion_completed produces correct subject', () => {
+Deno.test('renderEmailTemplate ΓÇö deletion_completed produces correct subject', () => {
   const template = renderEmailTemplate('deletion_completed');
 
   assertEquals(template.subject, 'Account deletion completed');
 });
 
-Deno.test('renderEmailTemplate — security_alert produces correct subject', () => {
+Deno.test('renderEmailTemplate ΓÇö security_alert produces correct subject', () => {
   const template = renderEmailTemplate('security_alert');
 
   assertEquals(template.subject, 'Security alert for your account');
 });
 
-Deno.test('renderEmailTemplate — includes data placeholders in body', () => {
+Deno.test('renderEmailTemplate ΓÇö includes data placeholders in body', () => {
   // The default template doesn't have placeholders, but if custom data
   // is passed with matching {{key}} patterns in a future template update,
   // they would be substituted. For now, verify no substitution error occurs
@@ -516,14 +514,14 @@ Deno.test('renderEmailTemplate — includes data placeholders in body', () => {
   assertEquals(template.textBody.length > 0, true);
 });
 
-Deno.test('renderEmailTemplate — produces non-empty htmlBody', () => {
+Deno.test('renderEmailTemplate ΓÇö produces non-empty htmlBody', () => {
   const template = renderEmailTemplate('export_ready');
 
   assertStringIncludes(template.htmlBody, '<!DOCTYPE html>');
   assertStringIncludes(template.htmlBody, 'Your data export is ready');
 });
 
-Deno.test('renderEmailTemplate — produces non-empty textBody', () => {
+Deno.test('renderEmailTemplate ΓÇö produces non-empty textBody', () => {
   const template = renderEmailTemplate('export_ready');
 
   assertStringIncludes(
@@ -532,7 +530,7 @@ Deno.test('renderEmailTemplate — produces non-empty textBody', () => {
   );
 });
 
-Deno.test('renderEmailTemplate — escapes HTML in subject for htmlBody', () => {
+Deno.test('renderEmailTemplate ΓÇö escapes HTML in subject for htmlBody', () => {
   // Use a type that has a clean subject, verify the HTML body contains the escaped version
   const template = renderEmailTemplate('security_alert');
 
@@ -540,7 +538,7 @@ Deno.test('renderEmailTemplate — escapes HTML in subject for htmlBody', () => 
   assertStringIncludes(template.htmlBody, 'Security alert for your account');
 });
 
-Deno.test('renderEmailTemplate — all notification types produce valid templates', () => {
+Deno.test('renderEmailTemplate ΓÇö all notification types produce valid templates', () => {
   const types: NotificationType[] = [
     'invite_received',
     'invite_accepted',
@@ -566,7 +564,7 @@ Deno.test('renderEmailTemplate — all notification types produce valid template
 // sendEmail tests
 // ---------------------------------------------------------------------------
 
-Deno.test('sendEmail — returns false and logs when SMTP not configured', async () => {
+Deno.test('sendEmail ΓÇö returns false and logs when SMTP not configured', async () => {
   const cleanup = clearEnvVar('SMTP_HOST');
   try {
     const logger = createLogger('test-notification', 'test-req-id');
@@ -584,7 +582,7 @@ Deno.test('sendEmail — returns false and logs when SMTP not configured', async
   }
 });
 
-Deno.test('sendEmail — handles connection errors gracefully', async () => {
+Deno.test('sendEmail ΓÇö handles connection errors gracefully', async () => {
   // Set SMTP_HOST to a non-existent server to trigger a fetch error
   const cleanup = setEnvVars({
     SMTP_HOST: '127.0.0.1',
@@ -608,7 +606,7 @@ Deno.test('sendEmail — handles connection errors gracefully', async () => {
   }
 });
 
-Deno.test('sendEmail — does not throw when SMTP host is unreachable', async () => {
+Deno.test('sendEmail ΓÇö does not throw when SMTP host is unreachable', async () => {
   const cleanup = setEnvVars({
     SMTP_HOST: 'nonexistent.invalid.host.example',
     SMTP_PORT: '587',
@@ -622,7 +620,7 @@ Deno.test('sendEmail — does not throw when SMTP host is unreachable', async ()
       textBody: 'Test',
     };
 
-    // Should not throw — errors are caught internally
+    // Should not throw ΓÇö errors are caught internally
     let threw = false;
     try {
       await sendEmail('user@example.com', template, logger);
@@ -640,13 +638,13 @@ Deno.test('sendEmail — does not throw when SMTP host is unreachable', async ()
 // Type / interface validation tests
 // ---------------------------------------------------------------------------
 
-Deno.test('NotificationPayload — channel defaults are handled by createNotification', async () => {
+Deno.test('NotificationPayload ΓÇö channel defaults are handled by createNotification', async () => {
   const client = createMockNotificationClient({
     preferencesResult: { data: null, error: { message: 'No rows' } },
     insertResult: { data: { id: 'notif-default-channel' }, error: null },
   });
 
-  // Omitting channel — should default to 'email' internally
+  // Omitting channel ΓÇö should default to 'email' internally
   const result = await createNotification(client, {
     userId: 'user-123',
     type: 'security_alert',
@@ -659,7 +657,7 @@ Deno.test('NotificationPayload — channel defaults are handled by createNotific
   assertEquals(result!.id, 'notif-default-channel');
 });
 
-Deno.test('createNotification — returns id with correct format', async () => {
+Deno.test('createNotification ΓÇö returns id with correct format', async () => {
   const testId = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
   const client = createMockNotificationClient({
     preferencesResult: { data: null, error: { message: 'No rows' } },
