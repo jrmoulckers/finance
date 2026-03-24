@@ -22,6 +22,7 @@ const FUNCTION_ENV_VARS: Record<string, readonly string[]> = {
   'account-deletion': [],
   'sync-health-report': ['ALLOWED_ORIGINS'],
   'process-recurring': ['CRON_SECRET'],
+  'manage-webhooks': ['ALLOWED_ORIGINS'],
 };
 
 /**

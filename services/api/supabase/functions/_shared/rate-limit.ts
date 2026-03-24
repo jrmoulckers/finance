@@ -77,6 +77,7 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   'account-deletion': { maxRequests: 3, windowSeconds: 3600, keyPrefix: 'account-deletion' },
   'sync-health-report': { maxRequests: 60, windowSeconds: 3600, keyPrefix: 'sync-health-report' },
   'process-recurring': { maxRequests: 10, windowSeconds: 60, keyPrefix: 'process-recurring' },
+  'manage-webhooks': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'manage-webhooks' },
 };
 
 // ---------------------------------------------------------------------------
