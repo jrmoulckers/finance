@@ -250,18 +250,18 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 
 **File ownership by agent:**
 
-| Agent | Primary ownership |
-|---|---|
-| `@kmp-engineer` | `packages/` |
-| `@backend-engineer` | `services/api/` |
-| `@web-engineer` | `apps/web/` |
-| `@android-engineer` | `apps/android/` |
-| `@ios-engineer` | `apps/ios/` |
-| `@windows-engineer` | `apps/windows/` |
-| `@design-engineer` | `config/tokens/`, generated token files |
-| `@devops-engineer` | `.github/workflows/`, `build-logic/`, `tools/` |
-| `@docs-writer` | `docs/`, `*.md` files in root |
-| `@security-reviewer` | Read-only review — never edits production code |
+| Agent                     | Primary ownership                              |
+| ------------------------- | ---------------------------------------------- |
+| `@kmp-engineer`           | `packages/`                                    |
+| `@backend-engineer`       | `services/api/`                                |
+| `@web-engineer`           | `apps/web/`                                    |
+| `@android-engineer`       | `apps/android/`                                |
+| `@ios-engineer`           | `apps/ios/`                                    |
+| `@windows-engineer`       | `apps/windows/`                                |
+| `@design-engineer`        | `config/tokens/`, generated token files        |
+| `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/` |
+| `@docs-writer`            | `docs/`, `*.md` files in root                  |
+| `@security-reviewer`      | Read-only review — never edits production code |
 | `@accessibility-reviewer` | Read-only review — never edits production code |
 
 **Coordination protocol:**

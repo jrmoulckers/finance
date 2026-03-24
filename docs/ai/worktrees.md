@@ -4,14 +4,14 @@ This document describes how to run parallel AI agents (and human contributors) u
 
 ## Why Worktrees Instead of Multiple Clones
 
-| | Multiple clones | Git worktrees |
-|---|---|---|
-| git history | Duplicated per clone | Single shared history |
-| Remote sync | Must pull in every clone separately | One remote, all worktrees see it |
-| Disk usage | High (full .git per clone) | Low (one .git, lightweight per worktree) |
-| Branch safety | Easy to forget to pull before branching | `git worktree add` always branches from current state |
-| Resume-ability | No standard way to find abandoned work | `git worktree list` shows all active work instantly |
-| Cleanup | Delete entire folder | `git worktree remove <path>` |
+|                | Multiple clones                         | Git worktrees                                         |
+| -------------- | --------------------------------------- | ----------------------------------------------------- |
+| git history    | Duplicated per clone                    | Single shared history                                 |
+| Remote sync    | Must pull in every clone separately     | One remote, all worktrees see it                      |
+| Disk usage     | High (full .git per clone)              | Low (one .git, lightweight per worktree)              |
+| Branch safety  | Easy to forget to pull before branching | `git worktree add` always branches from current state |
+| Resume-ability | No standard way to find abandoned work  | `git worktree list` shows all active work instantly   |
+| Cleanup        | Delete entire folder                    | `git worktree remove <path>`                          |
 
 ## Repository Layout
 

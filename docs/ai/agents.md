@@ -264,19 +264,19 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 Each agent has primary ownership over a set of directories. When multiple agents run in parallel (fleet mode), only the owning agent edits files in its area:
 
-| Agent | Primary ownership |
-|---|---|
-| `@kmp-engineer` | `packages/` |
-| `@backend-engineer` | `services/api/` |
-| `@web-engineer` | `apps/web/` |
-| `@android-engineer` | `apps/android/` |
-| `@ios-engineer` | `apps/ios/` |
-| `@windows-engineer` | `apps/windows/` |
-| `@design-engineer` | `config/tokens/`, generated token files |
-| `@devops-engineer` | `.github/workflows/`, `build-logic/`, `tools/` |
-| `@docs-writer` | `docs/`, root `*.md` files |
-| `@security-reviewer` | Read-only — never edits production code |
-| `@accessibility-reviewer` | Read-only — never edits production code |
+| Agent                     | Primary ownership                              |
+| ------------------------- | ---------------------------------------------- |
+| `@kmp-engineer`           | `packages/`                                    |
+| `@backend-engineer`       | `services/api/`                                |
+| `@web-engineer`           | `apps/web/`                                    |
+| `@android-engineer`       | `apps/android/`                                |
+| `@ios-engineer`           | `apps/ios/`                                    |
+| `@windows-engineer`       | `apps/windows/`                                |
+| `@design-engineer`        | `config/tokens/`, generated token files        |
+| `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/` |
+| `@docs-writer`            | `docs/`, root `*.md` files                     |
+| `@security-reviewer`      | Read-only — never edits production code        |
+| `@accessibility-reviewer` | Read-only — never edits production code        |
 
 **Shared config** (`gradle/libs.versions.toml`, `settings.gradle.kts`, `package.json`, `turbo.json`) — one agent per run. Assign to `@kmp-engineer` (Gradle) or `@devops-engineer` (Node/CI).
 
