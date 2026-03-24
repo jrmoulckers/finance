@@ -27,11 +27,7 @@ import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { validateEnv } from '../_shared/env.ts';
 import { createLogger } from '../_shared/logger.ts';
-import {
-  checkRateLimit,
-  rateLimitResponse,
-  RATE_LIMITS,
-} from '../_shared/rate-limit.ts';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import {
   errorResponse,
   internalErrorResponse,
@@ -109,9 +105,7 @@ async function getOverviewMetrics(
     rateLimitsResult,
   ] = await Promise.all([
     // Total user count
-    supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true }),
+    supabase.from('users').select('*', { count: 'exact', head: true }),
 
     // Active users (distinct users with sync activity in last 7 days)
     supabase
@@ -120,10 +114,7 @@ async function getOverviewMetrics(
       .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
 
     // Total active households
-    supabase
-      .from('households')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null),
+    supabase.from('households').select('*', { count: 'exact', head: true }).is('deleted_at', null),
 
     // Total active transactions
     supabase
@@ -132,10 +123,7 @@ async function getOverviewMetrics(
       .is('deleted_at', null),
 
     // Total active accounts
-    supabase
-      .from('accounts')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null),
+    supabase.from('accounts').select('*', { count: 'exact', head: true }).is('deleted_at', null),
 
     // Sync health summary (last 24 hours)
     supabase
@@ -161,9 +149,7 @@ async function getOverviewMetrics(
     if (reports24h > 0) {
       const durations = logs.map((l) => l.sync_duration_ms);
       maxDurationMs = Math.max(...durations);
-      avgDurationMs = Math.round(
-        durations.reduce((sum, d) => sum + d, 0) / reports24h,
-      );
+      avgDurationMs = Math.round(durations.reduce((sum, d) => sum + d, 0) / reports24h);
     }
   }
 
@@ -211,7 +197,11 @@ async function getAuditLogs(
   const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
   const perPage = Math.min(
     MAX_PER_PAGE,
-    Math.max(1, parseInt(url.searchParams.get('per_page') ?? String(DEFAULT_PER_PAGE), 10) || DEFAULT_PER_PAGE),
+    Math.max(
+      1,
+      parseInt(url.searchParams.get('per_page') ?? String(DEFAULT_PER_PAGE), 10) ||
+        DEFAULT_PER_PAGE,
+    ),
   );
   const userId = url.searchParams.get('user_id');
   const actionFilter = url.searchParams.get('action_filter');
@@ -241,9 +231,7 @@ async function getAuditLogs(
 
   // Pagination and ordering
   const offset = (page - 1) * perPage;
-  query = query
-    .order('created_at', { ascending: false })
-    .range(offset, offset + perPage - 1);
+  query = query.order('created_at', { ascending: false }).range(offset, offset + perPage - 1);
 
   const { data, error, count } = await query;
 
@@ -280,13 +268,19 @@ async function getSyncHealthLogs(
   const since = url.searchParams.get('since');
   const limit = Math.min(
     MAX_SYNC_LIMIT,
-    Math.max(1, parseInt(url.searchParams.get('limit') ?? String(DEFAULT_SYNC_LIMIT), 10) || DEFAULT_SYNC_LIMIT),
+    Math.max(
+      1,
+      parseInt(url.searchParams.get('limit') ?? String(DEFAULT_SYNC_LIMIT), 10) ||
+        DEFAULT_SYNC_LIMIT,
+    ),
   );
 
   // Query for logs — omit error_message (may contain PII)
   let query = supabase
     .from('sync_health_logs')
-    .select('id, user_id, device_id, sync_duration_ms, record_count, error_code, sync_status, created_at');
+    .select(
+      'id, user_id, device_id, sync_duration_ms, record_count, error_code, sync_status, created_at',
+    );
 
   if (userId) {
     query = query.eq('user_id', userId);
@@ -295,9 +289,7 @@ async function getSyncHealthLogs(
     query = query.gte('created_at', since);
   }
 
-  query = query
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  query = query.order('created_at', { ascending: false }).limit(limit);
 
   const { data, error } = await query;
 
@@ -431,11 +423,7 @@ serve(async (req: Request): Promise<Response> => {
     const action = url.searchParams.get('action') as DashboardAction | null;
 
     if (!action || !(VALID_ACTIONS as readonly string[]).includes(action)) {
-      return errorResponse(
-        req,
-        `Invalid action. Must be one of: ${VALID_ACTIONS.join(', ')}`,
-        400,
-      );
+      return errorResponse(req, `Invalid action. Must be one of: ${VALID_ACTIONS.join(', ')}`, 400);
     }
 
     logger.info('Processing admin action', { action });

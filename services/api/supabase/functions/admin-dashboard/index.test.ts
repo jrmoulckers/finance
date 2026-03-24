@@ -95,10 +95,7 @@ function clampInt(value: string | null, defaultVal: number, min: number, max: nu
   return Math.min(max, Math.max(min, parsed));
 }
 
-async function handleAdminDashboard(
-  req: Request,
-  deps: MockAdminDeps = {},
-): Promise<Response> {
+async function handleAdminDashboard(req: Request, deps: MockAdminDeps = {}): Promise<Response> {
   // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: testCorsHeaders });
@@ -132,13 +129,10 @@ async function handleAdminDashboard(
   // Admin authorization
   const adminEmailsCsv = deps.adminEmails ?? '';
   if (!isAdmin(user.email, adminEmailsCsv)) {
-    return new Response(
-      JSON.stringify({ error: 'Forbidden: admin access required' }),
-      {
-        status: 403,
-        headers: { ...testCorsHeaders, 'Content-Type': 'application/json' },
-      },
-    );
+    return new Response(JSON.stringify({ error: 'Forbidden: admin access required' }), {
+      status: 403,
+      headers: { ...testCorsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   // Rate limiting
@@ -234,12 +228,7 @@ function handleAudit(req: Request, url: URL, deps: MockAdminDeps): Response {
   }
 
   const page = clampInt(url.searchParams.get('page'), 1, 1, Number.MAX_SAFE_INTEGER);
-  const perPage = clampInt(
-    url.searchParams.get('per_page'),
-    DEFAULT_PER_PAGE,
-    1,
-    MAX_PER_PAGE,
-  );
+  const perPage = clampInt(url.searchParams.get('per_page'), DEFAULT_PER_PAGE, 1, MAX_PER_PAGE);
   const userId = url.searchParams.get('user_id');
   const actionFilter = url.searchParams.get('action_filter');
   const since = url.searchParams.get('since');
@@ -293,12 +282,7 @@ function handleSyncHealth(req: Request, url: URL, deps: MockAdminDeps): Response
 
   const userId = url.searchParams.get('user_id');
   const since = url.searchParams.get('since');
-  const limit = clampInt(
-    url.searchParams.get('limit'),
-    DEFAULT_SYNC_LIMIT,
-    1,
-    MAX_SYNC_LIMIT,
-  );
+  const limit = clampInt(url.searchParams.get('limit'), DEFAULT_SYNC_LIMIT, 1, MAX_SYNC_LIMIT);
 
   let logs = (sd.logs ?? []) as Record<string, unknown>[];
 
@@ -516,11 +500,7 @@ Deno.test('admin-dashboard: overview returns sync health summary', async () => {
     req,
     adminDeps({
       overviewData: {
-        syncLogs: [
-          { sync_duration_ms: 100 },
-          { sync_duration_ms: 300 },
-          { sync_duration_ms: 200 },
-        ],
+        syncLogs: [{ sync_duration_ms: 100 }, { sync_duration_ms: 300 }, { sync_duration_ms: 200 }],
       },
     }),
   );
@@ -943,10 +923,7 @@ Deno.test('admin-dashboard: audit handles database errors gracefully', async () 
     method: 'GET',
     url: `${BASE_URL}?action=audit`,
   });
-  const res = await handleAdminDashboard(
-    req,
-    adminDeps({ auditData: { error: true } }),
-  );
+  const res = await handleAdminDashboard(req, adminDeps({ auditData: { error: true } }));
   assertStatus(res, 500);
 });
 
@@ -955,10 +932,7 @@ Deno.test('admin-dashboard: sync-health handles database errors gracefully', asy
     method: 'GET',
     url: `${BASE_URL}?action=sync-health`,
   });
-  const res = await handleAdminDashboard(
-    req,
-    adminDeps({ syncHealthData: { error: true } }),
-  );
+  const res = await handleAdminDashboard(req, adminDeps({ syncHealthData: { error: true } }));
   assertStatus(res, 500);
 });
 
@@ -967,10 +941,7 @@ Deno.test('admin-dashboard: rate-limits handles database errors gracefully', asy
     method: 'GET',
     url: `${BASE_URL}?action=rate-limits`,
   });
-  const res = await handleAdminDashboard(
-    req,
-    adminDeps({ rateLimitData: { error: true } }),
-  );
+  const res = await handleAdminDashboard(req, adminDeps({ rateLimitData: { error: true } }));
   assertStatus(res, 500);
 });
 
