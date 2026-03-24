@@ -46,9 +46,16 @@ jobs:
         continue-on-error: true
 
       - name: Lighthouse Audit
+        id: lighthouse-audit
         uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
         continue-on-error: true
         with:
           configPath: apps/web/lighthouserc.json
+          budgetPath: apps/web/budget.json
           uploadArtifacts: true
           runs: 3
+
+      - name: Lighthouse Budget Check
+        if: always() && (steps.lighthouse-audit.conclusion == 'success' || steps.lighthouse-audit.conclusion == 'failure')
+        run: npx @lhci/cli assert --config=apps/web/lighthouserc-budget.json
+        continue-on-error: false

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://finance.app/performance-budget.schema.json",
+  "targets": {
+    "coldStart": { "max": "2s", "platforms": ["ios", "android", "web", "windows"] },
+    "dashboardLoad": { "max": "200ms", "platforms": ["all"] },
+    "sqliteAggregation": { "max": "100ms", "platforms": ["all"] },
+    "scrollFps": { "min": 60, "platforms": ["ios", "android"] },
+    "memoryUsage": { "max": "150MB", "platforms": ["all"] }
+  },
+  "web": {
+    "lighthouseBudget": "apps/web/budget.json"
+  }
+}
