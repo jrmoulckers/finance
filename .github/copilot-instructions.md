@@ -114,13 +114,17 @@ All code changes MUST follow this workflow:
 2. **Scan for an existing worktree** for this issue: `git worktree list` — resume if found
 3. **Create a worktree** if none exists: `git worktree add ../wt-[agent-type]-[branch] -b [branch]`
 4. **Implement and commit** with issue references: `type(scope): description (#N)`
-5. **Fetch and rebase**: `git fetch origin main && git rebase origin/main` (auto-approved)
-6. **Push the feature branch**: `git push origin <branch-name>` (auto-approved)
-7. **Create a PR automatically** with `gh pr create` — include `Closes #N` and a detailed description
-8. **Monitor the PR** — poll `gh pr checks`, fix CI failures and merge conflicts autonomously, push and restart until all checks pass and no conflicts remain
-9. **Never commit directly to `main`** — all changes go through feature branches and PRs
-10. **Never merge PRs** — humans review and merge; agents get the PR to merge-ready state
-11. **Clean up the worktree** after merge is confirmed: `git worktree remove <path>`
+5. **Run `npm run ci:check` locally — must be clean before pushing**
+   - Catches formatting (`format:check`), lint (`eslint`), and type errors before they hit remote CI
+   - Auto-fix: `npm run format && npx eslint . --fix`, then re-run `ci:check` and commit fixes
+   - **Skipping this step is the primary cause of avoidable CI failures**
+6. **Fetch and rebase**: `git fetch origin main && git rebase origin/main` (auto-approved)
+7. **Push the feature branch**: `git push origin <branch-name>` (auto-approved)
+8. **Create a PR automatically** with `gh pr create` — include `Closes #N` and a detailed description
+9. **Monitor `gh pr checks`** — poll until ALL checks are green; fix failures locally (re-run `ci:check` before each push), push, restart cycle. **Work is NOT complete until all remote checks are green.**
+10. **Never commit directly to `main`** — all changes go through feature branches and PRs
+11. **Never merge PRs** — humans review and merge; agents get the PR to merge-ready state
+12. **Clean up the worktree** after merge is confirmed: `git worktree remove <path>`
 
 Worktree naming: `wt-[agent-type]-[type/description-issue#]` — e.g., `wt-android-feat-transactions-443`
 
@@ -128,9 +132,11 @@ See `docs/ai/worktrees.md` for the full worktree lifecycle guide.
 
 Tooling notes:
 
+- `npm run ci:check` — format:check + lint + type-check; run this before every push
+- `npm run format` — auto-fix all Prettier issues; `npx eslint . --fix` — auto-fix ESLint issues
 - `lint-staged` runs from `.husky/pre-commit` and auto-formats staged files before commit.
 - `.husky/pre-push` blocks non-interactive pushes unless a human explicitly uses `--no-verify`.
-- Use `npm run ci:check` for a fast validation pass and `npm run ready-for-pr` before review.
+- Use `npm run ready-for-pr` for final validation before marking work complete.
 
 ## Code Quality Requirements
 

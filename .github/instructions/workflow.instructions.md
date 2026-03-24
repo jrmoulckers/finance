@@ -13,12 +13,20 @@ AI agents MUST follow this workflow for every code change:
    b. If not found: create a new worktree with the correct naming convention
 3. Implement changes on feature branch inside the worktree
 4. Commit with issue reference: type(scope): description (#N)
-5. Fetch and rebase onto origin/main (auto-approved, no human needed)
-6. Push feature branch: git push origin <branch-name>
-7. Create PR automatically with `gh pr create` including Closes #N
-8. Monitor PR: poll checks, fix CI failures, resolve merge conflicts — repeat until merge-ready
-9. Mark work complete once all checks pass and no conflicts remain
-10. After human merges the PR: remove the worktree automatically
+5. **Run `npm run ci:check` locally — MUST be clean before pushing**
+   - `npm run format:check` catches Prettier issues
+   - `npm run lint` catches ESLint issues
+   - `npm run type-check` catches TypeScript errors
+   - If any fail: run `npm run format` and/or `npx eslint . --fix`, re-run `ci:check`, commit fixes
+6. Fetch and rebase onto origin/main (auto-approved, no human needed)
+7. Push feature branch: git push origin <branch-name>
+8. Create PR automatically with `gh pr create` including Closes #N
+9. **Monitor PR with `gh pr checks` — poll until ALL checks are green**
+   - CI failures: read logs, fix locally, run `ci:check` again, push, restart cycle
+   - Merge conflicts: fetch + rebase + force-with-lease push, restart cycle
+   - **Work is NOT complete until all remote checks are green**
+10. Mark work complete once all checks pass and no conflicts remain
+11. After human merges the PR: remove the worktree automatically
 ```
 
 ## Worktree Setup (Required for Agents)
@@ -98,13 +106,14 @@ Created (Open) → PR opened with "Closes #N" → PR merged → Issue auto-close
 4. **Reference the issue** in every commit message using the format: `type(scope): description (#N)` where N is the issue number.
 5. **Never implement features, fixes, or refactors** without a corresponding issue — even for small changes.
 6. **When planning work**, decompose into issues BEFORE starting implementation.
-7. **Fetch and rebase** onto `origin/main` before pushing: `git fetch origin main && git rebase origin/main` — both are auto-approved.
-8. **Push the feature branch** to origin when work is ready: `git push origin <branch-name>` — auto-approved.
-9. **Create a PR automatically** with `gh pr create` including a detailed description and `Closes #N` for each resolved issue.
-10. **Monitor the PR** — poll `gh pr checks` until all checks pass. Fix any CI failures or merge conflicts and push again. Repeat until merge-ready.
-11. **Never merge PRs** — PRs are merged by humans after review.
-12. **Never run `gh issue close`** — issues close automatically when their PR merges. Premature closure breaks the audit trail.
-13. **Clean up your worktree** after the PR is confirmed merged: `git worktree remove <path>`.
+7. **Run `npm run ci:check` locally before every push** — must be fully clean (format + lint + type-check). Auto-fix with `npm run format` and `npx eslint . --fix`, commit fixes, then re-run to confirm. Pushing without a clean `ci:check` is the primary cause of avoidable CI failures.
+8. **Fetch and rebase** onto `origin/main` before pushing: `git fetch origin main && git rebase origin/main` — both are auto-approved.
+9. **Push the feature branch** to origin: `git push origin <branch-name>` — auto-approved.
+10. **Create a PR automatically** with `gh pr create` including a detailed description and `Closes #N` for each resolved issue.
+11. **Monitor the PR with `gh pr checks`** — poll until ALL checks are green. Fix CI failures or merge conflicts, run `ci:check` locally again, push, restart cycle. **Work is NOT complete until all remote checks are green.**
+12. **Never merge PRs** — PRs are merged by humans after review.
+13. **Never run `gh issue close`** — issues close automatically when their PR merges.
+14. **Clean up your worktree** after the PR is confirmed merged: `git worktree remove <path>`.
 
 ## Commit Message Format
 

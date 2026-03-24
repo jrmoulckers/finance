@@ -74,17 +74,34 @@ cd ../wt-android-feat-transactions-443
 # Begin work...
 ```
 
-### Pre-Push Sync (Auto-Approved)
+### Pre-Push Checklist (Mandatory — Do NOT Skip)
 
-Before pushing, always sync with main:
+Before pushing, every agent MUST complete these steps in order:
 
 ```bash
-# From inside the worktree
+# Step 1: Run the full local CI check — catches formatting, lint, and type errors
+#         before they become remote CI failures
+npm run ci:check
+
+# Step 2: Fix any issues reported (formatting is auto-fixable)
+npm run format       # auto-fix Prettier issues
+npx eslint . --fix   # auto-fix ESLint issues
+npm run ci:check     # re-run to confirm clean
+
+# Step 3: Commit the fixes if any files changed
+git add -A && git commit -m "style: fix formatting and lint issues (#N)"
+
+# Step 4: Sync with main
 git fetch origin main
 git rebase origin/main
 ```
 
-Both operations are auto-approved — no human confirmation needed.
+> **Why this matters:** `npm run ci:check` runs the exact same checks as the remote CI
+> (`format:check` → `lint` → `type-check`). Skipping this step is the primary cause of
+> avoidable CI failures on PRs. An agent that pushes without running `ci:check` first
+> has not completed its pre-push workflow.
+
+Both `git fetch` and `git rebase origin/main` on your own branch are auto-approved — no human confirmation needed.
 
 ### Pushing and Opening a PR
 
@@ -106,12 +123,13 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 ### Monitoring CI and Merge Conflicts
 
-After opening a PR, the agent **must monitor** it until it is merge-ready:
+After opening a PR, the agent **must monitor** it until it is merge-ready. **Work is NOT complete until all remote CI checks are green.**
 
 1. Poll `gh pr checks <number>` until all checks pass
 2. If **CI failures** appear:
-   - Read the failure logs
+   - Read the failure logs (`gh run view --log-failed`)
    - Fix the issues locally in the worktree
+   - **Run `npm run ci:check` again locally before pushing** — confirm clean first
    - Commit, rebase if needed, and push again
    - Restart the check cycle
 3. If **merge conflicts** appear:
@@ -119,9 +137,11 @@ After opening a PR, the agent **must monitor** it until it is merge-ready:
    - Resolve conflicts
    - `git push origin <branch> --force-with-lease`
    - Restart the check cycle
-4. Once all checks pass and no conflicts exist — the agent marks its work complete
+4. Once **all checks are green and no conflicts exist** — the agent marks its work complete
 
-> **Note:** Agents do NOT merge PRs. Humans review and merge. The agent's job is to get the PR to a merge-ready state.
+> **Work is NOT complete until `gh pr checks` shows all green.** Opening a PR and pushing
+> is not the finish line — a clean CI run is. An agent that marks work complete before
+> confirming remote checks pass has not finished the task.
 
 ### Post-Merge Cleanup
 
