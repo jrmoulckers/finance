@@ -27,6 +27,40 @@ enum ExportFormat: String, CaseIterable, Sendable {
     }
 }
 
+// MARK: - Export Filter
+
+/// Filtering criteria for scoped data exports.
+struct ExportFilter: Sendable, Equatable {
+    let startDate: Date
+    let endDate: Date
+    let accountIds: Set<String>?
+    let format: ExportFormat
+
+    static func unfiltered(format: ExportFormat = .json) -> ExportFilter {
+        ExportFilter(startDate: .distantPast, endDate: .now, accountIds: nil, format: format)
+    }
+}
+
+// MARK: - Export Metadata
+
+/// Metadata embedded in every export file for auditability and compliance.
+struct ExportMetadata: Codable, Sendable {
+    let exportDate: Date
+    let appVersion: String
+    let filterStartDate: Date
+    let filterEndDate: Date
+    let filteredAccountIds: [String]?
+    let format: String
+    let recordCounts: RecordCounts
+
+    struct RecordCounts: Codable, Sendable {
+        let accounts: Int
+        let transactions: Int
+        let budgets: Int
+        let goals: Int
+    }
+}
+
 // MARK: - Export Error
 
 /// Errors that can occur during data export.
@@ -34,6 +68,7 @@ enum ExportError: LocalizedError, Sendable {
     case encodingFailed(underlying: Error)
     case fileWriteFailed(underlying: Error)
     case noDataToExport
+    case invalidDateRange
 
     var errorDescription: String? {
         switch self {
@@ -43,6 +78,8 @@ enum ExportError: LocalizedError, Sendable {
             String(localized: "Failed to write export file: \(error.localizedDescription)")
         case .noDataToExport:
             String(localized: "No data available to export.")
+        case .invalidDateRange:
+            String(localized: "Start date must be on or before end date.")
         }
     }
 }
@@ -145,6 +182,7 @@ struct GoalExportDTO: Codable, Sendable {
 struct FinanceExportDTO: Codable, Sendable {
     let exportDate: Date
     let version: String
+    let metadata: ExportMetadata?
     let accounts: [AccountExportDTO]
     let transactions: [TransactionExportDTO]
     let budgets: [BudgetExportDTO]
@@ -185,6 +223,7 @@ actor DataExportService {
         let exportData = FinanceExportDTO(
             exportDate: .now,
             version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
+            metadata: nil,
             accounts: accounts.map(AccountExportDTO.init),
             transactions: transactions.map(TransactionExportDTO.init),
             budgets: budgets.map(BudgetExportDTO.init),
@@ -285,6 +324,60 @@ actor DataExportService {
         Self.logger.info(
             "CSV export written to \(fileURL.lastPathComponent, privacy: .public)"
         )
+        return fileURL
+    }
+
+    // MARK: - Filtered Export
+
+    /// Exports financial data applying the given filter criteria.
+    func exportFiltered(
+        filter: ExportFilter, accounts: [AccountItem], transactions: [TransactionItem],
+        budgets: [BudgetItem], goals: [GoalItem],
+        progressHandler: @Sendable (Double) -> Void
+    ) async throws -> URL {
+        guard filter.startDate <= filter.endDate else { throw ExportError.invalidDateRange }
+        progressHandler(0.1)
+        let filteredAccounts = filter.accountIds.map { ids in accounts.filter { ids.contains($0.id) } } ?? accounts
+        progressHandler(0.2)
+        let allowedNames: Set<String>? = filter.accountIds != nil ? Set(filteredAccounts.map(\.name)) : nil
+        let filteredTx = transactions.filter { tx in
+            let inRange = tx.date >= filter.startDate && tx.date <= filter.endDate
+            let inScope = allowedNames.map { $0.contains(tx.accountName) } ?? true
+            return inRange && inScope
+        }
+        progressHandler(0.4)
+        let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        let meta = ExportMetadata(
+            exportDate: .now, appVersion: ver, filterStartDate: filter.startDate,
+            filterEndDate: filter.endDate,
+            filteredAccountIds: filter.accountIds.map { Array($0).sorted() },
+            format: filter.format.rawValue,
+            recordCounts: .init(accounts: filteredAccounts.count, transactions: filteredTx.count, budgets: budgets.count, goals: goals.count)
+        )
+        progressHandler(0.5)
+        let fileURL: URL
+        switch filter.format {
+        case .json:
+            let dto = FinanceExportDTO(exportDate: .now, version: ver, metadata: meta, accounts: filteredAccounts.map(AccountExportDTO.init), transactions: filteredTx.map(TransactionExportDTO.init), budgets: budgets.map(BudgetExportDTO.init), goals: goals.map(GoalExportDTO.init))
+            let enc = JSONEncoder(); enc.outputFormatting = [.prettyPrinted, .sortedKeys]; enc.dateEncodingStrategy = .iso8601
+            let data: Data
+            do { data = try enc.encode(dto) } catch { Self.logger.error("Filtered JSON encoding failed: \(error.localizedDescription, privacy: .public)"); throw ExportError.encodingFailed(underlying: error) }
+            fileURL = temporaryFileURL(name: "finance-export", extension: "json")
+            do { try data.write(to: fileURL, options: .atomic) } catch { Self.logger.error("Filtered JSON write failed: \(error.localizedDescription, privacy: .public)"); throw ExportError.fileWriteFailed(underlying: error) }
+        case .csv:
+            guard !filteredTx.isEmpty else { throw ExportError.noDataToExport }
+            let df = ISO8601DateFormatter(); df.formatOptions = [.withFullDate]
+            var lines = ["Date,Description,Amount,Category,Account,Type,Status"]
+            for tx in filteredTx.sorted(by: { $0.date > $1.date }) {
+                lines.append("\(df.string(from: tx.date)),\(csvEscape(tx.payee)),\(formatMinorUnits(tx.amountMinorUnits)),\(csvEscape(tx.category)),\(csvEscape(tx.accountName)),\(tx.type.rawValue),\(tx.status.rawValue)")
+            }
+            let csv = lines.joined(separator: "\r\n") + "\r\n"
+            guard let csvData = csv.data(using: .utf8) else { throw ExportError.encodingFailed(underlying: NSError(domain: "DataExportService", code: -1, userInfo: [NSLocalizedDescriptionKey: "UTF-8 encoding failed"])) }
+            fileURL = temporaryFileURL(name: "finance-transactions", extension: "csv")
+            do { try csvData.write(to: fileURL, options: .atomic) } catch { Self.logger.error("Filtered CSV write failed: \(error.localizedDescription, privacy: .public)"); throw ExportError.fileWriteFailed(underlying: error) }
+        }
+        progressHandler(1.0)
+        Self.logger.info("Filtered export completed: format=\(filter.format.rawValue, privacy: .public), accounts=\(filteredAccounts.count, privacy: .public), transactions=\(filteredTx.count, privacy: .public)")
         return fileURL
     }
 

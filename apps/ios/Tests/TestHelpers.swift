@@ -26,7 +26,10 @@ enum TestError: Error, LocalizedError {
 final class StubAccountRepository: AccountRepository, @unchecked Sendable {
     var accountsToReturn: [AccountItem] = []
     var errorToThrow: Error?
+    /// Error thrown only by `deleteAllAccounts()`, for partial-failure tests.
+    var deleteAllError: Error?
     private(set) var deletedAccountIds: [String] = []
+    private(set) var deleteAllAccountsCalled = false
 
     func getAccounts() async throws -> [AccountItem] {
         if let error = errorToThrow { throw error }
@@ -44,7 +47,8 @@ final class StubAccountRepository: AccountRepository, @unchecked Sendable {
     }
 
     func deleteAllAccounts() async throws {
-        if let error = errorToThrow { throw error }
+        if let error = deleteAllError ?? errorToThrow { throw error }
+        deleteAllAccountsCalled = true
     }
 }
 
@@ -57,6 +61,9 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
     private(set) var deletedTransactionIds: [String] = []
     private(set) var createdTransactions: [TransactionItem] = []
     private(set) var updatedTransactions: [TransactionItem] = []
+    /// Error thrown only by `deleteAllTransactions()`, for partial-failure tests.
+    var deleteAllError: Error?
+    private(set) var deleteAllTransactionsCalled = false
 
     func getTransactions() async throws -> [TransactionItem] {
         if let error = errorToThrow { throw error }
@@ -87,6 +94,11 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
         if let error = errorToThrow { throw error }
         deletedTransactionIds.append(id)
     }
+
+    func deleteAllTransactions() async throws {
+        if let error = errorToThrow { throw error }
+        deleteAllTransactionsCalled = true
+    }
 }
 
 // MARK: - Stub Budget Repository
@@ -97,6 +109,9 @@ final class StubBudgetRepository: BudgetRepository, @unchecked Sendable {
     var errorToThrow: Error?
     private(set) var createdBudgets: [BudgetItem] = []
     private(set) var updatedBudgets: [BudgetItem] = []
+    /// Error thrown only by `deleteAllBudgets()`, for partial-failure tests.
+    var deleteAllError: Error?
+    private(set) var deleteAllBudgetsCalled = false
 
     func getBudgets() async throws -> [BudgetItem] {
         if let error = errorToThrow { throw error }
@@ -114,7 +129,8 @@ final class StubBudgetRepository: BudgetRepository, @unchecked Sendable {
     }
 
     func deleteAllBudgets() async throws {
-        if let error = errorToThrow { throw error }
+        if let error = deleteAllError ?? errorToThrow { throw error }
+        deleteAllBudgetsCalled = true
     }
 }
 
@@ -126,6 +142,9 @@ final class StubGoalRepository: GoalRepository, @unchecked Sendable {
     var errorToThrow: Error?
     private(set) var createdGoals: [GoalItem] = []
     private(set) var updatedGoals: [GoalItem] = []
+    /// Error thrown only by `deleteAllGoals()`, for partial-failure tests.
+    var deleteAllError: Error?
+    private(set) var deleteAllGoalsCalled = false
 
     func getGoals() async throws -> [GoalItem] {
         if let error = errorToThrow { throw error }
@@ -140,6 +159,11 @@ final class StubGoalRepository: GoalRepository, @unchecked Sendable {
     func updateGoal(_ goal: GoalItem) async throws {
         if let error = errorToThrow { throw error }
         updatedGoals.append(goal)
+    }
+
+    func deleteAllGoals() async throws {
+        if let error = deleteAllError ?? errorToThrow { throw error }
+        deleteAllGoalsCalled = true
     }
 }
 
@@ -159,6 +183,32 @@ final class StubBiometricAuthManager: BiometricAuthManaging, @unchecked Sendable
 
     func authenticate(reason: String) async throws {
         if let error = errorToThrow { throw error }
+    }
+}
+
+// MARK: - Stub Keychain Manager
+
+/// Configurable stub for Keychain operations in tests.
+///
+/// Stores values in an in-memory dictionary instead of the real Keychain.
+final class StubKeychainManager: KeychainManaging, @unchecked Sendable {
+    var storage: [String: Data] = [:]
+    var errorToThrow: KeychainError?
+    private(set) var deletedKeys: [String] = []
+
+    func save(key: String, data: Data) throws {
+        if let error = errorToThrow { throw error }
+        storage[key] = data
+    }
+
+    func load(key: String) -> Data? {
+        storage[key]
+    }
+
+    func delete(key: String) throws {
+        if let error = errorToThrow { throw error }
+        storage.removeValue(forKey: key)
+        deletedKeys.append(key)
     }
 }
 

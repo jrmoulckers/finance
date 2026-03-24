@@ -73,6 +73,7 @@ final class SettingsViewModel {
     // MARK: - Export State
 
     /// Controls visibility of the export format confirmation dialog.
+    var showingExportSheet = false
     var showingExportConfirmation = false
 
     /// `true` while an export operation is in flight.

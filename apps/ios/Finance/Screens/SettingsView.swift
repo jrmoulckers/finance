@@ -254,7 +254,7 @@ struct SettingsView: View {
                         using: biometricManager
                     )
                     if authorized {
-                        viewModel.showingExportConfirmation = true
+                        viewModel.showingExportSheet = true
                     }
                 }
             } label: {
