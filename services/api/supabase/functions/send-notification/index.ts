@@ -154,7 +154,10 @@ serve(async (req: Request): Promise<Response> => {
     const notificationType = type as NotificationType;
 
     // Generate subject/body from template if not provided
-    const template = renderEmailTemplate(notificationType, (metadata ?? {}) as Record<string, string>);
+    const template = renderEmailTemplate(
+      notificationType,
+      (metadata ?? {}) as Record<string, string>,
+    );
     const finalSubject = customSubject ?? template.subject;
     const finalBody = customBody ?? template.textBody;
 

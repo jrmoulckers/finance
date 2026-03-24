@@ -67,10 +67,12 @@ function clearEnvVar(name: string): () => void {
  * for notification_preferences and a configurable insert result
  * for notification_log.
  */
-function createMockNotificationClient(options: {
-  preferencesResult?: { data: Record<string, boolean> | null; error: { message: string } | null };
-  insertResult?: { data: { id: string } | null; error: { message: string } | null };
-} = {}): NotificationClient {
+function createMockNotificationClient(
+  options: {
+    preferencesResult?: { data: Record<string, boolean> | null; error: { message: string } | null };
+    insertResult?: { data: { id: string } | null; error: { message: string } | null };
+  } = {},
+): NotificationClient {
   const defaultPrefsResult = { data: null, error: { message: 'No rows' } };
   const defaultInsertResult = {
     data: { id: 'notif-00000000-0000-0000-0000-000000000001' },
@@ -86,11 +88,30 @@ function createMockNotificationClient(options: {
 
       const builder: Record<string, unknown> = {};
       const chainMethods = [
-        'select', 'insert', 'update', 'delete', 'upsert',
-        'eq', 'neq', 'gt', 'gte', 'lt', 'lte',
-        'is', 'in', 'like', 'ilike',
-        'order', 'limit', 'range', 'single', 'maybeSingle',
-        'not', 'or', 'filter', 'match',
+        'select',
+        'insert',
+        'update',
+        'delete',
+        'upsert',
+        'eq',
+        'neq',
+        'gt',
+        'gte',
+        'lt',
+        'lte',
+        'is',
+        'in',
+        'like',
+        'ilike',
+        'order',
+        'limit',
+        'range',
+        'single',
+        'maybeSingle',
+        'not',
+        'or',
+        'filter',
+        'match',
       ];
       for (const method of chainMethods) {
         builder[method] = (..._args: unknown[]) => builder;
@@ -119,167 +140,194 @@ function createThrowingClient(): NotificationClient {
 // checkNotificationPreference tests
 // ---------------------------------------------------------------------------
 
-Deno.test('checkNotificationPreference ΓÇö returns true when no preferences row exists', async () => {
-  const client = createMockNotificationClient({
-    preferencesResult: { data: null, error: { message: 'PGRST116' } },
-  });
+Deno.test(
+  'checkNotificationPreference ΓÇö returns true when no preferences row exists',
+  async () => {
+    const client = createMockNotificationClient({
+      preferencesResult: { data: null, error: { message: 'PGRST116' } },
+    });
 
-  const result = await checkNotificationPreference(client, 'user-123', 'invite_received');
+    const result = await checkNotificationPreference(client, 'user-123', 'invite_received');
 
-  assertEquals(result, true);
-});
+    assertEquals(result, true);
+  },
+);
 
-Deno.test('checkNotificationPreference ΓÇö returns false when invite_notifications is disabled', async () => {
-  const client = createMockNotificationClient({
-    preferencesResult: {
-      data: {
-        email_enabled: true,
-        invite_notifications: false,
-        export_notifications: true,
-        deletion_notifications: true,
-        security_notifications: true,
+Deno.test(
+  'checkNotificationPreference ΓÇö returns false when invite_notifications is disabled',
+  async () => {
+    const client = createMockNotificationClient({
+      preferencesResult: {
+        data: {
+          email_enabled: true,
+          invite_notifications: false,
+          export_notifications: true,
+          deletion_notifications: true,
+          security_notifications: true,
+        },
+        error: null,
       },
-      error: null,
-    },
-  });
+    });
 
-  const result = await checkNotificationPreference(client, 'user-123', 'invite_received');
+    const result = await checkNotificationPreference(client, 'user-123', 'invite_received');
 
-  assertEquals(result, false);
-});
+    assertEquals(result, false);
+  },
+);
 
-Deno.test('checkNotificationPreference ΓÇö returns true when invite_notifications is enabled', async () => {
-  const client = createMockNotificationClient({
-    preferencesResult: {
-      data: {
-        email_enabled: true,
-        invite_notifications: true,
-        export_notifications: true,
-        deletion_notifications: true,
-        security_notifications: true,
+Deno.test(
+  'checkNotificationPreference ΓÇö returns true when invite_notifications is enabled',
+  async () => {
+    const client = createMockNotificationClient({
+      preferencesResult: {
+        data: {
+          email_enabled: true,
+          invite_notifications: true,
+          export_notifications: true,
+          deletion_notifications: true,
+          security_notifications: true,
+        },
+        error: null,
       },
-      error: null,
-    },
-  });
+    });
 
-  const result = await checkNotificationPreference(client, 'user-123', 'invite_received');
+    const result = await checkNotificationPreference(client, 'user-123', 'invite_received');
 
-  assertEquals(result, true);
-});
+    assertEquals(result, true);
+  },
+);
 
-Deno.test('checkNotificationPreference ΓÇö returns false when email_enabled is false (global kill-switch)', async () => {
-  const client = createMockNotificationClient({
-    preferencesResult: {
-      data: {
-        email_enabled: false,
-        invite_notifications: true,
-        export_notifications: true,
-        deletion_notifications: true,
-        security_notifications: true,
+Deno.test(
+  'checkNotificationPreference ΓÇö returns false when email_enabled is false (global kill-switch)',
+  async () => {
+    const client = createMockNotificationClient({
+      preferencesResult: {
+        data: {
+          email_enabled: false,
+          invite_notifications: true,
+          export_notifications: true,
+          deletion_notifications: true,
+          security_notifications: true,
+        },
+        error: null,
       },
-      error: null,
-    },
-  });
+    });
 
-  const result = await checkNotificationPreference(client, 'user-123', 'export_ready');
+    const result = await checkNotificationPreference(client, 'user-123', 'export_ready');
 
-  assertEquals(result, false);
-});
+    assertEquals(result, false);
+  },
+);
 
-Deno.test('checkNotificationPreference ΓÇö returns false when export_notifications is disabled', async () => {
-  const client = createMockNotificationClient({
-    preferencesResult: {
-      data: {
-        email_enabled: true,
-        invite_notifications: true,
-        export_notifications: false,
-        deletion_notifications: true,
-        security_notifications: true,
+Deno.test(
+  'checkNotificationPreference ΓÇö returns false when export_notifications is disabled',
+  async () => {
+    const client = createMockNotificationClient({
+      preferencesResult: {
+        data: {
+          email_enabled: true,
+          invite_notifications: true,
+          export_notifications: false,
+          deletion_notifications: true,
+          security_notifications: true,
+        },
+        error: null,
       },
-      error: null,
-    },
-  });
+    });
 
-  const result = await checkNotificationPreference(client, 'user-123', 'export_ready');
+    const result = await checkNotificationPreference(client, 'user-123', 'export_ready');
 
-  assertEquals(result, false);
-});
+    assertEquals(result, false);
+  },
+);
 
-Deno.test('checkNotificationPreference ΓÇö returns false when deletion_notifications is disabled', async () => {
-  const client = createMockNotificationClient({
-    preferencesResult: {
-      data: {
-        email_enabled: true,
-        invite_notifications: true,
-        export_notifications: true,
-        deletion_notifications: false,
-        security_notifications: true,
+Deno.test(
+  'checkNotificationPreference ΓÇö returns false when deletion_notifications is disabled',
+  async () => {
+    const client = createMockNotificationClient({
+      preferencesResult: {
+        data: {
+          email_enabled: true,
+          invite_notifications: true,
+          export_notifications: true,
+          deletion_notifications: false,
+          security_notifications: true,
+        },
+        error: null,
       },
-      error: null,
-    },
-  });
+    });
 
-  const result = await checkNotificationPreference(client, 'user-123', 'deletion_scheduled');
+    const result = await checkNotificationPreference(client, 'user-123', 'deletion_scheduled');
 
-  assertEquals(result, false);
-});
+    assertEquals(result, false);
+  },
+);
 
-Deno.test('checkNotificationPreference ΓÇö returns false when security_notifications is disabled', async () => {
-  const client = createMockNotificationClient({
-    preferencesResult: {
-      data: {
-        email_enabled: true,
-        invite_notifications: true,
-        export_notifications: true,
-        deletion_notifications: true,
-        security_notifications: false,
+Deno.test(
+  'checkNotificationPreference ΓÇö returns false when security_notifications is disabled',
+  async () => {
+    const client = createMockNotificationClient({
+      preferencesResult: {
+        data: {
+          email_enabled: true,
+          invite_notifications: true,
+          export_notifications: true,
+          deletion_notifications: true,
+          security_notifications: false,
+        },
+        error: null,
       },
-      error: null,
-    },
-  });
+    });
 
-  const result = await checkNotificationPreference(client, 'user-123', 'security_alert');
+    const result = await checkNotificationPreference(client, 'user-123', 'security_alert');
 
-  assertEquals(result, false);
-});
+    assertEquals(result, false);
+  },
+);
 
-Deno.test('checkNotificationPreference ΓÇö invite_accepted maps to invite_notifications column', async () => {
-  const client = createMockNotificationClient({
-    preferencesResult: {
-      data: {
-        email_enabled: true,
-        invite_notifications: false,
-        export_notifications: true,
-        deletion_notifications: true,
-        security_notifications: true,
+Deno.test(
+  'checkNotificationPreference ΓÇö invite_accepted maps to invite_notifications column',
+  async () => {
+    const client = createMockNotificationClient({
+      preferencesResult: {
+        data: {
+          email_enabled: true,
+          invite_notifications: false,
+          export_notifications: true,
+          deletion_notifications: true,
+          security_notifications: true,
+        },
+        error: null,
       },
-      error: null,
-    },
-  });
+    });
 
-  const result = await checkNotificationPreference(client, 'user-123', 'invite_accepted');
+    const result = await checkNotificationPreference(client, 'user-123', 'invite_accepted');
 
-  assertEquals(result, false);
-});
+    assertEquals(result, false);
+  },
+);
 
-Deno.test('checkNotificationPreference ΓÇö deletion_completed maps to deletion_notifications column', async () => {
-  const client = createMockNotificationClient({
-    preferencesResult: {
-      data: {
-        email_enabled: true,
-        invite_notifications: true,
-        export_notifications: true,
-        deletion_notifications: false,
-        security_notifications: true,
+Deno.test(
+  'checkNotificationPreference ΓÇö deletion_completed maps to deletion_notifications column',
+  async () => {
+    const client = createMockNotificationClient({
+      preferencesResult: {
+        data: {
+          email_enabled: true,
+          invite_notifications: true,
+          export_notifications: true,
+          deletion_notifications: false,
+          security_notifications: true,
+        },
+        error: null,
       },
-      error: null,
-    },
-  });
+    });
 
-  const result = await checkNotificationPreference(client, 'user-123', 'deletion_completed');
+    const result = await checkNotificationPreference(client, 'user-123', 'deletion_completed');
 
-  assertEquals(result, false);
-});
+    assertEquals(result, false);
+  },
+);
 
 Deno.test('checkNotificationPreference ΓÇö fails open when database throws', async () => {
   const client = createThrowingClient();
@@ -371,11 +419,30 @@ Deno.test('createNotification ΓÇö defaults channel to email', async () => {
     from: (table: string) => {
       const builder: Record<string, unknown> = {};
       const chainMethods = [
-        'select', 'insert', 'update', 'delete', 'upsert',
-        'eq', 'neq', 'gt', 'gte', 'lt', 'lte',
-        'is', 'in', 'like', 'ilike',
-        'order', 'limit', 'range', 'single', 'maybeSingle',
-        'not', 'or', 'filter', 'match',
+        'select',
+        'insert',
+        'update',
+        'delete',
+        'upsert',
+        'eq',
+        'neq',
+        'gt',
+        'gte',
+        'lt',
+        'lte',
+        'is',
+        'in',
+        'like',
+        'ilike',
+        'order',
+        'limit',
+        'range',
+        'single',
+        'maybeSingle',
+        'not',
+        'or',
+        'filter',
+        'match',
       ];
       for (const method of chainMethods) {
         if (method === 'insert' && table === 'notification_log') {
@@ -417,11 +484,30 @@ Deno.test('createNotification ΓÇö passes metadata through to insert', async (
     from: (table: string) => {
       const builder: Record<string, unknown> = {};
       const chainMethods = [
-        'select', 'insert', 'update', 'delete', 'upsert',
-        'eq', 'neq', 'gt', 'gte', 'lt', 'lte',
-        'is', 'in', 'like', 'ilike',
-        'order', 'limit', 'range', 'single', 'maybeSingle',
-        'not', 'or', 'filter', 'match',
+        'select',
+        'insert',
+        'update',
+        'delete',
+        'upsert',
+        'eq',
+        'neq',
+        'gt',
+        'gte',
+        'lt',
+        'lte',
+        'is',
+        'in',
+        'like',
+        'ilike',
+        'order',
+        'limit',
+        'range',
+        'single',
+        'maybeSingle',
+        'not',
+        'or',
+        'filter',
+        'match',
       ];
       for (const method of chainMethods) {
         if (method === 'insert' && table === 'notification_log') {
@@ -456,10 +542,7 @@ Deno.test('createNotification ΓÇö passes metadata through to insert', async (
   });
 
   assertExists(capturedInsertArgs);
-  assertEquals(
-    (capturedInsertArgs as Record<string, unknown>).metadata,
-    testMetadata,
-  );
+  assertEquals((capturedInsertArgs as Record<string, unknown>).metadata, testMetadata);
 });
 
 // ---------------------------------------------------------------------------
@@ -524,10 +607,7 @@ Deno.test('renderEmailTemplate ΓÇö produces non-empty htmlBody', () => {
 Deno.test('renderEmailTemplate ΓÇö produces non-empty textBody', () => {
   const template = renderEmailTemplate('export_ready');
 
-  assertStringIncludes(
-    template.textBody,
-    'Your requested data export has been completed',
-  );
+  assertStringIncludes(template.textBody, 'Your requested data export has been completed');
 });
 
 Deno.test('renderEmailTemplate ΓÇö escapes HTML in subject for htmlBody', () => {
@@ -638,24 +718,27 @@ Deno.test('sendEmail ΓÇö does not throw when SMTP host is unreachable', async
 // Type / interface validation tests
 // ---------------------------------------------------------------------------
 
-Deno.test('NotificationPayload ΓÇö channel defaults are handled by createNotification', async () => {
-  const client = createMockNotificationClient({
-    preferencesResult: { data: null, error: { message: 'No rows' } },
-    insertResult: { data: { id: 'notif-default-channel' }, error: null },
-  });
+Deno.test(
+  'NotificationPayload ΓÇö channel defaults are handled by createNotification',
+  async () => {
+    const client = createMockNotificationClient({
+      preferencesResult: { data: null, error: { message: 'No rows' } },
+      insertResult: { data: { id: 'notif-default-channel' }, error: null },
+    });
 
-  // Omitting channel ΓÇö should default to 'email' internally
-  const result = await createNotification(client, {
-    userId: 'user-123',
-    type: 'security_alert',
-    subject: 'Alert',
-    body: 'Check now.',
-    // channel omitted
-  });
+    // Omitting channel ΓÇö should default to 'email' internally
+    const result = await createNotification(client, {
+      userId: 'user-123',
+      type: 'security_alert',
+      subject: 'Alert',
+      body: 'Check now.',
+      // channel omitted
+    });
 
-  assertExists(result);
-  assertEquals(result!.id, 'notif-default-channel');
-});
+    assertExists(result);
+    assertEquals(result!.id, 'notif-default-channel');
+  },
+);
 
 Deno.test('createNotification ΓÇö returns id with correct format', async () => {
   const testId = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';

@@ -68,9 +68,7 @@ export interface EmailTemplate {
  * keeps this module loosely coupled and easy to test with mocks.
  */
 export interface NotificationClient {
-  from(
-    table: string,
-  ): {
+  from(table: string): {
     select: (...args: unknown[]) => unknown;
     insert: (...args: unknown[]) => unknown;
     eq: (...args: unknown[]) => unknown;
@@ -139,7 +137,9 @@ export async function checkNotificationPreference(
   try {
     const result = await (supabase
       .from('notification_preferences')
-      .select('email_enabled, invite_notifications, export_notifications, deletion_notifications, security_notifications')
+      .select(
+        'email_enabled, invite_notifications, export_notifications, deletion_notifications, security_notifications',
+      )
       .eq('user_id', userId)
       .is('deleted_at', null)
       .single() as PromiseLike<{
@@ -333,12 +333,11 @@ export async function sendEmail(
     return false;
   }
 
-  const smtpPort = typeof Deno !== 'undefined'
-    ? Deno.env.get('SMTP_PORT') ?? '587'
-    : '587';
-  const smtpFrom = typeof Deno !== 'undefined'
-    ? Deno.env.get('SMTP_FROM') ?? 'noreply@finance.app'
-    : 'noreply@finance.app';
+  const smtpPort = typeof Deno !== 'undefined' ? (Deno.env.get('SMTP_PORT') ?? '587') : '587';
+  const smtpFrom =
+    typeof Deno !== 'undefined'
+      ? (Deno.env.get('SMTP_FROM') ?? 'noreply@finance.app')
+      : 'noreply@finance.app';
 
   try {
     // Build a minimal SMTP payload for the relay.
