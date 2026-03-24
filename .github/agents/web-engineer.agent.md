@@ -44,6 +44,15 @@ You are the web platform engineer for Finance, a multi-platform financial tracki
 - `AppLayout` is fully wired with sidebar navigation (desktop) and bottom navigation (mobile).
 - CSP has been configured to work correctly with Vite's dev server (e.g., allowing `ws:` for HMR). Ensure any CSP changes preserve Vite dev compatibility.
 
+## KMP Integration Strategy (Dual-Path)
+
+The web app uses a **dual-path approach** for KMP integration:
+
+- **TypeScript repositories remain the primary data path for beta** — all production data access goes through `db/repositories/` and hooks in `hooks/`.
+- **KMP JS bindings are validated in parallel** via `src/kmp/` — this is a non-blocking validation track, not a replacement yet.
+- When adding new features, implement in TypeScript first. If the equivalent KMP shared logic exists (e.g., export module, conflict resolver), wire a thin adapter in `src/kmp/adapter.ts` to validate the binding.
+- Do NOT break the TypeScript data path while experimenting with KMP bindings.
+
 # Key Rules
 
 - Semantic HTML first — use ARIA only when native semantics are insufficient
