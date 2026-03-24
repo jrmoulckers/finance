@@ -96,6 +96,19 @@ final class SettingsViewModel {
     /// Controls visibility of the destructive-delete confirmation dialog.
     var showingDeleteConfirmation = false
 
+    /// `true` while a GDPR deletion operation is in flight.
+    var isDeleting = false
+
+    /// User-facing error message from a failed deletion.
+    var deletionError: String?
+
+    /// Controls visibility of the deletion error alert.
+    var showingDeletionError = false
+
+    /// Set to `true` after a successful GDPR deletion to trigger
+    /// navigation back to onboarding / app reset.
+    var didCompleteDataDeletion = false
+
     // MARK: - Biometric Error State
 
     /// The error returned by the last failed biometric evaluation.
@@ -138,6 +151,7 @@ final class SettingsViewModel {
     private let budgetRepository: BudgetRepository
     private let goalRepository: GoalRepository
     private let exportService: DataExportService
+    private let dataDeletionService: DataDeletionService
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -154,6 +168,7 @@ final class SettingsViewModel {
     ///   - budgetRepository: Data source for budgets.
     ///   - goalRepository: Data source for goals.
     ///   - exportService: Service used to serialise data for export.
+    ///   - dataDeletionService: Service used for GDPR `Delete Everything` flow.
     ///   - defaults: The `UserDefaults` suite to use for persistence.
     init(
         accountRepository: AccountRepository = MockAccountRepository(),
@@ -161,6 +176,7 @@ final class SettingsViewModel {
         budgetRepository: BudgetRepository = MockBudgetRepository(),
         goalRepository: GoalRepository = MockGoalRepository(),
         exportService: DataExportService = DataExportService(),
+        dataDeletionService: DataDeletionService? = nil,
         defaults: UserDefaults = .standard
     ) {
         self.accountRepository = accountRepository
@@ -169,6 +185,16 @@ final class SettingsViewModel {
         self.goalRepository = goalRepository
         self.exportService = exportService
         self.defaults = defaults
+
+        self.dataDeletionService = dataDeletionService ?? DataDeletionService(
+            accountRepository: accountRepository,
+            transactionRepository: transactionRepository,
+            budgetRepository: budgetRepository,
+            goalRepository: goalRepository,
+            biometricAuth: BiometricAuthManager(),
+            keychain: KeychainManager.shared,
+            standardDefaults: defaults
+        )
 
         // Hydrate persisted preferences (use sensible defaults for first launch)
         self.selectedCurrency = defaults.string(forKey: SettingsKeys.currency) ?? "USD"
@@ -341,6 +367,50 @@ final class SettingsViewModel {
         defaults.set(0, forKey: SettingsKeys.pendingChangesCount)
 
         Self.logger.info("Manual sync completed")
+    }
+
+    // MARK: - GDPR Data Deletion
+
+    /// Performs the GDPR `Delete Everything` flow.
+    ///
+    /// Delegates to `DataDeletionService` which handles biometric
+    /// authentication, repository data deletion, Keychain clearing,
+    /// and UserDefaults reset.
+    ///
+    /// On success, sets `didCompleteDataDeletion` to `true` so the
+    /// view can navigate back to onboarding.
+    func deleteAllData() async {
+        guard !isDeleting else { return }
+        isDeleting = true
+        defer { isDeleting = false }
+
+        Self.logger.info("GDPR deletion requested from settings")
+
+        do {
+            let result = try await dataDeletionService.deleteAllData()
+
+            switch result {
+            case .success:
+                Self.logger.info("GDPR deletion completed successfully")
+                didCompleteDataDeletion = true
+
+            case .authenticationFailed:
+                Self.logger.info("GDPR deletion: user did not authenticate")
+
+            case .failure(let message):
+                Self.logger.error(
+                    "GDPR deletion failed: \(message, privacy: .public)"
+                )
+                deletionError = message
+                showingDeletionError = true
+            }
+        } catch {
+            Self.logger.error(
+                "GDPR deletion error: \(error.localizedDescription, privacy: .public)"
+            )
+            deletionError = error.localizedDescription
+            showingDeletionError = true
+        }
     }
 
     // MARK: - Helpers

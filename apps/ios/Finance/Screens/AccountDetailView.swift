@@ -13,10 +13,14 @@ import SwiftUI
 struct AccountDetailView: View {
     let account: AccountItem
     @Environment(BiometricAuthManager.self) private var biometricManager
+    @Environment(\.dismiss) private var dismiss
     @State private var viewModel: AccountDetailViewModel
     @State private var showAccountNumber = false
     @State private var biometricError: BiometricError?
     @State private var showingBiometricError = false
+    @State private var editingTransaction: TransactionItem?
+    @State private var showingEditAccount = false
+    @State private var currentAccount: AccountItem: TransactionItem?
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -31,6 +35,7 @@ struct AccountDetailView: View {
     ) {
         self.account = account
         _viewModel = State(initialValue: viewModel)
+        _currentAccount = State(initialValue: account)
     }
 
     var body: some View {
@@ -41,6 +46,17 @@ struct AccountDetailView: View {
                 Section {
                     ForEach(group.transactions) { transaction in
                         transactionRow(transaction)
+                            .contentShape(Rectangle())
+                            .onTapGesture { editingTransaction = transaction }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button {
+                                    editingTransaction = transaction
+                                } label: {
+                                    Label(String(localized: "Edit"), systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                                .accessibilityLabel(String(localized: "Edit transaction"))
+                            }
                     }
                 } header: {
                     Text(group.date, style: .date)
@@ -57,8 +73,9 @@ struct AccountDetailView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle(account.name)
+        .navigationTitle(currentAccount.name)
         .navigationBarTitleDisplayMode(.large)
+        .toolbar { ToolbarItem(placement: .primaryAction) { Button { showingEditAccount = true } label: { Label(String(localized: "Edit"), systemImage: "pencil") }.accessibilityLabel(String(localized: "Edit account")).accessibilityHint(String(localized: "Opens a form to edit this account")) } }
         .refreshable { await viewModel.loadTransactions(accountId: account.id) }
         .task { await viewModel.loadTransactions(accountId: account.id) }
         .alert(String(localized: "Error"), isPresented: Binding(
@@ -80,19 +97,26 @@ struct AccountDetailView: View {
         } message: { error in
             Text(error.localizedDescription)
         }
+        .sheet(item: $editingTransaction, onDismiss: {
+            Task { await viewModel.loadTransactions(accountId: account.id) }
+        }) { transaction in
+            TransactionEditView(transaction: transaction) {
+                Task { await viewModel.loadTransactions(accountId: account.id) }
+            }
+        }
     }
 
     private var accountHeader: some View {
         Section {
             VStack(spacing: 8) {
-                Image(systemName: account.icon)
+                Image(systemName: currentAccount.icon)
                     .font(.largeTitle).foregroundStyle(.blue)
                     .frame(width: 64, height: 64)
                     .background(Color.blue.opacity(0.1), in: Circle())
                 Text(String(localized: "Current Balance"))
                     .font(.subheadline).foregroundStyle(.secondary)
-                CurrencyLabel(amountInMinorUnits: account.balanceMinorUnits, currencyCode: account.currencyCode, showSign: false, font: .title.bold())
-                Text(account.type.displayName)
+                CurrencyLabel(amountInMinorUnits: currentAccount.balanceMinorUnits, currencyCode: currentAccount.currencyCode, showSign: false, font: .title.bold())
+                Text(currentAccount.type.displayName)
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.horizontal, 12).padding(.vertical, 4)
                     .background(.quaternary, in: Capsule())
@@ -196,6 +220,7 @@ struct AccountDetailView: View {
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(transaction.payee), \(transaction.category)")
+        .accessibilityHint(String(localized: "Tap to edit. Swipe for more actions."))
     }
 }
 

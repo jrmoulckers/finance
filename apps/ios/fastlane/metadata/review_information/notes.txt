@@ -1,0 +1,41 @@
+Thank you for reviewing Finance!
+
+KEY INFORMATION FOR REVIEW:
+
+1. NO LOGIN REQUIRED
+   The app works fully offline with no account creation or sign-in.
+   Demo account data is generated automatically on first launch so
+   you can explore all features immediately.
+
+2. LOCAL-ONLY STORAGE BY DEFAULT
+   All financial data (accounts, transactions, budgets, goals) is
+   stored locally on-device using an embedded SQLite database. No
+   network requests are made unless the user explicitly enables
+   optional cloud sync in Settings.
+
+3. OPTIONAL CLOUD SYNC
+   Cloud sync via Supabase is available in Settings but is entirely
+   user-initiated. The app is fully functional without it. If you
+   need to test sync, you can skip it — all core features work
+   without a network connection.
+
+4. FACE ID / TOUCH ID (OPTIONAL)
+   Biometric app lock can be enabled in Settings > Security. It
+   uses the LocalAuthentication framework with the
+   .deviceOwnerAuthentication policy (biometric + passcode fallback).
+   This is an optional feature — the app is fully usable without it.
+
+5. CAMERA & PHOTO LIBRARY
+   The camera and photo library permissions are requested only when
+   the user taps the "Attach Receipt" button on the transaction
+   creation screen. These permissions are not requested at launch.
+
+6. NO TRACKING OR ANALYTICS
+   The app contains no third-party analytics SDKs, no advertising
+   frameworks, and no tracking of any kind. The ITSAppUsesNonExemptEncryption
+   key is set to false — the app uses only Apple's built-in encryption.
+
+7. WIDGETS & WATCH APP
+   The app includes Home Screen / Lock Screen widgets (WidgetKit)
+   and an Apple Watch companion app. These display account balances
+   and budget status from shared local data via App Groups.

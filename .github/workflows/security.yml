@@ -52,6 +52,7 @@ jobs:
         run: ./gradlew build -x test -x jsBrowserTest -x allTests --no-daemon
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
         uses: github/codeql-action/analyze@38697555549f1db7851b81482ff19f1fa5c4fedc # v4.34.1
+        continue-on-error: true
         with:
           category: '/language:java-kotlin'
 

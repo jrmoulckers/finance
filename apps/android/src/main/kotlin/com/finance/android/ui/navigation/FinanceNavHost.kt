@@ -27,6 +27,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import com.finance.android.ui.screens.AccountCreateScreen
 import com.finance.android.ui.screens.AccountsScreen
+import com.finance.android.ui.screens.AnalyticsScreen
 import com.finance.android.ui.screens.BudgetCreateScreen
 import com.finance.android.ui.screens.BudgetsScreen
 import com.finance.android.ui.screens.DashboardScreen
@@ -91,6 +92,9 @@ sealed class Route(val route: String) {
         fun createRoute(code: String): String = "invite/$code"
     }
 
+    /** Analytics / Spending Trends screen. */
+    data object Analytics : Route("analytics")
+
     /**
      * Transaction detail deep link destination.
      *
@@ -133,6 +137,11 @@ fun FinanceNavHost(
                         launchSingleTop = true
                     }
                 },
+                onViewInsights = {
+                    navController.navigate(Route.Analytics.route) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 
@@ -171,6 +180,10 @@ fun FinanceNavHost(
                     }
                 },
             )
+        }
+
+        composable(Route.Analytics.route) {
+            AnalyticsScreen()
         }
 
         // ── Secondary screens ───────────────────────────────────────

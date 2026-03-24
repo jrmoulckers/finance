@@ -18,6 +18,7 @@ import com.finance.android.ui.screens.DefaultBiometricAvailabilityChecker
 import com.finance.android.ui.screens.SettingsViewModel
 import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.android.ui.viewmodel.AccountCreateViewModel
+import com.finance.android.ui.viewmodel.AnalyticsViewModel
 import com.finance.android.ui.viewmodel.AccountsViewModel
 import com.finance.android.ui.viewmodel.BudgetCreateViewModel
 import com.finance.android.ui.viewmodel.BudgetsViewModel
@@ -86,6 +87,7 @@ val appModule = module {
     // ── ViewModels ──────────────────────────────────────────────────
 
     viewModelOf(::DashboardViewModel)
+    viewModelOf(::AnalyticsViewModel)
     viewModelOf(::AccountsViewModel)
     viewModelOf(::AccountCreateViewModel)
     viewModelOf(::BudgetsViewModel)
