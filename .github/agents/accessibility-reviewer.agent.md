@@ -66,11 +66,12 @@ You are the accessibility reviewer for Finance. Inspired by Tiimo's disability-i
 - Use SwiftUI accessibility modifiers (.accessibilityLabel, .accessibilityHint, etc.)
 - Support Dynamic Type for all text
 - Test with VoiceOver and Voice Control
+- App targets: FinanceApp (iOS 17+), FinanceWatch (watchOS 10+), FinanceClip (App Clip), FinanceWidget (Home/Lock Screen)
 
 ### Android
 
 - Use Jetpack Compose semantics (contentDescription, Role, etc.)
-- Support system font scaling
+- Support system font scaling (minSdk 28, API 9.0+)
 - Test with TalkBack and Switch Access
 
 ### Web

@@ -82,6 +82,16 @@ bucket_definitions:
         FROM goals
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
 
+      # Household members - all members of each household the user belongs to.
+      # Enables the client to display co-member names, roles, and household
+      # member lists. (The user_profile bucket syncs only the user's OWN
+      # membership records; this syncs ALL members for the household.)
+      - >
+        SELECT id, household_id, user_id, role, joined_at,
+               created_at, updated_at, deleted_at
+        FROM household_members
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
       # Household invitations — lets members see pending/accepted invites
       - >
         SELECT id, household_id, invited_by, invite_code, invited_email,
@@ -90,6 +100,15 @@ bucket_definitions:
         FROM household_invitations
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
 
+      # Recurring transaction templates
+      - >
+        SELECT id, household_id, account_id, category_id, amount_cents,
+               currency_code, type, payee, note, frequency, day_of_month,
+               day_of_week, start_date, end_date, last_generated_date,
+               next_due_date, is_active,
+               created_at, updated_at, deleted_at
+        FROM recurring_transaction_templates
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
   # ---------------------------------------------------------------------------
   # user_profile — per-user data that is NOT household-scoped.
   # Contains the user's own profile and their passkey credential metadata

@@ -42,6 +42,10 @@ final class StubAccountRepository: AccountRepository, @unchecked Sendable {
         if let error = errorToThrow { throw error }
         deletedAccountIds.append(id)
     }
+
+    func deleteAllAccounts() async throws {
+        if let error = errorToThrow { throw error }
+    }
 }
 
 // MARK: - Stub Transaction Repository
@@ -53,10 +57,21 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
     private(set) var deletedTransactionIds: [String] = []
     private(set) var createdTransactions: [TransactionItem] = []
     private(set) var updatedTransactions: [TransactionItem] = []
+    private(set) var paginationRequests: [(offset: Int, limit: Int)] = []
 
     func getTransactions() async throws -> [TransactionItem] {
         if let error = errorToThrow { throw error }
         return transactionsToReturn
+    }
+
+
+    func getTransactions(offset: Int, limit: Int) async throws -> [TransactionItem] {
+        if let error = errorToThrow { throw error }
+        paginationRequests.append((offset: offset, limit: limit))
+        let sorted = transactionsToReturn.sorted { $0.date > $1.date }
+        let start = min(offset, sorted.count)
+        let end = min(start + limit, sorted.count)
+        return Array(sorted[start..<end])
     }
 
     func getTransactions(forAccountId accountId: String) async throws -> [TransactionItem] {
@@ -85,6 +100,9 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
     }
 }
 
+    func deleteAllTransactions() async throws { if let error = errorToThrow { throw error } }
+}
+
 // MARK: - Stub Budget Repository
 
 /// Configurable stub that returns pre-set budgets or throws on demand.
@@ -107,6 +125,10 @@ final class StubBudgetRepository: BudgetRepository, @unchecked Sendable {
     func updateBudget(_ budget: BudgetItem) async throws {
         if let error = errorToThrow { throw error }
         updatedBudgets.append(budget)
+    }
+
+    func deleteAllBudgets() async throws {
+        if let error = errorToThrow { throw error }
     }
 }
 

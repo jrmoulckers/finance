@@ -260,3 +260,52 @@ struct DeepLinkHandlerNavigationTests {
         #expect(handler.selectedTab == .transactions)
     }
 }
+
+// MARK: - App Clip Deep Link Tests (#648)
+
+@Suite("DeepLinkHandler - App Clip Expense")
+struct DeepLinkHandlerClipTests {
+    @Test("Parses /clip/expense without parameters")
+    @MainActor
+    func parsesClipExpenseNoParams() {
+        let handler = DeepLinkHandler()
+        let url = URL(string: "https://finance.app/clip/expense")!
+        let result = handler.parse(url)
+        #expect(result == .clipExpense(amount: nil, category: nil))
+    }
+    @Test("Parses /clip/expense with amount and category")
+    @MainActor
+    func parsesClipExpenseWithAmountAndCategory() {
+        let handler = DeepLinkHandler()
+        let url = URL(string: "https://finance.app/clip/expense?amount=42.99&category=food")!
+        let result = handler.parse(url)
+        #expect(result == .clipExpense(amount: 4299, category: "food"))
+    }
+    @Test("handle() sets hasPendingClipExpense")
+    @MainActor
+    func handleSetsClipState() {
+        let handler = DeepLinkHandler()
+        handler.handle(URL(string: "https://finance.app/clip/expense?amount=5.00&category=food")!)
+        #expect(handler.hasPendingClipExpense == true)
+        #expect(handler.pendingClipAmount == 500)
+        #expect(handler.selectedTab == .transactions)
+    }
+    @Test("consumeClipExpense() clears state")
+    @MainActor
+    func consumeClipExpenseClearsState() {
+        let handler = DeepLinkHandler()
+        handler.handle(URL(string: "https://finance.app/clip/expense?amount=10.00")!)
+        handler.consumeClipExpense()
+        #expect(handler.hasPendingClipExpense == false)
+        #expect(handler.currentDeepLink == nil)
+    }
+    @Test("reset() clears clip state")
+    @MainActor
+    func resetClearsClipState() {
+        let handler = DeepLinkHandler()
+        handler.handle(URL(string: "https://finance.app/clip/expense?amount=25.00")!)
+        handler.reset()
+        #expect(handler.hasPendingClipExpense == false)
+        #expect(handler.currentDeepLink == nil)
+    }
+}

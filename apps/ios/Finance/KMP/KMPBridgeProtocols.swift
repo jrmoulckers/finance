@@ -52,11 +52,30 @@ struct KMPTransaction: Sendable {
     let payee, note: String?
     let date: DateComponents
     let transferAccountId: String?
+    let transferTransactionId: String?
     let isRecurring: Bool
+    let recurringRuleId: String?
     let tags: [String]
     let createdAt, updatedAt: Date
     let deletedAt: Date?
+    let syncVersion: Int64
     let isSynced: Bool
+
+    init(id: String, householdId: String, accountId: String, categoryId: String?,
+         type: KMPTransactionType, status: KMPTransactionStatus,
+         amountMinorUnits: Int64, currencyCode: String,
+         payee: String?, note: String?, date: DateComponents,
+         transferAccountId: String?, isRecurring: Bool, tags: [String],
+         createdAt: Date, updatedAt: Date, deletedAt: Date?, isSynced: Bool) {
+        self.id = id; self.householdId = householdId; self.accountId = accountId
+        self.categoryId = categoryId; self.type = type; self.status = status
+        self.amountMinorUnits = amountMinorUnits; self.currencyCode = currencyCode
+        self.payee = payee; self.note = note; self.date = date
+        self.transferAccountId = transferAccountId; self.transferTransactionId = nil
+        self.isRecurring = isRecurring; self.recurringRuleId = nil; self.tags = tags
+        self.createdAt = createdAt; self.updatedAt = updatedAt
+        self.deletedAt = deletedAt; self.syncVersion = 0; self.isSynced = isSynced
+    }
 }
 
 enum KMPTransactionType: String, Sendable, CaseIterable { case expense, income, transfer }
@@ -143,6 +162,24 @@ enum KMPSyncError: Sendable {
         case .conflictError(let c): String(localized: "\(c) sync conflicts")
         case .serverError(_, let m): String(localized: "Server error: \(m)")
         case .unknown(let c): String(localized: "Unknown: \(c)")
+        }
+    }
+}
+
+
+// MARK: - KMP Repository Error
+
+enum KMPRepositoryError: Error, LocalizedError, Sendable {
+    case entityNotFound(entityType: String, id: String)
+    case validationFailed(errors: [String])
+    case bridgeUnavailable
+    case bridgeCallFailed(underlying: String)
+    var errorDescription: String? {
+        switch self {
+        case .entityNotFound(let type, let id): String(localized: "\(type) not found: \(id)")
+        case .validationFailed(let errors): errors.joined(separator: "; ")
+        case .bridgeUnavailable: String(localized: "KMP bridge is not available")
+        case .bridgeCallFailed(let msg): String(localized: "KMP bridge error: \(msg)")
         }
     }
 }

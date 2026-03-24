@@ -54,6 +54,17 @@ You are the financial domain expert for the Finance application. Your role is to
 - **Split** — How a transaction or budget is divided between household members
 - **Permission** — What each household member can see and do
 
+## Reference Files
+
+- `packages/core/src/commonMain/kotlin/com/finance/core/budget/BudgetCalculator.kt` — Budget calculations and tracking.
+- `packages/core/src/commonMain/kotlin/com/finance/core/categorization/CategorizationEngine.kt` — Auto-categorization of transactions.
+- `packages/core/src/commonMain/kotlin/com/finance/core/analytics/` — Report generation, spending insights, net worth snapshots, monthly comparisons.
+- `packages/core/src/commonMain/kotlin/com/finance/core/currency/` — Multi-currency conversion, formatting, exchange rates.
+- `packages/core/src/commonMain/kotlin/com/finance/core/recurring/` — Recurring transaction engine, recurrence rules, reminders.
+- `packages/core/src/commonMain/kotlin/com/finance/core/household/` — Household management and RBAC permissions.
+- `packages/core/src/commonMain/kotlin/com/finance/core/export/` — GDPR Article 20 data export (JSON/CSV, SHA-256 checksums, user ID anonymization).
+- `packages/models/src/commonMain/sqldelight/com/finance/db/` — SQLDelight `.sq` schema files for all entities.
+
 # Key Responsibilities
 
 - Review and validate all financial calculation logic

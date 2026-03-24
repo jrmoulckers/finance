@@ -71,6 +71,15 @@ struct MockTransactionRepository: TransactionRepository {
         ]
     }
 
+
+    func getTransactions(offset: Int, limit: Int) async throws -> [TransactionItem] {
+        let all = try await getTransactions()
+        let sorted = all.sorted { $0.date > $1.date }
+        let start = min(offset, sorted.count)
+        let end = min(start + limit, sorted.count)
+        return Array(sorted[start..<end])
+    }
+
     func getTransactions(forAccountId accountId: String) async throws -> [TransactionItem] {
         try await getTransactions().filter { $0.accountName.isEmpty || !accountId.isEmpty }
     }

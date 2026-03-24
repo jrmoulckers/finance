@@ -5,8 +5,9 @@
 //
 // Form-style settings with large navigation title. Covers currency,
 // notifications, biometric auth, data export, sync status, and about.
-// Refs #565
+// Refs #565, #650
 
+import AuthenticationServices
 import os
 import SwiftUI
 
@@ -14,6 +15,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(BiometricAuthManager.self) private var biometricManager
+    @Environment(AuthenticationService.self) private var authService
     @State private var viewModel: SettingsViewModel
 
     init(viewModel: SettingsViewModel = SettingsViewModel()) {
@@ -23,6 +25,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                accountSection
                 generalSection
                 notificationsSection
                 securitySection
@@ -62,10 +65,40 @@ struct SettingsView: View {
                     Text(message)
                 }
             }
+            .alert(String(localized: "Sign-In Error"), isPresented: Binding(get: { authService.authError != nil }, set: { _ in })) {
+                Button(String(localized: "OK"), role: .cancel) {}.accessibilityLabel(String(localized: "Dismiss sign-in error"))
+            } message: { if let error = authService.authError { Text(error) } }
             .sheet(isPresented: $viewModel.showingShareSheet) {
                 if let url = viewModel.exportedFileURL {
                     ShareSheetView(fileURL: url)
                 }
+            }
+        }
+    }
+
+    // MARK: - Account
+
+    private var accountSection: some View {
+        Section(String(localized: "Account")) {
+            if authService.isAuthenticated, let user = authService.currentUser {
+                HStack {
+                    Image(systemName: "person.crop.circle.fill").font(.title).foregroundStyle(.secondary).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        if let name = user.name { Text(name).font(.headline) }
+                        if let email = user.email { Text(email).font(.subheadline).foregroundStyle(.secondary) }
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(String(localized: "Signed in as \(user.name ?? user.email ?? user.id)"))
+                Button(role: .destructive) { Task { await authService.signOut() } } label: {
+                    Label(String(localized: "Sign Out"), systemImage: "rectangle.portrait.and.arrow.right")
+                }.accessibilityLabel(String(localized: "Sign Out")).accessibilityHint(String(localized: "Signs you out of your account"))
+            } else {
+                Button { Task { await authService.signInWithApple() } } label: {
+                    HStack { Image(systemName: "apple.logo").accessibilityHidden(true); Text(String(localized: "Sign in with Apple")) }.frame(maxWidth: .infinity, minHeight: 44)
+                }.accessibilityLabel(String(localized: "Sign in with Apple")).accessibilityHint(String(localized: "Signs you in using your Apple ID"))
+                Text(String(localized: "Sign in to sync your data across devices and enable cloud backup.")).font(.footnote).foregroundStyle(.secondary)
+                    .accessibilityLabel(String(localized: "Sign in to sync your data across devices and enable cloud backup."))
             }
         }
     }
@@ -79,6 +112,7 @@ struct SettingsView: View {
                     Text("\(code) — \(name)").tag(code)
                 }
             }
+            .accessibilityIdentifier("currency_picker")
             .accessibilityLabel(String(localized: "Default currency"))
             .accessibilityHint(String(localized: "Select your preferred currency for displaying amounts"))
         }
@@ -126,6 +160,7 @@ struct SettingsView: View {
                 )
             }
             .disabled(!biometricManager.isAvailable)
+            .accessibilityIdentifier("biometric_toggle")
             .accessibilityLabel(biometricManager.biometricType.displayName)
             .accessibilityHint(
                 biometricManager.isAvailable
@@ -337,4 +372,5 @@ private struct ShareSheetView: UIViewControllerRepresentable {
 #Preview {
     SettingsView()
         .environment(BiometricAuthManager())
+        .environment(AuthenticationService())
 }

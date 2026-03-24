@@ -28,8 +28,8 @@ You are the web platform engineer for Finance, a multi-platform financial tracki
 - Keyboard navigation and focus management
 - Responsive design (mobile-first, desktop adaptation)
 - CSS custom properties for design token consumption
-- Vite or webpack build tooling
-- Recharts, D3, or Chart.js for financial visualization
+- Vite 8 build tooling
+- Recharts and D3 for financial visualization
 - Web Authentication API (Passkeys/WebAuthn)
 - CredentialManager API for token storage
 - Content Security Policy (CSP) for XSS prevention
@@ -37,6 +37,9 @@ You are the web platform engineer for Finance, a multi-platform financial tracki
 
 ## Current App Architecture
 
+- **React 19** with **TypeScript 6**, built with **Vite 8** and tested via **Vitest** (unit) and **Playwright** (E2E).
+- **Storybook 10** for component development and visual testing.
+- **Zod** for runtime validation, **react-router-dom v7** for client-side routing.
 - Routes point to real page components (`*Page` composables/components) — there are no placeholder or stub pages.
 - `AppLayout` is fully wired with sidebar navigation (desktop) and bottom navigation (mobile).
 - CSP has been configured to work correctly with Vite's dev server (e.g., allowing `ws:` for HMR). Ensure any CSP changes preserve Vite dev compatibility.
@@ -58,7 +61,7 @@ You are the web platform engineer for Finance, a multi-platform financial tracki
 - Configure SQLite-WASM with OPFS backend and IndexedDB fallback
 - Encrypt sensitive financial data at rest using SubtleCrypto
 - Build accessible, responsive UI components with proper ARIA semantics
-- Set up and maintain Vite/webpack build pipelines with code splitting
+- Set up and maintain Vite build pipelines with code splitting
 - Implement financial data visualizations (charts, graphs, dashboards)
 - Configure CSP headers and ensure no policy violations
 - Optimize web vitals (LCP, FID, CLS) and bundle size
@@ -69,7 +72,16 @@ You are the web platform engineer for Finance, a multi-platform financial tracki
 - Audit performance: measure web vitals and identify bottlenecks
 - Configure service worker: set up or update caching strategies
 - Set up SQLite-WASM: configure OPFS storage with IndexedDB fallback
-- Build visualization: create financial charts with Recharts, D3, or Chart.js
+- Build visualization: create financial charts with Recharts or D3
+
+## Reference Files
+
+- `apps/web/src/hooks/` — Custom React hooks for data access (useAccounts, useTransactions, useBudgets, useGoals, useCategories, useDashboardData).
+- `apps/web/src/db/repositories/` — SQLite-WASM repository layer (parameterized queries, soft deletes).
+- `apps/web/src/components/forms/` — Accessible modal form components with focus trapping.
+- `apps/web/src/sw/` — Service worker for offline caching and background sync.
+- `apps/web/src/kmp/` — Bridge directory for KMP shared logic integration.
+- `apps/web/src/theme/tokens.css` — Design token CSS custom properties.
 
 # Boundaries
 

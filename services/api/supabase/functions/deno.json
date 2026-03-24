@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true
+  },
+  "test": {
+    "include": [
+      "_shared/**/*.test.ts",
+      "_test_helpers/**/*.test.ts",
+      "health-check/**/*.test.ts",
+      "auth-webhook/**/*.test.ts",
+      "passkey-register/**/*.test.ts",
+      "passkey-authenticate/**/*.test.ts",
+      "household-invite/**/*.test.ts",
+      "data-export/**/*.test.ts",
+      "account-deletion/**/*.test.ts"
+    ],
+    "exclude": ["node_modules"]
+  },
+  "tasks": {
+    "test": "deno test --allow-env --allow-net=none --no-check",
+    "test:coverage": "deno test --allow-env --allow-net=none --no-check --coverage=coverage",
+    "test:watch": "deno test --allow-env --allow-net=none --no-check --watch",
+    "test:shared": "deno test --allow-env --allow-net=none --no-check _shared/",
+    "test:health-check": "deno test --allow-env --allow-net=none --no-check health-check/",
+    "test:auth-webhook": "deno test --allow-env --allow-net=none --no-check auth-webhook/",
+    "test:passkey-register": "deno test --allow-env --allow-net=none --no-check passkey-register/",
+    "test:passkey-authenticate": "deno test --allow-env --allow-net=none --no-check passkey-authenticate/",
+    "test:household-invite": "deno test --allow-env --allow-net=none --no-check household-invite/",
+    "test:data-export": "deno test --allow-env --allow-net=none --no-check data-export/",
+    "test:account-deletion": "deno test --allow-env --allow-net=none --no-check account-deletion/"
+  },
+  "imports": {
+    "std/testing/": "https://deno.land/std@0.208.0/testing/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.0",
+    "@simplewebauthn/server": "https://esm.sh/@simplewebauthn/server@9.0.3"
+  }
+}
