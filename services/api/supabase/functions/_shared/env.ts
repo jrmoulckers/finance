@@ -24,6 +24,7 @@ const FUNCTION_ENV_VARS: Record<string, readonly string[]> = {
   'process-recurring': ['CRON_SECRET'],
   'manage-webhooks': ['ALLOWED_ORIGINS'],
   'admin-dashboard': ['ADMIN_EMAILS'],
+  'send-notification': ['ALLOWED_ORIGINS'],
 };
 
 /**
