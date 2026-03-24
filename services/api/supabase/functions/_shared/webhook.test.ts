@@ -36,7 +36,6 @@ import {
   VALID_EVENT_TYPES,
 } from '../_shared/webhook.ts';
 import type {
-  WebhookEvent,
   WebhookEndpoint,
   WebhookDeliveryResult,
 } from '../_shared/webhook.ts';
