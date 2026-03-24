@@ -18,12 +18,9 @@ import {
 import {
   assertStatus,
   assertErrorResponse,
-  assertJsonBody,
-  assertCorsHeaders,
   assertIsoTimestamp,
 } from '../_test_helpers/assertions.ts';
-import { createMockRequest, createAuthenticatedRequest } from '../_test_helpers/mock-request.ts';
-import { createMockSupabaseClient, type MockResult } from '../_test_helpers/mock-supabase.ts';
+import { createMockRequest } from '../_test_helpers/mock-request.ts';
 import { TEST_USER, TEST_USER_2 } from '../_test_helpers/test-fixtures.ts';
 
 // ---------------------------------------------------------------------------
