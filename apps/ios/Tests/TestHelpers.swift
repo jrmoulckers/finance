@@ -143,6 +143,23 @@ final class StubGoalRepository: GoalRepository, @unchecked Sendable {
     }
 }
 
+
+// MARK: - Stub Category Repository
+
+final class StubCategoryRepository: CategoryRepository, @unchecked Sendable {
+    var categoriesToReturn: [CategoryItem] = []
+    var errorToThrow: Error?
+    private(set) var createdInputs: [CreateCategoryInput] = []
+    private(set) var updatedIds: [String] = []
+    private(set) var deletedIds: [String] = []
+    private(set) var reorderedIds: [[String]] = []
+    func getAll() async throws -> [CategoryItem] { if let error = errorToThrow { throw error }; return categoriesToReturn }
+    func getById(_ id: String) async throws -> CategoryItem? { if let error = errorToThrow { throw error }; return categoriesToReturn.first { $0.id == id } }
+    func create(_ input: CreateCategoryInput) async throws -> CategoryItem { if let error = errorToThrow { throw error }; createdInputs.append(input); let item = CategoryItem(id: UUID().uuidString, name: input.name, colorHex: input.colorHex, iconName: input.iconName, sortOrder: input.sortOrder, isDefault: false, createdAt: Date(), updatedAt: Date()); categoriesToReturn.append(item); return item }
+    func update(_ id: String, _ input: UpdateCategoryInput) async throws -> CategoryItem { if let error = errorToThrow { throw error }; updatedIds.append(id); guard let index = categoriesToReturn.firstIndex(where: { $0.id == id }) else { throw CategoryRepositoryError.notFound }; let e = categoriesToReturn[index]; let u = CategoryItem(id: e.id, name: input.name ?? e.name, colorHex: input.colorHex ?? e.colorHex, iconName: input.iconName ?? e.iconName, sortOrder: input.sortOrder ?? e.sortOrder, isDefault: e.isDefault, createdAt: e.createdAt, updatedAt: Date()); categoriesToReturn[index] = u; return u }
+    @discardableResult func delete(_ id: String, reassignTo: String?) async throws -> Bool { if let error = errorToThrow { throw error }; deletedIds.append(id); categoriesToReturn.removeAll { $0.id == id }; return true }
+    func reorder(_ ids: [String]) async throws { if let error = errorToThrow { throw error }; reorderedIds.append(ids) }
+}
 // MARK: - Stub Biometric Auth Manager
 
 /// Configurable stub for biometric authentication in tests.
@@ -302,4 +319,12 @@ enum SampleData {
     )
 
     static let allGoals: [GoalItem] = [activeGoal, completedGoal]
+
+    // MARK: Categories
+    private static let categoryDate = Date(timeIntervalSince1970: 1_700_000_000)
+    static let foodCategory = CategoryItem(id: "cat-food", name: "Food & Groceries", colorHex: "#4CAF50", iconName: "cart", sortOrder: 0, isDefault: true, createdAt: categoryDate, updatedAt: categoryDate)
+    static let transportCategory = CategoryItem(id: "cat-transport", name: "Transport", colorHex: "#2196F3", iconName: "car", sortOrder: 1, isDefault: true, createdAt: categoryDate, updatedAt: categoryDate)
+    static let entertainmentCategory = CategoryItem(id: "cat-entertainment", name: "Entertainment", colorHex: "#9C27B0", iconName: "film", sortOrder: 2, isDefault: true, createdAt: categoryDate, updatedAt: categoryDate)
+    static let shoppingCategory = CategoryItem(id: "cat-shopping", name: "Shopping", colorHex: "#FF9800", iconName: "bag", sortOrder: 3, isDefault: true, createdAt: categoryDate, updatedAt: categoryDate)
+    static let allCategories: [CategoryItem] = [foodCategory, transportCategory, entertainmentCategory, shoppingCategory]
 }

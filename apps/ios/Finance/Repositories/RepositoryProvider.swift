@@ -57,6 +57,9 @@ final class RepositoryProvider: @unchecked Sendable {
     /// Goal data access.
     let goals: any GoalRepository
 
+    /// Category data access.
+    let categories: any CategoryRepository
+
     // MARK: - Logging
 
     private static let logger = Logger(
@@ -77,12 +80,14 @@ final class RepositoryProvider: @unchecked Sendable {
         accounts: any AccountRepository = KMPAccountRepository(),
         transactions: any TransactionRepository = KMPTransactionRepository(),
         budgets: any BudgetRepository = KMPBudgetRepository(),
-        goals: any GoalRepository = KMPGoalRepository()
+        goals: any GoalRepository = KMPGoalRepository(),
+        categories: any CategoryRepository = MockCategoryRepository()
     ) {
         self.accounts = accounts
         self.transactions = transactions
         self.budgets = budgets
         self.goals = goals
+        self.categories = categories
 
         Self.logger.info("RepositoryProvider initialised")
     }

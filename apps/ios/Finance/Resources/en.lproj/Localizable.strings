@@ -580,3 +580,47 @@
 /* Footer */
 "privacy.footer.lastUpdated" = "Last updated: March 2026";
 "privacy.footer.lastUpdated.accessibilityLabel" = "Privacy policy last updated March 2026";
+
+
+/* Categories Screen (#681) */
+"Categories" = "Categories";
+"New Category" = "New Category";
+"Edit Category" = "Edit Category";
+"Manage Categories" = "Manage Categories";
+"No Categories" = "No Categories";
+"Create a category to organise your transactions." = "Create a category to organise your transactions.";
+"Add Category" = "Add Category";
+"Search categories" = "Search categories";
+"Default" = "Default";
+"Default category" = "Default category";
+"Double tap to edit this category" = "Double tap to edit this category";
+"Name" = "Name";
+"Category name" = "Category name";
+"Enter a name for this category" = "Enter a name for this category";
+"Color" = "Color";
+"Icon" = "Icon";
+"Preview" = "Preview";
+"Category preview" = "Category preview";
+"No name entered" = "No name entered";
+"Save category" = "Save category";
+"Saves the category and closes the form" = "Saves the category and closes the form";
+"Dismisses the category form without saving" = "Dismisses the category form without saving";
+"Please enter a category name." = "Please enter a category name.";
+"Delete Category" = "Delete Category";
+"Add category" = "Add category";
+"Opens a form to create a new category" = "Opens a form to create a new category";
+"Edit categories" = "Edit categories";
+"Enables reordering and deletion of categories" = "Enables reordering and deletion of categories";
+"Opens the category management screen to create, edit, and reorder categories" = "Opens the category management screen to create, edit, and reorder categories";
+"Selected" = "Selected";
+"Failed to load categories. Please try again." = "Failed to load categories. Please try again.";
+"Failed to create category. Please try again." = "Failed to create category. Please try again.";
+"Failed to update category. Please try again." = "Failed to update category. Please try again.";
+"Failed to delete category. Please try again." = "Failed to delete category. Please try again.";
+"Failed to reorder categories. Please try again." = "Failed to reorder categories. Please try again.";
+"Category not found." = "Category not found.";
+"Food & Groceries" = "Food & Groceries";
+"Bills & Utilities" = "Bills & Utilities";
+"Health" = "Health";
+"Education" = "Education";
+"Other" = "Other";

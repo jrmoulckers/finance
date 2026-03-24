@@ -114,6 +114,14 @@ struct SettingsView: View {
             }
             .accessibilityLabel(String(localized: "Default currency"))
             .accessibilityHint(String(localized: "Select your preferred currency for displaying amounts"))
+
+            NavigationLink {
+                CategoriesView()
+            } label: {
+                Label(String(localized: "Manage Categories"), systemImage: "tag")
+            }
+            .accessibilityLabel(String(localized: "Manage Categories"))
+            .accessibilityHint(String(localized: "Opens the category management screen to create, edit, and reorder categories"))
         }
     }
 
