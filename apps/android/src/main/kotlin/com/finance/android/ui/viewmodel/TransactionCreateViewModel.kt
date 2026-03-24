@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.finance.android.data.repository.AccountRepository
@@ -27,6 +28,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.math.abs
 
 // TODO(#434): Replace with authenticated user's household ID
 private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
@@ -39,6 +41,7 @@ enum class CreateStep(val index: Int, val label: String) {
 
 data class TransactionCreateUiState(
     val currentStep: CreateStep = CreateStep.AMOUNT,
+    val isEditing: Boolean = false,
     val transactionType: TransactionType = TransactionType.EXPENSE,
     val amountText: String = "",
     val amountCents: Long = 0L,
@@ -61,13 +64,21 @@ data class TransactionCreateUiState(
 )
 
 /**
- * ViewModel for Transaction Creation (#23). 3-step flow with validation.
+ * ViewModel for Transaction Creation and Editing (#23 / #530).
  *
- * @param transactionRepository Target repository for saving new transactions.
+ * Drives a 3-step wizard flow (Amount → Category/Account → Confirm).
+ * When the navigation argument `"id"` is present in [savedStateHandle], the ViewModel
+ * enters **edit mode**: the existing transaction is pre-loaded into the form and
+ * [save] calls [TransactionRepository.update] rather than [TransactionRepository.insert].
+ *
+ * @param savedStateHandle Navigation argument handle. When key `"id"` is present the ViewModel
+ *   enters edit mode and pre-populates all form fields from the stored transaction.
+ * @param transactionRepository Target repository for saving or updating transactions.
  * @param accountRepository Source for account list in the account picker.
  * @param categoryRepository Source for category list in the category picker.
  */
 class TransactionCreateViewModel(
+    savedStateHandle: SavedStateHandle,
     private val transactionRepository: TransactionRepository,
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
@@ -84,6 +95,16 @@ class TransactionCreateViewModel(
     /** In-memory cache of accounts by ID for name lookups. */
     private var accountMap: Map<SyncId, Account> = emptyMap()
 
+    /**
+     * The original [Transaction] being edited in edit mode, or `null` in create mode.
+     * Used to preserve immutable fields (id, householdId, createdAt, currency, etc.)
+     * when [save] calls [TransactionRepository.update].
+     */
+    private var editingTransaction: Transaction? = null
+
+    /** Navigation argument key used to distinguish edit mode from create mode. */
+    private val editTransactionId: String? = savedStateHandle["id"]
+
     init {
         viewModelScope.launch {
             val cats = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
@@ -93,9 +114,43 @@ class TransactionCreateViewModel(
                 .distinct()
             categoryMap = cats.associateBy { it.id }
             accountMap = accts.associateBy { it.id }
-            _uiState.update { it.copy(categories = cats, accounts = accts,
-                selectedAccountId = accts.firstOrNull()?.id,
-                selectedAccountName = accts.firstOrNull()?.name ?: "") }
+            _uiState.update {
+                it.copy(
+                    categories = cats, accounts = accts,
+                    selectedAccountId = accts.firstOrNull()?.id,
+                    selectedAccountName = accts.firstOrNull()?.name ?: "",
+                )
+            }
+
+            // Pre-populate form for edit mode when a transaction ID is present.
+            if (editTransactionId != null) {
+                val txn = transactionRepository.getById(SyncId(editTransactionId))
+                if (txn != null) {
+                    editingTransaction = txn
+                    val absAmountCents = abs(txn.amount.amount)
+                    val whole = absAmountCents / 100L
+                    val frac = absAmountCents % 100L
+                    val amountText = "$whole.${frac.toString().padStart(2, '0')}"
+                    _uiState.update {
+                        it.copy(
+                            isEditing = true,
+                            transactionType = txn.type,
+                            amountText = amountText,
+                            amountCents = absAmountCents,
+                            payee = txn.payee ?: "",
+                            selectedCategoryId = txn.categoryId,
+                            selectedCategoryName = txn.categoryId?.let { id -> categoryMap[id]?.name } ?: "",
+                            selectedAccountId = txn.accountId,
+                            selectedAccountName = accountMap[txn.accountId]?.name ?: "",
+                            selectedTransferAccountId = txn.transferAccountId,
+                            selectedTransferAccountName = txn.transferAccountId
+                                ?.let { id -> accountMap[id]?.name } ?: "",
+                            date = txn.date,
+                            note = txn.note ?: "",
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -179,7 +234,19 @@ class TransactionCreateViewModel(
             val now = Clock.System.now()
             val amountCents = if (s.transactionType == TransactionType.INCOME)
                 Cents(s.amountCents) else Cents(-s.amountCents)
-            val transaction = Transaction(
+            val existing = editingTransaction
+            val transaction = existing?.copy(
+                accountId = s.selectedAccountId!!,
+                categoryId = s.selectedCategoryId,
+                type = s.transactionType,
+                amount = amountCents,
+                payee = s.payee.ifBlank { null },
+                note = s.note.ifBlank { null },
+                date = s.date,
+                transferAccountId = s.selectedTransferAccountId,
+                updatedAt = now,
+                isSynced = false,
+            ) ?: Transaction(
                 id = SyncId("txn-${now.toEpochMilliseconds()}"),
                 householdId = PLACEHOLDER_HOUSEHOLD_ID,
                 accountId = s.selectedAccountId!!,
@@ -195,7 +262,11 @@ class TransactionCreateViewModel(
                 createdAt = now,
                 updatedAt = now,
             )
-            transactionRepository.insert(transaction)
+            if (existing != null) {
+                transactionRepository.update(transaction)
+            } else {
+                transactionRepository.insert(transaction)
+            }
             _uiState.update { it.copy(isSaving = false, isSaved = true) }
         }
     }

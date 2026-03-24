@@ -25,6 +25,8 @@ import {
 } from 'https://esm.sh/@simplewebauthn/server@9.0.3';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
+import { validateEnv, requireEnv } from '../_shared/env.ts';
 import type {
   GenerateRegistrationOptionsOpts,
   VerifiedRegistrationResponse,
@@ -37,8 +39,8 @@ async function getAuthenticatedUser(req: Request): Promise<{ id: string; email: 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return null;
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabaseUrl = requireEnv('SUPABASE_URL');
+  const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -59,6 +61,10 @@ serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return handleCorsPreflightRequest(req);
   }
+
+  // Validate required environment variables (#616)
+  const envError = validateEnv('passkey-register', req);
+  if (envError) return envError;
 
   const logger = createLogger('passkey-register');
   logger.info('Request received', { method: req.method });
@@ -88,15 +94,26 @@ serve(async (req: Request): Promise<Response> => {
 
   logger.info('Processing registration step', { step: step ?? 'unknown' });
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const rpName = Deno.env.get('WEBAUTHN_RP_NAME') ?? 'Finance App';
-  const rpID = Deno.env.get('WEBAUTHN_RP_ID') ?? 'finance.example.com';
-  const origin = Deno.env.get('WEBAUTHN_ORIGIN') ?? 'https://app.finance.example.com';
+  const supabaseUrl = requireEnv('SUPABASE_URL');
+  const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const rpName = requireEnv('WEBAUTHN_RP_NAME');
+  const rpID = requireEnv('WEBAUTHN_RP_ID');
+  const origin = requireEnv('WEBAUTHN_ORIGIN');
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // Rate limiting (user-based, #614)
+  const rateLimitResult = await checkRateLimit(
+    supabaseAdmin,
+    user.id,
+    RATE_LIMITS['passkey-register'],
+  );
+  if (!rateLimitResult.allowed) {
+    logger.warn('Rate limit exceeded', { httpStatus: 429 });
+    return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['passkey-register']);
+  }
 
   try {
     if (step === 'options') {

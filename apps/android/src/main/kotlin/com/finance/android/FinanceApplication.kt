@@ -5,6 +5,7 @@ package com.finance.android
 import android.app.Application
 import com.finance.android.di.appModule
 import com.finance.android.di.authModule
+import com.finance.android.di.dataModule
 import com.finance.android.sync.SyncWorker
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -38,8 +39,7 @@ class FinanceApplication : Application() {
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.DEBUG else Level.NONE)
             androidContext(this@FinanceApplication)
-            // TODO: Re-enable dataModule once the SQLCipher integration is stable again.
-            modules(appModule, authModule)
+            modules(appModule, authModule, dataModule)
         }
         Timber.i("Koin DI initialized")
     }

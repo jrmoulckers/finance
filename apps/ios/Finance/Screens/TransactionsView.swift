@@ -48,7 +48,8 @@ struct TransactionsView: View {
                     Button { viewModel.showingCreateTransaction = true } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel(String(localized: "Add transaction"))
+                    .accessibilityIdentifier("add_transaction_button")
+                        .accessibilityLabel(String(localized: "Add transaction"))
                     .accessibilityHint(String(localized: "Opens a form to create a new transaction"))
                 }
             }
@@ -60,11 +61,9 @@ struct TransactionsView: View {
             .sheet(item: $viewModel.editingTransaction, onDismiss: {
                 Task { await viewModel.loadTransactions() }
             }) { transaction in
-                TransactionCreateView(viewModel: TransactionCreateViewModel(
-                    transactionRepository: MockTransactionRepository(),
-                    accountRepository: MockAccountRepository(),
-                    transaction: transaction
-                ))
+                TransactionEditView(transaction: transaction) {
+                    Task { await viewModel.loadTransactions() }
+                }
             }
             .alert(String(localized: "Delete Transaction"), isPresented: $viewModel.showingDeleteConfirmation) {
                 Button(String(localized: "Cancel"), role: .cancel) {

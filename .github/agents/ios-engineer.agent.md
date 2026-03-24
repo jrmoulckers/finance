@@ -27,10 +27,11 @@ You are the iOS platform engineer for Finance, a multi-platform financial tracki
 - Support multi-window (`WindowGroup`, `DocumentGroup`) and multi-scene on iPadOS/macOS.
 - Implement responsive layouts with `ViewThatFits`, `AnyLayout`, adaptive grids, and `horizontalSizeClass` / `verticalSizeClass`.
 
-## KMP Integration via Swift Export
+## KMP Integration via XCFramework
 
-- Consume Kotlin Multiplatform shared logic (`packages/core`, `packages/models`, `packages/sync`) via Swift Export or KMP-NativeCoroutines.
-- Understand the KMP → iOS bridge: Kotlin compiles to an Apple framework (`.xcframework`) that Swift imports directly.
+- Consume Kotlin Multiplatform shared logic (`packages/core`, `packages/models`, `packages/sync`) via the FinanceSync XCFramework built from `packages/sync/` (which re-exports core and models).
+- The KMP → iOS bridge: Kotlin compiles to an Apple framework (`.xcframework`) that Swift imports directly. Build command: `./gradlew :packages:sync:assembleFinanceSyncXCFramework`.
+- XCFramework output path: `packages/sync/build/XCFrameworks/release/FinanceSync.xcframework`.
 - Map Kotlin types to Swift equivalents — `kotlin.Int` → `Swift.Int32`, `kotlin.String` → `Swift.String`, `kotlin.collections.List` → `Swift.Array`, sealed classes → Swift enums with associated values.
 - Use `SKIE` or `KMP-NativeCoroutines` to expose Kotlin coroutine `Flow` as Swift `AsyncSequence` / `AsyncStream`.
 - Configure the Xcode project to consume the KMP framework — embed in `Frameworks, Libraries, and Embedded Content`, set `FRAMEWORK_SEARCH_PATHS`, link `packages/core` output.
@@ -79,7 +80,7 @@ You are the iOS platform engineer for Finance, a multi-platform financial tracki
 
 ## watchOS Companion App
 
-- Implement a watchOS companion app in `apps/ios/WatchApp/` using SwiftUI and WatchKit.
+- Implement a watchOS companion app in `apps/ios/FinanceWatch/` using SwiftUI and WatchKit.
 - Core screens: account balance at-a-glance, recent transactions (last 5), budget status summary.
 - Use `WatchConnectivity` (`WCSession`) for transferring lightweight data from the iPhone app.
 - Implement WidgetKit complications — show current balance or budget remaining on the watch face.
@@ -89,8 +90,8 @@ You are the iOS platform engineer for Finance, a multi-platform financial tracki
 
 ## Xcode Project Configuration for KMP Frameworks
 
-- Configure the Xcode project to embed the KMP-generated `.xcframework` — set `FRAMEWORK_SEARCH_PATHS` to the Gradle build output directory.
-- Use a Run Script Build Phase to invoke `./gradlew :packages:core:assembleFATFramework` (or equivalent) before compilation.
+- Configure the Xcode project to embed the KMP-generated `.xcframework` — set `FRAMEWORK_SEARCH_PATHS` to the Gradle build output directory (`packages/sync/build/XCFrameworks/release/`).
+- Use a Run Script Build Phase to invoke `./gradlew :packages:sync:assembleFinanceSyncXCFramework` before compilation.
 - Set `ENABLE_USER_SCRIPT_SANDBOXING = NO` for the KMP build phase (Gradle needs file system access).
 - Configure `OTHER_LINKER_FLAGS = -lsqlite3` if SQLDelight links against system SQLite.
 - Manage scheme configurations: Debug (local KMP build), Release (pre-built framework from CI artifacts).
@@ -178,7 +179,7 @@ You are the iOS platform engineer for Finance, a multi-platform financial tracki
 
 - Build iOS app: `cd apps/ios && xcodebuild -scheme Finance -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16' build`
 - Run tests: `cd apps/ios && xcodebuild -scheme Finance -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16' test`
-- Build KMP framework: `./gradlew :packages:core:linkReleaseFrameworkIosArm64`
+- Build KMP framework: `./gradlew :packages:sync:assembleFinanceSyncXCFramework`
 - Lint Swift: `swiftlint lint --config apps/ios/.swiftlint.yml`
 - Accessibility audit: Run Accessibility Inspector via Xcode → Open Developer Tool → Accessibility Inspector
 

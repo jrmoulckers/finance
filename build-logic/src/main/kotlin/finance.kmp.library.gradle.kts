@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import com.android.build.gradle.LibraryExtension
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
@@ -32,10 +33,25 @@ kotlin {
         androidTarget()
     }
 
-    // iOS targets
-    iosArm64()
-    iosSimulatorArm64()
-    iosX64()
+    // iOS targets — configured with framework binaries and XCFramework generation.
+    // Each module produces a "Finance<ModuleName>" static framework.
+    // Modules that re-export dependencies (e.g. sync exporting core + models)
+    // should add `export(project(...))` in their own build.gradle.kts via
+    // targets.withType<KotlinNativeTarget> { binaries.withType<Framework> { ... } }
+    val frameworkBaseName = "Finance${project.name.replaceFirstChar { it.uppercase() }}"
+    val xcf = XCFramework(frameworkBaseName)
+
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64(),
+        iosX64(),
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = frameworkBaseName
+            isStatic = true
+            xcf.add(this)
+        }
+    }
 
     // JS target (browser)
     js(IR) {

@@ -1,0 +1,82 @@
+name: Penetration Testing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zap-baseline:
+    name: OWASP ZAP Baseline Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Start Supabase stack
+        working-directory: services/api
+        run: docker compose up -d --wait
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for PostgREST API on :54321..."
+          timeout 120 bash -c 'until curl -s -o /dev/null http://localhost:54321/; do sleep 2; done'
+          echo "✓ PostgREST API is ready"
+
+          echo "Waiting for Edge Functions on :9000..."
+          timeout 120 bash -c 'until curl -s -o /dev/null http://localhost:9000/; do sleep 2; done'
+          echo "✓ Edge Functions runtime is ready"
+
+      # OWASP ZAP baseline scans - passive scan only (safe for CI).
+      # fail_action: true causes the workflow to fail on any Low/Medium/High
+      # severity findings. Informational alerts are suppressed via -I.
+      # This is stricter than CRITICAL/HIGH-only - intentionally conservative.
+
+      - name: ZAP Baseline Scan - PostgREST API
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
+        with:
+          target: 'http://localhost:54321'
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-report-postgrest
+          cmd_options: '-I'
+        continue-on-error: false
+
+      - name: ZAP Baseline Scan - Edge Functions
+        uses: zaproxy/action-baseline@7c4deb10e6261301961c86d65d54a516394f9aed # v0.14.0
+        with:
+          target: 'http://localhost:9000'
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-report-edge-functions
+          cmd_options: '-I'
+        continue-on-error: false
+
+      - name: Upload ZAP reports
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: zap-pen-test-reports
+          path: |
+            **/report_html.html
+            **/report_md.md
+            **/report_json.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Tear down Supabase stack
+        if: always()
+        working-directory: services/api
+        run: docker compose down -v

@@ -1,0 +1,574 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * CSV Import wizard styles.
+ *
+ * Follows the existing token-based pattern used by forms.css and auth.css.
+ * Uses CSS custom properties from the design-tokens package for colours,
+ * spacing, typography, border-radius, and shadows.
+ *
+ * Supports dark mode, reduced motion, and high-contrast preferences.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Wizard container
+ * ------------------------------------------------------------------------- */
+
+.import-wizard {
+  max-width: var(--layout-content-max-width, 960px);
+  margin: 0 auto;
+  padding: var(--spacing-4);
+}
+
+.import-wizard__title {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-4);
+}
+
+/* ---------------------------------------------------------------------------
+ * Step indicator
+ * ------------------------------------------------------------------------- */
+
+.import-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-6);
+  padding: 0;
+  list-style: none;
+}
+
+.import-step-indicator__step {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.import-step-indicator__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 2px solid var(--semantic-border-default);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.import-step-indicator__step--active .import-step-indicator__number {
+  background: var(--semantic-interactive-default);
+  border-color: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+}
+
+.import-step-indicator__step--active .import-step-indicator__label {
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.import-step-indicator__step--completed .import-step-indicator__number {
+  background: var(--semantic-status-positive);
+  border-color: var(--semantic-status-positive);
+  color: var(--semantic-text-inverse);
+}
+
+.import-step-indicator__connector {
+  flex: 1;
+  height: 2px;
+  background: var(--semantic-border-default);
+  min-width: var(--spacing-4);
+}
+
+.import-step-indicator__step--completed + .import-step-indicator__connector {
+  background: var(--semantic-status-positive);
+}
+
+/* Hide labels on very small screens, keep numbers */
+.import-step-indicator__label {
+  display: none;
+}
+
+@media (min-width: 600px) {
+  .import-step-indicator__label {
+    display: inline;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Upload zone
+ * ------------------------------------------------------------------------- */
+
+.import-upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-8) var(--spacing-4);
+  border: 2px dashed var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast, 100ms) ease,
+    background-color var(--duration-fast, 100ms) ease;
+}
+
+.import-upload-zone:focus-within {
+  border-color: var(--semantic-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.import-upload-zone--drag-over {
+  border-color: var(--semantic-interactive-default);
+  background: var(--semantic-background-elevated, var(--semantic-background-secondary));
+}
+
+.import-upload-zone__icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  color: var(--semantic-text-secondary);
+}
+
+.import-upload-zone__text {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.import-upload-zone__browse {
+  color: var(--semantic-interactive-default);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.import-upload-zone__browse:hover {
+  color: var(--semantic-interactive-hover);
+}
+
+.import-upload-zone__hint {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.import-upload-zone__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Account selector
+ * ------------------------------------------------------------------------- */
+
+.import-account-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-4);
+  max-width: 400px;
+}
+
+.import-account-selector__label {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Mapping table
+ * ------------------------------------------------------------------------- */
+
+.import-mapping-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--spacing-4);
+}
+
+.import-mapping-table th,
+.import-mapping-table td {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--semantic-border-default);
+  text-align: left;
+  vertical-align: top;
+  font-size: var(--type-scale-body-font-size);
+}
+
+.import-mapping-table thead th {
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.import-mapping-table tbody td {
+  color: var(--semantic-text-primary);
+}
+
+.import-mapping-table__preview-cell {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-mapping-table__confidence {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.import-mapping-table__confidence--high {
+  color: var(--semantic-status-positive);
+}
+
+.import-mapping-table__confidence--medium {
+  color: var(--semantic-status-warning);
+}
+
+.import-mapping-table__confidence--low {
+  color: var(--semantic-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Preview section
+ * ------------------------------------------------------------------------- */
+
+.import-preview-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+}
+
+.import-preview-stat {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-md);
+  min-width: 120px;
+}
+
+.import-preview-stat__value {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.import-preview-stat__label {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.import-preview-stat--errors .import-preview-stat__value {
+  color: var(--semantic-status-negative);
+}
+
+.import-preview-stat--success .import-preview-stat__value {
+  color: var(--semantic-status-positive);
+}
+
+/* ---------------------------------------------------------------------------
+ * Error & duplicate tables
+ * ------------------------------------------------------------------------- */
+
+.import-error-table,
+.import-duplicate-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--spacing-4);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.import-error-table th,
+.import-error-table td,
+.import-duplicate-table th,
+.import-duplicate-table td {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--semantic-border-default);
+  text-align: left;
+  vertical-align: top;
+}
+
+.import-error-table thead th,
+.import-duplicate-table thead th {
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.import-error-table__message {
+  color: var(--semantic-status-negative);
+}
+
+.import-duplicate-table__score {
+  font-weight: var(--font-weight-semibold);
+}
+
+.import-duplicate-table__reasons {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Progress bar
+ * ------------------------------------------------------------------------- */
+
+.import-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-8) var(--spacing-4);
+}
+
+.import-progress__bar-container {
+  width: 100%;
+  max-width: 480px;
+  height: 0.75rem;
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+}
+
+.import-progress__bar-fill {
+  height: 100%;
+  background: var(--semantic-interactive-default);
+  border-radius: var(--border-radius-md);
+  transition: width var(--duration-fast, 100ms) ease;
+}
+
+.import-progress__text {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ---------------------------------------------------------------------------
+ * Complete section
+ * ------------------------------------------------------------------------- */
+
+.import-complete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-8) var(--spacing-4);
+  text-align: center;
+}
+
+.import-complete__icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.import-complete__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.import-complete__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  justify-content: center;
+}
+
+.import-complete__actions {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
+/* ---------------------------------------------------------------------------
+ * Action buttons row
+ * ------------------------------------------------------------------------- */
+
+.import-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-5);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--semantic-border-default);
+}
+
+.import-actions__end {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-left: auto;
+}
+
+/* ---------------------------------------------------------------------------
+ * Error banner (inline)
+ * ------------------------------------------------------------------------- */
+
+.import-error-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  background: var(--color-red-50, #fef2f2);
+  border: 1px solid var(--semantic-status-negative);
+  border-radius: var(--border-radius-md);
+  color: var(--semantic-status-negative);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  margin-top: var(--spacing-3);
+}
+
+/* ---------------------------------------------------------------------------
+ * Section headings
+ * ------------------------------------------------------------------------- */
+
+.import-section-heading {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-3);
+}
+
+.import-section-description {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0 0 var(--spacing-4);
+}
+
+/* ---------------------------------------------------------------------------
+ * Scrollable table wrapper
+ * ------------------------------------------------------------------------- */
+
+.import-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: var(--spacing-4);
+}
+
+/* ---------------------------------------------------------------------------
+ * Responsive adjustments
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  .import-wizard {
+    padding: var(--spacing-3);
+  }
+
+  .import-mapping-table th,
+  .import-mapping-table td,
+  .import-error-table th,
+  .import-error-table td,
+  .import-duplicate-table th,
+  .import-duplicate-table td {
+    padding: var(--spacing-1) var(--spacing-2);
+    font-size: var(--type-scale-caption-font-size);
+  }
+
+  .import-actions {
+    flex-direction: column-reverse;
+  }
+
+  .import-actions__end {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .import-actions__end .form-button {
+    flex: 1;
+  }
+
+  .import-preview-summary {
+    gap: var(--spacing-2);
+  }
+
+  .import-preview-stat {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .import-complete__actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .import-complete__actions .form-button {
+    width: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .import-error-banner {
+    background: rgba(239, 68, 68, 0.1);
+  }
+}
+
+[data-theme='dark'] .import-error-banner {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .import-upload-zone,
+  .import-progress__bar-fill {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .import-upload-zone {
+    border-width: 3px;
+  }
+
+  .import-mapping-table th,
+  .import-mapping-table td,
+  .import-error-table th,
+  .import-error-table td,
+  .import-duplicate-table th,
+  .import-duplicate-table td {
+    border-bottom-width: 2px;
+  }
+
+  .import-step-indicator__number {
+    border-width: 3px;
+  }
+
+  .import-progress__bar-container {
+    border: 2px solid var(--semantic-border-default);
+  }
+}

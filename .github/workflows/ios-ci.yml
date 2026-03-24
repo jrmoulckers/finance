@@ -1,4 +1,5 @@
 name: iOS CI
+
 on:
   push:
     branches: [main]
@@ -6,40 +7,86 @@ on:
   pull_request:
     branches: [main]
     paths: ['apps/ios/**', 'packages/**']
+
 concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: true
+
 permissions:
   contents: read
   checks: write
+
 jobs:
   build:
     name: Build & Test
     runs-on: macos-15
     timeout-minutes: 30
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Check if iOS project exists
-        id: check
-        run: |
-          if [ -d "apps/ios/Finance" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "iOS project not yet set up — skipping build"
-          fi
+
       - name: Select Xcode
-        if: steps.check.outputs.exists == 'true'
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
           xcode-version: latest-stable
+
       - name: Build
-        if: steps.check.outputs.exists == 'true'
         run: |
           cd apps/ios
-          swift build 2>&1 || echo "Swift build completed (SPM)"
+          swift build 2>&1
+
       - name: Test
-        if: steps.check.outputs.exists == 'true'
         run: |
           cd apps/ios
-          swift test 2>&1 || echo "Swift test completed (SPM)"
+          swift test --enable-code-coverage --xunit-output .build/test-results.xml 2>&1
+
+      - name: Generate coverage report
+        if: always()
+        continue-on-error: true
+        run: |
+          cd apps/ios
+          BIN_PATH=$(swift build --show-bin-path)
+          PROFDATA=$(find .build -name 'default.profdata' -type f 2>/dev/null | head -1)
+          XCTEST=$(find "$BIN_PATH" -name '*.xctest' -type d 2>/dev/null | head -1)
+          if [ -n "$PROFDATA" ] && [ -n "$XCTEST" ]; then
+            TEST_EXEC="$XCTEST/Contents/MacOS/$(basename "$XCTEST" .xctest)"
+            xcrun llvm-cov export -format=lcov \
+              -instr-profile "$PROFDATA" \
+              "$TEST_EXEC" > .build/coverage.lcov
+            echo "### Coverage Summary" >> "$GITHUB_STEP_SUMMARY"
+            xcrun llvm-cov report \
+              -instr-profile "$PROFDATA" \
+              "$TEST_EXEC" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Coverage data not found, skipping report"
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ios-coverage
+          path: apps/ios/.build/coverage.lcov
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload test results
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ios-test-results
+          path: apps/ios/.build/test-results.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish test results
+        if: always()
+        continue-on-error: true
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        with:
+          name: iOS Test Results
+          path: apps/ios/.build/test-results.xml
+          reporter: java-junit
+          fail-on-error: false

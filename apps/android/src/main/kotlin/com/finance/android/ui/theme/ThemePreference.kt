@@ -40,12 +40,22 @@ class ThemePreferenceManager(private val prefs: SharedPreferences) {
     internal companion object {
         /** SharedPreferences key for the theme preference. */
         const val KEY_THEME = "theme_preference"
+
+        /** SharedPreferences key for the high-contrast toggle. */
+        const val KEY_HIGH_CONTRAST = "high_contrast_enabled"
     }
 
     private val _themePreference = MutableStateFlow(readPreference())
 
     /** Current theme preference as a reactive [StateFlow]. */
     val themePreference: StateFlow<ThemePreference> = _themePreference.asStateFlow()
+
+    private val _highContrastEnabled = MutableStateFlow(
+        prefs.getBoolean(KEY_HIGH_CONTRAST, false),
+    )
+
+    /** Whether high-contrast mode is active, as a reactive [StateFlow]. */
+    val highContrastEnabled: StateFlow<Boolean> = _highContrastEnabled.asStateFlow()
 
     /**
      * Updates the theme preference.
@@ -57,6 +67,19 @@ class ThemePreferenceManager(private val prefs: SharedPreferences) {
         prefs.edit().putString(KEY_THEME, preference.name).apply()
         _themePreference.value = preference
         Timber.d("Theme preference updated to %s", preference.name)
+    }
+
+    /**
+     * Updates the high-contrast mode setting.
+     *
+     * Persists to [SharedPreferences] and emits the new value on
+     * [highContrastEnabled] so all observers (including [FinanceTheme])
+     * update synchronously.
+     */
+    fun setHighContrastEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_HIGH_CONTRAST, enabled).apply()
+        _highContrastEnabled.value = enabled
+        Timber.d("High contrast mode updated to %s", enabled)
     }
 
     private fun readPreference(): ThemePreference {

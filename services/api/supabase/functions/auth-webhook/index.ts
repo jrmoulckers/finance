@@ -18,7 +18,9 @@
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { createAdminClient } from '../_shared/auth.ts';
 import { createLogger, type Logger } from '../_shared/logger.ts';
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '../_shared/rate-limit.ts';
 
 interface WebhookPayload {
   type: string;
@@ -99,6 +101,29 @@ serve(async (req: Request): Promise<Response> => {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  // Rate limiting (IP-based, #614) — fail open if DB unavailable
+  try {
+    const rateLimitClient = createAdminClient();
+    const clientIp = getClientIp(req) ?? 'unknown';
+    const rateLimitResult = await checkRateLimit(
+      rateLimitClient,
+      clientIp,
+      RATE_LIMITS['auth-webhook'],
+    );
+    if (!rateLimitResult.allowed) {
+      logger.warn('Rate limit exceeded', { httpStatus: 429 });
+      return new Response(JSON.stringify({ error: 'Too many requests' }), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(rateLimitResult.retryAfterSeconds ?? 0),
+        },
+      });
+    }
+  } catch {
+    // Rate limiting failure must not block webhook processing
   }
 
   try {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import {
   ConfirmDialog,
@@ -36,6 +36,7 @@ function getTransactionLabel(transaction: Transaction): string {
 }
 
 export const TransactionsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_CATEGORIES_FILTER);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -186,6 +187,15 @@ export const TransactionsPage: React.FC = () => {
         >
           Transactions
         </h2>
+        <button
+          type="button"
+          className="add-button"
+          onClick={() => navigate('/import')}
+          aria-label="Import transactions from CSV"
+          style={{ marginRight: 'var(--spacing-2)' }}
+        >
+          <span aria-hidden="true">📥</span> Import CSV
+        </button>
         <button
           type="button"
           className="add-button"

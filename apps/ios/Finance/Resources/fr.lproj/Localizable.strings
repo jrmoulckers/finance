@@ -540,3 +540,33 @@
 "Please enter a goal name." = "Veuillez saisir un nom d'objectif.";
 "Please enter a valid target amount greater than zero." = "Veuillez saisir un montant cible valide supérieur à zéro.";
 "Current amount cannot be negative." = "Le montant actuel ne peut pas être négatif.";
+
+
+"privacy.header.subtitle" = "Votre vie privée est essentielle pour Finance. Cette politique explique quelles données nous collectons et vos droits.";
+"privacy.header.effectiveDate" = "Date d'entrée en vigueur : mars 2026";
+"privacy.section.dataCollection.title" = "Collecte de données";
+"privacy.section.dataCollection.body" = "Finance collecte uniquement les données que vous fournissez : comptes, transactions, budgets, objectifs et catégories.";
+"privacy.section.dataStorage.title" = "Stockage des données";
+"privacy.section.dataStorage.body" = "Architecture locale avec SQLCipher et chiffrement AES-256 au repos. Trousseau Apple pour les identifiants.";
+"privacy.section.cloudSync.title" = "Synchronisation cloud";
+"privacy.section.cloudSync.body" = "La synchronisation cloud est facultative via Supabase avec chiffrement TLS 1.3 et AES-256.";
+"privacy.section.dataUsage.title" = "Utilisation des données";
+"privacy.section.dataUsage.body" = "Vos données sont utilisées exclusivement pour le suivi financier personnel. Jamais vendues ni partagées.";
+"privacy.section.thirdPartyServices.title" = "Services tiers";
+"privacy.section.thirdPartyServices.body" = "Finance s'intègre à Supabase et Connexion avec Apple. Pas de SDK d'analyse ni de publicité.";
+"privacy.section.dataSecurity.title" = "Sécurité des données";
+"privacy.section.dataSecurity.body" = "Protection par SQLCipher, trousseau Apple, authentification biométrique et TLS 1.3.";
+"privacy.section.gdprRights.title" = "Vos droits (RGPD)";
+"privacy.section.gdprRights.body" = "Droits d'accès, rectification, effacement, portabilité et opposition. Contactez privacy@finance.app.";
+"privacy.section.ccpaRights.title" = "Droits de confidentialité en Californie";
+"privacy.section.ccpaRights.body" = "Droit de savoir, suppression, correction et refus. Finance ne vend pas vos informations personnelles.";
+"privacy.section.childrensPrivacy.title" = "Confidentialité des enfants";
+"privacy.section.childrensPrivacy.body" = "Finance ne s'adresse pas aux enfants de moins de 13 ans. Contactez privacy@finance.app si nécessaire.";
+"privacy.section.dataDeletion.title" = "Suppression des données";
+"privacy.section.dataDeletion.body" = "Supprimez toutes vos données depuis Réglages. Propagation au serveur en 30 jours.";
+"privacy.section.policyChanges.title" = "Modifications de cette politique";
+"privacy.section.policyChanges.body" = "Préavis d'au moins 30 jours avant les modifications substantielles.";
+"privacy.section.contact.title" = "Nous contacter";
+"privacy.section.contact.body" = "Contactez privacy@finance.app pour toute question sur la confidentialité.";
+"privacy.footer.lastUpdated" = "Dernière mise à jour : mars 2026";
+"privacy.footer.lastUpdated.accessibilityLabel" = "Politique de confidentialité mise à jour en mars 2026";
