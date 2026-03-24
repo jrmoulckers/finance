@@ -6,7 +6,7 @@ You are working in the Finance monorepo — a multi-platform, native-first finan
 
 The following operations require EXPLICIT human approval. NEVER perform these autonomously:
 
-- **Git remote operations** — May push feature branches; no pushing to `main`/`master`/release branches; no `git push --force` (use `--force-with-lease` on feature branches only); no `pull`, `fetch`, `remote`, `merge` from remote, `rebase` onto remote
+- **Git remote operations** — May push **own feature branches** (`git push origin <feature-branch>`); may `git fetch origin main` and `git rebase origin/main` on own feature branch as pre-push hygiene; no pushing to `main`/`master`/release branches; no `git push --force`; `git push --force-with-lease` on feature branches requires human approval; no `pull`/`remote`/`merge` from remote
 - **PR/review operations** — May create PRs with linked issues and detailed descriptions; no merging, closing, or approving PRs or reviews
 - **Remote platform mutations** — No GitHub API writes (issue close, label changes, repo settings, releases, deployments)
 - **Outside project boundary** — No file access outside the repository root; no system config changes; no global package installs
@@ -91,24 +91,40 @@ You MUST NOT execute operations that delete, truncate, or irreversibly modify da
 
 - **Monorepo** with apps/, packages/, services/, docs/, tools/
 - **Edge-first**: Business logic runs on client devices; backend is for sync only
-- **Platforms**: iOS (SwiftUI; Swift Export bridge planned), Android (Kotlin), Web (TypeScript + React PWA), Windows 11
+- **Platforms**: iOS (SwiftUI; Swift Export bridge planned), Android (Kotlin), Web (TypeScript + React PWA), **Windows 11 (Compose Desktop — first-class beta target, mirrors Android DI/ViewModel architecture)**
 - **Shared code** lives in packages/ (core logic, data models, sync engine)
 - **Current KMP package reality**: `packages/core` checks in `commonMain`, `commonTest`, `iosMain`, `jsMain`, and `jvmMain` source sets; `packages/models` and `packages/sync` also check in `androidMain`, and `packages/sync` also has `jsTest`
 - **Single backend API** in services/api/ for data synchronization
+- **KMP Web integration**: Dual-path — TypeScript repositories remain for beta while KMP JS bindings are validated in parallel via `apps/web/src/kmp/`
+
+## Schema Alignment Decisions
+
+The following schema additions have been approved to align KMP models with Supabase (apply via versioned migrations):
+
+- **transactions**: Add `transfer_transaction_id UUID` (nullable FK to self, links transfer pairs) and `recurring_rule_id UUID` (nullable FK to recurring rules)
+- **budgets**: Add `is_rollover BOOLEAN NOT NULL DEFAULT false` (enables unused budget carry-forward)
+- **goals**: Add `account_id UUID` (nullable FK to accounts, links goal to a funding account) and `status TEXT NOT NULL DEFAULT 'active'` (enum: active, completed, archived)
+- **All sync-enabled tables**: Standardize on `owner_id UUID` referencing `auth.uid()` for direct ownership queries; `household_id` remains for household-level RLS isolation
 
 ## Development Workflow (MANDATORY)
 
 All code changes MUST follow this workflow:
 
 1. **Create or verify a GitHub issue** exists for the work (`gh issue create` if needed)
-2. **Create a feature branch** from main: `git checkout -b <type>/<description>-<issue#>`
-3. **Implement and commit** with issue references: `type(scope): description (#N)`
-4. **Push the feature branch**: `git push origin <branch-name>`
-5. **Create a PR** with `gh pr create` — include `Closes #N` and a detailed description
-6. **Never commit directly to `main`** — all changes go through feature branches and PRs
-7. **Never merge PRs** — humans review and merge
+2. **Scan for an existing worktree** for this issue: `git worktree list` — resume if found
+3. **Create a worktree** if none exists: `git worktree add ../wt-[agent-type]-[branch] -b [branch]`
+4. **Implement and commit** with issue references: `type(scope): description (#N)`
+5. **Fetch and rebase**: `git fetch origin main && git rebase origin/main` (auto-approved)
+6. **Push the feature branch**: `git push origin <branch-name>` (auto-approved)
+7. **Create a PR automatically** with `gh pr create` — include `Closes #N` and a detailed description
+8. **Monitor the PR** — poll `gh pr checks`, fix CI failures and merge conflicts autonomously, push and restart until all checks pass and no conflicts remain
+9. **Never commit directly to `main`** — all changes go through feature branches and PRs
+10. **Never merge PRs** — humans review and merge; agents get the PR to merge-ready state
+11. **Clean up the worktree** after merge is confirmed: `git worktree remove <path>`
 
-Branch naming: `feat/web-data-layer-443`, `fix/auth-refresh-127`, `docs/api-guide-86`
+Worktree naming: `wt-[agent-type]-[type/description-issue#]` — e.g., `wt-android-feat-transactions-443`
+
+See `docs/ai/worktrees.md` for the full worktree lifecycle guide.
 
 Tooling notes:
 

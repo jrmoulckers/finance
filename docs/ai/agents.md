@@ -207,15 +207,16 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 **File:** `.github/agents/windows-engineer.agent.md`
 
-**Purpose:** Builds and maintains the Windows desktop client using Compose Desktop (JVM target) with Windows Hello authentication, DPAPI secure storage, and Narrator accessibility.
+**Purpose:** Builds and maintains the Windows desktop client using Compose Desktop (JVM target) with Windows Hello authentication, DPAPI secure storage, and Narrator accessibility. **Windows is a first-class beta target** — it ships alongside Android, iOS, and Web, mirroring Android's Koin DI + ViewModel + Repository architecture.
 
 **When to use:**
 
-- Building or modifying Compose Desktop UI for Windows
+- Building or modifying Compose Desktop UI for Windows in `apps/windows/`
 - Implementing Windows Hello biometric authentication
 - Using DPAPI for secure credential storage
 - Ensuring Narrator and UI Automation accessibility
 - Packaging MSIX for Microsoft Store distribution
+- Setting up Koin DI modules or ViewModel infrastructure for Windows
 
 **Tools:** read, edit, search, shell
 
@@ -257,7 +258,35 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 
 ---
 
-## Adding a New Agent
+## Agent Management & Coordination
+
+### File Ownership
+
+Each agent has primary ownership over a set of directories. When multiple agents run in parallel (fleet mode), only the owning agent edits files in its area:
+
+| Agent | Primary ownership |
+|---|---|
+| `@kmp-engineer` | `packages/` |
+| `@backend-engineer` | `services/api/` |
+| `@web-engineer` | `apps/web/` |
+| `@android-engineer` | `apps/android/` |
+| `@ios-engineer` | `apps/ios/` |
+| `@windows-engineer` | `apps/windows/` |
+| `@design-engineer` | `config/tokens/`, generated token files |
+| `@devops-engineer` | `.github/workflows/`, `build-logic/`, `tools/` |
+| `@docs-writer` | `docs/`, root `*.md` files |
+| `@security-reviewer` | Read-only — never edits production code |
+| `@accessibility-reviewer` | Read-only — never edits production code |
+
+**Shared config** (`gradle/libs.versions.toml`, `settings.gradle.kts`, `package.json`, `turbo.json`) — one agent per run. Assign to `@kmp-engineer` (Gradle) or `@devops-engineer` (Node/CI).
+
+### Escalation Path
+
+1. **Re-read the relevant skill** — the answer may already be documented
+2. **Consult `@architect`** — for cross-cutting or ambiguous design decisions
+3. **Stop and document** — add `## Needs Decision: <question>` to the PR; do NOT guess on financial logic
+
+### Adding a New Agent
 
 1. Create `.github/agents/<name>.agent.md` with YAML frontmatter:
    ```yaml
@@ -281,3 +310,6 @@ Custom agents are specialized AI personas defined in `.github/agents/`. Each age
 - **Combine agents** — Ask `@architect` to design, then `@security-reviewer` to review
 - **Trust but verify** — Agent output is a starting point; always review critically
 - **Update agents** — As the project evolves, update agent instructions to reflect new patterns
+- **Respect file ownership** — In fleet runs, each agent owns its directory; avoid cross-agent edits to the same file
+- **Serialize schema work** — `@backend-engineer` writes Supabase migrations; `@kmp-engineer` writes SQLDelight schemas; coordinate as a pair, not independently
+- **Never guess on money** — Financial logic decisions must be human-approved; agents should stop and document rather than assume

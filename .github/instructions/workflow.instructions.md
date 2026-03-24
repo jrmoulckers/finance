@@ -8,15 +8,58 @@ AI agents MUST follow this workflow for every code change:
 
 ```
 1. Create/verify GitHub issue exists
-2. Create feature branch from main: git checkout -b <type>/<description>-<issue#>
-3. Implement changes on feature branch
+2. Scan for an existing worktree for this issue (git worktree list)
+   a. If found: resume work in that worktree
+   b. If not found: create a new worktree with the correct naming convention
+3. Implement changes on feature branch inside the worktree
 4. Commit with issue reference: type(scope): description (#N)
-5. Push feature branch: git push origin <branch-name>
-6. Create PR with `gh pr create` linking issues (Closes #N)
-7. Human reviews and merges PR
+5. Fetch and rebase onto origin/main (auto-approved, no human needed)
+6. Push feature branch: git push origin <branch-name>
+7. Create PR automatically with `gh pr create` including Closes #N
+8. Monitor PR: poll checks, fix CI failures, resolve merge conflicts — repeat until merge-ready
+9. Mark work complete once all checks pass and no conflicts remain
+10. After human merges the PR: remove the worktree automatically
 ```
 
-### Branch Naming Convention
+## Worktree Setup (Required for Agents)
+
+Agents MUST use git worktrees — not separate repository clones. See `docs/ai/worktrees.md` for full details.
+
+### Worktree Naming Convention
+
+```
+wt-[agent-type]-[type/description-issue#]
+```
+
+**Examples:**
+
+```bash
+../wt-android-feat-transactions-443
+../wt-web-fix-auth-127
+../wt-kmp-feat-schema-align-88
+../wt-backend-fix-rls-policies-22
+```
+
+### Creating a Worktree
+
+```bash
+# From the main repo
+git worktree add ../wt-android-feat-transactions-443 -b feat/transactions-443
+
+# Resume an existing worktree
+git worktree list   # scan first
+cd ../wt-android-feat-transactions-443
+```
+
+### Cleaning Up After Merge
+
+```bash
+git worktree remove ../wt-android-feat-transactions-443
+```
+
+The main worktree (`finance-human/`) is reserved for human work.
+
+## Branch Naming Convention
 
 ```
 <type>/<short-description>-<issue-number>
@@ -50,15 +93,18 @@ Created (Open) → PR opened with "Closes #N" → PR merged → Issue auto-close
 ## Rules for AI Agents
 
 1. **Before writing any code**, verify that a GitHub issue exists for the work. If no issue exists, create one first using `gh issue create`.
-2. **Always work on a feature branch** — never commit directly to `main`. Create a branch with `git checkout -b <type>/<description>-<issue#>`.
-3. **Reference the issue** in every commit message using the format: `type(scope): description (#N)` where N is the issue number.
-4. **Never implement features, fixes, or refactors** without a corresponding issue — even for small changes.
-5. **When planning work**, decompose into issues BEFORE starting implementation.
-6. **Push the feature branch** to origin when work is ready: `git push origin <branch-name>`.
-7. **Create a PR** with `gh pr create` including a detailed description and `Closes #N` for each resolved issue.
-8. **Never merge PRs** — PRs are merged by humans after review.
-9. **Never run `gh issue close`** — issues close automatically when their PR merges. Premature closure breaks the audit trail.
-10. **If main has advanced**, rebase onto `origin/main` before pushing: `git fetch origin main && git rebase origin/main`.
+2. **Always use a git worktree** — never commit directly in the main worktree or on `main`.
+3. **Scan for existing worktrees first** — if a worktree for this issue already exists, resume it rather than creating a new one.
+4. **Reference the issue** in every commit message using the format: `type(scope): description (#N)` where N is the issue number.
+5. **Never implement features, fixes, or refactors** without a corresponding issue — even for small changes.
+6. **When planning work**, decompose into issues BEFORE starting implementation.
+7. **Fetch and rebase** onto `origin/main` before pushing: `git fetch origin main && git rebase origin/main` — both are auto-approved.
+8. **Push the feature branch** to origin when work is ready: `git push origin <branch-name>` — auto-approved.
+9. **Create a PR automatically** with `gh pr create` including a detailed description and `Closes #N` for each resolved issue.
+10. **Monitor the PR** — poll `gh pr checks` until all checks pass. Fix any CI failures or merge conflicts and push again. Repeat until merge-ready.
+11. **Never merge PRs** — PRs are merged by humans after review.
+12. **Never run `gh issue close`** — issues close automatically when their PR merges. Premature closure breaks the audit trail.
+13. **Clean up your worktree** after the PR is confirmed merged: `git worktree remove <path>`.
 
 ## Commit Message Format
 
@@ -100,6 +146,6 @@ Refs #P (for related but not fully resolved issues)
 
 - Enables traceability from code → PR → issue → roadmap
 - Keeps the project board accurate and up-to-date
-- Ensures no work is lost or duplicated
+- Ensures no work is lost or duplicated — worktrees are resumable by any agent
 - Makes it easy to understand what changed and why
 - PRs provide a review checkpoint before code reaches `main`
