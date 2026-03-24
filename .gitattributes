@@ -1,0 +1,22 @@
+# Auto-detect text files and ensure LF line endings everywhere.
+# This prevents `core.autocrlf` from converting LF → CRLF on Windows,
+# keeping Prettier (`endOfLine: "lf"`) and EditorConfig (`end_of_line = lf`)
+# happy on all platforms.
+
+* text=auto eol=lf
+
+# Windows batch files must keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files — do not touch
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.jar binary
+*.apk binary
+*.aab binary
+*.keystore binary
