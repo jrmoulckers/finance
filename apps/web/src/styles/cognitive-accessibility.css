@@ -1,0 +1,119 @@
+/* Cognitive accessibility CSS overrides — activated by [data-simplified="true"] on <html> */
+html[data-simplified='true'] {
+  font-size: calc(var(--font-size-base, 1rem) * 1.25);
+  line-height: 1.8;
+  letter-spacing: 0.01em;
+  word-spacing: 0.05em;
+}
+html[data-simplified='true'] *,
+html[data-simplified='true'] *::before,
+html[data-simplified='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-simplified='true'] .app-layout {
+  flex-direction: column;
+}
+html[data-simplified='true'] .app-sidebar {
+  display: none !important;
+}
+html[data-simplified='true'] .bottom-nav {
+  display: flex !important;
+  height: auto;
+  min-height: 64px;
+  padding: var(--spacing-2, 0.5rem) 0;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--spacing-2, 0.5rem));
+}
+html[data-simplified='true'] .app-main {
+  max-width: 640px;
+  padding-bottom: calc(var(--layout-bottom-nav-height, 56px) + var(--spacing-4, 1rem));
+}
+html[data-simplified='true'] .app-header {
+  display: flex !important;
+}
+html[data-simplified='true'] .nav-item {
+  min-height: 48px;
+  min-width: 48px;
+  padding: var(--spacing-2, 0.5rem);
+}
+html[data-simplified='true'] .card-grid,
+html[data-simplified='true'] .card-grid--2,
+html[data-simplified='true'] .card-grid--3 {
+  grid-template-columns: 1fr !important;
+}
+html[data-simplified='true'] .dashboard-charts {
+  display: none !important;
+}
+html[data-simplified='true'] .simplified-hidden,
+html[data-simplified='true'] [data-simplified-content='secondary'] {
+  display: none !important;
+}
+html[data-simplified='true'] .chart-container {
+  display: none !important;
+}
+html[data-simplified='true'] .badge,
+html[data-simplified='true'] .stat-badge {
+  display: none !important;
+}
+html[data-simplified='true'] .progress-ring {
+  display: none !important;
+}
+html[data-simplified='true'] {
+  --semantic-border-default: var(--color-neutral-700, #374151);
+  --card-border: var(--color-neutral-700, #374151);
+}
+html[data-simplified='true'] .amount--positive,
+html[data-simplified='true'] .amount--negative {
+  font-weight: var(--font-weight-bold, 700);
+}
+html[data-simplified='true'] input,
+html[data-simplified='true'] select,
+html[data-simplified='true'] textarea,
+html[data-simplified='true'] button {
+  min-height: 48px;
+  font-size: inherit;
+}
+html[data-simplified='true'] .settings-item {
+  min-height: 56px;
+  padding: var(--spacing-4, 1rem) var(--card-padding, 1rem);
+}
+html[data-simplified='true'] .settings-item__checkbox {
+  width: 28px;
+  height: 28px;
+}
+html[data-simplified='true'] .settings-item__select {
+  min-height: 48px;
+  padding: var(--spacing-2, 0.5rem) var(--spacing-4, 1rem);
+}
+html[data-simplified='true'] :focus-visible {
+  outline: 3px solid var(--semantic-border-focus, #3b82f6);
+  outline-offset: 3px;
+}
+html[data-simplified='true'] .page-section {
+  margin-bottom: var(--spacing-8, 2rem);
+}
+html[data-simplified='true'] .settings-group {
+  margin-bottom: var(--spacing-6, 1.5rem);
+}
+.simplified-toggle-description {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary);
+  margin-top: var(--spacing-1, 0.25rem);
+}
+html[data-simplified='true'] .simplified-toggle-description {
+  font-size: var(--type-scale-body-font-size, 1rem);
+}
+html[data-simplified='true'] .list-item {
+  padding: var(--spacing-4, 1rem) 0;
+  gap: var(--spacing-4, 1rem);
+}
+html[data-simplified='true'] .icon-button {
+  width: 48px;
+  height: 48px;
+}
+html[data-simplified='true'] .add-button {
+  min-height: 48px;
+  padding: var(--spacing-3, 0.75rem) var(--spacing-6, 1.5rem);
+}
