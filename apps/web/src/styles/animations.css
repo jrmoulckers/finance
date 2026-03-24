@@ -1,0 +1,344 @@
+/* ==========================================================================
+   Celebratory Animations — CSS keyframes and utility classes
+   Uses design-token custom properties for durations & easing.
+   ========================================================================== */
+
+:root {
+  /* Animation-specific tokens (extending the design-token set) */
+  --animation-duration-confetti: 2500ms;
+  --animation-duration-checkmark: 600ms;
+  --animation-duration-milestone: 1800ms;
+  --animation-duration-badge: 800ms;
+  --animation-duration-counter: 1200ms;
+  --animation-easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animation-easing-celebration: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* --------------------------------------------------------------------------
+   ConfettiAnimation
+   -------------------------------------------------------------------------- */
+
+.confetti-animation {
+  position: relative;
+  display: inline-block;
+}
+
+.confetti-animation__canvas {
+  display: block;
+}
+
+.confetti-animation__static {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-3xl);
+}
+
+/* --------------------------------------------------------------------------
+   SuccessCheckmark
+   -------------------------------------------------------------------------- */
+
+@keyframes checkmark-circle {
+  0% {
+    stroke-dashoffset: 166;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes checkmark-check {
+  0% {
+    stroke-dashoffset: 48;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes checkmark-scale {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.success-checkmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.success-checkmark__svg {
+  overflow: visible;
+}
+
+.success-checkmark__circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  stroke-linecap: round;
+  animation: checkmark-circle var(--animation-duration-checkmark) var(--easing-out) forwards;
+}
+
+.success-checkmark__check {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  stroke-linecap: round;
+  animation: checkmark-check calc(var(--animation-duration-checkmark) * 0.5) var(--easing-out)
+    calc(var(--animation-duration-checkmark) * 0.5) forwards;
+}
+
+.success-checkmark--animated {
+  animation: checkmark-scale 400ms var(--animation-easing-bounce)
+    var(--animation-duration-checkmark) forwards;
+}
+
+/* Static fallback (reduced motion) */
+.success-checkmark__circle--static {
+  stroke-dashoffset: 0;
+}
+
+.success-checkmark__check--static {
+  stroke-dashoffset: 0;
+}
+
+/* --------------------------------------------------------------------------
+   MilestoneAnimation
+   -------------------------------------------------------------------------- */
+
+@keyframes milestone-ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-circumference);
+  }
+  to {
+    stroke-dashoffset: var(--ring-target-offset);
+  }
+}
+
+@keyframes milestone-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.85;
+  }
+}
+
+@keyframes milestone-star-pop {
+  0% {
+    transform: scale(0) rotate(-30deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2) rotate(10deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.milestone-animation {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.milestone-animation__ring-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.milestone-animation__svg {
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.milestone-animation__ring-bg {
+  fill: none;
+  stroke: var(--semantic-border-default);
+  stroke-width: 6;
+}
+
+.milestone-animation__ring-fill {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: var(--ring-circumference);
+  stroke-dashoffset: var(--ring-circumference);
+  animation: milestone-ring-fill var(--animation-duration-milestone)
+    var(--animation-easing-celebration) forwards;
+}
+
+.milestone-animation__ring-fill--static {
+  stroke-dashoffset: var(--ring-target-offset);
+  animation: none;
+}
+
+.milestone-animation__ring-fill--50 {
+  stroke: var(--color-blue-500);
+}
+
+.milestone-animation__ring-fill--75 {
+  stroke: var(--color-amber-500);
+}
+
+.milestone-animation__ring-fill--100 {
+  stroke: var(--semantic-status-positive);
+}
+
+.milestone-animation__center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(0deg); /* counteract parent if needed */
+}
+
+.milestone-animation__percentage {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--semantic-text-primary);
+  line-height: 1;
+}
+
+.milestone-animation__star {
+  opacity: 0;
+  animation: milestone-star-pop 500ms var(--animation-easing-bounce)
+    var(--animation-duration-milestone) forwards;
+}
+
+.milestone-animation__star--static {
+  opacity: 1;
+  animation: none;
+}
+
+.milestone-animation__label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-secondary);
+}
+
+.milestone-animation--pulse {
+  animation: milestone-pulse 600ms var(--animation-easing-bounce)
+    calc(var(--animation-duration-milestone) + 400ms) 2;
+}
+
+/* --------------------------------------------------------------------------
+   StreakBadge
+   -------------------------------------------------------------------------- */
+
+@keyframes badge-enter {
+  0% {
+    transform: scale(0) rotate(-20deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15) rotate(5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes badge-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes flame-flicker {
+  0%,
+  100% {
+    transform: scaleY(1) translateY(0);
+  }
+  25% {
+    transform: scaleY(1.05) translateY(-1px);
+  }
+  75% {
+    transform: scaleY(0.95) translateY(1px);
+  }
+}
+
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--border-radius-full);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  color: var(--color-neutral-0);
+  opacity: 0;
+  animation: badge-enter var(--animation-duration-badge) var(--animation-easing-bounce) forwards;
+}
+
+.streak-badge--static {
+  opacity: 1;
+  animation: none;
+}
+
+.streak-badge--bronze {
+  background: linear-gradient(135deg, #cd7f32, #a0522d);
+}
+
+.streak-badge--silver {
+  background: linear-gradient(135deg, #c0c0c0, #808080);
+}
+
+.streak-badge--gold {
+  background: linear-gradient(135deg, var(--color-amber-500), var(--color-amber-700));
+}
+
+.streak-badge--shimmer {
+  background-size: 200% auto;
+  animation:
+    badge-enter var(--animation-duration-badge) var(--animation-easing-bounce) forwards,
+    badge-shimmer 2s linear var(--animation-duration-badge) infinite;
+}
+
+.streak-badge__flame {
+  animation: flame-flicker 400ms ease-in-out infinite;
+  display: inline-flex;
+}
+
+.streak-badge__flame--static {
+  animation: none;
+}
+
+.streak-badge__count {
+  line-height: 1;
+}
+
+.streak-badge__label {
+  font-weight: var(--font-weight-regular);
+}
+
+/* --------------------------------------------------------------------------
+   NumberCounter
+   -------------------------------------------------------------------------- */
+
+.number-counter {
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+}
+
+.number-counter--animating {
+  will-change: contents;
+}

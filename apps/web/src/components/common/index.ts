@@ -15,4 +15,34 @@ export type { KeyboardShortcutsModalProps } from './KeyboardShortcutsModal';
 export { LoadingSpinner } from './LoadingSpinner';
 export type { LoadingSpinnerProps } from './LoadingSpinner';
 export { SyncStatusBar } from './SyncStatusBar';
+export { FinancialTip, TipProvider, useTips, TIPS } from './tips';
+export type {
+  FinancialTipProps,
+  TipProviderProps,
+  UseTipsResult,
+  TipContext,
+  TipData,
+} from './tips';
+export { NLTransactionInput } from './NLTransactionInput';
+export type { NLTransactionInputProps } from './NLTransactionInput';
 export { UpdateBanner } from './UpdateBanner';
+export { AnomalyAlertBanner } from './AnomalyAlertBanner';
+export type { AnomalyAlertBannerProps } from './AnomalyAlertBanner';
+
+// Animations
+export {
+  ConfettiAnimation,
+  SuccessCheckmark,
+  MilestoneAnimation,
+  StreakBadge,
+  NumberCounter,
+} from './animations';
+export type {
+  ConfettiAnimationProps,
+  SuccessCheckmarkProps,
+  MilestoneAnimationProps,
+  MilestoneLevel,
+  StreakBadgeProps,
+  StreakTier,
+  NumberCounterProps,
+} from './animations';
