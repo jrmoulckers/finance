@@ -240,10 +240,7 @@ describe('useDashboardData', () => {
   // -----------------------------------------------------------------------
 
   it('returns recent transactions from the repository', () => {
-    const recentTxns = [
-      makeTransaction({ id: 'txn-1' }),
-      makeTransaction({ id: 'txn-2' }),
-    ];
+    const recentTxns = [makeTransaction({ id: 'txn-1' }), makeTransaction({ id: 'txn-2' })];
     mockGetRecentTransactions.mockReturnValue(recentTxns);
 
     const { result } = renderHook(() => useDashboardData());
