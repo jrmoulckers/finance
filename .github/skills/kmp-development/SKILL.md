@@ -185,6 +185,7 @@ packages/core/
                     ├── Account.sq
                     ├── Transaction.sq
                     ├── Budget.sq
+                    ├── Goal.sq
                     └── migrations/
                         ├── 1.sqm
                         ├── 2.sqm
@@ -236,6 +237,128 @@ UPDATE account SET balance = ?, updated_at = ? WHERE id = ?;
 
 softDelete:
 UPDATE account SET deleted_at = ?, updated_at = ? WHERE id = ?;
+
+-- Transaction.sq
+
+CREATE TABLE `transaction` (
+    id                      TEXT NOT NULL PRIMARY KEY,
+    account_id              TEXT NOT NULL,
+    category_id             TEXT,
+    amount_cents            INTEGER NOT NULL,          -- Long (cents)
+    currency_code           TEXT NOT NULL DEFAULT 'USD',
+    payee                   TEXT,
+    note                    TEXT,
+    date                    TEXT NOT NULL,             -- ISO 8601 date
+    -- Nullable self-reference linking the paired leg of an account transfer
+    transfer_transaction_id TEXT,
+    -- Nullable FK to recurring_rule that generated this transaction
+    recurring_rule_id       TEXT,
+    created_at              TEXT NOT NULL,
+    updated_at              TEXT NOT NULL,
+    deleted_at              TEXT,
+    sync_version            INTEGER NOT NULL DEFAULT 0,
+    is_synced               INTEGER NOT NULL DEFAULT 0  -- Boolean (0/1)
+);
+
+selectAll:
+SELECT * FROM `transaction` WHERE deleted_at IS NULL ORDER BY date DESC;
+
+selectByAccount:
+SELECT * FROM `transaction`
+WHERE account_id = ? AND deleted_at IS NULL
+ORDER BY date DESC;
+
+selectTransfers:
+SELECT * FROM `transaction`
+WHERE transfer_transaction_id IS NOT NULL AND deleted_at IS NULL;
+
+insert:
+INSERT INTO `transaction` (
+    id, account_id, category_id, amount_cents, currency_code, payee, note, date,
+    transfer_transaction_id, recurring_rule_id, created_at, updated_at, sync_version, is_synced
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0);
+
+softDelete:
+UPDATE `transaction` SET deleted_at = ?, updated_at = ?, sync_version = 1, is_synced = 0
+WHERE id = ?;
+
+-- Budget.sq
+
+CREATE TABLE budget (
+    id            TEXT NOT NULL PRIMARY KEY,
+    category_id   TEXT NOT NULL,
+    amount_cents  INTEGER NOT NULL,   -- Long (cents)
+    currency_code TEXT NOT NULL DEFAULT 'USD',
+    period        TEXT NOT NULL,      -- "monthly", "weekly", etc.
+    start_date    TEXT NOT NULL,
+    end_date      TEXT,
+    -- When true, unused budget amount carries forward into the next period
+    is_rollover   INTEGER NOT NULL DEFAULT 0,  -- Boolean (0/1)
+    created_at    TEXT NOT NULL,
+    updated_at    TEXT NOT NULL,
+    deleted_at    TEXT,
+    sync_version  INTEGER NOT NULL DEFAULT 0,
+    is_synced     INTEGER NOT NULL DEFAULT 0
+);
+
+selectAll:
+SELECT * FROM budget WHERE deleted_at IS NULL ORDER BY start_date DESC;
+
+selectRolloverBudgets:
+SELECT * FROM budget WHERE is_rollover = 1 AND deleted_at IS NULL;
+
+insert:
+INSERT INTO budget (
+    id, category_id, amount_cents, currency_code, period, start_date, end_date,
+    is_rollover, created_at, updated_at, sync_version, is_synced
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0);
+
+softDelete:
+UPDATE budget SET deleted_at = ?, updated_at = ?, sync_version = 1, is_synced = 0
+WHERE id = ?;
+
+-- Goal.sq
+
+CREATE TABLE goal (
+    id              TEXT NOT NULL PRIMARY KEY,
+    -- Optional FK to a specific account funding this goal
+    account_id      TEXT,
+    name            TEXT NOT NULL,
+    target_cents    INTEGER NOT NULL,   -- Long (cents)
+    current_cents   INTEGER NOT NULL DEFAULT 0,
+    currency_code   TEXT NOT NULL DEFAULT 'USD',
+    target_date     TEXT,
+    -- Lifecycle: active | completed | archived
+    status          TEXT NOT NULL DEFAULT 'active',
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL,
+    deleted_at      TEXT,
+    sync_version    INTEGER NOT NULL DEFAULT 0,
+    is_synced       INTEGER NOT NULL DEFAULT 0
+);
+
+selectAll:
+SELECT * FROM goal WHERE deleted_at IS NULL ORDER BY target_date ASC;
+
+selectActive:
+SELECT * FROM goal WHERE status = 'active' AND deleted_at IS NULL;
+
+selectByAccount:
+SELECT * FROM goal WHERE account_id = ? AND deleted_at IS NULL;
+
+insert:
+INSERT INTO goal (
+    id, account_id, name, target_cents, current_cents, currency_code, target_date,
+    status, created_at, updated_at, sync_version, is_synced
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0);
+
+updateStatus:
+UPDATE goal SET status = ?, updated_at = ?, sync_version = 1, is_synced = 0
+WHERE id = ?;
+
+softDelete:
+UPDATE goal SET deleted_at = ?, updated_at = ?, sync_version = 1, is_synced = 0
+WHERE id = ?;
 ```
 
 ### Platform Drivers

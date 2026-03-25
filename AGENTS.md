@@ -6,6 +6,8 @@ This file provides guidance for all AI agents (GitHub Copilot, Codex, Claude, an
 
 Finance is a multi-platform, native-first financial tracking application for personal, family, and partnered finances. It uses a monorepo architecture with an edge-first design — most computation happens on client devices, with a consolidated backend for data synchronization.
 
+**All four platforms (iOS, Android, Web, Windows) are first-class beta targets.** Windows mirrors Android's architecture: Koin DI, ViewModel pattern, Repository pattern, and KMP shared packages.
+
 ## Repository Layout
 
 - `apps/` — Platform-specific applications (iOS, Android, Web, Windows)
@@ -25,14 +27,21 @@ Finance is a multi-platform, native-first financial tracking application for per
 
 ## Issue-First Development
 
-All work in this repository follows an issue-first, feature-branch workflow:
+All work in this repository follows an issue-first, feature-branch + worktree workflow:
 
 1. **Every code change must reference a GitHub issue.** If no issue exists for the work you're about to do, create one first.
-2. **Always work on a feature branch** — never commit directly to `main`. Branch naming: `<type>/<description>-<issue#>` (e.g., `feat/web-data-layer-443`).
+2. **Always use a git worktree** for agent work — never commit directly in the main worktree or on `main`.
+   - Naming: `wt-[agent-type]-[type/description-issue#]` (e.g., `wt-android-feat-transactions-443`)
+   - **Scan first**: run `git worktree list` — if a worktree for this issue already exists, resume it
+   - Main worktree (`finance-human/`) is reserved for human work
 3. **Commit messages must include issue references** in the format `type(scope): description (#N)`.
-4. **Push the feature branch** and create a PR with `gh pr create` — include `Closes #N` for resolved issues.
-5. **Never merge PRs** — humans review and merge. PRs are the review checkpoint.
-6. **Planning happens in issues, not in code.** Decompose work into issues before starting implementation.
+4. **Push automatically** — `git push origin <branch>` is auto-approved.
+5. **Open a PR automatically** with `gh pr create` — include `Closes #N` for resolved issues.
+6. **Monitor the PR** — poll `gh pr checks` until all checks pass. Fix CI failures and merge conflicts autonomously; push and restart the check cycle until merge-ready.
+7. **Never merge PRs** — humans review and merge. The agent's job is to get the PR to merge-ready state.
+8. **Clean up the worktree** after the PR is confirmed merged: `git worktree remove <path>`.
+
+See `docs/ai/worktrees.md` for the full worktree setup and lifecycle guide.
 
 AI agents that skip issue creation, commit directly to `main`, or fail to create PRs are not following the project workflow. If you discover work was done without an issue, create a retroactive issue to track it.
 
@@ -80,19 +89,23 @@ The following operations MUST NEVER be performed by AI agents without explicit h
 
 ### Category 1: Git Remote Operations
 
-AI agents MAY push feature branches (never `main`, `master`, or release branches).
-AI agents MAY use `git push --force-with-lease` on their own feature branches.
+AI agents MAY (auto-approved):
+
+- Push to **own feature branches**: `git push origin <feature-branch>`
+- `git fetch origin main` — read-only sync, required for pre-push rebase
+- `git rebase origin/main` on **own feature branch only** — required pre-push hygiene
+- `git status`, `git log`, `git diff`, `git show`, `git branch`
 
 AI agents MUST NOT:
 
-- Push to `main`, `master`, or release branches (protected by GitHub branch protection requiring PR review)
-- Use `git push --force` (without `--force-with-lease`)
-- `git pull`, `git fetch` from untrusted remotes
+- Push to `main`, `master`, or release branches (hard blocked by GitHub branch protection)
+- Use `git push --force` (forbidden entirely)
+- Use `git push --force-with-lease` without explicit human approval (may overwrite collaborator commits)
 - `git remote add`, `git remote remove`, `git remote set-url`
 - `git merge` from remote branches
-- `git rebase` onto remote branches
+- `git rebase` onto any branch other than `origin/main` on the agent's own feature branch
 
-**Why:** Feature-branch pushes are safe because `main` is protected by GitHub branch protection requiring PR review. Force-push without `--force-with-lease` is dangerous because it can overwrite others' work.
+**Why:** Feature-branch pushes are safe because `main` is protected by branch protection requiring PR review. `git fetch` and pre-push rebase are standard hygiene — not gated. Force-push is dangerous because it can overwrite others' work.
 
 ### Category 2: Pull Request & Review Operations
 
@@ -212,6 +225,14 @@ If an AI agent encounters a task requiring a gated operation, it MUST:
 3. Wait for explicit human approval before proceeding
 4. Never attempt workarounds to bypass these restrictions
 
+### When Working Autonomously (Human Unavailable)
+
+If no human is available to approve a gated operation, agents MUST:
+
+1. Complete all local work (code, tests, commit) to the point where the gated step is the only remaining action
+2. Add a `## Needs Human Action` section to the PR description (or leave a `// TODO(human): <action>` comment) listing each pending step with rationale
+3. Never guess on gated operations — stop cleanly and document
+
 ## Fleet / Swarm Workflows
 
 This project supports Copilot CLI's `/fleet` command for parallel agent execution. For complex tasks, `/fleet` breaks down work and dispatches subtasks to specialized agents concurrently:
@@ -221,7 +242,43 @@ This project supports Copilot CLI's `/fleet` command for parallel agent executio
 /fleet implement budget rollover with tests, docs, and security review
 ```
 
-This is especially powerful with our custom agents — the fleet orchestrator can delegate architecture to `@architect`, implementation to domain agents, security review to `@security-reviewer`, and documentation to `@docs-writer`, all in parallel.
+Each agent gets its own worktree and PR. The fleet orchestrator can delegate architecture to `@architect`, implementation to domain agents, security review to `@security-reviewer`, and documentation to `@docs-writer`, all running in parallel with isolated worktrees.
+
+### Fleet Coordination Rules
+
+When multiple agents work in parallel, they MUST follow these rules to avoid conflicts:
+
+**File ownership by agent:**
+
+| Agent                     | Primary ownership                              |
+| ------------------------- | ---------------------------------------------- |
+| `@kmp-engineer`           | `packages/`                                    |
+| `@backend-engineer`       | `services/api/`                                |
+| `@web-engineer`           | `apps/web/`                                    |
+| `@android-engineer`       | `apps/android/`                                |
+| `@ios-engineer`           | `apps/ios/`                                    |
+| `@windows-engineer`       | `apps/windows/`                                |
+| `@design-engineer`        | `config/tokens/`, generated token files        |
+| `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/` |
+| `@docs-writer`            | `docs/`, `*.md` files in root                  |
+| `@security-reviewer`      | Read-only review — never edits production code |
+| `@accessibility-reviewer` | Read-only review — never edits production code |
+
+**Coordination protocol:**
+
+1. **No two agents edit the same file in parallel.** If a task requires two agents to touch the same file, one agent leads and the other reviews.
+2. **Shared config files** (`gradle/libs.versions.toml`, `settings.gradle.kts`, `package.json`, `turbo.json`) must be edited by only one agent per fleet run — assign ownership to `@kmp-engineer` (Gradle) or `@devops-engineer` (Node/CI).
+3. **Agents announce intent** — when starting a fleet task, the orchestrator should note which files each agent will touch in the issue or PR description.
+4. **Schema changes are serialized** — only `@backend-engineer` writes Supabase migrations; only `@kmp-engineer` writes SQLDelight `.sq` files. Both must be in sync (a single coordinated sprint task, not two independent ones).
+5. **After parallel work, the last agent to commit runs** `npm run ci:check` **before pushing** to catch any integration issues.
+
+### Agent Escalation Path
+
+When an agent is blocked or uncertain:
+
+1. **First**: Re-read the relevant skill (`@kmp-development`, `@supabase-powersync`, etc.) — the answer may already be documented
+2. **Second**: Consult `@architect` for cross-cutting design questions
+3. **Third**: Leave a clear decision point documented in the PR as `## Needs Decision: <question>` and stop — do not guess on financial logic
 
 **Requirements:** Copilot CLI with Pro+ subscription. No special repo configuration needed.
 

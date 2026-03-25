@@ -1,0 +1,100 @@
+# =============================================================================
+# Finance App — Caddy Reverse Proxy Configuration
+# =============================================================================
+#
+# Provides automatic HTTPS via Let's Encrypt and routes requests to the
+# appropriate backend service based on the URL path.
+#
+# Route mapping:
+#   /rest/*          → PostgREST (API)
+#   /auth/*          → GoTrue (authentication)
+#   /functions/*     → Edge Functions (Deno)
+#   /health          → Edge Functions health check
+#
+# Issue: #268
+# =============================================================================
+
+{$DOMAIN} {
+	# TLS with Let's Encrypt
+	tls {$TLS_EMAIL}
+
+	# Security headers
+	header {
+		# HSTS — enforce HTTPS for 1 year, including subdomains
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+		# Prevent MIME type sniffing
+		X-Content-Type-Options "nosniff"
+
+		# Prevent clickjacking
+		X-Frame-Options "DENY"
+
+		# XSS protection (legacy browsers)
+		X-XSS-Protection "1; mode=block"
+
+		# Referrer policy
+		Referrer-Policy "strict-origin-when-cross-origin"
+
+		# Content Security Policy
+		Content-Security-Policy "default-src 'self'; connect-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'"
+
+		# Remove server identification
+		-Server
+	}
+
+	# -------------------------------------------------------------------------
+	# PostgREST API
+	# -------------------------------------------------------------------------
+	handle_path /rest/* {
+		reverse_proxy rest:3000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -------------------------------------------------------------------------
+	# GoTrue Auth
+	# -------------------------------------------------------------------------
+	handle_path /auth/* {
+		reverse_proxy auth:9999 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -------------------------------------------------------------------------
+	# Edge Functions
+	# -------------------------------------------------------------------------
+	handle_path /functions/* {
+		reverse_proxy edge-functions:9000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -------------------------------------------------------------------------
+	# Health check endpoint (no auth required)
+	# -------------------------------------------------------------------------
+	handle /health {
+		reverse_proxy edge-functions:9000 {
+			rewrite /health-check
+		}
+	}
+
+	# -------------------------------------------------------------------------
+	# Default — return 404 for unmatched routes
+	# -------------------------------------------------------------------------
+	handle {
+		respond "Not Found" 404
+	}
+
+	# Access logging
+	log {
+		output file /data/access.log {
+			roll_size 10mb
+			roll_keep 5
+			roll_keep_for 168h
+		}
+		format json
+	}
+}

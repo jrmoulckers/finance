@@ -39,10 +39,14 @@ Autonomous agent that runs on GitHub's infrastructure:
 
 ```
 1. Create a GitHub issue describing the feature
-2. (Option A) Work locally with VS Code Copilot Chat in Agent Mode
-3. (Option B) Assign the issue to @copilot for autonomous development
-4. Request review from @security-reviewer and @accessibility-reviewer
-5. Merge when all checks pass
+2. Scan for an existing worktree: git worktree list
+   - If found: resume work there
+   - If not: git worktree add ../wt-[agent]-[branch] -b [branch]
+3. (Option A) Work locally in the worktree with VS Code Copilot Chat in Agent Mode
+4. (Option B) Assign the issue to @copilot for autonomous development
+5. Push, open PR automatically, monitor CI/conflict checks until merge-ready
+6. Request review from @security-reviewer and @accessibility-reviewer
+7. Merge (human only) — agent removes worktree after merge confirmed
 ```
 
 ### 2. Code Review with AI
@@ -83,16 +87,32 @@ For complex, multi-faceted tasks, use Copilot CLI's `/fleet` command:
 # Fleet orchestrator will:
 # 1. Analyze the task and identify subtasks
 # 2. Dispatch subtasks to specialized agents in parallel
-# 3. Manage dependencies between subtasks
-# 4. Aggregate results
+# 3. Each agent creates its own worktree: wt-[agent-type]-[branch]
+# 4. Manage dependencies between subtasks
+# 5. Each agent opens its own PR and monitors CI independently
 ```
 
 **Best practices for fleet mode:**
 
 - Describe the full scope so the orchestrator can partition effectively
 - Works best for tasks with naturally separable concerns (code + tests + docs)
-- Monitor progress — intervene if agents drift or conflict
+- **Each agent gets its own worktree and PR** — one branch per agent per issue
+- **Assign file ownership explicitly** — see the ownership table in `AGENTS.md`
+- **Serialize schema changes** — backend migrations and KMP `.sq` files must be coordinated (not split across independent agents)
+- **Shared config files** (`gradle/libs.versions.toml`, `package.json`, `turbo.json`) may only be edited by one agent per run
+- Each agent is responsible for monitoring its own PR until merge-ready
 - Review all PRs before merging, especially when agents touch overlapping files
+
+### 6. Autonomous Operation (Human Unavailable)
+
+When working in autonomous mode without a human present:
+
+- Complete all local work (code, tests, commits) fully
+- Push the feature branch and open the PR automatically
+- Monitor CI and resolve failures/conflicts autonomously
+- For gated operations (merging PRs, closing issues): stop cleanly — the PR itself is the handoff point
+- For financial logic decisions: do NOT guess — stop and document as `## Needs Decision: <question>` in the PR
+- After completing autonomous work, run `npm run ready-for-pr` to validate the branch is in a reviewable state
 
 ## Using Custom Agents
 
@@ -139,11 +159,11 @@ Type `@` followed by the agent name:
 - Existing knowledge outdated → Update the skill's Markdown body
 - New trigger keywords needed → Update the skill's description in frontmatter
 
-### When to Update MCP
+### When to Update Agent Workflow Docs
 
-- New external tool needed → Add server to `.vscode/mcp.json`
-- API credentials rotated → Update tokens via VS Code input prompts
-- New team member onboarding → Ensure they have required API access
+- Worktree naming or lifecycle changes → Update `docs/ai/worktrees.md` and `workflow.instructions.md`
+- New git operations approved/gated → Update `docs/ai/restrictions.md` and `copilot-instructions.md`
+- New fleet coordination rules → Update `AGENTS.md` and `docs/ai/agents.md`
 
 ## Best Practices
 
