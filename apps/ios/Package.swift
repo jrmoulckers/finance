@@ -31,7 +31,6 @@ let package = Package(
         .macOS(.v14),
     ],
     products: [
-        .library(name: "FinanceApp", targets: ["FinanceApp"]),
         .library(name: "FinanceWatch", targets: ["FinanceWatch"]),
         .library(name: "FinanceWidget", targets: ["FinanceWidget"]),
         .library(name: "FinanceShared", targets: ["FinanceShared"]),
