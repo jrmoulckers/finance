@@ -43,6 +43,7 @@ struct AccountsView: View {
                     Button { viewModel.showingAddAccount = true } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityIdentifier("add_account_button")
                     .accessibilityLabel(String(localized: "Add account"))
                     .accessibilityHint(String(localized: "Opens a form to create a new account"))
                 }

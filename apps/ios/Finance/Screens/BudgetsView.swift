@@ -53,6 +53,7 @@ struct BudgetsView: View {
                     Button { viewModel.showingCreateBudget = true } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityIdentifier("create_budget_button")
                     .accessibilityLabel(String(localized: "Create budget"))
                     .accessibilityHint(String(localized: "Opens a form to create a new budget"))
                 }

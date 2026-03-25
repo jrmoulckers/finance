@@ -132,12 +132,14 @@ struct TransactionCreateView: View {
                     Text(currencySymbol).font(.title2).foregroundStyle(.secondary)
                     TextField(String(localized: "0.00"), text: $viewModel.amountText)
                         .font(.title2).keyboardType(.decimalPad)
+                        .accessibilityIdentifier("transaction_amount_field")
                         .accessibilityLabel(String(localized: "Transaction amount"))
                         .accessibilityHint(String(localized: "Enter the amount in dollars"))
                 }
             }
             Section(String(localized: "Payee")) {
                 TextField(String(localized: "Who was this payment to?"), text: $viewModel.payee)
+                    .accessibilityIdentifier("transaction_payee_field")
                     .accessibilityLabel(String(localized: "Payee name"))
             }
             Section(String(localized: "Account")) {
