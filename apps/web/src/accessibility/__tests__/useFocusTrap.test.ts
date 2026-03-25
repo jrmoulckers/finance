@@ -203,9 +203,7 @@ describe('useFocusTrap', () => {
     const ref = createRef<HTMLElement>() as RefObject<HTMLElement>;
     Object.defineProperty(ref, 'current', { value: container, writable: true });
 
-    const { unmount } = renderHook(() =>
-      useFocusTrap(ref, { active: true, restoreFocus: false }),
-    );
+    const { unmount } = renderHook(() => useFocusTrap(ref, { active: true, restoreFocus: false }));
 
     unmount();
 

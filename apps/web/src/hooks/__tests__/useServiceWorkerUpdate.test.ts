@@ -127,13 +127,11 @@ describe('useServiceWorkerUpdate', () => {
 
   it('tracks updatefound event for new installing workers', async () => {
     let updateFoundHandler: (() => void) | null = null;
-    mockRegistration.addEventListener.mockImplementation(
-      (event: string, handler: () => void) => {
-        if (event === 'updatefound') {
-          updateFoundHandler = handler;
-        }
-      },
-    );
+    mockRegistration.addEventListener.mockImplementation((event: string, handler: () => void) => {
+      if (event === 'updatefound') {
+        updateFoundHandler = handler;
+      }
+    });
 
     const { result } = renderHook(() => useServiceWorkerUpdate());
 
