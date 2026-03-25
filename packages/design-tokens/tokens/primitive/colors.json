@@ -57,6 +57,23 @@
       "900": { "$value": "#111827", "$type": "color" },
       "950": { "$value": "#030712", "$type": "color" }
     },
+    "oled": {
+      "black": {
+        "$value": "#000000",
+        "$type": "color",
+        "$description": "True black for OLED pixel-off — saves battery on AMOLED displays"
+      },
+      "surface": {
+        "$value": "#0A0A0A",
+        "$type": "color",
+        "$description": "Near-black secondary surface for OLED theme"
+      },
+      "elevated": {
+        "$value": "#111111",
+        "$type": "color",
+        "$description": "Elevated surface for OLED cards, modals, and panels"
+      }
+    },
     "chart": {
       "1": { "$value": "#648FFF", "$type": "color", "$description": "IBM CVD-safe blue" },
       "2": { "$value": "#785EF0", "$type": "color", "$description": "IBM CVD-safe purple" },

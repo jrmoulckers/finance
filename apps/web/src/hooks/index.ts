@@ -21,3 +21,5 @@ export { useImport } from './useImport';
 export type { ImportStep, UseImportResult, ImportProgress, ImportSummary } from './useImport';
 export { useAutoCategory } from './useAutoCategory';
 export type { UseAutoCategoryResult } from './useAutoCategory';
+export { useTheme } from './useTheme';
+export type { ThemeValue, ResolvedTheme, UseThemeResult } from './useTheme';

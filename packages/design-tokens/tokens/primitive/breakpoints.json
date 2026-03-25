@@ -1,0 +1,20 @@
+{
+  "breakpoint": {
+    "$description": "Primitive breakpoint thresholds for responsive layout. Values follow a mobile-first, min-width approach on a 4px grid.",
+    "sm": {
+      "$value": "640px",
+      "$type": "dimension",
+      "$description": "Small breakpoint threshold – marks the transition from mobile to tablet-size screens."
+    },
+    "md": {
+      "$value": "1024px",
+      "$type": "dimension",
+      "$description": "Medium breakpoint threshold – marks the transition from tablet to desktop-size screens."
+    },
+    "lg": {
+      "$value": "1440px",
+      "$type": "dimension",
+      "$description": "Large breakpoint threshold – marks the transition from desktop to widescreen displays."
+    }
+  }
+}
