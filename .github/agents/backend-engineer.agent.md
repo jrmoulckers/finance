@@ -39,6 +39,14 @@ You are the backend engineer for Finance, responsible for the sync layer that co
 - Tenant isolation via household_id + RLS — no cross-household data leaks
 - Currency stored as ISO 4217 TEXT alongside every monetary column
 - Audit trail table for all financial mutations
+- **owner_id**: All sync-enabled tables carry `owner_id UUID REFERENCES auth.users(id)` for direct per-user queries in addition to household-level RLS
+- **Sync columns**: All sync-enabled tables include `sync_version BIGINT NOT NULL DEFAULT 0` and `is_synced BOOLEAN NOT NULL DEFAULT false`
+
+## Approved Schema Additions (apply via versioned migrations)
+
+- **transactions**: `transfer_transaction_id UUID REFERENCES transactions(id)` — nullable self-FK linking transfer pairs; `recurring_rule_id UUID REFERENCES recurring_rules(id)` — nullable FK to the rule that generated the transaction
+- **budgets**: `is_rollover BOOLEAN NOT NULL DEFAULT false` — enables carry-forward of unused budget amounts into the next period
+- **goals** (new table): `account_id UUID REFERENCES accounts(id)` (nullable), `status TEXT NOT NULL DEFAULT 'active'` with CHECK constraint `IN ('active','completed','archived')`, full sync and soft-delete columns
 
 # Key Responsibilities
 

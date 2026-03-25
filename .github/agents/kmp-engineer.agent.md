@@ -60,7 +60,40 @@ These are non-negotiable rules for all shared KMP code:
 - Maintain version catalog (`libs.versions.toml`) for all KMP dependencies
 - Write comprehensive tests using kotlin.test and turbine for Flow-based APIs
 
-## Reference Files
+## Approved Model Additions
+
+The following fields must be added to shared data models and their `.sq` schemas:
+
+- **Transaction** (`packages/models`): `transferTransactionId: String?` — pairs the two legs of an account transfer; `recurringRuleId: String?` — references the rule that generated this transaction
+- **Budget** (`packages/models`): `isRollover: Boolean` (default `false`) — when true, carry unused budget cents into next period; rollover calculation lives in `packages/core`
+- **Goal** (`packages/models`): `accountId: String?` — nullable FK to the funding account; `status: GoalStatus` — sealed class with `Active`, `Completed`, `Archived` variants
+
+```kotlin
+// GoalStatus in commonMain
+@Serializable
+enum class GoalStatus { ACTIVE, COMPLETED, ARCHIVED }
+
+// Budget with rollover
+@Serializable
+data class Budget(
+    val id: BudgetId,
+    val categoryId: CategoryId,
+    val amountCents: Long,
+    val isRollover: Boolean = false,
+    // ...
+)
+
+// Goal with account link and status
+@Serializable
+data class Goal(
+    val id: GoalId,
+    val accountId: AccountId?,
+    val targetCents: Long,
+    val currentCents: Long,
+    val status: GoalStatus = GoalStatus.ACTIVE,
+    // ...
+)
+```
 
 - `packages/core/src/commonMain/kotlin/com/finance/core/export/` — shared client-side export pipeline, serializers, and export models.
 - `packages/core/src/commonMain/kotlin/com/finance/core/export/DataExportService.kt` — orchestrates metadata, checksums, and export outcomes.

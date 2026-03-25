@@ -85,6 +85,8 @@ additional_redirect_urls = ["https://localhost:3000"]
 - **Soft deletes** — `deleted_at TIMESTAMPTZ` column on all user-facing tables; never hard-delete synced records.
 - **Audit timestamps** — Every table has `created_at` and `updated_at` columns.
 - **Household isolation** — Every user-facing table has a `household_id` FK for multi-user household support.
+- **Owner tracking** — Every sync-enabled table also carries `owner_id UUID REFERENCES auth.users(id)` for direct per-user queries alongside household-level RLS.
+- **Sync columns** — All sync-enabled tables include `sync_version BIGINT NOT NULL DEFAULT 0` and `is_synced BOOLEAN NOT NULL DEFAULT false` for PowerSync delta tracking.
 
 ### Schema Definition
 
@@ -124,36 +126,65 @@ CREATE TABLE accounts (
 );
 
 CREATE TABLE transactions (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    household_id        UUID NOT NULL REFERENCES households(id),
-    account_id          UUID NOT NULL REFERENCES accounts(id),
-    category_id         UUID REFERENCES categories(id),
-    amount_cents        BIGINT NOT NULL,
-    currency_code       TEXT NOT NULL DEFAULT 'USD',
-    payee               TEXT,
-    note                TEXT,
-    date                DATE NOT NULL,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at          TIMESTAMPTZ,
-    sync_version        BIGINT NOT NULL DEFAULT 0,
-    is_synced           BOOLEAN NOT NULL DEFAULT false
+    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    household_id             UUID NOT NULL REFERENCES households(id),
+    owner_id                 UUID NOT NULL REFERENCES auth.users(id),
+    account_id               UUID NOT NULL REFERENCES accounts(id),
+    category_id              UUID REFERENCES categories(id),
+    amount_cents             BIGINT NOT NULL,
+    currency_code            TEXT NOT NULL DEFAULT 'USD',
+    payee                    TEXT,
+    note                     TEXT,
+    date                     DATE NOT NULL,
+    -- Transfer support: links the paired transaction for account-to-account transfers
+    transfer_transaction_id  UUID REFERENCES transactions(id),
+    -- Recurring rule support: links to the rule that generated this transaction
+    recurring_rule_id        UUID REFERENCES recurring_rules(id),
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at               TIMESTAMPTZ,
+    sync_version             BIGINT NOT NULL DEFAULT 0,
+    is_synced                BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE TABLE budgets (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     household_id  UUID NOT NULL REFERENCES households(id),
+    owner_id      UUID NOT NULL REFERENCES auth.users(id),
     category_id   UUID NOT NULL REFERENCES categories(id),
     amount_cents  BIGINT NOT NULL,
     currency_code TEXT NOT NULL DEFAULT 'USD',
     period        TEXT NOT NULL,
     start_date    DATE NOT NULL,
     end_date      DATE,
+    -- Rollover support: carry unused budget amounts into the next period
+    is_rollover   BOOLEAN NOT NULL DEFAULT false,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at    TIMESTAMPTZ,
     sync_version  BIGINT NOT NULL DEFAULT 0,
     is_synced     BOOLEAN NOT NULL DEFAULT false
+);
+
+CREATE TABLE goals (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    household_id    UUID NOT NULL REFERENCES households(id),
+    owner_id        UUID NOT NULL REFERENCES auth.users(id),
+    -- Optional FK to a specific account funding this goal
+    account_id      UUID REFERENCES accounts(id),
+    name            TEXT NOT NULL,
+    target_cents    BIGINT NOT NULL,
+    current_cents   BIGINT NOT NULL DEFAULT 0,
+    currency_code   TEXT NOT NULL DEFAULT 'USD',
+    target_date     DATE,
+    -- Goal lifecycle status: active | completed | archived
+    status          TEXT NOT NULL DEFAULT 'active',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at      TIMESTAMPTZ,
+    sync_version    BIGINT NOT NULL DEFAULT 0,
+    is_synced       BOOLEAN NOT NULL DEFAULT false,
+    CONSTRAINT goals_status_check CHECK (status IN ('active', 'completed', 'archived'))
 );
 ```
 
