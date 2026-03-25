@@ -64,7 +64,7 @@ describe('useKeyboardShortcuts', () => {
 
     renderHook(() => useKeyboardShortcuts());
 
-    const keydownCalls = addSpy.mock.calls.filter((call) => call[0] === 'keydown');
+    const keydownCalls = addSpy.mock.calls.filter((call) => (call[0] as string) === 'keydown');
     expect(keydownCalls.length).toBeGreaterThan(0);
   });
 
@@ -74,7 +74,7 @@ describe('useKeyboardShortcuts', () => {
     const { unmount } = renderHook(() => useKeyboardShortcuts());
     unmount();
 
-    const keydownCalls = removeSpy.mock.calls.filter((call) => call[0] === 'keydown');
+    const keydownCalls = removeSpy.mock.calls.filter((call) => (call[0] as string) === 'keydown');
     expect(keydownCalls.length).toBeGreaterThan(0);
   });
 
