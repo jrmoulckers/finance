@@ -398,6 +398,51 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * Category auto-suggestion badge
+ * ------------------------------------------------------------------------- */
+
+.form-category-suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--color-blue-50, #eff6ff);
+  border: 1px solid var(--semantic-status-info, #3b82f6);
+  border-radius: var(--border-radius-md);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-primary);
+}
+
+.form-category-suggestion__text {
+  flex: 1;
+  font-weight: var(--font-weight-medium);
+}
+
+.form-category-suggestion__accept {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-3);
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  border: none;
+  border-radius: var(--border-radius-sm, var(--border-radius-md));
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.form-category-suggestion__accept:hover {
+  background: var(--semantic-interactive-hover);
+}
+
+.form-category-suggestion__accept:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
  * Form-level error banner
  * ------------------------------------------------------------------------- */
 
@@ -471,6 +516,10 @@
   html:not([data-theme='light']) .form-banner-error {
     background: rgba(239, 68, 68, 0.1);
   }
+
+  html:not([data-theme='light']) .form-category-suggestion {
+    background: rgba(59, 130, 246, 0.1);
+  }
 }
 
 [data-theme='dark'] .form-dialog__backdrop {
@@ -483,6 +532,10 @@
 
 [data-theme='dark'] .form-banner-error {
   background: rgba(239, 68, 68, 0.1);
+}
+
+[data-theme='dark'] .form-category-suggestion {
+  background: rgba(59, 130, 246, 0.1);
 }
 
 /* ---------------------------------------------------------------------------
@@ -502,7 +555,8 @@
   .form-select,
   .form-textarea,
   .form-button,
-  .confirm-dialog__confirm {
+  .confirm-dialog__confirm,
+  .form-category-suggestion__accept {
     transition: none;
   }
 }
