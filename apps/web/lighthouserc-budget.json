@@ -1,0 +1,9 @@
+{
+  "ci": {
+    "assert": {
+      "assertions": {
+        "performance-budget": "error"
+      }
+    }
+  }
+}
