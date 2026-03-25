@@ -32,7 +32,9 @@ import {
 
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
+import { useAutoCategory } from '../../hooks/useAutoCategory';
 import type { Account, Category, Transaction, TransactionType } from '../../kmp/bridge';
+import type { CategorySuggestion } from '../../lib/categorization';
 import { transactionSchema } from '../../lib/validation';
 
 import './forms.css';
@@ -168,6 +170,10 @@ export function TransactionForm({
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [suggestion, setSuggestion] = useState<CategorySuggestion | null>(null);
+
+  // -- auto-categorisation --------------------------------------------------
+  const { suggestCategory: autoSuggest, learnCorrection } = useAutoCategory(categories);
 
   // -- focus trap -----------------------------------------------------------
   useFocusTrap(panelRef, { active: isOpen, restoreFocus: true });
@@ -198,7 +204,20 @@ export function TransactionForm({
     setErrors({});
     setSubmitting(false);
     setSubmitError(null);
+    setSuggestion(null);
   }, [initialData, isOpen]);
+
+  // -- auto-suggest category when description changes ----------------------
+  useEffect(() => {
+    if (!isOpen || !description.trim()) {
+      setSuggestion(null);
+      return;
+    }
+
+    const amountCents = parseFloat(amount) ? Math.round(parseFloat(amount) * 100) : undefined;
+    const result = autoSuggest(description, amountCents);
+    setSuggestion(result);
+  }, [description, amount, isOpen, autoSuggest]);
 
   // -- handlers ------------------------------------------------------------
 
@@ -223,6 +242,13 @@ export function TransactionForm({
   const submitFailureMessage = isEditMode
     ? 'Failed to update transaction.'
     : 'Failed to add transaction.';
+
+  /** Accept the auto-suggested category. */
+  const handleAcceptSuggestion = useCallback(() => {
+    if (suggestion) {
+      setCategoryId(suggestion.categoryId);
+    }
+  }, [suggestion]);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
@@ -256,6 +282,11 @@ export function TransactionForm({
         note: notes.trim() || null,
       };
 
+      // Learn from user's category choice if it differs from the suggestion.
+      if (categoryId && description.trim() && suggestion && categoryId !== suggestion.categoryId) {
+        learnCorrection(description, categoryId);
+      }
+
       setSubmitting(true);
       setSubmitError(null);
 
@@ -270,6 +301,7 @@ export function TransactionForm({
         setDate(todayISO());
         setNotes('');
         setErrors({});
+        setSuggestion(null);
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : submitFailureMessage);
       } finally {
@@ -287,6 +319,8 @@ export function TransactionForm({
       notes,
       onSubmit,
       submitFailureMessage,
+      suggestion,
+      learnCorrection,
     ],
   );
 
@@ -417,6 +451,22 @@ export function TransactionForm({
                   </option>
                 ))}
               </select>
+              {suggestion && !categoryId && (
+                <div className="form-category-suggestion" role="status">
+                  <span className="form-category-suggestion__text">
+                    Suggested: {suggestion.categoryName} ({Math.round(suggestion.confidence * 100)}
+                    %)
+                  </span>
+                  <button
+                    type="button"
+                    className="form-category-suggestion__accept"
+                    onClick={handleAcceptSuggestion}
+                    aria-label={`Accept suggested category: ${suggestion.categoryName}`}
+                  >
+                    Accept
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Account */}

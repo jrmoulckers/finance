@@ -19,3 +19,5 @@ export { useTransactions } from './useTransactions';
 export type { TransactionFilters } from './useTransactions';
 export { useImport } from './useImport';
 export type { ImportStep, UseImportResult, ImportProgress, ImportSummary } from './useImport';
+export { useAutoCategory } from './useAutoCategory';
+export type { UseAutoCategoryResult } from './useAutoCategory';
