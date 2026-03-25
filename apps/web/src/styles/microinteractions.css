@@ -1,0 +1,244 @@
+/* ==========================================================================
+   Microinteractions — Sub-100ms tactile feedback for interactive elements.
+
+   All interactions use CSS-only transitions for zero JS overhead.
+   Respects prefers-reduced-motion (disabled) and prefers-contrast (no shadows).
+
+   IMPORTANT: Does NOT override :focus-visible outline styles from tokens.css.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Button press effect — scale(0.97) on active
+   -------------------------------------------------------------------------- */
+
+.btn,
+.form-button,
+button[type='submit'],
+button[type='button'] {
+  transition:
+    transform 80ms var(--easing-out),
+    box-shadow 80ms var(--easing-out),
+    background-color 80ms var(--easing-out);
+}
+
+.btn:active:not(:disabled),
+.form-button:active:not(:disabled),
+button[type='submit']:active:not(:disabled),
+button[type='button']:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* --------------------------------------------------------------------------
+   2. Toggle switch — smooth slide + color transition
+   -------------------------------------------------------------------------- */
+
+.toggle-switch {
+  transition: background-color 80ms var(--easing-out);
+}
+
+.toggle-switch__thumb {
+  transition:
+    transform 80ms var(--easing-out),
+    background-color 80ms var(--easing-out);
+}
+
+/* --------------------------------------------------------------------------
+   3. List item tap — brief background highlight
+   -------------------------------------------------------------------------- */
+
+.list-item,
+[role='row'],
+[role='listitem'] {
+  transition: background-color 80ms var(--easing-out);
+}
+
+.list-item:active,
+[role='row']:active,
+[role='listitem']:active {
+  background-color: var(--semantic-interactive-pressed);
+}
+
+/* --------------------------------------------------------------------------
+   4. Form field focus — smooth border + shadow expansion
+   -------------------------------------------------------------------------- */
+
+.form-input,
+.form-select,
+.form-textarea,
+input[type='text'],
+input[type='number'],
+input[type='email'],
+input[type='password'],
+input[type='date'],
+input[type='search'],
+select,
+textarea {
+  transition:
+    border-color 80ms var(--easing-out),
+    box-shadow 80ms var(--easing-out);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--semantic-border-focus) 25%, transparent);
+}
+
+/* --------------------------------------------------------------------------
+   5. Navigation item active — indicator slide
+   -------------------------------------------------------------------------- */
+
+.nav-item,
+.sidebar-nav__link,
+.bottom-nav__link {
+  position: relative;
+  transition:
+    color 80ms var(--easing-out),
+    background-color 80ms var(--easing-out);
+}
+
+.nav-item::after,
+.sidebar-nav__link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--semantic-interactive-default);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 80ms var(--easing-out);
+}
+
+.nav-item--active::after,
+.nav-item[aria-current='page']::after,
+.sidebar-nav__link--active::after,
+.sidebar-nav__link[aria-current='page']::after {
+  transform: scaleX(1);
+}
+
+/* --------------------------------------------------------------------------
+   6. Card hover — subtle lift + shadow increase
+   -------------------------------------------------------------------------- */
+
+.card,
+[class*='card'] {
+  transition:
+    transform 80ms var(--easing-out),
+    box-shadow 80ms var(--easing-out);
+}
+
+.card:hover,
+[class*='card']:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* --------------------------------------------------------------------------
+   7. Checkbox / Radio — scale bounce on change
+   -------------------------------------------------------------------------- */
+
+input[type='checkbox'],
+input[type='radio'] {
+  transition: transform 80ms var(--animation-easing-bounce, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+
+input[type='checkbox']:active,
+input[type='radio']:active {
+  transform: scale(0.85);
+}
+
+/* --------------------------------------------------------------------------
+   8. Delete confirmation — shake on destructive actions
+   -------------------------------------------------------------------------- */
+
+@keyframes micro-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+.shake,
+.confirm-dialog__confirm--danger:active {
+  animation: micro-shake 80ms var(--easing-default);
+}
+
+/* ==========================================================================
+   Accessibility overrides
+   ========================================================================== */
+
+/* Reduced motion: strip all micro-interaction transitions/animations */
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .form-button,
+  button[type='submit'],
+  button[type='button'],
+  .toggle-switch,
+  .toggle-switch__thumb,
+  .list-item,
+  [role='row'],
+  [role='listitem'],
+  .form-input,
+  .form-select,
+  .form-textarea,
+  input,
+  select,
+  textarea,
+  .nav-item,
+  .sidebar-nav__link,
+  .bottom-nav__link,
+  .card,
+  [class*='card'],
+  input[type='checkbox'],
+  input[type='radio'] {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .btn:active:not(:disabled),
+  .form-button:active:not(:disabled),
+  button[type='submit']:active:not(:disabled),
+  button[type='button']:active:not(:disabled) {
+    transform: none !important;
+  }
+
+  .card:hover,
+  [class*='card']:hover {
+    transform: none !important;
+  }
+}
+
+/* High contrast: remove shadow effects that reduce clarity */
+@media (prefers-contrast: more) {
+  .form-input:focus,
+  .form-select:focus,
+  .form-textarea:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    box-shadow: none;
+  }
+
+  .card:hover,
+  [class*='card']:hover {
+    box-shadow: none;
+    transform: none;
+  }
+}
