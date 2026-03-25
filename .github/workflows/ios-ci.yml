@@ -48,7 +48,7 @@ jobs:
       - name: Build
         run: |
           cd apps/ios
-          swift build --product FinanceApp 2>&1
+          swift build --target FinanceApp 2>&1
 
       - name: Test
         run: |
