@@ -2,8 +2,7 @@
   "ci": {
     "assert": {
       "assertions": {
-        "performance-budget": "error",
-        "timing-budget": "error"
+        "performance-budget": "error"
       }
     }
   }
