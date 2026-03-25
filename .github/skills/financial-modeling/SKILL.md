@@ -68,12 +68,15 @@ The repository now has a dedicated export module in `packages/core/src/commonMai
 - Use zero-based or envelope-style allocation semantics for category budgets.
 - Keep rollover and overspending rules explicit rather than implicit.
 - Recalculate availability from allocations, spending, and carry-over values.
+- **Rollover logic**: When `is_rollover = true`, compute carry-forward as `previous_period_budget - previous_period_spent` (clamped to zero minimum). Add carry-forward to the new period's available amount. Never reduce next-period budget below zero due to overspend rollover.
 
 ### Goals
 
-- Track goal amounts in minor units.
+- Track goal amounts in minor units (cents).
 - Recompute projections whenever contributions, deadlines, or funding sources change.
 - Show both percentage progress and absolute values.
+- **Goal status lifecycle**: Goals transition through `active → completed` when `current_cents >= target_cents`, or `active → archived` when manually dismissed. Completed and archived goals are excluded from active projections but retained for history.
+- **Account linkage**: When `account_id` is set, goal progress is driven by changes to that account's balance. When null, the goal tracks manual contributions only.
 
 ### Reporting
 

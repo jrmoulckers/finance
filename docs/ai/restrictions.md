@@ -13,21 +13,25 @@ Finance is a financial tracking application handling sensitive personal and mone
 
 ## Restriction Categories
 
-### 1. Git Remote Operations ⛔
+### 1. Git Remote Operations
 
-**Operations requiring human approval:**
-
-- `git push` (all variants including `--force`, `--force-with-lease`)
-- `git pull` and `git fetch` from untrusted remotes
-- `git remote add`, `remove`, `set-url`
-- `git merge` from remote branches
-- `git rebase` onto remote branches
-
-**Safe operations (auto-approved):**
+**Auto-approved (agents may perform without asking):**
 
 - `git status`, `git log`, `git diff`, `git show`
 - `git add`, `git commit` (local only)
 - `git branch` (listing), `git stash list`
+- `git fetch origin main` — read-only; required for pre-push rebase
+- `git rebase origin/main` on **own feature branch only** — standard pre-push hygiene; never on shared branches
+- `git push origin <feature-branch>` — pushing your own feature branch to origin is allowed; the `pre-push` hook and GitHub branch protection block the dangerous cases automatically
+
+**Require human approval:**
+
+- `git push origin main`, `git push origin master`, or any push to a release/protected branch — hard blocked by branch protection
+- `git push --force` (without `--force-with-lease`) — forbidden entirely
+- `git push --force-with-lease` on a feature branch — only with explicit human approval (may overwrite a collaborator's work)
+- `git remote add`, `remove`, `set-url` — remote configuration changes
+- `git merge` from remote branches into main or release branches
+- `git rebase` onto any branch other than `origin/main` or the agent's own feature branch
 
 ### 2. Pull Request & Review Operations ⚠️
 
@@ -209,6 +213,15 @@ When an AI agent encounters a task that requires a gated operation, it MUST:
 2. **EXPLAIN** — Clearly state what operation is needed and why
 3. **WAIT** — Wait for explicit human approval before proceeding
 4. **NEVER WORKAROUND** — Do not attempt alternative methods to bypass the restriction (e.g., using a different command to achieve the same remote effect)
+
+### When Agents Are Working Autonomously (Without Human Present)
+
+If no human is available to approve a gated operation, agents MUST:
+
+1. Complete all local work (code, tests, commit) to the point where the gated step is the only remaining action
+2. Leave a clear `// TODO(human): <action required>` comment in code or a PR description section `## Needs Human Action` listing each pending step
+3. Document the rationale so the human can make an informed decision when they return
+4. Never make a "best guess" on a gated operation — stop cleanly and document
 
 ## Modifying These Restrictions
 
