@@ -23,4 +23,7 @@ protocol GoalRepository: Sendable {
 
     /// Updates an existing goal.
     func updateGoal(_ goal: GoalItem) async throws
+
+    /// Permanently deletes all goals.
+    func deleteAllGoals() async throws
 }

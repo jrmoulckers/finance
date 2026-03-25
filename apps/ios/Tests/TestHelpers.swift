@@ -98,9 +98,10 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
         if let error = errorToThrow { throw error }
         deletedTransactionIds.append(id)
     }
-}
 
-    func deleteAllTransactions() async throws { if let error = errorToThrow { throw error } }
+    func deleteAllTransactions() async throws {
+        if let error = errorToThrow { throw error }
+    }
 }
 
 // MARK: - Stub Budget Repository
