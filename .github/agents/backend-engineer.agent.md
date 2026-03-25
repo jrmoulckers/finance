@@ -27,7 +27,7 @@ You are the backend engineer for Finance, responsible for the sync layer that co
 - Database migrations (versioned, reversible, zero-downtime)
 - PostgreSQL indexes, materialized views for financial reporting
 - Encryption at rest (PostgreSQL TDE, application-level encryption)
-- CRDT-based conflict resolution for shared household data
+- PowerSync last-write-wins (LWW) sync with custom merge logic for complex data
 - API rate limiting and abuse prevention
 - GDPR/CCPA data export and deletion implementation
 - Database backup and point-in-time recovery
@@ -39,6 +39,14 @@ You are the backend engineer for Finance, responsible for the sync layer that co
 - Tenant isolation via household_id + RLS — no cross-household data leaks
 - Currency stored as ISO 4217 TEXT alongside every monetary column
 - Audit trail table for all financial mutations
+- **owner_id**: All sync-enabled tables carry `owner_id UUID REFERENCES auth.users(id)` for direct per-user queries in addition to household-level RLS
+- **Sync columns**: All sync-enabled tables include `sync_version BIGINT NOT NULL DEFAULT 0` and `is_synced BOOLEAN NOT NULL DEFAULT false`
+
+## Approved Schema Additions (apply via versioned migrations)
+
+- **transactions**: `transfer_transaction_id UUID REFERENCES transactions(id)` — nullable self-FK linking transfer pairs; `recurring_rule_id UUID REFERENCES recurring_rules(id)` — nullable FK to the rule that generated the transaction
+- **budgets**: `is_rollover BOOLEAN NOT NULL DEFAULT false` — enables carry-forward of unused budget amounts into the next period
+- **goals** (new table): `account_id UUID REFERENCES accounts(id)` (nullable), `status TEXT NOT NULL DEFAULT 'active'` with CHECK constraint `IN ('active','completed','archived')`, full sync and soft-delete columns
 
 # Key Responsibilities
 
@@ -47,6 +55,13 @@ You are the backend engineer for Finance, responsible for the sync layer that co
 - Configure PowerSync sync rules
 - Implement Edge Functions for server-side operations
 - Manage database migrations
+
+## Reference Files
+
+- `services/api/supabase/migrations/` — 10 versioned migration files defining the complete schema (users, households, accounts, transactions, categories, budgets, goals, recurring templates, invitations, audit/monitoring tables).
+- `services/api/supabase/functions/` — 12 Edge Functions (Deno/TypeScript): account-deletion, auth-webhook, data-export, health-check, household-invite, passkey-authenticate, passkey-register, process-recurring, sync-health-report, plus `_shared/` utilities (auth, cors, logger, rate-limit, response).
+- `services/api/powersync/sync-rules.yaml` — PowerSync sync rules defining two buckets: `by_household` (tenant-isolated data) and `user_profile` (per-user data).
+- `services/api/openapi.yaml` — API specification.
 
 # Boundaries
 

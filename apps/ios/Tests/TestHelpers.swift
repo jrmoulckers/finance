@@ -57,10 +57,21 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
     private(set) var deletedTransactionIds: [String] = []
     private(set) var createdTransactions: [TransactionItem] = []
     private(set) var updatedTransactions: [TransactionItem] = []
+    private(set) var paginationRequests: [(offset: Int, limit: Int)] = []
 
     func getTransactions() async throws -> [TransactionItem] {
         if let error = errorToThrow { throw error }
         return transactionsToReturn
+    }
+
+
+    func getTransactions(offset: Int, limit: Int) async throws -> [TransactionItem] {
+        if let error = errorToThrow { throw error }
+        paginationRequests.append((offset: offset, limit: limit))
+        let sorted = transactionsToReturn.sorted { $0.date > $1.date }
+        let start = min(offset, sorted.count)
+        let end = min(start + limit, sorted.count)
+        return Array(sorted[start..<end])
     }
 
     func getTransactions(forAccountId accountId: String) async throws -> [TransactionItem] {
@@ -87,6 +98,9 @@ final class StubTransactionRepository: TransactionRepository, @unchecked Sendabl
         if let error = errorToThrow { throw error }
         deletedTransactionIds.append(id)
     }
+    func deleteAllTransactions() async throws { if let error = errorToThrow { throw error } }
+}
+
     func deleteAllTransactions() async throws { if let error = errorToThrow { throw error } }
 }
 

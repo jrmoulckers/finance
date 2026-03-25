@@ -48,6 +48,7 @@ struct OfflineBanner: View {
         .padding(.horizontal)
         .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("offline_banner")
         .accessibilityLabel(String(localized: "Offline. Some features may be limited."))
         .accessibilityAddTraits(.isStatusElement)
     }

@@ -1,4 +1,5 @@
 name: iOS CI
+
 on:
   push:
     branches: [main]
@@ -6,12 +7,15 @@ on:
   pull_request:
     branches: [main]
     paths: ['apps/ios/**', 'packages/**']
+
 concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: true
+
 permissions:
   contents: read
   checks: write
+
 jobs:
   build:
     name: Build & Test
@@ -24,6 +28,7 @@ jobs:
         -Dorg.gradle.daemon=false
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
@@ -39,14 +44,17 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Build FinanceSync XCFramework
         run: ./gradlew :packages:sync:assembleFinanceSyncXCFramework --no-daemon
+
       - name: Build
         run: |
           cd apps/ios
           swift build 2>&1
+
       - name: Test
         run: |
           cd apps/ios
           swift test --enable-code-coverage --xunit-output .build/test-results.xml 2>&1
+
       - name: Generate coverage report
         if: always()
         continue-on-error: true
@@ -67,6 +75,7 @@ jobs:
           else
             echo "Coverage data not found, skipping report"
           fi
+
       - name: Upload coverage report
         if: always()
         continue-on-error: true
@@ -76,6 +85,7 @@ jobs:
           path: apps/ios/.build/coverage.lcov
           if-no-files-found: warn
           retention-days: 14
+
       - name: Upload test results
         if: always()
         continue-on-error: true
@@ -85,6 +95,7 @@ jobs:
           path: apps/ios/.build/test-results.xml
           if-no-files-found: warn
           retention-days: 14
+
       - name: Publish test results
         if: always()
         continue-on-error: true
