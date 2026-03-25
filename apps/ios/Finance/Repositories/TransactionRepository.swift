@@ -32,4 +32,7 @@ protocol TransactionRepository: Sendable {
 
     /// Permanently deletes the transaction with the given identifier.
     func deleteTransaction(id: String) async throws
+
+    /// Permanently deletes every transaction. Used for GDPR "Delete Everything".
+    func deleteAllTransactions() async throws
 }

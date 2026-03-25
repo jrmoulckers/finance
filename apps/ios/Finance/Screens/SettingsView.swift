@@ -36,6 +36,28 @@ struct SettingsView: View {
             .navigationTitle(String(localized: "Settings"))
             .navigationBarTitleDisplayMode(.large)
             .task { await viewModel.loadSettings() }
+            .disabled(viewModel.isDeleting)
+            .overlay {
+                if viewModel.isDeleting {
+                    ZStack {
+                        Color.black.opacity(0.35).ignoresSafeArea()
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(.white)
+                                .scaleEffect(1.5)
+                                .accessibilityLabel(String(localized: "Deleting all data"))
+                            Text(String(localized: "Deleting all data…"))
+                                .foregroundStyle(.white)
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .padding(24)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(String(localized: "Deleting all data, please wait"))
+                }
+            }
             .alert(String(localized: "Error"), isPresented: Binding(
                 get: { viewModel.showError },
                 set: { if !$0 { viewModel.dismissError() } }
@@ -71,6 +93,13 @@ struct SettingsView: View {
             .sheet(isPresented: $viewModel.showingShareSheet) {
                 if let url = viewModel.exportedFileURL {
                     ShareSheetView(fileURL: url)
+                }
+            }
+            // After deletion, re-launch the app into onboarding by marking
+            // the root view's auth state unauthenticated (handled by authService.signOut).
+            .onChange(of: viewModel.hasDeletionCompleted) { _, completed in
+                if completed {
+                    Task { await authService.checkExistingSession() }
                 }
             }
         }
@@ -307,7 +336,12 @@ struct SettingsView: View {
                 titleVisibility: .visible
             ) {
                 Button(String(localized: "Delete Everything"), role: .destructive) {
-                    // TODO: Replace MockRepository with KMP-backed repository
+                    Task {
+                        await viewModel.deleteEverything(
+                            using: biometricManager,
+                            authService: authService
+                        )
+                    }
                 }
                 Button(String(localized: "Cancel"), role: .cancel) {}
             } message: {
