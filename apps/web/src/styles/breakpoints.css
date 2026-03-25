@@ -1,0 +1,108 @@
+/**
+ * Responsive Breakpoint System — Finance Design System
+ * =====================================================
+ *
+ * Single source of truth for responsive layout breakpoints.
+ * Token values are defined in the design-tokens package
+ * (packages/design-tokens/tokens/primitive/breakpoints.json and
+ *  packages/design-tokens/tokens/semantic/breakpoints.json)
+ * and generated into CSS custom properties by Style Dictionary.
+ *
+ * ┌─────────────────────────────────────────────────────────────────────┐
+ * │  mobile   │      tablet      │      desktop      │   widescreen   │
+ * │  0–639 px │   640–1 023 px   │  1 024–1 439 px   │   1 440 px +   │
+ * └───────────┴──────────────────┴───────────────────┴────────────────┘
+ *             ↑ 640 px           ↑ 1 024 px          ↑ 1 440 px
+ *
+ * IMPORTANT: CSS custom properties (var()) cannot be used inside
+ * @media queries. Use the literal pixel values documented below.
+ * The CSS custom properties are available for JavaScript access
+ * (e.g. getComputedStyle) and as a canonical reference.
+ *
+ * Generated CSS custom properties (from tokens.css):
+ *   --breakpoint-sm:           640px   (primitive)
+ *   --breakpoint-md:           1024px  (primitive)
+ *   --breakpoint-lg:           1440px  (primitive)
+ *   --breakpoint-mobile:       0px     (semantic)
+ *   --breakpoint-mobile-max:   639px   (semantic)
+ *   --breakpoint-tablet:       640px   (semantic)
+ *   --breakpoint-tablet-max:   1023px  (semantic)
+ *   --breakpoint-desktop:      1024px  (semantic)
+ *   --breakpoint-desktop-max:  1439px  (semantic)
+ *   --breakpoint-widescreen:   1440px  (semantic)
+ *
+ * ─── Usage ──────────────────────────────────────────────────────────
+ *
+ * Mobile-first (min-width — recommended):
+ *   @media (min-width: 640px)  { ... }   tablet and above
+ *   @media (min-width: 1024px) { ... }   desktop and above
+ *   @media (min-width: 1440px) { ... }   widescreen only
+ *
+ * Range-scoped (exact range):
+ *   @media (max-width: 639px)  { ... }                     mobile only
+ *   @media (min-width: 640px) and (max-width: 1023px) { ... }  tablet only
+ *   @media (min-width: 1024px) and (max-width: 1439px) { ... } desktop only
+ *
+ * JavaScript access:
+ *   const bp = getComputedStyle(document.documentElement)
+ *     .getPropertyValue('--breakpoint-tablet').trim();   // "640px"
+ *   const mq = window.matchMedia(`(min-width: ${bp})`);
+ *
+ * ─── Container Queries ──────────────────────────────────────────────
+ *
+ * For component-level responsive behavior prefer container queries:
+ *   .card-grid { container-type: inline-size; }
+ *   @container (min-width: 640px) { ... }
+ *
+ * ────────────────────────────────────────────────────────────────────
+ */
+
+/*
+ * Utility classes that apply at specific breakpoint ranges.
+ * These are intentionally minimal — use @media queries in component
+ * stylesheets for layout-specific overrides (see responsive.css).
+ */
+
+/* ─── Visibility helpers ──────────────────────────────────────────── */
+
+/** Hide on mobile, show on tablet and above */
+.hide-mobile {
+  display: none;
+}
+
+/** Show on mobile only, hide on tablet and above */
+.show-mobile-only {
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .hide-mobile {
+    display: revert;
+  }
+
+  .show-mobile-only {
+    display: none;
+  }
+}
+
+/** Hide below desktop */
+.hide-below-desktop {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .hide-below-desktop {
+    display: revert;
+  }
+}
+
+/** Hide below widescreen */
+.hide-below-widescreen {
+  display: none;
+}
+
+@media (min-width: 1440px) {
+  .hide-below-widescreen {
+    display: revert;
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "animation": {
+    "$description": "Semantic animation tokens — map motion primitives to UI purposes",
+    "pageTransition": {
+      "$description": "Page-level enter/exit transitions (route changes, full-screen sheets)",
+      "duration": { "$value": "{duration.normal}", "$type": "duration" },
+      "easing": { "$value": "{easing.standard}", "$type": "cubicBezier" }
+    },
+    "listItem": {
+      "$description": "List/grid item staggered enter animations",
+      "duration": { "$value": "{duration.fast}", "$type": "duration" },
+      "easing": { "$value": "{easing.decelerate}", "$type": "cubicBezier" }
+    },
+    "progress": {
+      "$description": "Progress rings, bars, and loading indicators",
+      "duration": { "$value": "{duration.slow}", "$type": "duration" },
+      "easing": { "$value": "{easing.default}", "$type": "cubicBezier" }
+    },
+    "celebrate": {
+      "$description": "Success/celebration moments (goal reached, payment complete)",
+      "duration": { "$value": "{duration.slower}", "$type": "duration" },
+      "easing": { "$value": "{easing.spring}", "$type": "cubicBezier" }
+    },
+    "fadeIn": {
+      "$description": "Content fade-in reveals (cards, sections, tooltips)",
+      "duration": { "$value": "{duration.normal}", "$type": "duration" },
+      "easing": { "$value": "{easing.decelerate}", "$type": "cubicBezier" }
+    },
+    "fadeOut": {
+      "$description": "Content fade-out dismissals (toasts, overlays)",
+      "duration": { "$value": "{duration.fast}", "$type": "duration" },
+      "easing": { "$value": "{easing.accelerate}", "$type": "cubicBezier" }
+    },
+    "microInteraction": {
+      "$description": "Small UI feedback (button press, toggle switch, checkbox)",
+      "duration": { "$value": "{duration.instant}", "$type": "duration" },
+      "easing": { "$value": "{easing.default}", "$type": "cubicBezier" }
+    },
+    "loading": {
+      "$description": "Skeleton shimmer and continuous loading states",
+      "duration": { "$value": "{duration.slower}", "$type": "duration" },
+      "easing": { "$value": "{easing.inOut}", "$type": "cubicBezier" }
+    }
+  }
+}

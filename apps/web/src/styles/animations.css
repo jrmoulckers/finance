@@ -1,0 +1,547 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Animation library for Finance web app.
+ *
+ * Provides reusable @keyframes, utility classes, and animation presets
+ * built on top of the design-token motion primitives and semantic tokens.
+ *
+ * Token custom properties consumed:
+ *   Primitive:  --duration-*, --easing-*
+ *   Semantic:   --animation-*-duration, --animation-*-easing
+ *   Component:  --progress-ring-*, --toast-*, --modal-*, --skeleton-*, --celebration-*
+ *
+ * All animations respect `prefers-reduced-motion: reduce`.
+ * Never convey meaning through motion alone — pair with text, icons, or ARIA.
+ *
+ * @see docs/design/animation-library.md
+ */
+
+/* ==========================================================================
+ * 1. @keyframes — Visual state definitions
+ * ========================================================================== */
+
+/* --- Fade ---------------------------------------------------------------- */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* --- Slide --------------------------------------------------------------- */
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}
+
+@keyframes slideOutDown {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* --- Scale --------------------------------------------------------------- */
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* --- Continuous / Looping ------------------------------------------------ */
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* --- Progress Ring ------------------------------------------------------- */
+
+@keyframes progressRing {
+  0% {
+    stroke-dashoffset: 283;
+    transform: rotate(0deg);
+  }
+  50% {
+    stroke-dashoffset: 70;
+  }
+  100% {
+    stroke-dashoffset: 283;
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes progressRingSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- Celebration / Success ----------------------------------------------- */
+
+@keyframes celebrate {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes celebrateCheckmark {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes confettiBurst {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-80px) scale(0.5);
+  }
+}
+
+/* --- Number Count-up (opacity flash for value changes) ------------------- */
+
+@keyframes numberChange {
+  0% {
+    opacity: 0.4;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+ * 2. Utility classes — Apply animation via class names
+ *
+ * Each class binds a @keyframes to semantic duration/easing tokens.
+ * Wrap in `@media (prefers-reduced-motion: no-preference)` so they
+ * only apply when the user has not requested reduced motion.
+ * ========================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* --- Fade -------------------------------------------------------------- */
+
+  .animate-fade-in {
+    animation: fadeIn var(--animation-fade-in-duration, var(--duration-normal, 250ms))
+      var(--animation-fade-in-easing, var(--easing-decelerate, ease-out)) both;
+  }
+
+  .animate-fade-out {
+    animation: fadeOut var(--animation-fade-out-duration, var(--duration-fast, 150ms))
+      var(--animation-fade-out-easing, var(--easing-accelerate, ease-in)) both;
+  }
+
+  /* --- Slide ------------------------------------------------------------- */
+
+  .animate-slide-up {
+    animation: slideInUp var(--animation-page-transition-duration, var(--duration-normal, 250ms))
+      var(--animation-page-transition-easing, var(--easing-standard, ease)) both;
+  }
+
+  .animate-slide-down {
+    animation: slideInDown var(--animation-page-transition-duration, var(--duration-normal, 250ms))
+      var(--animation-page-transition-easing, var(--easing-standard, ease)) both;
+  }
+
+  .animate-slide-left {
+    animation: slideInLeft var(--animation-page-transition-duration, var(--duration-normal, 250ms))
+      var(--animation-page-transition-easing, var(--easing-standard, ease)) both;
+  }
+
+  .animate-slide-right {
+    animation: slideInRight var(--animation-page-transition-duration, var(--duration-normal, 250ms))
+      var(--animation-page-transition-easing, var(--easing-standard, ease)) both;
+  }
+
+  .animate-slide-out-up {
+    animation: slideOutUp var(--animation-fade-out-duration, var(--duration-fast, 150ms))
+      var(--animation-fade-out-easing, var(--easing-accelerate, ease-in)) both;
+  }
+
+  .animate-slide-out-down {
+    animation: slideOutDown var(--animation-fade-out-duration, var(--duration-fast, 150ms))
+      var(--animation-fade-out-easing, var(--easing-accelerate, ease-in)) both;
+  }
+
+  /* --- Scale ------------------------------------------------------------- */
+
+  .animate-scale-in {
+    animation: scaleIn
+      var(
+        --modal-animation-duration,
+        var(--animation-page-transition-duration, var(--duration-normal, 250ms))
+      )
+      var(
+        --modal-animation-easing,
+        var(--animation-page-transition-easing, var(--easing-standard, ease))
+      )
+      both;
+  }
+
+  .animate-scale-out {
+    animation: scaleOut var(--animation-fade-out-duration, var(--duration-fast, 150ms))
+      var(--animation-fade-out-easing, var(--easing-accelerate, ease-in)) both;
+  }
+
+  /* --- Continuous / Looping ---------------------------------------------- */
+
+  .animate-spin {
+    animation: spin
+      var(
+        --progress-ring-animation-duration,
+        var(--animation-progress-duration, var(--duration-slow, 400ms))
+      )
+      linear infinite;
+  }
+
+  .animate-pulse {
+    animation: pulse var(--duration-slower, 800ms) var(--easing-in-out, ease-in-out) infinite;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--semantic-background-secondary, #f3f4f6) 25%,
+      var(--semantic-background-elevated, #e5e7eb) 50%,
+      var(--semantic-background-secondary, #f3f4f6) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer
+      var(
+        --skeleton-animation-duration,
+        var(--animation-loading-duration, var(--duration-slower, 800ms))
+      )
+      var(
+        --skeleton-animation-easing,
+        var(--animation-loading-easing, var(--easing-in-out, ease-in-out))
+      )
+      infinite;
+  }
+
+  /* --- Progress Ring ----------------------------------------------------- */
+
+  .animate-progress-ring {
+    animation: progressRing 1.4s var(--easing-default, ease) infinite;
+    transform-origin: center;
+  }
+
+  .animate-progress-ring-spin {
+    animation: progressRingSpin 2s linear infinite;
+    transform-origin: center;
+  }
+
+  /* --- Celebration ------------------------------------------------------- */
+
+  .animate-celebrate {
+    animation: celebrate
+      var(
+        --celebration-animation-duration,
+        var(--animation-celebrate-duration, var(--duration-slower, 800ms))
+      )
+      var(
+        --celebration-animation-easing,
+        var(--animation-celebrate-easing, var(--easing-spring, ease))
+      )
+      both;
+  }
+
+  .animate-celebrate-checkmark {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: celebrateCheckmark var(--duration-slow, 400ms) var(--easing-decelerate, ease-out)
+      0.3s both;
+  }
+
+  .animate-confetti {
+    animation: confettiBurst var(--duration-slower, 800ms) var(--easing-decelerate, ease-out) both;
+  }
+
+  /* --- Number / Value Change --------------------------------------------- */
+
+  .animate-number-change {
+    animation: numberChange var(--duration-fast, 150ms) var(--easing-decelerate, ease-out) both;
+  }
+
+  /* --- List Item Stagger ------------------------------------------------- */
+
+  .animate-list-item {
+    animation: slideInUp var(--animation-list-item-duration, var(--duration-fast, 150ms))
+      var(--animation-list-item-easing, var(--easing-decelerate, ease-out)) both;
+  }
+
+  /*
+   * Stagger delays for list items.
+   * Apply .animate-list-item on each item and .animate-stagger-N for delay.
+   * Max 10 items before recycling — keeps the max wait under 1 second.
+   */
+  .animate-stagger-1 {
+    animation-delay: 30ms;
+  }
+  .animate-stagger-2 {
+    animation-delay: 60ms;
+  }
+  .animate-stagger-3 {
+    animation-delay: 90ms;
+  }
+  .animate-stagger-4 {
+    animation-delay: 120ms;
+  }
+  .animate-stagger-5 {
+    animation-delay: 150ms;
+  }
+  .animate-stagger-6 {
+    animation-delay: 180ms;
+  }
+  .animate-stagger-7 {
+    animation-delay: 210ms;
+  }
+  .animate-stagger-8 {
+    animation-delay: 240ms;
+  }
+  .animate-stagger-9 {
+    animation-delay: 270ms;
+  }
+  .animate-stagger-10 {
+    animation-delay: 300ms;
+  }
+}
+
+/* ==========================================================================
+ * 3. Reduced motion — safe fallbacks
+ *
+ * When the user prefers reduced motion:
+ *   - All transform-based animations are replaced with simple opacity fades
+ *   - Continuous animations (spin, pulse, shimmer) are stopped entirely
+ *   - Celebration animations show the final state instantly
+ *
+ * The global rule in tokens.css (animation-duration: 0.01ms !important)
+ * acts as the ultimate safety net. These rules provide component-level
+ * overrides for a more intentional reduced-motion experience.
+ * ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-slide-down,
+  .animate-slide-left,
+  .animate-slide-right,
+  .animate-scale-in,
+  .animate-list-item,
+  .animate-number-change,
+  .animate-celebrate {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .animate-fade-out,
+  .animate-slide-out-up,
+  .animate-slide-out-down,
+  .animate-scale-out {
+    animation: none;
+    opacity: 0;
+    transform: none;
+  }
+
+  .animate-spin,
+  .animate-pulse,
+  .animate-shimmer,
+  .animate-progress-ring,
+  .animate-progress-ring-spin,
+  .animate-confetti {
+    animation: none;
+  }
+
+  .animate-celebrate-checkmark {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .animate-shimmer {
+    background: var(--semantic-background-secondary, #f3f4f6);
+    background-size: auto;
+  }
+
+  /* Stagger delays are meaningless without animation */
+  [class*='animate-stagger-'] {
+    animation-delay: 0ms;
+  }
+}
+
+/* ==========================================================================
+ * 4. Transition utilities — Token-based transition presets
+ *
+ * For inline transition shorthand on interactive elements.
+ * Pair with :hover/:focus state changes.
+ * ========================================================================== */
+
+.transition-colors {
+  transition-property: color, background-color, border-color, outline-color, fill, stroke;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--easing-default, ease);
+}
+
+.transition-opacity {
+  transition-property: opacity;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--easing-default, ease);
+}
+
+.transition-transform {
+  transition-property: transform;
+  transition-duration: var(--duration-normal, 250ms);
+  transition-timing-function: var(--easing-standard, ease);
+}
+
+.transition-shadow {
+  transition-property: box-shadow;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--easing-default, ease);
+}
+
+.transition-all {
+  transition-property: all;
+  transition-duration: var(--duration-normal, 250ms);
+  transition-timing-function: var(--easing-default, ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transition-colors,
+  .transition-opacity,
+  .transition-transform,
+  .transition-shadow,
+  .transition-all {
+    transition-duration: 0.01ms;
+  }
+}

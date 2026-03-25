@@ -1,0 +1,42 @@
+{
+  "progressRing": {
+    "animationDuration": {
+      "$value": "{animation.progress.duration}",
+      "$type": "duration",
+      "$description": "Circular progress indicator spin cycle"
+    },
+    "animationEasing": { "$value": "{animation.progress.easing}", "$type": "cubicBezier" }
+  },
+  "toast": {
+    "animationDuration": {
+      "$value": "{animation.fadeIn.duration}",
+      "$type": "duration",
+      "$description": "Toast notification enter/exit"
+    },
+    "animationEasing": { "$value": "{animation.fadeIn.easing}", "$type": "cubicBezier" }
+  },
+  "modal": {
+    "animationDuration": {
+      "$value": "{animation.pageTransition.duration}",
+      "$type": "duration",
+      "$description": "Modal/dialog enter/exit overlay"
+    },
+    "animationEasing": { "$value": "{animation.pageTransition.easing}", "$type": "cubicBezier" }
+  },
+  "skeleton": {
+    "animationDuration": {
+      "$value": "{animation.loading.duration}",
+      "$type": "duration",
+      "$description": "Skeleton shimmer sweep cycle"
+    },
+    "animationEasing": { "$value": "{animation.loading.easing}", "$type": "cubicBezier" }
+  },
+  "celebration": {
+    "animationDuration": {
+      "$value": "{animation.celebrate.duration}",
+      "$type": "duration",
+      "$description": "Success/goal celebration animation"
+    },
+    "animationEasing": { "$value": "{animation.celebrate.easing}", "$type": "cubicBezier" }
+  }
+}

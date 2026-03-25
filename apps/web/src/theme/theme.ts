@@ -149,12 +149,52 @@ export const animation = {
     fast: 'var(--duration-fast)',
     normal: 'var(--duration-normal)',
     slow: 'var(--duration-slow)',
+    slower: 'var(--duration-slower)',
   },
   easing: {
     default: 'var(--easing-default)',
     in: 'var(--easing-in)',
     out: 'var(--easing-out)',
     inOut: 'var(--easing-in-out)',
+    standard: 'var(--easing-standard)',
+    decelerate: 'var(--easing-decelerate)',
+    accelerate: 'var(--easing-accelerate)',
+    spring: 'var(--easing-spring)',
+  },
+  /** Semantic animation presets — combine duration + easing for specific UI purposes. */
+  semantic: {
+    pageTransition: {
+      duration: 'var(--animation-page-transition-duration)',
+      easing: 'var(--animation-page-transition-easing)',
+    },
+    listItem: {
+      duration: 'var(--animation-list-item-duration)',
+      easing: 'var(--animation-list-item-easing)',
+    },
+    progress: {
+      duration: 'var(--animation-progress-duration)',
+      easing: 'var(--animation-progress-easing)',
+    },
+    celebrate: {
+      duration: 'var(--animation-celebrate-duration)',
+      easing: 'var(--animation-celebrate-easing)',
+    },
+    fadeIn: {
+      duration: 'var(--animation-fade-in-duration)',
+      easing: 'var(--animation-fade-in-easing)',
+    },
+    fadeOut: {
+      duration: 'var(--animation-fade-out-duration)',
+      easing: 'var(--animation-fade-out-easing)',
+    },
+    microInteraction: {
+      duration: 'var(--animation-micro-interaction-duration)',
+      easing: 'var(--animation-micro-interaction-easing)',
+    },
+    loading: {
+      duration: 'var(--animation-loading-duration)',
+      easing: 'var(--animation-loading-easing)',
+    },
   },
 } as const;
 

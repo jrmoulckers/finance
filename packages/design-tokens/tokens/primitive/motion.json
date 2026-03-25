@@ -3,12 +3,37 @@
     "instant": { "$value": "0ms", "$type": "duration" },
     "fast": { "$value": "150ms", "$type": "duration" },
     "normal": { "$value": "250ms", "$type": "duration" },
-    "slow": { "$value": "400ms", "$type": "duration" }
+    "slow": { "$value": "400ms", "$type": "duration" },
+    "slower": {
+      "$value": "800ms",
+      "$type": "duration",
+      "$description": "Extended animations: celebrations, complex transitions"
+    }
   },
   "easing": {
     "default": { "$value": "cubic-bezier(0.4, 0, 0.2, 1)", "$type": "cubicBezier" },
     "in": { "$value": "cubic-bezier(0.4, 0, 1, 1)", "$type": "cubicBezier" },
     "out": { "$value": "cubic-bezier(0, 0, 0.2, 1)", "$type": "cubicBezier" },
-    "inOut": { "$value": "cubic-bezier(0.4, 0, 0.2, 1)", "$type": "cubicBezier" }
+    "inOut": { "$value": "cubic-bezier(0.4, 0, 0.2, 1)", "$type": "cubicBezier" },
+    "standard": {
+      "$value": "cubic-bezier(0.2, 0, 0, 1)",
+      "$type": "cubicBezier",
+      "$description": "Material 3 standard curve — balanced enter/exit"
+    },
+    "decelerate": {
+      "$value": "cubic-bezier(0, 0, 0, 1)",
+      "$type": "cubicBezier",
+      "$description": "Content entering — starts fast, settles gently"
+    },
+    "accelerate": {
+      "$value": "cubic-bezier(0.3, 0, 1, 1)",
+      "$type": "cubicBezier",
+      "$description": "Content exiting — starts slow, exits quickly"
+    },
+    "spring": {
+      "$value": "cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+      "$type": "cubicBezier",
+      "$description": "Playful overshoot — celebrations, success moments"
+    }
   }
 }
