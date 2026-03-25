@@ -32,6 +32,11 @@ kotlin {
                 }
             }
         }
+        val iosMain by getting {
+            dependencies {
+                implementation(libs.sqldelight.native.driver)
+            }
+        }
         val jsMain by getting {
             dependencies {
                 implementation(libs.sqldelight.js.driver)
