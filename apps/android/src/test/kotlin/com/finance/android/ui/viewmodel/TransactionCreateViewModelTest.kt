@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
@@ -261,9 +262,11 @@ class TransactionCreateViewModelTest {
         accounts: List<Account> = testAccounts,
         categories: List<Category> = testCategories,
         transactionRepo: TestTransactionRepository? = null,
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
     ): Pair<TransactionCreateViewModel, TestTransactionRepository> {
         val txnRepo = transactionRepo ?: TestTransactionRepository(transactions)
         val vm = TransactionCreateViewModel(
+            savedStateHandle = savedStateHandle,
             transactionRepository = txnRepo,
             accountRepository = TestAccountRepository(accounts),
             categoryRepository = TestCategoryRepository(categories),
