@@ -55,6 +55,20 @@ let package = Package(
             ]
         ),
         .target(
+            name: "FinanceShared",
+            dependencies: [],
+            path: "Shared"
+        ),
+        .target(
+            name: "FinanceClip",
+            dependencies: ["FinanceShared"],
+            path: "FinanceClip",
+            exclude: [
+                "Info.plist",
+                "FinanceClipApp.swift",
+            ]
+        ),
+        .target(
             name: "FinanceWidget",
             dependencies: [],
             path: "FinanceWidget"
