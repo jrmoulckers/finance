@@ -37,6 +37,6 @@ protocol AccountRepository: Sendable {
     /// Permanently deletes the account with the given identifier.
     func deleteAccount(id: String) async throws
 
-    /// Permanently deletes all accounts.
+    /// Permanently deletes every account. Used for GDPR "Delete Everything".
     func deleteAllAccounts() async throws
 }
