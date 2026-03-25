@@ -46,3 +46,11 @@ These are `commonMain` interfaces — platform `actual` implementations live in 
 - Use **kotlinx-serialization** for all serialization — annotate models with `@Serializable`
 - All monetary values must be `Long` (cents) — enforce with Kotlin value classes (e.g., `@JvmInline value class Cents(val amount: Long)`)
 - Test with **kotlin.test** — all tests must pass on every target (`commonTest`, `iosTest`, `androidTest`, `jvmTest`, `jsTest`)
+
+## Approved Model Additions
+
+The following fields must be added to shared models in `packages/models` and corresponding `.sq` schemas in `packages/core`:
+
+- **Transaction**: `transferTransactionId: String?` (paired transfer leg), `recurringRuleId: String?` (originating rule)
+- **Budget**: `isRollover: Boolean` (default `false`) — carry unused budget to next period
+- **Goal**: `accountId: String?` (linked funding account), `status: GoalStatus` (sealed/enum: `Active`, `Completed`, `Archived`)

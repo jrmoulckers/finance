@@ -32,6 +32,17 @@ You are working in the `services/` directory, which contains the consolidated ba
 - Edge Functions are written in **TypeScript** running on the **Deno** runtime
 - Database migrations must be versioned (sequential numbering) and reversible (include both `up` and `down` SQL)
 
+## Schema Alignment Decisions
+
+The following additions are approved and must be applied as versioned migrations:
+
+- **transactions**: `transfer_transaction_id UUID REFERENCES transactions(id)` (nullable) and `recurring_rule_id UUID REFERENCES recurring_rules(id)` (nullable)
+- **budgets**: `is_rollover BOOLEAN NOT NULL DEFAULT false`
+- **goals**: `account_id UUID REFERENCES accounts(id)` (nullable), `status TEXT NOT NULL DEFAULT 'active'` with CHECK IN ('active','completed','archived')
+- **All sync-enabled tables**: `owner_id UUID REFERENCES auth.users(id) NOT NULL` and `sync_version BIGINT NOT NULL DEFAULT 0` and `is_synced BOOLEAN NOT NULL DEFAULT false`
+
+Migration naming convention: `YYYYMMDDHHMMSS_<description>.sql` (e.g., `20260325000001_align_schema_transactions_budgets_goals.sql`)
+
 ## PowerSync Integration
 
 - **PowerSync** sync rules define what data syncs to each client — configure in sync rules YAML

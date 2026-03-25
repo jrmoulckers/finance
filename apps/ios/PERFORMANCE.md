@@ -69,7 +69,7 @@ diagnostics from the field:
       with > ~20 children.
 - [x] Apply `.id()` on list items keyed to stable identifiers to avoid
       unnecessary diffing.
-- [ ] Implement pagination for transactions (50 items per page via
+- [x] Implement pagination for transactions (50 items per page via
       `LIMIT`/`OFFSET` in SQLDelight queries).
 - [ ] Use `.drawingGroup()` on complex Swift Charts to rasterise into a
       single Metal layer.
@@ -89,7 +89,7 @@ diagnostics from the field:
 ### Images & Assets
 
 - [x] Use SF Symbols for all iconography — zero image decoding cost.
-- [ ] If receipt images are added, use `preparingThumbnail(of:)` for list
+- [x] If receipt images are added, use `preparingThumbnail(of:)` for list
       cells and load full-size on detail view only.
 - [ ] Compress exported PDFs with `CGContext` Quartz filters.
 
@@ -97,7 +97,7 @@ diagnostics from the field:
 
 - [x] `BGAppRefreshTask` registered with 30-minute minimum interval.
 - [ ] Use `URLSession` background transfers for sync payloads > 1 MB.
-- [ ] Debounce rapid-fire writes (e.g., amount text field) before
+- [x] Debounce rapid-fire writes (e.g., amount text field) before
       persisting to SQLite.
 
 ### Memory
