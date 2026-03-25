@@ -78,6 +78,7 @@ struct DashboardView: View {
         .padding(.vertical, 24)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("net_worth_card")
         .accessibilityLabel(String(localized: "Net Worth"))
     }
 
@@ -99,6 +100,7 @@ struct DashboardView: View {
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("spending_summary_card")
         .accessibilityLabel(String(localized: "Monthly spending summary"))
     }
 

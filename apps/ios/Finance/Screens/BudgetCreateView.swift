@@ -87,6 +87,7 @@ struct BudgetCreateView: View {
                 TextField(String(localized: "0.00"), text: $viewModel.amountText)
                     .font(.title2)
                     .keyboardType(.decimalPad)
+                    .accessibilityIdentifier("budget_amount_field")
                     .accessibilityLabel(String(localized: "Budget amount"))
                     .accessibilityHint(String(localized: "Enter the budget limit in dollars"))
             }

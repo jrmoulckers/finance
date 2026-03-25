@@ -82,6 +82,16 @@ bucket_definitions:
         FROM goals
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
 
+      # Household members - all members of each household the user belongs to.
+      # Enables the client to display co-member names, roles, and household
+      # member lists. (The user_profile bucket syncs only the user's OWN
+      # membership records; this syncs ALL members for the household.)
+      - >
+        SELECT id, household_id, user_id, role, joined_at,
+               created_at, updated_at, deleted_at
+        FROM household_members
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
       # Household invitations — lets members see pending/accepted invites
       - >
         SELECT id, household_id, invited_by, invite_code, invited_email,
