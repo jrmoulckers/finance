@@ -19,3 +19,5 @@ export { useTransactions } from './useTransactions';
 export type { TransactionFilters } from './useTransactions';
 export { useImport } from './useImport';
 export type { ImportStep, UseImportResult, ImportProgress, ImportSummary } from './useImport';
+export { useTheme } from './useTheme';
+export type { ThemeValue, ResolvedTheme, UseThemeResult } from './useTheme';

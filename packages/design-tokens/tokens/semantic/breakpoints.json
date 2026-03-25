@@ -1,0 +1,40 @@
+{
+  "breakpoint": {
+    "$description": "Semantic breakpoint tokens map device-oriented names to primitive thresholds. Each range is defined by a min-width (inclusive) for mobile-first media queries and a max-width for range-scoped queries.",
+    "mobile": {
+      "$value": "0px",
+      "$type": "dimension",
+      "$description": "Mobile layout – min-width start of the mobile range (0–639 px)."
+    },
+    "mobileMax": {
+      "$value": "639px",
+      "$type": "dimension",
+      "$description": "Mobile layout – max-width boundary. Use in max-width media queries to target mobile only."
+    },
+    "tablet": {
+      "$value": "{breakpoint.sm}",
+      "$type": "dimension",
+      "$description": "Tablet layout – min-width start of the tablet range (640–1023 px)."
+    },
+    "tabletMax": {
+      "$value": "1023px",
+      "$type": "dimension",
+      "$description": "Tablet layout – max-width boundary. Use in max-width media queries to target up to tablet."
+    },
+    "desktop": {
+      "$value": "{breakpoint.md}",
+      "$type": "dimension",
+      "$description": "Desktop layout – min-width start of the desktop range (1024–1439 px)."
+    },
+    "desktopMax": {
+      "$value": "1439px",
+      "$type": "dimension",
+      "$description": "Desktop layout – max-width boundary. Use in max-width media queries to target up to desktop."
+    },
+    "widescreen": {
+      "$value": "{breakpoint.lg}",
+      "$type": "dimension",
+      "$description": "Widescreen layout – min-width start of the widescreen range (1440 px and above)."
+    }
+  }
+}

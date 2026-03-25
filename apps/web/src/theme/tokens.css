@@ -22,12 +22,15 @@
 /* Dark theme override */
 @import '../../../../packages/design-tokens/build/web/tokens-dark.css';
 
+/* OLED dark theme override — true black backgrounds for AMOLED battery savings */
+@import '../../../../packages/design-tokens/build/web/tokens-dark-oled.css';
+
 /*
  * System preference: auto-apply dark theme when the OS prefers dark mode.
  * Users can still override by toggling [data-theme] on <html>.
  */
 @media (prefers-color-scheme: dark) {
-  html:not([data-theme='light']) {
+  html:not([data-theme='light']):not([data-theme='dark-oled']) {
     --semantic-background-primary: var(--color-neutral-950);
     --semantic-background-secondary: var(--color-neutral-900);
     --semantic-background-elevated: var(--color-neutral-800);
