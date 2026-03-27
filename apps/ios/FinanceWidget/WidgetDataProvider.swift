@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-// WidgetDataProvider.swift — Refs #380
+// WidgetDataProvider.swift ΓÇö Refs #380
 
 import Foundation
 

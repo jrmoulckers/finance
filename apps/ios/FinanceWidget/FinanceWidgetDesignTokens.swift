@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-// FinanceWidgetDesignTokens.swift — Refs #380
+// FinanceWidgetDesignTokens.swift ΓÇö Refs #380
 
 import SwiftUI
 
