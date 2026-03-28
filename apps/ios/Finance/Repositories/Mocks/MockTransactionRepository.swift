@@ -102,4 +102,8 @@ struct MockTransactionRepository: TransactionRepository {
     func deleteTransaction(id: String) async throws {
         // No-op for mock — ViewModel manages local state removal.
     }
+
+    func deleteAllTransactions() async throws {
+        // No-op for mock — mock data is stateless and returns hardcoded values.
+    }
 }
