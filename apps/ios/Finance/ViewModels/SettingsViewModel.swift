@@ -34,7 +34,6 @@ enum DeletionConfirmationStep: Sendable {
 // MARK: - SettingsViewModel
 
 @Observable
-@MainActor
 final class SettingsViewModel {
 
     // MARK: - Persisted Preferences
@@ -151,7 +150,7 @@ final class SettingsViewModel {
     private let exportService: DataExportService
     private let deletionService: DataDeletionManaging
 
-    private static let logger= Logger(
+    private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
         category: "SettingsViewModel"
     )

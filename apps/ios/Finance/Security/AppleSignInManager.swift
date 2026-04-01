@@ -87,7 +87,6 @@ protocol AppleSignInManaging: Sendable {
 /// > **first** authorization. Persist these values via the KMP data layer
 /// > immediately upon receipt.
 @Observable
-@MainActor
 final class AppleSignInManager: NSObject, AppleSignInManaging {
 
     // MARK: - State

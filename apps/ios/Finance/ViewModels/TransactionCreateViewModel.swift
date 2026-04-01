@@ -10,7 +10,6 @@ import Observation
 import SwiftUI
 
 @Observable
-@MainActor
 final class TransactionCreateViewModel {
     private let transactionRepository: TransactionRepository
     private let accountRepository: AccountRepository

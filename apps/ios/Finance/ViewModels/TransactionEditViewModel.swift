@@ -11,7 +11,6 @@ import os
 import SwiftUI
 
 @Observable
-@MainActor
 final class TransactionEditViewModel {
     private let transactionRepository: TransactionRepository
     private let accountRepository: AccountRepository

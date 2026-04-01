@@ -59,7 +59,6 @@ enum AppDeepLink: Sendable, Equatable {
 /// }
 /// ```
 @Observable
-@MainActor
 final class DeepLinkHandler {
 
     // MARK: - Constants
@@ -112,6 +111,10 @@ final class DeepLinkHandler {
     private(set) var hasPendingClipExpense = false
     private(set) var pendingClipAmount: Int64?
     private(set) var pendingClipCategory: String?
+
+    // MARK: - Init
+
+    init() {}
 
     // MARK: - Public API
 
@@ -334,16 +337,6 @@ final class DeepLinkHandler {
     private func clearAuthInviteState() {
         isProcessingAuthCallback = false
         pendingInviteCode = nil
-    }
-
-    private func clearAllState() {
-        isProcessingAuthCallback = false
-        pendingInviteCode = nil
-        pendingAccountId = nil
-        pendingTransactionId = nil
-        hasPendingClipExpense = false
-        pendingClipAmount = nil
-        pendingClipCategory = nil
     }
 
     private func clearAllState() {

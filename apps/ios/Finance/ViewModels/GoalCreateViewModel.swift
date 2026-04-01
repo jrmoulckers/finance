@@ -12,7 +12,6 @@ import SwiftUI
 import os
 
 @Observable
-@MainActor
 final class GoalCreateViewModel {
     private let repository: GoalRepository
     private let logger = Logger(subsystem: "com.finance.app", category: "GoalCreateViewModel")
