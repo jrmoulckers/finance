@@ -58,43 +58,36 @@ jobs:
       - name: Build
         run: |
           cd apps/ios
-          swift build 2>&1
+          xcodebuild build \
+            -scheme FinanceApp \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO 2>&1
 
       - name: Test
         run: |
           cd apps/ios
-          swift test --enable-code-coverage --xunit-output .build/test-results.xml 2>&1
+          xcodebuild test \
+            -scheme FinanceTests \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -skipPackagePluginValidation \
+            -resultBundlePath .build/TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO 2>&1
 
-      - name: Generate coverage report
+      - name: Convert test results
         if: always()
         continue-on-error: true
         run: |
           cd apps/ios
-          BIN_PATH=$(swift build --show-bin-path)
-          PROFDATA=$(find .build -name 'default.profdata' -type f 2>/dev/null | head -1)
-          XCTEST=$(find "$BIN_PATH" -name '*.xctest' -type d 2>/dev/null | head -1)
-          if [ -n "$PROFDATA" ] && [ -n "$XCTEST" ]; then
-            TEST_EXEC="$XCTEST/Contents/MacOS/$(basename "$XCTEST" .xctest)"
-            xcrun llvm-cov export -format=lcov \
-              -instr-profile "$PROFDATA" \
-              "$TEST_EXEC" > .build/coverage.lcov
-            echo "### Coverage Summary" >> "$GITHUB_STEP_SUMMARY"
-            xcrun llvm-cov report \
-              -instr-profile "$PROFDATA" \
-              "$TEST_EXEC" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ -d ".build/TestResults.xcresult" ]; then
+            xcrun xcresulttool get test-results summary \
+              --path .build/TestResults.xcresult \
+              --format human-readable > .build/test-summary.txt 2>/dev/null || true
+            echo "### iOS Test Results" >> "$GITHUB_STEP_SUMMARY"
+            cat .build/test-summary.txt >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "No summary available" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Coverage data not found, skipping report"
+            echo "No test results found"
           fi
-
-      - name: Upload coverage report
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: ios-coverage
-          path: apps/ios/.build/coverage.lcov
-          if-no-files-found: warn
-          retention-days: 14
 
       - name: Upload test results
         if: always()
@@ -102,16 +95,6 @@ jobs:
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ios-test-results
-          path: apps/ios/.build/test-results.xml
+          path: apps/ios/.build/TestResults.xcresult
           if-no-files-found: warn
           retention-days: 14
-
-      - name: Publish test results
-        if: always()
-        continue-on-error: true
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
-        with:
-          name: iOS Test Results
-          path: apps/ios/.build/test-results.xml
-          reporter: java-junit
-          fail-on-error: false
