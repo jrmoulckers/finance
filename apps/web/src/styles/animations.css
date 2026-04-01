@@ -1,344 +1,547 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Animation library for Finance web app.
+ *
+ * Provides reusable @keyframes, utility classes, and animation presets
+ * built on top of the design-token motion primitives and semantic tokens.
+ *
+ * Token custom properties consumed:
+ *   Primitive:  --duration-*, --easing-*
+ *   Semantic:   --animation-*-duration, --animation-*-easing
+ *   Component:  --progress-ring-*, --toast-*, --modal-*, --skeleton-*, --celebration-*
+ *
+ * All animations respect `prefers-reduced-motion: reduce`.
+ * Never convey meaning through motion alone — pair with text, icons, or ARIA.
+ *
+ * @see docs/design/animation-library.md
+ */
+
 /* ==========================================================================
-   Celebratory Animations — CSS keyframes and utility classes
-   Uses design-token custom properties for durations & easing.
-   ========================================================================== */
+ * 1. @keyframes — Visual state definitions
+ * ========================================================================== */
 
-:root {
-  /* Animation-specific tokens (extending the design-token set) */
-  --animation-duration-confetti: 2500ms;
-  --animation-duration-checkmark: 600ms;
-  --animation-duration-milestone: 1800ms;
-  --animation-duration-badge: 800ms;
-  --animation-duration-counter: 1200ms;
-  --animation-easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --animation-easing-celebration: cubic-bezier(0.22, 1, 0.36, 1);
-}
+/* --- Fade ---------------------------------------------------------------- */
 
-/* --------------------------------------------------------------------------
-   ConfettiAnimation
-   -------------------------------------------------------------------------- */
-
-.confetti-animation {
-  position: relative;
-  display: inline-block;
-}
-
-.confetti-animation__canvas {
-  display: block;
-}
-
-.confetti-animation__static {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-3xl);
-}
-
-/* --------------------------------------------------------------------------
-   SuccessCheckmark
-   -------------------------------------------------------------------------- */
-
-@keyframes checkmark-circle {
-  0% {
-    stroke-dashoffset: 166;
-  }
-  100% {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes checkmark-check {
-  0% {
-    stroke-dashoffset: 48;
-  }
-  100% {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes checkmark-scale {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.08);
-  }
-}
-
-.success-checkmark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.success-checkmark__svg {
-  overflow: visible;
-}
-
-.success-checkmark__circle {
-  stroke-dasharray: 166;
-  stroke-dashoffset: 166;
-  stroke-linecap: round;
-  animation: checkmark-circle var(--animation-duration-checkmark) var(--easing-out) forwards;
-}
-
-.success-checkmark__check {
-  stroke-dasharray: 48;
-  stroke-dashoffset: 48;
-  stroke-linecap: round;
-  animation: checkmark-check calc(var(--animation-duration-checkmark) * 0.5) var(--easing-out)
-    calc(var(--animation-duration-checkmark) * 0.5) forwards;
-}
-
-.success-checkmark--animated {
-  animation: checkmark-scale 400ms var(--animation-easing-bounce)
-    var(--animation-duration-checkmark) forwards;
-}
-
-/* Static fallback (reduced motion) */
-.success-checkmark__circle--static {
-  stroke-dashoffset: 0;
-}
-
-.success-checkmark__check--static {
-  stroke-dashoffset: 0;
-}
-
-/* --------------------------------------------------------------------------
-   MilestoneAnimation
-   -------------------------------------------------------------------------- */
-
-@keyframes milestone-ring-fill {
+@keyframes fadeIn {
   from {
-    stroke-dashoffset: var(--ring-circumference);
+    opacity: 0;
   }
   to {
-    stroke-dashoffset: var(--ring-target-offset);
+    opacity: 1;
   }
 }
 
-@keyframes milestone-pulse {
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* --- Slide --------------------------------------------------------------- */
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}
+
+@keyframes slideOutDown {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* --- Scale --------------------------------------------------------------- */
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* --- Continuous / Looping ------------------------------------------------ */
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
   0%,
   100% {
-    transform: scale(1);
     opacity: 1;
   }
   50% {
-    transform: scale(1.12);
-    opacity: 0.85;
+    opacity: 0.5;
   }
 }
 
-@keyframes milestone-star-pop {
+@keyframes shimmer {
   0% {
-    transform: scale(0) rotate(-30deg);
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* --- Progress Ring ------------------------------------------------------- */
+
+@keyframes progressRing {
+  0% {
+    stroke-dashoffset: 283;
+    transform: rotate(0deg);
+  }
+  50% {
+    stroke-dashoffset: 70;
+  }
+  100% {
+    stroke-dashoffset: 283;
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes progressRingSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- Celebration / Success ----------------------------------------------- */
+
+@keyframes celebrate {
+  0% {
     opacity: 0;
+    transform: scale(0.3);
   }
-  60% {
-    transform: scale(1.2) rotate(10deg);
+  50% {
     opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.95);
   }
   100% {
-    transform: scale(1) rotate(0deg);
     opacity: 1;
+    transform: scale(1);
   }
 }
 
-.milestone-animation {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-2);
-}
-
-.milestone-animation__ring-container {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.milestone-animation__svg {
-  transform: rotate(-90deg);
-  overflow: visible;
-}
-
-.milestone-animation__ring-bg {
-  fill: none;
-  stroke: var(--semantic-border-default);
-  stroke-width: 6;
-}
-
-.milestone-animation__ring-fill {
-  fill: none;
-  stroke-width: 6;
-  stroke-linecap: round;
-  stroke-dasharray: var(--ring-circumference);
-  stroke-dashoffset: var(--ring-circumference);
-  animation: milestone-ring-fill var(--animation-duration-milestone)
-    var(--animation-easing-celebration) forwards;
-}
-
-.milestone-animation__ring-fill--static {
-  stroke-dashoffset: var(--ring-target-offset);
-  animation: none;
-}
-
-.milestone-animation__ring-fill--50 {
-  stroke: var(--color-blue-500);
-}
-
-.milestone-animation__ring-fill--75 {
-  stroke: var(--color-amber-500);
-}
-
-.milestone-animation__ring-fill--100 {
-  stroke: var(--semantic-status-positive);
-}
-
-.milestone-animation__center {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transform: rotate(0deg); /* counteract parent if needed */
-}
-
-.milestone-animation__percentage {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--semantic-text-primary);
-  line-height: 1;
-}
-
-.milestone-animation__star {
-  opacity: 0;
-  animation: milestone-star-pop 500ms var(--animation-easing-bounce)
-    var(--animation-duration-milestone) forwards;
-}
-
-.milestone-animation__star--static {
-  opacity: 1;
-  animation: none;
-}
-
-.milestone-animation__label {
-  font-size: var(--type-scale-caption-font-size);
-  font-weight: var(--font-weight-medium);
-  color: var(--semantic-text-secondary);
-}
-
-.milestone-animation--pulse {
-  animation: milestone-pulse 600ms var(--animation-easing-bounce)
-    calc(var(--animation-duration-milestone) + 400ms) 2;
-}
-
-/* --------------------------------------------------------------------------
-   StreakBadge
-   -------------------------------------------------------------------------- */
-
-@keyframes badge-enter {
+@keyframes celebrateCheckmark {
   0% {
-    transform: scale(0) rotate(-20deg);
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes confettiBurst {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
     opacity: 0;
-  }
-  60% {
-    transform: scale(1.15) rotate(5deg);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1) rotate(0deg);
-    opacity: 1;
+    transform: translateY(-80px) scale(0.5);
   }
 }
 
-@keyframes badge-shimmer {
+/* --- Number Count-up (opacity flash for value changes) ------------------- */
+
+@keyframes numberChange {
   0% {
-    background-position: -200% center;
+    opacity: 0.4;
+    transform: translateY(-4px);
   }
   100% {
-    background-position: 200% center;
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@keyframes flame-flicker {
-  0%,
-  100% {
-    transform: scaleY(1) translateY(0);
+/* ==========================================================================
+ * 2. Utility classes — Apply animation via class names
+ *
+ * Each class binds a @keyframes to semantic duration/easing tokens.
+ * Wrap in `@media (prefers-reduced-motion: no-preference)` so they
+ * only apply when the user has not requested reduced motion.
+ * ========================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* --- Fade -------------------------------------------------------------- */
+
+  .animate-fade-in {
+    animation: fadeIn var(--animation-fade-in-duration, var(--duration-normal, 250ms))
+      var(--animation-fade-in-easing, var(--easing-decelerate, ease-out)) both;
   }
-  25% {
-    transform: scaleY(1.05) translateY(-1px);
+
+  .animate-fade-out {
+    animation: fadeOut var(--animation-fade-out-duration, var(--duration-fast, 150ms))
+      var(--animation-fade-out-easing, var(--easing-accelerate, ease-in)) both;
   }
-  75% {
-    transform: scaleY(0.95) translateY(1px);
+
+  /* --- Slide ------------------------------------------------------------- */
+
+  .animate-slide-up {
+    animation: slideInUp var(--animation-page-transition-duration, var(--duration-normal, 250ms))
+      var(--animation-page-transition-easing, var(--easing-standard, ease)) both;
+  }
+
+  .animate-slide-down {
+    animation: slideInDown var(--animation-page-transition-duration, var(--duration-normal, 250ms))
+      var(--animation-page-transition-easing, var(--easing-standard, ease)) both;
+  }
+
+  .animate-slide-left {
+    animation: slideInLeft var(--animation-page-transition-duration, var(--duration-normal, 250ms))
+      var(--animation-page-transition-easing, var(--easing-standard, ease)) both;
+  }
+
+  .animate-slide-right {
+    animation: slideInRight var(--animation-page-transition-duration, var(--duration-normal, 250ms))
+      var(--animation-page-transition-easing, var(--easing-standard, ease)) both;
+  }
+
+  .animate-slide-out-up {
+    animation: slideOutUp var(--animation-fade-out-duration, var(--duration-fast, 150ms))
+      var(--animation-fade-out-easing, var(--easing-accelerate, ease-in)) both;
+  }
+
+  .animate-slide-out-down {
+    animation: slideOutDown var(--animation-fade-out-duration, var(--duration-fast, 150ms))
+      var(--animation-fade-out-easing, var(--easing-accelerate, ease-in)) both;
+  }
+
+  /* --- Scale ------------------------------------------------------------- */
+
+  .animate-scale-in {
+    animation: scaleIn
+      var(
+        --modal-animation-duration,
+        var(--animation-page-transition-duration, var(--duration-normal, 250ms))
+      )
+      var(
+        --modal-animation-easing,
+        var(--animation-page-transition-easing, var(--easing-standard, ease))
+      )
+      both;
+  }
+
+  .animate-scale-out {
+    animation: scaleOut var(--animation-fade-out-duration, var(--duration-fast, 150ms))
+      var(--animation-fade-out-easing, var(--easing-accelerate, ease-in)) both;
+  }
+
+  /* --- Continuous / Looping ---------------------------------------------- */
+
+  .animate-spin {
+    animation: spin
+      var(
+        --progress-ring-animation-duration,
+        var(--animation-progress-duration, var(--duration-slow, 400ms))
+      )
+      linear infinite;
+  }
+
+  .animate-pulse {
+    animation: pulse var(--duration-slower, 800ms) var(--easing-in-out, ease-in-out) infinite;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--semantic-background-secondary, #f3f4f6) 25%,
+      var(--semantic-background-elevated, #e5e7eb) 50%,
+      var(--semantic-background-secondary, #f3f4f6) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer
+      var(
+        --skeleton-animation-duration,
+        var(--animation-loading-duration, var(--duration-slower, 800ms))
+      )
+      var(
+        --skeleton-animation-easing,
+        var(--animation-loading-easing, var(--easing-in-out, ease-in-out))
+      )
+      infinite;
+  }
+
+  /* --- Progress Ring ----------------------------------------------------- */
+
+  .animate-progress-ring {
+    animation: progressRing 1.4s var(--easing-default, ease) infinite;
+    transform-origin: center;
+  }
+
+  .animate-progress-ring-spin {
+    animation: progressRingSpin 2s linear infinite;
+    transform-origin: center;
+  }
+
+  /* --- Celebration ------------------------------------------------------- */
+
+  .animate-celebrate {
+    animation: celebrate
+      var(
+        --celebration-animation-duration,
+        var(--animation-celebrate-duration, var(--duration-slower, 800ms))
+      )
+      var(
+        --celebration-animation-easing,
+        var(--animation-celebrate-easing, var(--easing-spring, ease))
+      )
+      both;
+  }
+
+  .animate-celebrate-checkmark {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: celebrateCheckmark var(--duration-slow, 400ms) var(--easing-decelerate, ease-out)
+      0.3s both;
+  }
+
+  .animate-confetti {
+    animation: confettiBurst var(--duration-slower, 800ms) var(--easing-decelerate, ease-out) both;
+  }
+
+  /* --- Number / Value Change --------------------------------------------- */
+
+  .animate-number-change {
+    animation: numberChange var(--duration-fast, 150ms) var(--easing-decelerate, ease-out) both;
+  }
+
+  /* --- List Item Stagger ------------------------------------------------- */
+
+  .animate-list-item {
+    animation: slideInUp var(--animation-list-item-duration, var(--duration-fast, 150ms))
+      var(--animation-list-item-easing, var(--easing-decelerate, ease-out)) both;
+  }
+
+  /*
+   * Stagger delays for list items.
+   * Apply .animate-list-item on each item and .animate-stagger-N for delay.
+   * Max 10 items before recycling — keeps the max wait under 1 second.
+   */
+  .animate-stagger-1 {
+    animation-delay: 30ms;
+  }
+  .animate-stagger-2 {
+    animation-delay: 60ms;
+  }
+  .animate-stagger-3 {
+    animation-delay: 90ms;
+  }
+  .animate-stagger-4 {
+    animation-delay: 120ms;
+  }
+  .animate-stagger-5 {
+    animation-delay: 150ms;
+  }
+  .animate-stagger-6 {
+    animation-delay: 180ms;
+  }
+  .animate-stagger-7 {
+    animation-delay: 210ms;
+  }
+  .animate-stagger-8 {
+    animation-delay: 240ms;
+  }
+  .animate-stagger-9 {
+    animation-delay: 270ms;
+  }
+  .animate-stagger-10 {
+    animation-delay: 300ms;
   }
 }
 
-.streak-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  padding: var(--spacing-1) var(--spacing-3);
-  border-radius: var(--border-radius-full);
-  font-weight: var(--font-weight-semibold);
-  font-size: var(--font-size-sm);
-  color: var(--color-neutral-0);
-  opacity: 0;
-  animation: badge-enter var(--animation-duration-badge) var(--animation-easing-bounce) forwards;
+/* ==========================================================================
+ * 3. Reduced motion — safe fallbacks
+ *
+ * When the user prefers reduced motion:
+ *   - All transform-based animations are replaced with simple opacity fades
+ *   - Continuous animations (spin, pulse, shimmer) are stopped entirely
+ *   - Celebration animations show the final state instantly
+ *
+ * The global rule in tokens.css (animation-duration: 0.01ms !important)
+ * acts as the ultimate safety net. These rules provide component-level
+ * overrides for a more intentional reduced-motion experience.
+ * ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-slide-down,
+  .animate-slide-left,
+  .animate-slide-right,
+  .animate-scale-in,
+  .animate-list-item,
+  .animate-number-change,
+  .animate-celebrate {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .animate-fade-out,
+  .animate-slide-out-up,
+  .animate-slide-out-down,
+  .animate-scale-out {
+    animation: none;
+    opacity: 0;
+    transform: none;
+  }
+
+  .animate-spin,
+  .animate-pulse,
+  .animate-shimmer,
+  .animate-progress-ring,
+  .animate-progress-ring-spin,
+  .animate-confetti {
+    animation: none;
+  }
+
+  .animate-celebrate-checkmark {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .animate-shimmer {
+    background: var(--semantic-background-secondary, #f3f4f6);
+    background-size: auto;
+  }
+
+  /* Stagger delays are meaningless without animation */
+  [class*='animate-stagger-'] {
+    animation-delay: 0ms;
+  }
 }
 
-.streak-badge--static {
-  opacity: 1;
-  animation: none;
+/* ==========================================================================
+ * 4. Transition utilities — Token-based transition presets
+ *
+ * For inline transition shorthand on interactive elements.
+ * Pair with :hover/:focus state changes.
+ * ========================================================================== */
+
+.transition-colors {
+  transition-property: color, background-color, border-color, outline-color, fill, stroke;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--easing-default, ease);
 }
 
-.streak-badge--bronze {
-  background: linear-gradient(135deg, #cd7f32, #a0522d);
+.transition-opacity {
+  transition-property: opacity;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--easing-default, ease);
 }
 
-.streak-badge--silver {
-  background: linear-gradient(135deg, #c0c0c0, #808080);
+.transition-transform {
+  transition-property: transform;
+  transition-duration: var(--duration-normal, 250ms);
+  transition-timing-function: var(--easing-standard, ease);
 }
 
-.streak-badge--gold {
-  background: linear-gradient(135deg, var(--color-amber-500), var(--color-amber-700));
+.transition-shadow {
+  transition-property: box-shadow;
+  transition-duration: var(--duration-fast, 150ms);
+  transition-timing-function: var(--easing-default, ease);
 }
 
-.streak-badge--shimmer {
-  background-size: 200% auto;
-  animation:
-    badge-enter var(--animation-duration-badge) var(--animation-easing-bounce) forwards,
-    badge-shimmer 2s linear var(--animation-duration-badge) infinite;
+.transition-all {
+  transition-property: all;
+  transition-duration: var(--duration-normal, 250ms);
+  transition-timing-function: var(--easing-default, ease);
 }
 
-.streak-badge__flame {
-  animation: flame-flicker 400ms ease-in-out infinite;
-  display: inline-flex;
-}
-
-.streak-badge__flame--static {
-  animation: none;
-}
-
-.streak-badge__count {
-  line-height: 1;
-}
-
-.streak-badge__label {
-  font-weight: var(--font-weight-regular);
-}
-
-/* --------------------------------------------------------------------------
-   NumberCounter
-   -------------------------------------------------------------------------- */
-
-.number-counter {
-  font-variant-numeric: tabular-nums;
-  display: inline-block;
-}
-
-.number-counter--animating {
-  will-change: contents;
+@media (prefers-reduced-motion: reduce) {
+  .transition-colors,
+  .transition-opacity,
+  .transition-transform,
+  .transition-shadow,
+  .transition-all {
+    transition-duration: 0.01ms;
+  }
 }

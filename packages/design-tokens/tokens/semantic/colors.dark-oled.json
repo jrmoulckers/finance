@@ -1,0 +1,117 @@
+{
+  "$description": "OLED dark theme semantic color tokens. Uses true black (#000000) backgrounds for AMOLED pixel-off battery savings. All foreground colors maintain WCAG AA contrast ratios against #000000. Borders are brightened to neutral-500 (4.35:1 vs black) for 3:1+ UI component contrast.",
+  "semantic": {
+    "background": {
+      "primary": {
+        "$value": "{color.oled.black}",
+        "$type": "color",
+        "$description": "True black — OLED pixels off (0,0,0)"
+      },
+      "secondary": {
+        "$value": "{color.oled.surface}",
+        "$type": "color",
+        "$description": "Near-black secondary surface (#0A0A0A)"
+      },
+      "elevated": {
+        "$value": "{color.oled.elevated}",
+        "$type": "color",
+        "$description": "Elevated surface for cards/modals (#111111)"
+      }
+    },
+    "text": {
+      "primary": {
+        "$value": "{color.neutral.50}",
+        "$type": "color",
+        "$description": "Primary text — 20.1:1 contrast vs #000000"
+      },
+      "secondary": {
+        "$value": "{color.neutral.400}",
+        "$type": "color",
+        "$description": "Secondary text — 8.3:1 contrast vs #000000"
+      },
+      "disabled": {
+        "$value": "{color.neutral.500}",
+        "$type": "color",
+        "$description": "Disabled text — 4.35:1 vs #000000 (WCAG exempt, bumped from neutral-600 for OLED readability)"
+      },
+      "inverse": {
+        "$value": "{color.oled.black}",
+        "$type": "color",
+        "$description": "Text on light interactive surfaces"
+      }
+    },
+    "border": {
+      "default": {
+        "$value": "{color.neutral.500}",
+        "$type": "color",
+        "$description": "Default border — 4.35:1 vs #000000, bumped from neutral-700 (2.04:1) for WCAG AA 3:1 UI compliance"
+      },
+      "focus": {
+        "$value": "{color.blue.400}",
+        "$type": "color",
+        "$description": "Focus ring — 8.3:1 vs #000000"
+      },
+      "error": {
+        "$value": "{color.red.400}",
+        "$type": "color",
+        "$description": "Error border — 7.56:1 vs #000000"
+      }
+    },
+    "interactive": {
+      "default": {
+        "$value": "{color.blue.400}",
+        "$type": "color",
+        "$description": "Interactive default — 8.3:1 vs #000000"
+      },
+      "hover": {
+        "$value": "{color.blue.300}",
+        "$type": "color",
+        "$description": "Interactive hover — 11.9:1 vs #000000"
+      },
+      "pressed": {
+        "$value": "{color.blue.200}",
+        "$type": "color",
+        "$description": "Interactive pressed — 15.4:1 vs #000000"
+      },
+      "disabled": {
+        "$value": "{color.neutral.600}",
+        "$type": "color",
+        "$description": "Disabled interactive — WCAG exempt (disabled controls)"
+      }
+    },
+    "status": {
+      "positive": {
+        "$value": "{color.green.500}",
+        "$type": "color",
+        "$description": "Positive status — 9.5:1 vs #000000"
+      },
+      "negative": {
+        "$value": "{color.red.500}",
+        "$type": "color",
+        "$description": "Negative status — 5.6:1 vs #000000"
+      },
+      "warning": {
+        "$value": "{color.amber.500}",
+        "$type": "color",
+        "$description": "Warning status — 9.8:1 vs #000000"
+      },
+      "info": {
+        "$value": "{color.blue.400}",
+        "$type": "color",
+        "$description": "Info status — 8.3:1 vs #000000"
+      }
+    },
+    "amount": {
+      "positive": {
+        "$value": "{color.green.500}",
+        "$type": "color",
+        "$description": "Positive amount (income) — 9.5:1 vs #000000"
+      },
+      "negative": {
+        "$value": "{color.red.500}",
+        "$type": "color",
+        "$description": "Negative amount (expense) — 5.6:1 vs #000000"
+      }
+    }
+  }
+}

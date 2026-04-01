@@ -18,8 +18,15 @@
 // The framework is generated at:
 //   packages/sync/build/XCFrameworks/release/FinanceSync.xcframework
 //
-// After building, the binaryTarget below resolves automatically via the
-// relative path. No manual copying is required.
+// After building, add the binaryTarget to the targets array:
+//   .binaryTarget(
+//       name: "FinanceSync",
+//       path: "../../packages/sync/build/XCFrameworks/release/FinanceSync.xcframework"
+//   )
+// and add "FinanceSync" to FinanceApp's dependencies.
+//
+// Until the XCFramework build is configured in Gradle, KMPBridge.swift uses
+// stubs via #if canImport(FinanceSync).
 
 import PackageDescription
 
@@ -37,15 +44,11 @@ let package = Package(
         .library(name: "FinanceClip", targets: ["FinanceClip"]),
     ],
     targets: [
-        // KMP shared framework — contains models, core, and sync modules.
-        // Built via: ./gradlew :packages:sync:assembleFinanceSyncXCFramework
-        .binaryTarget(
-            name: "FinanceSync",
-            path: "../../packages/sync/build/XCFrameworks/release/FinanceSync.xcframework"
-        ),
+        // KMP shared framework — not yet available as an XCFramework.
+        // See KMP Integration comment above for setup instructions.
         .target(
             name: "FinanceApp",
-            dependencies: ["FinanceSync"],
+            dependencies: [],
             path: "Finance",
             exclude: [
                 "Info.plist",
@@ -63,6 +66,19 @@ let package = Package(
                 "RecentTransactionsView.swift",
                 "BudgetStatusView.swift",
                 "ComplicationProvider.swift",
+            ]
+        ),
+        .target(
+            name: "FinanceShared",
+            dependencies: [],
+            path: "Shared"
+        ),
+        .target(
+            name: "FinanceClip",
+            dependencies: ["FinanceShared"],
+            path: "FinanceClip",
+            exclude: [
+                "Info.plist",
             ]
         ),
         .testTarget(
