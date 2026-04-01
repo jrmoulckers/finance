@@ -2,6 +2,7 @@
 
 package com.finance.sync.crypto
 
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.convert
 import kotlinx.cinterop.reinterpret
@@ -51,29 +52,27 @@ actual class PlatformKeyDerivation actual constructor() {
      * @throws IllegalArgumentException if [salt] is empty.
      * @throws IllegalStateException if the native CCKeyDerivationPBKDF call fails.
      */
+    @OptIn(ExperimentalForeignApi::class)
     actual fun deriveKey(password: String, salt: ByteArray): ByteArray {
         require(salt.isNotEmpty()) { "Salt must not be empty" }
 
         val derivedKey = ByteArray(KEY_LENGTH)
-        val passwordBytes = password.encodeToByteArray()
 
-        passwordBytes.usePinned { pinnedPassword ->
-            salt.usePinned { pinnedSalt ->
-                derivedKey.usePinned { pinnedKey ->
-                    val result = CCKeyDerivationPBKDF(
-                        kCCPBKDF2,
-                        pinnedPassword.addressOf(0).reinterpret(),
-                        passwordBytes.size.convert(),
-                        pinnedSalt.addressOf(0).reinterpret(),
-                        salt.size.convert(),
-                        kCCPRFHmacAlgSHA256,
-                        ITERATIONS.toUInt(),
-                        pinnedKey.addressOf(0).reinterpret(),
-                        KEY_LENGTH.convert(),
-                    )
-                    check(result == kCCSuccess) {
-                        "PBKDF2 key derivation failed with error code: $result"
-                    }
+        salt.usePinned { pinnedSalt ->
+            derivedKey.usePinned { pinnedKey ->
+                val result = CCKeyDerivationPBKDF(
+                    kCCPBKDF2,
+                    password,
+                    password.encodeToByteArray().size.convert(),
+                    pinnedSalt.addressOf(0).reinterpret(),
+                    salt.size.convert(),
+                    kCCPRFHmacAlgSHA256,
+                    ITERATIONS.toUInt(),
+                    pinnedKey.addressOf(0).reinterpret(),
+                    KEY_LENGTH.convert(),
+                )
+                check(result == kCCSuccess) {
+                    "PBKDF2 key derivation failed with error code: $result"
                 }
             }
         }
