@@ -63,11 +63,11 @@ enum SyncStatusDisplay: Sendable, Equatable {
 
     static func fromKMP(_ s: KMPSyncStatus) -> SyncStatusDisplay {
         switch s {
-        case .idle: .idle; case .connecting: .connecting; case .connected: .connected; case .disconnected: .disconnected
+        case .idle: return .idle; case .connecting: return .connecting; case .connected: return .connected; case .disconnected: return .disconnected
         case .syncing(let ph, let pr, let t):
             let txt: String = switch ph { case .pulling: String(localized: "Pulling"); case .pushing: String(localized: "Pushing"); case .resolvingConflicts: String(localized: "Resolving") }
             return .syncing(phase: txt, progress: t.flatMap { $0 > 0 ? Double(pr) / Double($0) : nil })
-        case .error(let e): .error(message: e.localizedDescription)
+        case .error(let e): return .error(message: e.localizedDescription)
         }
     }
 }
