@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // FinanceClipApp.swift - FinanceClip - Refs #648
+import FinanceShared
 import os
 import SwiftUI
 @main
