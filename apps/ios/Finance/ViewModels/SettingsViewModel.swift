@@ -96,6 +96,13 @@ final class SettingsViewModel {
     /// Controls visibility of the destructive-delete confirmation dialog.
     var showingDeleteConfirmation = false
 
+    /// `true` while the deletion operation is in flight.
+    var isDeleting = false
+
+    /// Set to `true` when deletion completes successfully.
+    /// The root view observes this to navigate back to onboarding.
+    var hasDeletionCompleted = false
+
     // MARK: - Biometric Error State
 
     /// The error returned by the last failed biometric evaluation.
@@ -341,6 +348,76 @@ final class SettingsViewModel {
         defaults.set(0, forKey: SettingsKeys.pendingChangesCount)
 
         Self.logger.info("Manual sync completed")
+    }
+
+    // MARK: - GDPR Data Deletion
+
+    /// Permanently deletes all local data, clears credentials, and signs the user out.
+    ///
+    /// Requires biometric/passcode authentication before proceeding.
+    /// On success, ``hasDeletionCompleted`` is set to `true` — the root view
+    /// should observe this to reset the app to the onboarding flow.
+    ///
+    /// - Parameters:
+    ///   - biometricManager: Manager used to prompt for authentication.
+    ///   - authService: Authentication service used to sign out and clear tokens.
+    func deleteEverything(
+        using biometricManager: BiometricAuthManager,
+        authService: AuthenticationService
+    ) async {
+        do {
+            try await biometricManager.authenticate(
+                reason: String(localized: "Verify your identity to permanently delete all your data")
+            )
+        } catch let error as BiometricError {
+            Self.logger.warning(
+                "Delete Everything auth failed: \(error.localizedDescription, privacy: .public)"
+            )
+            if case .cancelled = error { return }
+            biometricError = error
+            showingBiometricError = true
+            return
+        } catch {
+            Self.logger.error(
+                "Delete Everything unexpected auth error: \(error.localizedDescription, privacy: .public)"
+            )
+            biometricError = .unknown(underlying: error)
+            showingBiometricError = true
+            return
+        }
+
+        isDeleting = true
+        defer { isDeleting = false }
+
+        do {
+            // Wipe all local repository data concurrently.
+            async let deleteAccounts: Void = accountRepository.deleteAllAccounts()
+            async let deleteTransactions: Void = transactionRepository.deleteAllTransactions()
+            async let deleteBudgets: Void = budgetRepository.deleteAllBudgets()
+            async let deleteGoals: Void = goalRepository.deleteAllGoals()
+            _ = try await (deleteAccounts, deleteTransactions, deleteBudgets, deleteGoals)
+
+            // Clear all persisted app preferences.
+            for key in [
+                SettingsKeys.currency, SettingsKeys.notifications,
+                SettingsKeys.budgetAlerts, SettingsKeys.goalMilestones,
+                SettingsKeys.lastSyncDate, SettingsKeys.pendingChangesCount,
+            ] {
+                defaults.removeObject(forKey: key)
+            }
+            defaults.removeObject(forKey: BiometricAuthManager.appLockEnabledKey)
+
+            // Sign out — clears Keychain tokens and server session.
+            await authService.signOut()
+
+            Self.logger.info("Delete Everything completed — all data wiped")
+            hasDeletionCompleted = true
+        } catch {
+            Self.logger.error(
+                "Delete Everything failed: \(error.localizedDescription, privacy: .public)"
+            )
+            errorMessage = String(localized: "Failed to delete all data. Please try again.")
+        }
     }
 
     // MARK: - Helpers
