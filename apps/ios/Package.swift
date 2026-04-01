@@ -20,8 +20,6 @@ let package = Package(
         .library(name: "FinanceApp", targets: ["FinanceApp"]),
         .library(name: "FinanceWatch", targets: ["FinanceWatch"]),
         .library(name: "FinanceWidget", targets: ["FinanceWidget"]),
-        .library(name: "FinanceShared", targets: ["FinanceShared"]),
-        .library(name: "FinanceClip", targets: ["FinanceClip"]),
     ],
     targets: [
         .target(
@@ -33,20 +31,6 @@ let package = Package(
                 "Resources",
                 "FinanceApp.swift",
                 "Data",
-            ]
-        ),
-        .target(
-            name: "FinanceShared",
-            dependencies: [],
-            path: "Shared"
-        ),
-        .target(
-            name: "FinanceClip",
-            dependencies: ["FinanceShared"],
-            path: "FinanceClip",
-            exclude: [
-                "Info.plist",
-                "FinanceClipApp.swift",
             ]
         ),
         .target(
