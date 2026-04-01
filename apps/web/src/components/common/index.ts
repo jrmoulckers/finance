@@ -16,3 +16,21 @@ export { LoadingSpinner } from './LoadingSpinner';
 export type { LoadingSpinnerProps } from './LoadingSpinner';
 export { SyncStatusBar } from './SyncStatusBar';
 export { UpdateBanner } from './UpdateBanner';
+
+// Animations
+export {
+  ConfettiAnimation,
+  SuccessCheckmark,
+  MilestoneAnimation,
+  StreakBadge,
+  NumberCounter,
+} from './animations';
+export type {
+  ConfettiAnimationProps,
+  SuccessCheckmarkProps,
+  MilestoneAnimationProps,
+  MilestoneLevel,
+  StreakBadgeProps,
+  StreakTier,
+  NumberCounterProps,
+} from './animations';
