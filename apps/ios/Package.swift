@@ -65,6 +65,19 @@ let package = Package(
                 "ComplicationProvider.swift",
             ]
         ),
+        .target(
+            name: "FinanceShared",
+            dependencies: [],
+            path: "Shared"
+        ),
+        .target(
+            name: "FinanceClip",
+            dependencies: ["FinanceShared"],
+            path: "FinanceClip",
+            exclude: [
+                "Info.plist",
+            ]
+        ),
         .testTarget(
             name: "FinanceTests",
             dependencies: ["FinanceApp"],
