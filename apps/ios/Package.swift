@@ -51,6 +51,7 @@ let package = Package(
                 "Info.plist",
                 "Resources",
                 "FinanceApp.swift",
+                "Data",
             ]
         ),
         .target(
