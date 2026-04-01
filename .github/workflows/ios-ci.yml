@@ -17,11 +17,17 @@ permissions:
   checks: write
   pull-requests: write
 
+env:
+  GRADLE_OPTS: >-
+    -Xmx2g
+    -XX:MaxMetaspaceSize=512m
+    -Dorg.gradle.daemon=false
+
 jobs:
   build:
     name: Build & Test
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
