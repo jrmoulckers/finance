@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.finance.sync.crypto
 
 import kotlinx.cinterop.addressOf
