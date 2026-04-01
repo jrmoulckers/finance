@@ -51,6 +51,7 @@ let package = Package(
                 "Info.plist",
                 "Resources",
                 "FinanceApp.swift",
+                "Data",
             ]
         ),
         .target(
@@ -74,9 +75,7 @@ let package = Package(
             name: "FinanceClip",
             dependencies: ["FinanceShared"],
             path: "FinanceClip",
-            exclude: [
-                "Info.plist",
-            ]
+            exclude: ["Info.plist"]
         ),
         .testTarget(
             name: "FinanceTests",
