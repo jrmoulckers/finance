@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.finance.sync.crypto
 
 import kotlinx.cinterop.addressOf
@@ -57,23 +59,21 @@ actual class PlatformKeyDerivation actual constructor() {
         val derivedKey = ByteArray(KEY_LENGTH)
         val passwordBytes = password.encodeToByteArray()
 
-        passwordBytes.usePinned { pinnedPassword ->
-            salt.usePinned { pinnedSalt ->
-                derivedKey.usePinned { pinnedKey ->
-                    val result = CCKeyDerivationPBKDF(
-                        kCCPBKDF2,
-                        pinnedPassword.addressOf(0).reinterpret(),
-                        passwordBytes.size.convert(),
-                        pinnedSalt.addressOf(0).reinterpret(),
-                        salt.size.convert(),
-                        kCCPRFHmacAlgSHA256,
-                        ITERATIONS.toUInt(),
-                        pinnedKey.addressOf(0).reinterpret(),
-                        KEY_LENGTH.convert(),
-                    )
-                    check(result == kCCSuccess) {
-                        "PBKDF2 key derivation failed with error code: $result"
-                    }
+        salt.usePinned { pinnedSalt ->
+            derivedKey.usePinned { pinnedKey ->
+                val result = CCKeyDerivationPBKDF(
+                    kCCPBKDF2,
+                    password,
+                    passwordBytes.size.convert(),
+                    pinnedSalt.addressOf(0).reinterpret(),
+                    salt.size.convert(),
+                    kCCPRFHmacAlgSHA256,
+                    ITERATIONS.toUInt(),
+                    pinnedKey.addressOf(0).reinterpret(),
+                    KEY_LENGTH.convert(),
+                )
+                check(result == kCCSuccess) {
+                    "PBKDF2 key derivation failed with error code: $result"
                 }
             }
         }
