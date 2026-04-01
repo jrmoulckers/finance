@@ -33,8 +33,6 @@ let package = Package(
     products: [
         .library(name: "FinanceApp", targets: ["FinanceApp"]),
         .library(name: "FinanceWatch", targets: ["FinanceWatch"]),
-        .library(name: "FinanceShared", targets: ["FinanceShared"]),
-        .library(name: "FinanceClip", targets: ["FinanceClip"]),
     ],
     targets: [
         // KMP shared framework — contains models, core, and sync modules.
@@ -51,6 +49,7 @@ let package = Package(
                 "Info.plist",
                 "Resources",
                 "FinanceApp.swift",
+                "Data",
             ]
         ),
         .target(

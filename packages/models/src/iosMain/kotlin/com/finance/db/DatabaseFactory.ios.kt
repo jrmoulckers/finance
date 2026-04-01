@@ -2,6 +2,7 @@
 
 package com.finance.db
 
+import app.cash.sqldelight.async.coroutines.synchronous
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import co.touchlab.sqliter.DatabaseConfiguration
 
@@ -15,7 +16,7 @@ actual class DatabaseFactory(
     actual fun createDatabase(): FinanceDatabase {
         val key = keyProvider.getOrCreateKey()
         val driver = NativeSqliteDriver(
-            schema = FinanceDatabase.Schema,
+            schema = FinanceDatabase.Schema.synchronous(),
             name = "finance.db",
             onConfiguration = { config ->
                 config.copy(
