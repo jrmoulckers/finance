@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
+
 package com.finance.sync.auth
 
-import kotlinx.cinterop.BetaInteropApi
-import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
@@ -37,7 +37,6 @@ import platform.Security.kSecReturnData
 import platform.Security.kSecValueData
 import platform.darwin.OSStatus
 
-@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 actual open class TokenStorage actual constructor() {
 
     companion object {
@@ -56,44 +55,38 @@ actual open class TokenStorage actual constructor() {
 
     private val lock = NSLock()
 
+    private inline fun <T> withLock(block: () -> T): T {
+        lock.lock()
+        try {
+            return block()
+        } finally {
+            lock.unlock()
+        }
+    }
+
     actual open fun save(
         accessToken: String,
         refreshToken: String,
         expiresAt: Long,
         userId: String,
-    ) {
-        lock.lock()
-        try {
-            upsertKeychainItem(KEY_ACCESS_TOKEN, accessToken)
-            upsertKeychainItem(KEY_REFRESH_TOKEN, refreshToken)
-            upsertKeychainItem(KEY_EXPIRES_AT, expiresAt.toString())
-            upsertKeychainItem(KEY_USER_ID, userId)
-        } finally {
-            lock.unlock()
-        }
+    ): Unit = withLock {
+        upsertKeychainItem(KEY_ACCESS_TOKEN, accessToken)
+        upsertKeychainItem(KEY_REFRESH_TOKEN, refreshToken)
+        upsertKeychainItem(KEY_EXPIRES_AT, expiresAt.toString())
+        upsertKeychainItem(KEY_USER_ID, userId)
     }
 
-    actual open fun load(): StoredTokenData? {
-        lock.lock()
-        try {
-            val accessToken = readFromKeychain(KEY_ACCESS_TOKEN) ?: return null
-            val refreshToken = readFromKeychain(KEY_REFRESH_TOKEN) ?: return null
-            val expiresAtStr = readFromKeychain(KEY_EXPIRES_AT) ?: return null
-            val userId = readFromKeychain(KEY_USER_ID) ?: return null
-            val expiresAtMillis = expiresAtStr.toLongOrNull() ?: return null
-            return StoredTokenData(accessToken, refreshToken, expiresAtMillis, userId)
-        } finally {
-            lock.unlock()
-        }
+    actual open fun load(): StoredTokenData? = withLock {
+        val accessToken = readFromKeychain(KEY_ACCESS_TOKEN) ?: return@withLock null
+        val refreshToken = readFromKeychain(KEY_REFRESH_TOKEN) ?: return@withLock null
+        val expiresAtStr = readFromKeychain(KEY_EXPIRES_AT) ?: return@withLock null
+        val userId = readFromKeychain(KEY_USER_ID) ?: return@withLock null
+        val expiresAtMillis = expiresAtStr.toLongOrNull() ?: return@withLock null
+        StoredTokenData(accessToken, refreshToken, expiresAtMillis, userId)
     }
 
-    actual open fun clear() {
-        lock.lock()
-        try {
-            ALL_KEYS.forEach { key -> deleteFromKeychain(key) }
-        } finally {
-            lock.unlock()
-        }
+    actual open fun clear(): Unit = withLock {
+        ALL_KEYS.forEach { key -> deleteFromKeychain(key) }
     }
 
     private fun baseQuery(key: String): Map<Any?, Any?> = mapOf(
