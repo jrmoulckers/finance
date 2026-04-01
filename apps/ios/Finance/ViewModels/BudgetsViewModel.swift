@@ -11,7 +11,6 @@ import Foundation
 import os
 
 @Observable
-@MainActor
 final class BudgetsViewModel {
     let repository: BudgetRepository
 

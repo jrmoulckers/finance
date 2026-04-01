@@ -11,7 +11,6 @@ import Foundation
 import os
 
 @Observable
-@MainActor
 final class AccountDetailViewModel {
     private let repository: TransactionRepository
 

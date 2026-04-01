@@ -8,7 +8,9 @@
 // for logging.
 // Refs #471
 
+import Foundation
 import Network
+import Observation
 import os
 
 // MARK: - ConnectionType
@@ -40,7 +42,6 @@ enum ConnectionType: String, Sendable {
 /// deallocated. It dispatches path updates to a dedicated serial
 /// queue and publishes state changes on the main actor.
 @Observable
-@MainActor
 final class NetworkMonitor {
 
     // MARK: - Observable State
@@ -77,7 +78,13 @@ final class NetworkMonitor {
 
     init() {
         self.monitor = NWPathMonitor()
-        startMonitoring()
+        monitor.pathUpdateHandler = { [weak self] path in
+            Task { @MainActor [weak self] in
+                self?.handlePathUpdate(path)
+            }
+        }
+        monitor.start(queue: monitorQueue)
+        Self.logger.info("Network monitoring started")
     }
 
     deinit {

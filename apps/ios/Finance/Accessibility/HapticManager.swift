@@ -25,7 +25,6 @@ import UIKit
 /// > not support haptics (`CHHapticEngine.capabilitiesForHardware()
 /// > .supportsHaptics == false`).
 @Observable
-@MainActor
 final class HapticManager {
 
     // MARK: Singleton

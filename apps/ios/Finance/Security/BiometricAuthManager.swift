@@ -91,7 +91,6 @@ protocol BiometricAuthManaging: Sendable {
 ///
 /// > Important: Never cache biometric results beyond the current session.
 @Observable
-@MainActor
 final class BiometricAuthManager: BiometricAuthManaging {
 
     // MARK: - Published State
@@ -115,7 +114,24 @@ final class BiometricAuthManager: BiometricAuthManaging {
     // MARK: - Initialization
 
     init() {
-        refreshAvailability()
+        let context = LAContext()
+        var error: NSError?
+        let available = context.canEvaluatePolicy(
+            .deviceOwnerAuthenticationWithBiometrics,
+            error: &error
+        )
+        isAvailable = available
+
+        switch context.biometryType {
+        case .faceID:
+            biometricType = .faceID
+        case .touchID:
+            biometricType = .touchID
+        case .opticID:
+            biometricType = .opticID
+        default:
+            biometricType = .none
+        }
     }
 
     // MARK: - Public API

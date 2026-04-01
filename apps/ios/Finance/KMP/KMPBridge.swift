@@ -11,11 +11,10 @@ private let useRealKMP = true
 private let useRealKMP = false
 #endif
 
-@MainActor
 final class KMPBridge {
 
     static let shared = KMPBridge()
-    nonisolated(unsafe) static let _unsafeShared = KMPBridge()
+    nonisolated(unsafe) static let _unsafeShared = KMPBridge(useMocks: false)
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",

@@ -10,7 +10,6 @@ import Foundation
 import os
 import WatchConnectivity
 
-@MainActor
 final class WatchDataSender: NSObject, @unchecked Sendable {
     enum DataKey {
         static let balance = "balance"
@@ -44,7 +43,12 @@ final class WatchDataSender: NSObject, @unchecked Sendable {
         self.transactionRepository = transactionRepository
         self.budgetRepository = budgetRepository
         super.init()
-        if activateSession { setupSession() }
+        if activateSession {
+            guard WCSession.isSupported() else { return }
+            let session = WCSession.default
+            session.delegate = self
+            session.activate()
+        }
     }
 
     private func setupSession() {

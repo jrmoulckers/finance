@@ -12,7 +12,6 @@ import os
 import SwiftUI
 
 @Observable
-@MainActor
 final class DashboardViewModel {
     private let accountRepository: AccountRepository
     private let transactionRepository: TransactionRepository

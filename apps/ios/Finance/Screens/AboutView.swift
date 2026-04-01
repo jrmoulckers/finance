@@ -200,7 +200,6 @@ struct ThirdPartyNoticesView: View {
 // MARK: - ViewModel
 
 @Observable
-@MainActor
 final class AboutViewModel {
     private(set) var appVersion: String = "—"
     private(set) var buildNumber: String = "—"

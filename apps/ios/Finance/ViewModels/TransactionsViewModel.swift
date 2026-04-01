@@ -29,7 +29,7 @@ struct TransactionFilter: Equatable, Sendable {
 }
 struct FilterLabel: Identifiable, Equatable, Sendable { let id: String; let text: String; let kind: FilterLabelKind }
 enum FilterLabelKind: Equatable, Sendable { case dateRange, amountRange, category(String), account, type(TransactionTypeUI), status(TransactionStatusUI) }
-@Observable @MainActor
+@Observable
 final class TransactionsViewModel {
     private let repository: TransactionRepository
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.finance", category: "TransactionsViewModel")
@@ -68,8 +68,8 @@ final class TransactionsViewModel {
     func loadTransactions() async { isLoading = true; defer { isLoading = false }; do { transactions = try await repository.getTransactions() } catch { errorMessage = String(localized: "Failed to load transactions. Please try again."); Self.logger.error("Transactions load failed: \(error.localizedDescription, privacy: .public)"); transactions = [] } }
     func deleteTransaction(id: String) async { do { try await repository.deleteTransaction(id: id) } catch { errorMessage = String(localized: "Failed to delete transaction. Please try again."); Self.logger.error("Transaction deletion failed: \(error.localizedDescription, privacy: .public)") }; transactions.removeAll { $0.id == id }; pendingDeleteId = nil }
     func confirmDelete(id: String) { pendingDeleteId = id; showingDeleteConfirmation = true }
-    func removeFilter(_ label: FilterLabel) { switch label.kind { case .dateRange: filter.dateRangeEnabled = false; case .amountRange: filter.amountRangeEnabled = false; case .category(let n): filter.selectedCategories.remove(n); case .account: filter.selectedAccount = nil; case .type(let t): filter.selectedTypes.remove(t); case .status(let s): filter.selectedStatuses.remove(s) }; View.announceForAccessibility(String(localized: "\(activeFilterCount) filters active")) }
-    func clearAllFilters() { filter = TransactionFilter(); View.announceForAccessibility(String(localized: "All filters cleared")) }
+    func removeFilter(_ label: FilterLabel) { switch label.kind { case .dateRange: filter.dateRangeEnabled = false; case .amountRange: filter.amountRangeEnabled = false; case .category(let n): filter.selectedCategories.remove(n); case .account: filter.selectedAccount = nil; case .type(let t): filter.selectedTypes.remove(t); case .status(let s): filter.selectedStatuses.remove(s) }; AccessibilityNotification.Announcement(String(localized: "\(activeFilterCount) filters active")).post() }
+    func clearAllFilters() { filter = TransactionFilter(); AccessibilityNotification.Announcement(String(localized: "All filters cleared")).post() }
     private func matchesSearch(_ t: TransactionItem) -> Bool { guard !debouncedSearchText.isEmpty else { return true }; return t.payee.localizedCaseInsensitiveContains(debouncedSearchText) || t.category.localizedCaseInsensitiveContains(debouncedSearchText) || t.accountName.localizedCaseInsensitiveContains(debouncedSearchText) }
     private func matchesFilter(_ t: TransactionItem) -> Bool {
         if filter.dateRangeEnabled { let start = Calendar.current.startOfDay(for: filter.startDate); let end = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: filter.endDate)) ?? filter.endDate; guard t.date >= start && t.date < end else { return false } }

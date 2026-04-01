@@ -12,7 +12,6 @@ import Foundation
 import os
 
 @Observable
-@MainActor
 final class BudgetCreateViewModel {
     private let repository: BudgetRepository
     private let logger = Logger(subsystem: "com.finance.app", category: "BudgetCreateViewModel")
