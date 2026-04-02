@@ -50,7 +50,7 @@ struct OfflineBanner: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("offline_banner")
         .accessibilityLabel(String(localized: "Offline. Some features may be limited."))
-        .accessibilityAddTraits(.isStatusElement)
+        .accessibilityAddTraits(.isStaticText)
     }
 }
 

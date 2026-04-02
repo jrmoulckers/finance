@@ -77,7 +77,7 @@ struct ScaledFont {
     ///   - textStyle: The system text style this font should track.
     /// - Returns: A Dynamic-Type–aware custom `Font`.
     static func custom(_ name: String, relativeTo textStyle: Font.TextStyle) -> Font {
-        .custom(name, relativeTo: textStyle)
+        .custom(name, size: 16, relativeTo: textStyle)
     }
 }
 
