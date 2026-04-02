@@ -33,7 +33,7 @@ All work in this repository follows an issue-first, feature-branch + worktree wo
 2. **Always use a git worktree** for agent work — never commit directly in the main worktree or on `main`.
    - Naming: `wt-[agent-type]-[type/description-issue#]` (e.g., `wt-android-feat-transactions-443`)
    - **Scan first**: run `git worktree list` — if a worktree for this issue already exists, resume it
-   - Main worktree (`finance-human/`) is reserved for human work
+   - Main worktree (`finance/`) is reserved for human work
 3. **Commit messages must include issue references** in the format `type(scope): description (#N)`.
 4. **Push automatically** — `git push origin <branch>` is auto-approved.
 5. **Open a PR automatically** with `gh pr create` — include `Closes #N` for resolved issues.

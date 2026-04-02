@@ -16,7 +16,7 @@ This document describes how to run parallel AI agents (and human contributors) u
 ## Repository Layout
 
 ```
-finance-human/           ← main worktree — RESERVED FOR HUMAN WORK
+finance/                 ← main worktree — RESERVED FOR HUMAN WORK
   .git/
   apps/
   packages/
@@ -59,7 +59,7 @@ The naming encodes: **who** is doing the work, **what kind** of work, and **whic
 
 ```bash
 # Step 1: From the main repo, check for an existing worktree for this issue
-git -C /path/to/finance-human worktree list
+git -C /path/to/finance worktree list
 
 # Step 2a: If a matching worktree exists — resume it
 cd ../wt-android-feat-transactions-443
@@ -67,7 +67,7 @@ git status   # understand current state
 # Continue work...
 
 # Step 2b: If no matching worktree — create one
-git -C /path/to/finance-human worktree add \
+git -C /path/to/finance worktree add \
   ../wt-android-feat-transactions-443 \
   -b feat/transactions-443
 cd ../wt-android-feat-transactions-443
@@ -149,10 +149,10 @@ After confirming the PR has been merged:
 
 ```bash
 # From the main repo directory
-git -C /path/to/finance-human worktree remove ../wt-android-feat-transactions-443
+git -C /path/to/finance worktree remove ../wt-android-feat-transactions-443
 
 # Optionally prune the remote tracking branch
-git -C /path/to/finance-human remote prune origin
+git -C /path/to/finance remote prune origin
 ```
 
 Cleanup is automatic — the agent removes its own worktree once merge is confirmed.
@@ -161,7 +161,7 @@ Cleanup is automatic — the agent removes its own worktree once merge is confir
 
 Humans follow the same pattern but have more flexibility:
 
-- The **main worktree** (`finance-human/`) is available for quick reads, ad-hoc exploration, and review
+- The **main worktree** (`finance/`) is available for quick reads, ad-hoc exploration, and review
 - For active feature development, humans should also use worktrees to avoid interfering with agent worktrees
 - Humans can also work in a separate full clone if preferred — the worktree approach is a recommendation, not a requirement for humans
 
@@ -171,7 +171,7 @@ Any agent asked to continue work on an issue should first scan:
 
 ```bash
 # List all active worktrees with their branch names
-git -C /path/to/finance-human worktree list --porcelain
+git -C /path/to/finance worktree list --porcelain
 
 # Parse for issue number (e.g., looking for issue #443)
 # Match worktree paths containing "-443"

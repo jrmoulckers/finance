@@ -65,7 +65,7 @@ cd ../wt-android-feat-transactions-443
 git worktree remove ../wt-android-feat-transactions-443
 ```
 
-The main worktree (`finance-human/`) is reserved for human work.
+The main worktree (`finance/`) is reserved for human work.
 
 ## Branch Naming Convention
 
