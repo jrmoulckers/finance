@@ -51,6 +51,7 @@ rendering, and user interaction flows.
 ## Test Naming
 
 Follow actionOrState_condition_expectedResult:
+
 - dashboard_showsNetWorthCard
 - createAccount_withValidData_showsInList
 - navigateToAccounts_displaysAccountsScreen
