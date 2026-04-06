@@ -4,6 +4,7 @@
 // Finance
 //
 // Displays user accounts grouped by type with NavigationLink to detail.
+// Supports archive/unarchive and an optional archived accounts section.
 
 import SwiftUI
 
@@ -25,7 +26,7 @@ struct AccountsView: View {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .accessibilityLabel(String(localized: "Loading"))
-                } else if viewModel.accountGroups.isEmpty && !viewModel.isLoading {
+                } else if viewModel.accountGroups.isEmpty && viewModel.archivedAccounts.isEmpty && !viewModel.isLoading {
                     EmptyStateView(
                         systemImage: "building.columns",
                         title: String(localized: "No Accounts"),
@@ -48,12 +49,12 @@ struct AccountsView: View {
                     .accessibilityHint(String(localized: "Opens a form to create a new account"))
                 }
             }
-            .sheet(isPresented: $viewModel.showingAddAccount) { addAccountPlaceholder }
+            .sheet(isPresented: \$viewModel.showingAddAccount) { addAccountPlaceholder }
             .refreshable { await viewModel.loadAccounts() }
             .task { await viewModel.loadAccounts() }
             .alert(String(localized: "Error"), isPresented: Binding(
                 get: { viewModel.showError },
-                set: { if !$0 { viewModel.dismissError() } }
+                set: { if !\$0 { viewModel.dismissError() } }
             )) {
                 Button(String(localized: "Retry")) { Task { await viewModel.loadAccounts() } }
                 Button(String(localized: "Dismiss"), role: .cancel) { viewModel.dismissError() }
@@ -76,6 +77,14 @@ struct AccountsView: View {
                                     Label(String(localized: "Delete"), systemImage: "trash")
                                 }
                                 .accessibilityLabel(String(localized: "Delete \(account.name)"))
+
+                                Button {
+                                    Task { await viewModel.archiveAccount(id: account.id) }
+                                } label: {
+                                    Label(String(localized: "Archive"), systemImage: "archivebox")
+                                }
+                                .tint(.orange)
+                                .accessibilityLabel(String(localized: "Archive \(account.name)"))
                             }
                     }
                 } header: {
@@ -83,6 +92,62 @@ struct AccountsView: View {
                         Label(group.type.displayName, systemImage: group.type.systemImage)
                         Spacer()
                         CurrencyLabel(amountInMinorUnits: group.totalBalance, currencyCode: "USD", showSign: false, font: .caption)
+                    }
+                }
+            }
+
+            // Archived accounts toggle and section
+            if !viewModel.archivedAccounts.isEmpty {
+                Section {
+                    Button {
+                        withAnimation {
+                            viewModel.showArchivedAccounts.toggle()
+                        }
+                    } label: {
+                        HStack {
+                            Label(
+                                String(localized: "Archived Accounts"),
+                                systemImage: "archivebox"
+                            )
+                            Spacer()
+                            Text("\(viewModel.archivedAccounts.count)")
+                                .foregroundStyle(.secondary)
+                            Image(systemName: viewModel.showArchivedAccounts ? "chevron.up" : "chevron.down")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityLabel(String(localized: "Archived accounts"))
+                    .accessibilityValue(String(localized: "\(viewModel.archivedAccounts.count) accounts"))
+                    .accessibilityHint(
+                        viewModel.showArchivedAccounts
+                            ? String(localized: "Tap to hide archived accounts")
+                            : String(localized: "Tap to show archived accounts")
+                    )
+
+                    if viewModel.showArchivedAccounts {
+                        ForEach(viewModel.archivedAccounts) { account in
+                            NavigationLink(value: account) {
+                                archivedAccountRow(account)
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button {
+                                    Task { await viewModel.unarchiveAccount(id: account.id) }
+                                } label: {
+                                    Label(String(localized: "Unarchive"), systemImage: "tray.and.arrow.up")
+                                }
+                                .tint(.blue)
+                                .accessibilityLabel(String(localized: "Unarchive \(account.name)"))
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    Task { await viewModel.deleteAccount(id: account.id) }
+                                } label: {
+                                    Label(String(localized: "Delete"), systemImage: "trash")
+                                }
+                                .accessibilityLabel(String(localized: "Delete \(account.name)"))
+                            }
+                        }
                     }
                 }
             }
@@ -107,6 +172,28 @@ struct AccountsView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(account.name)
         .accessibilityHint(String(localized: "Shows account details and transaction history"))
+    }
+
+    private func archivedAccountRow(_ account: AccountItem) -> some View {
+        HStack {
+            Image(systemName: account.icon)
+                .font(.title3).foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(account.name).font(.body)
+                Text(String(localized: "Archived"))
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
+            Spacer()
+            CurrencyLabel(amountInMinorUnits: account.balanceMinorUnits, currencyCode: account.currencyCode, font: .callout)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(localized: "\(account.name), archived"))
+        .accessibilityHint(String(localized: "Shows archived account details. Swipe right to unarchive."))
     }
 
     private var addAccountPlaceholder: some View {

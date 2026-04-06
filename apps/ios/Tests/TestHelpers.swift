@@ -27,8 +27,16 @@ final class StubAccountRepository: AccountRepository, @unchecked Sendable {
     var accountsToReturn: [AccountItem] = []
     var errorToThrow: Error?
     private(set) var deletedAccountIds: [String] = []
+    private(set) var updatedAccounts: [AccountItem] = []
+    private(set) var archivedAccountIds: [String] = []
+    private(set) var unarchivedAccountIds: [String] = []
 
     func getAccounts() async throws -> [AccountItem] {
+        if let error = errorToThrow { throw error }
+        return accountsToReturn.filter { !$0.isArchived }
+    }
+
+    func getAllAccounts() async throws -> [AccountItem] {
         if let error = errorToThrow { throw error }
         return accountsToReturn
     }
@@ -36,6 +44,21 @@ final class StubAccountRepository: AccountRepository, @unchecked Sendable {
     func getAccount(id: String) async throws -> AccountItem? {
         if let error = errorToThrow { throw error }
         return accountsToReturn.first { $0.id == id }
+    }
+
+    func updateAccount(_ account: AccountItem) async throws {
+        if let error = errorToThrow { throw error }
+        updatedAccounts.append(account)
+    }
+
+    func archiveAccount(id: String) async throws {
+        if let error = errorToThrow { throw error }
+        archivedAccountIds.append(id)
+    }
+
+    func unarchiveAccount(id: String) async throws {
+        if let error = errorToThrow { throw error }
+        unarchivedAccountIds.append(id)
     }
 
     func deleteAccount(id: String) async throws {

@@ -39,13 +39,25 @@ struct MockAccountRepository: AccountRepository {
                 balanceMinorUnits: 10_000_00, currencyCode: "USD",
                 type: .savings, icon: "banknote", isArchived: false
             ),
+            AccountItem(
+                id: "a6", name: "Old Checking",
+                balanceMinorUnits: 0, currencyCode: "USD",
+                type: .checking, icon: "building.columns", isArchived: true
+            ),
         ]
     }
 
-    func getAccount(id: String) async throws -> AccountItem? {
-        try await getAccounts().first { $0.id == id }
+    func getAllAccounts() async throws -> [AccountItem] {
+        try await getAccounts()
     }
 
+    func getAccount(id: String) async throws -> AccountItem? {
+        try await getAllAccounts().first { $0.id == id }
+    }
+
+    func updateAccount(_ account: AccountItem) async throws { }
+    func archiveAccount(id: String) async throws { }
+    func unarchiveAccount(id: String) async throws { }
     func deleteAccount(id: String) async throws { }
     func deleteAllAccounts() async throws { }
 }
