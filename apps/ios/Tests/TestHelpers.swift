@@ -180,6 +180,43 @@ final class StubGoalRepository: GoalRepository, @unchecked Sendable {
     }
 }
 
+
+// MARK: - Stub Category Repository
+
+/// Configurable stub that returns pre-set categories or throws on demand.
+final class StubCategoryRepository: CategoryRepository, @unchecked Sendable {
+    var categoriesToReturn: [CategoryItem] = []
+    var errorToThrow: Error?
+    private(set) var createdCategories: [CategoryItem] = []
+    private(set) var updatedCategories: [CategoryItem] = []
+    private(set) var deletedCategoryIds: [String] = []
+
+    func getCategories() async throws -> [CategoryItem] {
+        if let error = errorToThrow { throw error }
+        return categoriesToReturn
+    }
+
+    func getCategory(id: String) async throws -> CategoryItem? {
+        if let error = errorToThrow { throw error }
+        return categoriesToReturn.first { $0.id == id }
+    }
+
+    func createCategory(_ category: CategoryItem) async throws {
+        if let error = errorToThrow { throw error }
+        createdCategories.append(category)
+    }
+
+    func updateCategory(_ category: CategoryItem) async throws {
+        if let error = errorToThrow { throw error }
+        updatedCategories.append(category)
+    }
+
+    func deleteCategory(id: String) async throws {
+        if let error = errorToThrow { throw error }
+        deletedCategoryIds.append(id)
+    }
+}
+
 // MARK: - Stub Biometric Auth Manager
 
 /// Configurable stub for biometric authentication in tests.
@@ -339,4 +376,25 @@ enum SampleData {
     )
 
     static let allGoals: [GoalItem] = [activeGoal, completedGoal]
+
+    // MARK: Categories
+
+    static let groceriesCategory = CategoryItem(
+        id: "cat1", name: "Groceries",
+        colorHex: "#38A169", icon: "cart", sortOrder: 0
+    )
+
+    static let diningCategory = CategoryItem(
+        id: "cat2", name: "Dining Out",
+        colorHex: "#DD6B20", icon: "fork.knife", sortOrder: 1
+    )
+
+    static let transportCategory = CategoryItem(
+        id: "cat3", name: "Transport",
+        colorHex: "#3182CE", icon: "car", sortOrder: 2
+    )
+
+    static let allCategories: [CategoryItem] = [
+        groceriesCategory, diningCategory, transportCategory,
+    ]
 }
