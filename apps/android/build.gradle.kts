@@ -17,7 +17,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.finance.android.e2e.runner.E2ETestRunner"
 
         // PowerSync endpoint — override via gradle.properties or CI environment.
         // e.g. -PPOWERSYNC_URL=https://your-instance.powersync.journeyapps.com
@@ -139,4 +139,6 @@ dependencies {
     // Instrumented test dependencies
     androidTestImplementation(composeBom)
     androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.kotlin.test)
+    androidTestImplementation(libs.koin.core)
 }
