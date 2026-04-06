@@ -32,12 +32,23 @@ vi.mock('../hooks/useOfflineStatus', () => ({
   useOfflineStatus: () => offlineStatusMock,
 }));
 
+const setThemeMock = vi.fn();
+vi.mock('../hooks/useTheme', () => ({
+  useTheme: () => ({
+    theme: 'system',
+    resolvedTheme: 'light',
+    setTheme: setThemeMock,
+    themes: ['system', 'light', 'dark', 'dark-oled'],
+  }),
+}));
+
 import { SettingsPage } from './SettingsPage';
 
 describe('SettingsPage', () => {
   beforeEach(() => {
     localStorage.clear();
     logoutMock.mockReset();
+    setThemeMock.mockReset();
     logoutMock.mockResolvedValue(undefined);
     offlineStatusMock.isOffline = false;
     offlineStatusMock.isOnline = true;

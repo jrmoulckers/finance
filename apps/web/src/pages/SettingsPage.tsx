@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 
 import { useAuth } from '../auth/auth-context';
 import { DataExport } from '../components/DataExport';
 import { useOfflineStatus } from '../hooks/useOfflineStatus';
+import { useTheme } from '../hooks/useTheme';
+import type { ThemeValue } from '../hooks/useTheme';
 import { initMonitoring } from '../lib/monitoring';
 
 const APP_VERSION = '0.1.0';
-const THEME_STORAGE_KEY = 'finance-theme';
 const CURRENCY_STORAGE_KEY = 'finance-currency';
 const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
 const MONITORING_CONSENT_STORAGE_KEY = 'finance-monitoring-consent';
 
-type ThemePreference = 'light' | 'dark' | 'system';
 type CurrencyPreference = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
 
 const currencyOptions: Array<{ value: CurrencyPreference; label: string }> = [
@@ -25,41 +25,19 @@ const currencyOptions: Array<{ value: CurrencyPreference; label: string }> = [
   { value: 'JPY', label: 'JPY (¥)' },
 ];
 
-function getSystemThemeMediaQuery(): MediaQueryList | null {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return null;
-  }
-
-  return window.matchMedia('(prefers-color-scheme: dark)');
-}
-
-function applyThemePreference(theme: ThemePreference): void {
-  const root = document.documentElement;
-
-  if (theme === 'light') {
-    root.classList.remove('dark');
-    root.setAttribute('data-theme', 'light');
-    return;
-  }
-
-  if (theme === 'dark') {
-    root.classList.add('dark');
-    root.setAttribute('data-theme', 'dark');
-    return;
-  }
-
-  const prefersDark = getSystemThemeMediaQuery()?.matches ?? false;
-  root.classList.toggle('dark', prefersDark);
-  root.removeAttribute('data-theme');
-}
+/** Labels for theme select options. */
+const THEME_LABELS: Record<ThemeValue, string> = {
+  system: 'System',
+  light: 'Light',
+  dark: 'Dark',
+  'dark-oled': 'OLED Dark',
+};
 
 /**
  * Settings page for managing local web-app preferences and account actions.
  */
 export const SettingsPage: React.FC = () => {
-  const [theme, setTheme] = useState<ThemePreference>(
-    () => (localStorage.getItem(THEME_STORAGE_KEY) as ThemePreference) || 'system',
-  );
+  const { theme, setTheme, themes } = useTheme();
   const [currency, setCurrency] = useState<CurrencyPreference>(
     () => (localStorage.getItem(CURRENCY_STORAGE_KEY) as CurrencyPreference) || 'USD',
   );
@@ -76,11 +54,12 @@ export const SettingsPage: React.FC = () => {
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState<string | null>(null);
 
-  const handleThemeChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextTheme = event.target.value as ThemePreference;
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-    setTheme(nextTheme);
-  }, []);
+  const handleThemeChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setTheme(event.target.value as ThemeValue);
+    },
+    [setTheme],
+  );
 
   const handleCurrencyChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextCurrency = event.target.value as CurrencyPreference;
@@ -151,31 +130,6 @@ export const SettingsPage: React.FC = () => {
     await logout();
   }, [isAuthenticated, isLoading, logout]);
 
-  useEffect(() => {
-    applyThemePreference(theme);
-
-    if (theme !== 'system') {
-      return undefined;
-    }
-
-    const mediaQuery = getSystemThemeMediaQuery();
-    if (!mediaQuery) {
-      return undefined;
-    }
-
-    const handleChange = () => {
-      applyThemePreference('system');
-    };
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
-  }, [theme]);
-
   return (
     <>
       <h2
@@ -222,9 +176,11 @@ export const SettingsPage: React.FC = () => {
                 value={theme}
                 onChange={handleThemeChange}
               >
-                <option value="system">System</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
+                {themes.map((themeOption) => (
+                  <option key={themeOption} value={themeOption}>
+                    {THEME_LABELS[themeOption]}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
