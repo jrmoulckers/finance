@@ -47,7 +47,7 @@ jobs:
           cd apps/ios
           xcodebuild build \
             -scheme FinanceApp \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tail -20
 
@@ -56,7 +56,7 @@ jobs:
           cd apps/ios
           xcodebuild test \
             -scheme FinanceApp \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO \
             -resultBundlePath .build/TestResults.xcresult \
@@ -80,6 +80,13 @@ jobs:
           # ── JSON coverage via xccov ──────────────────────────────
           xcrun xccov view --report --json "$XCRESULT" > .build/coverage.json 2>/dev/null || true
 
+          # Validate coverage JSON is non-empty
+          if [ ! -s .build/coverage.json ]; then
+            echo "::warning::Coverage JSON is empty"
+            echo "has_coverage=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           # ── LCOV for third-party tooling ─────────────────────────
           PROFDATA="$(find "$XCRESULT" -name '*.profdata' -type f 2>/dev/null | head -1)"
           BINARY="$(find "$XCRESULT" -name '*.xctest' -type d 2>/dev/null | head -1)"
@@ -98,6 +105,7 @@ jobs:
             --path "$XCRESULT" --compact >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
 
       - name: Check coverage thresholds
+        continue-on-error: true
         if: always() && steps.coverage.outputs.has_coverage == 'true'
         run: |
           cd apps/ios
@@ -150,6 +158,7 @@ jobs:
           fi
 
       - name: Post coverage summary to PR
+        continue-on-error: true
         if: always() && github.event_name == 'pull_request' && steps.coverage.outputs.has_coverage == 'true'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:

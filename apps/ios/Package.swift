@@ -7,27 +7,6 @@
 // The iOS app uses Swift Charts for financial data visualisation (#28).
 // The watchOS companion app displays balance, transactions, and budgets (#30).
 //
-// KMP Integration (Issue #563)
-// ----------------------------
-// The FinanceSync XCFramework bundles all shared Kotlin Multiplatform code
-// (models, core business logic, and sync engine) into a single static framework.
-//
-// Build the XCFramework on macOS:
-//   ./gradlew :packages:sync:assembleFinanceSyncXCFramework
-//
-// The framework is generated at:
-//   packages/sync/build/XCFrameworks/release/FinanceSync.xcframework
-//
-// After building, add the binaryTarget to the targets array:
-//   .binaryTarget(
-//       name: "FinanceSync",
-//       path: "../../packages/sync/build/XCFrameworks/release/FinanceSync.xcframework"
-//   )
-// and add "FinanceSync" to FinanceApp's dependencies.
-//
-// Until the XCFramework build is configured in Gradle, KMPBridge.swift uses
-// stubs via #if canImport(FinanceSync).
-
 import PackageDescription
 
 let package = Package(
@@ -40,12 +19,11 @@ let package = Package(
     products: [
         .library(name: "FinanceApp", targets: ["FinanceApp"]),
         .library(name: "FinanceWatch", targets: ["FinanceWatch"]),
+        .library(name: "FinanceWidget", targets: ["FinanceWidget"]),
         .library(name: "FinanceShared", targets: ["FinanceShared"]),
         .library(name: "FinanceClip", targets: ["FinanceClip"]),
     ],
     targets: [
-        // KMP shared framework — not yet available as an XCFramework.
-        // See KMP Integration comment above for setup instructions.
         .target(
             name: "FinanceApp",
             dependencies: [],
@@ -54,18 +32,7 @@ let package = Package(
                 "Info.plist",
                 "Resources",
                 "FinanceApp.swift",
-            ]
-        ),
-        .target(
-            name: "FinanceWatch",
-            dependencies: [],
-            path: "FinanceWatch",
-            sources: [
-                "FinanceWatchApp.swift",
-                "BalanceView.swift",
-                "RecentTransactionsView.swift",
-                "BudgetStatusView.swift",
-                "ComplicationProvider.swift",
+                "Data",
             ]
         ),
         .target(
@@ -79,6 +46,24 @@ let package = Package(
             path: "FinanceClip",
             exclude: [
                 "Info.plist",
+                "FinanceClipApp.swift",
+            ]
+        ),
+        .target(
+            name: "FinanceWidget",
+            dependencies: [],
+            path: "FinanceWidget"
+        ),
+        .target(
+            name: "FinanceWatch",
+            dependencies: [],
+            path: "FinanceWatch",
+            sources: [
+                "FinanceWatchApp.swift",
+                "BalanceView.swift",
+                "RecentTransactionsView.swift",
+                "BudgetStatusView.swift",
+                "ComplicationProvider.swift",
             ]
         ),
         .testTarget(

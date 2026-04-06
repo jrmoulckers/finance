@@ -2,6 +2,7 @@
 
 package com.finance.sync.auth
 
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
@@ -28,6 +29,7 @@ actual object PlatformSHA256 {
      * @param input The bytes to hash.
      * @return 32-byte SHA-256 digest.
      */
+    @OptIn(ExperimentalForeignApi::class)
     actual fun sha256(input: ByteArray): ByteArray {
         val digest = UByteArray(CC_SHA256_DIGEST_LENGTH)
         input.usePinned { pinnedInput ->
@@ -50,6 +52,7 @@ actual object PlatformSHA256 {
      * @return Random byte array of the requested size.
      * @throws IllegalStateException if the system CSPRNG fails.
      */
+    @OptIn(ExperimentalForeignApi::class)
     actual fun randomBytes(size: Int): ByteArray {
         require(size >= 0) { "Size must be non-negative, got $size" }
         if (size == 0) return ByteArray(0)

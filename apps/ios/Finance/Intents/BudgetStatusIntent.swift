@@ -72,11 +72,11 @@ struct BudgetStatusIntent: AppIntent {
                 throw IntentError.notFound
             }
 
-            return .result(dialog: IntentDialog(Self.budgetDetail(matched)))
+            return .result(dialog: IntentDialog(stringLiteral: Self.budgetDetail(matched)))
         }
 
         // Overview of all budgets
-        return .result(dialog: IntentDialog(Self.budgetOverview(budgets)))
+        return .result(dialog: IntentDialog(stringLiteral: Self.budgetOverview(budgets)))
     }
 
     // MARK: - Formatting
