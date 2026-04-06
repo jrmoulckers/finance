@@ -40,14 +40,12 @@ jobs:
       - run: npm run build -w apps/web
 
       - run: npm test -w apps/web
-        continue-on-error: true
 
       - name: Install Playwright browsers
         run: npx -w apps/web playwright install --with-deps chromium
 
       - name: Run E2E tests
         run: npm run test:e2e -w apps/web
-        continue-on-error: true
 
       - name: Lighthouse Audit
         id: lighthouse-audit
