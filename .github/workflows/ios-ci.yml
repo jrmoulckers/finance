@@ -47,7 +47,7 @@ jobs:
           cd apps/ios
           xcodebuild build \
             -scheme FinanceApp \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tail -20
 
@@ -56,7 +56,7 @@ jobs:
           cd apps/ios
           xcodebuild test \
             -scheme FinanceApp \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO \
             -resultBundlePath .build/TestResults.xcresult \
