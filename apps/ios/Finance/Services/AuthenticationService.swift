@@ -5,7 +5,7 @@ struct AuthUser: Sendable, Equatable { let id: String; let email: String?; let n
 enum AuthenticationState: Sendable, Equatable { case unauthenticated, loading, authenticated, error(String) }
 private enum AuthKeychainKeys { static let accessToken = "com.finance.auth.accessToken"; static let refreshToken = "com.finance.auth.refreshToken"
     static let userId = "com.finance.auth.userId"; static let userEmail = "com.finance.auth.userEmail"; static let userName = "com.finance.auth.userName" }
-@Observable final class AuthenticationService {
+@MainActor @Observable final class AuthenticationService {
     private(set) var state: AuthenticationState = .loading; private(set) var currentUser: AuthUser?; private(set) var authError: String?
     var isAuthenticated: Bool { if case .authenticated = state { return true }; return false }
     private let appleSignInManager: AppleSignInManaging; private let supabaseClient: SupabaseAuthClientProtocol; private let keychain: KeychainManaging
