@@ -240,16 +240,6 @@ jobs:
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ios-test-results
-          path: apps/ios/.build/test-results.xml
+          path: apps/ios/.build/TestResults.xcresult
           if-no-files-found: warn
           retention-days: 14
-
-      - name: Publish test results
-        if: always()
-        continue-on-error: true
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
-        with:
-          name: iOS Test Results
-          path: apps/ios/.build/test-results.xml
-          reporter: java-junit
-          fail-on-error: false
