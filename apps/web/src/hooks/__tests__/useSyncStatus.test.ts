@@ -204,8 +204,14 @@ describe('useSyncStatus', () => {
 
   it('does not call syncNow when already syncing', async () => {
     // Set up a long-running replay to keep isSyncing true
-    let resolveReplay: () => void;
-    const replayPromise = new Promise<void>((resolve) => {
+    type ReplayResultType = {
+      syncedCount: number;
+      failedCount: number;
+      conflictCount: number;
+      authError: boolean;
+    };
+    let resolveReplay: (value: ReplayResultType) => void;
+    const replayPromise = new Promise<ReplayResultType>((resolve) => {
       resolveReplay = resolve;
     });
     mockReplayMutations.mockReturnValue(replayPromise);
@@ -227,7 +233,7 @@ describe('useSyncStatus', () => {
 
     // Clean up
     await act(async () => {
-      resolveReplay!();
+      resolveReplay!({ syncedCount: 0, failedCount: 0, conflictCount: 0, authError: false });
       await replayPromise;
     });
   });
