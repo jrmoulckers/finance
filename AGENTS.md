@@ -33,7 +33,7 @@ All work in this repository follows an issue-first, feature-branch + worktree wo
 2. **Always use a git worktree** for agent work — never commit directly in the main worktree or on `main`.
    - Naming: `wt-[agent-type]-[type/description-issue#]` (e.g., `wt-android-feat-transactions-443`)
    - **Scan first**: run `git worktree list` — if a worktree for this issue already exists, resume it
-   - Main worktree (`finance/`) is reserved for human work
+   - Main worktree (`finance-human/`) is reserved for human work
 3. **Commit messages must include issue references** in the format `type(scope): description (#N)`.
 4. **Push automatically** — `git push origin <branch>` is auto-approved.
 5. **Open a PR automatically** with `gh pr create` — include `Closes #N` for resolved issues.
@@ -271,6 +271,36 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 3. **Agents announce intent** — when starting a fleet task, the orchestrator should note which files each agent will touch in the issue or PR description.
 4. **Schema changes are serialized** — only `@backend-engineer` writes Supabase migrations; only `@kmp-engineer` writes SQLDelight `.sq` files. Both must be in sync (a single coordinated sprint task, not two independent ones).
 5. **After parallel work, the last agent to commit runs** `npm run ci:check` **before pushing** to catch any integration issues.
+
+### Fleet CI Monitoring & Self-Healing
+
+After opening a PR, each fleet agent monitors its own CI status until all checks pass. **Work is NOT complete until `gh pr checks` shows all green.**
+
+**Self-healing cycle:**
+
+1. Push branch and open PR
+2. Poll `gh pr checks <number>` until all checks resolve
+3. If CI fails: read logs with `gh run view <run-id> --log-failed`
+4. Fix locally in the worktree
+5. Run `npm run ci:check` to confirm the fix before pushing
+6. Commit and push the fix — restart the cycle
+
+**Sub-agent dispatch:** When a CI failure requires specialist knowledge, the orchestrator can dispatch a sub-agent into the affected worktree. Only one agent should be active in a worktree at a time.
+
+**Proactive prevention:**
+
+- Always run `npm run ci:check` before every push
+- Auto-fix formatting: `npm run format` then `npx eslint . --fix`
+- Rebase before push: `git fetch origin main && git rebase origin/main`
+
+### Fleet Monitoring Agent
+
+A dedicated monitoring agent can periodically check fleet PR health:
+
+- Poll `gh pr checks` on all fleet PRs
+- Dispatch sub-agents to fix CI failures
+- Trigger rebases on branches with merge conflicts
+- Escalate unresolvable issues with `## Needs Human Action` in PR description
 
 ### Agent Escalation Path
 

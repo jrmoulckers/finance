@@ -112,7 +112,35 @@ When working in autonomous mode without a human present:
 - Monitor CI and resolve failures/conflicts autonomously
 - For gated operations (merging PRs, closing issues): stop cleanly — the PR itself is the handoff point
 - For financial logic decisions: do NOT guess — stop and document as `## Needs Decision: <question>` in the PR
-- After completing autonomous work, run `npm run ready-for-pr` to validate the branch is in a reviewable state
+- After completing autonomous work, run `npm run ready-for-pr to validate the branch is in a reviewable state
+
+### 7. Fleet Autonomous Operations
+
+When agents operate as part of a fleet (parallel execution), the autonomous workflow extends:
+
+**Fleet dispatch pattern:**
+
+1. Orchestrator analyzes task and identifies separable subtasks
+2. Each subtask gets its own GitHub issue
+3. Specialized agents dispatched in parallel, each with own worktree
+4. Agents work independently — push branches, create PRs, monitor CI
+5. A monitoring agent can periodically check fleet PR health
+6. Human reviews and merges all PRs once merge-ready
+
+**CI self-healing:**
+
+- Agents monitor their own PRs with `gh pr checks` after pushing
+- On failure: read logs → fix locally → run `npm run ci:check` → re-push
+- For complex failures, orchestrator dispatches a sub-agent to the affected worktree
+
+**Fleet coordination rules:**
+
+- No two agents edit the same file in parallel
+- Shared config files assigned to one agent per fleet run
+- Schema changes serialized between `@backend-engineer` and `@kmp-engineer`
+- Last agent to commit runs `npm run ci:check` to catch integration issues
+
+See [fleet-operations.md](fleet-operations.md) for the complete fleet operations guide.
 
 ## Using Custom Agents
 
