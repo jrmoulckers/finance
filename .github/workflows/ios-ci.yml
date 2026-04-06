@@ -15,6 +15,7 @@ concurrency:
 permissions:
   contents: read
   checks: write
+  pull-requests: write
 
 jobs:
   build:
@@ -45,26 +46,160 @@ jobs:
           xcodebuild test \
             -scheme FinanceApp \
             -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO \
             -resultBundlePath .build/TestResults.xcresult \
             2>&1 | tail -30
 
       - name: Generate coverage report
+        id: coverage
         if: always()
-        continue-on-error: true
         run: |
           cd apps/ios
           XCRESULT=".build/TestResults.xcresult"
-          if [ -d "$XCRESULT" ]; then
-            xcrun xcresulttool get test-results summary \
-              --path "$XCRESULT" --compact >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
-            xcrun llvm-cov export -format=lcov \
-              -instr-profile "$(find "$XCRESULT" -name '*.profdata' -type f 2>/dev/null | head -1)" \
-              "$(find "$XCRESULT" -name '*.xctest' -type d 2>/dev/null | head -1)/Contents/MacOS/"* \
-              > .build/coverage.lcov 2>/dev/null || echo "Coverage extraction skipped"
-          else
-            echo "No xcresult bundle found, skipping coverage"
+
+          if [ ! -d "$XCRESULT" ]; then
+            echo "::warning::No xcresult bundle found — skipping coverage"
+            echo "has_coverage=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          echo "has_coverage=true" >> "$GITHUB_OUTPUT"
+
+          # ── JSON coverage via xccov ──────────────────────────────
+          xcrun xccov view --report --json "$XCRESULT" > .build/coverage.json 2>/dev/null || true
+
+          # ── LCOV for third-party tooling ─────────────────────────
+          PROFDATA="$(find "$XCRESULT" -name '*.profdata' -type f 2>/dev/null | head -1)"
+          BINARY="$(find "$XCRESULT" -name '*.xctest' -type d 2>/dev/null | head -1)"
+          if [ -n "$PROFDATA" ] && [ -n "$BINARY" ]; then
+            xcrun llvm-cov export -format=lcov \
+              -instr-profile "$PROFDATA" \
+              "$BINARY/Contents/MacOS/"* \
+              > .build/coverage.lcov 2>/dev/null || echo "LCOV extraction skipped"
+          fi
+
+          # ── Human-readable summary ───────────────────────────────
+          xcrun xccov view --report "$XCRESULT" > .build/coverage.txt 2>/dev/null || true
+
+          # ── Test results summary ─────────────────────────────────
+          xcrun xcresulttool get test-results summary \
+            --path "$XCRESULT" --compact >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+
+      - name: Check coverage thresholds
+        if: always() && steps.coverage.outputs.has_coverage == 'true'
+        run: |
+          cd apps/ios
+          COVERAGE_JSON=".build/coverage.json"
+
+          if [ ! -f "$COVERAGE_JSON" ]; then
+            echo "::warning::No coverage JSON found — skipping threshold check"
+            exit 0
+          fi
+
+          VIEWMODEL_THRESHOLD=80
+          VIEW_THRESHOLD=60
+          FAILED=0
+
+          # Extract per-group coverage and enforce thresholds
+          check_group() {
+            local label="$1" pattern="$2" threshold="$3"
+            local pct
+            pct=$(python3 -c "
+          import json, pathlib
+          data = json.loads(pathlib.Path('${COVERAGE_JSON}').read_text())
+          total = covered = 0
+          for target in data.get('targets', []):
+              for f in target.get('files', []):
+                  if '${pattern}' in f.get('name', ''):
+                      total   += f.get('executableLines', 0)
+                      covered += f.get('coveredLines', 0)
+          print(f'{covered / total * 100:.2f}' if total else '-1')
+          ")
+            if [ "$pct" = "-1" ]; then
+              echo "⚠️  $label: no matching files found — skipping"
+              return 0
+            fi
+            local pass
+            pass=$(python3 -c "print('yes' if float('${pct}') >= float('${threshold}') else 'no')")
+            if [ "$pass" = "yes" ]; then
+              echo "✅ $label: ${pct}% ≥ ${threshold}% threshold"
+            else
+              echo "::error::❌ $label: ${pct}% < ${threshold}% threshold"
+              return 1
+            fi
+          }
+
+          check_group "ViewModels" "ViewModel" "$VIEWMODEL_THRESHOLD" || FAILED=1
+          check_group "Views"      "View"      "$VIEW_THRESHOLD"      || FAILED=1
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::error::Code coverage below required thresholds"
+            exit 1
+          fi
+
+      - name: Post coverage summary to PR
+        if: always() && github.event_name == 'pull_request' && steps.coverage.outputs.has_coverage == 'true'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const coverageFile = path.join('apps/ios/.build/coverage.json');
+            if (!fs.existsSync(coverageFile)) {
+              core.info('No coverage JSON — skipping PR comment');
+              return;
+            }
+
+            const data = JSON.parse(fs.readFileSync(coverageFile, 'utf8'));
+
+            // Per-target rows
+            const rows = [];
+            let totalExec = 0, totalCov = 0;
+            for (const t of data.targets || []) {
+              const exec = t.executableLines || 0;
+              const cov  = t.coveredLines || 0;
+              totalExec += exec;
+              totalCov  += cov;
+              rows.push(`| ${t.name || 'unknown'} | ${cov}/${exec} | ${exec ? ((cov/exec)*100).toFixed(1) : 'N/A'}% |`);
+            }
+            const overall = totalExec ? ((totalCov/totalExec)*100).toFixed(1) : 'N/A';
+
+            // Group coverage helper
+            function groupPct(pattern) {
+              let ex = 0, co = 0;
+              for (const t of data.targets || [])
+                for (const f of t.files || [])
+                  if (f.name?.includes(pattern)) { ex += f.executableLines||0; co += f.coveredLines||0; }
+              return ex ? ((co/ex)*100).toFixed(1) : null;
+            }
+
+            const vm = groupPct('ViewModel'), vw = groupPct('View');
+            const marker = '<!-- ios-coverage-report -->';
+
+            let body = `${marker}\n## 🍎 iOS Code Coverage\n\n`;
+            body += `**Overall: ${overall}%** (${totalCov}/${totalExec} lines)\n\n`;
+            body += `| Threshold group | Coverage | Required |\n|---|---|---|\n`;
+            body += `| ViewModels | ${vm ?? 'N/A'}% | ≥ 80% |\n`;
+            body += `| Views | ${vw ?? 'N/A'}% | ≥ 60% |\n\n`;
+            body += `<details><summary>Per-target breakdown</summary>\n\n`;
+            body += `| Target | Lines | Coverage |\n|---|---|---|\n`;
+            body += rows.join('\n') + '\n\n</details>';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const prev = comments.find(c => c.body?.includes(marker));
+
+            const params = { owner: context.repo.owner, repo: context.repo.repo, body };
+            if (prev) {
+              await github.rest.issues.updateComment({ ...params, comment_id: prev.id });
+            } else {
+              await github.rest.issues.createComment({ ...params, issue_number: context.issue.number });
+            }
 
       - name: Upload coverage report
         if: always()
@@ -72,7 +207,10 @@ jobs:
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ios-coverage
-          path: apps/ios/.build/coverage.lcov
+          path: |
+            apps/ios/.build/coverage.json
+            apps/ios/.build/coverage.lcov
+            apps/ios/.build/coverage.txt
           if-no-files-found: warn
           retention-days: 14
 
