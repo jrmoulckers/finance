@@ -4,6 +4,7 @@
 // Finance
 //
 // Account detail screen showing balance, info, and transaction history.
+// Includes edit and archive/unarchive functionality.
 
 import os
 import SwiftUI
@@ -11,13 +12,20 @@ import SwiftUI
 // MARK: - View
 
 struct AccountDetailView: View {
-    let account: AccountItem
     @Environment(BiometricAuthManager.self) private var biometricManager
     @State private var viewModel: AccountDetailViewModel
+    @State private var account: AccountItem
     @State private var showAccountNumber = false
     @State private var biometricError: BiometricError?
     @State private var showingBiometricError = false
     @State private var editingTransaction: TransactionItem?
+    @State private var showingEditSheet = false
+    @State private var showingArchiveConfirmation = false
+    @State private var showingUnarchiveConfirmation = false
+    @State private var archiveError: String?
+    @State private var showingArchiveError = false
+
+    private let accountRepository: AccountRepository
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -28,16 +36,23 @@ struct AccountDetailView: View {
         account: AccountItem,
         viewModel: AccountDetailViewModel = AccountDetailViewModel(
             repository: RepositoryProvider.shared.transactions
-        )
+        ),
+        accountRepository: AccountRepository = RepositoryProvider.shared.accounts
     ) {
         self.account = account
         _viewModel = State(initialValue: viewModel)
+        self.accountRepository = accountRepository
     }
 
     var body: some View {
         List {
             accountHeader
             accountActions
+
+            if account.isArchived {
+                archivedBanner
+            }
+
             ForEach(viewModel.groupedTransactions) { group in
                 Section {
                     ForEach(group.transactions) { transaction in
@@ -71,6 +86,43 @@ struct AccountDetailView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(account.name)
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button {
+                        showingEditSheet = true
+                    } label: {
+                        Label(String(localized: "Edit Account"), systemImage: "pencil")
+                    }
+                    .accessibilityLabel(String(localized: "Edit account"))
+                    .accessibilityHint(String(localized: "Opens a form to edit account details"))
+
+                    Divider()
+
+                    if account.isArchived {
+                        Button {
+                            showingUnarchiveConfirmation = true
+                        } label: {
+                            Label(String(localized: "Unarchive Account"), systemImage: "tray.and.arrow.up")
+                        }
+                        .accessibilityLabel(String(localized: "Unarchive account"))
+                        .accessibilityHint(String(localized: "Restores this account to your active accounts list"))
+                    } else {
+                        Button(role: .destructive) {
+                            showingArchiveConfirmation = true
+                        } label: {
+                            Label(String(localized: "Archive Account"), systemImage: "archivebox")
+                        }
+                        .accessibilityLabel(String(localized: "Archive account"))
+                        .accessibilityHint(String(localized: "Hides this account from your main list. Data is preserved."))
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel(String(localized: "Account actions"))
+                .accessibilityHint(String(localized: "Shows options to edit or archive this account"))
+            }
+        }
         .refreshable { await viewModel.loadTransactions(accountId: account.id) }
         .task { await viewModel.loadTransactions(accountId: account.id) }
         .alert(String(localized: "Error"), isPresented: Binding(
@@ -92,11 +144,45 @@ struct AccountDetailView: View {
         } message: { error in
             Text(error.localizedDescription)
         }
+        .confirmationDialog(
+            String(localized: "Archive Account"),
+            isPresented: $showingArchiveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "Archive"), role: .destructive) {
+                Task { await performArchive() }
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "This account will be hidden from your main list. All data will be preserved and you can unarchive it at any time."))
+        }
+        .confirmationDialog(
+            String(localized: "Unarchive Account"),
+            isPresented: $showingUnarchiveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "Unarchive")) {
+                Task { await performUnarchive() }
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "This account will be restored to your active accounts list."))
+        }
+        .alert(String(localized: "Error"), isPresented: $showingArchiveError) {
+            Button(String(localized: "OK"), role: .cancel) {}
+        } message: {
+            Text(archiveError ?? "")
+        }
         .sheet(item: $editingTransaction, onDismiss: {
             Task { await viewModel.loadTransactions(accountId: account.id) }
         }) { transaction in
             TransactionEditView(transaction: transaction) {
                 Task { await viewModel.loadTransactions(accountId: account.id) }
+            }
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            AccountEditView(account: account, repository: accountRepository) { updatedAccount in
+                account = updatedAccount
             }
         }
     }
@@ -121,6 +207,27 @@ struct AccountDetailView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel(String(localized: "\(account.name), \(account.type.displayName)"))
             .accessibilityHint(String(localized: "Double tap to view details"))
+        }
+    }
+
+    // MARK: - Archived Banner
+
+    private var archivedBanner: some View {
+        Section {
+            Label {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(localized: "Archived"))
+                        .font(.headline)
+                    Text(String(localized: "This account is archived and hidden from your main list."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: "archivebox")
+                    .foregroundStyle(.orange)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(String(localized: "This account is archived"))
         }
     }
 
@@ -198,6 +305,46 @@ struct AccountDetailView: View {
         }
     }
 
+    // MARK: - Archive / Unarchive
+
+    private func performArchive() async {
+        do {
+            try await accountRepository.archiveAccount(id: account.id)
+            account = AccountItem(
+                id: account.id, name: account.name,
+                balanceMinorUnits: account.balanceMinorUnits,
+                currencyCode: account.currencyCode,
+                type: account.type, icon: account.icon, isArchived: true
+            )
+            HapticManager.shared.transactionSaved()
+            Self.logger.info("Account \(account.id, privacy: .private) archived")
+        } catch {
+            archiveError = String(localized: "Failed to archive account. Please try again.")
+            showingArchiveError = true
+            HapticManager.shared.error()
+            Self.logger.error("Archive failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func performUnarchive() async {
+        do {
+            try await accountRepository.unarchiveAccount(id: account.id)
+            account = AccountItem(
+                id: account.id, name: account.name,
+                balanceMinorUnits: account.balanceMinorUnits,
+                currencyCode: account.currencyCode,
+                type: account.type, icon: account.icon, isArchived: false
+            )
+            HapticManager.shared.transactionSaved()
+            Self.logger.info("Account \(account.id, privacy: .private) unarchived")
+        } catch {
+            archiveError = String(localized: "Failed to unarchive account. Please try again.")
+            showingArchiveError = true
+            HapticManager.shared.error()
+            Self.logger.error("Unarchive failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     private func transactionRow(_ transaction: TransactionItem) -> some View {
         HStack(spacing: 12) {
             Image(systemName: transaction.isExpense ? "arrow.up.right" : "arrow.down.left")
@@ -224,6 +371,16 @@ struct AccountDetailView: View {
         AccountDetailView(account: AccountItem(
             id: "preview-1", name: "Main Checking", balanceMinorUnits: 12_450_00,
             currencyCode: "USD", type: .checking, icon: "building.columns", isArchived: false
+        ))
+    }
+    .environment(BiometricAuthManager())
+}
+
+#Preview("Archived") {
+    NavigationStack {
+        AccountDetailView(account: AccountItem(
+            id: "preview-2", name: "Old Checking", balanceMinorUnits: 0,
+            currencyCode: "USD", type: .checking, icon: "building.columns", isArchived: true
         ))
     }
     .environment(BiometricAuthManager())

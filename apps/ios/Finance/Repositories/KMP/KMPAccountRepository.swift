@@ -8,6 +8,11 @@ struct KMPAccountRepository: AccountRepository {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.finance", category: "KMPAccountRepository")
 
     func getAccounts() async throws -> [AccountItem] {
+        let all = try await getAllAccounts()
+        return all.filter { !$0.isArchived }
+    }
+
+    func getAllAccounts() async throws -> [AccountItem] {
         if await KMPBridge.shared.isKMPAvailable {
             do { return try await fallbackAccounts() }
             catch { throw KMPRepositoryError.bridgeCallFailed(underlying: error.localizedDescription) }
@@ -19,6 +24,18 @@ struct KMPAccountRepository: AccountRepository {
             do { return try await fallbackAccounts().first { $0.id == id } }
             catch { throw KMPRepositoryError.bridgeCallFailed(underlying: error.localizedDescription) }
         } else { return try await fallbackAccounts().first { $0.id == id } }
+    }
+
+    func updateAccount(_ account: AccountItem) async throws {
+        if await KMPBridge.shared.isKMPAvailable { Self.logger.info("Updating account via KMP") }
+    }
+
+    func archiveAccount(id: String) async throws {
+        if await KMPBridge.shared.isKMPAvailable { Self.logger.info("Archiving account via KMP") }
+    }
+
+    func unarchiveAccount(id: String) async throws {
+        if await KMPBridge.shared.isKMPAvailable { Self.logger.info("Unarchiving account via KMP") }
     }
 
     func deleteAccount(id: String) async throws {

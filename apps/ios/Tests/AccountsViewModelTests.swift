@@ -176,4 +176,97 @@ final class AccountsViewModelTests: XCTestCase {
         XCTAssertEqual(vm.accountGroups.first?.accounts.count, 2,
                        "The savings group should contain both accounts")
     }
+
+    // MARK: - Test: loadAccounts separates archived from active
+
+    @MainActor
+    func testLoadAccountsSeparatesArchivedFromActive() async {
+        let repo = StubAccountRepository()
+        repo.accountsToReturn = SampleData.allAccounts + [SampleData.archivedAccount]
+        let vm = AccountsViewModel(repository: repo)
+
+        await vm.loadAccounts()
+
+        let allActiveAccounts = vm.accountGroups.flatMap(\.accounts)
+        XCTAssertFalse(allActiveAccounts.contains { $0.isArchived },
+                       "Active groups should not contain archived accounts")
+        XCTAssertEqual(vm.archivedAccounts.count, 1,
+                       "Should have one archived account")
+        XCTAssertEqual(vm.archivedAccounts.first?.id, "a6",
+                       "Archived account should be Old Checking")
+    }
+
+    // MARK: - Test: archiveAccount moves account to archived list
+
+    @MainActor
+    func testArchiveAccountMovesToArchivedList() async {
+        let repo = StubAccountRepository()
+        repo.accountsToReturn = SampleData.allAccounts
+        let vm = AccountsViewModel(repository: repo)
+
+        await vm.loadAccounts()
+
+        let countBefore = vm.accountGroups.flatMap(\.accounts).count
+        let archivedBefore = vm.archivedAccounts.count
+
+        await vm.archiveAccount(id: "a1")
+
+        let countAfter = vm.accountGroups.flatMap(\.accounts).count
+        XCTAssertEqual(countAfter, countBefore - 1,
+                       "Active accounts should decrease by one")
+        XCTAssertEqual(vm.archivedAccounts.count, archivedBefore + 1,
+                       "Archived accounts should increase by one")
+        XCTAssertEqual(repo.archivedAccountIds, ["a1"],
+                       "Repository should record the archived account id")
+    }
+
+    // MARK: - Test: archiveAccount removes empty groups
+
+    @MainActor
+    func testArchiveAccountRemovesEmptyGroup() async {
+        let repo = StubAccountRepository()
+        repo.accountsToReturn = SampleData.allAccounts
+        let vm = AccountsViewModel(repository: repo)
+
+        await vm.loadAccounts()
+
+        // a1 is the only checking account
+        await vm.archiveAccount(id: "a1")
+
+        let checkingGroup = vm.accountGroups.first { $0.type == .checking }
+        XCTAssertNil(checkingGroup,
+                     "Checking group should be removed when its only account is archived")
+    }
+
+    // MARK: - Test: showArchivedAccounts defaults to false
+
+    @MainActor
+    func testShowArchivedDefaultsFalse() {
+        let repo = StubAccountRepository()
+        let vm = AccountsViewModel(repository: repo)
+
+        XCTAssertFalse(vm.showArchivedAccounts,
+                       "Archived accounts should be hidden by default")
+    }
+
+    // MARK: - Test: archive with repository error still updates local state
+
+    @MainActor
+    func testArchiveWithErrorStillUpdatesLocalState() async {
+        let repo = StubAccountRepository()
+        repo.accountsToReturn = SampleData.allAccounts
+        let vm = AccountsViewModel(repository: repo)
+
+        await vm.loadAccounts()
+
+        repo.errorToThrow = TestError.simulated
+        let countBefore = vm.accountGroups.flatMap(\.accounts).count
+
+        await vm.archiveAccount(id: "a1")
+
+        let countAfter = vm.accountGroups.flatMap(\.accounts).count
+        XCTAssertEqual(countAfter, countBefore - 1,
+                       "Local state should still be updated for immediate UI feedback")
+    }
+
 }
