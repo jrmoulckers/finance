@@ -47,7 +47,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
-        uses: gradle/actions/setup-gradle@39e147cb9de83bb9910b8ef8bd7fff0ee20fcd6f # v6.0.1
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
         run: ./gradlew build -x test -x jsBrowserTest -x allTests --no-daemon
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
@@ -92,6 +92,6 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      - uses: trufflesecurity/trufflehog@586f66d7886cd0b037c7c245d4a6e34ef357ab10 # v3.94.1
+      - uses: trufflesecurity/trufflehog@6bd2d14f7a4bc1e569fa3550efa7ec632a4fa67b # v3.94.2
         with:
           extra_args: --only-verified
