@@ -37,15 +37,47 @@ export interface SyncConfig {
   pushEndpoint: string;
   /** Request timeout in milliseconds. */
   timeout: number;
+  /** Supabase anon key sent as the `apikey` header. */
+  apiKey?: string;
 }
 
-/** Returns the default sync configuration. */
+// Module-level runtime configuration (set via configureSyncEndpoint).
+let _runtimeConfig: Partial<SyncConfig> | null = null;
+
+/**
+ * Configure the sync endpoint at runtime.
+ *
+ * Called during app bootstrap (e.g. in main.tsx) to set the Supabase
+ * Edge Function URL and anon key.  The service worker uses the
+ * compiled-in defaults from getSyncConfig() since it runs in a
+ * separate context.
+ */
+export function configureSyncEndpoint(config: Partial<SyncConfig>): void {
+  _runtimeConfig = config;
+}
+
+/**
+ * Reset the sync configuration to defaults.
+ *
+ * @internal Exposed for testing — not part of the public API.
+ */
+export function resetSyncConfig(): void {
+  _runtimeConfig = null;
+}
+
+/** Returns the merged sync configuration (runtime overrides win). */
 export function getSyncConfig(): SyncConfig {
-  return {
+  const defaults: SyncConfig = {
     baseUrl: self.location?.origin ?? '',
     pushEndpoint: '/api/sync/push',
     timeout: 30_000,
   };
+
+  if (_runtimeConfig) {
+    return { ...defaults, ..._runtimeConfig };
+  }
+
+  return defaults;
 }
 
 // ---------------------------------------------------------------------------
@@ -133,6 +165,11 @@ async function pushToServer(mutations: QueuedMutation[]): Promise<PushResult> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+
+  // -- Add Supabase anon key if configured.
+  if (config.apiKey) {
+    headers['apikey'] = config.apiKey;
+  }
 
   try {
     const token = await getAccessToken();
@@ -294,6 +331,7 @@ export async function replayMutations(
     broadcastResult?.({
       type: 'SYNC_FAILED',
       error: 'Authentication required. Please sign in again.',
+      authError: true,
     });
     return {
       syncedCount: 0,
@@ -369,6 +407,7 @@ export async function replayMutations(
     type: 'SYNC_COMPLETED',
     syncedCount: replayResult.syncedCount,
     failedCount: replayResult.failedCount,
+    conflictCount: replayResult.conflictCount,
   });
 
   return replayResult;

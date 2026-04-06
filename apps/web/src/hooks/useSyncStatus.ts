@@ -25,7 +25,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { replayMutations } from '../db/sync/replayMutations';
+import { replayMutations, type ReplayResult } from '../db/sync/replayMutations';
 import {
   LAST_SYNC_TIME_KEY,
   PERIODIC_SYNC_INTERVAL_MS,
@@ -71,6 +71,10 @@ export interface UseSyncStatusResult {
   isSyncing: boolean;
   /** Manually trigger an immediate sync replay. */
   syncNow: () => void;
+  /** Whether the last sync failed due to an authentication error. */
+  authError: boolean;
+  /** Number of conflicts detected that need UI resolution. */
+  conflictCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,6 +97,8 @@ export function useSyncStatus(): UseSyncStatusResult {
     }
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  const [authError, setAuthError] = useState(false);
+  const [conflictCount, setConflictCount] = useState(0);
 
   // Track whether a periodic fallback timer is needed.
   const periodicTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -128,12 +134,19 @@ export function useSyncStatus(): UseSyncStatusResult {
 
         case 'SYNC_COMPLETED':
           setIsSyncing(false);
+          setAuthError(false);
           setLastSyncTime(new Date().toISOString());
+          if (typeof data.conflictCount === 'number') {
+            setConflictCount(data.conflictCount);
+          }
           void refreshPendingCount();
           break;
 
         case 'SYNC_FAILED':
           setIsSyncing(false);
+          if (data.authError) {
+            setAuthError(true);
+          }
           void refreshPendingCount();
           break;
 
@@ -206,13 +219,22 @@ export function useSyncStatus(): UseSyncStatusResult {
   const performMainThreadSync = useCallback(async () => {
     setIsSyncing(true);
     try {
-      await replayMutations();
-      try {
-        const now = new Date().toISOString();
-        localStorage.setItem(LAST_SYNC_TIME_KEY, now);
-        setLastSyncTime(now);
-      } catch {
-        // localStorage may be unavailable.
+      const result: ReplayResult = await replayMutations();
+
+      // Surface auth errors so the UI can prompt re-authentication.
+      setAuthError(result.authError);
+      setConflictCount(result.conflictCount);
+
+      // Only update the last-sync timestamp when the sync was not an
+      // auth failure (the user needs to re-login, not retry blindly).
+      if (!result.authError) {
+        try {
+          const now = new Date().toISOString();
+          localStorage.setItem(LAST_SYNC_TIME_KEY, now);
+          setLastSyncTime(now);
+        } catch {
+          // localStorage may be unavailable.
+        }
       }
     } catch {
       // Sync failed -- will retry later.
@@ -247,5 +269,7 @@ export function useSyncStatus(): UseSyncStatusResult {
     lastSyncTime,
     isSyncing,
     syncNow,
+    authError,
+    conflictCount,
   };
 }
