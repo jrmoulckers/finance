@@ -52,6 +52,12 @@ struct MockBudgetRepository: BudgetRepository {
         try? await Task.sleep(for: .milliseconds(300))
     }
 
-    func updateBudget(_ budget: BudgetItem) async throws { try? await Task.sleep(for: .milliseconds(300)) }
-    func deleteAllBudgets() async throws { }
+    func updateBudget(_ budget: BudgetItem) async throws {
+        // No-op for mock — simulates a successful update.
+        try? await Task.sleep(for: .milliseconds(300))
+    }
+
+    func deleteAllBudgets() async throws {
+        // No-op for mock — mock data is stateless and returns hardcoded values.
+    }
 }
