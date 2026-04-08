@@ -10,28 +10,29 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.finance.desktop.components.rememberShortcutHandler
+import com.finance.desktop.di.appModule
+import org.koin.core.context.startKoin
 
-/**
- * Entry point for the Finance desktop application.
- *
- * Launches a Compose Desktop window sized for a typical desktop viewport
- * with the [FinanceApp] root composable wrapped in the Finance design-token
- * theme. Keyboard shortcuts are wired via [onPreviewKeyEvent] on the window.
- */
-fun main() = application {
-    val windowState = rememberWindowState(
-        size = DpSize(width = 1280.dp, height = 800.dp),
-        position = WindowPosition(Alignment.Center),
-    )
+fun main() {
+    startKoin {
+        modules(appModule)
+    }
 
-    val shortcutHandler = rememberShortcutHandler()
+    application {
+        val windowState = rememberWindowState(
+            size = DpSize(width = 1280.dp, height = 800.dp),
+            position = WindowPosition(Alignment.Center),
+        )
 
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "Finance",
-        state = windowState,
-        onPreviewKeyEvent = { shortcutHandler.onKeyEvent(it) },
-    ) {
-        FinanceApp(shortcutHandler)
+        val shortcutHandler = rememberShortcutHandler()
+
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = "Finance",
+            state = windowState,
+            onPreviewKeyEvent = { shortcutHandler.onKeyEvent(it) },
+        ) {
+            FinanceApp(shortcutHandler)
+        }
     }
 }

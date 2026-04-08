@@ -9,10 +9,21 @@ plugins {
 dependencies {
     // KMP shared modules
     implementation(project(":packages:models"))
+    implementation(project(":packages:core"))
 
+    // Compose Desktop
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.core)
+
+    // Date/time utilities
+    implementation(libs.kotlinx.datetime)
+
+    // DI — Koin (core only, no Android dependency)
+    implementation(libs.koin.core)
 }
 
 compose.desktop {
