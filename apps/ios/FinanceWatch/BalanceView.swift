@@ -13,6 +13,7 @@ struct BalanceView: View {
                 if let lastUpdated = manager.lastUpdated {
                     Text(String(localized: "Updated \(lastUpdated, style: .relative) ago"))
                         .font(.caption2).foregroundStyle(.secondary)
+                        .accessibilityLabel(String(localized: "Last updated \(lastUpdated, style: .relative) ago"))
                 }
                 if !manager.hasReceivedData {
                     Text(String(localized: "Waiting for data from iPhone...")).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
@@ -27,4 +28,3 @@ struct BalanceView: View {
     }
 }
 #Preview("Balance View") { let m = WatchConnectivityManager(); BalanceView(manager: m) }
-
