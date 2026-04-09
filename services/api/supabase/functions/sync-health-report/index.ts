@@ -17,7 +17,8 @@
  *   - Input validated and bounded (max lengths, allowed values)
  *   - error_message is sanitized to strip potential PII / financial data
  *   - NEVER logs actual error_message content (may contain sensitive info)
- *   - Rate limited: max 60 reports per user per hour
+ *   - Rate limited via shared checkRateLimit(): max 60 reports per user per hour (#272)
+ *   - Abuse detection: blocks identifiers with excessive error signals (#272)
  *   - Origin-validated CORS (no wildcard)
  *
  * Environment Variables:
@@ -30,6 +31,7 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import {
   createdResponse,
   errorResponse,
@@ -56,10 +58,6 @@ const MAX_ERROR_CODE_LENGTH = 100;
 
 /** Maximum error_message length (before sanitization). */
 const MAX_ERROR_MESSAGE_LENGTH = 500;
-
-/** Rate limit: max reports per user within the time window. */
-const RATE_LIMIT_MAX = 60;
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 // ---------------------------------------------------------------------------
 // PII / Financial Data Sanitisation
@@ -249,28 +247,16 @@ serve(async (req: Request): Promise<Response> => {
     const { report } = validation;
 
     // ------------------------------------------------------------------
-    // Rate limiting: max RATE_LIMIT_MAX reports per hour
+    // Rate limiting (#272): standardised via shared checkRateLimit()
     // ------------------------------------------------------------------
-    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
-    const { count: recentReportCount, error: rateLimitError } = await supabase
-      .from('sync_health_logs')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .gte('created_at', windowStart);
-
-    if (rateLimitError) {
-      // Log but don't block the request if rate-limit check fails
-      logger.error('Rate limit query failed', { errorMessage: rateLimitError.message });
-    } else if ((recentReportCount ?? 0) >= RATE_LIMIT_MAX) {
-      logger.warn('Rate limit exceeded', {
-        recentReportCount: recentReportCount ?? 0,
-        limit: RATE_LIMIT_MAX,
-      });
-      return errorResponse(
-        req,
-        `Rate limit exceeded. Maximum ${RATE_LIMIT_MAX} reports per hour.`,
-        429,
-      );
+    const rateLimitResult = await checkRateLimit(
+      supabase,
+      user.id,
+      RATE_LIMITS['sync-health-report'],
+    );
+    if (!rateLimitResult.allowed) {
+      logger.warn('Rate limit exceeded', { httpStatus: 429 });
+      return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['sync-health-report']);
     }
 
     // ------------------------------------------------------------------

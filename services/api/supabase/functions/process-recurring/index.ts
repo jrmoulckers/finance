@@ -14,6 +14,7 @@
  * - Accepts optional `as_of_date` in body (ISO 8601 date string, defaults to today)
  * - Calls `generate_recurring_transactions` RPC via service_role client
  * - Returns a summary: { generated_count, as_of_date, generated_at }
+ * - Rate limited via shared checkRateLimit() for defence in depth (#272)
  *
  * Environment Variables:
  *   SUPABASE_URL              — Project URL (set automatically by Supabase)
@@ -25,6 +26,12 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from '../_shared/rate-limit.ts';
 import {
   errorResponse,
   jsonResponse,
@@ -68,6 +75,39 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   // ---------------------------------------------------------------------------
+  // Rate limiting (IP-based, defence in depth, #272)
+  // ---------------------------------------------------------------------------
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    logger.error('Missing required Supabase environment variables');
+    return internalErrorResponse(req);
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  try {
+    const clientIp = getClientIp(req) ?? 'cron';
+    const rateLimitResult = await checkRateLimit(
+      supabase,
+      clientIp,
+      RATE_LIMITS['process-recurring'],
+    );
+    if (!rateLimitResult.allowed) {
+      logger.warn('Rate limit exceeded', { httpStatus: 429 });
+      return rateLimitResponse(req, rateLimitResult, RATE_LIMITS['process-recurring']);
+    }
+  } catch {
+    // Rate limiting failure must not block cron processing — fail open
+  }
+
+  // ---------------------------------------------------------------------------
   // Parse optional as_of_date from request body
   // ---------------------------------------------------------------------------
   let asOfDate: string | undefined;
@@ -96,21 +136,6 @@ serve(async (req: Request): Promise<Response> => {
   // ---------------------------------------------------------------------------
   // Call the database function via service_role client
   // ---------------------------------------------------------------------------
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    logger.error('Missing required Supabase environment variables');
-    return internalErrorResponse(req);
-  }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-
   try {
     const rpcArgs: Record<string, string> = {};
     if (asOfDate) {
