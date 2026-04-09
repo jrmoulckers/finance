@@ -1,0 +1,55 @@
+# .dockerignore for Finance API (#624)
+#
+# Excludes files that should NOT be included in the Docker build context.
+# Keeps the image small and avoids leaking secrets or dev-only files.
+
+# Environment files (may contain secrets)
+.env
+.env.*
+!.env.example
+
+# Documentation
+docs/
+README.md
+openapi.yaml
+
+# Docker-compose (not needed inside the container)
+docker-compose.yml
+docker-compose.*.yml
+
+# Git metadata
+.git
+.gitignore
+.gitkeep
+
+# Node.js (not used inside the container — Deno runtime only)
+node_modules/
+package.json
+package-lock.json
+
+# IDE / editor config
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files and helpers (not shipped to production)
+supabase/functions/_test_helpers/
+supabase/functions/**/*.test.ts
+supabase/tests/
+
+# Seed data (development only)
+supabase/seed.sql
+
+# Scripts (local dev tooling)
+scripts/
+
+# PowerSync config (separate deployment)
+powersync/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Supabase CLI config (not needed at runtime)
+supabase/config.toml
