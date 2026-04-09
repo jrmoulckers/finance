@@ -36,10 +36,19 @@ final class AccountDetailViewModel {
         let transactions: [TransactionItem]
     }
 
-    var groupedTransactions: [DateGroup] {
+    // MARK: - Cached Grouped Transactions
+    //
+    // Previously a computed property that re-grouped and re-sorted
+    // on every SwiftUI body evaluation — O(n log n) per render.
+    // Now recomputed only when `transactions` changes.
+
+    private(set) var groupedTransactions: [DateGroup] = []
+
+    /// Recomputes `groupedTransactions` from the current `transactions`.
+    private func recomputeGroupedTransactions() {
         let calendar = Calendar.current
         let grouped = Dictionary(grouping: transactions) { calendar.startOfDay(for: $0.date) }
-        return grouped
+        groupedTransactions = grouped
             .sorted { $0.key > $1.key }
             .map { DateGroup(id: $0.key.ISO8601Format(), date: $0.key, transactions: $0.value) }
     }
@@ -54,10 +63,12 @@ final class AccountDetailViewModel {
 
         do {
             transactions = try await repository.getTransactions(forAccountId: accountId)
+            recomputeGroupedTransactions()
         } catch {
             errorMessage = String(localized: "Failed to load transactions. Please try again.")
             Self.logger.error("Account detail load failed: \(error.localizedDescription, privacy: .public)")
             transactions = []
+            recomputeGroupedTransactions()
         }
     }
 }

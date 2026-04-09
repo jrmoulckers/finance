@@ -35,10 +35,16 @@ final class BudgetsViewModel {
     var totalBudgeted: Int64 { budgets.reduce(0) { $0 + $1.limitMinorUnits } }
     var totalSpent: Int64 { budgets.reduce(0) { $0 + $1.spentMinorUnits } }
 
-    var monthDisplayText: String {
+    /// Cached date formatter for month display — avoids allocating
+    /// a new `DateFormatter` on every SwiftUI body evaluation.
+    private static let monthFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: selectedMonth)
+        return formatter
+    }()
+
+    var monthDisplayText: String {
+        Self.monthFormatter.string(from: selectedMonth)
     }
 
     init(repository: BudgetRepository) {

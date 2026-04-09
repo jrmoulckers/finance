@@ -71,7 +71,7 @@ diagnostics from the field:
       unnecessary diffing.
 - [x] Implement pagination for transactions (50 items per page via
       `LIMIT`/`OFFSET` in SQLDelight queries).
-- [ ] Use `.drawingGroup()` on complex Swift Charts to rasterise into a
+- [x] Use `.drawingGroup()` on complex Swift Charts to rasterise into a
       single Metal layer.
 - [x] Prefer `@Observable` (Observation framework) over `ObservableObject` —
       finer-grained invalidation reduces unnecessary view re-renders.

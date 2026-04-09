@@ -59,6 +59,7 @@ struct CategoryBreakdownChart: View {
             }
             .chartAngleSelection(value: $selectedAngle)
             .frame(minHeight: 240)
+            .drawingGroup()  // Rasterise into a single Metal layer for 60 FPS scrolling
             .accessibilityElement(children: .contain)
             .accessibilityLabel(String(localized: "Category breakdown donut chart"))
 
@@ -130,11 +131,32 @@ struct CategoryBreakdownChart: View {
         return "\(pct)%"
     }
 
+    /// Cached currency formatter — avoids allocating a new
+    /// `NumberFormatter` on every chart render.
+    private static let currencyFormatters = BreakdownCurrencyFormatterCache()
+
     private func formattedCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currencyCode
-        formatter.maximumFractionDigits = 0
+        Self.currencyFormatters.format(value, currencyCode: currencyCode)
+    }
+}
+
+/// Thread-safe cache for breakdown chart currency formatters.
+private final class BreakdownCurrencyFormatterCache: @unchecked Sendable {
+    private var cache: [String: NumberFormatter] = [:]
+    private let lock = NSLock()
+
+    func format(_ value: Double, currencyCode: String) -> String {
+        let formatter: NumberFormatter = {
+            lock.lock()
+            defer { lock.unlock() }
+            if let cached = cache[currencyCode] { return cached }
+            let f = NumberFormatter()
+            f.numberStyle = .currency
+            f.currencyCode = currencyCode
+            f.maximumFractionDigits = 0
+            cache[currencyCode] = f
+            return f
+        }()
         return formatter.string(from: NSNumber(value: value))
             ?? "\(currencyCode) \(Int(value))"
     }

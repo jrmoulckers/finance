@@ -78,11 +78,32 @@ struct BudgetRing: View {
         )
     }
 
+    /// Cached currency formatter — avoids allocating a new
+    /// `NumberFormatter` on every gauge render.
+    private static let currencyFormatters = BudgetRingFormatterCache()
+
     private func formattedCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currencyCode
-        formatter.maximumFractionDigits = 0
+        Self.currencyFormatters.format(value, currencyCode: currencyCode)
+    }
+}
+
+/// Thread-safe cache for budget ring currency formatters.
+private final class BudgetRingFormatterCache: @unchecked Sendable {
+    private var cache: [String: NumberFormatter] = [:]
+    private let lock = NSLock()
+
+    func format(_ value: Double, currencyCode: String) -> String {
+        let formatter: NumberFormatter = {
+            lock.lock()
+            defer { lock.unlock() }
+            if let cached = cache[currencyCode] { return cached }
+            let f = NumberFormatter()
+            f.numberStyle = .currency
+            f.currencyCode = currencyCode
+            f.maximumFractionDigits = 0
+            cache[currencyCode] = f
+            return f
+        }()
         return formatter.string(from: NSNumber(value: value))
             ?? "\(currencyCode) \(Int(value))"
     }

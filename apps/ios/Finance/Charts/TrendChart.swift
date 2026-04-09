@@ -133,6 +133,7 @@ struct TrendChart: View {
                 }
             }
             .frame(minHeight: 220)
+            .drawingGroup()  // Rasterise into a single Metal layer for 60 FPS scrolling
             .accessibilityElement(children: .contain)
             .accessibilityLabel(String(localized: "Financial trend line chart"))
         }
@@ -146,17 +147,38 @@ struct TrendChart: View {
         return ChartColorPalette.color(at: index)
     }
 
+    /// Cached currency formatter — avoids allocating a new
+    /// `NumberFormatter` on every chart render / axis label.
+    private static let currencyFormatters = TrendCurrencyFormatterCache()
+
     private func formattedCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currencyCode
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value))
-            ?? "\(currencyCode) \(Int(value))"
+        Self.currencyFormatters.format(value, currencyCode: currencyCode)
     }
 
     private func formattedDate(_ date: Date) -> String {
         date.formatted(.dateTime.month(.abbreviated).day())
+    }
+}
+
+/// Thread-safe cache for trend chart currency formatters.
+private final class TrendCurrencyFormatterCache: @unchecked Sendable {
+    private var cache: [String: NumberFormatter] = [:]
+    private let lock = NSLock()
+
+    func format(_ value: Double, currencyCode: String) -> String {
+        let formatter: NumberFormatter = {
+            lock.lock()
+            defer { lock.unlock() }
+            if let cached = cache[currencyCode] { return cached }
+            let f = NumberFormatter()
+            f.numberStyle = .currency
+            f.currencyCode = currencyCode
+            f.maximumFractionDigits = 0
+            cache[currencyCode] = f
+            return f
+        }()
+        return formatter.string(from: NSNumber(value: value))
+            ?? "\(currencyCode) \(Int(value))"
     }
 }
 

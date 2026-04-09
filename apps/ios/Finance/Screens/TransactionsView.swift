@@ -99,6 +99,14 @@ struct TransactionsView: View {
                         transactionRow(transaction)
                             .contentShape(Rectangle())
                             .onTapGesture { viewModel.editingTransaction = transaction }
+                            .onAppear {
+                                // Trigger pagination when approaching the
+                                // end of the loaded list (within 5 items).
+                                if viewModel.hasMorePages,
+                                   viewModel.shouldLoadMore(for: transaction) {
+                                    Task { await viewModel.loadMore() }
+                                }
+                            }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
                                     viewModel.confirmDelete(id: transaction.id)
