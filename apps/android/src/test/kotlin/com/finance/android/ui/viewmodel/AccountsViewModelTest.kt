@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.viewmodel
 
+import com.finance.android.auth.TestHouseholdIdProvider
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.models.Account
@@ -218,7 +219,9 @@ class AccountsViewModelTest {
     private fun createViewModel(
         accounts: List<Account> = emptyList(),
         transactions: List<Transaction> = emptyList(),
+        householdIdProvider: TestHouseholdIdProvider = TestHouseholdIdProvider(),
     ) = AccountsViewModel(
+        householdIdProvider = householdIdProvider,
         accountRepository = TestAccountRepository(accounts),
         transactionRepository = TestTransactionRepository(transactions),
     )
@@ -398,6 +401,7 @@ class AccountsViewModelTest {
         val txnOther = createTransaction("txn-3", "acc-other", 1_000L, payee = "Other")
 
         val vm = AccountsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             accountRepository = TestAccountRepository(listOf(account)),
             transactionRepository = TestTransactionRepository(listOf(txn1, txn2, txnOther)),
         )
@@ -424,6 +428,7 @@ class AccountsViewModelTest {
         val txnNew = createTransaction("txn-new", "acc-1", 2_000L, date = date2)
 
         val vm = AccountsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             accountRepository = TestAccountRepository(listOf(account)),
             transactionRepository = TestTransactionRepository(listOf(txnOld, txnNew)),
         )
@@ -445,6 +450,7 @@ class AccountsViewModelTest {
         val txn = createTransaction("txn-1", "acc-1", 5_000L)
 
         val vm = AccountsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             accountRepository = TestAccountRepository(listOf(account)),
             transactionRepository = TestTransactionRepository(listOf(txn)),
         )

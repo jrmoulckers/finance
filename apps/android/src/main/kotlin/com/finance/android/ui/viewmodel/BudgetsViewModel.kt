@@ -4,6 +4,7 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
@@ -24,9 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
+import timber.log.Timber
 
 /**
  * UI state for the Budgets screen.
@@ -85,11 +84,13 @@ data class BudgetItemUi(
  * formats monetary values with KMP [CurrencyFormatter], and exposes a
  * reactive [BudgetsUiState] for the Compose UI layer.
  *
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param budgetRepository Source for budget data.
  * @param transactionRepository Source for transaction data used in spending calculation.
  * @param categoryRepository Source for category data used to resolve names and icons.
  */
 class BudgetsViewModel(
+    private val householdIdProvider: HouseholdIdProvider,
     private val budgetRepository: BudgetRepository,
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
@@ -125,9 +126,13 @@ class BudgetsViewModel(
 
     private suspend fun loadData() {
         try {
-            val budgets = budgetRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-            val transactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-            val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+            val householdId = householdIdProvider.householdId.value ?: run {
+                Timber.w("No household ID available — skipping budgets load")
+                return
+            }
+            val budgets = budgetRepository.observeAll(householdId).first()
+            val transactions = transactionRepository.observeAll(householdId).first()
+            val categories = categoryRepository.observeAll(householdId).first()
             val categoryMap = categories.associateBy { it.id }
 
             val currency = Currency.USD

@@ -3,7 +3,9 @@
 package com.finance.android.di
 
 import com.finance.android.BuildConfig
+import com.finance.android.auth.AuthHouseholdIdProvider
 import com.finance.android.auth.AuthViewModel
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.auth.SignupViewModel
 import com.finance.android.auth.SupabaseAuthManager
 import com.finance.sync.auth.AuthManager
@@ -65,6 +67,9 @@ val authModule = module {
             httpClient = get(named("auth")),
         )
     } bind AuthManager::class
+
+    // ── Household ID provider ───────────────────────────────────────────
+    single<HouseholdIdProvider> { AuthHouseholdIdProvider(get()) }
 
     // ── ViewModels ──────────────────────────────────────────────────────
     viewModelOf(::AuthViewModel)

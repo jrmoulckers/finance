@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.viewmodel
 
+import com.finance.android.auth.TestHouseholdIdProvider
 import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
@@ -277,6 +278,7 @@ class BudgetsViewModelTest {
     @Test
     fun `initial state is loading`() = runTest {
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(),
             transactionRepository = TestTransactionRepository(),
             categoryRepository = TestCategoryRepository(),
@@ -301,6 +303,7 @@ class BudgetsViewModelTest {
         val expense = createExpense("txn-1", "cat-food", 10_000L)
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budget)),
             transactionRepository = TestTransactionRepository(listOf(expense)),
             categoryRepository = TestCategoryRepository(listOf(category)),
@@ -332,6 +335,7 @@ class BudgetsViewModelTest {
         val expense = createExpense("txn-a", "cat-a", 20_000L)
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budget)),
             transactionRepository = TestTransactionRepository(listOf(expense)),
             categoryRepository = TestCategoryRepository(listOf(category)),
@@ -356,6 +360,7 @@ class BudgetsViewModelTest {
         val expense = createExpense("txn-b", "cat-b", 85_000L)
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budget)),
             transactionRepository = TestTransactionRepository(listOf(expense)),
             categoryRepository = TestCategoryRepository(listOf(category)),
@@ -380,6 +385,7 @@ class BudgetsViewModelTest {
         val expense = createExpense("txn-c", "cat-c", 70_000L)
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budget)),
             transactionRepository = TestTransactionRepository(listOf(expense)),
             categoryRepository = TestCategoryRepository(listOf(category)),
@@ -408,6 +414,7 @@ class BudgetsViewModelTest {
         val expenseB = createExpense("txn-b", "cat-b", 70_000L)
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budgetA, budgetB)),
             transactionRepository = TestTransactionRepository(listOf(expenseA, expenseB)),
             categoryRepository = TestCategoryRepository(listOf(catA, catB)),
@@ -430,6 +437,7 @@ class BudgetsViewModelTest {
         val expense = createExpense("txn-d", "cat-d", 30_000L)
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budget)),
             transactionRepository = TestTransactionRepository(listOf(expense)),
             categoryRepository = TestCategoryRepository(listOf(category)),
@@ -455,6 +463,7 @@ class BudgetsViewModelTest {
         val budget = createBudget("bud-r", "cat-r", "Refresh Budget", 50_000L)
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budget)),
             transactionRepository = TestTransactionRepository(),
             categoryRepository = TestCategoryRepository(listOf(category)),
@@ -491,6 +500,7 @@ class BudgetsViewModelTest {
     @Test
     fun `handles empty budget list`() = runTest {
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(emptyList()),
             transactionRepository = TestTransactionRepository(),
             categoryRepository = TestCategoryRepository(),
@@ -515,6 +525,7 @@ class BudgetsViewModelTest {
         val budget = createBudget("bud-e", "cat-e", "Echo Budget", 50_000L)
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budget)),
             transactionRepository = TestTransactionRepository(),
             categoryRepository = TestCategoryRepository(listOf(category)),
@@ -541,6 +552,7 @@ class BudgetsViewModelTest {
         val budget = createBudget("bud-orphan", "cat-nonexistent", "Orphan Budget", 25_000L)
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budget)),
             transactionRepository = TestTransactionRepository(),
             categoryRepository = TestCategoryRepository(emptyList()),
@@ -569,6 +581,7 @@ class BudgetsViewModelTest {
         val expense = createExpense("txn-f", "cat-f", 20_000L)
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budget)),
             transactionRepository = TestTransactionRepository(listOf(expense)),
             categoryRepository = TestCategoryRepository(listOf(category)),
@@ -595,6 +608,7 @@ class BudgetsViewModelTest {
         val expB = createExpense("txn-b", "cat-b", 5_000L)  // $50
 
         val vm = BudgetsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             budgetRepository = TestBudgetRepository(listOf(budgetA, budgetB)),
             transactionRepository = TestTransactionRepository(listOf(expA, expB)),
             categoryRepository = TestCategoryRepository(listOf(catA, catB)),

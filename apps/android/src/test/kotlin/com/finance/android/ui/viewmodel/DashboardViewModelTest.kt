@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.viewmodel
 
+import com.finance.android.auth.TestHouseholdIdProvider
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
@@ -341,7 +342,9 @@ class DashboardViewModelTest {
         transactions: List<Transaction> = emptyList(),
         budgets: List<Budget> = emptyList(),
         categories: List<Category> = emptyList(),
+        householdIdProvider: TestHouseholdIdProvider = TestHouseholdIdProvider(),
     ) = DashboardViewModel(
+        householdIdProvider = householdIdProvider,
         accountRepository = TestAccountRepository(accounts),
         transactionRepository = TestTransactionRepository(transactions),
         budgetRepository = TestBudgetRepository(budgets),

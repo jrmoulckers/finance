@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.viewmodel
 
+import com.finance.android.auth.TestHouseholdIdProvider
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.models.Category
@@ -211,7 +212,9 @@ class TransactionsViewModelTest {
     private fun createViewModel(
         transactions: List<Transaction> = emptyList(),
         categories: List<Category> = emptyList(),
+        householdIdProvider: TestHouseholdIdProvider = TestHouseholdIdProvider(),
     ) = TransactionsViewModel(
+        householdIdProvider = householdIdProvider,
         transactionRepository = TestTransactionRepository(transactions),
         categoryRepository = TestCategoryRepository(categories),
     )

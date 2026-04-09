@@ -11,6 +11,7 @@ import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.GoalRepository
 import com.finance.android.data.repository.TransactionRepository
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.core.export.CsvExportSerializer
 import com.finance.core.export.DataExportService
 import com.finance.core.export.ExportData
@@ -19,7 +20,6 @@ import com.finance.core.export.ExportOutcome
 import com.finance.core.export.JsonExportSerializer
 import com.finance.android.ui.theme.ThemePreference
 import com.finance.android.ui.theme.ThemePreferenceManager
-import com.finance.models.types.SyncId
 import com.finance.sync.auth.AuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -120,9 +120,6 @@ data class SettingsUiState(
 // Preferences keys
 // ---------------------------------------------------------------------------
 
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
-
 private object PrefKeys {
     const val FILE_NAME = "finance_settings"
     const val DEFAULT_CURRENCY = "default_currency"
@@ -149,6 +146,7 @@ private object PrefKeys {
  *
  * @param prefs Local preferences store for settings persistence.
  * @param biometricChecker Abstraction to query biometric hardware availability.
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param transactionRepository Source for transaction data used in data export.
  * @param categoryRepository Source for category data used in data export.
  * @param accountRepository Source for account data used in data export.
@@ -160,6 +158,7 @@ private object PrefKeys {
 class SettingsViewModel(
     private val prefs: SharedPreferences,
     private val biometricChecker: BiometricAvailabilityChecker,
+    private val householdIdProvider: HouseholdIdProvider,
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val accountRepository: AccountRepository,
@@ -331,7 +330,14 @@ class SettingsViewModel(
      * already excluded by [BaseRepository.observeAll].
      */
     private suspend fun buildExportResult(format: ExportFormat): ExportOutcome {
-        val householdId = PLACEHOLDER_HOUSEHOLD_ID
+        val householdId = householdIdProvider.householdId.value ?: run {
+            Timber.w("No household ID available — cannot export data")
+            return ExportOutcome.Failure(
+                com.finance.core.export.ExportError.NoData(
+                    detail = "Not authenticated — please sign in and try again",
+                ),
+            )
+        }
 
         val accounts = accountRepository.observeAll(householdId).first()
         val transactions = transactionRepository.observeAll(householdId).first()
@@ -357,7 +363,7 @@ class SettingsViewModel(
         return DataExportService.export(
             data = exportData,
             serializer = serializer,
-            userId = householdId, // TODO(#434): Use authenticated user ID
+            userId = householdId,
             appVersion = _uiState.value.appVersion,
         )
     }

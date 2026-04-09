@@ -2,7 +2,9 @@
 
 package com.finance.android.e2e.fake
 
+import com.finance.android.auth.AuthHouseholdIdProvider
 import com.finance.android.auth.AuthViewModel
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.auth.SignupViewModel
 import com.finance.android.auth.SupabaseAuthManager
 import com.finance.sync.auth.AuthManager
@@ -49,6 +51,9 @@ val e2eAuthModule = module {
             httpClient = get(named("auth")),
         )
     } bind AuthManager::class
+
+    // ── Household ID provider ───────────────────────────────────────
+    single<HouseholdIdProvider> { AuthHouseholdIdProvider(get()) }
 
     viewModelOf(::AuthViewModel)
     viewModelOf(::SignupViewModel)

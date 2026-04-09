@@ -2,6 +2,7 @@
 
 package com.finance.android.auth
 
+import com.finance.models.types.SyncId
 import com.finance.sync.auth.AuthCredentials
 import com.finance.sync.auth.AuthManager
 import com.finance.sync.auth.AuthSession
@@ -57,6 +58,17 @@ class SupabaseAuthManager(
     override val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
 
     /**
+     * The authenticated user's household ID, parsed from
+     * `user.app_metadata.household_id` in the Supabase auth response.
+     *
+     * Falls back to the user's UUID when the custom claim is absent
+     * (single-user household mode). Emits `null` when no session is
+     * active.
+     */
+    private val _householdId = MutableStateFlow<SyncId?>(null)
+    val householdId: StateFlow<SyncId?> = _householdId.asStateFlow()
+
+    /**
      * In-flight PKCE code verifier for an active OAuth redirect.
      *
      * Stored in memory only — if the process is killed during the OAuth
@@ -75,6 +87,7 @@ class SupabaseAuthManager(
         _currentSession.value = stored
         _isAuthenticated.value = stored != null
         if (stored != null) {
+            _householdId.value = SyncId(stored.userId)
             Timber.i("Restored existing auth session for user")
         }
     }
@@ -108,6 +121,7 @@ class SupabaseAuthManager(
             pendingCodeVerifier = null
             _currentSession.value = null
             _isAuthenticated.value = false
+            _householdId.value = null
             Timber.i("Local session cleared")
         }
     }
@@ -133,12 +147,14 @@ class SupabaseAuthManager(
             tokenManager.storeTokens(newSession)
             _currentSession.value = newSession
             _isAuthenticated.value = true
+            // _householdId is already set by parseAuthResponse()
             Timber.i("Access token refreshed successfully")
         }.onFailure { error ->
             Timber.e(error, "Token refresh failed — clearing session")
             tokenManager.clearTokens()
             _currentSession.value = null
             _isAuthenticated.value = false
+            _householdId.value = null
         }
     }
 
@@ -164,6 +180,7 @@ class SupabaseAuthManager(
             pendingCodeVerifier = null
             _currentSession.value = null
             _isAuthenticated.value = false
+            _householdId.value = null
             Timber.i("Account deleted and local session cleared")
         }.onFailure { error ->
             Timber.e(error, "Account deletion failed")
@@ -390,6 +407,10 @@ class SupabaseAuthManager(
     /**
      * Parse a Supabase Auth token response into an [AuthSession].
      *
+     * Also extracts the household ID from `user.app_metadata.household_id`
+     * (if present) and updates [_householdId]. When the custom claim is
+     * absent, the user's UUID is used as the household scope.
+     *
      * Expected shape:
      * ```json
      * {
@@ -397,7 +418,10 @@ class SupabaseAuthManager(
      *   "refresh_token": "...",
      *   "expires_in": 3600,
      *   "expires_at": 1700000000,
-     *   "user": { "id": "uuid" }
+     *   "user": {
+     *     "id": "uuid",
+     *     "app_metadata": { "household_id": "uuid" }
+     *   }
      * }
      * ```
      */
@@ -417,8 +441,17 @@ class SupabaseAuthManager(
             Instant.fromEpochSeconds(Clock.System.now().epochSeconds + expiresIn)
         }
 
-        val userId = root["user"]?.jsonObject?.get("id")?.jsonPrimitive?.content
+        val userObject = root["user"]?.jsonObject
+        val userId = userObject?.get("id")?.jsonPrimitive?.content
             ?: throw IllegalStateException("Missing user.id in auth response")
+
+        // Extract household ID from app_metadata; fall back to user ID.
+        val parsedHouseholdId = userObject["app_metadata"]
+            ?.jsonObject
+            ?.get("household_id")
+            ?.jsonPrimitive
+            ?.content
+        _householdId.value = SyncId(parsedHouseholdId ?: userId)
 
         return AuthSession(
             accessToken = accessToken,

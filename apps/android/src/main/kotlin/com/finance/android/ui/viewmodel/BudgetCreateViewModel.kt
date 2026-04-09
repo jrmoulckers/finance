@@ -4,6 +4,7 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.models.Budget
@@ -23,9 +24,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import timber.log.Timber
 import java.util.UUID
-
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
 
 /**
  * UI state for the Budget creation form.
@@ -54,10 +52,12 @@ data class BudgetCreateUiState(
  * Loads available categories on initialization and manages form state,
  * validation, and persistence of new [Budget] entities via [BudgetRepository].
  *
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param budgetRepository Repository used to persist the new budget.
  * @param categoryRepository Repository used to load available categories.
  */
 class BudgetCreateViewModel(
+    private val householdIdProvider: HouseholdIdProvider,
     private val budgetRepository: BudgetRepository,
     private val categoryRepository: CategoryRepository,
 ) : ViewModel() {
@@ -67,7 +67,11 @@ class BudgetCreateViewModel(
 
     init {
         viewModelScope.launch {
-            val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+            val householdId = householdIdProvider.householdId.value ?: run {
+                Timber.w("No household ID available — skipping category load")
+                return@launch
+            }
+            val categories = categoryRepository.observeAll(householdId).first()
             _uiState.update { it.copy(categories = categories) }
         }
     }
@@ -119,6 +123,11 @@ class BudgetCreateViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errors = emptyList()) }
             try {
+                val householdId = householdIdProvider.householdId.value ?: run {
+                    Timber.w("No household ID available — cannot create budget")
+                    _uiState.update { it.copy(isSaving = false, errors = listOf("Not authenticated")) }
+                    return@launch
+                }
                 val s = _uiState.value
                 val now = Clock.System.now()
                 val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -126,7 +135,7 @@ class BudgetCreateViewModel(
 
                 val budget = Budget(
                     id = SyncId(UUID.randomUUID().toString()),
-                    householdId = PLACEHOLDER_HOUSEHOLD_ID,
+                    householdId = householdId,
                     categoryId = s.selectedCategory!!.id,
                     name = s.selectedCategory.name,
                     amount = amountCents,

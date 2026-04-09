@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.viewmodel
 
+import com.finance.android.auth.TestHouseholdIdProvider
 import com.finance.android.data.repository.AccountRepository
 import com.finance.models.Account
 import com.finance.models.AccountType
@@ -126,8 +127,12 @@ class AccountCreateViewModelTest {
 
     private fun createViewModel(
         repo: TestAccountRepository = TestAccountRepository(),
+        householdIdProvider: TestHouseholdIdProvider = TestHouseholdIdProvider(),
     ): Pair<AccountCreateViewModel, TestAccountRepository> {
-        val vm = AccountCreateViewModel(accountRepository = repo)
+        val vm = AccountCreateViewModel(
+            householdIdProvider = householdIdProvider,
+            accountRepository = repo,
+        )
         return vm to repo
     }
 
