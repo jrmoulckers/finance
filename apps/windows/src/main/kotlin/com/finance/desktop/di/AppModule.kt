@@ -56,5 +56,7 @@ val appModule = module {
     single { DashboardViewModel(get(), get(), get()) }
     single { AccountsViewModel(get(), get()) }
     single { TransactionsViewModel(get()) }
+    single { BudgetsViewModel(get(), get()) }
+    single { GoalsViewModel(get()) }
     single { SyncViewModel(get()) }
 }

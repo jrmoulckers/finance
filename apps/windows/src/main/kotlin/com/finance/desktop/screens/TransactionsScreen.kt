@@ -27,8 +27,8 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -284,7 +284,7 @@ private fun SearchAndFilterBar(
                 label = { Text("Expenses") },
                 leadingIcon = {
                     Icon(
-                        Icons.Filled.TrendingDown,
+                        Icons.AutoMirrored.Filled.TrendingDown,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                     )
@@ -304,7 +304,7 @@ private fun SearchAndFilterBar(
                 label = { Text("Income") },
                 leadingIcon = {
                     Icon(
-                        Icons.Filled.TrendingUp,
+                        Icons.AutoMirrored.Filled.TrendingUp,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                     )
@@ -427,8 +427,8 @@ private fun TransactionTableRow(txn: Transaction) {
         TransactionType.TRANSFER -> MaterialTheme.colorScheme.tertiary
     }
     val typeIcon = when (txn.type) {
-        TransactionType.EXPENSE -> Icons.Filled.TrendingDown
-        TransactionType.INCOME -> Icons.Filled.TrendingUp
+        TransactionType.EXPENSE -> Icons.AutoMirrored.Filled.TrendingDown
+        TransactionType.INCOME -> Icons.AutoMirrored.Filled.TrendingUp
         TransactionType.TRANSFER -> Icons.Filled.SwapHoriz
     }
     val formattedAmount = CurrencyFormatter.format(txn.amount, txn.currency, showSign = true)
