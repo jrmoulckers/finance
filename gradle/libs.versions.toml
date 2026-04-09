@@ -12,6 +12,7 @@ koin = "4.0.1"
 timber = "5.0.1"
 turbine = "1.2.0"
 kover = "0.9.1"
+paparazzi = "1.3.5"
 compose-multiplatform = "1.7.3"
 
 # Android / Compose
@@ -87,5 +88,6 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+paparazzi = { id = "app.cash.paparazzi", version.ref = "paparazzi" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

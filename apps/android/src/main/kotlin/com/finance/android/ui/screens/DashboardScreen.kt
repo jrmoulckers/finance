@@ -97,7 +97,7 @@ fun DashboardScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DashboardContent(
+internal fun DashboardContent(
     state: DashboardUiState, onRefresh: () -> Unit,
     onAddTransaction: () -> Unit, onViewAllTransactions: () -> Unit,
     onViewInsights: () -> Unit, onViewAccounts: () -> Unit,

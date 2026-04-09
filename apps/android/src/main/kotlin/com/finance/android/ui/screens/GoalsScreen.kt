@@ -95,7 +95,7 @@ fun GoalsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GoalsContent(
+internal fun GoalsContent(
     state: GoalsUiState,
     onRefresh: () -> Unit,
     onCreateGoal: () -> Unit,

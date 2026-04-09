@@ -74,6 +74,20 @@ jobs:
           ./gradlew :apps:android:testDebugUnitTest \
             --parallel --build-cache --stacktrace
 
+      - name: Verify Paparazzi snapshots
+        run: |
+          ./gradlew :apps:android:verifyPaparazziDebug \
+            --parallel --build-cache --stacktrace
+
+      - name: Upload snapshot failures
+        if: failure()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: snapshot-failure-diffs
+          path: apps/android/build/paparazzi/failures/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
