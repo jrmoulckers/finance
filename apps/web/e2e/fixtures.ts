@@ -124,11 +124,11 @@ async function installAuthMocks(page: Page): Promise<void> {
  * that the React auth context receives valid tokens and user data.
  */
 async function loginViaForm(page: Page): Promise<void> {
-  await page.goto('/login', { waitUntil: 'load' });
+  await page.goto('/login');
 
   // Wait for the login form to be fully rendered.
   const emailInput = page.getByLabel(/email/i);
-  await emailInput.waitFor({ state: 'visible', timeout: 60_000 });
+  await emailInput.waitFor({ state: 'visible' });
 
   await emailInput.fill(TEST_USER.email);
   await page.getByLabel(/password/i).fill(TEST_PASSWORD);
