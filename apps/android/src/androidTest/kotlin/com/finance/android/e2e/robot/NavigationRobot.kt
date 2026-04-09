@@ -27,13 +27,6 @@ class NavigationRobot(
         rule.waitForIdle()
     }
 
-    /** Tap the Accounts bottom-nav item. */
-    fun navigateToAccounts() {
-        rule.onNodeWithContentDescription("Navigate to Accounts")
-            .performClick()
-        rule.waitForIdle()
-    }
-
     /** Tap the Activity (Transactions) bottom-nav item. */
     fun navigateToTransactions() {
         rule.onNodeWithContentDescription("View transaction activity")
@@ -41,16 +34,16 @@ class NavigationRobot(
         rule.waitForIdle()
     }
 
-    /** Tap the Budgets bottom-nav item. */
-    fun navigateToBudgets() {
-        rule.onNodeWithContentDescription("Navigate to Budgets")
+    /** Tap the Planning bottom-nav item. */
+    fun navigateToPlanning() {
+        rule.onNodeWithContentDescription("Navigate to Planning")
             .performClick()
         rule.waitForIdle()
     }
 
-    /** Tap the Goals bottom-nav item. */
-    fun navigateToGoals() {
-        rule.onNodeWithContentDescription("Navigate to Goals")
+    /** Tap the Settings bottom-nav item. */
+    fun navigateToSettings() {
+        rule.onNodeWithContentDescription("Navigate to Settings")
             .performClick()
         rule.waitForIdle()
     }
@@ -60,12 +53,11 @@ class NavigationRobot(
         rule.onNodeWithText(label).assertIsDisplayed()
     }
 
-    /** Assert all five bottom-nav items are present. */
+    /** Assert all four bottom-nav items are present. */
     fun assertAllBottomNavItemsVisible() {
         assertBottomNavItemVisible("Dashboard")
-        assertBottomNavItemVisible("Accounts")
         assertBottomNavItemVisible("Activity")
-        assertBottomNavItemVisible("Budgets")
-        assertBottomNavItemVisible("Goals")
+        assertBottomNavItemVisible("Planning")
+        assertBottomNavItemVisible("Settings")
     }
 }

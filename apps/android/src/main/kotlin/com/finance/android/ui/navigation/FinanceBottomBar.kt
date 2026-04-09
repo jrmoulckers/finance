@@ -3,10 +3,9 @@
 package com.finance.android.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -37,34 +36,28 @@ enum class TopLevelDestination(
         label = "Dashboard",
         a11yDescription = "Navigate to Dashboard",
     ),
-    Accounts(
-        route = Route.Accounts.route,
-        icon = Icons.Filled.AccountBalance,
-        label = "Accounts",
-        a11yDescription = "Navigate to Accounts",
-    ),
     Transactions(
         route = Route.Transactions.route,
         icon = Icons.Filled.SwapHoriz,
         label = "Activity",
         a11yDescription = "View transaction activity",
     ),
-    Budgets(
-        route = Route.Budgets.route,
+    Planning(
+        route = Route.Planning.route,
         icon = Icons.Filled.PieChart,
-        label = "Budgets",
-        a11yDescription = "Navigate to Budgets",
+        label = "Planning",
+        a11yDescription = "Navigate to Planning",
     ),
-    Goals(
-        route = Route.Goals.route,
-        icon = Icons.Filled.Flag,
-        label = "Goals",
-        a11yDescription = "Navigate to Goals",
+    Settings(
+        route = Route.Settings.route,
+        icon = Icons.Filled.Settings,
+        label = "Settings",
+        a11yDescription = "Navigate to Settings",
     ),
 }
 
 /**
- * Material 3 [NavigationBar] with the five primary Finance tabs.
+ * Material 3 [NavigationBar] with the four primary Finance tabs.
  *
  * Each item carries a `contentDescription` for TalkBack and uses the
  * Material 3 selected-state indicator.

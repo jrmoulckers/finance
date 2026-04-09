@@ -13,8 +13,8 @@ import com.finance.android.e2e.robot.NavigationRobot
 /**
  * E2E tests for the account creation flow.
  *
- * Exercises the full journey: navigate to Accounts -> tap FAB ->
- * fill form -> save -> verify account appears in the list.
+ * Exercises the full journey: Dashboard net-worth card -> Accounts ->
+ * tap FAB -> fill form -> save -> verify account appears in the list.
  */
 class AccountCreationE2ETest : BaseE2ETest() {
 
@@ -24,12 +24,11 @@ class AccountCreationE2ETest : BaseE2ETest() {
      */
     @Test
     fun tapFab_opensAccountCreationForm() {
-        val nav = NavigationRobot(composeTestRule)
         val dash = DashboardRobot(composeTestRule)
         val acct = AccountRobot(composeTestRule)
 
         dash.waitForDashboardLoaded()
-        nav.navigateToAccounts()
+        dash.tapNetWorthCard()
         acct.tapAddAccountFab()
         acct.assertCreateFormVisible()
     }
@@ -40,12 +39,11 @@ class AccountCreationE2ETest : BaseE2ETest() {
      */
     @Test
     fun createAccount_withValidData_showsInList() {
-        val nav = NavigationRobot(composeTestRule)
         val dash = DashboardRobot(composeTestRule)
         val acct = AccountRobot(composeTestRule)
 
         dash.waitForDashboardLoaded()
-        nav.navigateToAccounts()
+        dash.tapNetWorthCard()
         acct.tapAddAccountFab()
         acct.assertCreateFormVisible()
 
@@ -63,12 +61,11 @@ class AccountCreationE2ETest : BaseE2ETest() {
      */
     @Test
     fun accountCreationForm_showsTypeDropdown() {
-        val nav = NavigationRobot(composeTestRule)
         val dash = DashboardRobot(composeTestRule)
         val acct = AccountRobot(composeTestRule)
 
         dash.waitForDashboardLoaded()
-        nav.navigateToAccounts()
+        dash.tapNetWorthCard()
         acct.tapAddAccountFab()
         acct.assertAccountTypeDropdownVisible()
     }
@@ -78,11 +75,10 @@ class AccountCreationE2ETest : BaseE2ETest() {
      */
     @Test
     fun accountCreationForm_saveButton_hasAccessibilityLabel() {
-        val nav = NavigationRobot(composeTestRule)
         val dash = DashboardRobot(composeTestRule)
 
         dash.waitForDashboardLoaded()
-        nav.navigateToAccounts()
+        dash.tapNetWorthCard()
         AccountRobot(composeTestRule).tapAddAccountFab()
         composeTestRule.onNodeWithContentDescription("Save account")
             .assertIsDisplayed()

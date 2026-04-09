@@ -78,4 +78,11 @@ class DashboardRobot(
             .performClick()
         rule.waitForIdle()
     }
+
+    /** Tap the Net Worth card to navigate to Accounts. */
+    fun tapNetWorthCard() {
+        rule.onNode(hasContentDescription("Net worth", substring = true))
+            .performClick()
+        rule.waitForIdle()
+    }
 }
