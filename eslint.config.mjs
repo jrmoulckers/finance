@@ -17,13 +17,26 @@ export default [
     },
   },
   {
-    files: ['services/**/*.ts', 'tools/**/*.js', 'tools/**/*.ts', '**/*.config.mjs'],
+    files: [
+      'services/**/*.ts',
+      'tools/**/*.js',
+      'tools/**/*.mjs',
+      'tools/**/*.ts',
+      '**/*.config.mjs',
+    ],
     rules: {
       'no-console': 'off',
     },
   },
   {
-    files: ['tools/**/*.js', '*.js', '*.cjs', '**/*.config.mjs', '**/webpack.config.d/**/*.js'],
+    files: [
+      'tools/**/*.js',
+      'tools/**/*.mjs',
+      '*.js',
+      '*.cjs',
+      '**/*.config.mjs',
+      '**/webpack.config.d/**/*.js',
+    ],
     languageOptions: {
       globals: {
         console: 'readonly',
