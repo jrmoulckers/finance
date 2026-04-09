@@ -31,7 +31,6 @@ struct SettingsView: View {
                 securitySection
                 syncSection
                 dataSection
-                dangerZoneSection
                 aboutSection
             }
             .navigationTitle(String(localized: "Settings"))
@@ -77,25 +76,9 @@ struct SettingsView: View {
             } message: { error in
                 Text(error.localizedDescription)
             }
-            .alert(
-                String(localized: "Export Failed"),
-                isPresented: $viewModel.showingExportError
-            ) {
-                Button(String(localized: "OK"), role: .cancel) {}
-                    .accessibilityLabel(String(localized: "Dismiss error"))
-            } message: {
-                if let message = viewModel.exportErrorMessage {
-                    Text(message)
-                }
-            }
             .alert(String(localized: "Sign-In Error"), isPresented: Binding(get: { authService.authError != nil }, set: { _ in })) {
                 Button(String(localized: "OK"), role: .cancel) {}.accessibilityLabel(String(localized: "Dismiss sign-in error"))
             } message: { if let error = authService.authError { Text(error) } }
-            .sheet(isPresented: $viewModel.showingShareSheet) {
-                if let url = viewModel.exportedFileURL {
-                    ShareSheetView(fileURL: url)
-                }
-            }
             // After deletion, re-launch the app into onboarding by marking
             // the root view's auth state unauthenticated (handled by authService.signOut).
             .onChange(of: viewModel.hasDeletionCompleted) { _, completed in
@@ -288,51 +271,15 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         Section(String(localized: "Data")) {
-            Button {
-                Task {
-                    let authorized = await viewModel.authenticateForExport(
-                        using: biometricManager
-                    )
-                    if authorized {
-                        viewModel.showingExportConfirmation = true
-                    }
-                }
+            NavigationLink {
+                DataExportView()
             } label: {
-                Label {
-                    if viewModel.isExporting {
-                        HStack(spacing: 8) {
-                            Text(String(localized: "Exporting..."))
-                            ProgressView()
-                        }
-                    } else {
-                        Text(String(localized: "Export Data"))
-                    }
-                } icon: {
-                    Image(systemName: "square.and.arrow.up")
-                }
+                Label(String(localized: "Export Data"), systemImage: "square.and.arrow.up")
             }
-            .disabled(viewModel.isExporting)
             .accessibilityLabel(String(localized: "Export data"))
-            .accessibilityHint(String(localized: "Exports all your financial data as a file"))
-            .confirmationDialog(
-                String(localized: "Export Data"),
-                isPresented: $viewModel.showingExportConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button(String(localized: "Export as CSV")) {
-                    Task { await viewModel.exportData(format: .csv) }
-                }
-                .accessibilityLabel(String(localized: "Export as CSV"))
-
-                Button(String(localized: "Export as JSON")) {
-                    Task { await viewModel.exportData(format: .json) }
-                }
-                .accessibilityLabel(String(localized: "Export as JSON"))
-
-                Button(String(localized: "Cancel"), role: .cancel) {}
-            } message: {
-                Text(String(localized: "Choose your preferred export format."))
-            }
+            .accessibilityHint(
+                String(localized: "Opens the export screen with filtering and format options")
+            )
 
             Button(role: .destructive) {
                 viewModel.showingDeleteConfirmation = true
@@ -387,29 +334,6 @@ struct SettingsView: View {
             .accessibilityHint(String(localized: "Opens the open source acknowledgments"))
         }
     }
-}
-
-// MARK: - ShareSheetView
-
-/// Wraps `UIActivityViewController` for presenting share actions.
-///
-/// UIKit is required here because SwiftUI's `ShareLink` does not support
-/// sharing arbitrary file URLs produced at runtime. This is the only UIKit
-/// usage in the settings flow.
-private struct ShareSheetView: UIViewControllerRepresentable {
-    let fileURL: URL
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(
-            activityItems: [fileURL],
-            applicationActivities: nil
-        )
-    }
-
-    func updateUIViewController(
-        _ uiViewController: UIActivityViewController,
-        context: Context
-    ) {}
 }
 
 #Preview {
