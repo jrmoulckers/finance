@@ -36,6 +36,7 @@ import kotlinx.serialization.json.put
 actual open class TokenStorage actual constructor() {
 
     companion object {
+        private val secureRandom = SecureRandom()
         private const val KEYSTORE_TYPE = "PKCS12"
         private const val KEY_ALIAS = "finance_token_key"
         private const val AES_GCM = "AES/GCM/NoPadding"
@@ -135,7 +136,7 @@ actual open class TokenStorage actual constructor() {
      * Output format: `[12-byte IV][ciphertext+tag]`
      */
     private fun encrypt(data: ByteArray): ByteArray {
-        val iv = ByteArray(GCM_IV_BYTES).also { SecureRandom().nextBytes(it) }
+        val iv = ByteArray(GCM_IV_BYTES).also { secureRandom.nextBytes(it) }
         val cipher = Cipher.getInstance(AES_GCM)
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, GCMParameterSpec(GCM_TAG_BITS, iv))
         val ciphertext = cipher.doFinal(data)
