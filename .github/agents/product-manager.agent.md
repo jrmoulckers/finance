@@ -48,15 +48,15 @@ Each sprint should contain a balanced mix:
 
 Maintain awareness of feature coverage across all four platforms:
 
-| Feature Area     | iOS | Android | Web | Windows |
-| ---------------- | --- | ------- | --- | ------- |
-| Accounts CRUD    | —   | —       | —   | —       |
-| Transactions     | —   | —       | —   | —       |
-| Budgets          | —   | —       | —   | —       |
-| Goals            | —   | —       | —   | —       |
-| Sync             | —   | —       | —   | —       |
-| Biometric Auth   | —   | —       | —   | —       |
-| Offline Support  | —   | —       | —   | —       |
+| Feature Area    | iOS | Android | Web | Windows |
+| --------------- | --- | ------- | --- | ------- |
+| Accounts CRUD   | —   | —       | —   | —       |
+| Transactions    | —   | —       | —   | —       |
+| Budgets         | —   | —       | —   | —       |
+| Goals           | —   | —       | —   | —       |
+| Sync            | —   | —       | —   | —       |
+| Biometric Auth  | —   | —       | —   | —       |
+| Offline Support | —   | —       | —   | —       |
 
 Query issues and PRs to fill this matrix and identify parity gaps.
 

@@ -20,14 +20,14 @@ Every piece of work follows a strict lifecycle tied to GitHub Issues, the Projec
 Created (Triage) → Shaping → Ready → In Progress → In Review → Done
 ```
 
-| Stage       | Entry Criteria                                 | Exit Criteria                             |
-| ----------- | ---------------------------------------------- | ----------------------------------------- |
-| Triage      | Issue created (auto-assigned by board)         | Labeled, prioritized, milestone assigned  |
-| Shaping     | Requirements clear enough to estimate          | Effort sized, acceptance criteria written  |
-| Ready       | Fully specified, dependencies resolved         | Assigned to agent or human                |
-| In Progress | Worktree created, work started                 | PR opened with `Closes #N`               |
-| In Review   | PR passes CI, ready for human review           | Approved and merged                      |
-| Done        | PR merged → issue auto-closed by GitHub        | —                                        |
+| Stage       | Entry Criteria                          | Exit Criteria                             |
+| ----------- | --------------------------------------- | ----------------------------------------- |
+| Triage      | Issue created (auto-assigned by board)  | Labeled, prioritized, milestone assigned  |
+| Shaping     | Requirements clear enough to estimate   | Effort sized, acceptance criteria written |
+| Ready       | Fully specified, dependencies resolved  | Assigned to agent or human                |
+| In Progress | Worktree created, work started          | PR opened with `Closes #N`                |
+| In Review   | PR passes CI, ready for human review    | Approved and merged                       |
+| Done        | PR merged → issue auto-closed by GitHub | —                                         |
 
 ### WIP Limits
 
@@ -40,54 +40,54 @@ Labels are additive. Every issue should have at least a **type** and **priority*
 
 #### Priority
 
-| Label | Meaning                        | SLA                    |
-| ----- | ------------------------------ | ---------------------- |
-| `P0`  | Critical — blocks release      | Fix within 24 hours    |
-| `P1`  | High — significant user impact | Fix within current sprint |
-| `P2`  | Medium — normal backlog item   | Schedule within 2 sprints |
+| Label | Meaning                        | SLA                           |
+| ----- | ------------------------------ | ----------------------------- |
+| `P0`  | Critical — blocks release      | Fix within 24 hours           |
+| `P1`  | High — significant user impact | Fix within current sprint     |
+| `P2`  | Medium — normal backlog item   | Schedule within 2 sprints     |
 | `P3`  | Low — nice to have             | Schedule when capacity allows |
 
 #### Type
 
-| Label     | Description                              |
-| --------- | ---------------------------------------- |
-| `feature`  | New user-facing capability              |
-| `bug`      | Something broken that used to work      |
-| `chore`    | Maintenance, dependency updates, CI     |
-| `docs`     | Documentation only                      |
-| `tech-debt`| Refactoring, cleanup, architectural     |
+| Label       | Description                         |
+| ----------- | ----------------------------------- |
+| `feature`   | New user-facing capability          |
+| `bug`       | Something broken that used to work  |
+| `chore`     | Maintenance, dependency updates, CI |
+| `docs`      | Documentation only                  |
+| `tech-debt` | Refactoring, cleanup, architectural |
 
 #### Platform
 
-| Label     | Scope                          |
-| --------- | ------------------------------ |
-| `ios`     | iOS / iPadOS / macOS / watchOS |
-| `android` | Android / Wear OS              |
-| `web`     | Progressive Web App            |
-| `windows` | Windows 11 (Compose Desktop)  |
-| `shared`  | KMP packages (core/models/sync)|
-| `backend` | Supabase / Edge Functions      |
+| Label     | Scope                           |
+| --------- | ------------------------------- |
+| `ios`     | iOS / iPadOS / macOS / watchOS  |
+| `android` | Android / Wear OS               |
+| `web`     | Progressive Web App             |
+| `windows` | Windows 11 (Compose Desktop)    |
+| `shared`  | KMP packages (core/models/sync) |
+| `backend` | Supabase / Edge Functions       |
 
 #### Effort (T-shirt sizing)
 
-| Label | Rough Scope                           |
-| ----- | ------------------------------------- |
-| `XS`  | < 1 hour — typo, config tweak        |
-| `S`   | 1–4 hours — single-file change       |
-| `M`   | 1–2 days — feature slice             |
-| `L`   | 3–5 days — multi-file feature        |
-| `XL`  | 1–2 weeks — cross-cutting work       |
+| Label | Rough Scope                    |
+| ----- | ------------------------------ |
+| `XS`  | < 1 hour — typo, config tweak  |
+| `S`   | 1–4 hours — single-file change |
+| `M`   | 1–2 days — feature slice       |
+| `L`   | 3–5 days — multi-file feature  |
+| `XL`  | 1–2 weeks — cross-cutting work |
 
 XL issues should be decomposed into smaller sub-issues before entering "Ready."
 
 ### Milestones
 
-| Milestone    | Purpose                                         |
-| ------------ | ------------------------------------------------ |
-| `v0.1-alpha` | Core infrastructure, basic CRUD, offline storage |
-| `v0.1-beta`  | Feature-complete beta with sync and auth         |
-| `v1.0`       | Production-ready launch across all platforms     |
-| `post-launch`| Post-launch features, polish, advanced analytics |
+| Milestone     | Purpose                                          |
+| ------------- | ------------------------------------------------ |
+| `v0.1-alpha`  | Core infrastructure, basic CRUD, offline storage |
+| `v0.1-beta`   | Feature-complete beta with sync and auth         |
+| `v1.0`        | Production-ready launch across all platforms     |
+| `post-launch` | Post-launch features, polish, advanced analytics |
 
 Milestones align with pre-release versions. See `docs/guides/versioning-strategy.md` for the full version lifecycle.
 
@@ -266,17 +266,21 @@ The Changesets GitHub Action opens a "Version Packages" PR when changesets are p
 ## v1.3.0
 
 ### 🎉 New Features
+
 - Add monthly budget rollover (#134)
 - Support recurring transactions (#201)
 
 ### 🐛 Bug Fixes
+
 - Fix transaction list not loading on slow connections (#256)
 - Correct currency formatting for JPY (#261)
 
 ### ♿ Accessibility
+
 - Add missing labels to budget category selector (#270)
 
 ### 🏗️ Internal
+
 - Upgrade SQLDelight to 2.1.0
 - Improve sync engine retry logic
 ```
@@ -285,12 +289,12 @@ The Changesets GitHub Action opens a "Version Packages" PR when changesets are p
 
 Each platform has a dedicated release pipeline triggered by platform-prefixed Git tags:
 
-| Platform | Tag Format         | Pipeline                | Distribution              |
-| -------- | ------------------ | ----------------------- | ------------------------- |
-| iOS      | `ios/v1.3.0`       | `release-ios.yml`       | TestFlight → App Store    |
-| Android  | `android/v1.3.0`   | `release-android.yml`   | Internal → Beta → Play Store |
-| Web      | `web/v2.1.0`       | `release-web.yml`       | Vercel deployment         |
-| Windows  | `windows/v1.3.0`   | `release-windows.yml`   | Flight ring → Microsoft Store |
+| Platform | Tag Format       | Pipeline              | Distribution                  |
+| -------- | ---------------- | --------------------- | ----------------------------- |
+| iOS      | `ios/v1.3.0`     | `release-ios.yml`     | TestFlight → App Store        |
+| Android  | `android/v1.3.0` | `release-android.yml` | Internal → Beta → Play Store  |
+| Web      | `web/v2.1.0`     | `release-web.yml`     | Vercel deployment             |
+| Windows  | `windows/v1.3.0` | `release-windows.yml` | Flight ring → Microsoft Store |
 
 **Release progression:** Internal testing (1–2 days) → Beta (3–7 days) → Staged rollout → Full release.
 
@@ -368,12 +372,12 @@ gh run view <run-id> --log-failed
 
 **Targets:**
 
-| Metric              | Target     |
-| ------------------- | ---------- |
-| CI pass rate        | > 95%      |
-| Average build time  | < 10 min   |
-| Flaky test rate     | < 2%       |
-| Time to green (fix) | < 4 hours  |
+| Metric              | Target    |
+| ------------------- | --------- |
+| CI pass rate        | > 95%     |
+| Average build time  | < 10 min  |
+| Flaky test rate     | < 2%      |
+| Time to green (fix) | < 4 hours |
 
 See `docs/architecture/monitoring.md` for observability infrastructure and `docs/architecture/alerting-rules.md` for alert thresholds.
 
@@ -399,13 +403,13 @@ gh issue create --title "Research competitor budgeting features" \
 
 **Non-engineering issue types:**
 
-| Work Type          | Label      | Typical Assignee        |
-| ------------------ | ---------- | ----------------------- |
-| Market research    | `chore`    | @finance-domain         |
-| UX research        | `docs`     | @design-engineer        |
-| Legal/compliance   | `chore`    | @security-reviewer      |
-| Content writing    | `docs`     | @docs-writer            |
-| Business analysis  | `chore`    | @finance-domain         |
+| Work Type         | Label   | Typical Assignee   |
+| ----------------- | ------- | ------------------ |
+| Market research   | `chore` | @finance-domain    |
+| UX research       | `docs`  | @design-engineer   |
+| Legal/compliance  | `chore` | @security-reviewer |
+| Content writing   | `docs`  | @docs-writer       |
+| Business analysis | `chore` | @finance-domain    |
 
 ### Fleet Coordination
 
@@ -425,21 +429,26 @@ At the end of each 2-week sprint, document a retrospective:
 ## Sprint Retrospective — Sprint N (YYYY-MM-DD to YYYY-MM-DD)
 
 ### Velocity
+
 - Planned: X points
 - Completed: Y points
 - Carried over: Z points
 
 ### What Went Well
+
 - (List successes)
 
 ### What Could Improve
+
 - (List friction points)
 
 ### Action Items
+
 - [ ] Action 1 — Owner
 - [ ] Action 2 — Owner
 
 ### Blockers Encountered
+
 - #N — Description and resolution
 ```
 
@@ -469,12 +478,12 @@ gh issue list --state closed --search "closed:>$(date -d '7 days ago' +%Y-%m-%d)
 
 ### Key Documents
 
-| Document                                   | Purpose                                  |
-| ------------------------------------------ | ---------------------------------------- |
-| `docs/architecture/roadmap.md`             | Full development roadmap (Phases 0–12)   |
-| `docs/architecture/project-board.md`       | GitHub Projects V2 board configuration   |
-| `docs/guides/versioning-strategy.md`       | Semver, Changesets, pre-release workflow  |
-| `docs/guides/workflow-cheatsheet.md`       | Daily commands and Git workflow           |
-| `docs/guides/issue-triage-report.md`       | Latest backlog triage findings           |
-| `docs/guides/app-store-submission.md`      | Platform-specific store submission guides|
-| `AGENTS.md`                                | Agent roles, file ownership, fleet rules |
+| Document                              | Purpose                                   |
+| ------------------------------------- | ----------------------------------------- |
+| `docs/architecture/roadmap.md`        | Full development roadmap (Phases 0–12)    |
+| `docs/architecture/project-board.md`  | GitHub Projects V2 board configuration    |
+| `docs/guides/versioning-strategy.md`  | Semver, Changesets, pre-release workflow  |
+| `docs/guides/workflow-cheatsheet.md`  | Daily commands and Git workflow           |
+| `docs/guides/issue-triage-report.md`  | Latest backlog triage findings            |
+| `docs/guides/app-store-submission.md` | Platform-specific store submission guides |
+| `AGENTS.md`                           | Agent roles, file ownership, fleet rules  |

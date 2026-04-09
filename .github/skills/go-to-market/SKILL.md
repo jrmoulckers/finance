@@ -14,11 +14,11 @@ This skill provides actionable guidance for launching and growing the Finance ap
 
 ### Title and Subtitle Strategy
 
-| Platform     | Title (30 chars max)      | Subtitle / Short Description (80 chars)                |
-| ------------ | ------------------------- | ------------------------------------------------------ |
-| iOS          | Finance — Budget Tracker  | Private, offline-first budgeting for you and your family |
-| Google Play  | Finance — Budget Tracker  | Private budgeting & expense tracking — works offline     |
-| Microsoft    | Finance                   | Privacy-first budgeting and financial tracking            |
+| Platform    | Title (30 chars max)     | Subtitle / Short Description (80 chars)                  |
+| ----------- | ------------------------ | -------------------------------------------------------- |
+| iOS         | Finance — Budget Tracker | Private, offline-first budgeting for you and your family |
+| Google Play | Finance — Budget Tracker | Private budgeting & expense tracking — works offline     |
+| Microsoft   | Finance                  | Privacy-first budgeting and financial tracking           |
 
 ### Keyword Strategy
 
@@ -32,11 +32,11 @@ Target long-tail keywords that combine finance functionality with privacy differ
 
 ### Screenshot and Preview Requirements
 
-| Platform     | Sizes Required                            | Count     | Notes                                       |
-| ------------ | ----------------------------------------- | --------- | ------------------------------------------- |
-| iOS          | 6.7" (1290×2796), 6.5" (1284×2778), iPad  | 3–10      | First 3 visible without scrolling            |
-| Google Play  | Phone (1080×1920+), 7" tablet, 10" tablet  | 2–8       | First image is the feature graphic (1024×500)|
-| Microsoft    | 1366×768 minimum                           | 1–10      | Include desktop window chrome                |
+| Platform    | Sizes Required                            | Count | Notes                                         |
+| ----------- | ----------------------------------------- | ----- | --------------------------------------------- |
+| iOS         | 6.7" (1290×2796), 6.5" (1284×2778), iPad  | 3–10  | First 3 visible without scrolling             |
+| Google Play | Phone (1080×1920+), 7" tablet, 10" tablet | 2–8   | First image is the feature graphic (1024×500) |
+| Microsoft   | 1366×768 minimum                          | 1–10  | Include desktop window chrome                 |
 
 **Screenshot sequence** (consistent across platforms):
 
@@ -67,12 +67,12 @@ Target long-tail keywords that combine finance functionality with privacy differ
 
 ### Category Selection
 
-| Platform       | Primary Category    | Secondary Category     |
-| -------------- | ------------------- | ---------------------- |
-| iOS App Store  | Finance             | Productivity           |
-| Google Play    | Finance             | —                      |
-| Microsoft Store| Personal Finance    | Productivity           |
-| Web (PWA)      | N/A                 | N/A                    |
+| Platform        | Primary Category | Secondary Category |
+| --------------- | ---------------- | ------------------ |
+| iOS App Store   | Finance          | Productivity       |
+| Google Play     | Finance          | —                  |
+| Microsoft Store | Personal Finance | Productivity       |
+| Web (PWA)       | N/A              | N/A                |
 
 ### Rating and Review Strategy
 
@@ -86,16 +86,16 @@ Target long-tail keywords that combine finance functionality with privacy differ
 
 ### Pre-Launch (T-minus 4 weeks)
 
-| Week | Action                                                    | Owner      |
-| ---- | --------------------------------------------------------- | ---------- |
-| -4   | Landing page live with email signup                       | Web        |
-| -4   | Beta signup form active — target 200 beta testers         | Marketing  |
-| -3   | Press kit prepared (logo, screenshots, fact sheet, bios)  | Design     |
-| -3   | Draft Product Hunt launch post                            | Marketing  |
-| -2   | Beta build distributed to testers via TestFlight / Play Console | DevOps |
-| -2   | Collect and act on beta feedback (fix critical bugs)      | Engineering|
-| -1   | Submit to app stores for review                           | DevOps     |
-| -1   | Schedule social media posts, email blast, blog post       | Marketing  |
+| Week | Action                                                          | Owner       |
+| ---- | --------------------------------------------------------------- | ----------- |
+| -4   | Landing page live with email signup                             | Web         |
+| -4   | Beta signup form active — target 200 beta testers               | Marketing   |
+| -3   | Press kit prepared (logo, screenshots, fact sheet, bios)        | Design      |
+| -3   | Draft Product Hunt launch post                                  | Marketing   |
+| -2   | Beta build distributed to testers via TestFlight / Play Console | DevOps      |
+| -2   | Collect and act on beta feedback (fix critical bugs)            | Engineering |
+| -1   | Submit to app stores for review                                 | DevOps      |
+| -1   | Schedule social media posts, email blast, blog post             | Marketing   |
 
 ### Launch Day Checklist
 
@@ -110,14 +110,14 @@ Target long-tail keywords that combine finance functionality with privacy differ
 
 ### Post-Launch (T-plus 1–4 weeks)
 
-| Week | Action                                                     |
-| ---- | ---------------------------------------------------------- |
-| +1   | Publish "launch retrospective" blog post with real numbers |
-| +1   | Send thank-you email to beta testers                       |
+| Week | Action                                                       |
+| ---- | ------------------------------------------------------------ |
+| +1   | Publish "launch retrospective" blog post with real numbers   |
+| +1   | Send thank-you email to beta testers                         |
 | +2   | First feature-highlight blog post based on most-used feature |
-| +2   | Respond to all app store reviews                           |
-| +3   | Collect NPS survey from early users                        |
-| +4   | Plan next release based on feedback themes                 |
+| +2   | Respond to all app store reviews                             |
+| +3   | Collect NPS survey from early users                          |
+| +4   | Plan next release based on feedback themes                   |
 
 ### Status Page and Incident Communication
 
@@ -147,15 +147,15 @@ has been restored for all users.
 
 ### Blog Post Calendar
 
-| Priority | Title                                            | Angle                            |
-| -------- | ------------------------------------------------ | -------------------------------- |
-| 1        | Why We Built Finance                             | Privacy-first origin story       |
-| 2        | Your Budget App Shouldn't Need the Internet      | Offline-first architecture       |
-| 3        | How Finance Keeps Your Data Private               | Technical deep-dive on encryption|
-| 4        | Budgeting for Couples Without Sharing Passwords   | Family/household feature         |
-| 5        | Finance on Every Screen                           | Multi-platform story             |
-| 6        | From Mint to Finance: A Migration Guide           | Competitor migration             |
-| 7        | Open Architecture: Export Your Data Anytime        | GDPR, data portability           |
+| Priority | Title                                           | Angle                             |
+| -------- | ----------------------------------------------- | --------------------------------- |
+| 1        | Why We Built Finance                            | Privacy-first origin story        |
+| 2        | Your Budget App Shouldn't Need the Internet     | Offline-first architecture        |
+| 3        | How Finance Keeps Your Data Private             | Technical deep-dive on encryption |
+| 4        | Budgeting for Couples Without Sharing Passwords | Family/household feature          |
+| 5        | Finance on Every Screen                         | Multi-platform story              |
+| 6        | From Mint to Finance: A Migration Guide         | Competitor migration              |
+| 7        | Open Architecture: Export Your Data Anytime     | GDPR, data portability            |
 
 ### Privacy and Security Differentiation
 
@@ -175,34 +175,34 @@ has been restored for all users.
 
 ### SEO Keywords
 
-| Category      | Target Keywords                                                             |
-| ------------- | --------------------------------------------------------------------------- |
-| Primary       | personal finance app, budget tracker, expense tracker                       |
-| Long-tail     | private budget app, offline budget tracker, budget app without cloud        |
-| Comparison    | mint alternative, ynab alternative, privacy budget app                     |
-| Feature       | family budget app, couples budget tracker, savings goal tracker             |
-| Platform      | budget app ios, budget app android, budget app windows, budget pwa          |
+| Category   | Target Keywords                                                      |
+| ---------- | -------------------------------------------------------------------- |
+| Primary    | personal finance app, budget tracker, expense tracker                |
+| Long-tail  | private budget app, offline budget tracker, budget app without cloud |
+| Comparison | mint alternative, ynab alternative, privacy budget app               |
+| Feature    | family budget app, couples budget tracker, savings goal tracker      |
+| Platform   | budget app ios, budget app android, budget app windows, budget pwa   |
 
 ## User Acquisition Channels
 
 ### Organic Channels
 
-| Channel           | Strategy                                                      | Effort | Impact |
-| ----------------- | ------------------------------------------------------------- | ------ | ------ |
-| ASO               | Optimize listings quarterly, A/B test screenshots             | Medium | High   |
-| SEO / Blog        | Publish 2 posts/month targeting long-tail finance keywords    | Medium | Medium |
-| Reddit            | Engage authentically in r/personalfinance, r/privacy, r/ynab  | Low    | Medium |
-| Hacker News       | Show HN launch, technical blog posts on architecture          | Low    | High   |
-| Product Hunt      | Time launch for Tuesday–Thursday, prepare a compelling story   | Low    | Medium |
-| GitHub community  | Open-source components, engage with privacy/fintech devs      | Low    | Low    |
+| Channel          | Strategy                                                     | Effort | Impact |
+| ---------------- | ------------------------------------------------------------ | ------ | ------ |
+| ASO              | Optimize listings quarterly, A/B test screenshots            | Medium | High   |
+| SEO / Blog       | Publish 2 posts/month targeting long-tail finance keywords   | Medium | Medium |
+| Reddit           | Engage authentically in r/personalfinance, r/privacy, r/ynab | Low    | Medium |
+| Hacker News      | Show HN launch, technical blog posts on architecture         | Low    | High   |
+| Product Hunt     | Time launch for Tuesday–Thursday, prepare a compelling story | Low    | Medium |
+| GitHub community | Open-source components, engage with privacy/fintech devs     | Low    | Low    |
 
 ### Paid Channels (Budget-Conscious)
 
-| Channel               | Monthly Budget | Strategy                                       |
-| --------------------- | -------------- | ---------------------------------------------- |
-| Apple Search Ads       | $200–500       | Target branded competitor terms + category terms|
-| Google Ads (UAC)       | $200–500       | Target "budget app" and "expense tracker" terms |
-| Reddit Ads             | $100–200       | Target r/personalfinance, r/privacy             |
+| Channel          | Monthly Budget | Strategy                                         |
+| ---------------- | -------------- | ------------------------------------------------ |
+| Apple Search Ads | $200–500       | Target branded competitor terms + category terms |
+| Google Ads (UAC) | $200–500       | Target "budget app" and "expense tracker" terms  |
+| Reddit Ads       | $100–200       | Target r/personalfinance, r/privacy              |
 
 **Rules for paid acquisition**:
 
@@ -221,44 +221,44 @@ has been restored for all users.
 
 ### Partnership Opportunities
 
-| Partner Type                 | Approach                                              |
-| ---------------------------- | ----------------------------------------------------- |
-| Financial literacy nonprofits | Offer free premium access for their communities       |
-| Privacy advocacy orgs         | Co-publish content on financial data privacy          |
-| Personal finance bloggers     | Provide review copies, affiliate program              |
+| Partner Type                     | Approach                                           |
+| -------------------------------- | -------------------------------------------------- |
+| Financial literacy nonprofits    | Offer free premium access for their communities    |
+| Privacy advocacy orgs            | Co-publish content on financial data privacy       |
+| Personal finance bloggers        | Provide review copies, affiliate program           |
 | University financial aid offices | Free student tier, financial wellness integrations |
 
 ## Competitive Positioning
 
 ### Key Differentiators
 
-| Feature             | Finance       | Mint     | YNAB      | Monarch  | Copilot (iOS) |
-| ------------------- | ------------- | -------- | --------- | -------- | ------------- |
-| Privacy-first       | ✅ Local-first | ❌ Cloud | ❌ Cloud  | ❌ Cloud | ❌ Cloud      |
-| Works offline       | ✅ Full       | ❌       | ❌        | ❌       | ❌            |
-| Multi-platform      | ✅ 4 platforms| ✅ Web+Mobile | ✅ Web+Mobile | ✅ Web+Mobile | ❌ iOS only |
-| Open data export    | ✅ JSON+CSV   | ⚠️ Limited | ⚠️ Limited | ⚠️ Limited | ⚠️ Limited  |
-| No ads              | ✅            | ❌       | ✅        | ✅       | ✅            |
-| Family/household    | ✅            | ❌       | ✅        | ✅       | ❌            |
-| Windows native      | ✅            | ❌       | ❌        | ❌       | ❌            |
+| Feature          | Finance        | Mint          | YNAB          | Monarch       | Copilot (iOS) |
+| ---------------- | -------------- | ------------- | ------------- | ------------- | ------------- |
+| Privacy-first    | ✅ Local-first | ❌ Cloud      | ❌ Cloud      | ❌ Cloud      | ❌ Cloud      |
+| Works offline    | ✅ Full        | ❌            | ❌            | ❌            | ❌            |
+| Multi-platform   | ✅ 4 platforms | ✅ Web+Mobile | ✅ Web+Mobile | ✅ Web+Mobile | ❌ iOS only   |
+| Open data export | ✅ JSON+CSV    | ⚠️ Limited    | ⚠️ Limited    | ⚠️ Limited    | ⚠️ Limited    |
+| No ads           | ✅             | ❌            | ✅            | ✅            | ✅            |
+| Family/household | ✅             | ❌            | ✅            | ✅            | ❌            |
+| Windows native   | ✅             | ❌            | ❌            | ❌            | ❌            |
 
 ### Messaging Matrix
 
-| Audience              | Lead Message                                               | Supporting Proof                         |
-| --------------------- | ---------------------------------------------------------- | ---------------------------------------- |
-| Privacy-conscious     | "Your financial data stays on your device"                 | Local-first architecture, no telemetry   |
-| Budget beginners      | "Simple budgeting that works even without internet"        | Guided setup, offline-first              |
-| YNAB/Mint refugees    | "All the budgeting power, none of the data sharing"        | Feature parity + privacy + data import   |
-| Families/couples      | "Budget together without sharing passwords or bank logins" | Household sync, per-user permissions     |
-| Technical users       | "Open architecture, export anytime, your data your rules"  | JSON/CSV export, transparent sync        |
+| Audience           | Lead Message                                               | Supporting Proof                       |
+| ------------------ | ---------------------------------------------------------- | -------------------------------------- |
+| Privacy-conscious  | "Your financial data stays on your device"                 | Local-first architecture, no telemetry |
+| Budget beginners   | "Simple budgeting that works even without internet"        | Guided setup, offline-first            |
+| YNAB/Mint refugees | "All the budgeting power, none of the data sharing"        | Feature parity + privacy + data import |
+| Families/couples   | "Budget together without sharing passwords or bank logins" | Household sync, per-user permissions   |
+| Technical users    | "Open architecture, export anytime, your data your rules"  | JSON/CSV export, transparent sync      |
 
 ### Pricing Position
 
-| Tier     | Price         | Includes                                                 |
-| -------- | ------------- | -------------------------------------------------------- |
-| Free     | $0            | Unlimited accounts, budgets, transactions — single device|
-| Premium  | $4.99/month   | Multi-device sync, household sharing, priority support   |
-| Annual   | $39.99/year   | Premium features, 33% discount vs monthly                |
+| Tier    | Price       | Includes                                                  |
+| ------- | ----------- | --------------------------------------------------------- |
+| Free    | $0          | Unlimited accounts, budgets, transactions — single device |
+| Premium | $4.99/month | Multi-device sync, household sharing, priority support    |
+| Annual  | $39.99/year | Premium features, 33% discount vs monthly                 |
 
 **Position relative to competitors**: Cheaper than YNAB ($14.99/mo), comparable to Monarch ($9.99/mo) but with privacy advantages. Free tier is genuinely usable (not a trial), differentiating from Copilot's subscription-only model.
 
@@ -281,22 +281,22 @@ Install → Open app → Create first account → Log first transaction → Crea
 
 ### Retention Cohorts
 
-| Cohort | Target   | Red Flag Below |
-| ------ | -------- | -------------- |
-| D1     | 40%      | 25%            |
-| D7     | 25%      | 15%            |
-| D30    | 15%      | 8%             |
-| D90    | 10%      | 5%             |
+| Cohort | Target | Red Flag Below |
+| ------ | ------ | -------------- |
+| D1     | 40%    | 25%            |
+| D7     | 25%    | 15%            |
+| D30    | 15%    | 8%             |
+| D90    | 10%    | 5%             |
 
 ### Revenue Metrics
 
-| Metric                     | Target          |
-| -------------------------- | --------------- |
+| Metric                     | Target              |
+| -------------------------- | ------------------- |
 | Free-to-Premium conversion | 5–8% within 90 days |
-| ARPU (all users)           | $0.50/month     |
-| ARPU (paying users)        | $4.50/month     |
-| Churn (monthly premium)    | < 5%/month      |
-| LTV (paying user)          | > $50           |
+| ARPU (all users)           | $0.50/month         |
+| ARPU (paying users)        | $4.50/month         |
+| Churn (monthly premium)    | < 5%/month          |
+| LTV (paying user)          | > $50               |
 
 ### Instrumentation
 

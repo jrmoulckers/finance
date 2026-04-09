@@ -328,17 +328,20 @@ When an agent is blocked or uncertain:
 Every sprint cycle MUST include business-side work alongside engineering:
 
 **Product Management** (every sprint):
+
 - Triage new issues created since last sprint
 - Update milestone progress
 - Groom backlog (label, prioritize, decompose large issues)
 - Track platform parity
 
 **Marketing** (bi-weekly):
+
 - Update app store listings if features shipped
 - Draft content for shipped features
 - Review competitive landscape
 
 **Business Analysis** (monthly):
+
 - Validate pricing against market
 - Review conversion metrics
 - Update revenue projections

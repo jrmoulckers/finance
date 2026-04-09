@@ -16,55 +16,55 @@ Every issue maps to exactly one agent type based on the files it will touch. Use
 
 ### Engineering Agents
 
-| Agent Type               | File Ownership                                      | Agent Definition                                |
-| ------------------------ | --------------------------------------------------- | ----------------------------------------------- |
-| `android-engineer`       | `apps/android/**`                                   | `.github/agents/android-engineer.agent.md`      |
-| `ios-engineer`           | `apps/ios/**`                                       | `.github/agents/ios-engineer.agent.md`           |
-| `web-engineer`           | `apps/web/**`                                       | `.github/agents/web-engineer.agent.md`           |
-| `windows-engineer`       | `apps/windows/**`                                   | `.github/agents/windows-engineer.agent.md`       |
-| `kmp-engineer`           | `packages/**`                                       | `.github/agents/kmp-engineer.agent.md`           |
-| `backend-engineer`       | `services/**`                                       | `.github/agents/backend-engineer.agent.md`       |
-| `devops-engineer`        | `.github/workflows/**`, `tools/**`, `build-logic/**`| `.github/agents/devops-engineer.agent.md`        |
-| `design-engineer`        | `config/tokens/**`                                  | `.github/agents/design-engineer.agent.md`        |
-| `docs-writer`            | `docs/**`, root `*.md` files                        | `.github/agents/docs-writer.agent.md`            |
-| `architect`              | Cross-cutting design decisions, ADRs                | `.github/agents/architect.agent.md`              |
+| Agent Type         | File Ownership                                       | Agent Definition                           |
+| ------------------ | ---------------------------------------------------- | ------------------------------------------ |
+| `android-engineer` | `apps/android/**`                                    | `.github/agents/android-engineer.agent.md` |
+| `ios-engineer`     | `apps/ios/**`                                        | `.github/agents/ios-engineer.agent.md`     |
+| `web-engineer`     | `apps/web/**`                                        | `.github/agents/web-engineer.agent.md`     |
+| `windows-engineer` | `apps/windows/**`                                    | `.github/agents/windows-engineer.agent.md` |
+| `kmp-engineer`     | `packages/**`                                        | `.github/agents/kmp-engineer.agent.md`     |
+| `backend-engineer` | `services/**`                                        | `.github/agents/backend-engineer.agent.md` |
+| `devops-engineer`  | `.github/workflows/**`, `tools/**`, `build-logic/**` | `.github/agents/devops-engineer.agent.md`  |
+| `design-engineer`  | `config/tokens/**`                                   | `.github/agents/design-engineer.agent.md`  |
+| `docs-writer`      | `docs/**`, root `*.md` files                         | `.github/agents/docs-writer.agent.md`      |
+| `architect`        | Cross-cutting design decisions, ADRs                 | `.github/agents/architect.agent.md`        |
 
 ### Review Agents (Read-Only)
 
-| Agent Type               | Purpose                                             | Agent Definition                                |
-| ------------------------ | --------------------------------------------------- | ----------------------------------------------- |
-| `security-reviewer`      | Security and privacy audits                         | `.github/agents/security-reviewer.agent.md`      |
-| `accessibility-reviewer` | WCAG 2.2 AA compliance audits                       | `.github/agents/accessibility-reviewer.agent.md` |
+| Agent Type               | Purpose                       | Agent Definition                                 |
+| ------------------------ | ----------------------------- | ------------------------------------------------ |
+| `security-reviewer`      | Security and privacy audits   | `.github/agents/security-reviewer.agent.md`      |
+| `accessibility-reviewer` | WCAG 2.2 AA compliance audits | `.github/agents/accessibility-reviewer.agent.md` |
 
 ### Business Agents
 
-| Agent Type               | Purpose                                                                  |
-| ------------------------ | ------------------------------------------------------------------------ |
-| `product-manager`        | Issue triage, backlog grooming, milestone updates, sprint planning       |
-| `marketing-strategist`   | Go-to-market planning, launch communications, ASO, user engagement       |
-| `business-analyst`       | Monetization strategy, pricing analysis, competitive research, metrics   |
+| Agent Type             | Purpose                                                                |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `product-manager`      | Issue triage, backlog grooming, milestone updates, sprint planning     |
+| `marketing-strategist` | Go-to-market planning, launch communications, ASO, user engagement     |
+| `business-analyst`     | Monetization strategy, pricing analysis, competitive research, metrics |
 
 ### Label-to-Agent Mapping
 
 When categorizing issues by label, use this mapping:
 
-| Label Pattern            | Agent Type           |
-| ------------------------ | -------------------- |
-| `platform:android`       | `android-engineer`   |
-| `platform:ios`           | `ios-engineer`       |
-| `platform:web`           | `web-engineer`       |
-| `platform:windows`       | `windows-engineer`   |
-| `platform:shared`, `kmp` | `kmp-engineer`       |
-| `backend`, `supabase`    | `backend-engineer`   |
-| `ci`, `devops`           | `devops-engineer`    |
-| `design`, `tokens`       | `design-engineer`    |
-| `docs`, `documentation`  | `docs-writer`        |
-| `architecture`, `adr`    | `architect`          |
-| `security`, `privacy`    | `security-reviewer`  |
+| Label Pattern            | Agent Type               |
+| ------------------------ | ------------------------ |
+| `platform:android`       | `android-engineer`       |
+| `platform:ios`           | `ios-engineer`           |
+| `platform:web`           | `web-engineer`           |
+| `platform:windows`       | `windows-engineer`       |
+| `platform:shared`, `kmp` | `kmp-engineer`           |
+| `backend`, `supabase`    | `backend-engineer`       |
+| `ci`, `devops`           | `devops-engineer`        |
+| `design`, `tokens`       | `design-engineer`        |
+| `docs`, `documentation`  | `docs-writer`            |
+| `architecture`, `adr`    | `architect`              |
+| `security`, `privacy`    | `security-reviewer`      |
 | `a11y`, `accessibility`  | `accessibility-reviewer` |
-| `product`, `roadmap`     | `product-manager`    |
-| `marketing`, `launch`    | `marketing-strategist` |
-| `business`, `pricing`    | `business-analyst`   |
+| `product`, `roadmap`     | `product-manager`        |
+| `marketing`, `launch`    | `marketing-strategist`   |
+| `business`, `pricing`    | `business-analyst`       |
 
 If an issue has no matching label, infer the agent type from the issue title and description by identifying which files will be modified.
 
@@ -84,12 +84,12 @@ For each issue, determine the agent type using the label-to-agent mapping above.
 
 Certain issue combinations have implicit ordering constraints:
 
-| Dependency Rule | Reason |
-| --- | --- |
-| `kmp-engineer` before platform agents | Shared models/logic must exist before platform integration |
+| Dependency Rule                                               | Reason                                                                |
+| ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `kmp-engineer` before platform agents                         | Shared models/logic must exist before platform integration            |
 | `backend-engineer` before `kmp-engineer` (for schema changes) | Database migrations must land before KMP models reference new columns |
-| `design-engineer` before platform agents (for token changes) | Design tokens must be generated before UI code consumes them |
-| `architect` before implementation agents (for ADRs) | Architecture decisions must be made before implementation begins |
+| `design-engineer` before platform agents (for token changes)  | Design tokens must be generated before UI code consumes them          |
+| `architect` before implementation agents (for ADRs)           | Architecture decisions must be made before implementation begins      |
 
 ### Step 4: Group Into Sprints
 
@@ -200,6 +200,7 @@ worktrees/wt-[agent-type]-[type/description-issue#]
 ```
 
 Examples:
+
 - `worktrees/wt-android-feat-transactions-443`
 - `worktrees/wt-web-fix-auth-127`
 - `worktrees/wt-kmp-feat-schema-align-88`
@@ -251,13 +252,13 @@ No two agents may edit the same file in parallel. If a task requires changes fro
 
 These files may only be edited by **one agent per fleet run**:
 
-| File | Assigned Owner |
-| --- | --- |
-| `gradle/libs.versions.toml` | `kmp-engineer` |
-| `settings.gradle.kts` | `kmp-engineer` |
-| `package.json` | `devops-engineer` |
-| `turbo.json` | `devops-engineer` |
-| `eslint.config.mjs` | `devops-engineer` |
+| File                        | Assigned Owner    |
+| --------------------------- | ----------------- |
+| `gradle/libs.versions.toml` | `kmp-engineer`    |
+| `settings.gradle.kts`       | `kmp-engineer`    |
+| `package.json`              | `devops-engineer` |
+| `turbo.json`                | `devops-engineer` |
+| `eslint.config.mjs`         | `devops-engineer` |
 
 ### Schema Change Serialization
 
@@ -294,12 +295,12 @@ gh run view [run-id] --log-failed
 
 ### Failure Resolution
 
-| Failure Type | Resolution |
-| --- | --- |
-| Format errors | `npm run format`, commit, push |
-| Lint errors | `npx eslint . --fix`, commit, push |
-| Type errors | Fix the TypeScript/Kotlin error, run `ci:check`, commit, push |
-| Test failures | Fix the test or the code under test, run `ci:check`, commit, push |
+| Failure Type    | Resolution                                                                            |
+| --------------- | ------------------------------------------------------------------------------------- |
+| Format errors   | `npm run format`, commit, push                                                        |
+| Lint errors     | `npx eslint . --fix`, commit, push                                                    |
+| Type errors     | Fix the TypeScript/Kotlin error, run `ci:check`, commit, push                         |
+| Test failures   | Fix the test or the code under test, run `ci:check`, commit, push                     |
 | Merge conflicts | `git fetch origin main && git rebase origin/main`, resolve, push `--force-with-lease` |
 
 ### Self-Healing Cycle
@@ -319,6 +320,7 @@ Every sprint should include business and management tasks alongside engineering 
 ### Product Manager
 
 Dispatch for:
+
 - Issue triage and prioritization of the open backlog
 - Backlog grooming — closing stale issues, adding labels, refining descriptions
 - Milestone and roadmap updates
@@ -327,6 +329,7 @@ Dispatch for:
 ### Marketing Strategist
 
 Dispatch for:
+
 - Go-to-market planning for upcoming features
 - App store listing optimization (ASO) — title, description, keywords, screenshots
 - Launch communications — blog posts, release notes, social media
@@ -335,6 +338,7 @@ Dispatch for:
 ### Business Analyst
 
 Dispatch for:
+
 - Monetization strategy and pricing model analysis
 - Competitive landscape research
 - Feature usage metrics analysis and recommendations
@@ -436,14 +440,14 @@ ORDER BY
 
 ## Reference Files
 
-| Resource | Path |
-| --- | --- |
-| Agent definitions | `.github/agents/*.agent.md` |
-| Skill definitions | `.github/skills/*/SKILL.md` |
-| Worktree lifecycle guide | `docs/ai/worktrees.md` |
-| Fleet operations guide | `docs/ai/fleet-operations.md` |
-| Agent overview | `docs/ai/agents.md` |
-| Skills overview | `docs/ai/skills.md` |
-| AI restrictions | `docs/ai/restrictions.md` |
-| CI/CD workflow docs | `docs/ai/workflow.md` |
-| Project AGENTS.md | `AGENTS.md` (repo root) |
+| Resource                 | Path                          |
+| ------------------------ | ----------------------------- |
+| Agent definitions        | `.github/agents/*.agent.md`   |
+| Skill definitions        | `.github/skills/*/SKILL.md`   |
+| Worktree lifecycle guide | `docs/ai/worktrees.md`        |
+| Fleet operations guide   | `docs/ai/fleet-operations.md` |
+| Agent overview           | `docs/ai/agents.md`           |
+| Skills overview          | `docs/ai/skills.md`           |
+| AI restrictions          | `docs/ai/restrictions.md`     |
+| CI/CD workflow docs      | `docs/ai/workflow.md`         |
+| Project AGENTS.md        | `AGENTS.md` (repo root)       |

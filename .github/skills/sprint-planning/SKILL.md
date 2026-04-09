@@ -14,23 +14,23 @@ This skill provides structured guidance for planning development sprints in the 
 
 Route GitHub issues to the correct agent based on labels. When an issue carries multiple labels, use the most specific match. Cross-platform `feature` issues go to `architect` for design decomposition first, then fan out to platform agents.
 
-| Label(s)                                  | Agent Type             |
-| ----------------------------------------- | ---------------------- |
-| `platform:android`                        | android-engineer       |
-| `platform:ios`                            | ios-engineer           |
-| `platform:web`, `comp:web`                | web-engineer           |
-| `platform:windows`                        | windows-engineer       |
-| `platform:shared`, `comp:sync`, `comp:core` | kmp-engineer         |
-| `ci`, `infrastructure`                    | devops-engineer        |
-| `security`, `compliance`                  | security-reviewer      |
-| `accessibility`                           | accessibility-reviewer |
-| `documentation`                           | docs-writer            |
-| `design-system`                           | design-engineer        |
-| `feature` (cross-platform)               | architect → platform agents |
-| `bug`                                     | Route to platform based on other labels |
-| `monetization`, `pricing`                 | business-analyst       |
-| `marketing`, `launch`, `growth`           | marketing-strategist   |
-| `roadmap`, `planning`, `triage`           | product-manager        |
+| Label(s)                                    | Agent Type                              |
+| ------------------------------------------- | --------------------------------------- |
+| `platform:android`                          | android-engineer                        |
+| `platform:ios`                              | ios-engineer                            |
+| `platform:web`, `comp:web`                  | web-engineer                            |
+| `platform:windows`                          | windows-engineer                        |
+| `platform:shared`, `comp:sync`, `comp:core` | kmp-engineer                            |
+| `ci`, `infrastructure`                      | devops-engineer                         |
+| `security`, `compliance`                    | security-reviewer                       |
+| `accessibility`                             | accessibility-reviewer                  |
+| `documentation`                             | docs-writer                             |
+| `design-system`                             | design-engineer                         |
+| `feature` (cross-platform)                  | architect → platform agents             |
+| `bug`                                       | Route to platform based on other labels |
+| `monetization`, `pricing`                   | business-analyst                        |
+| `marketing`, `launch`, `growth`             | marketing-strategist                    |
+| `roadmap`, `planning`, `triage`             | product-manager                         |
 
 ### Routing Rules
 
@@ -65,10 +65,10 @@ Detect and encode dependencies before scheduling. The following patterns indicat
 | Signal in the issue                               | Depends on                                        |
 | ------------------------------------------------- | ------------------------------------------------- |
 | Mentions `packages/core` or `packages/models`     | KMP compilation must succeed first                |
-| Mentions `packages/sync` or sync behavior          | Sync engine (#466) must be stable                 |
-| Platform integration (`apps/<platform>/src/kmp/`)  | Corresponding KMP package must compile for target |
-| Database schema changes (new columns, migrations)  | Serialized: backend → KMP → platforms             |
-| Design token consumption                           | `design-engineer` token pipeline must run first   |
+| Mentions `packages/sync` or sync behavior         | Sync engine (#466) must be stable                 |
+| Platform integration (`apps/<platform>/src/kmp/`) | Corresponding KMP package must compile for target |
+| Database schema changes (new columns, migrations) | Serialized: backend → KMP → platforms             |
+| Design token consumption                          | `design-engineer` token pipeline must run first   |
 
 ### Schema Change Serialization
 
@@ -107,12 +107,12 @@ AND NOT EXISTS (
 
 Assign every issue a priority level before scheduling. Higher priorities fill the sprint first.
 
-| Priority | Criteria                                          | Sprint Action                        |
-| -------- | ------------------------------------------------- | ------------------------------------ |
-| **P0**   | Blocks launch, CI broken, security vulnerability  | Immediate — displaces current work   |
-| **P1**   | Core feature, tech debt blocking other work        | Must be in the current sprint        |
-| **P2**   | Feature enhancement, testing, documentation        | Fill remaining sprint capacity       |
-| **P3**   | Nice-to-have, post-launch, optimization            | Backlog — schedule when capacity allows |
+| Priority | Criteria                                         | Sprint Action                           |
+| -------- | ------------------------------------------------ | --------------------------------------- |
+| **P0**   | Blocks launch, CI broken, security vulnerability | Immediate — displaces current work      |
+| **P1**   | Core feature, tech debt blocking other work      | Must be in the current sprint           |
+| **P2**   | Feature enhancement, testing, documentation      | Fill remaining sprint capacity          |
+| **P3**   | Nice-to-have, post-launch, optimization          | Backlog — schedule when capacity allows |
 
 ### Priority Assignment Rules
 

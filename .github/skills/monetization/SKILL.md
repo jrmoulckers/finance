@@ -62,12 +62,12 @@ SubscriptionTier (enum: FREE, PREMIUM, FAMILY)
 
 ### Platform-Specific IAP
 
-| Platform | Technology | Notes |
-| -------- | ------------------------------------ | ------------------------------------------- |
-| iOS | StoreKit 2 + App Store Server API v2 | Use `Product.SubscriptionInfo` for status |
-| Android | Google Play Billing Library v7 | Use `BillingClient` with `PurchasesUpdatedListener` |
-| Web | Stripe or Paddle | No direct card handling; use hosted checkout |
-| Windows | Microsoft Store IAP | `Windows.Services.Store` namespace |
+| Platform | Technology                           | Notes                                               |
+| -------- | ------------------------------------ | --------------------------------------------------- |
+| iOS      | StoreKit 2 + App Store Server API v2 | Use `Product.SubscriptionInfo` for status           |
+| Android  | Google Play Billing Library v7       | Use `BillingClient` with `PurchasesUpdatedListener` |
+| Web      | Stripe or Paddle                     | No direct card handling; use hosted checkout        |
+| Windows  | Microsoft Store IAP                  | `Windows.Services.Store` namespace                  |
 
 ### Cross-Platform Entitlement Sync
 
@@ -101,11 +101,11 @@ PowerSync → All devices (sync entitlement)
 
 ### Competitive Landscape
 
-| App | Monthly | Annual | Positioning |
-| ------- | -------- | --------- | ---------------------------------- |
-| YNAB | $14.99 | $109.99 | Envelope budgeting, education |
-| Monarch | $14.99 | $99.99 | Aggregation, financial planning |
-| Copilot | $13.99 | $89.99 | Design-forward, Apple-only |
+| App                | Monthly   | Annual     | Positioning                       |
+| ------------------ | --------- | ---------- | --------------------------------- |
+| YNAB               | $14.99    | $109.99    | Envelope budgeting, education     |
+| Monarch            | $14.99    | $99.99     | Aggregation, financial planning   |
+| Copilot            | $13.99    | $89.99     | Design-forward, Apple-only        |
 | **Finance (ours)** | **$4.99** | **$39.99** | **Privacy-first, cross-platform** |
 
 ### Recommended Pricing
@@ -124,13 +124,13 @@ PowerSync → All devices (sync entitlement)
 
 ### Key Metrics
 
-| Metric | Definition | Target |
-| ------ | ---------- | ------ |
-| **MRR** | Monthly Recurring Revenue — sum of all active monthly-equivalent subscriptions | Track growth rate |
-| **Churn Rate** | % of subscribers who cancel in a given period | < 5% monthly |
-| **LTV** | Lifetime Value — average revenue per user over their subscription lifetime | > $60 |
-| **Conversion Rate** | Free → Trial → Paid funnel completion | > 5% free-to-paid |
-| **ARPU** | Average Revenue Per User (across free and paid) | Track over time |
+| Metric              | Definition                                                                     | Target            |
+| ------------------- | ------------------------------------------------------------------------------ | ----------------- |
+| **MRR**             | Monthly Recurring Revenue — sum of all active monthly-equivalent subscriptions | Track growth rate |
+| **Churn Rate**      | % of subscribers who cancel in a given period                                  | < 5% monthly      |
+| **LTV**             | Lifetime Value — average revenue per user over their subscription lifetime     | > $60             |
+| **Conversion Rate** | Free → Trial → Paid funnel completion                                          | > 5% free-to-paid |
+| **ARPU**            | Average Revenue Per User (across free and paid)                                | Track over time   |
 
 ### Conversion Funnel
 
