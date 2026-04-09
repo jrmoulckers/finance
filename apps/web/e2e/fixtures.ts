@@ -67,10 +67,15 @@ function createFakeJwt(): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Install route handlers that mock all auth-related API endpoints.
+ * Install route handlers that mock all API endpoints the app may call.
  *
  * This must be called BEFORE any navigation so that the initial session
  * restore attempt (refresh endpoint) also gets intercepted.
+ *
+ * In addition to auth endpoints, we mock the sync push endpoint and a
+ * catch-all for any other `/api/` path.  This prevents unhandled requests
+ * from hitting the Vite dev server (which has no backend) and hanging or
+ * returning HTML error pages that break JSON parsing.
  */
 async function installAuthMocks(page: Page): Promise<void> {
   // Mock the login endpoint — returns a fake access token and user object.
@@ -103,6 +108,26 @@ async function installAuthMocks(page: Page): Promise<void> {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ success: true }),
+    });
+  });
+
+  // Mock the sync push endpoint — the offline mutation replay system may
+  // attempt to push queued mutations.  Return an empty acknowledged list.
+  await page.route('**/api/sync/push', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ acknowledged: [], conflicts: [] }),
+    });
+  });
+
+  // Mock Supabase Edge Function sync endpoint (used when a real Supabase
+  // project URL is configured via VITE_SUPABASE_URL).
+  await page.route('**/functions/v1/sync-push', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ acknowledged: [], conflicts: [] }),
     });
   });
 
