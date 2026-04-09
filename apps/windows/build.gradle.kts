@@ -7,9 +7,10 @@ plugins {
 }
 
 dependencies {
-    // KMP shared modules
+    // KMP shared modules — all business logic lives here
     implementation(project(":packages:models"))
     implementation(project(":packages:core"))
+    implementation(project(":packages:sync"))
 
     // Compose Desktop
     implementation(compose.desktop.currentOs)
@@ -21,6 +22,12 @@ dependencies {
 
     // Date/time utilities
     implementation(libs.kotlinx.datetime)
+
+    // Serialization (transitive from KMP packages, explicit for sync payloads)
+    implementation(libs.kotlinx.serialization.json)
+
+    // HTTP client — Ktor OkHttp engine for JVM sync networking
+    implementation(libs.ktor.client.okhttp)
 
     // DI — Koin (core only, no Android dependency)
     implementation(libs.koin.core)

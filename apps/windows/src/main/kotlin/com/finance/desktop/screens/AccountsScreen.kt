@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -37,10 +38,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,70 +51,41 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.finance.core.currency.CurrencyFormatter
+import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
+import com.finance.desktop.viewmodel.AccountsViewModel
+import com.finance.models.Account
+import com.finance.models.AccountType
+import com.finance.models.Transaction
+import com.finance.models.TransactionType
 
 // =============================================================================
-// Sample data (UI-layer placeholders)
+// Accounts Screen — Master-Detail Layout (KMP shared models)
 // =============================================================================
 
-private data class AccountItem(
-    val id: String,
-    val name: String,
-    val type: String,
-    val typeIcon: ImageVector,
-    val balance: String,
-    val transactions: List<AccountTransaction>,
-)
+/**
+ * Maps KMP shared [AccountType] to a display icon.
+ *
+ * Centralised here so that every composable referencing account types
+ * shows a consistent icon, matching the Fluent Design icon vocabulary.
+ */
+private fun AccountType.toIcon(): ImageVector = when (this) {
+    AccountType.CHECKING -> Icons.Filled.AccountBalance
+    AccountType.SAVINGS -> Icons.Filled.Savings
+    AccountType.CREDIT_CARD -> Icons.Filled.CreditCard
+    AccountType.INVESTMENT -> Icons.Filled.ShowChart
+    AccountType.CASH -> Icons.Filled.Wallet
+    AccountType.LOAN -> Icons.Filled.CreditCard
+    AccountType.OTHER -> Icons.Filled.AccountBalance
+}
 
-private data class AccountTransaction(
-    val id: String,
-    val payee: String,
-    val amount: String,
-    val isExpense: Boolean,
-    val date: String,
-    val category: String,
-)
-
-private val sampleAccounts = listOf(
-    AccountItem(
-        "1", "Main Checking", "Checking", Icons.Filled.AccountBalance, "\$5,247.30",
-        listOf(
-            AccountTransaction("t1", "Whole Foods", "-\$52.30", true, "Mar 6", "Groceries"),
-            AccountTransaction("t2", "Salary", "+\$4,200.00", false, "Mar 5", "Income"),
-            AccountTransaction("t3", "Electric Bill", "-\$125.00", true, "Mar 3", "Utilities"),
-            AccountTransaction("t4", "Gas Station", "-\$45.00", true, "Mar 2", "Transport"),
-        ),
-    ),
-    AccountItem(
-        "2", "Savings Account", "Savings", Icons.Filled.Savings, "\$18,670.00",
-        listOf(
-            AccountTransaction("t5", "Interest", "+\$12.50", false, "Mar 1", "Income"),
-            AccountTransaction("t6", "Transfer In", "+\$500.00", false, "Feb 28", "Transfer"),
-        ),
-    ),
-    AccountItem(
-        "3", "Visa Card", "Credit Card", Icons.Filled.CreditCard, "-\$1,284.50",
-        listOf(
-            AccountTransaction("t7", "Netflix", "-\$15.99", true, "Mar 5", "Entertainment"),
-            AccountTransaction("t8", "Restaurant", "-\$68.00", true, "Mar 4", "Dining"),
-            AccountTransaction("t9", "Amazon", "-\$42.99", true, "Mar 3", "Shopping"),
-        ),
-    ),
-    AccountItem(
-        "4", "Investment Portfolio", "Investment", Icons.Filled.ShowChart, "\$92,500.00",
-        listOf(
-            AccountTransaction("t10", "Dividend", "+\$125.00", false, "Mar 1", "Investment"),
-        ),
-    ),
-    AccountItem(
-        "5", "Cash Wallet", "Cash", Icons.Filled.Wallet, "\$185.42",
-        listOf(),
-    ),
-)
-
-// =============================================================================
-// Accounts Screen — Master-Detail Layout
-// =============================================================================
+/**
+ * Human-readable label for an [AccountType].
+ */
+private fun AccountType.displayName(): String = name.lowercase()
+    .replace('_', ' ')
+    .replaceFirstChar { it.uppercase() }
 
 /**
  * Master-detail accounts screen for the desktop Finance application.
@@ -129,14 +99,33 @@ private val sampleAccounts = listOf(
  * └─────────────────┴────────────────────────────────┘
  * ```
  *
+ * All account data flows from [AccountsViewModel], which loads from the
+ * KMP shared repository layer — no hardcoded sample data.
+ *
  * Right-click context menus on accounts and transactions for desktop UX.
  * Narrator reads account type, name, and balance for each item.
  */
 @Composable
 fun AccountsScreen(modifier: Modifier = Modifier) {
-    var selectedAccountId by remember { mutableStateOf(sampleAccounts.first().id) }
-    val selectedAccount = sampleAccounts.find { it.id == selectedAccountId }
-        ?: sampleAccounts.first()
+    val viewModel = koinGet<AccountsViewModel>()
+    val state by viewModel.uiState.collectAsState()
+
+    if (state.isLoading) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.semantics {
+                    contentDescription = "Loading accounts"
+                },
+            )
+        }
+        return
+    }
+
+    val allAccounts = state.groups.flatMap { it.accounts }
+    val selectedAccount = state.selectedAccount ?: allAccounts.firstOrNull()
 
     Row(
         modifier = modifier
@@ -146,9 +135,9 @@ fun AccountsScreen(modifier: Modifier = Modifier) {
     ) {
         // ── Master: Account list ──
         AccountListPanel(
-            accounts = sampleAccounts,
-            selectedId = selectedAccount.id,
-            onSelect = { selectedAccountId = it.id },
+            accounts = allAccounts,
+            selectedId = selectedAccount?.id?.value,
+            onSelect = { viewModel.selectAccount(it) },
             modifier = Modifier
                 .width(320.dp)
                 .fillMaxHeight(),
@@ -162,12 +151,15 @@ fun AccountsScreen(modifier: Modifier = Modifier) {
         )
 
         // ── Detail: selected account info + transaction history ──
-        AccountDetailPanel(
-            account = selectedAccount,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-        )
+        if (selectedAccount != null) {
+            AccountDetailPanel(
+                account = selectedAccount,
+                transactions = state.selectedAccountTransactions,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+            )
+        }
     }
 }
 
@@ -177,9 +169,9 @@ fun AccountsScreen(modifier: Modifier = Modifier) {
 
 @Composable
 private fun AccountListPanel(
-    accounts: List<AccountItem>,
-    selectedId: String,
-    onSelect: (AccountItem) -> Unit,
+    accounts: List<Account>,
+    selectedId: String?,
+    onSelect: (Account) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -204,10 +196,10 @@ private fun AccountListPanel(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
             ) {
-                items(accounts, key = { it.id }) { account ->
+                items(accounts, key = { it.id.value }) { account ->
                     AccountListItem(
                         account = account,
-                        isSelected = account.id == selectedId,
+                        isSelected = account.id.value == selectedId,
                         onClick = { onSelect(account) },
                     )
                 }
@@ -218,7 +210,7 @@ private fun AccountListPanel(
 
 @Composable
 private fun AccountListItem(
-    account: AccountItem,
+    account: Account,
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -232,6 +224,8 @@ private fun AccountListItem(
     } else {
         MaterialTheme.colorScheme.onSurface
     }
+    val formattedBalance = CurrencyFormatter.format(account.currentBalance, account.currency)
+    val typeName = account.type.displayName()
 
     ContextMenuArea(
         items = {
@@ -248,7 +242,7 @@ private fun AccountListItem(
                 .clickable(onClick = onClick)
                 .semantics {
                     contentDescription =
-                        "${account.name}, ${account.type}, balance: ${account.balance}"
+                        "${account.name}, $typeName, balance: $formattedBalance"
                     selected = isSelected
                 },
             colors = CardDefaults.elevatedCardColors(containerColor = containerColor),
@@ -260,7 +254,7 @@ private fun AccountListItem(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    imageVector = account.typeIcon,
+                    imageVector = account.type.toIcon(),
                     contentDescription = null,
                     tint = contentColor,
                     modifier = Modifier.size(28.dp),
@@ -276,13 +270,13 @@ private fun AccountListItem(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = account.type,
+                        text = typeName,
                         style = MaterialTheme.typography.labelSmall,
                         color = contentColor.copy(alpha = 0.7f),
                     )
                 }
                 Text(
-                    text = account.balance,
+                    text = formattedBalance,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = contentColor,
@@ -298,9 +292,13 @@ private fun AccountListItem(
 
 @Composable
 private fun AccountDetailPanel(
-    account: AccountItem,
+    account: Account,
+    transactions: List<Transaction>,
     modifier: Modifier = Modifier,
 ) {
+    val formattedBalance = CurrencyFormatter.format(account.currentBalance, account.currency)
+    val typeName = account.type.displayName()
+
     Column(
         modifier = modifier.padding(start = FinanceDesktopTheme.spacing.lg),
     ) {
@@ -309,7 +307,7 @@ private fun AccountDetailPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .semantics {
-                    contentDescription = "${account.name}, balance: ${account.balance}"
+                    contentDescription = "${account.name}, balance: $formattedBalance"
                 },
             colors = CardDefaults.elevatedCardColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -318,7 +316,7 @@ private fun AccountDetailPanel(
             Column(modifier = Modifier.padding(FinanceDesktopTheme.spacing.xxl)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = account.typeIcon,
+                        imageVector = account.type.toIcon(),
                         contentDescription = null,
                         modifier = Modifier.size(32.dp),
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -338,7 +336,7 @@ private fun AccountDetailPanel(
                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
                 )
                 Text(
-                    text = account.balance,
+                    text = formattedBalance,
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -352,9 +350,9 @@ private fun AccountDetailPanel(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    DetailChip("Type", account.type)
-                    DetailChip("Status", "Active")
-                    DetailChip("Transactions", "${account.transactions.size}")
+                    DetailChip("Type", typeName)
+                    DetailChip("Status", if (account.isArchived) "Archived" else "Active")
+                    DetailChip("Transactions", "${transactions.size}")
                 }
             }
         }
@@ -373,7 +371,7 @@ private fun AccountDetailPanel(
         )
         Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
 
-        if (account.transactions.isEmpty()) {
+        if (transactions.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentAlignment = Alignment.Center,
@@ -392,7 +390,7 @@ private fun AccountDetailPanel(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
             ) {
-                items(account.transactions, key = { it.id }) { txn ->
+                items(transactions, key = { it.id.value }) { txn ->
                     AccountTransactionRow(txn)
                 }
             }
@@ -420,8 +418,11 @@ private fun DetailChip(label: String, value: String) {
 }
 
 @Composable
-private fun AccountTransactionRow(txn: AccountTransaction) {
-    val amountColor = if (txn.isExpense) MaterialTheme.colorScheme.error else Color(0xFF2E7D32)
+private fun AccountTransactionRow(txn: Transaction) {
+    val isExpense = txn.type == TransactionType.EXPENSE
+    val amountColor = if (isExpense) MaterialTheme.colorScheme.error else Color(0xFF2E7D32)
+    val formattedAmount = CurrencyFormatter.format(txn.amount, txn.currency, showSign = true)
+    val payee = txn.payee ?: "Unknown"
 
     ContextMenuArea(
         items = {
@@ -438,7 +439,7 @@ private fun AccountTransactionRow(txn: AccountTransaction) {
                 .fillMaxWidth()
                 .semantics {
                     contentDescription =
-                        "Transaction: ${txn.amount} at ${txn.payee}, ${txn.category}, ${txn.date}"
+                        "Transaction: $formattedAmount at $payee, ${txn.date}"
                 },
         ) {
             Row(
@@ -456,7 +457,7 @@ private fun AccountTransactionRow(txn: AccountTransaction) {
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(
-                        imageVector = if (txn.isExpense) Icons.Filled.TrendingDown
+                        imageVector = if (isExpense) Icons.Filled.TrendingDown
                         else Icons.Filled.TrendingUp,
                         contentDescription = null,
                         tint = amountColor,
@@ -465,21 +466,21 @@ private fun AccountTransactionRow(txn: AccountTransaction) {
                     Spacer(Modifier.width(FinanceDesktopTheme.spacing.md))
                     Column {
                         Text(
-                            text = txn.payee,
+                            text = payee,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = "${txn.category} • ${txn.date}",
+                            text = txn.date.toString(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
                 Text(
-                    text = txn.amount,
+                    text = formattedAmount,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = amountColor,

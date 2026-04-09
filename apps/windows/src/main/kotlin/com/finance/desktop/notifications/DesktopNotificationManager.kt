@@ -293,15 +293,14 @@ object DesktopNotificationManager {
     /**
      * Formats a [Cents] value for human-readable display in notifications.
      *
-     * Uses simple USD formatting. In production, this should delegate to
-     * the shared CurrencyFormatter from `packages/core`, but notification
-     * text does not warrant a full dependency on the formatter module.
+     * Delegates to the shared [com.finance.core.currency.CurrencyFormatter] from
+     * `packages/core` with a USD default. This ensures consistent formatting
+     * across all platforms.
      */
     private fun formatCentsForDisplay(cents: Cents): String {
-        val absCents = if (cents.amount < 0) -cents.amount else cents.amount
-        val dollars = absCents / 100
-        val remainder = absCents % 100
-        val sign = if (cents.amount < 0) "-" else ""
-        return "$sign$$dollars.${remainder.toString().padStart(2, '0')}"
+        return com.finance.core.currency.CurrencyFormatter.format(
+            cents,
+            com.finance.models.types.Currency.USD,
+        )
     }
 }

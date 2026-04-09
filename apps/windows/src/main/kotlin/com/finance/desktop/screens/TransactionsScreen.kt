@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -39,6 +40,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,86 +55,75 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.finance.core.currency.CurrencyFormatter
+import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
+import com.finance.desktop.viewmodel.TransactionsViewModel
+import com.finance.models.Transaction
+import com.finance.models.TransactionType
 
 // =============================================================================
-// Sample data (UI-layer placeholders)
+// Local UI-only types for sorting (not duplicated from KMP models)
 // =============================================================================
 
-private data class TransactionItem(
-    val id: String,
-    val date: String,
-    val payee: String,
-    val category: String,
-    val account: String,
-    val amount: String,
-    val rawAmount: Double,
-    val type: TransactionTypeUi,
-)
-
-private enum class TransactionTypeUi { EXPENSE, INCOME, TRANSFER }
-
-private enum class SortColumn { DATE, PAYEE, CATEGORY, ACCOUNT, AMOUNT }
+private enum class SortColumn { DATE, PAYEE, AMOUNT }
 private enum class SortDirection { ASC, DESC }
 
-private val sampleTransactionItems = listOf(
-    TransactionItem("1", "2025-03-06", "Whole Foods", "Groceries", "Checking", "-\$52.30", -52.30, TransactionTypeUi.EXPENSE),
-    TransactionItem("2", "2025-03-06", "Salary Deposit", "Income", "Checking", "+\$4,200.00", 4200.0, TransactionTypeUi.INCOME),
-    TransactionItem("3", "2025-03-05", "Netflix", "Entertainment", "Visa Card", "-\$15.99", -15.99, TransactionTypeUi.EXPENSE),
-    TransactionItem("4", "2025-03-05", "Gas Station", "Transport", "Checking", "-\$45.00", -45.0, TransactionTypeUi.EXPENSE),
-    TransactionItem("5", "2025-03-04", "Freelance Payment", "Income", "Checking", "+\$800.00", 800.0, TransactionTypeUi.INCOME),
-    TransactionItem("6", "2025-03-04", "Restaurant", "Dining", "Visa Card", "-\$68.00", -68.0, TransactionTypeUi.EXPENSE),
-    TransactionItem("7", "2025-03-03", "Electric Bill", "Utilities", "Checking", "-\$125.00", -125.0, TransactionTypeUi.EXPENSE),
-    TransactionItem("8", "2025-03-03", "Transfer to Savings", "Transfer", "Checking", "-\$500.00", -500.0, TransactionTypeUi.TRANSFER),
-    TransactionItem("9", "2025-03-02", "Amazon", "Shopping", "Visa Card", "-\$42.99", -42.99, TransactionTypeUi.EXPENSE),
-    TransactionItem("10", "2025-03-01", "Interest", "Income", "Savings", "+\$12.50", 12.50, TransactionTypeUi.INCOME),
-)
-
 // =============================================================================
-// Transactions Screen — Full-width Table
+// Transactions Screen — Full-width Table (KMP shared models)
 // =============================================================================
 
 /**
  * Full-width transaction table for the desktop Finance application.
  *
+ * Data flows from [TransactionsViewModel], which loads from the KMP shared
+ * repository layer. Search and type filtering are delegated to the ViewModel;
+ * column sorting is applied locally in the UI layer.
+ *
  * Features:
- * - Search bar for filtering by payee or category
+ * - Search bar for filtering by payee (delegated to ViewModel)
  * - Type filter chips (All / Expenses / Income / Transfers)
  * - Sortable columns (click header to sort ascending/descending)
  * - Right-click context menus on each row
  * - Mouse-friendly row spacing and hover-ready layout
  *
- * Narrator: Every row is described as "Transaction: amount at payee, category, date".
+ * Narrator: Every row is described as "Transaction: amount at payee, date".
  * Sort controls announce column name and direction.
  */
 @Composable
 fun TransactionsScreen(modifier: Modifier = Modifier) {
-    var searchQuery by remember { mutableStateOf("") }
-    var typeFilter by remember { mutableStateOf<TransactionTypeUi?>(null) }
+    val viewModel = koinGet<TransactionsViewModel>()
+    val state by viewModel.uiState.collectAsState()
+
     var sortColumn by remember { mutableStateOf(SortColumn.DATE) }
     var sortDirection by remember { mutableStateOf(SortDirection.DESC) }
 
-    val filteredAndSorted by remember(searchQuery, typeFilter, sortColumn, sortDirection) {
+    if (state.isLoading) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.semantics {
+                    contentDescription = "Loading transactions"
+                },
+            )
+        }
+        return
+    }
+
+    // Apply local sorting on top of ViewModel-filtered data
+    val sortedTransactions by remember(state.transactions, sortColumn, sortDirection) {
         derivedStateOf {
-            sampleTransactionItems
-                .filter { txn ->
-                    val matchesSearch = searchQuery.isBlank() ||
-                        txn.payee.contains(searchQuery, ignoreCase = true) ||
-                        txn.category.contains(searchQuery, ignoreCase = true)
-                    val matchesType = typeFilter == null || txn.type == typeFilter
-                    matchesSearch && matchesType
-                }
-                .sortedWith(
-                    compareBy<TransactionItem> { txn ->
-                        when (sortColumn) {
-                            SortColumn.DATE -> txn.date
-                            SortColumn.PAYEE -> txn.payee.lowercase()
-                            SortColumn.CATEGORY -> txn.category.lowercase()
-                            SortColumn.ACCOUNT -> txn.account.lowercase()
-                            SortColumn.AMOUNT -> txn.rawAmount.toString().padStart(20)
-                        }
-                    }.let { if (sortDirection == SortDirection.DESC) it.reversed() else it },
-                )
+            state.transactions.sortedWith(
+                compareBy<Transaction> { txn ->
+                    when (sortColumn) {
+                        SortColumn.DATE -> txn.date.toString()
+                        SortColumn.PAYEE -> (txn.payee ?: "").lowercase()
+                        SortColumn.AMOUNT -> txn.amount.amount.toString().padStart(20)
+                    }
+                }.let { if (sortDirection == SortDirection.DESC) it.reversed() else it },
+            )
         }
     }
 
@@ -157,10 +148,10 @@ fun TransactionsScreen(modifier: Modifier = Modifier) {
 
         // Search + filters bar
         SearchAndFilterBar(
-            searchQuery = searchQuery,
-            onSearchChange = { searchQuery = it },
-            typeFilter = typeFilter,
-            onTypeFilterChange = { typeFilter = it },
+            searchQuery = state.filter.searchQuery,
+            onSearchChange = { viewModel.updateSearch(it) },
+            typeFilter = state.filter.type,
+            onTypeFilterChange = { viewModel.setTypeFilter(it) },
         )
 
         Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
@@ -190,14 +181,14 @@ fun TransactionsScreen(modifier: Modifier = Modifier) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 // Table body
-                if (filteredAndSorted.isEmpty()) {
+                if (sortedTransactions.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
-                                imageVector = if (searchQuery.isNotBlank() || typeFilter != null)
+                                imageVector = if (state.filter.searchQuery.isNotBlank() || state.filter.type != null)
                                     Icons.Filled.FilterList else Icons.Filled.SwapHoriz,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
@@ -205,7 +196,7 @@ fun TransactionsScreen(modifier: Modifier = Modifier) {
                             )
                             Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
                             Text(
-                                text = if (searchQuery.isNotBlank() || typeFilter != null)
+                                text = if (state.filter.searchQuery.isNotBlank() || state.filter.type != null)
                                     "No matching transactions" else "No transactions yet",
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.semantics {
@@ -216,7 +207,7 @@ fun TransactionsScreen(modifier: Modifier = Modifier) {
                     }
                 } else {
                     LazyColumn {
-                        items(filteredAndSorted, key = { it.id }) { txn ->
+                        items(sortedTransactions, key = { it.id.value }) { txn ->
                             TransactionTableRow(txn)
                             HorizontalDivider(
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
@@ -237,8 +228,8 @@ fun TransactionsScreen(modifier: Modifier = Modifier) {
 private fun SearchAndFilterBar(
     searchQuery: String,
     onSearchChange: (String) -> Unit,
-    typeFilter: TransactionTypeUi?,
-    onTypeFilterChange: (TransactionTypeUi?) -> Unit,
+    typeFilter: TransactionType?,
+    onTypeFilterChange: (TransactionType?) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -283,11 +274,11 @@ private fun SearchAndFilterBar(
                 },
             )
             FilterChip(
-                selected = typeFilter == TransactionTypeUi.EXPENSE,
+                selected = typeFilter == TransactionType.EXPENSE,
                 onClick = {
                     onTypeFilterChange(
-                        if (typeFilter == TransactionTypeUi.EXPENSE) null
-                        else TransactionTypeUi.EXPENSE,
+                        if (typeFilter == TransactionType.EXPENSE) null
+                        else TransactionType.EXPENSE,
                     )
                 },
                 label = { Text("Expenses") },
@@ -303,11 +294,11 @@ private fun SearchAndFilterBar(
                 },
             )
             FilterChip(
-                selected = typeFilter == TransactionTypeUi.INCOME,
+                selected = typeFilter == TransactionType.INCOME,
                 onClick = {
                     onTypeFilterChange(
-                        if (typeFilter == TransactionTypeUi.INCOME) null
-                        else TransactionTypeUi.INCOME,
+                        if (typeFilter == TransactionType.INCOME) null
+                        else TransactionType.INCOME,
                     )
                 },
                 label = { Text("Income") },
@@ -323,11 +314,11 @@ private fun SearchAndFilterBar(
                 },
             )
             FilterChip(
-                selected = typeFilter == TransactionTypeUi.TRANSFER,
+                selected = typeFilter == TransactionType.TRANSFER,
                 onClick = {
                     onTypeFilterChange(
-                        if (typeFilter == TransactionTypeUi.TRANSFER) null
-                        else TransactionTypeUi.TRANSFER,
+                        if (typeFilter == TransactionType.TRANSFER) null
+                        else TransactionType.TRANSFER,
                     )
                 },
                 label = { Text("Transfers") },
@@ -371,14 +362,6 @@ private fun TableHeader(
         )
         SortableColumnHeader(
             "Payee", SortColumn.PAYEE, sortColumn, sortDirection, onSort, Modifier.weight(1f),
-        )
-        SortableColumnHeader(
-            "Category", SortColumn.CATEGORY, sortColumn, sortDirection, onSort,
-            Modifier.width(140.dp),
-        )
-        SortableColumnHeader(
-            "Account", SortColumn.ACCOUNT, sortColumn, sortDirection, onSort,
-            Modifier.width(140.dp),
         )
         SortableColumnHeader(
             "Amount", SortColumn.AMOUNT, sortColumn, sortDirection, onSort,
@@ -437,17 +420,19 @@ private fun SortableColumnHeader(
 // =============================================================================
 
 @Composable
-private fun TransactionTableRow(txn: TransactionItem) {
+private fun TransactionTableRow(txn: Transaction) {
     val amountColor = when (txn.type) {
-        TransactionTypeUi.EXPENSE -> MaterialTheme.colorScheme.error
-        TransactionTypeUi.INCOME -> Color(0xFF2E7D32)
-        TransactionTypeUi.TRANSFER -> MaterialTheme.colorScheme.tertiary
+        TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
+        TransactionType.INCOME -> Color(0xFF2E7D32)
+        TransactionType.TRANSFER -> MaterialTheme.colorScheme.tertiary
     }
     val typeIcon = when (txn.type) {
-        TransactionTypeUi.EXPENSE -> Icons.Filled.TrendingDown
-        TransactionTypeUi.INCOME -> Icons.Filled.TrendingUp
-        TransactionTypeUi.TRANSFER -> Icons.Filled.SwapHoriz
+        TransactionType.EXPENSE -> Icons.Filled.TrendingDown
+        TransactionType.INCOME -> Icons.Filled.TrendingUp
+        TransactionType.TRANSFER -> Icons.Filled.SwapHoriz
     }
+    val formattedAmount = CurrencyFormatter.format(txn.amount, txn.currency, showSign = true)
+    val payee = txn.payee ?: "Unknown"
 
     ContextMenuArea(
         items = {
@@ -470,13 +455,13 @@ private fun TransactionTableRow(txn: TransactionItem) {
                 )
                 .semantics {
                     contentDescription =
-                        "Transaction: ${txn.amount} at ${txn.payee}, ${txn.category}, ${txn.date}"
+                        "Transaction: $formattedAmount at $payee, ${txn.date}"
                 },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Date
             Text(
-                text = txn.date,
+                text = txn.date.toString(),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.width(120.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -495,7 +480,7 @@ private fun TransactionTableRow(txn: TransactionItem) {
                 )
                 Spacer(Modifier.width(FinanceDesktopTheme.spacing.sm))
                 Text(
-                    text = txn.payee,
+                    text = payee,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -503,29 +488,9 @@ private fun TransactionTableRow(txn: TransactionItem) {
                 )
             }
 
-            // Category
-            Text(
-                text = txn.category,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.width(140.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            // Account
-            Text(
-                text = txn.account,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.width(140.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-
             // Amount
             Text(
-                text = txn.amount,
+                text = formattedAmount,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = amountColor,
