@@ -39,6 +39,8 @@ venv/
 
 # === Swift / Xcode ===
 DerivedData/
+.derivedData/
+.spm-packages/
 *.pbxuser
 *.mode1v3
 *.mode2v3

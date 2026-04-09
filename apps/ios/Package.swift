@@ -18,13 +18,24 @@ let package = Package(
     ],
     products: [
         .library(name: "FinanceApp", targets: ["FinanceApp"]),
+        .library(name: "FinanceShared", targets: ["FinanceShared"]),
+        .library(name: "FinanceClip", targets: ["FinanceClip"]),
         .library(name: "FinanceWatch", targets: ["FinanceWatch"]),
         .library(name: "FinanceWidget", targets: ["FinanceWidget"]),
     ],
     targets: [
+        // MARK: - Shared module
+        // Shared types consumed by the main app, App Clip, and widgets.
+        .target(
+            name: "FinanceShared",
+            dependencies: [],
+            path: "Shared"
+        ),
+
+        // MARK: - Main app
         .target(
             name: "FinanceApp",
-            dependencies: [],
+            dependencies: ["FinanceShared"],
             path: "Finance",
             exclude: [
                 "Info.plist",
@@ -33,11 +44,27 @@ let package = Package(
                 "Data",
             ]
         ),
+
+        // MARK: - App Clip (#648)
+        // Quick transaction entry via Universal Links and NFC App Clip codes.
+        .target(
+            name: "FinanceClip",
+            dependencies: ["FinanceShared"],
+            path: "FinanceClip",
+            exclude: [
+                "Info.plist",
+                "FinanceClipApp.swift",
+            ]
+        ),
+
+        // MARK: - Widget extension
         .target(
             name: "FinanceWidget",
-            dependencies: [],
+            dependencies: ["FinanceShared"],
             path: "FinanceWidget"
         ),
+
+        // MARK: - watchOS companion
         .target(
             name: "FinanceWatch",
             dependencies: [],
@@ -50,6 +77,8 @@ let package = Package(
                 "ComplicationProvider.swift",
             ]
         ),
+
+        // MARK: - Tests
         .testTarget(
             name: "FinanceTests",
             dependencies: ["FinanceApp"],
