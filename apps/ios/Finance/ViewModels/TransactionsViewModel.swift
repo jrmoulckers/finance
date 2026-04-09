@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-// TransactionsViewModel.swift - Finance - References: #477, #645
+// TransactionsViewModel.swift - Finance - References: #414, #477, #645
 import Observation
 import os
 import SwiftUI
@@ -33,6 +33,23 @@ enum FilterLabelKind: Equatable, Sendable { case dateRange, amountRange, categor
 final class TransactionsViewModel {
     private let repository: TransactionRepository
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.finance", category: "TransactionsViewModel")
+
+    // MARK: - Pagination (#645)
+
+    /// Number of transactions to load per page.
+    static let pageSize = 50
+
+    /// The next page number to load (starts at 1; incremented after each page load).
+    var currentPage = 1
+
+    /// Whether additional pages of transactions may be available.
+    var hasMorePages = true
+
+    /// Current offset into the full transaction list for pagination.
+    private var currentOffset = 0
+
+    // MARK: - State
+
     var transactions: [TransactionItem] = []
     var isLoading = false
     var searchText = "" { didSet { scheduleSearchDebounce() } }
@@ -65,11 +82,67 @@ final class TransactionsViewModel {
     var groupedTransactions: [DateGroup] { let cal = Calendar.current; let grouped = Dictionary(grouping: filteredTransactions) { cal.startOfDay(for: $0.date) }; return grouped.sorted { $0.key > $1.key }.map { DateGroup(id: $0.key.ISO8601Format(), date: $0.key, transactions: $0.value) } }
     var hasActiveFiltersOrSearch: Bool { !debouncedSearchText.isEmpty || filter.hasActiveFilters }
     init(repository: TransactionRepository) { self.repository = repository }
-    func loadTransactions() async { isLoading = true; defer { isLoading = false }; do { transactions = try await repository.getTransactions() } catch { errorMessage = String(localized: "Failed to load transactions. Please try again."); Self.logger.error("Transactions load failed: \(error.localizedDescription, privacy: .public)"); transactions = [] } }
+
+    // MARK: - Loading (paginated)
+
+    /// Loads the first page of transactions, resetting pagination state.
+    func loadTransactions() async {
+        isLoading = true
+        defer { isLoading = false }
+        currentOffset = 0
+        currentPage = 1
+        do {
+            let page = try await repository.getTransactions(offset: 0, limit: Self.pageSize)
+            transactions = page
+            currentOffset = page.count
+            hasMorePages = page.count >= Self.pageSize
+            currentPage = 2
+        } catch {
+            errorMessage = String(localized: "Failed to load transactions. Please try again.")
+            Self.logger.error("Transactions load failed: \(error.localizedDescription, privacy: .public)")
+            transactions = []
+            hasMorePages = false
+        }
+    }
+
+    /// Loads the next page of transactions and appends to the existing list.
+    func loadMore() async {
+        guard hasMorePages, !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let page = try await repository.getTransactions(offset: currentOffset, limit: Self.pageSize)
+            transactions.append(contentsOf: page)
+            currentOffset += page.count
+            hasMorePages = page.count >= Self.pageSize
+            currentPage += 1
+        } catch {
+            errorMessage = String(localized: "Failed to load more transactions.")
+            Self.logger.error("Load more failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Resets pagination and reloads the first page of transactions.
+    func refresh() async {
+        await loadTransactions()
+    }
+
+    /// Returns `true` when the given item is near the end of the loaded list,
+    /// signalling that the view should trigger a `loadMore()` call (if ``hasMorePages``).
+    func shouldLoadMore(for item: TransactionItem) -> Bool {
+        guard let index = transactions.firstIndex(where: { $0.id == item.id }) else { return false }
+        return index >= transactions.count - 5
+    }
+
+    // MARK: - Mutations
+
     func deleteTransaction(id: String) async { do { try await repository.deleteTransaction(id: id) } catch { errorMessage = String(localized: "Failed to delete transaction. Please try again."); Self.logger.error("Transaction deletion failed: \(error.localizedDescription, privacy: .public)") }; transactions.removeAll { $0.id == id }; pendingDeleteId = nil }
     func confirmDelete(id: String) { pendingDeleteId = id; showingDeleteConfirmation = true }
     func removeFilter(_ label: FilterLabel) { switch label.kind { case .dateRange: filter.dateRangeEnabled = false; case .amountRange: filter.amountRangeEnabled = false; case .category(let n): filter.selectedCategories.remove(n); case .account: filter.selectedAccount = nil; case .type(let t): filter.selectedTypes.remove(t); case .status(let s): filter.selectedStatuses.remove(s) }; AccessibilityNotification.Announcement(String(localized: "\(activeFilterCount) filters active")).post() }
     func clearAllFilters() { filter = TransactionFilter(); AccessibilityNotification.Announcement(String(localized: "All filters cleared")).post() }
+
+    // MARK: - Filtering
+
     private func matchesSearch(_ t: TransactionItem) -> Bool { guard !debouncedSearchText.isEmpty else { return true }; return t.payee.localizedCaseInsensitiveContains(debouncedSearchText) || t.category.localizedCaseInsensitiveContains(debouncedSearchText) || t.accountName.localizedCaseInsensitiveContains(debouncedSearchText) }
     private func matchesFilter(_ t: TransactionItem) -> Bool {
         if filter.dateRangeEnabled { let start = Calendar.current.startOfDay(for: filter.startDate); let end = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: filter.endDate)) ?? filter.endDate; guard t.date >= start && t.date < end else { return false } }

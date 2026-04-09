@@ -5,6 +5,8 @@
 //
 // ViewModel for the multi-step transaction creation sheet. Loads accounts
 // from AccountRepository for the picker and saves via TransactionRepository.
+// Wired to KMP TransactionValidator for business-rule validation and
+// KMP CategorizationEngine for automatic category suggestions.
 
 import Observation
 import SwiftUI
@@ -13,6 +15,8 @@ import SwiftUI
 final class TransactionCreateViewModel {
     private let transactionRepository: TransactionRepository
     private let accountRepository: AccountRepository
+    private let transactionValidator: KMPTransactionValidatorProtocol
+    private let categorizationEngine: KMPCategorizationEngineProtocol
 
     /// The transaction being edited, or `nil` for create mode.
     private let editingTransaction: TransactionItem?
@@ -44,6 +48,9 @@ final class TransactionCreateViewModel {
     var isSaving = false
     var showingValidationError = false
     var validationMessage = ""
+
+    /// Category auto-suggested by the KMP CategorizationEngine based on payee.
+    var suggestedCategoryId: String?
 
     var accounts: [PickerOption] = []
 
@@ -79,11 +86,15 @@ final class TransactionCreateViewModel {
     init(
         transactionRepository: TransactionRepository,
         accountRepository: AccountRepository,
-        transaction: TransactionItem? = nil
+        transaction: TransactionItem? = nil,
+        transactionValidator: KMPTransactionValidatorProtocol = KMPBridge.shared.transactionValidator,
+        categorizationEngine: KMPCategorizationEngineProtocol = KMPBridge.shared.categorizationEngine
     ) {
         self.transactionRepository = transactionRepository
         self.accountRepository = accountRepository
         self.editingTransaction = transaction
+        self.transactionValidator = transactionValidator
+        self.categorizationEngine = categorizationEngine
 
         if let transaction {
             // Pre-fill fields from the existing transaction
@@ -110,6 +121,16 @@ final class TransactionCreateViewModel {
         if let transaction = editingTransaction {
             selectedCategoryId = categories.first { $0.name == transaction.category }?.id
             selectedAccountId = accounts.first { $0.name == transaction.accountName }?.id
+        }
+    }
+
+    /// Asks the KMP CategorizationEngine for a category suggestion based on
+    /// the current payee. Auto-selects the suggestion when no category has
+    /// been manually chosen.
+    func updateCategorySuggestion() {
+        suggestedCategoryId = categorizationEngine.suggest(payee: payee)
+        if selectedCategoryId == nil, let suggested = suggestedCategoryId {
+            selectedCategoryId = suggested
         }
     }
 
@@ -149,6 +170,12 @@ final class TransactionCreateViewModel {
             } else {
                 try await transactionRepository.createTransaction(transaction)
             }
+
+            // Teach the categorization engine this payee → category mapping
+            if let categoryId = selectedCategoryId, !payee.isEmpty {
+                categorizationEngine.learnFromHistory(payee: payee, categoryId: categoryId)
+            }
+
             return true
         } catch {
             validationMessage = error.localizedDescription
@@ -158,6 +185,7 @@ final class TransactionCreateViewModel {
     }
 
     private func validate() -> Bool {
+        // Basic client-side validation
         if amountText.isEmpty || (Double(amountText) ?? 0) <= 0 {
             validationMessage = String(localized: "Please enter a valid amount.")
             showingValidationError = true
@@ -173,6 +201,41 @@ final class TransactionCreateViewModel {
             showingValidationError = true
             return false
         }
+
+        // KMP TransactionValidator for business-rule validation
+        let candidate = KMPTransaction(
+            id: editingTransaction?.id ?? UUID().uuidString,
+            householdId: "default",
+            accountId: selectedAccountId ?? "",
+            categoryId: selectedCategoryId,
+            type: transactionType.toKMP(),
+            status: .pending,
+            amountMinorUnits: amountMinorUnits,
+            currencyCode: currencyCode,
+            payee: payee.isEmpty ? nil : payee,
+            note: note.isEmpty ? nil : note,
+            date: Calendar.current.dateComponents([.year, .month, .day], from: date),
+            transferAccountId: nil,
+            isRecurring: false,
+            tags: [],
+            createdAt: .now,
+            updatedAt: .now,
+            deletedAt: nil,
+            isSynced: false
+        )
+        let accountIds = Set(accounts.map(\.id))
+        let categoryIds = Set(categories.map(\.id))
+        let errors = transactionValidator.validate(
+            transaction: candidate,
+            existingAccountIds: accountIds,
+            existingCategoryIds: categoryIds
+        )
+        if let firstError = errors.first {
+            validationMessage = firstError
+            showingValidationError = true
+            return false
+        }
+
         return true
     }
 
