@@ -90,6 +90,7 @@ export const AppRoutes: FC = () => (
         </Suspense>
       }
     />
+
     <Route
       path="/dashboard"
       element={
@@ -200,6 +201,7 @@ export const AppRoutes: FC = () => (
         </AuthenticatedRoute>
       }
     />
+
     <Route
       path="*"
       element={

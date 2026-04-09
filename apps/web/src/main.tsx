@@ -31,6 +31,27 @@ const authConfig = {
   },
 };
 
+// Configure the sync endpoint to point at the Supabase Edge Function.
+// When VITE_SUPABASE_URL is set to a real project URL, mutations will be
+// pushed to the `sync-push` Edge Function.  Otherwise the default
+// same-origin /api/sync/push path is used (handy for local dev proxies).
+//
+// The sync module is loaded lazily via dynamic import() to avoid pulling the
+// entire sync module tree (IndexedDB mutation queue, replay logic, conflict
+// storage) into the critical startup path.  This prevents the app from
+// hanging in environments where those modules' transitive dependencies
+// cause issues (e.g. E2E tests under Playwright).
+const supabaseUrl = authConfig.supabaseUrl;
+if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+  void import('./db/sync/replayMutations').then(({ configureSyncEndpoint }) => {
+    configureSyncEndpoint({
+      baseUrl: `${supabaseUrl}/functions/v1`,
+      pushEndpoint: '/sync-push',
+      apiKey: authConfig.supabaseAnonKey,
+    });
+  });
+}
+
 initMonitoring();
 
 createRoot(rootElement).render(
