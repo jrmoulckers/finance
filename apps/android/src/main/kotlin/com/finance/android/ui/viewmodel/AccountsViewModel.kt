@@ -4,6 +4,7 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.core.currency.CurrencyFormatter
@@ -12,7 +13,6 @@ import com.finance.models.AccountType
 import com.finance.models.Transaction
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
-import com.finance.models.types.SyncId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,9 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
+import timber.log.Timber
 
 data class AccountGroup(
     val type: AccountType,
@@ -43,10 +41,12 @@ data class AccountsUiState(
 /**
  * ViewModel for the Accounts screen (#22). Loads accounts grouped by type.
  *
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param accountRepository Source for account data.
  * @param transactionRepository Source for transactions shown in account detail.
  */
 class AccountsViewModel(
+    private val householdIdProvider: HouseholdIdProvider,
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
 ) : ViewModel() {
@@ -58,7 +58,12 @@ class AccountsViewModel(
     private fun loadAccounts() {
         viewModelScope.launch {
             delay(200)
-            val accounts = accountRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+            val householdId = householdIdProvider.householdId.value ?: run {
+                Timber.w("No household ID available — skipping accounts load")
+                _uiState.update { it.copy(isLoading = false, isEmpty = true) }
+                return@launch
+            }
+            val accounts = accountRepository.observeAll(householdId).first()
             val currency = Currency.USD
             if (accounts.isEmpty()) {
                 _uiState.update { it.copy(isLoading = false, isEmpty = true) }

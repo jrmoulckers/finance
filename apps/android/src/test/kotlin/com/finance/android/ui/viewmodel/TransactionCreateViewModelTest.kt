@@ -3,6 +3,7 @@
 package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
+import com.finance.android.auth.TestHouseholdIdProvider
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
@@ -263,10 +264,12 @@ class TransactionCreateViewModelTest {
         categories: List<Category> = testCategories,
         transactionRepo: TestTransactionRepository? = null,
         savedStateHandle: SavedStateHandle = SavedStateHandle(),
+        householdIdProvider: TestHouseholdIdProvider = TestHouseholdIdProvider(),
     ): Pair<TransactionCreateViewModel, TestTransactionRepository> {
         val txnRepo = transactionRepo ?: TestTransactionRepository(transactions)
         val vm = TransactionCreateViewModel(
             savedStateHandle = savedStateHandle,
+            householdIdProvider = householdIdProvider,
             transactionRepository = txnRepo,
             accountRepository = TestAccountRepository(accounts),
             categoryRepository = TestCategoryRepository(categories),

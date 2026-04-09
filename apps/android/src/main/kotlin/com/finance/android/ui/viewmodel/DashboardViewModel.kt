@@ -4,6 +4,7 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.BudgetRepository
 import com.finance.android.data.repository.CategoryRepository
@@ -15,7 +16,6 @@ import com.finance.core.currency.CurrencyFormatter
 import com.finance.models.Transaction
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
-import com.finance.models.types.SyncId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,9 +27,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
+import timber.log.Timber
 
 data class DashboardUiState(
     val isLoading: Boolean = true,
@@ -60,12 +58,14 @@ data class BudgetStatusUi(
  * Loads net worth, spending, budget summaries, and recent transactions
  * using KMP shared logic from packages/core.
  *
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param accountRepository Source for account data used in net-worth calculation.
  * @param transactionRepository Source for transaction data used in spending aggregation.
  * @param budgetRepository Source for budget data used in budget-status cards.
  * @param categoryRepository Source for category data used to resolve budget icons.
  */
 class DashboardViewModel(
+    private val householdIdProvider: HouseholdIdProvider,
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val budgetRepository: BudgetRepository,
@@ -95,10 +95,14 @@ class DashboardViewModel(
     }
 
     private suspend fun loadData() {
-        val accounts = accountRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-        val transactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-        val budgets = budgetRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-        val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+        val householdId = householdIdProvider.householdId.value ?: run {
+            Timber.w("No household ID available — skipping dashboard load")
+            return
+        }
+        val accounts = accountRepository.observeAll(householdId).first()
+        val transactions = transactionRepository.observeAll(householdId).first()
+        val budgets = budgetRepository.observeAll(householdId).first()
+        val categories = categoryRepository.observeAll(householdId).first()
         val categoryMap = categories.associateBy { it.id }
 
         val currency = Currency.USD

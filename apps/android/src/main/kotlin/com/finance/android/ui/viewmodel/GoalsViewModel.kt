@@ -4,6 +4,7 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.data.repository.GoalRepository
 import com.finance.core.currency.CurrencyFormatter
 import com.finance.models.GoalStatus
@@ -17,9 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
+import timber.log.Timber
 
 /**
  * UI state for the Goals screen.
@@ -75,9 +74,11 @@ data class GoalItemUi(
  * models with pre-formatted currency strings, and exposes a reactive [GoalsUiState]
  * for the composable layer. Supports pull-to-refresh and handles loading/error states.
  *
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param goalRepository Source for goal data.
  */
 class GoalsViewModel(
+    private val householdIdProvider: HouseholdIdProvider,
     private val goalRepository: GoalRepository,
 ) : ViewModel() {
 
@@ -106,7 +107,11 @@ class GoalsViewModel(
 
     private suspend fun loadData() {
         try {
-            val goals = goalRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+            val householdId = householdIdProvider.householdId.value ?: run {
+                Timber.w("No household ID available — skipping goals load")
+                return
+            }
+            val goals = goalRepository.observeAll(householdId).first()
             val currency = Currency.USD
 
             val goalItems = goals.map { goal ->

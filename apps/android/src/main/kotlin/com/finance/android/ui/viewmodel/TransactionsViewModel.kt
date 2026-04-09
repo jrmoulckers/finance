@@ -4,6 +4,7 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.models.Transaction
@@ -22,9 +23,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
-
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
+import timber.log.Timber
 
 data class TransactionFilter(
     val searchQuery: String = "",
@@ -55,10 +54,12 @@ data class TransactionsUiState(
 /**
  * ViewModel for the Transactions screen (#26). Filtering, search, pagination.
  *
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param transactionRepository Source for transaction data.
  * @param categoryRepository Source for category data used in search-by-category-name.
  */
 class TransactionsViewModel(
+    private val householdIdProvider: HouseholdIdProvider,
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
 ) : ViewModel() {
@@ -129,8 +130,12 @@ class TransactionsViewModel(
         val filter = _uiState.value.filter
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
-        val allTransactions = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-        val categories = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+        val householdId = householdIdProvider.householdId.value ?: run {
+            Timber.w("No household ID available — skipping transactions load")
+            return
+        }
+        val allTransactions = transactionRepository.observeAll(householdId).first()
+        val categories = categoryRepository.observeAll(householdId).first()
         val categoryMap = categories.associateBy { it.id }
 
         var filtered = allTransactions

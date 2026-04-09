@@ -4,6 +4,7 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.core.aggregation.FinancialAggregator
@@ -12,7 +13,6 @@ import com.finance.models.TransactionStatus
 import com.finance.models.TransactionType
 import com.finance.models.types.Cents
 import com.finance.models.types.Currency
-import com.finance.models.types.SyncId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,9 +27,6 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import timber.log.Timber
-
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
 
 /**
  * Time period options for the analytics filter chips.
@@ -125,10 +122,12 @@ data class AnalyticsUiState(
  * comparisons, top payees, and savings rates using shared KMP aggregation
  * logic from [FinancialAggregator].
  *
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param transactionRepository Source for transaction data.
  * @param categoryRepository Source for category metadata (names, icons).
  */
 class AnalyticsViewModel(
+    private val householdIdProvider: HouseholdIdProvider,
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
 ) : ViewModel() {
@@ -164,10 +163,15 @@ class AnalyticsViewModel(
 
             val period = _uiState.value.selectedPeriod
             val currency = Currency.USD
+            val householdId = householdIdProvider.householdId.value ?: run {
+                Timber.w("No household ID available — skipping analytics load")
+                _uiState.update { it.copy(isLoading = false) }
+                return@launch
+            }
             val allTransactions =
-                transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+                transactionRepository.observeAll(householdId).first()
             val categories =
-                categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+                categoryRepository.observeAll(householdId).first()
             val categoryMap = categories.associateBy { it.id }
 
             val today = Clock.System.now()

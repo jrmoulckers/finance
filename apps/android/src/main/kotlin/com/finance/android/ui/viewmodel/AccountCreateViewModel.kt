@@ -4,6 +4,7 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.data.repository.AccountRepository
 import com.finance.models.Account
 import com.finance.models.AccountType
@@ -18,9 +19,6 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import timber.log.Timber
 import java.util.UUID
-
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
 
 /**
  * UI state for the Account creation form.
@@ -54,9 +52,11 @@ data class AccountCreateUiState(
  * via [AccountRepository]. Follows the same reactive [StateFlow] pattern
  * used throughout the Finance app.
  *
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param accountRepository Repository used to persist the new account.
  */
 class AccountCreateViewModel(
+    private val householdIdProvider: HouseholdIdProvider,
     private val accountRepository: AccountRepository,
 ) : ViewModel() {
 
@@ -121,13 +121,18 @@ class AccountCreateViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errors = emptyList()) }
             try {
+                val householdId = householdIdProvider.householdId.value ?: run {
+                    Timber.w("No household ID available — cannot create account")
+                    _uiState.update { it.copy(isSaving = false, errors = listOf("Not authenticated")) }
+                    return@launch
+                }
                 val s = _uiState.value
                 val now = Clock.System.now()
                 val balanceCents = Cents.fromDollars(s.initialBalance.toDoubleOrNull() ?: 0.0)
 
                 val account = Account(
                     id = SyncId(UUID.randomUUID().toString()),
-                    householdId = PLACEHOLDER_HOUSEHOLD_ID,
+                    householdId = householdId,
                     name = s.name.trim(),
                     type = s.accountType,
                     currency = Currency(s.currency),

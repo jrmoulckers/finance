@@ -4,6 +4,7 @@ package com.finance.android.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.GoalRepository
 import com.finance.models.Account
@@ -23,9 +24,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import timber.log.Timber
 import java.util.UUID
-
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
 
 /**
  * UI state for the Goal creation form.
@@ -58,10 +56,12 @@ data class GoalCreateUiState(
  * Loads available accounts on initialization and manages form state,
  * validation, and persistence of new [Goal] entities via [GoalRepository].
  *
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param goalRepository Repository used to persist the new goal.
  * @param accountRepository Repository used to load accounts for the optional link.
  */
 class GoalCreateViewModel(
+    private val householdIdProvider: HouseholdIdProvider,
     private val goalRepository: GoalRepository,
     private val accountRepository: AccountRepository,
 ) : ViewModel() {
@@ -71,7 +71,11 @@ class GoalCreateViewModel(
 
     init {
         viewModelScope.launch {
-            val accounts = accountRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+            val householdId = householdIdProvider.householdId.value ?: run {
+                Timber.w("No household ID available — skipping accounts load")
+                return@launch
+            }
+            val accounts = accountRepository.observeAll(householdId).first()
             _uiState.update { it.copy(accounts = accounts) }
         }
     }
@@ -140,13 +144,18 @@ class GoalCreateViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errors = emptyList()) }
             try {
+                val householdId = householdIdProvider.householdId.value ?: run {
+                    Timber.w("No household ID available — cannot create goal")
+                    _uiState.update { it.copy(isSaving = false, errors = listOf("Not authenticated")) }
+                    return@launch
+                }
                 val s = _uiState.value
                 val now = Clock.System.now()
                 val targetCents = Cents.fromDollars(s.targetAmount.toDoubleOrNull() ?: 0.0)
 
                 val goal = Goal(
                     id = SyncId(UUID.randomUUID().toString()),
-                    householdId = PLACEHOLDER_HOUSEHOLD_ID,
+                    householdId = householdId,
                     name = s.name.trim(),
                     targetAmount = targetCents,
                     currentAmount = Cents.ZERO,

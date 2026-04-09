@@ -5,6 +5,7 @@ package com.finance.android.ui.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
@@ -28,10 +29,8 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 import kotlin.math.abs
-
-// TODO(#434): Replace with authenticated user's household ID
-private val PLACEHOLDER_HOUSEHOLD_ID = SyncId("household-1")
 
 enum class CreateStep(val index: Int, val label: String) {
     AMOUNT(0, "Amount & Payee"),
@@ -73,12 +72,14 @@ data class TransactionCreateUiState(
  *
  * @param savedStateHandle Navigation argument handle. When key `"id"` is present the ViewModel
  *   enters edit mode and pre-populates all form fields from the stored transaction.
+ * @param householdIdProvider Provides the authenticated user's household ID.
  * @param transactionRepository Target repository for saving or updating transactions.
  * @param accountRepository Source for account list in the account picker.
  * @param categoryRepository Source for category list in the category picker.
  */
 class TransactionCreateViewModel(
     savedStateHandle: SavedStateHandle,
+    private val householdIdProvider: HouseholdIdProvider,
     private val transactionRepository: TransactionRepository,
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
@@ -107,9 +108,13 @@ class TransactionCreateViewModel(
 
     init {
         viewModelScope.launch {
-            val cats = categoryRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-            val accts = accountRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
-            payeeHistory = transactionRepository.observeAll(PLACEHOLDER_HOUSEHOLD_ID).first()
+            val householdId = householdIdProvider.householdId.value ?: run {
+                Timber.w("No household ID available — skipping transaction form init")
+                return@launch
+            }
+            val cats = categoryRepository.observeAll(householdId).first()
+            val accts = accountRepository.observeAll(householdId).first()
+            payeeHistory = transactionRepository.observeAll(householdId).first()
                 .mapNotNull { it.payee }
                 .distinct()
             categoryMap = cats.associateBy { it.id }
@@ -230,6 +235,11 @@ class TransactionCreateViewModel(
         if (errs.isNotEmpty()) { _uiState.update { it.copy(errors = errs) }; return }
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errors = emptyList()) }
+            val householdId = householdIdProvider.householdId.value ?: run {
+                Timber.w("No household ID available — cannot save transaction")
+                _uiState.update { it.copy(isSaving = false, errors = listOf("Not authenticated")) }
+                return@launch
+            }
             val s = _uiState.value
             val now = Clock.System.now()
             val amountCents = if (s.transactionType == TransactionType.INCOME)
@@ -248,7 +258,7 @@ class TransactionCreateViewModel(
                 isSynced = false,
             ) ?: Transaction(
                 id = SyncId("txn-${now.toEpochMilliseconds()}"),
-                householdId = PLACEHOLDER_HOUSEHOLD_ID,
+                householdId = householdId,
                 accountId = s.selectedAccountId!!,
                 categoryId = s.selectedCategoryId,
                 type = s.transactionType,

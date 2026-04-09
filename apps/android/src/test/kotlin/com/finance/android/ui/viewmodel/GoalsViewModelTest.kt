@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.viewmodel
 
+import com.finance.android.auth.TestHouseholdIdProvider
 import com.finance.android.data.repository.GoalRepository
 import com.finance.models.Goal
 import com.finance.models.GoalStatus
@@ -141,6 +142,7 @@ class GoalsViewModelTest {
     @Test
     fun `initial state is loading`() = runTest {
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(),
         )
 
@@ -169,6 +171,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -202,6 +205,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(goals),
         )
 
@@ -227,6 +231,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -251,6 +256,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -275,6 +281,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -299,6 +306,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -327,6 +335,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -360,6 +369,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -383,6 +393,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -405,6 +416,7 @@ class GoalsViewModelTest {
         val goal = createGoal("goal-r", "Refresh Goal", 100_000L, 50_000L)
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -440,6 +452,7 @@ class GoalsViewModelTest {
     @Test
     fun `handles empty goals list`() = runTest {
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(emptyList()),
         )
 
@@ -467,6 +480,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -490,6 +504,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(listOf(goal)),
         )
 
@@ -524,6 +539,7 @@ class GoalsViewModelTest {
         )
 
         val vm = GoalsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             goalRepository = TestGoalRepository(goals),
         )
 
