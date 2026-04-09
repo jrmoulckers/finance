@@ -13,6 +13,8 @@
     "build": "npm run build:kmp && turbo run build",
     "build:kmp": "node tools/gradle.js build -x jsBrowserTest -x allTests",
     "build:tokens": "npm run build -w packages/design-tokens",
+    "tokens:preview": "node tools/token-preview-serve.mjs",
+    "tokens:preview:generate": "node tools/token-preview-generate.mjs",
     "test": "npm run test:kmp && turbo run test",
     "test:kmp": "node tools/gradle.js :packages:core:jvmTest",
     "test:web": "npm run test -w apps/web",
