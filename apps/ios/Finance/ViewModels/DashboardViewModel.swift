@@ -6,6 +6,9 @@
 // ViewModel for the main dashboard screen. Aggregates data from account,
 // transaction, and budget repositories to present net worth, monthly
 // spending, budget health, and recent transactions.
+//
+// KMP bridge services (FinancialAggregator, BudgetCalculator,
+// CurrencyFormatter) are injected for business-logic computations.
 
 import Observation
 import os
@@ -16,6 +19,9 @@ final class DashboardViewModel {
     private let accountRepository: AccountRepository
     private let transactionRepository: TransactionRepository
     private let budgetRepository: BudgetRepository
+    private let financialAggregator: KMPFinancialAggregatorProtocol
+    private let budgetCalculator: KMPBudgetCalculatorProtocol
+    private let currencyFormatter: KMPCurrencyFormatterProtocol
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -52,14 +58,52 @@ final class DashboardViewModel {
             .reduce(0) { $0 + abs($1.amountMinorUnits) }
     }
 
+    /// Savings rate for the current month, computed via the KMP FinancialAggregator.
+    /// Returns a percentage (0–100). Available only when monthly transaction data is loaded.
+    var savingsRate: Double {
+        let kmpTransactions = recentTransactions.map { txn in
+            txn.toKMP(householdId: "default", accountId: "", categoryId: nil)
+        }
+        let from = DateComponents.startOfCurrentMonth()
+        let to = DateComponents.endOfCurrentMonth()
+        return financialAggregator.savingsRate(transactions: kmpTransactions, from: from, to: to)
+    }
+
+    /// Spending grouped by category for the current month, via KMP FinancialAggregator.
+    var spendingByCategory: [String: Int64] {
+        let kmpTransactions = recentTransactions.map { txn in
+            txn.toKMP(householdId: "default", accountId: "", categoryId: nil)
+        }
+        let from = DateComponents.startOfCurrentMonth()
+        let to = DateComponents.endOfCurrentMonth()
+        return financialAggregator.spendingByCategory(
+            transactions: kmpTransactions, from: from, to: to
+        )
+    }
+
+    /// Formats a monetary amount using the injected KMP CurrencyFormatter.
+    func formatCurrency(_ amountMinorUnits: Int64, showSign: Bool = false) -> String {
+        currencyFormatter.format(
+            amountMinorUnits: amountMinorUnits,
+            currencyCode: currencyCode,
+            showSign: showSign
+        )
+    }
+
     init(
         accountRepository: AccountRepository,
         transactionRepository: TransactionRepository,
-        budgetRepository: BudgetRepository
+        budgetRepository: BudgetRepository,
+        financialAggregator: KMPFinancialAggregatorProtocol = KMPBridge.shared.financialAggregator,
+        budgetCalculator: KMPBudgetCalculatorProtocol = KMPBridge.shared.budgetCalculator,
+        currencyFormatter: KMPCurrencyFormatterProtocol = KMPBridge.shared.currencyFormatter
     ) {
         self.accountRepository = accountRepository
         self.transactionRepository = transactionRepository
         self.budgetRepository = budgetRepository
+        self.financialAggregator = financialAggregator
+        self.budgetCalculator = budgetCalculator
+        self.currencyFormatter = currencyFormatter
     }
 
     func loadDashboard() async {

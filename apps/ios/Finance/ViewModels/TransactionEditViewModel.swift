@@ -5,6 +5,8 @@
 //
 // ViewModel for editing an existing transaction. Tracks field changes,
 // validates input, and persists updates or deletes via TransactionRepository.
+// Wired to KMP TransactionValidator for business-rule validation and
+// KMP CategorizationEngine for learning payee → category mappings.
 
 import Observation
 import os
@@ -14,6 +16,8 @@ import SwiftUI
 final class TransactionEditViewModel {
     private let transactionRepository: TransactionRepository
     private let accountRepository: AccountRepository
+    private let transactionValidator: KMPTransactionValidatorProtocol
+    private let categorizationEngine: KMPCategorizationEngineProtocol
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -67,10 +71,18 @@ final class TransactionEditViewModel {
         accounts.first { $0.id == selectedAccountId }?.name ?? ""
     }
 
-    init(transactionRepository: TransactionRepository, accountRepository: AccountRepository, transaction: TransactionItem) {
+    init(
+        transactionRepository: TransactionRepository,
+        accountRepository: AccountRepository,
+        transaction: TransactionItem,
+        transactionValidator: KMPTransactionValidatorProtocol = KMPBridge.shared.transactionValidator,
+        categorizationEngine: KMPCategorizationEngineProtocol = KMPBridge.shared.categorizationEngine
+    ) {
         self.transactionRepository = transactionRepository
         self.accountRepository = accountRepository
         self.original = transaction
+        self.transactionValidator = transactionValidator
+        self.categorizationEngine = categorizationEngine
         self.transactionType = transaction.type
         self.amountText = Self.formatAmountForEditing(abs(transaction.amountMinorUnits))
         self.payee = transaction.payee
@@ -104,6 +116,12 @@ final class TransactionEditViewModel {
         do {
             try await transactionRepository.updateTransaction(updated)
             Self.logger.info("Transaction \(self.original.id, privacy: .private) updated")
+
+            // Teach the categorization engine this payee → category mapping
+            if let categoryId = selectedCategoryId, !payee.isEmpty {
+                categorizationEngine.learnFromHistory(payee: payee, categoryId: categoryId)
+            }
+
             return true
         } catch {
             errorMessage = String(localized: "Failed to update transaction. Please try again.")
@@ -127,6 +145,7 @@ final class TransactionEditViewModel {
     }
 
     private func validate() -> Bool {
+        // Basic client-side validation
         if amountText.isEmpty || (Double(amountText) ?? 0) <= 0 {
             validationMessage = String(localized: "Please enter a valid amount.")
             showingValidationError = true
@@ -147,6 +166,41 @@ final class TransactionEditViewModel {
             showingValidationError = true
             return false
         }
+
+        // KMP TransactionValidator for business-rule validation
+        let candidate = KMPTransaction(
+            id: original.id,
+            householdId: "default",
+            accountId: selectedAccountId ?? "",
+            categoryId: selectedCategoryId,
+            type: transactionType.toKMP(),
+            status: original.status.toKMP(),
+            amountMinorUnits: amountMinorUnits,
+            currencyCode: currencyCode,
+            payee: payee.isEmpty ? nil : payee,
+            note: note.isEmpty ? nil : note,
+            date: Calendar.current.dateComponents([.year, .month, .day], from: date),
+            transferAccountId: nil,
+            isRecurring: false,
+            tags: [],
+            createdAt: .now,
+            updatedAt: .now,
+            deletedAt: nil,
+            isSynced: false
+        )
+        let accountIds = Set(accounts.map(\.id))
+        let categoryIds = Set(categories.map(\.id))
+        let errors = transactionValidator.validate(
+            transaction: candidate,
+            existingAccountIds: accountIds,
+            existingCategoryIds: categoryIds
+        )
+        if let firstError = errors.first {
+            validationMessage = firstError
+            showingValidationError = true
+            return false
+        }
+
         return true
     }
 

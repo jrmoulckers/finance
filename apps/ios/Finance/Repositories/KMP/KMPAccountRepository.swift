@@ -1,50 +1,62 @@
 // SPDX-License-Identifier: BUSL-1.1
-// KMPAccountRepository.swift
+// KMPAccountRepository.swift — KMP-backed account repository using LocalDataStore.
 
 import Foundation
 import os
 
+/// Account repository backed by the actor-isolated ``LocalDataStore``.
+///
+/// When the FinanceSync XCFramework is available (`canImport(FinanceSync)`),
+/// this will delegate to the KMP data layer. Until then, the local store
+/// is seeded from mock data and supports full CRUD operations in-memory.
 struct KMPAccountRepository: AccountRepository {
-    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.finance", category: "KMPAccountRepository")
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
+        category: "KMPAccountRepository"
+    )
+    private let store: LocalDataStore
+
+    init(store: LocalDataStore = .shared) {
+        self.store = store
+    }
 
     func getAccounts() async throws -> [AccountItem] {
-        let all = try await getAllAccounts()
-        return all.filter { !$0.isArchived }
+        await store.seedIfNeeded()
+        return await store.getAccounts()
     }
 
     func getAllAccounts() async throws -> [AccountItem] {
-        if await KMPBridge.shared.isKMPAvailable {
-            do { return try await fallbackAccounts() }
-            catch { throw KMPRepositoryError.bridgeCallFailed(underlying: error.localizedDescription) }
-        } else { return try await fallbackAccounts() }
+        await store.seedIfNeeded()
+        return await store.getAllAccounts()
     }
 
     func getAccount(id: String) async throws -> AccountItem? {
-        if await KMPBridge.shared.isKMPAvailable {
-            do { return try await fallbackAccounts().first { $0.id == id } }
-            catch { throw KMPRepositoryError.bridgeCallFailed(underlying: error.localizedDescription) }
-        } else { return try await fallbackAccounts().first { $0.id == id } }
+        await store.seedIfNeeded()
+        return await store.getAccount(id: id)
     }
 
     func updateAccount(_ account: AccountItem) async throws {
-        if await KMPBridge.shared.isKMPAvailable { Self.logger.info("Updating account via KMP") }
+        Self.logger.info("Updating account via KMP bridge")
+        await store.upsertAccount(account)
     }
 
     func archiveAccount(id: String) async throws {
-        if await KMPBridge.shared.isKMPAvailable { Self.logger.info("Archiving account via KMP") }
+        Self.logger.info("Archiving account via KMP bridge")
+        await store.archiveAccount(id: id)
     }
 
     func unarchiveAccount(id: String) async throws {
-        if await KMPBridge.shared.isKMPAvailable { Self.logger.info("Unarchiving account via KMP") }
+        Self.logger.info("Unarchiving account via KMP bridge")
+        await store.unarchiveAccount(id: id)
     }
 
     func deleteAccount(id: String) async throws {
-        if await KMPBridge.shared.isKMPAvailable { Self.logger.info("Deleting account via KMP") }
+        Self.logger.info("Deleting account via KMP bridge")
+        await store.deleteAccount(id: id)
     }
 
     func deleteAllAccounts() async throws {
-        if await KMPBridge.shared.isKMPAvailable { Self.logger.info("Deleting all accounts via KMP") }
+        Self.logger.info("Deleting all accounts via KMP bridge")
+        await store.deleteAllAccounts()
     }
-
-    private func fallbackAccounts() async throws -> [AccountItem] { try await MockAccountRepository().getAccounts() }
 }
