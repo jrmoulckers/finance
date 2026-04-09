@@ -86,7 +86,7 @@ jobs:
           retention-days: 14
 
       - name: Publish test results
-        if: always()
+        if: always() && hashFiles('apps/android/build/test-results/**/TEST-*.xml') != ''
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         with:
           name: Android Test Results
