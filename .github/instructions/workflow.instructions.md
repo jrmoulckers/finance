@@ -158,3 +158,101 @@ Refs #P (for related but not fully resolved issues)
 - Ensures no work is lost or duplicated — worktrees are resumable by any agent
 - Makes it easy to understand what changed and why
 - PRs provide a review checkpoint before code reaches `main`
+
+## Fleet Sprint Execution
+
+When asked to execute sprints across multiple agent types, follow this protocol:
+
+### 1. Query the Backlog
+
+```bash
+gh issue list --state open --limit 100 --json number,title,labels,milestone
+```
+
+### 2. Categorize by Agent Type
+
+Map issues to agents based on labels and file paths:
+
+- `platform:android` → @android-engineer
+- `platform:ios` → @ios-engineer
+- `platform:web` → @web-engineer
+- `platform:windows` → @windows-engineer
+- `platform:shared` / `comp:sync` → @kmp-engineer
+- `ci` / `infrastructure` → @devops-engineer
+- `security` → @security-reviewer
+- `accessibility` → @accessibility-reviewer
+- `documentation` → @docs-writer
+- `design-system` → @design-engineer
+
+### 3. Include Business Tasks
+
+Every sprint MUST include at least one business/management task:
+
+- @product-manager: Issue triage, roadmap updates, milestone tracking
+- @marketing-strategist: Content creation, ASO, launch comms
+- @business-analyst: Pricing analysis, competitive research, metrics
+
+### 4. Create Sprint Plan
+
+Use SQL todos for tracking:
+
+```sql
+INSERT INTO todos (id, title, description, status) VALUES
+  ('sN-agent-issue', 'Title (#NNN)', 'Description', 'pending');
+```
+
+### 5. Dispatch Fleet
+
+Launch all independent agents in parallel:
+
+```
+task(agent_type="android-engineer", mode="background", ...)
+task(agent_type="ios-engineer", mode="background", ...)
+task(agent_type="web-engineer", mode="background", ...)
+```
+
+### 6. Monitor & Resolve
+
+- Track completions via agent notifications
+- Push any unpushed work from agents that held off
+- Resolve merge conflicts between parallel PRs
+- Verify all CI checks pass
+
+## Business Sprint Integration
+
+Every sprint cycle must integrate business and management work alongside engineering tasks. This ensures the project advances holistically — not just in code output.
+
+### Why Business Tasks Matter
+
+Engineering-only sprints create blind spots: documentation drifts, roadmaps go stale, competitive positioning is ignored, and launch readiness suffers. Including business tasks in every sprint keeps the project on track across all dimensions.
+
+### Required Business Coverage
+
+Each sprint should touch at least one area from each category:
+
+**Product & Planning:**
+
+- Issue triage and backlog grooming (close stale issues, reprioritize)
+- Milestone progress reviews and roadmap updates
+- Feature specification and acceptance criteria refinement
+
+**Go-to-Market:**
+
+- App store optimization (screenshots, descriptions, keywords)
+- Release notes and changelog drafting
+- User-facing documentation updates
+
+**Analytics & Strategy:**
+
+- Competitive feature comparison updates
+- Pricing model analysis and validation
+- Key metrics definition and tracking setup
+
+### Scheduling Business Tasks
+
+Business tasks follow the same issue-first workflow as engineering:
+
+1. Create a GitHub issue with the appropriate label (`business`, `product`, `marketing`)
+2. Assign to the relevant agent or human
+3. Track in the sprint plan SQL alongside engineering todos
+4. Deliver output as a PR (docs, config changes) or issue comment (analysis, recommendations)

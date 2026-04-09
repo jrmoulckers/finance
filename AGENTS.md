@@ -79,8 +79,18 @@ Custom agents are defined in `.github/agents/`. Each agent has a specific role:
 - `security-reviewer` — Security and privacy code review
 - `web-engineer` — Web PWA (React/TypeScript, Service Workers, SQLite-WASM)
 - `windows-engineer` — Windows platform (Compose Desktop, Windows Hello, DPAPI)
+- `product-manager` — Product strategy, sprint planning, issue triage, roadmap management
+- `marketing-strategist` — Go-to-market, ASO, launch comms, content strategy, growth
+- `business-analyst` — Monetization, pricing, competitive analysis, revenue modeling
 
-Agent skills are in `.github/skills/` and provide reusable domain knowledge.
+Agent skills are in `.github/skills/` and provide reusable domain knowledge:
+
+- `fleet-orchestration` — Multi-agent sprint dispatch and coordination
+- `sprint-planning` — Backlog decomposition and sprint sizing
+- `project-management` — Issue lifecycle, roadmap, release management
+- `go-to-market` — Marketing strategy, ASO, launch communications
+- `monetization` — Pricing, subscriptions, freemium tier design
+
 Path-specific instructions are in `.github/instructions/`.
 
 ## Human-Gated Operations (MANDATORY)
@@ -263,6 +273,9 @@ When multiple agents work in parallel, they MUST follow these rules to avoid con
 | `@docs-writer`            | `docs/`, `*.md` files in root                  |
 | `@security-reviewer`      | Read-only review — never edits production code |
 | `@accessibility-reviewer` | Read-only review — never edits production code |
+| `@product-manager`        | `docs/business/`, GitHub Issues (read/create)  |
+| `@marketing-strategist`   | `docs/marketing/`, app store copy drafts       |
+| `@business-analyst`       | `docs/business/`, pricing/revenue docs         |
 
 **Coordination protocol:**
 
@@ -309,6 +322,31 @@ When an agent is blocked or uncertain:
 1. **First**: Re-read the relevant skill (`@kmp-development`, `@supabase-powersync`, etc.) — the answer may already be documented
 2. **Second**: Consult `@architect` for cross-cutting design questions
 3. **Third**: Leave a clear decision point documented in the PR as `## Needs Decision: <question>` and stop — do not guess on financial logic
+
+### Business Sprint Integration
+
+Every sprint cycle MUST include business-side work alongside engineering:
+
+**Product Management** (every sprint):
+
+- Triage new issues created since last sprint
+- Update milestone progress
+- Groom backlog (label, prioritize, decompose large issues)
+- Track platform parity
+
+**Marketing** (bi-weekly):
+
+- Update app store listings if features shipped
+- Draft content for shipped features
+- Review competitive landscape
+
+**Business Analysis** (monthly):
+
+- Validate pricing against market
+- Review conversion metrics
+- Update revenue projections
+
+These tasks create GitHub issues using the same issue-first workflow as engineering work. Business agents work in worktrees and create PRs for documentation changes.
 
 **Requirements:** Copilot CLI with Pro+ subscription. No special repo configuration needed.
 
