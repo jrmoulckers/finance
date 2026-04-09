@@ -5,7 +5,6 @@ package com.finance.android.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +25,7 @@ private fun titleForRoute(route: String?): String = when (route) {
     Route.Dashboard.route -> "Dashboard"
     Route.Accounts.route -> "Accounts"
     Route.Transactions.route -> "Transactions"
+    Route.Planning.route -> "Planning"
     Route.Budgets.route -> "Budgets"
     Route.Goals.route -> "Goals"
     Route.Analytics.route -> "Analytics"
@@ -43,10 +43,9 @@ private fun titleForRoute(route: String?): String = when (route) {
  */
 private fun isTopLevel(route: String?): Boolean = route in setOf(
     Route.Dashboard.route,
-    Route.Accounts.route,
     Route.Transactions.route,
-    Route.Budgets.route,
-    Route.Goals.route,
+    Route.Planning.route,
+    Route.Settings.route,
 )
 
 /**
@@ -54,8 +53,7 @@ private fun isTopLevel(route: String?): Boolean = route in setOf(
  *
  * - Title changes based on the current navigation destination.
  * - A back arrow is shown for non-top-level screens.
- * - A Settings gear icon is shown on top-level screens.
- * - A Search icon placeholder is available on Dashboard.
+ * - A Search icon is available on Dashboard (navigates to Transactions).
  *
  * @param navController The [NavHostController] for reading current route and navigation.
  * @param modifier Modifier applied to the [TopAppBar].
@@ -110,23 +108,6 @@ fun FinanceTopBar(
                     Icon(
                         imageVector = Icons.Filled.Search,
                         contentDescription = "Search",
-                    )
-                }
-            }
-            if (topLevel) {
-                IconButton(
-                    onClick = {
-                        navController.navigate(Route.Settings.route) {
-                            launchSingleTop = true
-                        }
-                    },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Open settings"
-                    },
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = "Open settings",
                     )
                 }
             }

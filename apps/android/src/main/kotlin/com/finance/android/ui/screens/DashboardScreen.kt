@@ -80,6 +80,7 @@ fun DashboardScreen(
     onAddTransaction: () -> Unit = {},
     onViewAllTransactions: () -> Unit = {},
     onViewInsights: () -> Unit = {},
+    onViewAccounts: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DashboardViewModel = koinViewModel(),
 ) {
@@ -91,7 +92,7 @@ fun DashboardScreen(
         }
         return
     }
-    DashboardContent(state, viewModel::refresh, onAddTransaction, onViewAllTransactions, onViewInsights, modifier)
+    DashboardContent(state, viewModel::refresh, onAddTransaction, onViewAllTransactions, onViewInsights, onViewAccounts, modifier)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,14 +100,14 @@ fun DashboardScreen(
 private fun DashboardContent(
     state: DashboardUiState, onRefresh: () -> Unit,
     onAddTransaction: () -> Unit, onViewAllTransactions: () -> Unit,
-    onViewInsights: () -> Unit,
+    onViewInsights: () -> Unit, onViewAccounts: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh,
         modifier = modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            item(key = "net-worth") { NetWorthCard(state.netWorthFormatted) }
+            item(key = "net-worth") { NetWorthCard(state.netWorthFormatted, onClick = onViewAccounts) }
             item(key = "spending") { SpendingSummaryRow(state.todaySpendingFormatted, state.monthlySpendingFormatted) }
             item(key = "insights") { InsightsCard(onViewInsights) }
             if (state.budgetStatuses.isNotEmpty()) {
@@ -138,8 +139,10 @@ private fun DashboardContent(
 }
 
 @Composable
-private fun NetWorthCard(formatted: String) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Net worth: $formatted" },
+private fun NetWorthCard(formatted: String, onClick: () -> Unit = {}) {
+    ElevatedCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Net worth: $formatted. Tap to view accounts." },
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
         Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Net Worth", style = MaterialTheme.typography.labelLarge,
@@ -309,7 +312,7 @@ private fun DashboardScreenPreview() {
                     BudgetStatusUi("Transport", "$89", "$200", "+$111", 0.45f, BudgetHealth.HEALTHY, null),
                 ),
                 recentTransactions = SampleData.transactions.take(5), currency = Currency.USD),
-            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {})
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {}, onViewAccounts = {})
     }
 }
 
@@ -323,7 +326,7 @@ private fun DashboardLoadingPreview() {
                 netWorthFormatted = "$0.00", todaySpendingFormatted = "$0.00",
                 monthlySpendingFormatted = "$0.00", budgetStatuses = emptyList(),
                 recentTransactions = emptyList(), currency = Currency.USD),
-            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {})
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {}, onViewAccounts = {})
     }
 }
 
@@ -341,6 +344,6 @@ private fun DashboardOverBudgetPreview() {
                     BudgetStatusUi("Groceries", "$580", "$600", "+$20", 0.97f, BudgetHealth.WARNING, null),
                 ),
                 recentTransactions = SampleData.transactions.take(3), currency = Currency.USD),
-            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {})
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {}, onViewAccounts = {})
     }
 }

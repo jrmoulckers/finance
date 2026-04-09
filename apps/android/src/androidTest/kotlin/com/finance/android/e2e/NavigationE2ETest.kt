@@ -4,6 +4,7 @@ package com.finance.android.e2e
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import org.junit.Test
 import com.finance.android.e2e.robot.DashboardRobot
 import com.finance.android.e2e.robot.NavigationRobot
@@ -18,7 +19,7 @@ import com.finance.android.e2e.robot.NavigationRobot
 class NavigationE2ETest : BaseE2ETest() {
 
     /**
-     * Verify all five bottom-nav items are rendered on launch.
+     * Verify all four bottom-nav items are rendered on launch.
      */
     @Test
     fun bottomNav_allItemsVisible() {
@@ -29,14 +30,14 @@ class NavigationE2ETest : BaseE2ETest() {
     }
 
     /**
-     * Verify navigating to Accounts displays the Accounts screen.
+     * Verify navigating to Accounts via the Net Worth card on Dashboard.
      */
     @Test
-    fun navigateToAccounts_displaysAccountsScreen() {
+    fun tapNetWorthCard_displaysAccountsScreen() {
         val nav = NavigationRobot(composeTestRule)
         val dash = DashboardRobot(composeTestRule)
         dash.waitForDashboardLoaded()
-        nav.navigateToAccounts()
+        dash.tapNetWorthCard()
         composeTestRule.onNodeWithContentDescription("Add new account")
             .assertIsDisplayed()
     }
@@ -54,39 +55,40 @@ class NavigationE2ETest : BaseE2ETest() {
     }
 
     /**
-     * Verify navigating to Budgets tab displays the Budgets screen.
+     * Verify navigating to Planning tab displays the Budgets/Goals tabs.
      */
     @Test
-    fun navigateToBudgets_displaysBudgetsScreen() {
+    fun navigateToPlanning_displaysPlanningScreen() {
         val nav = NavigationRobot(composeTestRule)
         val dash = DashboardRobot(composeTestRule)
         dash.waitForDashboardLoaded()
-        nav.navigateToBudgets()
+        nav.navigateToPlanning()
+        composeTestRule.onNodeWithText("Budgets").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Goals").assertIsDisplayed()
+    }
+
+    /**
+     * Verify navigating to Settings tab displays the Settings screen.
+     */
+    @Test
+    fun navigateToSettings_displaysSettingsScreen() {
+        val nav = NavigationRobot(composeTestRule)
+        val dash = DashboardRobot(composeTestRule)
+        dash.waitForDashboardLoaded()
+        nav.navigateToSettings()
         composeTestRule.waitForIdle()
     }
 
     /**
-     * Verify navigating to Goals tab displays the Goals screen.
-     */
-    @Test
-    fun navigateToGoals_displaysGoalsScreen() {
-        val nav = NavigationRobot(composeTestRule)
-        val dash = DashboardRobot(composeTestRule)
-        dash.waitForDashboardLoaded()
-        nav.navigateToGoals()
-        composeTestRule.waitForIdle()
-    }
-
-    /**
-     * Verify a full round-trip: Dashboard -> Accounts -> Dashboard.
+     * Verify a full round-trip: Dashboard -> Planning -> Dashboard.
      * Ensures back-stack management preserves the Dashboard state.
      */
     @Test
-    fun roundTrip_dashboardToAccountsAndBack() {
+    fun roundTrip_dashboardToPlanningAndBack() {
         val nav = NavigationRobot(composeTestRule)
         val dash = DashboardRobot(composeTestRule)
         dash.waitForDashboardLoaded()
-        nav.navigateToAccounts()
+        nav.navigateToPlanning()
         composeTestRule.waitForIdle()
         nav.navigateToDashboard()
         dash.waitForDashboardLoaded()

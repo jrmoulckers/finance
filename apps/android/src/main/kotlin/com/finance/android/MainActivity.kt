@@ -195,10 +195,9 @@ private fun AuthenticatedContent(modifier: Modifier = Modifier) {
     // Show bottom bar only on top-level destinations
     val showBottomBar = currentRoute in setOf(
         Route.Dashboard.route,
-        Route.Accounts.route,
         Route.Transactions.route,
-        Route.Budgets.route,
-        Route.Goals.route,
+        Route.Planning.route,
+        Route.Settings.route,
     )
 
     Scaffold(

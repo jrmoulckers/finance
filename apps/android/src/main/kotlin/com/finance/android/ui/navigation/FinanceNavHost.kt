@@ -29,10 +29,9 @@ import com.finance.android.ui.screens.AccountCreateScreen
 import com.finance.android.ui.screens.AccountsScreen
 import com.finance.android.ui.screens.AnalyticsScreen
 import com.finance.android.ui.screens.BudgetCreateScreen
-import com.finance.android.ui.screens.BudgetsScreen
 import com.finance.android.ui.screens.DashboardScreen
 import com.finance.android.ui.screens.GoalCreateScreen
-import com.finance.android.ui.screens.GoalsScreen
+import com.finance.android.ui.screens.PlanningScreen
 import com.finance.android.ui.screens.SettingsScreen
 import com.finance.android.ui.screens.TransactionCreateScreen
 import com.finance.android.ui.screens.TransactionsScreen
@@ -53,6 +52,7 @@ sealed class Route(val route: String) {
     data object Transactions : Route("transactions")
     data object Budgets : Route("budgets")
     data object Goals : Route("goals")
+    data object Planning : Route("planning")
     data object Settings : Route("settings")
     data object AccountDetail : Route("accounts/{id}") {
         fun createRoute(id: String): String = "accounts/$id"
@@ -142,9 +142,45 @@ fun FinanceNavHost(
                         launchSingleTop = true
                     }
                 },
+                onViewAccounts = {
+                    navController.navigate(Route.Accounts.route) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 
+        composable(Route.Transactions.route) {
+            TransactionsScreen()
+        }
+
+        composable(Route.Planning.route) {
+            PlanningScreen(
+                onCreateBudget = {
+                    navController.navigate(Route.BudgetCreate.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onCreateGoal = {
+                    navController.navigate(Route.GoalCreate.route) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+
+        composable(Route.Settings.route) {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToLogin = {
+                    navController.navigate(Route.Dashboard.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+            )
+        }
+
+        // ── Secondary screens ───────────────────────────────────────
         composable(Route.Accounts.route) {
             AccountsScreen(
                 onAccountClick = { id ->
@@ -158,44 +194,8 @@ fun FinanceNavHost(
             )
         }
 
-        composable(Route.Transactions.route) {
-            TransactionsScreen()
-        }
-
-        composable(Route.Budgets.route) {
-            BudgetsScreen(
-                onCreateBudget = {
-                    navController.navigate(Route.BudgetCreate.route) {
-                        launchSingleTop = true
-                    }
-                },
-            )
-        }
-
-        composable(Route.Goals.route) {
-            GoalsScreen(
-                onCreateGoal = {
-                    navController.navigate(Route.GoalCreate.route) {
-                        launchSingleTop = true
-                    }
-                },
-            )
-        }
-
         composable(Route.Analytics.route) {
             AnalyticsScreen()
-        }
-
-        // ── Secondary screens ───────────────────────────────────────
-        composable(Route.Settings.route) {
-            SettingsScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToLogin = {
-                    navController.navigate(Route.Dashboard.route) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
-            )
         }
 
         composable(
