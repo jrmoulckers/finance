@@ -1,6 +1,9 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  // Allow 60 seconds per test — CI runners with cold Vite dev server +
+  // SQLite-WASM initialization can exceed the 30-second default.
+  timeout: 60_000,
   testDir: './e2e',
   use: {
     baseURL: 'http://localhost:5173',
@@ -17,6 +20,6 @@ export default defineConfig({
     command: 'npm run dev',
     port: 5173,
     reuseExistingServer: true,
-    timeout: 30_000,
+    timeout: 60_000,
   },
 });

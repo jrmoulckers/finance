@@ -153,7 +153,7 @@ async function loginViaForm(page: Page): Promise<void> {
 
   // Wait for the login form to be fully rendered.
   const emailInput = page.getByLabel(/email/i);
-  await emailInput.waitFor({ state: 'visible' });
+  await emailInput.waitFor({ state: 'visible', timeout: 60_000 });
 
   await emailInput.fill(TEST_USER.email);
   await page.getByLabel(/password/i).fill(TEST_PASSWORD);
