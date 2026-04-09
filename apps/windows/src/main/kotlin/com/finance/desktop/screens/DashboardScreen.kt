@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,54 +52,18 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.finance.core.budget.BudgetHealth
+import com.finance.core.currency.CurrencyFormatter
+import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
+import com.finance.desktop.viewmodel.BudgetStatusUi
+import com.finance.desktop.viewmodel.DashboardViewModel
+import com.finance.models.Transaction
+import com.finance.models.TransactionType
+import com.finance.models.types.Currency
 
 // =============================================================================
-// Sample data models for the desktop dashboard (UI-layer placeholders)
-// =============================================================================
-
-private data class DashboardState(
-    val netWorth: String = "$116,899.22",
-    val todaySpending: String = "$28.78",
-    val monthlySpending: String = "$1,247.63",
-    val recentTransactions: List<SampleTransaction> = sampleTransactions,
-    val budgetItems: List<SampleBudget> = sampleBudgets,
-)
-
-private data class SampleTransaction(
-    val id: String,
-    val payee: String,
-    val category: String,
-    val amount: String,
-    val isExpense: Boolean,
-    val date: String,
-)
-
-private data class SampleBudget(
-    val name: String,
-    val spent: String,
-    val limit: String,
-    val utilization: Float,
-    val isOver: Boolean,
-)
-
-private val sampleTransactions = listOf(
-    SampleTransaction("1", "Whole Foods", "Groceries", "-\$52.30", true, "Today"),
-    SampleTransaction("2", "Salary Deposit", "Income", "+\$4,200.00", false, "Today"),
-    SampleTransaction("3", "Netflix", "Entertainment", "-\$15.99", true, "Yesterday"),
-    SampleTransaction("4", "Gas Station", "Transport", "-\$45.00", true, "Yesterday"),
-    SampleTransaction("5", "Freelance Payment", "Income", "+\$800.00", false, "Mar 3"),
-)
-
-private val sampleBudgets = listOf(
-    SampleBudget("Groceries", "\$248", "\$600", 0.41f, false),
-    SampleBudget("Dining", "\$245", "\$300", 0.82f, false),
-    SampleBudget("Transport", "\$89", "\$200", 0.45f, false),
-    SampleBudget("Entertainment", "\$180", "\$150", 1.2f, true),
-)
-
-// =============================================================================
-// Dashboard Screen
+// Dashboard Screen — wired to DashboardViewModel (KMP shared logic)
 // =============================================================================
 
 /**
@@ -114,12 +80,31 @@ private val sampleBudgets = listOf(
  * └──────────────────────────────────────────┘
  * ```
  *
+ * All financial computations (net worth, spending totals, budget utilisation)
+ * are performed by the KMP shared packages (`packages/core`) via
+ * [DashboardViewModel], eliminating duplicate logic between platforms.
+ *
  * Context menus on transaction items provide right-click actions.
  * Narrator reads every card via semantic content descriptions.
  */
 @Composable
 fun DashboardScreen(modifier: Modifier = Modifier) {
-    val state = DashboardState()
+    val viewModel = koinGet<DashboardViewModel>()
+    val state by viewModel.uiState.collectAsState()
+
+    if (state.isLoading) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.semantics {
+                    contentDescription = "Loading dashboard"
+                },
+            )
+        }
+        return
+    }
 
     Column(
         modifier = modifier
@@ -141,8 +126,8 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.lg),
             ) {
-                NetWorthCard(state.netWorth)
-                SpendingSummaryRow(state.todaySpending, state.monthlySpending)
+                NetWorthCard(state.netWorthFormatted)
+                SpendingSummaryRow(state.todaySpendingFormatted, state.monthlySpendingFormatted)
             }
 
             // Right column: recent transactions
@@ -157,7 +142,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
 
         // ── Bottom: budget health cards ──
-        BudgetHealthSection(state.budgetItems)
+        BudgetHealthSection(state.budgetStatuses)
     }
 }
 
@@ -263,7 +248,7 @@ private fun SpendingCard(
 
 @Composable
 private fun RecentTransactionsPanel(
-    transactions: List<SampleTransaction>,
+    transactions: List<Transaction>,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -303,7 +288,7 @@ private fun RecentTransactionsPanel(
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
                 ) {
-                    items(transactions, key = { it.id }) { txn ->
+                    items(transactions, key = { it.id.value }) { txn ->
                         TransactionRow(txn)
                     }
                 }
@@ -314,14 +299,24 @@ private fun RecentTransactionsPanel(
 
 /**
  * Single transaction row with right-click context menu.
+ *
+ * Renders amount formatting using the KMP shared [CurrencyFormatter]
+ * to match the exact output on Android/iOS/Web.
  */
 @Composable
-private fun TransactionRow(transaction: SampleTransaction) {
-    val amountColor = if (transaction.isExpense) {
+private fun TransactionRow(transaction: Transaction) {
+    val isExpense = transaction.type == TransactionType.EXPENSE
+    val amountColor = if (isExpense) {
         MaterialTheme.colorScheme.error
     } else {
         Color(0xFF2E7D32)
     }
+    val formattedAmount = CurrencyFormatter.format(
+        transaction.amount,
+        transaction.currency,
+        showSign = true,
+    )
+    val payee = transaction.payee ?: "Unknown"
 
     ContextMenuArea(
         items = {
@@ -337,7 +332,7 @@ private fun TransactionRow(transaction: SampleTransaction) {
                 .fillMaxWidth()
                 .semantics {
                     contentDescription =
-                        "Transaction: ${transaction.amount} at ${transaction.payee}, ${transaction.category}, ${transaction.date}"
+                        "Transaction: $formattedAmount at $payee, ${transaction.date}"
                 },
         ) {
             Row(
@@ -355,7 +350,7 @@ private fun TransactionRow(transaction: SampleTransaction) {
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(
-                        imageVector = if (transaction.isExpense) Icons.Filled.TrendingDown
+                        imageVector = if (isExpense) Icons.Filled.TrendingDown
                         else Icons.Filled.TrendingUp,
                         contentDescription = null,
                         tint = amountColor,
@@ -364,21 +359,21 @@ private fun TransactionRow(transaction: SampleTransaction) {
                     Spacer(Modifier.width(FinanceDesktopTheme.spacing.md))
                     Column {
                         Text(
-                            text = transaction.payee,
+                            text = payee,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = "${transaction.category} • ${transaction.date}",
+                            text = transaction.date.toString(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
                 Text(
-                    text = transaction.amount,
+                    text = formattedAmount,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = amountColor,
@@ -389,7 +384,7 @@ private fun TransactionRow(transaction: SampleTransaction) {
 }
 
 @Composable
-private fun BudgetHealthSection(budgets: List<SampleBudget>) {
+private fun BudgetHealthSection(budgets: List<BudgetStatusUi>) {
     Column {
         Text(
             text = "Budget Health",
@@ -401,32 +396,40 @@ private fun BudgetHealthSection(budgets: List<SampleBudget>) {
             },
         )
         Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.lg),
-        ) {
-            budgets.forEach { budget ->
-                DashboardBudgetCard(budget, modifier = Modifier.weight(1f))
+        if (budgets.isEmpty()) {
+            Text(
+                text = "No budgets configured",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.lg),
+            ) {
+                budgets.forEach { budget ->
+                    DashboardBudgetCard(budget, modifier = Modifier.weight(1f))
+                }
             }
         }
     }
 }
 
 @Composable
-private fun DashboardBudgetCard(budget: SampleBudget, modifier: Modifier = Modifier) {
-    val healthColor = when {
-        budget.isOver -> MaterialTheme.colorScheme.error
-        budget.utilization > 0.75f -> Color(0xFFFF9800)
-        else -> MaterialTheme.colorScheme.primary
+private fun DashboardBudgetCard(budget: BudgetStatusUi, modifier: Modifier = Modifier) {
+    val healthColor = when (budget.health) {
+        BudgetHealth.OVER -> MaterialTheme.colorScheme.error
+        BudgetHealth.WARNING -> Color(0xFFFF9800)
+        BudgetHealth.HEALTHY -> MaterialTheme.colorScheme.primary
     }
-    val healthLabel = when {
-        budget.isOver -> "over budget"
-        budget.utilization > 0.75f -> "warning"
-        else -> "healthy"
+    val healthLabel = when (budget.health) {
+        BudgetHealth.OVER -> "over budget"
+        BudgetHealth.WARNING -> "warning"
+        BudgetHealth.HEALTHY -> "healthy"
     }
 
     val animatedProgress by animateFloatAsState(
-        targetValue = budget.utilization.coerceIn(0f, 1f),
+        targetValue = budget.utilizationPercent.coerceIn(0f, 1f),
         animationSpec = tween(800),
         label = "budget-progress",
     )
@@ -471,7 +474,7 @@ private fun DashboardBudgetCard(budget: SampleBudget, modifier: Modifier = Modif
                         )
                     }
                     Text(
-                        text = "${(budget.utilization * 100).toInt()}%",
+                        text = "${(budget.utilizationPercent * 100).toInt()}%",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                     )
