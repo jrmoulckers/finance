@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
+import { DatabaseProvider } from './db/DatabaseProvider';
 import { initMonitoring } from './lib/monitoring';
 import './theme/tokens.css';
 import './styles/responsive.css';
@@ -56,9 +57,11 @@ initMonitoring();
 createRoot(rootElement).render(
   <StrictMode>
     <AuthProvider config={authConfig}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <DatabaseProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </DatabaseProvider>
     </AuthProvider>
   </StrictMode>,
 );

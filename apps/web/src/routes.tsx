@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { lazy, Suspense, useCallback } from 'react';
-import type { FC } from 'react';
-import { Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import type { FC, ReactNode } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 
 import { ProtectedRoute, useAuth } from './auth/auth-context';
-import { DatabaseProvider } from './db/DatabaseProvider';
 
 /*
  * Lazy-loaded route pages - each is code-split into its own chunk.
@@ -37,15 +36,11 @@ const PageLoader: FC = () => (
   </div>
 );
 
-/**
- * Layout route for authenticated pages.
- *
- * Combines authentication gating with DatabaseProvider so that:
- * - Pre-auth routes (login, signup) render immediately without WASM init
- * - Database initialization only starts once the user is authenticated
- * - A single DatabaseProvider instance is shared across all child routes
- */
-const AuthenticatedLayout: FC = () => {
+interface AuthenticatedRouteProps {
+  children: ReactNode;
+}
+
+const AuthenticatedRoute: FC<AuthenticatedRouteProps> = ({ children }) => {
   const navigate = useNavigate();
   const handleUnauthenticated = useCallback(() => {
     navigate('/login', { replace: true });
@@ -53,9 +48,7 @@ const AuthenticatedLayout: FC = () => {
 
   return (
     <ProtectedRoute fallback={<PageLoader />} onUnauthenticated={handleUnauthenticated}>
-      <DatabaseProvider>
-        <Outlet />
-      </DatabaseProvider>
+      {children}
     </ProtectedRoute>
   );
 };
@@ -98,98 +91,116 @@ export const AppRoutes: FC = () => (
       }
     />
 
-    {/* Authenticated routes — wrapped in AuthenticatedLayout which provides
-        both auth gating and DatabaseProvider (SQLite-WASM). */}
-    <Route element={<AuthenticatedLayout />}>
-      <Route
-        path="/dashboard"
-        element={
+    <Route
+      path="/dashboard"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Dashboard />
           </Suspense>
-        }
-      />
-      <Route
-        path="/accounts"
-        element={
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/accounts"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Accounts />
           </Suspense>
-        }
-      />
-      <Route
-        path="/accounts/:id"
-        element={
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/accounts/:id"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <AccountDetail />
           </Suspense>
-        }
-      />
-      <Route
-        path="/transactions"
-        element={
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/transactions"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Transactions />
           </Suspense>
-        }
-      />
-      <Route
-        path="/transactions/:id"
-        element={
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/transactions/:id"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <TransactionDetail />
           </Suspense>
-        }
-      />
-      <Route
-        path="/budgets"
-        element={
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/budgets"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Budgets />
           </Suspense>
-        }
-      />
-      <Route
-        path="/budgets/:id"
-        element={
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/budgets/:id"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <BudgetDetail />
           </Suspense>
-        }
-      />
-      <Route
-        path="/goals"
-        element={
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/goals"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Goals />
           </Suspense>
-        }
-      />
-      <Route
-        path="/goals/:id"
-        element={
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/goals/:id"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <GoalDetail />
           </Suspense>
-        }
-      />
-      <Route
-        path="/import"
-        element={
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/import"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Import />
           </Suspense>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/settings"
+      element={
+        <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Settings />
           </Suspense>
-        }
-      />
-    </Route>
+        </AuthenticatedRoute>
+      }
+    />
 
     <Route
       path="*"
