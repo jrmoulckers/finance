@@ -35,3 +35,12 @@ kotlin {
         }
     }
 }
+
+// Conditionally add Android-specific dependency for EncryptedSharedPreferences.
+// The androidMain source set only exists when the Android SDK is available
+// (controlled by the finance.kmp.library convention plugin).
+if (project.extra.has("androidSdkAvailable") && project.extra["androidSdkAvailable"] == true) {
+    kotlin.sourceSets.getByName("androidMain").dependencies {
+        implementation(libs.security.crypto)
+    }
+}
