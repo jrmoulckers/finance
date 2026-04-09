@@ -146,7 +146,6 @@ fun GoalEditScreen(
             onCurrentAmountChange = viewModel::updateCurrentAmount,
             onTargetDateChange = viewModel::updateTargetDate,
             onAccountSelect = viewModel::selectAccount,
-            onNoteChange = viewModel::updateNote,
             onSave = viewModel::save,
             modifier = Modifier.padding(innerPadding),
         )
@@ -208,7 +207,6 @@ private fun GoalEditForm(
     onCurrentAmountChange: (String) -> Unit,
     onTargetDateChange: (LocalDate) -> Unit,
     onAccountSelect: (SyncId?) -> Unit,
-    onNoteChange: (String) -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -360,25 +358,6 @@ private fun GoalEditForm(
                     onAccountSelected = onAccountSelect,
                 )
             }
-        }
-
-        // ── Note (optional) ─────────────────────────────────────────
-        item(key = "note") {
-            Text(
-                text = "Note (optional)",
-                style = MaterialTheme.typography.labelLarge,
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = state.note,
-                onValueChange = onNoteChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "Optional note" },
-                label = { Text("Note") },
-                placeholder = { Text("Add a note...") },
-                maxLines = 3,
-            )
         }
 
         // ── Save button ─────────────────────────────────────────────

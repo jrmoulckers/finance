@@ -139,7 +139,6 @@ fun AccountEditScreen(
             onTypeChange = viewModel::updateAccountType,
             onCurrencyChange = viewModel::updateCurrency,
             onBalanceChange = viewModel::updateInitialBalance,
-            onNoteChange = viewModel::updateNote,
             onSave = viewModel::save,
             modifier = Modifier.padding(innerPadding),
         )
@@ -201,7 +200,6 @@ private fun AccountEditForm(
     onTypeChange: (AccountType) -> Unit,
     onCurrencyChange: (String) -> Unit,
     onBalanceChange: (String) -> Unit,
-    onNoteChange: (String) -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -305,25 +303,6 @@ private fun AccountEditForm(
                 leadingIcon = { Icon(Icons.Filled.AttachMoney, contentDescription = null) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
-            )
-        }
-
-        // ── Note (optional) ─────────────────────────────────────────
-        item(key = "note") {
-            Text(
-                text = "Note (optional)",
-                style = MaterialTheme.typography.labelLarge,
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = state.note,
-                onValueChange = onNoteChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "Optional note" },
-                label = { Text("Note") },
-                placeholder = { Text("Add a note...") },
-                maxLines = 3,
             )
         }
 

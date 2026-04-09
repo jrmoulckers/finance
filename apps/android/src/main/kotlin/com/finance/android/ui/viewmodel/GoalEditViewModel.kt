@@ -33,7 +33,6 @@ data class GoalEditUiState(
     val targetDate: LocalDate? = null,
     val selectedAccount: Account? = null,
     val accounts: List<Account> = emptyList(),
-    val note: String = "",
     val errors: List<String> = emptyList(),
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
@@ -101,7 +100,6 @@ class GoalEditViewModel(
                     targetDate = goal.targetDate,
                     selectedAccount = linkedAccount,
                     accounts = accounts,
-                    note = goal.note ?: "",
                     isLoading = false,
                 )
             }
@@ -145,10 +143,6 @@ class GoalEditViewModel(
     fun selectAccount(id: SyncId?) {
         val account = if (id != null) _uiState.value.accounts.find { it.id == id } else null
         _uiState.update { it.copy(selectedAccount = account, errors = emptyList()) }
-    }
-
-    fun updateNote(note: String) {
-        _uiState.update { it.copy(note = note.take(500), errors = emptyList()) }
     }
 
     // ── Validation ──────────────────────────────────────────────────

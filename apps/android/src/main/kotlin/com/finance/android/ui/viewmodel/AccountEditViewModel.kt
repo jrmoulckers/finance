@@ -31,7 +31,6 @@ data class AccountEditUiState(
     val accountType: AccountType = AccountType.CHECKING,
     val currency: String = "USD",
     val initialBalance: String = "",
-    val note: String = "",
     val errors: List<String> = emptyList(),
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
@@ -118,10 +117,6 @@ class AccountEditViewModel(
         val parts = cleaned.split(".")
         val limited = if (parts.size > 1) "${parts[0]}.${parts[1].take(2)}" else cleaned
         _uiState.update { it.copy(initialBalance = limited, errors = emptyList()) }
-    }
-
-    fun updateNote(note: String) {
-        _uiState.update { it.copy(note = note.take(500), errors = emptyList()) }
     }
 
     // ── Validation ──────────────────────────────────────────────────
