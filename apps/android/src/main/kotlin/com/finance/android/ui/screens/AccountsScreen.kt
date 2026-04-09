@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.TrendingDown
@@ -79,13 +80,19 @@ import com.finance.models.types.Currency
 fun AccountsScreen(
     onAccountClick: (String) -> Unit = {},
     onAddAccount: () -> Unit = {},
+    onEditAccount: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AccountsViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     val sel = state.selectedAccount
     if (sel != null) {
-        AccountDetailScreen(sel, state.selectedAccountTransactions, viewModel::clearSelection)
+        AccountDetailScreen(
+            sel,
+            state.selectedAccountTransactions,
+            viewModel::clearSelection,
+            onEdit = { onEditAccount(sel.id.value) },
+        )
         return
     }
     if (state.isLoading) {
@@ -164,7 +171,12 @@ private fun AccountCard(account: Account, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun AccountDetailScreen(account: Account, transactions: List<Transaction>, onBack: () -> Unit) {
+internal fun AccountDetailScreen(
+    account: Account,
+    transactions: List<Transaction>,
+    onBack: () -> Unit,
+    onEdit: () -> Unit = {},
+) {
     val bal = CurrencyFormatter.format(account.currentBalance, account.currency)
     val typeName = account.type.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
     Scaffold(topBar = {
@@ -172,6 +184,14 @@ internal fun AccountDetailScreen(account: Account, transactions: List<Transactio
             navigationIcon = {
                 IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Navigate back" }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                }
+            },
+            actions = {
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier.semantics { contentDescription = "Edit account" },
+                ) {
+                    Icon(Icons.Filled.Edit, contentDescription = null)
                 }
             })
     }) { innerPadding ->
