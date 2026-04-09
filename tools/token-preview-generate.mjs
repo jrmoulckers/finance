@@ -92,11 +92,7 @@ function grade(ratio, ui = false) {
 
 const isHex = (v) => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/i.test(v);
 const fgFor = (hex) => (luminance(hex) > 0.179 ? '#111827' : '#F9FAFB');
-const esc = (s) =>
-  String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 // ── Token loading ────────────────────────────────────────────────────
 
@@ -309,13 +305,7 @@ function renderContrast(lightC, darkC, oledC) {
       '<table class="ct"><thead><tr><th>Pair</th><th>Foreground</th><th>Background</th><th>Ratio</th><th>Grade</th><th>Preview</th></tr></thead><tbody>';
     for (const r of rows) {
       const badge =
-        r.g === 'AAA'
-          ? 'b-aaa'
-          : r.g === 'AA'
-            ? 'b-aa'
-            : r.g === 'FAIL'
-              ? 'b-fail'
-              : 'b-na';
+        r.g === 'AAA' ? 'b-aaa' : r.g === 'AA' ? 'b-aa' : r.g === 'FAIL' ? 'b-fail' : 'b-na';
       const ratioStr = r.ratio ? r.ratio.toFixed(2) + ':1' : '—';
       const fgSw = isHex(r.fg) ? `<span class="msw" style="background:${r.fg}"></span>` : '';
       const bgSw = isHex(r.bg) ? `<span class="msw" style="background:${r.bg}"></span>` : '';
@@ -572,9 +562,7 @@ export function generate(opts = {}) {
   const oc = checkContrasts(oled);
 
   const pc = Object.keys(prims).length;
-  const sc = Object.keys(
-    loadDir('semantic', [...SEM_SHARED, 'colors.light.json']),
-  ).length;
+  const sc = Object.keys(loadDir('semantic', [...SEM_SHARED, 'colors.light.json'])).length;
   const cc = Object.keys(loadDir('component', COMP)).length;
   const all = [...lc, ...dc, ...oc].filter((c) => c.g !== 'N/A');
   const pass = all.filter((c) => c.g !== 'FAIL').length;

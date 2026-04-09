@@ -43,17 +43,17 @@ npm run tokens:preview:generate
 
 **What the preview shows:**
 
-| Section          | Description                                                     |
-| ---------------- | --------------------------------------------------------------- |
-| Primitive Colors | Full palette grids with hex values                              |
-| Chart Colors     | IBM CVD-safe data visualization palette                         |
-| Semantic Colors  | Light / Dark / OLED Dark themes side by side                    |
-| WCAG Contrast    | Contrast ratio checks for all text/background pairs per theme   |
-| Typography       | Live-rendered type scale samples (Display → Caption)            |
-| Spacing          | Horizontal bar visualization of the 4px/8px spacing scale       |
-| Border Radius    | Visual samples of each radius token                             |
-| Elevation        | Shadow samples from none → xl                                   |
-| Motion           | Duration and easing token values with animated indicators       |
+| Section          | Description                                                   |
+| ---------------- | ------------------------------------------------------------- |
+| Primitive Colors | Full palette grids with hex values                            |
+| Chart Colors     | IBM CVD-safe data visualization palette                       |
+| Semantic Colors  | Light / Dark / OLED Dark themes side by side                  |
+| WCAG Contrast    | Contrast ratio checks for all text/background pairs per theme |
+| Typography       | Live-rendered type scale samples (Display → Caption)          |
+| Spacing          | Horizontal bar visualization of the 4px/8px spacing scale     |
+| Border Radius    | Visual samples of each radius token                           |
+| Elevation        | Shadow samples from none → xl                                 |
+| Motion           | Duration and easing token values with animated indicators     |
 
 Output: `packages/design-tokens/build/preview/index.html` (gitignored build artifact).
 

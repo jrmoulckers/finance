@@ -106,7 +106,9 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log('');
   console.log(`  \uD83C\uDFA8 Finance Token Preview`);
-  console.log(`  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`);
+  console.log(
+    `  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`,
+  );
   console.log(`  Local:   http://localhost:${PORT}`);
   console.log(`  Watching: packages/design-tokens/tokens/`);
   console.log(`  Press Ctrl+C to stop.`);
