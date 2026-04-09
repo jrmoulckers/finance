@@ -71,10 +71,14 @@ jobs:
       - run: npm test -w apps/web
 
   e2e-tests:
-    name: E2E Tests
+    name: E2E Tests (shard ${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/4, 2/4, 3/4, 4/4]
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -100,8 +104,8 @@ jobs:
       - name: Install Playwright browsers
         run: npx -w apps/web playwright install --with-deps chromium
 
-      - name: Run E2E tests
-        run: npm run test:e2e -w apps/web
+      - name: Run E2E tests (shard ${{ matrix.shard }})
+        run: npx -w apps/web playwright test --shard=${{ matrix.shard }}
 
   lighthouse:
     name: Lighthouse Audit
