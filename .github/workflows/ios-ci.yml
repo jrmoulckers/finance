@@ -23,24 +23,43 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 30
 
+    env:
+      SPM_CACHE_DIR: apps/ios/.spm-packages
+      DERIVED_DATA_DIR: apps/ios/.derivedData
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Select Xcode
+        id: xcode
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
           xcode-version: latest-stable
 
-      - name: Cache SPM dependencies
+      - name: Cache SPM packages
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
-          path: |
-            apps/ios/.build
-            ~/Library/Developer/Xcode/DerivedData
-            ~/.swiftpm
-          key: ${{ runner.os }}-spm-${{ hashFiles('apps/ios/Package.resolved', 'apps/ios/Package.swift') }}
+          path: ${{ env.SPM_CACHE_DIR }}
+          key: ${{ runner.os }}-spm-pkgs-${{ hashFiles('apps/ios/Package.resolved', 'apps/ios/Package.swift') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
+            ${{ runner.os }}-spm-pkgs-
+
+      - name: Cache DerivedData
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ${{ env.DERIVED_DATA_DIR }}
+          key: ${{ runner.os }}-dd-${{ hashFiles('apps/ios/Package.resolved', 'apps/ios/Package.swift', 'apps/ios/**/*.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-dd-${{ hashFiles('apps/ios/Package.resolved', 'apps/ios/Package.swift') }}
+            ${{ runner.os }}-dd-
+
+      - name: Resolve SPM dependencies
+        run: |
+          cd apps/ios
+          xcodebuild -resolvePackageDependencies \
+            -scheme FinanceApp \
+            -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
+            2>&1 | tail -10
 
       - name: Build
         run: |
@@ -48,6 +67,8 @@ jobs:
           xcodebuild build \
             -scheme FinanceApp \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
+            -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tail -20
 
@@ -57,6 +78,8 @@ jobs:
           xcodebuild test \
             -scheme FinanceApp \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
+            -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \
             -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO \
             -resultBundlePath .build/TestResults.xcresult \
