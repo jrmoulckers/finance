@@ -86,10 +86,9 @@ jobs:
 
       - run: npm ci
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: web-build
+      - run: npm run build -w packages/design-tokens
+
+      - run: npm run build -w apps/web
 
       - name: Cache Playwright browsers
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
