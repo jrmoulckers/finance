@@ -44,39 +44,50 @@ final class DashboardViewModel {
     /// Computed from the sum of all account balances.
     var netWorth: Int64 { accounts.reduce(0) { $0 + $1.balanceMinorUnits } }
 
+    // MARK: - Cached Aggregations
+    //
+    // These values are pre-computed when data loads rather than being
+    // recalculated as computed properties on every SwiftUI body evaluation.
+    // `monthlyIncome` / `monthlyExpenses` iterate the full transaction list,
+    // and `savingsRate` / `spendingByCategory` cross the KMP bridge and
+    // map the entire list — doing this on every render caused redundant
+    // O(n) + KMP-interop work during scrolling and animation frames.
+
     /// Sum of income transactions in the current dataset.
-    var monthlyIncome: Int64 {
-        recentTransactions
-            .filter { $0.type == .income }
-            .reduce(0) { $0 + $1.amountMinorUnits }
-    }
+    private(set) var monthlyIncome: Int64 = 0
 
     /// Sum of expense transactions in the current dataset (as a positive value).
-    var monthlyExpenses: Int64 {
-        recentTransactions
-            .filter { $0.isExpense }
-            .reduce(0) { $0 + abs($1.amountMinorUnits) }
-    }
+    private(set) var monthlyExpenses: Int64 = 0
 
     /// Savings rate for the current month, computed via the KMP FinancialAggregator.
     /// Returns a percentage (0–100). Available only when monthly transaction data is loaded.
-    var savingsRate: Double {
-        let kmpTransactions = recentTransactions.map { txn in
-            txn.toKMP(householdId: "default", accountId: "", categoryId: nil)
-        }
-        let from = DateComponents.startOfCurrentMonth()
-        let to = DateComponents.endOfCurrentMonth()
-        return financialAggregator.savingsRate(transactions: kmpTransactions, from: from, to: to)
-    }
+    private(set) var savingsRate: Double = 0
 
     /// Spending grouped by category for the current month, via KMP FinancialAggregator.
-    var spendingByCategory: [String: Int64] {
+    private(set) var spendingByCategory: [String: Int64] = [:]
+
+    /// Recomputes cached aggregation values from the current `recentTransactions`.
+    ///
+    /// Called once after data loads instead of on every view body evaluation.
+    private func recomputeAggregations() {
+        monthlyIncome = recentTransactions
+            .filter { $0.type == .income }
+            .reduce(0) { $0 + $1.amountMinorUnits }
+
+        monthlyExpenses = recentTransactions
+            .filter { $0.isExpense }
+            .reduce(0) { $0 + abs($1.amountMinorUnits) }
+
         let kmpTransactions = recentTransactions.map { txn in
             txn.toKMP(householdId: "default", accountId: "", categoryId: nil)
         }
         let from = DateComponents.startOfCurrentMonth()
         let to = DateComponents.endOfCurrentMonth()
-        return financialAggregator.spendingByCategory(
+
+        savingsRate = financialAggregator.savingsRate(
+            transactions: kmpTransactions, from: from, to: to
+        )
+        spendingByCategory = financialAggregator.spendingByCategory(
             transactions: kmpTransactions, from: from, to: to
         )
     }
@@ -118,6 +129,8 @@ final class DashboardViewModel {
             accounts = try await accountsResult
             recentTransactions = try await transactionsResult
             budgets = try await budgetsResult
+
+            recomputeAggregations()
         } catch {
             errorMessage = String(localized: "Failed to load dashboard. Please try again.")
             Self.logger.error("Dashboard load failed: \(error.localizedDescription, privacy: .public)")
