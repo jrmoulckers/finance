@@ -23,9 +23,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -74,7 +74,7 @@ private fun AccountType.toIcon(): ImageVector = when (this) {
     AccountType.CHECKING -> Icons.Filled.AccountBalance
     AccountType.SAVINGS -> Icons.Filled.Savings
     AccountType.CREDIT_CARD -> Icons.Filled.CreditCard
-    AccountType.INVESTMENT -> Icons.Filled.ShowChart
+    AccountType.INVESTMENT -> Icons.AutoMirrored.Filled.ShowChart
     AccountType.CASH -> Icons.Filled.Wallet
     AccountType.LOAN -> Icons.Filled.CreditCard
     AccountType.OTHER -> Icons.Filled.AccountBalance
@@ -457,8 +457,8 @@ private fun AccountTransactionRow(txn: Transaction) {
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(
-                        imageVector = if (isExpense) Icons.Filled.TrendingDown
-                        else Icons.Filled.TrendingUp,
+                        imageVector = if (isExpense) Icons.AutoMirrored.Filled.TrendingDown
+                        else Icons.AutoMirrored.Filled.TrendingUp,
                         contentDescription = null,
                         tint = amountColor,
                         modifier = Modifier.size(20.dp),

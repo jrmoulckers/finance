@@ -23,10 +23,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,40 +43,22 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.finance.core.budget.BudgetHealth
+import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
+import com.finance.desktop.viewmodel.BudgetItemUi
+import com.finance.desktop.viewmodel.BudgetsViewModel
 
 // =============================================================================
-// Sample data
-// =============================================================================
-
-private data class BudgetItem(
-    val id: String,
-    val name: String,
-    val spent: String,
-    val limit: String,
-    val remaining: String,
-    val utilization: Float,
-    val isOver: Boolean,
-    val period: String,
-)
-
-private val sampleBudgetItems = listOf(
-    BudgetItem("1", "Groceries", "\$248", "\$600", "\$352 left", 0.41f, false, "Monthly"),
-    BudgetItem("2", "Dining Out", "\$245", "\$300", "\$55 left", 0.82f, false, "Monthly"),
-    BudgetItem("3", "Transport", "\$89", "\$200", "\$111 left", 0.45f, false, "Monthly"),
-    BudgetItem("4", "Entertainment", "\$180", "\$150", "\$30 over", 1.2f, true, "Monthly"),
-    BudgetItem("5", "Shopping", "\$320", "\$400", "\$80 left", 0.80f, false, "Monthly"),
-    BudgetItem("6", "Utilities", "\$125", "\$200", "\$75 left", 0.625f, false, "Monthly"),
-    BudgetItem("7", "Healthcare", "\$45", "\$150", "\$105 left", 0.30f, false, "Monthly"),
-    BudgetItem("8", "Subscriptions", "\$78", "\$100", "\$22 left", 0.78f, false, "Monthly"),
-)
-
-// =============================================================================
-// Budgets Screen — Grid of Budget Cards
+// Budgets Screen — Grid of Budget Cards (KMP shared logic)
 // =============================================================================
 
 /**
  * Budget overview screen for the desktop Finance application.
+ *
+ * Data flows from [BudgetsViewModel], which loads budgets from the KMP shared
+ * repository and computes utilization via [com.finance.core.budget.BudgetCalculator].
+ * No hardcoded sample data — all values come from the repository layer.
  *
  * Displays a responsive grid of budget cards, each showing:
  * - Category name and period
@@ -87,6 +71,23 @@ private val sampleBudgetItems = listOf(
  */
 @Composable
 fun BudgetsScreen(modifier: Modifier = Modifier) {
+    val viewModel = koinGet<BudgetsViewModel>()
+    val state by viewModel.uiState.collectAsState()
+
+    if (state.isLoading) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.semantics {
+                    contentDescription = "Loading budgets"
+                },
+            )
+        }
+        return
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -111,7 +112,7 @@ fun BudgetsScreen(modifier: Modifier = Modifier) {
 
         Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
 
-        if (sampleBudgetItems.isEmpty()) {
+        if (state.budgets.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
@@ -145,7 +146,7 @@ fun BudgetsScreen(modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.lg),
             ) {
-                items(sampleBudgetItems, key = { it.id }) { budget ->
+                items(state.budgets, key = { it.id }) { budget ->
                     BudgetCard(budget)
                 }
             }
@@ -158,16 +159,16 @@ fun BudgetsScreen(modifier: Modifier = Modifier) {
 // =============================================================================
 
 @Composable
-private fun BudgetCard(budget: BudgetItem) {
-    val healthColor = when {
-        budget.isOver -> MaterialTheme.colorScheme.error
-        budget.utilization > 0.75f -> Color(0xFFFF9800)
-        else -> MaterialTheme.colorScheme.primary
+private fun BudgetCard(budget: BudgetItemUi) {
+    val healthColor = when (budget.health) {
+        BudgetHealth.OVER -> MaterialTheme.colorScheme.error
+        BudgetHealth.WARNING -> Color(0xFFFF9800)
+        BudgetHealth.HEALTHY -> MaterialTheme.colorScheme.primary
     }
-    val healthLabel = when {
-        budget.isOver -> "over budget"
-        budget.utilization > 0.75f -> "approaching limit"
-        else -> "on track"
+    val healthLabel = when (budget.health) {
+        BudgetHealth.OVER -> "over budget"
+        BudgetHealth.WARNING -> "approaching limit"
+        BudgetHealth.HEALTHY -> "on track"
     }
 
     val animatedProgress by animateFloatAsState(
