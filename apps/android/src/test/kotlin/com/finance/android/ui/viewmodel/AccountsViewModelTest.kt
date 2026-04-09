@@ -401,6 +401,7 @@ class AccountsViewModelTest {
         val txnOther = createTransaction("txn-3", "acc-other", 1_000L, payee = "Other")
 
         val vm = AccountsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             accountRepository = TestAccountRepository(listOf(account)),
             transactionRepository = TestTransactionRepository(listOf(txn1, txn2, txnOther)),
         )
@@ -427,6 +428,7 @@ class AccountsViewModelTest {
         val txnNew = createTransaction("txn-new", "acc-1", 2_000L, date = date2)
 
         val vm = AccountsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             accountRepository = TestAccountRepository(listOf(account)),
             transactionRepository = TestTransactionRepository(listOf(txnOld, txnNew)),
         )
@@ -448,6 +450,7 @@ class AccountsViewModelTest {
         val txn = createTransaction("txn-1", "acc-1", 5_000L)
 
         val vm = AccountsViewModel(
+            householdIdProvider = TestHouseholdIdProvider(),
             accountRepository = TestAccountRepository(listOf(account)),
             transactionRepository = TestTransactionRepository(listOf(txn)),
         )
