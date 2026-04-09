@@ -107,7 +107,7 @@ fun AccountsScreen(
 }
 
 @Composable
-private fun AccountsEmptyState(modifier: Modifier = Modifier) {
+internal fun AccountsEmptyState(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize().semantics { contentDescription = "No accounts yet. Add your first account." },
         contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -122,7 +122,7 @@ private fun AccountsEmptyState(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AccountsList(groups: List<AccountGroup>, onAccountClick: (Account) -> Unit, modifier: Modifier = Modifier) {
+internal fun AccountsList(groups: List<AccountGroup>, onAccountClick: (Account) -> Unit, modifier: Modifier = Modifier) {
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         groups.forEach { group ->
             item(key = "hdr-${group.type}") { AccountGroupHeader(group) }
@@ -164,7 +164,7 @@ private fun AccountCard(account: Account, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AccountDetailScreen(account: Account, transactions: List<Transaction>, onBack: () -> Unit) {
+internal fun AccountDetailScreen(account: Account, transactions: List<Transaction>, onBack: () -> Unit) {
     val bal = CurrencyFormatter.format(account.currentBalance, account.currency)
     val typeName = account.type.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
     Scaffold(topBar = {

@@ -100,7 +100,7 @@ fun TransactionsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TransactionsContent(
+internal fun TransactionsContent(
     state: TransactionsUiState, onRefresh: () -> Unit, onSearch: (String) -> Unit,
     onToggleSearch: () -> Unit, onTypeFilter: (TransactionType?) -> Unit,
     onClearFilters: () -> Unit, onLoadMore: () -> Unit,

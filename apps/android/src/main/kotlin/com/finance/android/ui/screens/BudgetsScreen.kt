@@ -110,7 +110,7 @@ fun BudgetsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BudgetsContent(
+internal fun BudgetsContent(
     state: BudgetsUiState,
     onRefresh: () -> Unit,
     onCreateBudget: () -> Unit,
@@ -352,7 +352,7 @@ private fun BudgetItemCard(budget: BudgetItemUi) {
 }
 
 @Composable
-private fun BudgetsEmptyState(modifier: Modifier = Modifier) {
+internal fun BudgetsEmptyState(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
