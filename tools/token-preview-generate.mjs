@@ -92,7 +92,13 @@ function grade(ratio, ui = false) {
 
 const isHex = (v) => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/i.test(v);
 const fgFor = (hex) => (luminance(hex) > 0.179 ? '#111827' : '#F9FAFB');
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) =>
+  String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 // ── Token loading ────────────────────────────────────────────────────
 
