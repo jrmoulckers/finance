@@ -26,14 +26,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import com.finance.android.ui.screens.AccountCreateScreen
+import com.finance.android.ui.screens.AccountEditScreen
 import com.finance.android.ui.screens.AccountsScreen
 import com.finance.android.ui.screens.AnalyticsScreen
 import com.finance.android.ui.screens.BudgetCreateScreen
+import com.finance.android.ui.screens.BudgetEditScreen
 import com.finance.android.ui.screens.DashboardScreen
 import com.finance.android.ui.screens.GoalCreateScreen
+import com.finance.android.ui.screens.GoalEditScreen
 import com.finance.android.ui.screens.PlanningScreen
 import com.finance.android.ui.screens.SettingsScreen
 import com.finance.android.ui.screens.TransactionCreateScreen
+import com.finance.android.ui.screens.TransactionDetailScreen
 import com.finance.android.ui.screens.TransactionsScreen
 import timber.log.Timber
 
@@ -90,6 +94,26 @@ sealed class Route(val route: String) {
      */
     data object Invite : Route("invite/{code}") {
         fun createRoute(code: String): String = "invite/$code"
+    }
+
+    /** Account edit screen. */
+    data object AccountEdit : Route("account/edit/{id}") {
+        fun createRoute(id: String): String = "account/edit/$id"
+    }
+
+    /** Budget edit screen. */
+    data object BudgetEdit : Route("budget/edit/{id}") {
+        fun createRoute(id: String): String = "budget/edit/$id"
+    }
+
+    /** Goal edit screen. */
+    data object GoalEdit : Route("goal/edit/{id}") {
+        fun createRoute(id: String): String = "goal/edit/$id"
+    }
+
+    /** Transaction edit screen (reuses create wizard with pre-populated data). */
+    data object TransactionEdit : Route("transaction/edit/{id}") {
+        fun createRoute(id: String): String = "transaction/edit/$id"
     }
 
     /** Analytics / Spending Trends screen. */
@@ -151,7 +175,18 @@ fun FinanceNavHost(
         }
 
         composable(Route.Transactions.route) {
-            TransactionsScreen()
+            TransactionsScreen(
+                onTransactionClick = { id ->
+                    navController.navigate(Route.TransactionDetail.createRoute(id.value)) {
+                        launchSingleTop = true
+                    }
+                },
+                onEditTransaction = { id ->
+                    navController.navigate(Route.TransactionEdit.createRoute(id.value)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
 
         composable(Route.Planning.route) {
@@ -163,6 +198,16 @@ fun FinanceNavHost(
                 },
                 onCreateGoal = {
                     navController.navigate(Route.GoalCreate.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onEditBudget = { id ->
+                    navController.navigate(Route.BudgetEdit.createRoute(id)) {
+                        launchSingleTop = true
+                    }
+                },
+                onEditGoal = { id ->
+                    navController.navigate(Route.GoalEdit.createRoute(id)) {
                         launchSingleTop = true
                     }
                 },
@@ -188,6 +233,11 @@ fun FinanceNavHost(
                 },
                 onAddAccount = {
                     navController.navigate(Route.AccountCreate.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onEditAccount = { id ->
+                    navController.navigate(Route.AccountEdit.createRoute(id)) {
                         launchSingleTop = true
                     }
                 },
@@ -241,6 +291,51 @@ fun FinanceNavHost(
 
         composable(Route.GoalCreate.route) {
             GoalCreateScreen(
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // ── Edit screens ────────────────────────────────────────────
+
+        composable(
+            route = Route.AccountEdit.route,
+            arguments = listOf(navArgument("id") { type = NavType.StringType }),
+        ) {
+            AccountEditScreen(
+                onSaved = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Route.BudgetEdit.route,
+            arguments = listOf(navArgument("id") { type = NavType.StringType }),
+        ) {
+            BudgetEditScreen(
+                onSaved = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Route.GoalEdit.route,
+            arguments = listOf(navArgument("id") { type = NavType.StringType }),
+        ) {
+            GoalEditScreen(
+                onSaved = { navController.popBackStack() },
+                onDeleted = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Route.TransactionEdit.route,
+            arguments = listOf(navArgument("id") { type = NavType.StringType }),
+        ) {
+            TransactionCreateScreen(
                 onSaved = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
             )
@@ -347,36 +442,14 @@ fun FinanceNavHost(
             val transactionId = backStackEntry.arguments?.getString("id").orEmpty()
             Timber.d("Deep link: transaction detail for id=%s", transactionId)
 
-            // TODO: Build full TransactionDetailScreen with transaction data loading
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .semantics { contentDescription = "Transaction details" },
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(24.dp),
-                ) {
-                    Text(
-                        text = "Transaction Details",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Transaction Details heading"
-                        },
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = "Transaction detail view coming soon.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Transaction detail view coming soon"
-                        },
-                    )
-                }
-            }
+            TransactionDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEdit = { txnId ->
+                    navController.navigate(Route.TransactionEdit.createRoute(txnId.value)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
     }
 }
