@@ -25,6 +25,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { timingSafeEqual } from '../_shared/crypto.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { validateEnv } from '../_shared/env.ts';
 import {
@@ -72,7 +73,7 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+  if (!authHeader || !(await timingSafeEqual(authHeader, `Bearer ${cronSecret}`))) {
     logger.warn('Unauthorized request — invalid or missing CRON_SECRET', {
       httpStatus: 401,
     });
