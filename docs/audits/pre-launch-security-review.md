@@ -14,6 +14,7 @@ This pre-launch security review covers all security-critical components of the F
 ### Overall Assessment
 
 The Finance app demonstrates **mature security architecture** with strong fundamentals:
+
 - ✅ RLS enabled on ALL tables with proper tenant isolation
 - ✅ Parameterized queries everywhere (no SQL injection vectors)
 - ✅ CORS origin-allowlist (no wildcard)
@@ -29,13 +30,13 @@ Two previously CRITICAL findings from the v1 audit (CORS wildcard, non-CSPRNG Ra
 
 ### Finding Summary
 
-| Severity     | Count | Action Required                |
-|-------------|-------|--------------------------------|
-| **CRITICAL** | 0     | —                              |
-| **HIGH**     | 3     | Must fix before launch         |
-| **MEDIUM**   | 7     | Fix within sprint / launch +1  |
-| **LOW**      | 7     | Address when convenient        |
-| **TOTAL**    | **17**|                                |
+| Severity     | Count  | Action Required               |
+| ------------ | ------ | ----------------------------- |
+| **CRITICAL** | 0      | —                             |
+| **HIGH**     | 3      | Must fix before launch        |
+| **MEDIUM**   | 7      | Fix within sprint / launch +1 |
+| **LOW**      | 7      | Address when convenient       |
+| **TOTAL**    | **17** |                               |
 
 ---
 
@@ -55,7 +56,9 @@ Two previously CRITICAL findings from the v1 audit (CORS wildcard, non-CSPRNG Ra
 - **Remediation:** Extract `constantTimeEqual()` from `auth-webhook/index.ts` to `_shared/auth.ts` and use it:
   ```typescript
   const token = authHeader.replace('Bearer ', '');
-  if (!constantTimeEqual(token, cronSecret)) { /* reject */ }
+  if (!constantTimeEqual(token, cronSecret)) {
+    /* reject */
+  }
   ```
 
 ### H-2: `checkAbuseStatus()` increments counter as side-effect
@@ -77,7 +80,7 @@ Two previously CRITICAL findings from the v1 audit (CORS wildcard, non-CSPRNG Ra
 - **Code:**
   ```yaml
   SELECT id, household_id, invited_by, invite_code, invited_email,
-         role, expires_at, accepted_at, accepted_by, ...
+  role, expires_at, accepted_at, accepted_by, ...
   FROM household_invitations
   WHERE household_id = bucket.household_id AND deleted_at IS NULL
   ```
@@ -238,20 +241,21 @@ Two previously CRITICAL findings from the v1 audit (CORS wildcard, non-CSPRNG Ra
 
 The following critical/high findings from prior audits have been verified as fully resolved:
 
-| Prior ID | Finding | Resolution | Verified |
-|----------|---------|------------|----------|
-| v1/C-1 | CORS wildcard `*` in Edge Functions | `cors.ts` uses origin allowlist from `ALLOWED_ORIGINS` env var | ✅ |
-| v1/C-1 | Non-CSPRNG `DefaultRandomProvider` | Delegates to platform CSPRNG via `PlatformSHA256.randomBytes()` | ✅ |
-| v1/A-5 | Passkey auth returns raw `user_id` | Mints proper Supabase JWT via `generateLink` + `verifyOtp` | ✅ |
-| v1/API-9 | Global WebAuthn challenge lookup | Challenge scoped by exact value + type + expiry, one-time use | ✅ |
-| v1/S-8 | `toString()` leaks tokens | All auth classes override with redaction | ✅ |
-| v1/S-1 | Android `allowBackup="true"` | Set to `android:allowBackup="false"` | ✅ |
+| Prior ID | Finding                             | Resolution                                                      | Verified |
+| -------- | ----------------------------------- | --------------------------------------------------------------- | -------- |
+| v1/C-1   | CORS wildcard `*` in Edge Functions | `cors.ts` uses origin allowlist from `ALLOWED_ORIGINS` env var  | ✅       |
+| v1/C-1   | Non-CSPRNG `DefaultRandomProvider`  | Delegates to platform CSPRNG via `PlatformSHA256.randomBytes()` | ✅       |
+| v1/A-5   | Passkey auth returns raw `user_id`  | Mints proper Supabase JWT via `generateLink` + `verifyOtp`      | ✅       |
+| v1/API-9 | Global WebAuthn challenge lookup    | Challenge scoped by exact value + type + expiry, one-time use   | ✅       |
+| v1/S-8   | `toString()` leaks tokens           | All auth classes override with redaction                        | ✅       |
+| v1/S-1   | Android `allowBackup="true"`        | Set to `android:allowBackup="false"`                            | ✅       |
 
 ---
 
 ## Security Architecture Strengths
 
 ### Authentication (STRONG)
+
 - ✅ All authenticated endpoints use `requireAuth()` with JWT validation via `supabase.auth.getUser()`
 - ✅ Server-to-server endpoints use shared secrets with `Authorization: Bearer` header
 - ✅ WebAuthn implementation: challenge scoping, 5-min expiry, one-time use, counter increment
@@ -259,6 +263,7 @@ The following critical/high findings from prior audits have been verified as ful
 - ✅ Biometric: `BIOMETRIC_STRONG` (Class 3) on Android, `LAContext` on iOS, Windows Hello
 
 ### Data at Rest (STRONG)
+
 - ✅ SQLCipher encryption architecture via `expect/actual` pattern
 - ✅ Android: `EncryptedSharedPreferences` (AES256-SIV key, AES256-GCM value)
 - ✅ iOS: Keychain with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
@@ -267,6 +272,7 @@ The following critical/high findings from prior audits have been verified as ful
 - ✅ Envelope encryption (DEK/KEK) with AES-256-GCM, fresh nonce per operation
 
 ### Data in Transit (GOOD)
+
 - ✅ All sync traffic uses bearer auth over HTTPS
 - ✅ Webhook endpoints require HTTPS (`startsWith('https://')`)
 - ✅ CORS origin allowlist (never wildcard)
@@ -274,12 +280,14 @@ The following critical/high findings from prior audits have been verified as ful
 - ⚠️ SMTP relay uses HTTP (M-3)
 
 ### SQL Injection Prevention (STRONG)
+
 - ✅ SQLDelight: All queries use `?` parameter placeholders
 - ✅ Supabase client: `.eq()`, `.in()`, `.select()`, `.rpc()` generate parameterized queries
 - ✅ No string interpolation/concatenation in any SQL context
 - ✅ RPC calls use named parameters
 
 ### RLS Policies (STRONG)
+
 - ✅ RLS enabled on ALL 11 tables (users, households, household_members, accounts, categories, transactions, budgets, goals, passkey_credentials, household_invitations, webauthn_challenges, audit_log, rate_limits)
 - ✅ Household-scoped tables: access gated by `auth.household_ids()` function
 - ✅ User-scoped tables: `id = auth.uid()` or `user_id = auth.uid()`
@@ -287,12 +295,14 @@ The following critical/high findings from prior audits have been verified as ful
 - ✅ Rate limits: no user-facing policies (service_role only via `SECURITY DEFINER`)
 
 ### Secrets Management (STRONG)
+
 - ✅ No hardcoded secrets found in source (`.env.example` uses placeholders)
 - ✅ `.gitignore` covers `.env`, `.env.local`, `*.key`, `*.keystore`, `secrets/`
 - ✅ Environment variables validated at startup without revealing which are missing
 - ✅ Webhook secrets returned only on creation, never in list/update responses
 
 ### Input Validation (GOOD)
+
 - ✅ Export format validated against allowlist
 - ✅ Webhook URLs validated for HTTPS and max length
 - ✅ Date formats validated with regex
@@ -304,15 +314,15 @@ The following critical/high findings from prior audits have been verified as ful
 
 ## OWASP MASVS Cross-Reference
 
-| MASVS Category | Status | Notes |
-|---|---|---|
-| MASVS-STORAGE | ✅ PASS (with findings) | Platform-appropriate encryption; invited_email PII leak (H-3) |
-| MASVS-CRYPTO | ✅ PASS (with findings) | CSPRNG fixed; timing attack in process-recurring (H-1); hardcoded JVM password (M-1) |
-| MASVS-AUTH | ✅ PASS (with findings) | Comprehensive auth; abuse detection counter bug (H-2); admin email-only auth (M-2) |
-| MASVS-NETWORK | ⚠️ PARTIAL | TLS everywhere but no cert pinning (M-6); HTTP SMTP (M-3) |
-| MASVS-PLATFORM | ✅ PASS (with findings) | Proper platform integration; CSP needs hardening (M-7) |
-| MASVS-CODE | ✅ PASS (with findings) | Parameterized queries; minor input validation gaps (L-2, L-3, L-4) |
-| MASVS-RESILIENCE | ✅ PASS | Sync rules enforce tenant isolation; column allowlisting |
+| MASVS Category   | Status                  | Notes                                                                                |
+| ---------------- | ----------------------- | ------------------------------------------------------------------------------------ |
+| MASVS-STORAGE    | ✅ PASS (with findings) | Platform-appropriate encryption; invited_email PII leak (H-3)                        |
+| MASVS-CRYPTO     | ✅ PASS (with findings) | CSPRNG fixed; timing attack in process-recurring (H-1); hardcoded JVM password (M-1) |
+| MASVS-AUTH       | ✅ PASS (with findings) | Comprehensive auth; abuse detection counter bug (H-2); admin email-only auth (M-2)   |
+| MASVS-NETWORK    | ⚠️ PARTIAL              | TLS everywhere but no cert pinning (M-6); HTTP SMTP (M-3)                            |
+| MASVS-PLATFORM   | ✅ PASS (with findings) | Proper platform integration; CSP needs hardening (M-7)                               |
+| MASVS-CODE       | ✅ PASS (with findings) | Parameterized queries; minor input validation gaps (L-2, L-3, L-4)                   |
+| MASVS-RESILIENCE | ✅ PASS                 | Sync rules enforce tenant isolation; column allowlisting                             |
 
 ---
 
@@ -320,45 +330,47 @@ The following critical/high findings from prior audits have been verified as ful
 
 ### Must Fix Before Launch (HIGH)
 
-| ID | Finding | Effort | Owner |
-|----|---------|--------|-------|
-| H-1 | Non-constant-time CRON_SECRET comparison | Small | Backend |
-| H-2 | checkAbuseStatus increments counter | Medium | Backend |
-| H-3 | invited_email PII synced to all members | Small | Backend |
+| ID  | Finding                                  | Effort | Owner   |
+| --- | ---------------------------------------- | ------ | ------- |
+| H-1 | Non-constant-time CRON_SECRET comparison | Small  | Backend |
+| H-2 | checkAbuseStatus increments counter      | Medium | Backend |
+| H-3 | invited_email PII synced to all members  | Small  | Backend |
 
 ### Fix Within Sprint (MEDIUM)
 
-| ID | Finding | Effort | Owner |
-|----|---------|--------|-------|
-| M-1 | Hardcoded JVM KeyStore password | Medium | KMP |
-| M-2 | Admin auth email-only allowlist | Medium | Backend |
-| M-3 | SMTP relay plaintext HTTP | Small | Backend |
-| M-4 | data-export SELECT * | Medium | Backend |
-| M-5 | SecureRandom per-call instantiation | Small | KMP |
-| M-6 | No certificate pinning | Medium | Mobile |
-| M-7 | CSP allows unsafe-inline | Small | Web |
+| ID  | Finding                             | Effort | Owner   |
+| --- | ----------------------------------- | ------ | ------- |
+| M-1 | Hardcoded JVM KeyStore password     | Medium | KMP     |
+| M-2 | Admin auth email-only allowlist     | Medium | Backend |
+| M-3 | SMTP relay plaintext HTTP           | Small  | Backend |
+| M-4 | data-export SELECT \*               | Medium | Backend |
+| M-5 | SecureRandom per-call instantiation | Small  | KMP     |
+| M-6 | No certificate pinning              | Medium | Mobile  |
+| M-7 | CSP allows unsafe-inline            | Small  | Web     |
 
 ### Address When Convenient (LOW)
 
-| ID | Finding | Effort | Owner |
-|----|---------|--------|-------|
-| L-1 | Passkey fallback trusts client user_id | Small | Web |
-| L-2 | Invite role not validated | Small | Backend |
-| L-3 | Invite expiry not bounded | Small | Backend |
-| L-4 | CSV formula injection | Small | Backend |
-| L-5 | Production source maps enabled | Small | Web |
-| L-6 | Password ByteArray not zeroed (iOS/JS) | Small | KMP |
-| L-7 | No ephemeral data purge jobs | Medium | Backend |
+| ID  | Finding                                | Effort | Owner   |
+| --- | -------------------------------------- | ------ | ------- |
+| L-1 | Passkey fallback trusts client user_id | Small  | Web     |
+| L-2 | Invite role not validated              | Small  | Backend |
+| L-3 | Invite expiry not bounded              | Small  | Backend |
+| L-4 | CSV formula injection                  | Small  | Backend |
+| L-5 | Production source maps enabled         | Small  | Web     |
+| L-6 | Password ByteArray not zeroed (iOS/JS) | Small  | KMP     |
+| L-7 | No ephemeral data purge jobs           | Medium | Backend |
 
 ---
 
 ## Files Reviewed
 
 ### Edge Functions (12 functions)
+
 - `services/api/supabase/functions/_shared/{auth,cors,logger,rate-limit,env,response,abuse-detection,webhook,notification}.ts`
 - `services/api/supabase/functions/{passkey-register,passkey-authenticate,auth-webhook,data-export,account-deletion,household-invite,admin-dashboard,process-recurring,manage-webhooks,send-notification,health-check,sync-health-report}/index.ts`
 
 ### Database Migrations
+
 - `services/api/supabase/migrations/20260306000001_initial_schema.sql`
 - `services/api/supabase/migrations/20260306000002_rls_policies.sql`
 - `services/api/supabase/migrations/20260306000003_auth_config.sql`
@@ -366,14 +378,17 @@ The following critical/high findings from prior audits have been verified as ful
 - `services/api/supabase/migrations/20260323000003_rate_limits.sql`
 
 ### Sync Rules
+
 - `services/api/powersync/sync-rules.yaml`
 
 ### Platform Security
+
 - `apps/android/src/main/AndroidManifest.xml`
 - `apps/web/src/auth/{auth-context.tsx,token-storage.ts,webauthn.ts}`
 - `apps/web/vite.config.ts`
 
 ### Environment & Secrets
+
 - `services/api/.env.example`
 - `apps/web/.env.example`
 - `.gitignore`
@@ -381,6 +396,7 @@ The following critical/high findings from prior audits have been verified as ful
 - `services/api/supabase/seed.sql`
 
 ### Prior Audits Referenced
+
 - `docs/audits/security-audit-owasp-masvs.md`
 - `docs/architecture/security-audit-v1.md`
 - `docs/architecture/privacy-audit-v1.md`
