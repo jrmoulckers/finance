@@ -4,6 +4,7 @@ package com.finance.android.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,6 +69,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun BudgetsScreen(
     onCreateBudget: () -> Unit = {},
+    onBudgetClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: BudgetsViewModel = koinViewModel(),
 ) {
@@ -102,6 +104,7 @@ fun BudgetsScreen(
                 state = state,
                 onRefresh = viewModel::refresh,
                 onCreateBudget = onCreateBudget,
+                onBudgetClick = onBudgetClick,
                 modifier = modifier,
             )
         }
@@ -114,6 +117,7 @@ internal fun BudgetsContent(
     state: BudgetsUiState,
     onRefresh: () -> Unit,
     onCreateBudget: () -> Unit,
+    onBudgetClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -148,7 +152,7 @@ internal fun BudgetsContent(
                         )
                     }
                     items(state.budgets, key = { it.id.value }) { budget ->
-                        BudgetItemCard(budget)
+                        BudgetItemCard(budget, onClick = { onBudgetClick(budget.id.value) })
                     }
                     item(key = "spacer") { Spacer(Modifier.height(80.dp)) }
                 }
@@ -259,7 +263,7 @@ private fun BudgetSummaryCard(
 }
 
 @Composable
-private fun BudgetItemCard(budget: BudgetItemUi) {
+private fun BudgetItemCard(budget: BudgetItemUi, onClick: () -> Unit = {}) {
     val healthColor = when (budget.health) {
         BudgetHealth.HEALTHY -> MaterialTheme.colorScheme.primary
         BudgetHealth.WARNING -> Color(0xFFFF9800)
@@ -287,6 +291,7 @@ private fun BudgetItemCard(budget: BudgetItemUi) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .semantics {
                 contentDescription =
                     "${budget.name}: ${budget.spent} of ${budget.limit}, " +

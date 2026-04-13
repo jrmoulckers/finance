@@ -29,12 +29,16 @@ import androidx.compose.ui.semantics.semantics
  *
  * @param onCreateBudget Called when the user taps the FAB on the Budgets tab.
  * @param onCreateGoal   Called when the user taps the FAB on the Goals tab.
+ * @param onEditBudget   Called with the budget ID when the user taps a budget to edit.
+ * @param onEditGoal     Called with the goal ID when the user taps a goal to edit.
  * @param modifier       Modifier applied to the root layout.
  */
 @Composable
 fun PlanningScreen(
     onCreateBudget: () -> Unit = {},
     onCreateGoal: () -> Unit = {},
+    onEditBudget: (String) -> Unit = {},
+    onEditGoal: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -65,8 +69,14 @@ fun PlanningScreen(
         }
 
         when (selectedTab) {
-            0 -> BudgetsScreen(onCreateBudget = onCreateBudget)
-            1 -> GoalsScreen(onCreateGoal = onCreateGoal)
+            0 -> BudgetsScreen(
+                onCreateBudget = onCreateBudget,
+                onBudgetClick = { id -> onEditBudget(id) },
+            )
+            1 -> GoalsScreen(
+                onCreateGoal = onCreateGoal,
+                onGoalClick = { id -> onEditGoal(id) },
+            )
         }
     }
 }
