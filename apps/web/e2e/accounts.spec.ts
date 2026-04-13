@@ -91,8 +91,12 @@ test.describe('Accounts page', () => {
   }) => {
     await page.goto('/accounts');
 
-    // Wait for loading
-    await page.waitForLoadState('networkidle');
+    // Wait for the page to finish loading (either data or empty state).
+    // Avoid `networkidle` — the Vite dev server keeps connections open for
+    // HMR, which prevents networkidle from resolving on CI runners.
+    const accountList = page.getByRole('list');
+    const emptyState = page.getByText(/no accounts yet/i);
+    await expect(accountList.or(emptyState)).toBeVisible();
 
     // Check if there are account links (seed data present)
     const accountLinks = page.getByRole('link').filter({
@@ -124,7 +128,10 @@ test.describe('Account detail page', () => {
   }) => {
     // First go to accounts list to find an account
     await page.goto('/accounts');
-    await page.waitForLoadState('networkidle');
+
+    // Wait for the page to finish loading (data or empty state).
+    const listOrEmpty = page.getByRole('list').or(page.getByText(/no accounts yet/i));
+    await expect(listOrEmpty).toBeVisible();
 
     const accountLinks = page.getByRole('link').filter({
       has: page.locator('.list-item__primary'),
@@ -166,9 +173,8 @@ test.describe('Account detail page', () => {
   test('shows "Account not found" for invalid account ID', async ({ authenticatedPage: page }) => {
     await page.goto('/accounts/nonexistent-id-12345');
 
-    // Wait for loading to finish
-    await page.waitForLoadState('networkidle');
-
+    // Wait for the not-found message to appear (UI-based wait instead of
+    // networkidle which hangs on the Vite dev server's persistent connections).
     await expect(page.getByText(/account not found/i)).toBeVisible();
     await expect(page.getByRole('link', { name: /back to accounts/i })).toBeVisible();
   });

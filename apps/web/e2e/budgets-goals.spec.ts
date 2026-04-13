@@ -67,21 +67,24 @@ test.describe('Budgets page', () => {
 
   test('shows budget cards or empty state', async ({ authenticatedPage: page }) => {
     await page.goto('/budgets');
-    await page.waitForLoadState('networkidle');
 
     const budgetCards = page.getByRole('article');
     const emptyState = page.getByText(/no budgets yet/i);
 
-    // Either budget cards or empty state should be visible
+    // Either budget cards or empty state should be visible.
+    // Uses UI-based wait instead of networkidle (see accounts.spec.ts).
     await expect(budgetCards.first().or(emptyState)).toBeVisible();
   });
 
   test('budget cards show progress ring when data exists', async ({ authenticatedPage: page }) => {
     await page.goto('/budgets');
-    await page.waitForLoadState('networkidle');
+
+    // Wait for the page to finish loading.
+    const budgetCards = page.getByRole('article');
+    const emptyState = page.getByText(/no budgets yet/i);
+    await expect(budgetCards.first().or(emptyState)).toBeVisible();
 
     const progressBars = page.getByRole('progressbar');
-    const emptyState = page.getByText(/no budgets yet/i);
 
     // If budgets exist, progress rings should be present
     const emptyVisible = await emptyState.isVisible().catch(() => false);
@@ -153,21 +156,23 @@ test.describe('Goals page', () => {
 
   test('shows goal cards or empty state', async ({ authenticatedPage: page }) => {
     await page.goto('/goals');
-    await page.waitForLoadState('networkidle');
 
     const goalCards = page.getByRole('article');
     const emptyState = page.getByText(/no goals yet/i);
 
-    // Either goal cards or empty state should be visible
+    // Either goal cards or empty state should be visible.
     await expect(goalCards.first().or(emptyState)).toBeVisible();
   });
 
   test('goal cards show progress bar when data exists', async ({ authenticatedPage: page }) => {
     await page.goto('/goals');
-    await page.waitForLoadState('networkidle');
+
+    // Wait for the page to finish loading.
+    const goalCards = page.getByRole('article');
+    const emptyState = page.getByText(/no goals yet/i);
+    await expect(goalCards.first().or(emptyState)).toBeVisible();
 
     const progressBars = page.getByRole('progressbar');
-    const emptyState = page.getByText(/no goals yet/i);
 
     const emptyVisible = await emptyState.isVisible().catch(() => false);
     if (!emptyVisible) {
