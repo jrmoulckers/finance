@@ -140,6 +140,7 @@ dependencies {
     // Instrumented test dependencies
     androidTestImplementation(composeBom)
     androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlin.test)
     androidTestImplementation(libs.koin.core)
     androidTestImplementation(libs.koin.android)
