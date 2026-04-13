@@ -136,7 +136,7 @@ internal object CsvImportParser {
         val data = ImportData(accounts, transactions, categories, budgets, goals)
         val successfulRows = data.totalRecords
 
-        if (data.isEmpty && totalRows == 0) {
+        if (data.isEmpty) {
             return ImportOutcome.Failure(ImportError.EmptyFile("No data rows found in any section"))
         }
 
