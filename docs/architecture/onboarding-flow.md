@@ -54,14 +54,14 @@ requirements, and avoid any manipulative patterns.
 These principles are drawn directly from the project's UX principles and product
 identity and applied specifically to onboarding:
 
-| Principle                    | Application to Onboarding                                                                                       |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| **Edge-first**               | Entire flow runs locally. No network calls. No loading spinners. Instant.                                       |
-| **Non-manipulative**         | Every step is skippable. No "Are you sure?" on skip. No progress bars that guilt users into completing.         |
-| **Emotion-first, not form-first** | Lead with "How do you feel about money?" not "Enter your bank account number."                            |
-| **Useful within 2 minutes** | Path A ("Just let me in") reaches dashboard in < 5 seconds. Path B completes in < 90 seconds.                   |
-| **Accessible**               | WCAG 2.2 AA. Full screen reader support. Keyboard navigable. Reduced motion respected. Large touch targets.     |
-| **Resumable**                | If the user kills the app mid-onboarding, they resume where they left off — state persists to MMKV immediately. |
+| Principle                         | Application to Onboarding                                                                                       |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Edge-first**                    | Entire flow runs locally. No network calls. No loading spinners. Instant.                                       |
+| **Non-manipulative**              | Every step is skippable. No "Are you sure?" on skip. No progress bars that guilt users into completing.         |
+| **Emotion-first, not form-first** | Lead with "How do you feel about money?" not "Enter your bank account number."                                  |
+| **Useful within 2 minutes**       | Path A ("Just let me in") reaches dashboard in < 5 seconds. Path B completes in < 90 seconds.                   |
+| **Accessible**                    | WCAG 2.2 AA. Full screen reader support. Keyboard navigable. Reduced motion respected. Large touch targets.     |
+| **Resumable**                     | If the user kills the app mid-onboarding, they resume where they left off — state persists to MMKV immediately. |
 
 ---
 
@@ -86,6 +86,7 @@ Zero-friction entry for users who want to explore on their own.
 ```
 
 **Behavior:**
+
 - Currency auto-detected from device locale
 - Expertise tier defaults to 📊 Comfortable
 - Creates a default household with a single "Cash" account (balance $0)
@@ -112,11 +113,11 @@ A 3–4 step emotion-first flow (every step skippable):
 Determines the expertise tier via an emotion-first question — not "What's your
 financial expertise level?" (intimidating) but "How do you feel?"
 
-| Answer                                     | Maps To         | Rationale                                      |
-| ------------------------------------------ | --------------- | ---------------------------------------------- |
-| 😰 "I avoid thinking about it"             | 🌱 Getting Started | Needs maximum guidance, simplified views       |
-| 🤔 "I track it but want more clarity"      | 📊 Comfortable    | Has habits, wants better tools                 |
-| 📊 "I've got a system, I want power tools" | 🧠 Advanced       | Experienced, wants detailed control            |
+| Answer                                     | Maps To            | Rationale                                |
+| ------------------------------------------ | ------------------ | ---------------------------------------- |
+| 😰 "I avoid thinking about it"             | 🌱 Getting Started | Needs maximum guidance, simplified views |
+| 🤔 "I track it but want more clarity"      | 📊 Comfortable     | Has habits, wants better tools           |
+| 📊 "I've got a system, I want power tools" | 🧠 Advanced        | Experienced, wants detailed control      |
 
 **If skipped:** Defaults to 📊 Comfortable (same as Path A).
 
@@ -133,19 +134,19 @@ financial expertise level?" (intimidating) but "How do you feel?"
 
 Seeds the first budget category and optional goal:
 
-| Answer                              | Seeds                                                    |
-| ----------------------------------- | -------------------------------------------------------- |
-| 🍽️ "Spending less on dining out"    | Budget: "Food" category with suggested amount            |
-| 🏠 "Saving for something big"       | Goal: user names it, sets target (no deadline required)  |
-| 💳 "Paying off debt"                | Prompt to add a Credit Card / Loan account               |
-| 📋 "Just want to track everything" | Seeds broad category set, no specific budget/goal        |
+| Answer                             | Seeds                                                   |
+| ---------------------------------- | ------------------------------------------------------- |
+| 🍽️ "Spending less on dining out"   | Budget: "Food" category with suggested amount           |
+| 🏠 "Saving for something big"      | Goal: user names it, sets target (no deadline required) |
+| 💳 "Paying off debt"               | Prompt to add a Credit Card / Loan account              |
+| 📋 "Just want to track everything" | Seeds broad category set, no specific budget/goal       |
 
 **If skipped:** Seeds default category set (same as Path A).
 
 #### Step 4: "You're ready!"
 
 - Summary of what was set up (account, currency, tier)
-- Non-judgmental affirmation: *"You've taken the first step toward financial clarity."*
+- Non-judgmental affirmation: _"You've taken the first step toward financial clarity."_
 - Single CTA button: "Let's go" → Dashboard
 
 ---
@@ -203,17 +204,17 @@ Seeds the first budget category and optional goal:
 
 ### 4.2 Data Written During Onboarding
 
-| Data Entity          | Storage        | When Written                    | Sync Behavior                       |
-| -------------------- | -------------- | ------------------------------- | ----------------------------------- |
-| Expertise tier       | MMKV           | Step 1 completion (or default)  | Not synced (local preference)       |
-| Default currency     | MMKV + User    | Step 2 completion (or default)  | Syncs with user profile             |
-| Household            | SQLDelight     | Onboarding completion           | Syncs when user authenticates       |
-| First account        | SQLDelight     | Step 2 completion (or default)  | Syncs via `by_household` bucket     |
-| Default categories   | SQLDelight     | Onboarding completion           | Syncs via `by_household` bucket     |
-| First budget         | SQLDelight     | Step 3 (if chosen)              | Syncs via `by_household` bucket     |
-| First goal           | SQLDelight     | Step 3 (if chosen)              | Syncs via `by_household` bucket     |
-| Onboarding progress  | MMKV           | After each step                 | Not synced (ephemeral)              |
-| `onboarding_complete`| MMKV           | Final step                      | Not synced (device-local flag)      |
+| Data Entity           | Storage     | When Written                   | Sync Behavior                   |
+| --------------------- | ----------- | ------------------------------ | ------------------------------- |
+| Expertise tier        | MMKV        | Step 1 completion (or default) | Not synced (local preference)   |
+| Default currency      | MMKV + User | Step 2 completion (or default) | Syncs with user profile         |
+| Household             | SQLDelight  | Onboarding completion          | Syncs when user authenticates   |
+| First account         | SQLDelight  | Step 2 completion (or default) | Syncs via `by_household` bucket |
+| Default categories    | SQLDelight  | Onboarding completion          | Syncs via `by_household` bucket |
+| First budget          | SQLDelight  | Step 3 (if chosen)             | Syncs via `by_household` bucket |
+| First goal            | SQLDelight  | Step 3 (if chosen)             | Syncs via `by_household` bucket |
+| Onboarding progress   | MMKV        | After each step                | Not synced (ephemeral)          |
+| `onboarding_complete` | MMKV        | Final step                     | Not synced (device-local flag)  |
 
 ---
 
@@ -715,14 +716,14 @@ All requirements derived from `docs/design/accessibility-patterns.md` and
 
 Onboarding is **entirely offline by design**. No network calls are made.
 
-| Aspect                 | Behavior                                                                          |
-| ---------------------- | --------------------------------------------------------------------------------- |
-| Network requirement    | None. Onboarding works on airplane mode.                                          |
-| Data creation          | All entities written to local SQLDelight database.                                |
-| Currency detection     | From device locale (no GeoIP or API call).                                        |
-| State persistence      | MMKV — survives app kill / force close.                                           |
-| Sync after onboarding  | When user authenticates and goes online, data syncs via PowerSync `by_household`. |
-| Multi-device scenario  | If user onboards on two devices before auth, household merge on first sync.       |
+| Aspect                | Behavior                                                                          |
+| --------------------- | --------------------------------------------------------------------------------- |
+| Network requirement   | None. Onboarding works on airplane mode.                                          |
+| Data creation         | All entities written to local SQLDelight database.                                |
+| Currency detection    | From device locale (no GeoIP or API call).                                        |
+| State persistence     | MMKV — survives app kill / force close.                                           |
+| Sync after onboarding | When user authenticates and goes online, data syncs via PowerSync `by_household`. |
+| Multi-device scenario | If user onboards on two devices before auth, household merge on first sync.       |
 
 ---
 
@@ -752,13 +753,13 @@ data class OnboardingNudge(
 
 ### Default Nudges
 
-| Nudge ID          | Title                    | Shown When                  | Completes When        |
-| ----------------- | ------------------------ | --------------------------- | --------------------- |
-| `add_account`     | "Add your first account" | No accounts (beyond default)| User creates account  |
-| `add_transaction` | "Record a transaction"   | No transactions exist       | User adds transaction |
-| `set_budget`      | "Set a spending plan"    | No budgets exist            | User creates budget   |
-| `set_goal`        | "Set a savings goal"     | No goals exist              | User creates goal     |
-| `setup_progress`  | "Complete your setup"    | < 3 nudges completed        | 3+ nudges completed   |
+| Nudge ID          | Title                    | Shown When                   | Completes When        |
+| ----------------- | ------------------------ | ---------------------------- | --------------------- |
+| `add_account`     | "Add your first account" | No accounts (beyond default) | User creates account  |
+| `add_transaction` | "Record a transaction"   | No transactions exist        | User adds transaction |
+| `set_budget`      | "Set a spending plan"    | No budgets exist             | User creates budget   |
+| `set_goal`        | "Set a savings goal"     | No goals exist               | User creates goal     |
+| `setup_progress`  | "Complete your setup"    | < 3 nudges completed         | 3+ nudges completed   |
 
 ### Design Rules
 
@@ -810,14 +811,14 @@ data class OnboardingNudge(
 
 ### 12.1 Shared KMP Unit Tests
 
-| Test Area                      | Location                                    | Scope                                                      |
-| ------------------------------ | ------------------------------------------- | ---------------------------------------------------------- |
-| State machine transitions      | `packages/core/src/commonTest/`             | All valid and invalid state transitions                    |
-| Input validation                | `packages/core/src/commonTest/`             | Account name, balance, budget amount, goal edge cases      |
-| Data seeding                    | `packages/core/src/commonTest/`             | Default categories, household creation, account creation   |
-| Tier mapping                    | `packages/core/src/commonTest/`             | Feeling → ExpertiseTier mapping                            |
-| State persistence / resume      | `packages/core/src/commonTest/`             | Kill app at each step, verify resume                       |
-| Skip behavior                   | `packages/core/src/commonTest/`             | Skip every step, verify correct defaults applied           |
+| Test Area                  | Location                        | Scope                                                    |
+| -------------------------- | ------------------------------- | -------------------------------------------------------- |
+| State machine transitions  | `packages/core/src/commonTest/` | All valid and invalid state transitions                  |
+| Input validation           | `packages/core/src/commonTest/` | Account name, balance, budget amount, goal edge cases    |
+| Data seeding               | `packages/core/src/commonTest/` | Default categories, household creation, account creation |
+| Tier mapping               | `packages/core/src/commonTest/` | Feeling → ExpertiseTier mapping                          |
+| State persistence / resume | `packages/core/src/commonTest/` | Kill app at each step, verify resume                     |
+| Skip behavior              | `packages/core/src/commonTest/` | Skip every step, verify correct defaults applied         |
 
 ### 12.2 Platform UI Tests
 
@@ -840,13 +841,13 @@ data class OnboardingNudge(
 
 ## 13. Open Questions
 
-| # | Question                                                                                   | Impact  | Decision Needed By |
-|---|--------------------------------------------------------------------------------------------|---------|-------------------|
-| 1 | Should Path A create a default "Cash" account, or no account at all?                       | Medium  | Sprint 3 start    |
-| 2 | Should the expertise tier be changeable from Settings after onboarding?                    | Low     | Sprint 3          |
-| 3 | How should multi-device onboarding merge work? (User onboards on phone, then tablet)       | High    | Sprint 4          |
-| 4 | Should onboarding include a brief privacy explanation? ("Your data stays on this device")  | Medium  | Sprint 3 start    |
-| 5 | Should the "Ready" screen show an animated summary or a static card?                       | Low     | Sprint 3          |
+| #   | Question                                                                                  | Impact | Decision Needed By |
+| --- | ----------------------------------------------------------------------------------------- | ------ | ------------------ |
+| 1   | Should Path A create a default "Cash" account, or no account at all?                      | Medium | Sprint 3 start     |
+| 2   | Should the expertise tier be changeable from Settings after onboarding?                   | Low    | Sprint 3           |
+| 3   | How should multi-device onboarding merge work? (User onboards on phone, then tablet)      | High   | Sprint 4           |
+| 4   | Should onboarding include a brief privacy explanation? ("Your data stays on this device") | Medium | Sprint 3 start     |
+| 5   | Should the "Ready" screen show an animated summary or a static card?                      | Low    | Sprint 3           |
 
 ---
 

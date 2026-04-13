@@ -30,22 +30,22 @@
 
 Financial Insights transforms raw transaction and account data into actionable
 understanding. Rather than just showing charts, insights answer the questions
-users actually ask: *"Am I doing better this month?"*, *"Where is my money
-going?"*, and *"Am I saving enough?"*.
+users actually ask: _"Am I doing better this month?"_, _"Where is my money
+going?"_, and _"Am I saving enough?"_.
 
 All computation runs entirely on-device from local SQLDelight data. The backend
 is never involved in insight generation — this is a pure edge-first feature.
 
 ### Insight Modules
 
-| Module                | User Question                           | Personas Served    |
-| --------------------- | --------------------------------------- | ------------------ |
-| Spending Trends       | "How has my spending changed over time?"| Alex, Jordan, Casey|
-| Monthly Comparison    | "Am I doing better than last month?"    | Alex, Jordan       |
-| Category Breakdown    | "Where does my money go?"               | Alex, Casey        |
-| Savings Rate          | "Am I saving enough?"                   | Jordan             |
-| Net Worth Tracking    | "What's my overall financial picture?"  | Jordan             |
-| Dashboard Summary     | "How am I doing right now?"             | All                |
+| Module             | User Question                            | Personas Served     |
+| ------------------ | ---------------------------------------- | ------------------- |
+| Spending Trends    | "How has my spending changed over time?" | Alex, Jordan, Casey |
+| Monthly Comparison | "Am I doing better than last month?"     | Alex, Jordan        |
+| Category Breakdown | "Where does my money go?"                | Alex, Casey         |
+| Savings Rate       | "Am I saving enough?"                    | Jordan              |
+| Net Worth Tracking | "What's my overall financial picture?"   | Jordan              |
+| Dashboard Summary  | "How am I doing right now?"              | All                 |
 
 ### Relationship to Existing Code
 
@@ -75,14 +75,14 @@ New (packages/core — this design):
 
 ## 2. Design Principles
 
-| Principle                        | Application to Insights                                                                                        |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| **Edge-first**                   | All computation from local SQLDelight data. Zero network calls. Results available offline instantly.            |
-| **Non-judgmental**               | "You spent $200 on dining" — not "You overspent on dining! 🚨". Facts + encouragement, never guilt.           |
-| **Clarity over completeness**    | One hero metric per insight card. Details on demand. Never more than 5 visible insights at once.               |
-| **Expertise-tiered**             | 🌱 sees simple summaries. 📊 sees trends + comparisons. 🧠 sees percentages, rates, and raw data tables.      |
-| **Accessible**                   | All charts have text alternatives. CVD-safe palette. Screen reader describes trends in words.                  |
-| **Progressive value**            | Insights improve as more data accumulates. New user sees "Not enough data yet" — not empty screens.            |
+| Principle                     | Application to Insights                                                                                  |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Edge-first**                | All computation from local SQLDelight data. Zero network calls. Results available offline instantly.     |
+| **Non-judgmental**            | "You spent $200 on dining" — not "You overspent on dining! 🚨". Facts + encouragement, never guilt.      |
+| **Clarity over completeness** | One hero metric per insight card. Details on demand. Never more than 5 visible insights at once.         |
+| **Expertise-tiered**          | 🌱 sees simple summaries. 📊 sees trends + comparisons. 🧠 sees percentages, rates, and raw data tables. |
+| **Accessible**                | All charts have text alternatives. CVD-safe palette. Screen reader describes trends in words.            |
+| **Progressive value**         | Insights improve as more data accumulates. New user sees "Not enough data yet" — not empty screens.      |
 
 ---
 
@@ -90,7 +90,7 @@ New (packages/core — this design):
 
 ### 3.1 Spending Trends
 
-**Question:** *"How has my spending changed over time?"*
+**Question:** _"How has my spending changed over time?"_
 
 **Data source:** `FinancialAggregator.monthlySpendingTrend()` +
 `FinancialAggregator.dailySpending()`
@@ -98,6 +98,7 @@ New (packages/core — this design):
 **Visualization:** Line chart (monthly) or bar chart (weekly/daily)
 
 **Insight outputs:**
+
 - Total spending this month vs. monthly average
 - Spending velocity: "You're spending 15% faster than usual this month"
 - Highest/lowest spending day identification
@@ -124,7 +125,7 @@ data class SpendingTrendInsight(
 
 ### 3.2 Monthly Comparison
 
-**Question:** *"Am I doing better than last month?"*
+**Question:** _"Am I doing better than last month?"_
 
 **Data source:** `ReportGenerator.incomeVsExpense()` +
 `ReportGenerator.spendingInsights()`
@@ -133,6 +134,7 @@ data class SpendingTrendInsight(
 change indicators
 
 **Insight outputs:**
+
 - Total spending comparison (absolute + percentage change)
 - Top 3 categories that changed most
 - Direction indicator per category (↑ increased, ↓ decreased, → stable)
@@ -159,13 +161,14 @@ data class MonthlyComparisonInsight(
 
 ### 3.3 Category Breakdown
 
-**Question:** *"Where does my money go?"*
+**Question:** _"Where does my money go?"_
 
 **Data source:** `ReportGenerator.spendingByCategory()`
 
 **Visualization:** Donut chart with center total + top category list
 
 **Insight outputs:**
+
 - Spending per category as absolute amounts and percentages
 - Top category identification
 - "Long tail" grouping (categories < 3% of total grouped as "Other")
@@ -208,7 +211,7 @@ data class ChartSlice(
 
 ### 3.4 Savings Rate
 
-**Question:** *"Am I saving enough?"*
+**Question:** _"Am I saving enough?"_
 
 **Data source:** `FinancialAggregator.savingsRate()` +
 `ReportGenerator.incomeVsExpense()`
@@ -216,6 +219,7 @@ data class ChartSlice(
 **Visualization:** Donut chart (savings as % of income) + trend sparkline
 
 **Insight outputs:**
+
 - Current month savings rate as percentage
 - Historical savings rate trend (last 3/6/12 months)
 - Absolute savings amount (income - expenses)
@@ -247,7 +251,7 @@ data class MonthlySavingsRate(
 
 ### 3.5 Net Worth Tracking
 
-**Question:** *"What's my overall financial picture?"*
+**Question:** _"What's my overall financial picture?"_
 
 **Data source:** `ReportGenerator.netWorthOverTime()` +
 `FinancialAggregator.netWorth()`
@@ -255,6 +259,7 @@ data class MonthlySavingsRate(
 **Visualization:** Line chart over time with asset/liability breakdown
 
 **Insight outputs:**
+
 - Current net worth (assets - liabilities)
 - Net worth change this month (absolute + percentage)
 - Asset/liability breakdown
@@ -282,13 +287,14 @@ data class NetWorthInsight(
 
 ### 3.6 Dashboard Summary
 
-**Question:** *"How am I doing right now?"*
+**Question:** _"How am I doing right now?"_
 
 **Data source:** Composite of all modules above
 
 **Visualization:** Hero metric card on Home Dashboard
 
 **Insight outputs:**
+
 - Today's spending total
 - This week's spending vs. budget pace
 - Month-to-date spending with projection
@@ -965,36 +971,36 @@ Each insight module adapts its presentation to the user's expertise tier:
 
 ### 10.1 Spending Trends
 
-| Aspect      | 🌱 Getting Started                                   | 📊 Comfortable                                    | 🧠 Advanced                                        |
-| ----------- | ---------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------- |
-| Chart       | Simple bar chart (monthly totals)                    | Line chart with average line overlay              | Multi-line with velocity overlay                   |
-| Narrative   | "You've spent $420 this month"                       | "Spending: $420 MTD. Average: $450/mo."           | "MTD: $420 (93% avg). Velocity: 0.97x."           |
-| Data table  | Hidden                                               | Toggle available                                  | Shown by default                                   |
-| Projection  | Hidden                                               | "On pace for ~$440 this month"                    | Projected with confidence range                    |
+| Aspect     | 🌱 Getting Started                | 📊 Comfortable                          | 🧠 Advanced                             |
+| ---------- | --------------------------------- | --------------------------------------- | --------------------------------------- |
+| Chart      | Simple bar chart (monthly totals) | Line chart with average line overlay    | Multi-line with velocity overlay        |
+| Narrative  | "You've spent $420 this month"    | "Spending: $420 MTD. Average: $450/mo." | "MTD: $420 (93% avg). Velocity: 0.97x." |
+| Data table | Hidden                            | Toggle available                        | Shown by default                        |
+| Projection | Hidden                            | "On pace for ~$440 this month"          | Projected with confidence range         |
 
 ### 10.2 Category Breakdown
 
-| Aspect      | 🌱 Getting Started                                   | 📊 Comfortable                                    | 🧠 Advanced                                        |
-| ----------- | ---------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------- |
-| Chart       | Donut chart (top 4 categories + Other)               | Donut chart (top 6 + Other)                       | Donut + full ranked list + percentages             |
-| Narrative   | "Food is where most of your money goes"              | "Food: $180 (32%), Transport: $120 (21%)"         | Full category table with MoM change %              |
-| Drill-down  | Tap to see category total only                       | Tap to see category transactions                  | Tap to see transactions + trend + sub-categories   |
+| Aspect     | 🌱 Getting Started                      | 📊 Comfortable                            | 🧠 Advanced                                      |
+| ---------- | --------------------------------------- | ----------------------------------------- | ------------------------------------------------ |
+| Chart      | Donut chart (top 4 categories + Other)  | Donut chart (top 6 + Other)               | Donut + full ranked list + percentages           |
+| Narrative  | "Food is where most of your money goes" | "Food: $180 (32%), Transport: $120 (21%)" | Full category table with MoM change %            |
+| Drill-down | Tap to see category total only          | Tap to see category transactions          | Tap to see transactions + trend + sub-categories |
 
 ### 10.3 Savings Rate
 
-| Aspect      | 🌱 Getting Started                                   | 📊 Comfortable                                    | 🧠 Advanced                                        |
-| ----------- | ---------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------- |
-| Display     | "You saved $X this month" (absolute only)            | Savings rate donut + trend sparkline              | Rate + trend + historical comparison table         |
-| Explanation | "Savings = what you earned minus what you spent"     | "Savings rate: income minus expenses, as a %"     | No explanation needed                              |
-| Narrative   | "You kept $80 of your income this month"             | "Savings rate: 12%. That's $80 saved."            | "SR: 12.3% ($80). 6mo avg: 10.1%. +2.2pp MoM."   |
+| Aspect      | 🌱 Getting Started                               | 📊 Comfortable                                | 🧠 Advanced                                    |
+| ----------- | ------------------------------------------------ | --------------------------------------------- | ---------------------------------------------- |
+| Display     | "You saved $X this month" (absolute only)        | Savings rate donut + trend sparkline          | Rate + trend + historical comparison table     |
+| Explanation | "Savings = what you earned minus what you spent" | "Savings rate: income minus expenses, as a %" | No explanation needed                          |
+| Narrative   | "You kept $80 of your income this month"         | "Savings rate: 12%. That's $80 saved."        | "SR: 12.3% ($80). 6mo avg: 10.1%. +2.2pp MoM." |
 
 ### 10.4 Net Worth
 
-| Aspect      | 🌱 Getting Started                                   | 📊 Comfortable                                    | 🧠 Advanced                                        |
-| ----------- | ---------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------- |
-| Display     | Single number card: "Your total: $X"                 | Line chart + change this month                    | Stacked asset/liability chart + per-account table  |
-| Terminology | "Your total"                                         | "Net worth"                                       | "Net worth (assets − liabilities)"                 |
-| Explanation | "This is everything you own minus everything you owe"| Tooltip on hover/tap                              | No explanation                                     |
+| Aspect      | 🌱 Getting Started                                    | 📊 Comfortable                 | 🧠 Advanced                                       |
+| ----------- | ----------------------------------------------------- | ------------------------------ | ------------------------------------------------- |
+| Display     | Single number card: "Your total: $X"                  | Line chart + change this month | Stacked asset/liability chart + per-account table |
+| Terminology | "Your total"                                          | "Net worth"                    | "Net worth (assets − liabilities)"                |
+| Explanation | "This is everything you own minus everything you owe" | Tooltip on hover/tap           | No explanation                                    |
 
 ---
 
@@ -1039,16 +1045,16 @@ Each insight module adapts its presentation to the user's expertise tier:
 
 ### 12.1 Shared KMP Unit Tests
 
-| Test Area                      | Coverage Target | Key Scenarios                                                     |
-| ------------------------------ | --------------- | ----------------------------------------------------------------- |
-| InsightEngine.compute()        | 95%+            | All modules, partial modules, insufficient data, empty data       |
-| SpendingTrendAnalyzer          | 95%+            | 1 month, 6 months, 12 months, velocity edge cases                |
-| SavingsRateCalculator          | 95%+            | Zero income, negative savings, 100% savings, one-month data      |
-| CategoryBreakdownBuilder       | 95%+            | 1 category, 6 categories, 20 categories (grouping), empty        |
-| MonthlyComparisonBuilder       | 95%+            | Equal months, large increase, large decrease, first month         |
-| NetWorthTracker                | 95%+            | Positive NW, negative NW, zero, single account, many accounts    |
-| InsightFormatter               | 90%+            | All tiers × all modules, edge case narratives                    |
-| InsightDataRequirements        | 100%            | Each module with sufficient/insufficient/zero data               |
+| Test Area                | Coverage Target | Key Scenarios                                                 |
+| ------------------------ | --------------- | ------------------------------------------------------------- |
+| InsightEngine.compute()  | 95%+            | All modules, partial modules, insufficient data, empty data   |
+| SpendingTrendAnalyzer    | 95%+            | 1 month, 6 months, 12 months, velocity edge cases             |
+| SavingsRateCalculator    | 95%+            | Zero income, negative savings, 100% savings, one-month data   |
+| CategoryBreakdownBuilder | 95%+            | 1 category, 6 categories, 20 categories (grouping), empty     |
+| MonthlyComparisonBuilder | 95%+            | Equal months, large increase, large decrease, first month     |
+| NetWorthTracker          | 95%+            | Positive NW, negative NW, zero, single account, many accounts |
+| InsightFormatter         | 90%+            | All tiers × all modules, edge case narratives                 |
+| InsightDataRequirements  | 100%            | Each module with sufficient/insufficient/zero data            |
 
 ### 12.2 Narrative Tests
 
@@ -1095,14 +1101,14 @@ fun `narratives never contain judgmental language`() {
 
 ## 13. Open Questions
 
-| # | Question                                                                                         | Impact  | Decision Needed By |
-|---|--------------------------------------------------------------------------------------------------|---------|-------------------|
-| 1 | Should insights be cached in MMKV for instant display on app open?                               | Medium  | Sprint 4 start    |
-| 2 | Should the dashboard summary card be a widget on iOS/Android home screens?                        | Medium  | Sprint 4          |
-| 3 | Should we add "insight notifications" — e.g., "Your spending this week is 20% higher than usual"? | Medium  | Sprint 5          |
-| 4 | How should insights handle partial month data? (e.g., user started mid-month)                    | Medium  | Sprint 4 start    |
-| 5 | Should the Reports tab be renamed "Insights" to match the conversational tone?                   | Low     | Sprint 4          |
-| 6 | Should Advanced tier users be able to set custom comparison periods? (e.g., Q1 vs Q2)            | Low     | Sprint 5          |
+| #   | Question                                                                                          | Impact | Decision Needed By |
+| --- | ------------------------------------------------------------------------------------------------- | ------ | ------------------ |
+| 1   | Should insights be cached in MMKV for instant display on app open?                                | Medium | Sprint 4 start     |
+| 2   | Should the dashboard summary card be a widget on iOS/Android home screens?                        | Medium | Sprint 4           |
+| 3   | Should we add "insight notifications" — e.g., "Your spending this week is 20% higher than usual"? | Medium | Sprint 5           |
+| 4   | How should insights handle partial month data? (e.g., user started mid-month)                     | Medium | Sprint 4 start     |
+| 5   | Should the Reports tab be renamed "Insights" to match the conversational tone?                    | Low    | Sprint 4           |
+| 6   | Should Advanced tier users be able to set custom comparison periods? (e.g., Q1 vs Q2)             | Low    | Sprint 5           |
 
 ---
 
