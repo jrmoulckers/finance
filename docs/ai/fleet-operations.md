@@ -150,30 +150,30 @@ For full worktree lifecycle details, see [worktrees.md](worktrees.md).
 
 In fleet mode, **no two agents edit the same file in parallel.** Ownership is assigned by directory:
 
-| Agent | Primary ownership |
-| --- | --- |
-| `@kmp-engineer` | `packages/` |
-| `@backend-engineer` | `services/api/` |
-| `@web-engineer` | `apps/web/` |
-| `@android-engineer` | `apps/android/` |
-| `@ios-engineer` | `apps/ios/` |
-| `@windows-engineer` | `apps/windows/` |
-| `@design-engineer` | `config/tokens/`, generated token files |
-| `@devops-engineer` | `.github/workflows/`, `build-logic/`, `tools/` |
-| `@docs-writer` | `docs/`, root `*.md` files |
-| `@security-reviewer` | Read-only — never edits production code |
-| `@accessibility-reviewer` | Read-only — never edits production code |
+| Agent                     | Primary ownership                              |
+| ------------------------- | ---------------------------------------------- |
+| `@kmp-engineer`           | `packages/`                                    |
+| `@backend-engineer`       | `services/api/`                                |
+| `@web-engineer`           | `apps/web/`                                    |
+| `@android-engineer`       | `apps/android/`                                |
+| `@ios-engineer`           | `apps/ios/`                                    |
+| `@windows-engineer`       | `apps/windows/`                                |
+| `@design-engineer`        | `config/tokens/`, generated token files        |
+| `@devops-engineer`        | `.github/workflows/`, `build-logic/`, `tools/` |
+| `@docs-writer`            | `docs/`, root `*.md` files                     |
+| `@security-reviewer`      | Read-only — never edits production code        |
+| `@accessibility-reviewer` | Read-only — never edits production code        |
 
 ### Shared configuration files
 
 Some files are used by multiple agents but must only be edited by **one agent per fleet run**:
 
-| File | Default owner | Notes |
-| --- | --- | --- |
-| `gradle/libs.versions.toml` | `@kmp-engineer` | Version catalog — all Gradle dependencies |
-| `settings.gradle.kts` | `@kmp-engineer` | Module includes |
-| `package.json` | `@devops-engineer` | Node dependencies and scripts |
-| `turbo.json` | `@devops-engineer` | Turborepo pipeline configuration |
+| File                        | Default owner      | Notes                                     |
+| --------------------------- | ------------------ | ----------------------------------------- |
+| `gradle/libs.versions.toml` | `@kmp-engineer`    | Version catalog — all Gradle dependencies |
+| `settings.gradle.kts`       | `@kmp-engineer`    | Module includes                           |
+| `package.json`              | `@devops-engineer` | Node dependencies and scripts             |
+| `turbo.json`                | `@devops-engineer` | Turborepo pipeline configuration          |
 
 If multiple agents need changes to the same shared config, one agent makes all changes and the others document what they need in their PR description under `## Needs Shared Config Change`.
 
@@ -302,6 +302,7 @@ Shared configuration files (`gradle/libs.versions.toml`, `package.json`, `turbo.
 ### Rule 3: Schema changes are serialized
 
 Database schema work flows in one direction:
+
 1. `@backend-engineer` writes the Supabase migration
 2. `@kmp-engineer` aligns the SQLDelight schema
 3. Platform agents consume the KMP models
@@ -315,6 +316,7 @@ The last agent to commit in a fleet run should execute `npm run ci:check` to cat
 ### Rule 5: No guessing on financial logic
 
 If any agent encounters a financial logic decision during fleet work, it must:
+
 1. **Stop** — do not implement a guess
 2. **Document** — add `## Needs Decision: <question>` to the PR
 3. **Wait** — a human or `@finance-domain` agent must approve the approach
@@ -403,14 +405,14 @@ When all work is done and CI is green, the agent's job is finished. The PR is th
 
 Fleet operations have specific points where human involvement is required. Per the project's [restriction policies](restrictions.md), agents must stop and wait at these gates:
 
-| Operation | Why it's gated | Agent action |
-| --- | --- | --- |
-| **Merge PRs** | Humans review all code before it enters `main` | Leave PR in merge-ready state; do not merge |
-| **Close issues** | Issue lifecycle is human-managed | Add `Closes #N` in PR body; the merge handles it |
-| **Force-push** | May overwrite collaborator work | Document the need in PR; ask human to approve |
-| **Financial logic decisions** | Must be reviewed by a human or domain expert | Add `## Needs Decision` in PR; stop and wait |
-| **Shared config conflicts** | Multiple agents need the same file | Document needed changes; let human coordinate |
-| **Publish/deploy** | Releases require human sign-off | Prepare release; document steps; ask human to publish |
+| Operation                     | Why it's gated                                 | Agent action                                          |
+| ----------------------------- | ---------------------------------------------- | ----------------------------------------------------- |
+| **Merge PRs**                 | Humans review all code before it enters `main` | Leave PR in merge-ready state; do not merge           |
+| **Close issues**              | Issue lifecycle is human-managed               | Add `Closes #N` in PR body; the merge handles it      |
+| **Force-push**                | May overwrite collaborator work                | Document the need in PR; ask human to approve         |
+| **Financial logic decisions** | Must be reviewed by a human or domain expert   | Add `## Needs Decision` in PR; stop and wait          |
+| **Shared config conflicts**   | Multiple agents need the same file             | Document needed changes; let human coordinate         |
+| **Publish/deploy**            | Releases require human sign-off                | Prepare release; document steps; ask human to publish |
 
 For the complete list of restricted operations, see [restrictions.md](restrictions.md).
 
@@ -440,13 +442,13 @@ The orchestrator maintains a status summary in the parent issue or a tracking co
 ```markdown
 ## Fleet Status
 
-| Agent | PR | CI | Conflicts | Status |
-| --- | --- | --- | --- | --- |
-| @kmp-engineer | #510 | ✅ Green | None | Merge-ready |
-| @android-engineer | #511 | 🔴 Failing | None | Self-healing |
-| @ios-engineer | #512 | ✅ Green | None | Merge-ready |
-| @web-engineer | #513 | 🟡 Running | None | Waiting |
-| @docs-writer | #514 | ✅ Green | None | Merge-ready |
+| Agent             | PR   | CI         | Conflicts | Status       |
+| ----------------- | ---- | ---------- | --------- | ------------ |
+| @kmp-engineer     | #510 | ✅ Green   | None      | Merge-ready  |
+| @android-engineer | #511 | 🔴 Failing | None      | Self-healing |
+| @ios-engineer     | #512 | ✅ Green   | None      | Merge-ready  |
+| @web-engineer     | #513 | 🟡 Running | None      | Waiting      |
+| @docs-writer      | #514 | ✅ Green   | None      | Merge-ready  |
 ```
 
 ### Escalation triggers
@@ -479,6 +481,7 @@ After all fleet PRs are merged:
 1. Each agent removes its own worktree
 2. The orchestrator verifies no stale worktrees remain: `git worktree list`
 3. Stale worktrees (from abandoned work) should be documented and removed:
+
    ```bash
    # List stale worktrees
    git worktree list --porcelain
@@ -486,6 +489,7 @@ After all fleet PRs are merged:
    # Remove a stale worktree
    git worktree remove ../wt-[name] --force
    ```
+
 4. The parent tracking issue is updated with the final status
 
 ---
@@ -544,14 +548,14 @@ If `git worktree list` shows a worktree from a previous run:
 
 **Fleet dispatch:**
 
-| Agent | Subtask | Issue | Branch |
-| --- | --- | --- | --- |
-| `@kmp-engineer` | Search engine in shared code | #601 | `feat/search-engine-601` |
-| `@android-engineer` | Android search UI | #602 | `feat/android-search-602` |
-| `@ios-engineer` | iOS search UI | #603 | `feat/ios-search-603` |
-| `@web-engineer` | Web search UI | #604 | `feat/web-search-604` |
-| `@windows-engineer` | Windows search UI | #605 | `feat/windows-search-605` |
-| `@docs-writer` | Update feature docs | #606 | `docs/search-docs-606` |
+| Agent               | Subtask                      | Issue | Branch                    |
+| ------------------- | ---------------------------- | ----- | ------------------------- |
+| `@kmp-engineer`     | Search engine in shared code | #601  | `feat/search-engine-601`  |
+| `@android-engineer` | Android search UI            | #602  | `feat/android-search-602` |
+| `@ios-engineer`     | iOS search UI                | #603  | `feat/ios-search-603`     |
+| `@web-engineer`     | Web search UI                | #604  | `feat/web-search-604`     |
+| `@windows-engineer` | Windows search UI            | #605  | `feat/windows-search-605` |
+| `@docs-writer`      | Update feature docs          | #606  | `docs/search-docs-606`    |
 
 **Dependency:** Platform agents wait for `@kmp-engineer` to merge the search engine before consuming its API. If the KMP PR is not yet merged, platform agents can work against the expected interface (documented in the KMP issue) and rebase when it lands.
 
@@ -561,10 +565,10 @@ If `git worktree list` shows a worktree from a previous run:
 
 **Fleet dispatch:**
 
-| Agent | Subtask | Issue | Branch |
-| --- | --- | --- | --- |
-| `@kmp-engineer` | Fix rollover logic + unit tests | #700 | `fix/rollover-calc-700` |
-| `@docs-writer` | Update rollover section in feature guide | #701 | `docs/rollover-docs-701` |
+| Agent           | Subtask                                  | Issue | Branch                   |
+| --------------- | ---------------------------------------- | ----- | ------------------------ |
+| `@kmp-engineer` | Fix rollover logic + unit tests          | #700  | `fix/rollover-calc-700`  |
+| `@docs-writer`  | Update rollover section in feature guide | #701  | `docs/rollover-docs-701` |
 
 **Coordination:** The docs agent can start immediately since the feature behavior (not the code) is well-defined in the issue. Both PRs can land independently.
 

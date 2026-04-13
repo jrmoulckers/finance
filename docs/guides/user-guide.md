@@ -156,13 +156,13 @@ All local data is deleted immediately. If you used sync, server-side data is des
 
 Finance is designed for a **30-second daily habit**:
 
-| When | What | How |
-| --- | --- | --- |
-| ☀️ Morning | Check your snapshot | An optional daily notification shows yesterday's spending and weekly progress |
-| 🏃 During the day | Quick capture | Tap **+** after each purchase — 3 taps, under 10 seconds |
-| 🤔 "Can I afford this?" | Check remaining budget | Tap a budget category on the home screen widget |
-| 📊 Weekly | Review spending | An optional weekly summary arrives with your spending breakdown |
-| 📅 Monthly | Reflect | The dashboard shows income, spending, savings rate, and month-over-month trends |
+| When                    | What                   | How                                                                             |
+| ----------------------- | ---------------------- | ------------------------------------------------------------------------------- |
+| ☀️ Morning              | Check your snapshot    | An optional daily notification shows yesterday's spending and weekly progress   |
+| 🏃 During the day       | Quick capture          | Tap **+** after each purchase — 3 taps, under 10 seconds                        |
+| 🤔 "Can I afford this?" | Check remaining budget | Tap a budget category on the home screen widget                                 |
+| 📊 Weekly               | Review spending        | An optional weekly summary arrives with your spending breakdown                 |
+| 📅 Monthly              | Reflect                | The dashboard shows income, spending, savings rate, and month-over-month trends |
 
 ### Widgets
 
@@ -186,12 +186,12 @@ Finance tracks consecutive days of logging as a gentle motivator. If you skip a 
 
 ### What's stored where
 
-| Data | Location | Encrypted? |
-| --- | --- | --- |
-| All financial data (accounts, transactions, budgets, goals) | Your device | ✅ SQLCipher (AES-256) |
-| Sync data (if you opt in) | Cloud server | ✅ End-to-end encrypted |
-| Authentication tokens | Platform secure storage | ✅ Keychain / Keystore / DPAPI |
-| Analytics (if you opt in) | Analytics service | No personal or financial data included |
+| Data                                                        | Location                | Encrypted?                             |
+| ----------------------------------------------------------- | ----------------------- | -------------------------------------- |
+| All financial data (accounts, transactions, budgets, goals) | Your device             | ✅ SQLCipher (AES-256)                 |
+| Sync data (if you opt in)                                   | Cloud server            | ✅ End-to-end encrypted                |
+| Authentication tokens                                       | Platform secure storage | ✅ Keychain / Keystore / DPAPI         |
+| Analytics (if you opt in)                                   | Analytics service       | No personal or financial data included |
 
 ### Data ownership
 
@@ -214,27 +214,27 @@ Finance is offline-first, so your primary data lives on your device. To protect 
 
 Finance runs natively on four platforms. Each has unique capabilities:
 
-| Feature | iOS | Android | Web | Windows |
-| --- | --- | --- | --- | --- |
-| Biometric lock | Face ID, Touch ID | Fingerprint, Face | WebAuthn | Windows Hello |
-| Widgets | ✅ (interactive on iOS 17+) | ✅ (Material You) | — | — |
-| Keyboard shortcuts | — | — | ✅ | ✅ |
-| Quick Settings tile | — | ✅ | — | — |
-| Install as app | App Store | Play Store | PWA install | Microsoft Store |
-| Haptic feedback | ✅ | ✅ | — | — |
-| Dynamic theming | — | ✅ (Material You) | — | — |
+| Feature             | iOS                         | Android           | Web         | Windows         |
+| ------------------- | --------------------------- | ----------------- | ----------- | --------------- |
+| Biometric lock      | Face ID, Touch ID           | Fingerprint, Face | WebAuthn    | Windows Hello   |
+| Widgets             | ✅ (interactive on iOS 17+) | ✅ (Material You) | —           | —               |
+| Keyboard shortcuts  | —                           | —                 | ✅          | ✅              |
+| Quick Settings tile | —                           | ✅                | —           | —               |
+| Install as app      | App Store                   | Play Store        | PWA install | Microsoft Store |
+| Haptic feedback     | ✅                          | ✅                | —           | —               |
+| Dynamic theming     | —                           | ✅ (Material You) | —           | —               |
 
 For the full platform guide, see [Platform Guides](./platforms.md).
 
 ### Keyboard shortcuts (Web & Windows)
 
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl+N` (or `⌘+N`) | New transaction |
-| `/` | Open search |
-| `Ctrl+E` | Export data |
+| Shortcut            | Action                      |
+| ------------------- | --------------------------- |
+| `Ctrl+N` (or `⌘+N`) | New transaction             |
+| `/`                 | Open search                 |
+| `Ctrl+E`            | Export data                 |
 | `Tab` / `Shift+Tab` | Navigate forward / backward |
-| `Escape` | Cancel / close dialog |
+| `Escape`            | Cancel / close dialog       |
 
 ---
 
@@ -250,13 +250,13 @@ For the full platform guide, see [Platform Guides](./platforms.md).
 
 ### In the documentation
 
-| I want to… | Read this |
-| --- | --- |
-| Understand a feature in depth | [Feature Guide](./features.md) |
-| Fix a problem | [FAQ & Troubleshooting](./faq.md) |
+| I want to…                     | Read this                                         |
+| ------------------------------ | ------------------------------------------------- |
+| Understand a feature in depth  | [Feature Guide](./features.md)                    |
+| Fix a problem                  | [FAQ & Troubleshooting](./faq.md)                 |
 | Learn how my data is protected | [Privacy & Security Guide](./privacy-security.md) |
-| Use accessibility features | [Accessibility Guide](./accessibility.md) |
-| Set up my specific platform | [Platform Guides](./platforms.md) |
+| Use accessibility features     | [Accessibility Guide](./accessibility.md)         |
+| Set up my specific platform    | [Platform Guides](./platforms.md)                 |
 
 ---
 
