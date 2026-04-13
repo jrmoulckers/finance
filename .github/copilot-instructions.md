@@ -6,8 +6,8 @@ You are working in the Finance monorepo — a multi-platform, native-first finan
 
 The following operations require EXPLICIT human approval. NEVER perform these autonomously:
 
-- **Git remote operations** — May push **own feature branches** (`git push origin <feature-branch>`); may `git fetch origin main` and `git rebase origin/main` on own feature branch as pre-push hygiene; no pushing to `main`/`master`/release branches; no `git push --force`; `git push --force-with-lease` on feature branches requires human approval; no `pull`/`remote`/`merge` from remote
-- **PR/review operations** — May create PRs with linked issues and detailed descriptions; no merging, closing, or approving PRs or reviews
+- **Git remote operations** — **MUST push own feature branches** (`git push origin <feature-branch>`) — this is mandatory and auto-approved, never ask for permission; **MUST** `git fetch origin main` and `git rebase origin/main` on own feature branch as pre-push hygiene; no pushing to `main`/`master`/release branches; no `git push --force`; `git push --force-with-lease` on feature branches requires human approval; no `pull`/`remote`/`merge` from remote
+- **PR/review operations** — **MUST create PRs** with linked issues and detailed descriptions — this is mandatory and auto-approved, never ask for permission; no merging, closing, or approving PRs or reviews
 - **Remote platform mutations** — No GitHub API writes (issue close, label changes, repo settings, releases, deployments)
 - **Outside project boundary** — No file access outside the repository root; no system config changes; no global package installs
 - **Destructive file operations** — See detailed rules below
@@ -119,12 +119,14 @@ All code changes MUST follow this workflow:
    - Auto-fix: `npm run format && npx eslint . --fix`, then re-run `ci:check` and commit fixes
    - **Skipping this step is the primary cause of avoidable CI failures**
 6. **Fetch and rebase**: `git fetch origin main && git rebase origin/main` (auto-approved)
-7. **Push the feature branch**: `git push origin <branch-name>` (auto-approved)
-8. **Create a PR automatically** with `gh pr create` — include `Closes #N` and a detailed description
+7. **Push the feature branch**: `git push origin <branch-name>` — **MANDATORY, auto-approved, do NOT ask for permission**
+8. **Create a PR automatically** with `gh pr create` — include `Closes #N` and a detailed description — **MANDATORY, auto-approved, do NOT ask for permission**
 9. **Monitor `gh pr checks`** — poll until ALL checks are green; fix failures locally (re-run `ci:check` before each push), push, restart cycle. **Work is NOT complete until all remote checks are green.**
 10. **Never commit directly to `main`** — all changes go through feature branches and PRs
 11. **Never merge PRs** — humans review and merge; agents get the PR to merge-ready state
 12. **Clean up the worktree** after merge is confirmed: `git worktree remove <path>`
+
+> ⚠️ **MANDATORY**: Steps 7 and 8 (push + create PR) are auto-approved and required. Stopping at step 6 (local commit only) is a **workflow violation**. A task is incomplete if it ends without a pushed branch and an open PR.
 
 Worktree naming: `wt-[agent-type]-[type/description-issue#]` — e.g., `wt-android-feat-transactions-443`
 

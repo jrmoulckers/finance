@@ -99,9 +99,16 @@ The following operations MUST NEVER be performed by AI agents without explicit h
 
 ### Category 1: Git Remote Operations
 
-AI agents MAY (auto-approved):
+> ⚠️ **MANDATORY — READ THIS CAREFULLY**
+>
+> Pushing feature branches and creating PRs is **NOT optional** and does **NOT require human approval**.
+> Agents **MUST** complete the full workflow: commit → `npm run ci:check` → push → create PR → monitor CI checks.
+> **Stopping at a local commit and asking for permission to push is a workflow violation.**
+> A task is **INCOMPLETE** if it ends with only a local commit. Push and PR creation are auto-approved.
 
-- Push to **own feature branches**: `git push origin <feature-branch>`
+AI agents **MUST** (auto-approved, mandatory):
+
+- **Push to own feature branches**: `git push origin <feature-branch>` — this is **REQUIRED**, not optional. Never stop and ask for permission.
 - `git fetch origin main` — read-only sync, required for pre-push rebase
 - `git rebase origin/main` on **own feature branch only** — required pre-push hygiene
 - `git status`, `git log`, `git diff`, `git show`, `git branch`
@@ -119,10 +126,11 @@ AI agents MUST NOT:
 
 ### Category 2: Pull Request & Review Operations
 
-AI agents MAY:
+AI agents **MUST** (auto-approved, mandatory):
 
-- Create pull requests with linked issues (`Closes #N`) and detailed descriptions
-- Use `gh pr create` to open PRs for review
+- **Create pull requests** with linked issues (`Closes #N`) and detailed descriptions — this is **REQUIRED** after every push, not optional. Never stop and ask for permission.
+- **Use `gh pr create`** to open PRs for review — this is **REQUIRED**, not optional.
+- **Monitor `gh pr checks`** until CI is green — fix failures, push fixes, repeat.
 
 AI agents MUST NOT:
 
