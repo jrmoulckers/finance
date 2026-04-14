@@ -10,6 +10,7 @@ Central table of contents for the Finance monorepo documentation. Use this page 
 
 | I want to…                     | Start here                                                                                                     |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| Use Finance (end user)         | [User Guide](guides/user-guide.md) · [Getting Started](guides/getting-started.md)                              |
 | Set up my dev environment      | [Getting Started](guides/getting-started.md) · [Workflow Cheat Sheet](guides/workflow-cheatsheet.md)           |
 | Set up Android / iOS / Windows | [Android](guides/android-setup.md) · [iOS](guides/ios-setup.md) · [Windows](guides/windows-setup.md)           |
 | Understand the architecture    | [Roadmap](architecture/roadmap.md) · [Cross-Platform Framework](architecture/0001-cross-platform-framework.md) |
@@ -154,6 +155,7 @@ ADRs document significant architectural decisions with context, alternatives, an
 
 | Document                                               | Description                                                                  |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| [User Guide](guides/user-guide.md)                     | Unified entry point for all user documentation — recipes, tips, data guide   |
 | [Feature Guide](guides/features.md)                    | Complete guide to Finance features — accounts, budgets, goals, and more      |
 | [FAQ & Troubleshooting](guides/faq.md)                 | Common questions and answers for users                                       |
 | [Platforms](guides/platforms.md)                       | Platform-specific features and differences across iOS, Android, Web, Windows |
