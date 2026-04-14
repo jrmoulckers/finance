@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { suggestMappings, applyMapping, type ColumnMapping } from './csv-column-mapper';
 import { validateImportRows, parseDate, parseAmount } from './csv-import-validator';
 import { detectDuplicates } from './csv-duplicate-detector';
+import { parseCsv } from './csv-parser';
 import type { Transaction } from '@/kmp/bridge';
 import type { ValidatedRow } from './csv-import-validator';
 
@@ -415,5 +416,164 @@ describe('detectDuplicates', () => {
     const matches = detectDuplicates([], [existingTransaction]);
 
     expect(matches).toEqual([]);
+  });
+
+  it('detects duplicates across multiple existing transactions', () => {
+    const secondTransaction: Transaction = {
+      ...existingTransaction,
+      id: 'tx-2',
+      amount: { amount: 1500 },
+      date: '2024-04-01',
+      payee: 'Coffee Shop',
+    };
+
+    const row1 = makeValidatedRow(); // matches existingTransaction
+    const row2 = makeValidatedRow({
+      amount: { amount: 1500 },
+      date: '2024-04-01',
+      payee: 'Coffee Shop',
+    }); // matches secondTransaction
+
+    const matches = detectDuplicates([row1, row2], [existingTransaction, secondTransaction]);
+
+    // Should find duplicates for both rows
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+    const matchedRows = new Set(matches.map((m) => m.importRow.rowIndex));
+    expect(matchedRows.has(1)).toBe(true);
+  });
+
+  it('sorts matches by score descending', () => {
+    const row1 = makeValidatedRow({ payee: 'Grocery Store', categoryId: 'cat-1' }); // full match
+    const row2: ValidatedRow = {
+      data: {
+        householdId: 'hh-1',
+        accountId: 'acc-1',
+        type: 'EXPENSE',
+        status: 'CLEARED',
+        amount: { amount: 4250 },
+        date: '2024-03-15',
+        payee: 'Different Store',
+      },
+      rowIndex: 2,
+      warnings: [],
+    }; // date + amount only
+
+    const matches = detectDuplicates([row1, row2], [existingTransaction]);
+
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+    // First match should have higher score
+    expect(matches[0].matchScore).toBeGreaterThanOrEqual(matches[1].matchScore);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// End-to-end integration: CSV text → parse → map → validate → detect dupes
+// ---------------------------------------------------------------------------
+
+describe('CSV import pipeline integration', () => {
+  it('processes a full CSV through parse → map → validate → detect duplicates', () => {
+    const csvText = [
+      'Date,Amount,Description,Payee',
+      '2024-03-15,-42.50,Weekly groceries,Grocery Store',
+      '2024-03-16,-15.00,Morning coffee,Coffee Shop',
+      '2024-03-17,2500.00,Monthly salary,ACME Corp',
+    ].join('\n');
+
+    // Step 1: Parse
+    const parsed = parseCsv(csvText);
+    expect(parsed.headers).toEqual(['Date', 'Amount', 'Description', 'Payee']);
+    expect(parsed.rows).toHaveLength(3);
+
+    // Step 2: Auto-suggest mappings
+    const suggestions = suggestMappings(parsed.headers);
+    const mappedFields = suggestions.map((s: { suggestedField: string }) => s.suggestedField);
+    expect(mappedFields).toContain('date');
+    expect(mappedFields).toContain('amount');
+
+    // Step 3: Apply mapping
+    const mapping: ColumnMapping = {};
+    for (const s of suggestions) {
+      mapping[s.columnIndex] = s.suggestedField;
+    }
+    const rawRows = applyMapping(parsed.rows, mapping, parsed.headers);
+    expect(rawRows).toHaveLength(3);
+
+    // Step 4: Validate
+    const validation = validateImportRows(rawRows, 'acc-1', 'hh-1');
+    expect(validation.valid).toHaveLength(3);
+    expect(validation.errors).toHaveLength(0);
+
+    // Verify the first row (expense)
+    expect(validation.valid[0].data.type).toBe('EXPENSE');
+    expect(validation.valid[0].data.amount.amount).toBe(4250);
+    expect(validation.valid[0].data.date).toBe('2024-03-15');
+
+    // Verify the third row (income)
+    expect(validation.valid[2].data.type).toBe('INCOME');
+    expect(validation.valid[2].data.amount.amount).toBe(250000);
+
+    // Step 5: Detect duplicates against existing transaction
+    const existingTx: Transaction = {
+      id: 'existing-1',
+      householdId: 'hh-1',
+      accountId: 'acc-1',
+      categoryId: null,
+      type: 'EXPENSE',
+      status: 'CLEARED',
+      amount: { amount: 4250 },
+      currency: { code: 'USD', decimalPlaces: 2 },
+      payee: 'Grocery Store',
+      note: null,
+      date: '2024-03-15',
+      transferAccountId: null,
+      transferTransactionId: null,
+      isRecurring: false,
+      recurringRuleId: null,
+      tags: [],
+      createdAt: '2024-03-15T00:00:00Z',
+      updatedAt: '2024-03-15T00:00:00Z',
+      deletedAt: null,
+      syncVersion: 1,
+      isSynced: true,
+    };
+
+    const duplicates = detectDuplicates(validation.valid, [existingTx]);
+
+    // Should detect the first row as a duplicate (same date + amount + description)
+    expect(duplicates).toHaveLength(1);
+    expect(duplicates[0].importRow.rowIndex).toBe(1);
+    expect(duplicates[0].matchReasons).toContain('exact date match');
+    expect(duplicates[0].matchReasons).toContain('same amount');
+    expect(duplicates[0].matchReasons).toContain('similar description');
+    expect(duplicates[0].matchScore).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('handles EU-format CSV with semicolons and comma decimals', () => {
+    const csvText = [
+      'Buchungstag;Betrag;Bezeichnung',
+      '15.03.2024;-42,50;Lebensmittel',
+      '16.03.2024;1.234,56;Gehalt',
+    ].join('\n');
+
+    const parsed = parseCsv(csvText);
+    expect(parsed.delimiter).toBe(';');
+    expect(parsed.headers).toEqual(['Buchungstag', 'Betrag', 'Bezeichnung']);
+
+    const suggestions = suggestMappings(parsed.headers);
+    const mapping: ColumnMapping = {};
+    for (const s of suggestions) {
+      mapping[s.columnIndex] = s.suggestedField;
+    }
+
+    const rawRows = applyMapping(parsed.rows, mapping, parsed.headers);
+    const validation = validateImportRows(rawRows, 'acc-1', 'hh-1');
+
+    expect(validation.valid).toHaveLength(2);
+    // -42,50 → 4250 cents (absolute)
+    expect(validation.valid[0].data.amount.amount).toBe(4250);
+    expect(validation.valid[0].data.type).toBe('EXPENSE');
+    // 1.234,56 → 123456 cents
+    expect(validation.valid[1].data.amount.amount).toBe(123456);
+    expect(validation.valid[1].data.type).toBe('INCOME');
   });
 });

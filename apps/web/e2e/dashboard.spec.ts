@@ -33,7 +33,7 @@ test.describe('Dashboard page', () => {
 
   test('loads and shows the main heading', async ({ authenticatedPage }) => {
     // The AppLayout renders an <h1> with the page title "Dashboard".
-    const heading = authenticatedPage.getByRole('heading', { name: /dashboard/i });
+    const heading = authenticatedPage.getByRole('heading', { name: /dashboard/i }).first();
     await expect(heading).toBeVisible();
   });
 

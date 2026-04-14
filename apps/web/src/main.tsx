@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { StrictMode } from 'react';
+import type { FC, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
 import { DatabaseProvider } from './db/DatabaseProvider';
@@ -31,16 +32,74 @@ const authConfig = {
   },
 };
 
+// Configure the sync endpoint to point at the Supabase Edge Function.
+// When VITE_SUPABASE_URL is set to a real project URL, mutations will be
+// pushed to the `sync-push` Edge Function.  Otherwise the default
+// same-origin /api/sync/push path is used (handy for local dev proxies).
+//
+// The sync module is loaded lazily via dynamic import() to avoid pulling the
+// entire sync module tree (IndexedDB mutation queue, replay logic, conflict
+// storage) into the critical startup path.  This prevents the app from
+// hanging in environments where those modules' transitive dependencies
+// cause issues (e.g. E2E tests under Playwright).
+const supabaseUrl = authConfig.supabaseUrl;
+if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+  void import('./db/sync/replayMutations').then(({ configureSyncEndpoint }) => {
+    configureSyncEndpoint({
+      baseUrl: `${supabaseUrl}/functions/v1`,
+      pushEndpoint: '/sync-push',
+      apiKey: authConfig.supabaseAnonKey,
+    });
+  });
+}
+
 initMonitoring();
+
+// ---------------------------------------------------------------------------
+// Route-aware database gate
+// ---------------------------------------------------------------------------
+
+/**
+ * Routes that render without waiting for SQLite-WASM initialisation.
+ *
+ * Pre-auth pages (login, signup) never access the database, so gating them
+ * behind DatabaseProvider unnecessarily blocks rendering.  On CI especially
+ * (headless Chromium + OPFS + WASM fetch), initialisation can exceed 60 s
+ * and cause the E2E authenticatedPage fixture to time out before the login
+ * form ever appears.
+ */
+const PRE_AUTH_ROUTES = new Set(['/login', '/signup']);
+
+/**
+ * Conditionally wraps children in DatabaseProvider.
+ *
+ * - On pre-auth routes the children render immediately (no DB wait).
+ * - On all other routes the DatabaseProvider loading gate applies, ensuring
+ *   the shared SQLite-WASM instance is ready before page components that
+ *   depend on `useDatabase()` mount.
+ */
+const DatabaseGate: FC<{ children: ReactNode }> = ({ children }) => {
+  const { pathname } = useLocation();
+
+  if (PRE_AUTH_ROUTES.has(pathname)) {
+    return children;
+  }
+
+  return <DatabaseProvider>{children}</DatabaseProvider>;
+};
+
+// ---------------------------------------------------------------------------
+// Mount
+// ---------------------------------------------------------------------------
 
 createRoot(rootElement).render(
   <StrictMode>
     <AuthProvider config={authConfig}>
-      <DatabaseProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <DatabaseGate>
           <App />
-        </BrowserRouter>
-      </DatabaseProvider>
+        </DatabaseGate>
+      </BrowserRouter>
     </AuthProvider>
   </StrictMode>,
 );

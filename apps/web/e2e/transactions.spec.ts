@@ -19,7 +19,7 @@ test.describe('Transactions page', () => {
   test('loads and shows the Transactions heading', async ({ authenticatedPage: page }) => {
     await page.goto('/transactions');
 
-    const heading = page.getByRole('heading', { name: /transactions/i });
+    const heading = page.getByRole('heading', { name: /transactions/i }).first();
     await expect(heading).toBeVisible();
   });
 
@@ -105,7 +105,7 @@ test.describe('Transactions page', () => {
     await expect(accountSelect).toHaveAttribute('aria-required', 'true');
 
     // Category select (optional)
-    const categorySelect = page.getByLabel(/category/i);
+    const categorySelect = page.getByLabel(/category/i).first();
     await expect(categorySelect).toBeVisible();
 
     // Date input
@@ -124,9 +124,8 @@ test.describe('Transactions page', () => {
   test('shows transaction list or empty state', async ({ authenticatedPage: page }) => {
     await page.goto('/transactions');
 
-    // Wait for loading to complete
-    await page.waitForLoadState('networkidle');
-
+    // Wait for data or empty state to appear (UI-based wait instead of
+    // networkidle which hangs on Vite dev server persistent connections).
     const transactionList = page.getByRole('list');
     const emptyState = page.getByText(/no transactions yet/i);
 
@@ -136,7 +135,11 @@ test.describe('Transactions page', () => {
 
   test('clicking a transaction navigates to detail page', async ({ authenticatedPage: page }) => {
     await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
+
+    // Wait for the page to finish loading.
+    const transactionList = page.getByRole('list');
+    const emptyState = page.getByText(/no transactions yet/i);
+    await expect(transactionList.first().or(emptyState)).toBeVisible();
 
     // Look for transaction detail links
     const transactionLinks = page.getByRole('link').filter({
@@ -164,7 +167,11 @@ test.describe('Transaction detail page', () => {
   }) => {
     // Navigate to transactions list first
     await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
+
+    // Wait for the page to finish loading.
+    const txList = page.getByRole('list');
+    const txEmpty = page.getByText(/no transactions yet/i);
+    await expect(txList.first().or(txEmpty)).toBeVisible();
 
     const transactionLinks = page.getByRole('link').filter({
       has: page.locator('.list-item__primary'),
@@ -206,8 +213,8 @@ test.describe('Transaction detail page', () => {
     authenticatedPage: page,
   }) => {
     await page.goto('/transactions/nonexistent-id-12345');
-    await page.waitForLoadState('networkidle');
 
+    // Wait for not-found message (UI-based wait instead of networkidle).
     await expect(page.getByText(/transaction not found/i)).toBeVisible();
     await expect(page.getByRole('link', { name: /back to transactions/i })).toBeVisible();
   });

@@ -90,6 +90,10 @@ coverage/
 .nuxt/
 .output/
 
+# === Playwright ===
+test-results/
+playwright-report/
+
 # === Copilot / AI (session state is local) ===
 .copilot/session-state/
 

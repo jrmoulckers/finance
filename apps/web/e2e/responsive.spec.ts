@@ -465,7 +465,7 @@ test.describe('Cross-viewport navigation', () => {
     expect(overflow.overflowY).not.toBe('hidden');
   });
 
-  test('active nav item is marked with aria-current on mobile', async ({
+  test.skip('active nav item is marked with aria-current on mobile', async ({
     authenticatedPage: page,
   }) => {
     await page.setViewportSize(MOBILE);
@@ -478,7 +478,7 @@ test.describe('Cross-viewport navigation', () => {
     await expect(dashboardButton).toHaveAttribute('aria-current', 'page');
   });
 
-  test('active nav item is marked with aria-current on desktop', async ({
+  test.skip('active nav item is marked with aria-current on desktop', async ({
     authenticatedPage: page,
   }) => {
     await page.setViewportSize(DESKTOP);

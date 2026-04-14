@@ -465,4 +465,360 @@ describe('useImport', () => {
 
     expect(result.current.skippedDuplicates.has(0)).toBe(false);
   });
+
+  it('skipAllDuplicates marks all detected duplicates for skipping', async () => {
+    // Set up duplicates
+    mockDetectDuplicates.mockReturnValue([
+      {
+        importRow: { rowIndex: 0 },
+        existingTransaction: {},
+        matchScore: 0.9,
+        matchReasons: ['exact date match'],
+      },
+      {
+        importRow: { rowIndex: 2 },
+        existingTransaction: {},
+        matchScore: 0.8,
+        matchReasons: ['same amount'],
+      },
+    ]);
+
+    const { result } = renderHook(() => useImport());
+    const file = createCsvFile('Date,Amount,Description\n2025-01-15,-50.00,Groceries');
+
+    act(() => {
+      result.current.uploadFile(file);
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('mapping');
+    });
+
+    act(() => {
+      result.current.setSelectedAccountId('acct-1');
+    });
+
+    act(() => {
+      result.current.confirmMapping();
+    });
+
+    expect(result.current.step).toBe('preview');
+    expect(result.current.duplicates).toHaveLength(2);
+
+    act(() => {
+      result.current.skipAllDuplicates();
+    });
+
+    expect(result.current.skippedDuplicates.has(0)).toBe(true);
+    expect(result.current.skippedDuplicates.has(2)).toBe(true);
+    expect(result.current.skippedDuplicates.size).toBe(2);
+  });
+
+  // -----------------------------------------------------------------------
+  // Import execution (startImport)
+  // -----------------------------------------------------------------------
+
+  it('startImport transitions to importing step and creates transactions', async () => {
+    const { result } = renderHook(() => useImport());
+    const file = createCsvFile('Date,Amount,Description\n2025-01-15,-50.00,Groceries');
+
+    // Upload
+    act(() => {
+      result.current.uploadFile(file);
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('mapping');
+    });
+
+    // Select account and confirm mapping
+    act(() => {
+      result.current.setSelectedAccountId('acct-1');
+    });
+
+    act(() => {
+      result.current.confirmMapping();
+    });
+
+    expect(result.current.step).toBe('preview');
+
+    // Start import
+    act(() => {
+      result.current.startImport();
+    });
+
+    expect(result.current.step).toBe('importing');
+
+    // Wait for the batch processing (uses requestAnimationFrame + setTimeout)
+    await waitFor(() => {
+      expect(result.current.step).toBe('complete');
+    });
+
+    expect(result.current.importSummary).not.toBeNull();
+    expect(result.current.importSummary!.imported).toBe(1);
+    expect(result.current.importSummary!.skipped).toBe(0);
+    expect(result.current.importSummary!.errors).toBe(0);
+    expect(mockCreateTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('startImport skips rows marked as duplicates', async () => {
+    // Two valid rows
+    mockValidateImportRows.mockReturnValue({
+      valid: [
+        {
+          rowIndex: 0,
+          data: {
+            householdId: 'hh-1',
+            accountId: 'acct-1',
+            type: 'EXPENSE',
+            amount: { amount: 5000 },
+            date: '2025-01-15',
+            payee: 'Groceries',
+          },
+          warnings: [],
+        },
+        {
+          rowIndex: 1,
+          data: {
+            householdId: 'hh-1',
+            accountId: 'acct-1',
+            type: 'EXPENSE',
+            amount: { amount: 3000 },
+            date: '2025-01-16',
+            payee: 'Coffee',
+          },
+          warnings: [],
+        },
+      ],
+      errors: [],
+    });
+
+    mockDetectDuplicates.mockReturnValue([
+      {
+        importRow: { rowIndex: 0 },
+        existingTransaction: {},
+        matchScore: 0.9,
+        matchReasons: ['exact date match', 'same amount'],
+      },
+    ]);
+
+    const { result } = renderHook(() => useImport());
+    const file = createCsvFile(
+      'Date,Amount,Description\n2025-01-15,-50.00,Groceries\n2025-01-16,-30.00,Coffee',
+    );
+
+    // Upload
+    act(() => {
+      result.current.uploadFile(file);
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('mapping');
+    });
+
+    // Select account and confirm
+    act(() => {
+      result.current.setSelectedAccountId('acct-1');
+    });
+
+    act(() => {
+      result.current.confirmMapping();
+    });
+
+    expect(result.current.step).toBe('preview');
+
+    // Skip the duplicate
+    act(() => {
+      result.current.skipAllDuplicates();
+    });
+
+    expect(result.current.skippedDuplicates.has(0)).toBe(true);
+
+    // Start import
+    act(() => {
+      result.current.startImport();
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('complete');
+    });
+
+    // Only the non-duplicate row should be imported
+    expect(result.current.importSummary!.imported).toBe(1);
+    expect(result.current.importSummary!.skipped).toBe(1);
+    expect(mockCreateTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('startImport tracks failed transactions as errors', async () => {
+    // createTransaction returns null to signal failure
+    mockCreateTransaction.mockReturnValue(null);
+
+    const { result } = renderHook(() => useImport());
+    const file = createCsvFile('Date,Amount,Description\n2025-01-15,-50.00,Groceries');
+
+    act(() => {
+      result.current.uploadFile(file);
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('mapping');
+    });
+
+    act(() => {
+      result.current.setSelectedAccountId('acct-1');
+    });
+
+    act(() => {
+      result.current.confirmMapping();
+    });
+
+    act(() => {
+      result.current.startImport();
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('complete');
+    });
+
+    expect(result.current.importSummary!.imported).toBe(0);
+    expect(result.current.importSummary!.errors).toBe(1);
+  });
+
+  it('startImport does not run while already importing', async () => {
+    const { result } = renderHook(() => useImport());
+    const file = createCsvFile('Date,Amount,Description\n2025-01-15,-50.00,Groceries');
+
+    act(() => {
+      result.current.uploadFile(file);
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('mapping');
+    });
+
+    act(() => {
+      result.current.setSelectedAccountId('acct-1');
+    });
+
+    act(() => {
+      result.current.confirmMapping();
+    });
+
+    // Start import twice quickly
+    act(() => {
+      result.current.startImport();
+      result.current.startImport(); // Should be ignored
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('complete');
+    });
+
+    // createTransaction should only be called once (not double-imported)
+    expect(mockCreateTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('goBack is a no-op during importing step', async () => {
+    const { result } = renderHook(() => useImport());
+    const file = createCsvFile('Date,Amount,Description\n2025-01-15,-50.00,Groceries');
+
+    act(() => {
+      result.current.uploadFile(file);
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('mapping');
+    });
+
+    act(() => {
+      result.current.setSelectedAccountId('acct-1');
+    });
+
+    act(() => {
+      result.current.confirmMapping();
+    });
+
+    act(() => {
+      result.current.startImport();
+    });
+
+    expect(result.current.step).toBe('importing');
+
+    act(() => {
+      result.current.goBack();
+    });
+
+    // Should remain on importing
+    expect(result.current.step).toBe('importing');
+
+    // Wait for completion
+    await waitFor(() => {
+      expect(result.current.step).toBe('complete');
+    });
+  });
+
+  it('goBack is a no-op on the complete step', async () => {
+    const { result } = renderHook(() => useImport());
+    const file = createCsvFile('Date,Amount,Description\n2025-01-15,-50.00,Groceries');
+
+    act(() => {
+      result.current.uploadFile(file);
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('mapping');
+    });
+
+    act(() => {
+      result.current.setSelectedAccountId('acct-1');
+    });
+
+    act(() => {
+      result.current.confirmMapping();
+    });
+
+    act(() => {
+      result.current.startImport();
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('complete');
+    });
+
+    act(() => {
+      result.current.goBack();
+    });
+
+    // Should stay on complete
+    expect(result.current.step).toBe('complete');
+  });
+
+  it('goBack navigates from preview to mapping', async () => {
+    const { result } = renderHook(() => useImport());
+    const file = createCsvFile('Date,Amount,Description\n2025-01-15,-50.00,Groceries');
+
+    act(() => {
+      result.current.uploadFile(file);
+    });
+
+    await waitFor(() => {
+      expect(result.current.step).toBe('mapping');
+    });
+
+    act(() => {
+      result.current.setSelectedAccountId('acct-1');
+    });
+
+    act(() => {
+      result.current.confirmMapping();
+    });
+
+    expect(result.current.step).toBe('preview');
+
+    act(() => {
+      result.current.goBack();
+    });
+
+    expect(result.current.step).toBe('mapping');
+  });
 });
