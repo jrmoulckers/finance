@@ -3,8 +3,9 @@ import { defineConfig } from '@playwright/test';
 const isCI = !!process.env.CI;
 
 export default defineConfig({
-  // Allow 60 seconds per test — CI runners with cold Vite dev server +
-  // SQLite-WASM initialization can exceed the 30-second default.
+  // Allow 60 seconds per test — with the E2E stub DB (bypassing real
+  // SQLite-WASM init), page rendering is fast.  The 60 s limit provides
+  // headroom for Vite preview startup + React mount + auth restore.
   timeout: 60_000,
   testDir: './e2e',
   use: {
