@@ -11,9 +11,8 @@
  *   - `/api/auth/refresh` — token refresh via HttpOnly cookie (POST)
  *   - `/api/auth/logout`  — session teardown (POST)
  *
- * Since there is no real backend in E2E tests, we mock all auth endpoints.
- * The refresh mock returns a valid session, so AuthProvider auto-authenticates
- * the user on every page load — no login form interaction required.
+ * Since there is no real backend in E2E tests, we mock all auth endpoints
+ * and drive the login form to let React context pick up the auth state.
  */
 
 import { test as base, expect, type Page } from '@playwright/test';
@@ -27,6 +26,8 @@ const TEST_USER = {
   email: 'test@example.com',
   has_passkey: false,
 } as const;
+
+const TEST_PASSWORD = 'password123';
 
 /**
  * A minimal valid JWT with an `exp` claim 1 hour in the future.
@@ -71,15 +72,10 @@ function createFakeJwt(): string {
  * This must be called BEFORE any navigation so that the initial session
  * restore attempt (refresh endpoint) also gets intercepted.
  *
- * The refresh endpoint ALWAYS returns a valid session — this means
- * AuthProvider's tryRestoreSession() will auto-authenticate the user on
- * every page load.  Tests no longer need to drive the login form; the
- * authenticated state is established purely via mocked API responses.
- *
  * In addition to auth endpoints, we mock the sync push endpoint and a
  * catch-all for any other `/api/` path.  This prevents unhandled requests
- * from hitting the Vite preview server (which has no backend) and hanging
- * or returning HTML error pages that break JSON parsing.
+ * from hitting the Vite dev server (which has no backend) and hanging or
+ * returning HTML error pages that break JSON parsing.
  */
 async function installAuthMocks(page: Page): Promise<void> {
   // Catch-all for any /api/ path not explicitly mocked below.
@@ -107,23 +103,16 @@ async function installAuthMocks(page: Page): Promise<void> {
     });
   });
 
-  // Mock the token refresh endpoint — ALWAYS return a valid session.
-  //
-  // AuthProvider calls tryRestoreSession() on every mount (including after
-  // full-page navigations triggered by page.goto() in tests).  By always
-  // returning 200 with valid credentials, the user is auto-authenticated
-  // on every page load — no login form interaction required.
-  //
-  // This mirrors production behaviour where an HttpOnly refresh cookie
-  // persists across navigations and the refresh endpoint validates it.
+  // Mock the token refresh endpoint — return 401 (no existing session).
+  // AuthProvider calls tryRestoreSession() on mount which hits this endpoint.
+  // Returning 200 would auto-authenticate the user before the login form
+  // renders, causing the form-based login flow to be skipped entirely
+  // (the LoginPage redirects to /dashboard when already authenticated).
   await page.route('**/api/auth/refresh', async (route) => {
     await route.fulfill({
-      status: 200,
+      status: 401,
       contentType: 'application/json',
-      body: JSON.stringify({
-        access_token: createFakeJwt(),
-        user: TEST_USER,
-      }),
+      body: JSON.stringify({ error: 'No session' }),
     });
   });
 
@@ -167,28 +156,27 @@ async function installAuthMocks(page: Page): Promise<void> {
 }
 
 /**
- * Navigate to an authenticated page and wait for the app to be ready.
+ * Perform a full login flow through the UI.
  *
- * With the refresh endpoint mocked to return 200, AuthProvider's
- * tryRestoreSession() auto-authenticates the user on every page load.
- * We navigate to /dashboard (the post-login landing page) and wait for
- * evidence that the authenticated shell has rendered.
+ * Navigates to `/login`, fills the email and password fields, and submits
+ * the form. The mocked endpoints (installed via `installAuthMocks`) ensure
+ * that the React auth context receives valid tokens and user data.
  */
-async function waitForAuthenticatedApp(page: Page): Promise<void> {
-  const response = await page.goto('/dashboard');
-  if (!response || response.status() >= 400) {
-    throw new Error(
-      `App not serving — /dashboard returned ${response?.status() ?? 'no response'}. ` +
-        'Is the Vite server ready?',
-    );
-  }
+async function loginViaForm(page: Page): Promise<void> {
+  await page.goto('/login');
 
-  // Wait for the DOM to be fully parsed.
-  await page.waitForLoadState('domcontentloaded');
+  // Wait for the login form to be fully rendered.
+  const emailInput = page.getByLabel(/email/i);
+  await emailInput.waitFor({ state: 'visible', timeout: 60_000 });
 
-  // Wait for the authenticated app shell to appear.  With the E2E stub DB
-  // (no real WASM init), this should complete in a few seconds.
-  await page.getByRole('heading').first().waitFor({ state: 'visible', timeout: 30_000 });
+  await emailInput.fill(TEST_USER.email);
+  await page.getByLabel(/password/i).fill(TEST_PASSWORD);
+
+  // Submit the form via the Sign in button.
+  await page.getByRole('button', { name: /sign in/i }).click();
+
+  // Wait for navigation away from the login page (redirect to /dashboard).
+  await page.waitForURL('**/dashboard', { timeout: 10_000 });
 }
 
 // ---------------------------------------------------------------------------
@@ -202,19 +190,11 @@ async function waitForAuthenticatedApp(page: Page): Promise<void> {
  */
 export const test = base.extend<{ authenticatedPage: Page }>({
   authenticatedPage: async ({ page }, use) => {
-    // 0. Mark the page as an E2E test environment so DatabaseProvider
-    //    skips real SQLite-WASM init (WASM binaries aren't in the static
-    //    build output and would cause initDatabase() to hang).
-    await page.addInitScript(() => {
-      window.__PLAYWRIGHT_E2E__ = true;
-    });
-
     // 1. Install route mocks before any navigation.
-    //    The refresh mock returns 200 — AuthProvider auto-authenticates.
     await installAuthMocks(page);
 
-    // 2. Navigate to the dashboard and wait for the app to be ready.
-    await waitForAuthenticatedApp(page);
+    // 2. Drive the login flow through the real UI.
+    await loginViaForm(page);
 
     // 3. Hand the authenticated page to the test.
     await use(page);
