@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
@@ -54,17 +55,21 @@ fun PlanningScreen(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
                 text = { Text("Budgets") },
-                modifier = Modifier.semantics {
-                    contentDescription = "Budgets tab"
-                },
+                modifier = Modifier
+                    .testTag("budgets_tab")
+                    .semantics {
+                        contentDescription = "Budgets tab"
+                    },
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
                 text = { Text("Goals") },
-                modifier = Modifier.semantics {
-                    contentDescription = "Goals tab"
-                },
+                modifier = Modifier
+                    .testTag("goals_tab")
+                    .semantics {
+                        contentDescription = "Goals tab"
+                    },
             )
         }
 

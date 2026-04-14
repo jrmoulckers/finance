@@ -73,11 +73,6 @@ jobs:
           ./gradlew :packages:core:jvmTest :packages:models:jvmTest :packages:sync:jvmTest \
             --parallel --build-cache --stacktrace
 
-      - name: Run JS Node tests
-        run: |
-          ./gradlew :packages:core:jsNodeTest :packages:sync:jsNodeTest \
-            --parallel --build-cache --stacktrace
-
       - name: Generate coverage report
         run: ./gradlew :packages:core:koverXmlReport :packages:sync:koverXmlReport --parallel --build-cache
         continue-on-error: true

@@ -3,6 +3,7 @@
 package com.finance.android.e2e
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import org.junit.Test
@@ -38,6 +39,11 @@ class NavigationE2ETest : BaseE2ETest() {
         val dash = DashboardRobot(composeTestRule)
         dash.waitForDashboardLoaded()
         dash.tapNetWorthCard()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodes(hasContentDescription("Add new account"))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
         composeTestRule.onNodeWithContentDescription("Add new account")
             .assertIsDisplayed()
     }
