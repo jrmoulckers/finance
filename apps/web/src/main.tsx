@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { StrictMode } from 'react';
+import type { FC, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
 import { DatabaseProvider } from './db/DatabaseProvider';
@@ -54,14 +55,51 @@ if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
 
 initMonitoring();
 
+// ---------------------------------------------------------------------------
+// Route-aware database gate
+// ---------------------------------------------------------------------------
+
+/**
+ * Routes that render without waiting for SQLite-WASM initialisation.
+ *
+ * Pre-auth pages (login, signup) never access the database, so gating them
+ * behind DatabaseProvider unnecessarily blocks rendering.  On CI especially
+ * (headless Chromium + OPFS + WASM fetch), initialisation can exceed 60 s
+ * and cause the E2E authenticatedPage fixture to time out before the login
+ * form ever appears.
+ */
+const PRE_AUTH_ROUTES = new Set(['/login', '/signup']);
+
+/**
+ * Conditionally wraps children in DatabaseProvider.
+ *
+ * - On pre-auth routes the children render immediately (no DB wait).
+ * - On all other routes the DatabaseProvider loading gate applies, ensuring
+ *   the shared SQLite-WASM instance is ready before page components that
+ *   depend on `useDatabase()` mount.
+ */
+const DatabaseGate: FC<{ children: ReactNode }> = ({ children }) => {
+  const { pathname } = useLocation();
+
+  if (PRE_AUTH_ROUTES.has(pathname)) {
+    return children;
+  }
+
+  return <DatabaseProvider>{children}</DatabaseProvider>;
+};
+
+// ---------------------------------------------------------------------------
+// Mount
+// ---------------------------------------------------------------------------
+
 createRoot(rootElement).render(
   <StrictMode>
     <AuthProvider config={authConfig}>
-      <DatabaseProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <DatabaseGate>
           <App />
-        </BrowserRouter>
-      </DatabaseProvider>
+        </DatabaseGate>
+      </BrowserRouter>
     </AuthProvider>
   </StrictMode>,
 );
