@@ -37,7 +37,29 @@ jobs:
 
       - run: npm run build -w packages/design-tokens
 
-      - run: npm run build -w apps/web
+      - name: Build web app
+        id: web-build
+        run: |
+          BUILD_START=$SECONDS
+          npm run build -w apps/web
+          echo "duration=$(( SECONDS - BUILD_START ))" >> "$GITHUB_OUTPUT"
+
+      - name: Report bundle size
+        run: |
+          echo "### 🌐 Web Build Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Build duration | ${{ steps.web-build.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
+          if [ -d "apps/web/dist" ]; then
+            TOTAL=$(du -sh apps/web/dist/ | cut -f1)
+            echo "| Bundle size | $TOTAL |" >> "$GITHUB_STEP_SUMMARY"
+            # Report JS + CSS sizes
+            JS_SIZE=$(find apps/web/dist -name '*.js' -exec du -cb {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
+            CSS_SIZE=$(find apps/web/dist -name '*.css' -exec du -cb {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
+            echo "| JS total | $(( JS_SIZE / 1024 ))KB |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| CSS total | $(( CSS_SIZE / 1024 ))KB |" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0

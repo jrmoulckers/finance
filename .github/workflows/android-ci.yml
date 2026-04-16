@@ -65,14 +65,20 @@ jobs:
         uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
 
       - name: Compile debug Kotlin
+        id: compile
         run: |
+          COMPILE_START=$SECONDS
           ./gradlew :apps:android:compileDebugKotlin \
             --parallel --build-cache --stacktrace
+          echo "duration=$(( SECONDS - COMPILE_START ))" >> "$GITHUB_OUTPUT"
 
       - name: Run unit tests
+        id: unit-tests
         run: |
+          TEST_START=$SECONDS
           ./gradlew :apps:android:testDebugUnitTest \
             --parallel --build-cache --stacktrace
+          echo "duration=$(( SECONDS - TEST_START ))" >> "$GITHUB_OUTPUT"
 
       - name: Verify Paparazzi snapshots
         run: |
@@ -126,6 +132,23 @@ jobs:
           path: apps/android/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
+
+      - name: CI Summary
+        if: always()
+        run: |
+          echo "### 🤖 Android CI Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Compile duration | ${{ steps.compile.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Unit test duration | ${{ steps.unit-tests.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Gradle cache | ${{ github.ref == 'refs/heads/main' && 'read-write' || 'read-only' }} |" >> "$GITHUB_STEP_SUMMARY"
+          # Report APK size if it exists
+          APK=$(find apps/android/build/outputs/apk/debug -name '*.apk' 2>/dev/null | head -1)
+          if [ -n "$APK" ]; then
+            SIZE=$(du -sh "$APK" | cut -f1)
+            echo "| Debug APK size | $SIZE |" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   instrumented-tests:
     name: Instrumented Tests (E2E)

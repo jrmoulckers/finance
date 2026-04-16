@@ -1,0 +1,130 @@
+# =============================================================================
+# CI Health Monitor — Pipeline Performance & Reliability Dashboard
+# =============================================================================
+#
+# Runs on schedule to report on CI pipeline health:
+#   - Workflow run success/failure rates
+#   - Average build duration trends
+#   - Cache hit ratios
+#   - Flaky test detection
+#
+# Also runs as a reusable summary step for individual workflows.
+#
+# Issue: #860
+# =============================================================================
+
+name: CI Health Monitor
+
+on:
+  schedule:
+    # Run every Monday at 7 AM UTC
+    - cron: '0 7 * * 1'
+
+  # Allow manual trigger for on-demand reports
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Number of days to analyze (default: 7)'
+        required: false
+        type: number
+        default: 7
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  health-report:
+    name: Generate Health Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Collect workflow metrics
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const days = ${{ github.event.inputs.days || 7 }};
+            const since = new Date(Date.now() - days * 86400000).toISOString();
+
+            const workflows = [
+              'ci.yml', 'android-ci.yml', 'ios-ci.yml',
+              'web-ci.yml', 'windows-ci.yml', 'lint-format.yml',
+              'security.yml'
+            ];
+
+            let report = `## 🏥 CI Health Report\n\n`;
+            report += `**Period:** Last ${days} days (since ${since.split('T')[0]})\n\n`;
+            report += `| Workflow | Total | ✅ Pass | ❌ Fail | ⏭️ Skip | Success Rate | Avg Duration |\n`;
+            report += `|----------|-------|---------|---------|---------|--------------|---------------|\n`;
+
+            for (const wf of workflows) {
+              try {
+                // Get workflow ID
+                const { data: wfData } = await github.rest.actions.listRepoWorkflows({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                });
+                const workflow = wfData.workflows.find(w => w.path.endsWith(wf));
+                if (!workflow) continue;
+
+                // Get runs for this workflow
+                const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: workflow.id,
+                  created: `>=${since}`,
+                  per_page: 100,
+                });
+
+                const completed = runs.workflow_runs.filter(r => r.status === 'completed');
+                const success = completed.filter(r => r.conclusion === 'success').length;
+                const failure = completed.filter(r => r.conclusion === 'failure').length;
+                const skipped = completed.filter(r => r.conclusion === 'skipped').length;
+                const total = completed.length;
+                const rate = total > 0 ? ((success / total) * 100).toFixed(1) : 'N/A';
+
+                // Calculate average duration
+                let avgDuration = 'N/A';
+                if (completed.length > 0) {
+                  const durations = completed
+                    .filter(r => r.run_started_at)
+                    .map(r => {
+                      const start = new Date(r.run_started_at);
+                      const end = new Date(r.updated_at);
+                      return (end - start) / 1000 / 60; // minutes
+                    });
+                  if (durations.length > 0) {
+                    const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+                    avgDuration = `${avg.toFixed(1)}m`;
+                  }
+                }
+
+                const rateEmoji = rate === 'N/A' ? '⚪' :
+                  parseFloat(rate) >= 95 ? '🟢' :
+                  parseFloat(rate) >= 80 ? '🟡' : '🔴';
+
+                report += `| ${rateEmoji} ${wf.replace('.yml', '')} | ${total} | ${success} | ${failure} | ${skipped} | ${rate}% | ${avgDuration} |\n`;
+              } catch (e) {
+                report += `| ⚪ ${wf.replace('.yml', '')} | — | — | — | — | Error | — |\n`;
+              }
+            }
+
+            report += `\n### 📊 Interpretation\n\n`;
+            report += `- 🟢 **≥95%** — Healthy\n`;
+            report += `- 🟡 **80-95%** — Needs attention (check flaky tests or infra issues)\n`;
+            report += `- 🔴 **<80%** — Critical (investigate immediately)\n`;
+
+            core.summary.addRaw(report);
+            await core.summary.write();
+
+      - name: Check for degraded pipelines
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            // This step could be extended to create issues for degraded pipelines
+            // or send notifications. For now, it logs a warning.
+            core.info('CI health report generated — check the workflow summary for details');

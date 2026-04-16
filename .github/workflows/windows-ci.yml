@@ -24,7 +24,43 @@ jobs:
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with: { distribution: temurin, java-version: '21' }
       - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Build
-        run: ./gradlew :apps:windows:build
-      - name: Package MSIX
-        run: ./gradlew :apps:windows:packageMsi
+        id: build
+        shell: bash
+        run: |
+          BUILD_START=$SECONDS
+          ./gradlew :apps:windows:build --parallel --build-cache --stacktrace
+          echo "duration=$(( SECONDS - BUILD_START ))" >> "$GITHUB_OUTPUT"
+      - name: Package MSI
+        id: package
+        shell: bash
+        run: |
+          PKG_START=$SECONDS
+          ./gradlew :apps:windows:packageMsi --parallel --build-cache --stacktrace
+          echo "duration=$(( SECONDS - PKG_START ))" >> "$GITHUB_OUTPUT"
+      - name: Upload MSI artifact
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-msi
+          path: apps/windows/build/compose/binaries/**/*.msi
+          if-no-files-found: warn
+          retention-days: 7
+      - name: CI Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "### 🪟 Windows CI Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Build duration | ${{ steps.build.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Package duration | ${{ steps.package.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Gradle cache | ${{ github.ref == 'refs/heads/main' && 'read-write' || 'read-only' }} |" >> "$GITHUB_STEP_SUMMARY"
+          MSI=$(find apps/windows/build/compose/binaries -name '*.msi' 2>/dev/null | head -1)
+          if [ -n "$MSI" ]; then
+            SIZE=$(du -sh "$MSI" | cut -f1)
+            echo "| MSI size | $SIZE |" >> "$GITHUB_STEP_SUMMARY"
+          fi
