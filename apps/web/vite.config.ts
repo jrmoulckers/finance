@@ -18,6 +18,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    // Target modern browsers for smaller output
+    target: 'es2022',
+    // Chunk size warning at 250KB (aligned with budget.json)
+    chunkSizeWarningLimit: 250,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
@@ -29,12 +33,28 @@ export default defineConfig({
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
         manualChunks(id) {
+          // React core (react + react-dom + react-router-dom)
           if (
             id.includes('node_modules/react-dom') ||
             id.includes('node_modules/react-router-dom') ||
             id.includes('node_modules/react/')
           ) {
-            return 'vendor';
+            return 'vendor-react';
+          }
+
+          // Charting libraries (recharts + d3)
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3')) {
+            return 'vendor-charts';
+          }
+
+          // SQLite WASM (wa-sqlite + sql.js)
+          if (id.includes('node_modules/wa-sqlite') || id.includes('node_modules/sql.js')) {
+            return 'vendor-sqlite';
+          }
+
+          // Validation (zod)
+          if (id.includes('node_modules/zod')) {
+            return 'vendor-zod';
           }
         },
       },

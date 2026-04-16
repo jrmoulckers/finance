@@ -250,6 +250,14 @@ export function initMonitoring(): void {
     { environment, dsnConfigured },
   );
 
+  // Start Web Vitals observation when monitoring is enabled.
+  // Lazy-loaded to avoid adding to the critical path.
+  void import('./web-vitals').then(({ observeWebVitals }) => {
+    observeWebVitals((metric) => {
+      addBreadcrumb(`${metric.name}: ${metric.value} (${metric.rating})`, 'web-vital');
+    });
+  });
+
   isInitialized = true;
 }
 
