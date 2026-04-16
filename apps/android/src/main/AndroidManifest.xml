@@ -54,6 +54,48 @@
                     android:pathPrefix="/transaction" />
             </intent-filter>
         </activity>
+
+        <!-- ── Home Screen Widgets (#381) ──────────────────────────── -->
+
+        <!-- Balance Summary Widget — shows net worth and spending overview -->
+        <receiver
+            android:name=".widget.BalanceSummaryWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_balance_summary_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/balance_summary_widget_info" />
+        </receiver>
+
+        <!-- Quick Transaction Widget — expense/income quick-entry buttons -->
+        <receiver
+            android:name=".widget.QuickTransactionWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_quick_transaction_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_transaction_widget_info" />
+        </receiver>
+
+        <!-- ── Quick Settings Tile (#381) ──────────────────────────── -->
+
+        <!-- Quick transaction entry from notification shade -->
+        <service
+            android:name=".tile.QuickTransactionTileService"
+            android:exported="true"
+            android:icon="@android:drawable/ic_input_add"
+            android:label="@string/tile_quick_transaction_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

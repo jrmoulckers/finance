@@ -87,6 +87,10 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material.icons.extended)
 
+    // Glance — App Widgets with Compose-like API
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
+
     // Activity & Navigation
     implementation(libs.activity.compose)
     implementation(libs.navigation.compose)

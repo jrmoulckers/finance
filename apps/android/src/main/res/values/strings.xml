@@ -352,4 +352,11 @@
     <string name="theme_system">Follow system</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+
+    <!-- Widgets (#381) -->
+    <string name="widget_balance_summary_description">Shows your net worth, today\'s spending, and account count at a glance.</string>
+    <string name="widget_quick_transaction_description">Quick buttons to add expense or income transactions.</string>
+    <string name="widget_balance_summary_label">Account Balance</string>
+    <string name="widget_quick_transaction_label">Quick Transaction</string>
+    <string name="tile_quick_transaction_label">Add Transaction</string>
 </resources>
