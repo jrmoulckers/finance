@@ -54,6 +54,10 @@ android {
 
     buildTypes {
         release {
+            // R8 code shrinking, obfuscation, and optimisation.
+            // Security: minification + obfuscation raise the bar for
+            // reverse-engineering and reduce APK attack surface.
+            // See proguard-rules.pro for keep rules.
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -64,6 +68,11 @@ android {
             if (keystoreFile != null) {
                 signingConfig = signingConfigs.getByName("release")
             }
+        }
+
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 

@@ -17,7 +17,13 @@ export default defineConfig({
 
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // Security (#783): Disable source maps in production builds.
+    // Source maps expose the full source code structure, including
+    // security-relevant implementation details (auth flows, API
+    // endpoints, encryption logic). Use 'hidden' during a transition
+    // period if you need maps for error-reporting services (e.g.
+    // Sentry) without serving them publicly.
+    sourcemap: false,
     // Target modern browsers for smaller output
     target: 'es2022',
     // Chunk size warning at 250KB (aligned with budget.json)

@@ -22,23 +22,23 @@ patterns, certificate pinning is a **HIGH-priority** network security control.
 
 ### Current State
 
-| Platform | Pinning Status     | Reference Audit Finding |
-| -------- | ------------------ | ----------------------- |
-| Android  | NOT IMPLEMENTED    | Security Audit v1 N-1, Pre-launch M-6 |
-| iOS      | NOT IMPLEMENTED    | Security Audit v1 N-1, Pre-launch M-6 |
-| Web      | N/A (browser-managed, CT enforced) | — |
-| Windows  | NOT IMPLEMENTED    | Security Audit v1 N-1, Pre-launch M-6 |
-| KMP (Ktor) | NOT IMPLEMENTED | MASVS-NETWORK audit L-4 |
+| Platform   | Pinning Status                     | Reference Audit Finding               |
+| ---------- | ---------------------------------- | ------------------------------------- |
+| Android    | NOT IMPLEMENTED                    | Security Audit v1 N-1, Pre-launch M-6 |
+| iOS        | NOT IMPLEMENTED                    | Security Audit v1 N-1, Pre-launch M-6 |
+| Web        | N/A (browser-managed, CT enforced) | —                                     |
+| Windows    | NOT IMPLEMENTED                    | Security Audit v1 N-1, Pre-launch M-6 |
+| KMP (Ktor) | NOT IMPLEMENTED                    | MASVS-NETWORK audit L-4               |
 
 ### Risk Without Pinning
 
-| Threat                         | Likelihood | Impact    | Risk Level |
-| ------------------------------ | ---------- | --------- | ---------- |
-| Compromised CA issuing rogue cert | Low    | CRITICAL  | MEDIUM     |
-| Corporate MITM proxy interception | Medium | HIGH      | HIGH       |
-| Rogue Wi-Fi with SSL inspection | Medium   | HIGH      | HIGH       |
-| State-level adversary          | Low        | CRITICAL  | MEDIUM     |
-| Malware with injected trust anchor | Medium | CRITICAL  | HIGH       |
+| Threat                             | Likelihood | Impact   | Risk Level |
+| ---------------------------------- | ---------- | -------- | ---------- |
+| Compromised CA issuing rogue cert  | Low        | CRITICAL | MEDIUM     |
+| Corporate MITM proxy interception  | Medium     | HIGH     | HIGH       |
+| Rogue Wi-Fi with SSL inspection    | Medium     | HIGH     | HIGH       |
+| State-level adversary              | Low        | CRITICAL | MEDIUM     |
+| Malware with injected trust anchor | Medium     | CRITICAL | HIGH       |
 
 ---
 
@@ -82,11 +82,11 @@ patterns, certificate pinning is a **HIGH-priority** network security control.
 
 ### Why SPKI Over Leaf Certificate
 
-| Approach              | Rotation Impact | Renewal Risk | Recommended |
-| --------------------- | --------------- | ------------ | ----------- |
-| Leaf certificate hash | Must update app on every cert renewal | HIGH — missed renewal = outage | No |
-| Intermediate CA hash  | Stable across cert renewals | LOW — only changes if CA changes | **Yes (primary)** |
-| SPKI public key hash  | Stable if key is reused across renewals | LOWEST | **Yes (recommended)** |
+| Approach              | Rotation Impact                         | Renewal Risk                     | Recommended           |
+| --------------------- | --------------------------------------- | -------------------------------- | --------------------- |
+| Leaf certificate hash | Must update app on every cert renewal   | HIGH — missed renewal = outage   | No                    |
+| Intermediate CA hash  | Stable across cert renewals             | LOW — only changes if CA changes | **Yes (primary)**     |
+| SPKI public key hash  | Stable if key is reused across renewals | LOWEST                           | **Yes (recommended)** |
 
 **Recommendation:** Pin the **SPKI hash of the intermediate CA** used by Supabase
 (currently Let's Encrypt or AWS Certificate Manager depending on deployment), with
@@ -102,6 +102,7 @@ Backup Pin 2:  sha256/<NEXT_GEN_INTERMEDIATE_CA_SPKI_HASH>
 
 > **IMPORTANT:** The actual pin values MUST be derived from the live Supabase
 > certificate chain at deployment time. Use `openssl s_client` to extract:
+>
 > ```bash
 > openssl s_client -connect <project>.supabase.co:443 -servername <project>.supabase.co </dev/null 2>/dev/null \
 >   | openssl x509 -pubkey -noout \
@@ -160,6 +161,7 @@ Backup Pin 2:  sha256/<NEXT_GEN_INTERMEDIATE_CA_SPKI_HASH>
 ```
 
 **AndroidManifest.xml addition:**
+
 ```xml
 <application
     android:networkSecurityConfig="@xml/network_security_config"
@@ -167,6 +169,7 @@ Backup Pin 2:  sha256/<NEXT_GEN_INTERMEDIATE_CA_SPKI_HASH>
 ```
 
 **Android-specific considerations:**
+
 - `debug-overrides` ONLY active when `android:debuggable="true"` (debug builds)
 - `expiration` date triggers a graceful fallback to system trust on expiry
 - `includeSubdomains="true"` covers project-specific subdomains
@@ -218,6 +221,7 @@ Backup Pin 2:  sha256/<NEXT_GEN_INTERMEDIATE_CA_SPKI_HASH>
 ```
 
 **iOS-specific considerations:**
+
 - `NSPinnedDomains` is enforced by ATS at the OS level — cannot be bypassed by app code
 - No debug bypass — use a separate `Info.plist` for debug builds or a runtime check
 - `NSPinnedCAIdentities` pins to CA certificates (not leaf), matching our SPKI strategy
@@ -267,6 +271,7 @@ val httpClient = HttpClient(OkHttp) {
 ```
 
 **Windows/JVM-specific considerations:**
+
 - OkHttp provides the most mature certificate pinning API on JVM
 - Ktor CIO engine pinning is less flexible (whole keystore)
 - Consider using OkHttp engine for Android+JVM/Windows, CIO for other targets
@@ -327,12 +332,12 @@ expect object CertificatePinner {
 
 ### Failure Modes and Mitigations
 
-| Failure Mode | Impact | Mitigation |
-| --- | --- | --- |
-| Certificate rotated, app not updated | Connection failure for all users | Backup pins; pin expiry with graceful fallback; forced app update mechanism |
-| Supabase changes CA provider | Connection failure if new CA not pinned | Monitor CT logs; include backup pins from multiple CAs |
-| Debug build with proxy | Proxy intercepted, connection refused | Android `debug-overrides`; iOS separate debug Info.plist |
-| Pin expiry reached | Falls back to system trust (Android) | Set generous expiry; monitor via CI |
+| Failure Mode                         | Impact                                  | Mitigation                                                                  |
+| ------------------------------------ | --------------------------------------- | --------------------------------------------------------------------------- |
+| Certificate rotated, app not updated | Connection failure for all users        | Backup pins; pin expiry with graceful fallback; forced app update mechanism |
+| Supabase changes CA provider         | Connection failure if new CA not pinned | Monitor CT logs; include backup pins from multiple CAs                      |
+| Debug build with proxy               | Proxy intercepted, connection refused   | Android `debug-overrides`; iOS separate debug Info.plist                    |
+| Pin expiry reached                   | Falls back to system trust (Android)    | Set generous expiry; monitor via CI                                         |
 
 ### Testing Strategy
 
@@ -348,31 +353,31 @@ expect object CertificatePinner {
 
 ### Must Do (Before Enabling Pinning)
 
-| Priority | Action | Effort |
-| --- | --- | --- |
-| P0 | Extract current Supabase certificate chain SPKI hashes | 1 hour |
-| P0 | Identify and pin backup CAs (at least 2) | 1 hour |
-| P0 | Create `network_security_config.xml` for Android | 2 hours |
-| P0 | Add `NSPinnedDomains` to iOS `Info.plist` | 2 hours |
-| P0 | Set up OkHttp CertificatePinner for JVM/Windows | 4 hours |
-| P0 | Add Expect-CT header to Edge Function responses | 1 hour |
+| Priority | Action                                                 | Effort  |
+| -------- | ------------------------------------------------------ | ------- |
+| P0       | Extract current Supabase certificate chain SPKI hashes | 1 hour  |
+| P0       | Identify and pin backup CAs (at least 2)               | 1 hour  |
+| P0       | Create `network_security_config.xml` for Android       | 2 hours |
+| P0       | Add `NSPinnedDomains` to iOS `Info.plist`              | 2 hours |
+| P0       | Set up OkHttp CertificatePinner for JVM/Windows        | 4 hours |
+| P0       | Add Expect-CT header to Edge Function responses        | 1 hour  |
 
 ### Should Do (Within Sprint)
 
-| Priority | Action | Effort |
-| --- | --- | --- |
-| P1 | CI job to monitor certificate chain changes | 4 hours |
-| P1 | Feature flag for emergency pin bypass | 4 hours |
-| P1 | Document pin rotation runbook in ops/ | 2 hours |
-| P1 | Add CAA DNS records | 1 hour |
+| Priority | Action                                      | Effort  |
+| -------- | ------------------------------------------- | ------- |
+| P1       | CI job to monitor certificate chain changes | 4 hours |
+| P1       | Feature flag for emergency pin bypass       | 4 hours |
+| P1       | Document pin rotation runbook in ops/       | 2 hours |
+| P1       | Add CAA DNS records                         | 1 hour  |
 
 ### Future Improvements
 
-| Priority | Action | Effort |
-| --- | --- | --- |
-| P2 | Certificate Transparency log monitoring | 1 day |
-| P2 | Pin validation failure reporting via SyncHealthMonitor | 4 hours |
-| P2 | Automated pin extraction and PR creation in CI | 1 day |
+| Priority | Action                                                 | Effort  |
+| -------- | ------------------------------------------------------ | ------- |
+| P2       | Certificate Transparency log monitoring                | 1 day   |
+| P2       | Pin validation failure reporting via SyncHealthMonitor | 4 hours |
+| P2       | Automated pin extraction and PR creation in CI         | 1 day   |
 
 ---
 

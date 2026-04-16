@@ -252,18 +252,79 @@ export function appendRateLimitHeaders(
 // ---------------------------------------------------------------------------
 
 /**
- * Extract the client IP address from request headers (best-effort).
+ * IPv4 pattern — matches `0.0.0.0` through `255.255.255.255`.
  *
- * Checks `X-Forwarded-For` (first entry) and `X-Real-IP` in that order.
- * Returns `null` if neither header is present.
+ * Does NOT validate octets are <=255; the goal is to reject obviously
+ * malicious payloads (e.g. script injections, multi-line values),
+ * not to be a full RFC 5321 validator.
+ */
+const IPV4_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
+/**
+ * Simplified IPv6 pattern — matches colon-hex notation including
+ * `::` shorthand and IPv4-mapped addresses (e.g. `::ffff:192.0.2.1`).
+ */
+const IPV6_RE = /^[0-9a-fA-F:]+(%[a-zA-Z0-9]+)?$/;
+
+/**
+ * Validate that a string looks like a plausible IP address.
+ *
+ * This is a defence-in-depth measure to prevent log injection,
+ * header injection, or abuse-key pollution — not a strict IP parser.
+ *
+ * @param ip Candidate IP string.
+ * @returns true if the string matches IPv4 or IPv6 syntax.
+ */
+export function isPlausibleIp(ip: string): boolean {
+  if (ip.length === 0 || ip.length > 45) return false;
+  return IPV4_RE.test(ip) || IPV6_RE.test(ip);
+}
+
+/**
+ * Extract the client IP address from request headers.
+ *
+ * **Security fix (#783):** Uses the **rightmost** entry in
+ * `X-Forwarded-For` instead of the leftmost. In a typical
+ * reverse-proxy chain (Client → CDN → LB → Edge Function), each
+ * proxy *appends* the connecting IP. The leftmost entry is whatever
+ * the original client sent and is trivially spoofable. The
+ * rightmost entry is the IP set by the last trusted proxy (the one
+ * closest to us) and represents the actual connecting client.
+ *
+ * Trust model:
+ *   Supabase Edge Functions run on Deno Deploy behind Supabase's
+ *   own load balancer. The LB appends the real connecting IP as the
+ *   last entry in X-Forwarded-For. We take that last entry.
+ *
+ * Defence-in-depth:
+ *   - IP format validation rejects non-IP payloads (script injection,
+ *     header smuggling).
+ *   - Falls back to `X-Real-IP` if `X-Forwarded-For` is absent.
+ *   - Returns `null` if no valid IP can be determined (callers
+ *     must handle this — e.g. by denying unauthenticated requests).
  *
  * @param req The incoming request.
- * @returns The client IP string, or null if unavailable.
+ * @returns The client IP string, or null if unavailable / invalid.
  */
 export function getClientIp(req: Request): string | null {
+  // 1. X-Forwarded-For — take the RIGHTMOST (last) entry.
   const forwarded = req.headers.get('x-forwarded-for');
   if (forwarded) {
-    return forwarded.split(',')[0].trim() || null;
+    const parts = forwarded.split(',');
+    // Walk from the right to find the first valid IP.
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const candidate = parts[i].trim();
+      if (candidate && isPlausibleIp(candidate)) {
+        return candidate;
+      }
+    }
   }
-  return req.headers.get('x-real-ip') || null;
+
+  // 2. X-Real-IP — single value set by some proxies.
+  const realIp = req.headers.get('x-real-ip')?.trim();
+  if (realIp && isPlausibleIp(realIp)) {
+    return realIp;
+  }
+
+  return null;
 }

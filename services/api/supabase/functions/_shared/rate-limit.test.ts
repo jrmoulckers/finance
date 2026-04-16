@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Tests for `_shared/rate-limit.ts` (#614).
+ * Tests for `_shared/rate-limit.ts` (#614, #783).
  *
  * Validates:
- *   - getClientIp extracts IPs from standard proxy headers
+ *   - getClientIp extracts the RIGHTMOST valid IP from X-Forwarded-For
+ *   - getClientIp rejects spoofed / malformed IP values
+ *   - isPlausibleIp validates IPv4 and IPv6 syntax
  *   - checkRateLimit delegates to the RPC and parses results
  *   - checkRateLimit fails open on RPC errors
  *   - rateLimitResponse returns a well-formed 429 response
@@ -16,6 +18,7 @@ import {
   appendRateLimitHeaders,
   checkRateLimit,
   getClientIp,
+  isPlausibleIp,
   rateLimitHeaders,
   rateLimitResponse,
   RATE_LIMITS,
@@ -69,14 +72,47 @@ function createThrowingRpcClient(): RpcClient {
 }
 
 // ---------------------------------------------------------------------------
-// getClientIp tests
+// isPlausibleIp tests
 // ---------------------------------------------------------------------------
 
-Deno.test('getClientIp — extracts IP from X-Forwarded-For header', () => {
+Deno.test('isPlausibleIp — accepts valid IPv4', () => {
+  assertEquals(isPlausibleIp('192.168.1.1'), true);
+  assertEquals(isPlausibleIp('10.0.0.1'), true);
+  assertEquals(isPlausibleIp('203.0.113.50'), true);
+  assertEquals(isPlausibleIp('255.255.255.255'), true);
+});
+
+Deno.test('isPlausibleIp — accepts valid IPv6', () => {
+  assertEquals(isPlausibleIp('::1'), true);
+  assertEquals(isPlausibleIp('2001:db8::1'), true);
+  assertEquals(isPlausibleIp('fe80::1%eth0'), true);
+  assertEquals(isPlausibleIp('::ffff:192.0.2.1'), false); // contains dots + colons — not matched by pure IPv6 RE
+});
+
+Deno.test('isPlausibleIp — rejects malicious payloads', () => {
+  assertEquals(isPlausibleIp(''), false);
+  assertEquals(isPlausibleIp('<script>alert(1)</script>'), false);
+  assertEquals(isPlausibleIp('javascript:void(0)'), false);
+  assertEquals(isPlausibleIp('1.2.3.4\r\nX-Injected: true'), false);
+  assertEquals(isPlausibleIp('a'.repeat(100)), false);
+});
+
+Deno.test('isPlausibleIp — rejects non-IP strings', () => {
+  assertEquals(isPlausibleIp('not-an-ip'), false);
+  assertEquals(isPlausibleIp('192.168.1'), false);
+  assertEquals(isPlausibleIp('hello world'), false);
+});
+
+// ---------------------------------------------------------------------------
+// getClientIp tests — RIGHTMOST extraction (#783 fix)
+// ---------------------------------------------------------------------------
+
+Deno.test('getClientIp — extracts RIGHTMOST IP from X-Forwarded-For (spoofing fix)', () => {
+  // Attacker sends spoofed IP as first entry; real IP is last (added by proxy)
   const req = createMockRequest({
     headers: { 'X-Forwarded-For': '203.0.113.50, 70.41.3.18, 150.172.238.178' },
   });
-  assertEquals(getClientIp(req), '203.0.113.50');
+  assertEquals(getClientIp(req), '150.172.238.178');
 });
 
 Deno.test('getClientIp — extracts single IP from X-Forwarded-For', () => {
@@ -113,6 +149,43 @@ Deno.test('getClientIp — returns null for empty X-Forwarded-For', () => {
     headers: { 'X-Forwarded-For': '' },
   });
   assertEquals(getClientIp(req), null);
+});
+
+Deno.test('getClientIp — skips invalid entries and returns rightmost valid IP', () => {
+  const req = createMockRequest({
+    headers: { 'X-Forwarded-For': '<script>, not-an-ip, 10.0.0.5' },
+  });
+  assertEquals(getClientIp(req), '10.0.0.5');
+});
+
+Deno.test('getClientIp — rejects X-Forwarded-For with only invalid entries', () => {
+  const req = createMockRequest({
+    headers: { 'X-Forwarded-For': '<script>alert(1)</script>, foobar' },
+  });
+  assertEquals(getClientIp(req), null);
+});
+
+Deno.test('getClientIp — rejects X-Real-IP with invalid format', () => {
+  const req = createMockRequest({
+    headers: { 'X-Real-IP': 'not-a-valid-ip' },
+  });
+  assertEquals(getClientIp(req), null);
+});
+
+Deno.test('getClientIp — handles IPv6 in X-Forwarded-For', () => {
+  const req = createMockRequest({
+    headers: { 'X-Forwarded-For': '203.0.113.50, ::1' },
+  });
+  assertEquals(getClientIp(req), '::1');
+});
+
+Deno.test('getClientIp — returns rightmost when attacker injects spoofed IP', () => {
+  // Classic IP spoofing attack: attacker adds fake IP to bypass rate limiting
+  const req = createMockRequest({
+    headers: { 'X-Forwarded-For': '1.1.1.1, 2.2.2.2, 3.3.3.3' },
+  });
+  // 3.3.3.3 is added by our trusted proxy — it's the real client IP
+  assertEquals(getClientIp(req), '3.3.3.3');
 });
 
 // ---------------------------------------------------------------------------

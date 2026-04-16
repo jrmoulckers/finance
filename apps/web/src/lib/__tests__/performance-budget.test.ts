@@ -168,10 +168,10 @@ describe('Vite Build Configuration', () => {
     expect(configContent).toContain('es2022');
   });
 
-  it('should enable sourcemaps', async () => {
+  it('should disable sourcemaps in production for security (#783)', async () => {
     const configPath = resolve(__dirname, '../../../vite.config.ts');
     const configContent = readFileSync(configPath, 'utf-8');
 
-    expect(configContent).toContain('sourcemap: true');
+    expect(configContent).toContain('sourcemap: false');
   });
 });

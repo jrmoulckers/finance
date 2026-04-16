@@ -49,32 +49,32 @@ Edge Function Handler
 
 ### Per-Function Limits
 
-| Function               | Max Requests | Window   | Key Type   | Auth Required | Assessment  |
-| ---------------------- | ------------ | -------- | ---------- | ------------- | ----------- |
-| `health-check`         | 60           | 60s      | IP-based   | No            | ✅ Appropriate |
-| `auth-webhook`         | 30           | 60s      | IP-based   | Secret-based  | ✅ Appropriate |
-| `passkey-register`     | 10           | 60s      | IP-based   | Yes (JWT)     | ✅ Strict — good for auth |
-| `passkey-authenticate` | 20           | 60s      | IP-based   | No (pre-auth) | ⚠️ See Finding RL-3 |
-| `household-invite`     | 30           | 60s      | User-based | Yes           | ✅ Appropriate |
-| `data-export`          | 10           | 3600s    | User-based | Yes           | ✅ Strict — GDPR compliant |
-| `account-deletion`     | 3            | 3600s    | User-based | Yes           | ✅ Very strict — good |
-| `sync-health-report`   | 60           | 3600s    | User-based | Yes           | ✅ Appropriate |
-| `process-recurring`    | 10           | 60s      | IP-based   | Secret-based  | ✅ Appropriate |
-| `manage-webhooks`      | 30           | 60s      | User-based | Yes           | ✅ Appropriate |
-| `admin-dashboard`      | 60           | 60s      | User-based | Yes + Admin   | ✅ Appropriate |
-| `send-notification`    | 30           | 60s      | User-based | Yes           | ✅ Appropriate |
+| Function               | Max Requests | Window | Key Type   | Auth Required | Assessment                 |
+| ---------------------- | ------------ | ------ | ---------- | ------------- | -------------------------- |
+| `health-check`         | 60           | 60s    | IP-based   | No            | ✅ Appropriate             |
+| `auth-webhook`         | 30           | 60s    | IP-based   | Secret-based  | ✅ Appropriate             |
+| `passkey-register`     | 10           | 60s    | IP-based   | Yes (JWT)     | ✅ Strict — good for auth  |
+| `passkey-authenticate` | 20           | 60s    | IP-based   | No (pre-auth) | ⚠️ See Finding RL-3        |
+| `household-invite`     | 30           | 60s    | User-based | Yes           | ✅ Appropriate             |
+| `data-export`          | 10           | 3600s  | User-based | Yes           | ✅ Strict — GDPR compliant |
+| `account-deletion`     | 3            | 3600s  | User-based | Yes           | ✅ Very strict — good      |
+| `sync-health-report`   | 60           | 3600s  | User-based | Yes           | ✅ Appropriate             |
+| `process-recurring`    | 10           | 60s    | IP-based   | Secret-based  | ✅ Appropriate             |
+| `manage-webhooks`      | 30           | 60s    | User-based | Yes           | ✅ Appropriate             |
+| `admin-dashboard`      | 60           | 60s    | User-based | Yes + Admin   | ✅ Appropriate             |
+| `send-notification`    | 30           | 60s    | User-based | Yes           | ✅ Appropriate             |
 
 ### Abuse Detection Thresholds
 
-| Function               | Max Errors | Window   | Assessment  |
-| ---------------------- | ---------- | -------- | ----------- |
-| `passkey-register`     | 5          | 60s      | ✅ Strict |
-| `passkey-authenticate` | 5          | 60s      | ✅ Strict |
-| `account-deletion`     | 3          | 600s     | ✅ Very strict |
-| `data-export`          | 5          | 600s     | ✅ Strict |
-| `household-invite`     | 10         | 300s     | ✅ Appropriate |
-| `auth-webhook`         | 10         | 300s     | ✅ Appropriate |
-| Others                 | 10-20      | 300s     | ✅ Appropriate |
+| Function               | Max Errors | Window | Assessment     |
+| ---------------------- | ---------- | ------ | -------------- |
+| `passkey-register`     | 5          | 60s    | ✅ Strict      |
+| `passkey-authenticate` | 5          | 60s    | ✅ Strict      |
+| `account-deletion`     | 3          | 600s   | ✅ Very strict |
+| `data-export`          | 5          | 600s   | ✅ Strict      |
+| `household-invite`     | 10         | 300s   | ✅ Appropriate |
+| `auth-webhook`         | 10         | 300s   | ✅ Appropriate |
+| Others                 | 10-20      | 300s   | ✅ Appropriate |
 
 ---
 
@@ -83,6 +83,7 @@ Edge Function Handler
 ### RL-1: Fail-Open Policy Creates Bypass Opportunity — Severity: HIGH
 
 **Files:**
+
 - `services/api/supabase/functions/_shared/rate-limit.ts` lines 119-121, 142-145
 - `services/api/supabase/functions/_shared/abuse-detection.ts` lines 175-177, 197-199
 
@@ -107,6 +108,7 @@ become ineffective precisely when they're needed most — a feedback loop where 
 volume causes the defence to collapse.
 
 **Recommendation:**
+
 - **Short-term:** Add a secondary, in-memory rate limiter (e.g., simple Map with TTL)
   as a fallback when the DB-backed limiter fails. This provides a degraded but still
   functional rate limit even during DB outages.
@@ -167,6 +169,7 @@ rotating the spoofed IP on every request, an attacker bypasses IP-based rate
 limits entirely.
 
 **Affected endpoints (IP-based rate limiting):**
+
 - `passkey-authenticate` (pre-auth, most critical)
 - `health-check`
 - `auth-webhook`
@@ -176,6 +179,7 @@ limits entirely.
 including the passkey authentication flow (credential stuffing vector).
 
 **Recommendation:**
+
 - **Immediate:** Use the **last** entry in `X-Forwarded-For` (the one added by the
   Supabase/Deno Deploy edge proxy), or better yet, use Supabase's own
   `x-real-ip` / `cf-connecting-ip` header which is set by the infrastructure:
@@ -193,7 +197,7 @@ export function getClientIp(req: Request): string | null {
   // Fallback: last entry in X-Forwarded-For (added by edge proxy)
   const forwarded = req.headers.get('x-forwarded-for');
   if (forwarded) {
-    const parts = forwarded.split(',').map(s => s.trim());
+    const parts = forwarded.split(',').map((s) => s.trim());
     return parts[parts.length - 1] || null;
   }
 
@@ -221,6 +225,7 @@ WebAuthn authentication requires a prior `?step=options` call (consuming 2 reque
 per attempt), but 10 authentication attempts per minute from a single IP is still high.
 
 **Recommendation:**
+
 - Reduce to **10 requests per 60 seconds per IP** (5 full auth attempts)
 - Add a **per-credential rate limit**: max 5 authentication attempts per credential_id
   per 5 minutes. This prevents targeted brute-force against a specific user's passkey.
@@ -238,6 +243,7 @@ requests across multiple endpoints to stay under each individual limit while sti
 overwhelming the backend.
 
 **Example attack:**
+
 - 60 req/min to `health-check`
 - 30 req/min to `auth-webhook`
 - 20 req/min to `passkey-authenticate`
@@ -245,6 +251,7 @@ overwhelming the backend.
 - Total: 140 req/min from a single IP without triggering any individual limit
 
 **Recommendation:**
+
 - Add a **global per-IP rate limit** (e.g., 120 requests/minute across all endpoints)
   checked before the function-specific limit.
 - Consider deploying Supabase's built-in rate limiting or a CDN-level rate limiter
@@ -272,6 +279,7 @@ exactly how many requests they can make, when the window resets, and how to time
 their attacks optimally.
 
 **Recommendation:**
+
 - **Keep `Retry-After`** — this is standard HTTP and useful for clients.
 - **Consider removing `X-RateLimit-Limit`** on security-sensitive endpoints
   (passkey-authenticate, account-deletion). Legitimate clients don't need to know
@@ -284,31 +292,38 @@ their attacks optimally.
 ## Positive Findings
 
 ### ✅ Atomic Counter Implementation
+
 The `check_rate_limit` PostgreSQL RPC uses `INSERT ... ON CONFLICT DO UPDATE` (atomic
 UPSERT), preventing race conditions where concurrent requests could bypass the limit.
 
 ### ✅ Sliding Window Design
+
 The window resets based on the first request's timestamp, not a fixed clock boundary.
 This prevents burst attacks at window boundaries.
 
 ### ✅ Abuse Detection Separation
+
 Error-based abuse detection is separate from volume-based rate limiting. This means
 a user who makes many successful requests (high volume, low errors) is not confused
 with an attacker who makes fewer requests but most fail (low volume, high errors).
 
 ### ✅ Read-Only Abuse Status Check
+
 The `checkAbuseStatus()` function now uses a `get_rate_limit_status` RPC that performs
 a SELECT without incrementing the counter (fixing pre-launch finding H-2).
 
 ### ✅ Generic Abuse Block Response
+
 The `abuseBlockedResponse()` returns a generic 403 without revealing that abuse detection
 triggered the block (line 277: `"Request blocked"`), preventing attackers from adapting.
 
 ### ✅ Rate Limit Key Privacy
+
 Both modules explicitly document that rate limit keys must never be logged or returned
 (they contain user IDs or IP addresses).
 
 ### ✅ Consistent Integration
+
 All 12 Edge Functions import and use the shared rate limiting module. No endpoint was
 found without rate limiting.
 
@@ -316,25 +331,25 @@ found without rate limiting.
 
 ## Compliance Assessment
 
-| Requirement | Status | Notes |
-| --- | --- | --- |
-| OWASP API4:2023 — Unrestricted Resource Consumption | ✅ PASS | All endpoints rate-limited |
+| Requirement                                          | Status     | Notes                                      |
+| ---------------------------------------------------- | ---------- | ------------------------------------------ |
+| OWASP API4:2023 — Unrestricted Resource Consumption  | ✅ PASS    | All endpoints rate-limited                 |
 | OWASP API2:2023 — Broken Authentication (rate limit) | ⚠️ PARTIAL | IP spoofing weakens pre-auth limits (RL-2) |
-| PCI DSS 6.5.10 — Broken Authentication | ⚠️ PARTIAL | Credential stuffing possible via RL-2 |
-| NIST 800-53 SC-5 — Denial of Service Protection | ⚠️ PARTIAL | No global rate limit (RL-4) |
-| GDPR Art. 32 — Security of Processing | ✅ PASS | Sensitive endpoints strictly limited |
+| PCI DSS 6.5.10 — Broken Authentication               | ⚠️ PARTIAL | Credential stuffing possible via RL-2      |
+| NIST 800-53 SC-5 — Denial of Service Protection      | ⚠️ PARTIAL | No global rate limit (RL-4)                |
+| GDPR Art. 32 — Security of Processing                | ✅ PASS    | Sensitive endpoints strictly limited       |
 
 ---
 
 ## Recommendations Summary
 
-| Priority | Finding | Action | Effort |
-| --- | --- | --- | --- |
-| **P0** | RL-2: IP spoofing | Fix `getClientIp()` to use infrastructure headers | 2 hours |
-| **P1** | RL-1: Fail-open bypass | Add in-memory fallback rate limiter | 4 hours |
-| **P1** | RL-3: passkey-authenticate permissive | Reduce to 10/min + per-credential limit | 2 hours |
-| **P2** | RL-4: No global rate limit | Add cross-endpoint global IP limit | 4 hours |
-| **P2** | RL-5: Rate limit header leakage | Remove X-RateLimit-Limit on auth endpoints | 1 hour |
+| Priority | Finding                               | Action                                            | Effort  |
+| -------- | ------------------------------------- | ------------------------------------------------- | ------- |
+| **P0**   | RL-2: IP spoofing                     | Fix `getClientIp()` to use infrastructure headers | 2 hours |
+| **P1**   | RL-1: Fail-open bypass                | Add in-memory fallback rate limiter               | 4 hours |
+| **P1**   | RL-3: passkey-authenticate permissive | Reduce to 10/min + per-credential limit           | 2 hours |
+| **P2**   | RL-4: No global rate limit            | Add cross-endpoint global IP limit                | 4 hours |
+| **P2**   | RL-5: Rate limit header leakage       | Remove X-RateLimit-Limit on auth endpoints        | 1 hour  |
 
 ---
 
