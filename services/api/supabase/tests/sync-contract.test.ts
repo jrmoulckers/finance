@@ -418,3 +418,101 @@ Deno.test('no duplicate table references within a single bucket', async () => {
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// Schema alignment sync rule tests (#866, #880)
+// ---------------------------------------------------------------------------
+
+Deno.test('sync-rules transactions query includes transfer and recurring columns', async () => {
+  const rules = await loadSyncRules();
+  const byHousehold = rules.bucket_definitions['by_household'];
+  assertEquals(byHousehold !== undefined, true);
+  if (!byHousehold) return;
+
+  const txnQuery = byHousehold.data.find(
+    (q) => extractTableName(q)?.toLowerCase() === 'transactions',
+  );
+  assertEquals(txnQuery !== undefined, true, 'transactions query must exist in by_household');
+  if (!txnQuery) return;
+
+  const lower = txnQuery.toLowerCase();
+  assertStringIncludes(
+    lower,
+    'transfer_transaction_id',
+    'transactions sync query must include transfer_transaction_id',
+  );
+  assertStringIncludes(
+    lower,
+    'recurring_rule_id',
+    'transactions sync query must include recurring_rule_id',
+  );
+  assertStringIncludes(lower, 'owner_id', 'transactions sync query must include owner_id');
+});
+
+Deno.test('sync-rules budgets query includes is_rollover', async () => {
+  const rules = await loadSyncRules();
+  const byHousehold = rules.bucket_definitions['by_household'];
+  assertEquals(byHousehold !== undefined, true);
+  if (!byHousehold) return;
+
+  const budgetQuery = byHousehold.data.find(
+    (q) => extractTableName(q)?.toLowerCase() === 'budgets',
+  );
+  assertEquals(budgetQuery !== undefined, true, 'budgets query must exist in by_household');
+  if (!budgetQuery) return;
+
+  assertStringIncludes(
+    budgetQuery.toLowerCase(),
+    'is_rollover',
+    'budgets sync query must include is_rollover',
+  );
+  assertStringIncludes(
+    budgetQuery.toLowerCase(),
+    'owner_id',
+    'budgets sync query must include owner_id',
+  );
+});
+
+Deno.test('sync-rules goals query includes account_id and status', async () => {
+  const rules = await loadSyncRules();
+  const byHousehold = rules.bucket_definitions['by_household'];
+  assertEquals(byHousehold !== undefined, true);
+  if (!byHousehold) return;
+
+  const goalsQuery = byHousehold.data.find((q) => extractTableName(q)?.toLowerCase() === 'goals');
+  assertEquals(goalsQuery !== undefined, true, 'goals query must exist in by_household');
+  if (!goalsQuery) return;
+
+  const lower = goalsQuery.toLowerCase();
+  assertStringIncludes(lower, 'account_id', 'goals sync query must include account_id');
+  assertStringIncludes(lower, 'status', 'goals sync query must include status');
+  assertStringIncludes(lower, 'owner_id', 'goals sync query must include owner_id');
+});
+
+Deno.test('sync-rules all household-scoped tables include owner_id', async () => {
+  const rules = await loadSyncRules();
+  const byHousehold = rules.bucket_definitions['by_household'];
+  assertEquals(byHousehold !== undefined, true);
+  if (!byHousehold) return;
+
+  const tablesRequiringOwnerId = [
+    'accounts',
+    'categories',
+    'transactions',
+    'budgets',
+    'goals',
+    'recurring_transaction_templates',
+  ];
+
+  for (const tableName of tablesRequiringOwnerId) {
+    const query = byHousehold.data.find((q) => extractTableName(q)?.toLowerCase() === tableName);
+    assertEquals(query !== undefined, true, `${tableName} query must exist in by_household`);
+    if (!query) continue;
+
+    assertStringIncludes(
+      query.toLowerCase(),
+      'owner_id',
+      `${tableName} sync query must include owner_id`,
+    );
+  }
+});
