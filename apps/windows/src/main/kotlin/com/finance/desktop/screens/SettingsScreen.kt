@@ -34,6 +34,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,7 +48,9 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
+import com.finance.desktop.viewmodel.SettingsViewModel
 
 // =============================================================================
 // Settings Screen — Form-style layout
@@ -68,15 +71,8 @@ import com.finance.desktop.theme.FinanceDesktopTheme
  */
 @Composable
 fun SettingsScreen(modifier: Modifier = Modifier) {
-    // Local state for toggles/dropdowns (UI-layer placeholders)
-    var darkMode by remember { mutableStateOf(false) }
-    var windowsHello by remember { mutableStateOf(true) }
-    var autoLock by remember { mutableStateOf(true) }
-    var budgetNotifications by remember { mutableStateOf(true) }
-    var goalNotifications by remember { mutableStateOf(true) }
-    var syncEnabled by remember { mutableStateOf(true) }
-    var selectedCurrency by remember { mutableStateOf("USD") }
-    var selectedLanguage by remember { mutableStateOf("English") }
+    val viewModel = koinGet<SettingsViewModel>()
+    val state by viewModel.uiState.collectAsState()
 
     Column(
         modifier = modifier
@@ -103,15 +99,15 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 icon = Icons.Filled.DarkMode,
                 label = "Dark Mode",
                 description = "Use dark color scheme",
-                checked = darkMode,
-                onCheckedChange = { darkMode = it },
+                checked = state.darkMode,
+                onCheckedChange = { viewModel.setDarkMode(it) },
             )
             DropdownSetting(
                 icon = Icons.Filled.Language,
                 label = "Language",
-                currentValue = selectedLanguage,
+                currentValue = state.selectedLanguage,
                 options = listOf("English", "Spanish", "French", "German", "Japanese"),
-                onValueChange = { selectedLanguage = it },
+                onValueChange = { viewModel.setLanguage(it) },
             )
             DropdownSetting(
                 icon = Icons.Filled.ColorLens,
@@ -129,16 +125,19 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             ToggleSetting(
                 icon = Icons.Filled.Fingerprint,
                 label = "Windows Hello",
-                description = "Use biometric or PIN authentication",
-                checked = windowsHello,
-                onCheckedChange = { windowsHello = it },
+                description = if (state.windowsHelloAvailable)
+                    "Use biometric or PIN authentication"
+                else
+                    "Windows Hello is not configured on this device",
+                checked = state.windowsHelloEnabled,
+                onCheckedChange = { viewModel.setWindowsHelloEnabled(it) },
             )
             ToggleSetting(
                 icon = Icons.Filled.Lock,
                 label = "Auto-Lock",
-                description = "Lock app after 5 minutes of inactivity",
-                checked = autoLock,
-                onCheckedChange = { autoLock = it },
+                description = "Lock app after ${state.autoLockMinutes} minutes of inactivity",
+                checked = state.autoLockEnabled,
+                onCheckedChange = { viewModel.setAutoLockEnabled(it) },
             )
         }
 
@@ -150,15 +149,15 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 icon = Icons.Filled.Notifications,
                 label = "Budget Alerts",
                 description = "Notify when approaching budget limits",
-                checked = budgetNotifications,
-                onCheckedChange = { budgetNotifications = it },
+                checked = state.budgetNotifications,
+                onCheckedChange = { viewModel.setBudgetNotifications(it) },
             )
             ToggleSetting(
                 icon = Icons.Filled.Notifications,
                 label = "Goal Milestones",
                 description = "Notify when reaching savings milestones",
-                checked = goalNotifications,
-                onCheckedChange = { goalNotifications = it },
+                checked = state.goalNotifications,
+                onCheckedChange = { viewModel.setGoalNotifications(it) },
             )
         }
 
@@ -169,16 +168,16 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             DropdownSetting(
                 icon = Icons.Filled.CurrencyExchange,
                 label = "Default Currency",
-                currentValue = selectedCurrency,
+                currentValue = state.selectedCurrency,
                 options = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD"),
-                onValueChange = { selectedCurrency = it },
+                onValueChange = { viewModel.setCurrency(it) },
             )
             ToggleSetting(
                 icon = Icons.Filled.Sync,
                 label = "Cloud Sync",
                 description = "Sync data across devices",
-                checked = syncEnabled,
-                onCheckedChange = { syncEnabled = it },
+                checked = state.syncEnabled,
+                onCheckedChange = { viewModel.setSyncEnabled(it) },
             )
         }
 
@@ -189,12 +188,12 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             InfoSetting(
                 icon = Icons.Filled.Info,
                 label = "Version",
-                value = "1.0.0",
+                value = state.appVersion,
             )
             InfoSetting(
                 icon = Icons.Filled.Info,
                 label = "Build",
-                value = "2025.03.06",
+                value = state.buildDate,
             )
         }
 

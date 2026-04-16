@@ -2,61 +2,35 @@
 
 package com.finance.desktop.di
 
-import com.finance.desktop.data.repository.*
-import com.finance.desktop.data.repository.impl.*
-import com.finance.desktop.sync.DesktopSyncProvider
-import com.finance.desktop.viewmodel.*
-import com.finance.sync.DefaultSyncEngine
-import com.finance.sync.SyncConfig
-import com.finance.sync.SyncProvider
-import com.finance.sync.delta.DeltaSyncManager
-import com.finance.sync.delta.InMemorySequenceTracker
-import com.finance.sync.delta.SequenceTracker
-import com.finance.sync.queue.InMemoryMutationQueue
-import com.finance.sync.queue.MutationQueue
-import org.koin.core.module.dsl.singleOf
-import org.koin.dsl.bind
-import org.koin.dsl.module
+import org.koin.core.module.Module
 
-val appModule = module {
-    // ── Repositories (in-memory, to be replaced by SQLDelight-backed impls) ──
-    singleOf(::InMemoryAccountRepository) bind AccountRepository::class
-    singleOf(::InMemoryTransactionRepository) bind TransactionRepository::class
-    singleOf(::InMemoryBudgetRepository) bind BudgetRepository::class
-    singleOf(::InMemoryCategoryRepository) bind CategoryRepository::class
-    singleOf(::InMemoryGoalRepository) bind GoalRepository::class
-
-    // ── Sync infrastructure (KMP shared packages) ──
-    single<SyncConfig> {
-        SyncConfig(
-            endpoint = "https://sync.finance.app",
-            databaseName = "finance-desktop.db",
-        )
-    }
-    singleOf(::DesktopSyncProvider) bind SyncProvider::class
-    singleOf(::InMemoryMutationQueue) bind MutationQueue::class
-    singleOf(::InMemorySequenceTracker) bind SequenceTracker::class
-    single {
-        DeltaSyncManager(
-            provider = get(),
-            sequenceTracker = get(),
-            config = get(),
-        )
-    }
-    single {
-        DefaultSyncEngine(
-            config = get(),
-            provider = get(),
-            mutationQueue = get(),
-            deltaSyncManager = get(),
-        )
-    }
-
-    // ── ViewModels ──
-    single { DashboardViewModel(get(), get(), get()) }
-    single { AccountsViewModel(get(), get()) }
-    single { TransactionsViewModel(get()) }
-    single { BudgetsViewModel(get(), get()) }
-    single { GoalsViewModel(get()) }
-    single { SyncViewModel(get()) }
-}
+/**
+ * Aggregated Koin module list for the Finance Windows desktop application.
+ *
+ * Composes all feature-specific modules into a single list suitable for
+ * `startKoin { modules(appModules) }`. Module ordering does not matter —
+ * Koin resolves dependencies lazily at injection time.
+ *
+ * ## Module Breakdown
+ *
+ * | Module             | Contents                                         |
+ * |--------------------|--------------------------------------------------|
+ * | [repositoryModule] | In-memory repository bindings (→ SQLDelight)     |
+ * | [syncModule]       | KMP sync engine, provider, mutation queue         |
+ * | [securityModule]   | WindowsHelloManager, DpapiManager, TokenStorage  |
+ * | [platformModule]   | DesktopNotificationManager                       |
+ * | [viewModelModule]  | All ViewModels (Dashboard, Accounts, Auth, etc.) |
+ *
+ * @see repositoryModule
+ * @see syncModule
+ * @see securityModule
+ * @see platformModule
+ * @see viewModelModule
+ */
+val appModules: List<Module> = listOf(
+    repositoryModule,
+    syncModule,
+    securityModule,
+    platformModule,
+    viewModelModule,
+)
