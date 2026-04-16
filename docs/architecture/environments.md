@@ -1,0 +1,578 @@
+# Environment Architecture
+
+**Status:** Proposed
+**Date:** 2026-06-15
+**Author:** AI agent (Architect), with human direction
+**Related:** [ADR-0007: Hosting Strategy](0007-hosting-strategy.md) · [ADR-0006: CI/CD Strategy](0006-cicd-strategy.md) · [ADR-0002: Backend & Sync Architecture](0002-backend-sync-architecture.md)
+
+---
+
+## Overview
+
+This document defines the complete environment architecture for the Finance app — from local development through production. Each environment is purpose-built to balance developer productivity, testing fidelity, cost, and the project's core principles: edge-first computation, privacy by design, and native platform experiences.
+
+### Design Principles
+
+1. **Parity where it matters** — database schema and sync rules are identical across all environments. Configuration changes, not code changes, differentiate environments.
+2. **Local-first development** — developers can build, test, and iterate without any network dependency. The app is fully functional against a local stack.
+3. **Minimal staging cost** — staging shares the production VPS using Docker Compose namespacing, keeping total infrastructure at ~$10–20/month.
+4. **Secrets never cross boundaries** — each environment has isolated credentials. Production secrets never appear in CI, staging, or local environments.
+
+---
+
+## 1. Environment Definitions
+
+### 1.1 Summary Matrix
+
+| Property            | Local Dev                       | CI                               | Staging                          | Production                       |
+| ------------------- | ------------------------------- | -------------------------------- | -------------------------------- | -------------------------------- |
+| **Purpose**         | Developer iteration             | Automated validation             | Pre-release verification         | Live user traffic                |
+| **Backend**         | Supabase CLI (local Docker)     | Supabase CLI (ephemeral)         | Self-hosted Docker Compose (VPS) | Self-hosted Docker Compose (VPS) |
+| **Database**        | Local PostgreSQL (Supabase CLI) | Ephemeral PostgreSQL (in CI)     | PostgreSQL on VPS                | PostgreSQL on VPS                |
+| **Sync Engine**     | PowerSync (local or bypassed)   | Bypassed (unit/integration only) | Self-hosted PowerSync (VPS)      | Self-hosted PowerSync (VPS)      |
+| **Client Database** | SQLite (unencrypted for dev)    | SQLite (in-memory for tests)     | SQLite + SQLCipher               | SQLite + SQLCipher               |
+| **TLS**             | None (localhost HTTP)           | None                             | Let's Encrypt (Caddy)            | Let's Encrypt (Caddy)            |
+| **Domain**          | `localhost`                     | N/A                              | `staging.finance.example.com`    | `finance.example.com`            |
+| **Auth**            | Auto-confirm emails, test users | Mock auth / service role key     | Real auth, test OAuth apps       | Real auth, production OAuth apps |
+| **Data**            | Seed data + manual              | Seed data (deterministic)        | Synthetic test data              | Real user data                   |
+| **Cost**            | $0 (local machine)              | GitHub Actions (free tier + Mac) | Shared VPS (~$0 marginal)        | VPS ~$10–20/month                |
+| **Who has access**  | Individual developer            | GitHub Actions runners           | Project owner + CI               | Project owner only               |
+
+### 1.2 Local Development
+
+**Goal:** Full offline development with instant feedback loops.
+
+```
+┌──────────────────────────────────────────────────┐
+│  Developer Machine                                │
+│                                                   │
+│  ┌─────────────┐    ┌──────────────────────────┐  │
+│  │ App (debug)  │    │ Supabase CLI (Docker)    │  │
+│  │ SQLite local │◄──►│  PostgreSQL  :54322      │  │
+│  │              │    │  GoTrue Auth :54321      │  │
+│  │              │    │  PostgREST   :54321      │  │
+│  │              │    │  Edge Fns    :54321      │  │
+│  │              │    │  Studio UI   :54323      │  │
+│  └─────────────┘    └──────────────────────────┘  │
+│                                                   │
+│  Optional: PowerSync dev instance (Docker)        │
+└──────────────────────────────────────────────────┘
+```
+
+**Setup:**
+
+```bash
+# Start local Supabase
+cd services/api
+supabase start
+
+# Seed the database
+supabase db reset   # Applies all migrations + seed.sql
+
+# Run the web app
+cd apps/web
+npm run dev
+
+# Run Android app (connects to local Supabase)
+cd apps/android
+./gradlew :app:installDebug
+```
+
+**Configuration:**
+
+| Variable              | Value                                |
+| --------------------- | ------------------------------------ |
+| `SUPABASE_URL`        | `http://localhost:54321`             |
+| `SUPABASE_ANON_KEY`   | Auto-generated by Supabase CLI       |
+| `POWERSYNC_URL`       | `http://localhost:8080` (if running) |
+| `MAILER_AUTOCONFIRM`  | `true`                               |
+| `APPLE_AUTH_ENABLED`  | `false`                              |
+| `GOOGLE_AUTH_ENABLED` | `false`                              |
+
+**Key behaviors:**
+
+- Email signup auto-confirms (no SMTP needed)
+- SQLCipher encryption is disabled for faster iteration (enabled via build flag)
+- Seed data creates test households with known credentials
+- Edge Functions hot-reload via `supabase functions serve`
+- No TLS — `localhost` HTTP only
+
+### 1.3 Continuous Integration (CI)
+
+**Goal:** Fast, deterministic validation of every PR. No persistent state.
+
+```
+┌────────────────────────────────────────────────────┐
+│  GitHub Actions Runner (ephemeral)                  │
+│                                                     │
+│  ┌──────────┐   ┌─────────────────────────────┐    │
+│  │ Test Suite│   │ Supabase CLI (Docker-in-CI) │    │
+│  │ Unit      │   │  PostgreSQL (ephemeral)     │    │
+│  │ Integ     │   │  Migrations applied fresh   │    │
+│  │ Lint      │   │  Seed data loaded           │    │
+│  └──────────┘   └─────────────────────────────┘    │
+│                                                     │
+│  No PowerSync, no external network calls            │
+└────────────────────────────────────────────────────┘
+```
+
+**Configuration:**
+
+| Variable             | Value                               |
+| -------------------- | ----------------------------------- |
+| `SUPABASE_URL`       | `http://localhost:54321` (CI-local) |
+| `SUPABASE_ANON_KEY`  | Auto-generated per run              |
+| `SERVICE_ROLE_KEY`   | Auto-generated per run              |
+| `MAILER_AUTOCONFIRM` | `true`                              |
+| `CI`                 | `true`                              |
+
+**Key behaviors:**
+
+- Each PR run starts with a clean database (full migration replay + seed)
+- Client tests use in-memory SQLite (no disk I/O, faster)
+- PowerSync is not started — sync tests use mock adapters
+- Integration tests call the real Supabase stack (PostgreSQL + PostgREST + GoTrue + Edge Functions)
+- No external API calls (all OAuth mocked)
+- Runners are destroyed after each job — zero state leakage between PRs
+
+### 1.4 Staging
+
+**Goal:** Production-identical stack for pre-release smoke testing and beta testers.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  VPS (shared with production, isolated via Docker)        │
+│                                                           │
+│  ┌─────────────────────────────────────────────────┐     │
+│  │ staging namespace (docker compose -p staging)    │     │
+│  │                                                   │     │
+│  │  Caddy (:8443)  ──► PostgREST                    │     │
+│  │       │          ──► GoTrue                       │     │
+│  │       │          ──► Edge Functions                │     │
+│  │       │          ──► PowerSync                     │     │
+│  │       └── TLS: staging.finance.example.com        │     │
+│  │                                                   │     │
+│  │  PostgreSQL (separate database: finance_staging)  │     │
+│  └─────────────────────────────────────────────────┘     │
+│                                                           │
+│  ┌─────────────────────────────────────────────────┐     │
+│  │ production namespace (docker compose -p prod)    │     │
+│  │  ... (see §1.5)                                  │     │
+│  └─────────────────────────────────────────────────┘     │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Configuration:**
+
+| Variable              | Value                                    |
+| --------------------- | ---------------------------------------- |
+| `DOMAIN`              | `staging.finance.example.com`            |
+| `POSTGRES_DB`         | `finance_staging`                        |
+| `POSTGRES_PORT`       | `5433` (avoid production conflict)       |
+| `JWT_SECRET`          | Unique to staging (not shared with prod) |
+| `SITE_URL`            | `https://staging.finance.example.com`    |
+| `APPLE_AUTH_ENABLED`  | `true` (test OAuth app)                  |
+| `GOOGLE_AUTH_ENABLED` | `true` (test OAuth app)                  |
+
+**Key behaviors:**
+
+- Full Docker Compose stack identical to production (same images, same Caddyfile template)
+- Separate PostgreSQL database (`finance_staging`) — never shares data with production
+- Separate JWT secret — staging tokens cannot authenticate against production
+- TLS via Let's Encrypt on a staging subdomain
+- Synthetic test data (never real user data)
+- Same PowerSync sync rules as production
+- Deployed automatically from `main` branch merges (CI pipeline)
+- Beta testers connect clients to this environment
+
+### 1.5 Production
+
+**Goal:** Reliable, secure, cost-effective hosting for live user traffic.
+
+```
+┌──────────────────────────────────────────────────────┐
+│  VPS (Hetzner / DigitalOcean, 2 vCPU / 4 GB RAM)    │
+│                                                       │
+│  Internet ──► Caddy (:443, TLS)                       │
+│                 ├──► /rest/*    → PostgREST            │
+│                 ├──► /auth/*   → GoTrue                │
+│                 ├──► /functions/* → Edge Functions      │
+│                 └──► /health   → Edge Functions        │
+│                                                       │
+│  PowerSync ──► PostgreSQL (logical replication)        │
+│                                                       │
+│  PostgreSQL (:5432)                                    │
+│    ├── WAL-level: logical                              │
+│    ├── Daily pg_dump → encrypted → off-site S3         │
+│    └── RLS enforced on all tables                      │
+└──────────────────────────────────────────────────────┘
+```
+
+**Configuration:**
+
+| Variable              | Value                               |
+| --------------------- | ----------------------------------- |
+| `DOMAIN`              | `finance.example.com`               |
+| `POSTGRES_DB`         | `postgres`                          |
+| `POSTGRES_PORT`       | `5432`                              |
+| `JWT_SECRET`          | Production secret (unique, 256-bit) |
+| `SITE_URL`            | `https://finance.example.com`       |
+| `APPLE_AUTH_ENABLED`  | `true` (production OAuth app)       |
+| `GOOGLE_AUTH_ENABLED` | `true` (production OAuth app)       |
+| `MAILER_AUTOCONFIRM`  | `false`                             |
+
+**Key behaviors:**
+
+- Full Docker Compose stack as defined in `deploy/docker-compose.yml`
+- Caddy provides automatic TLS via Let's Encrypt with HSTS, CSP, and security headers
+- PostgreSQL with WAL-level logical replication for PowerSync
+- Automated daily backups: `pg_dump` → AES-256 encryption → S3-compatible off-site storage
+- Resource limits enforced on all containers (see `deploy/docker-compose.yml`)
+- Access restricted to project owner only (SSH key + fail2ban)
+- Firewall: only ports 80, 443, and SSH (non-default port) open
+
+---
+
+## 2. Platform-Specific Environment Configuration
+
+Each client platform reads environment configuration differently. The shared principle: **environment is injected at build time, never hardcoded in source**.
+
+### 2.1 Android
+
+| Environment | Config Source                 | Supabase URL                             | Build Variant |
+| ----------- | ----------------------------- | ---------------------------------------- | ------------- |
+| Local       | `local.properties`            | `http://10.0.2.2:54321` (emulator alias) | `debug`       |
+| Staging     | `app/src/staging/res/values/` | `https://staging.finance.example.com`    | `staging`     |
+| Production  | `app/src/release/res/values/` | `https://finance.example.com`            | `release`     |
+
+Build variants defined in `build.gradle.kts`:
+
+```kotlin
+buildTypes {
+    debug { /* local dev defaults */ }
+    create("staging") {
+        initWith(getByName("debug"))
+        buildConfigField("String", "SUPABASE_URL", "\"https://staging.finance.example.com\"")
+    }
+    release {
+        buildConfigField("String", "SUPABASE_URL", "\"https://finance.example.com\"")
+        isMinifyEnabled = true
+        proguardFiles(...)
+    }
+}
+```
+
+### 2.2 iOS
+
+| Environment | Config Source      | Supabase URL                          | Scheme / Config |
+| ----------- | ------------------ | ------------------------------------- | --------------- |
+| Local       | `Debug.xcconfig`   | `http://localhost:54321`              | Debug           |
+| Staging     | `Staging.xcconfig` | `https://staging.finance.example.com` | Staging         |
+| Production  | `Release.xcconfig` | `https://finance.example.com`         | Release         |
+
+Xcconfig approach:
+
+```
+// Staging.xcconfig
+SUPABASE_URL = https:$()/$()/staging.finance.example.com
+SUPABASE_ANON_KEY = staging-anon-key-placeholder
+POWERSYNC_URL = https:$()/$()/staging-powersync.finance.example.com
+```
+
+Accessed via `Info.plist` expansion: `$(SUPABASE_URL)`.
+
+### 2.3 Web
+
+| Environment | Config Source     | Supabase URL                          | Build Command           |
+| ----------- | ----------------- | ------------------------------------- | ----------------------- |
+| Local       | `.env.local`      | `http://localhost:54321`              | `npm run dev`           |
+| Staging     | `.env.staging`    | `https://staging.finance.example.com` | `npm run build:staging` |
+| Production  | `.env.production` | `https://finance.example.com`         | `npm run build`         |
+
+Vite environment files (all prefixed with `VITE_`):
+
+```env
+# .env.staging
+VITE_SUPABASE_URL=https://staging.finance.example.com
+VITE_SUPABASE_ANON_KEY=staging-anon-key-placeholder
+VITE_POWERSYNC_URL=https://staging-powersync.finance.example.com
+VITE_SENTRY_DSN=https://staging-dsn@sentry.io/project
+VITE_ENVIRONMENT=staging
+```
+
+### 2.4 Windows (Compose Desktop / JVM)
+
+| Environment | Config Source              | Supabase URL                          | Build Config |
+| ----------- | -------------------------- | ------------------------------------- | ------------ |
+| Local       | `application.local.conf`   | `http://localhost:54321`              | Debug        |
+| Staging     | `application.staging.conf` | `https://staging.finance.example.com` | Staging      |
+| Production  | `application.release.conf` | `https://finance.example.com`         | Release      |
+
+HOCON/properties config, loaded at startup based on build profile. Secrets never baked into the binary — retrieved from Windows Credential Locker at runtime.
+
+---
+
+## 3. Database Environment Strategy
+
+### 3.1 Schema Consistency
+
+**Rule: One schema, all environments.** Migrations are the single source of truth for database schema across all environments.
+
+```
+services/api/supabase/migrations/
+├── 20260306000001_initial_schema.sql
+├── 20260306000002_rls_policies.sql
+├── 20260306000003_auth_config.sql
+├── ... (16 migration files)
+└── Applied identically to: local, CI, staging, production
+```
+
+**Migration flow:**
+
+```
+Developer writes migration
+    │
+    ├── Local: `supabase db reset` (full replay)
+    │
+    ├── CI: `supabase db reset` (ephemeral, full replay)
+    │
+    ├── Staging: `supabase db push` (incremental, on merge to main)
+    │
+    └── Production: `supabase db push` (incremental, manual approval gate)
+```
+
+### 3.2 Seed Data
+
+| Environment | Seed Strategy                                                   |
+| ----------- | --------------------------------------------------------------- |
+| Local       | `seed.sql` — deterministic test households, users, transactions |
+| CI          | `seed.sql` — same as local, ensures test reproducibility        |
+| Staging     | Synthetic data generator script (realistic volume, no real PII) |
+| Production  | Empty — users create their own data                             |
+
+### 3.3 Backup Strategy by Environment
+
+| Environment | Backup Method              | Frequency | Retention    | Off-site |
+| ----------- | -------------------------- | --------- | ------------ | -------- |
+| Local       | None (disposable)          | —         | —            | No       |
+| CI          | None (ephemeral)           | —         | —            | No       |
+| Staging     | `pg_dump` (manual/weekly)  | Weekly    | 2 weeks      | No       |
+| Production  | `pg_dump` → encrypted → S3 | Daily     | 7d + 4w + 3m | Yes      |
+
+---
+
+## 4. PowerSync Configuration per Environment
+
+### 4.1 Sync Rules
+
+**Rule: Identical sync rules across staging and production.** The file `services/api/powersync/sync-rules.yaml` defines two buckets (`by_household`, `user_profile`) and is deployed identically.
+
+### 4.2 PowerSync Instances
+
+| Environment | PowerSync Setup                     | Connection                                      |
+| ----------- | ----------------------------------- | ----------------------------------------------- |
+| Local       | Optional Docker container or bypass | Connects to local PostgreSQL via Docker network |
+| CI          | Not running (mocked in tests)       | N/A                                             |
+| Staging     | Self-hosted Docker on VPS           | Logical replication from `finance_staging` DB   |
+| Production  | Self-hosted Docker on VPS           | Logical replication from `postgres` DB          |
+
+### 4.3 PowerSync Docker Configuration
+
+Add to `deploy/docker-compose.yml` (both staging and production profiles):
+
+```yaml
+powersync:
+  image: journeyapps/powersync-service:latest
+  restart: unless-stopped
+  environment:
+    POWERSYNC_CONFIG: /config/powersync.yaml
+  volumes:
+    - ./powersync.yaml:/config/powersync.yaml:ro
+  depends_on:
+    db:
+      condition: service_healthy
+  networks:
+    - finance-internal
+```
+
+The `powersync.yaml` config references the PostgreSQL connection string and sync rules. The `POWERSYNC_*` variables in `.env` control the connection parameters.
+
+---
+
+## 5. Secret Management Strategy
+
+### 5.1 Secret Classification
+
+| Classification | Examples                                              | Handling                                            |
+| -------------- | ----------------------------------------------------- | --------------------------------------------------- |
+| **Critical**   | `JWT_SECRET`, `POSTGRES_PASSWORD`, `SERVICE_ROLE_KEY` | Never logged, never in CI output, rotated quarterly |
+| **Sensitive**  | OAuth secrets, SMTP credentials, webhook secrets      | GitHub encrypted secrets, per-environment           |
+| **Config**     | `DOMAIN`, `SITE_URL`, port numbers                    | Can appear in logs, stored in `.env` files          |
+| **Public**     | `ANON_KEY`, app store IDs                             | Safe to embed in client builds                      |
+
+### 5.2 Secret Storage by Environment
+
+| Environment | Storage                              | Access Control                       |
+| ----------- | ------------------------------------ | ------------------------------------ |
+| Local       | `.env` file (gitignored)             | Developer's machine only             |
+| CI          | GitHub Actions encrypted secrets     | Scoped to environment (staging/prod) |
+| Staging     | `.env` on VPS (chmod 600, root-only) | SSH access (project owner)           |
+| Production  | `.env` on VPS (chmod 600, root-only) | SSH access (project owner only)      |
+
+### 5.3 Secret Rotation Schedule
+
+| Secret              | Rotation Frequency | Rotation Method                                                      |
+| ------------------- | ------------------ | -------------------------------------------------------------------- |
+| `JWT_SECRET`        | Quarterly          | Generate new, restart all services, existing tokens expire naturally |
+| `POSTGRES_PASSWORD` | Quarterly          | Update `.env`, restart `db` container                                |
+| `SERVICE_ROLE_KEY`  | Quarterly          | Regenerate from new JWT_SECRET                                       |
+| OAuth secrets       | Annually           | Rotate in provider console + `.env`                                  |
+| `CRON_SECRET`       | Quarterly          | Generate new, update `.env`                                          |
+| SSH keys            | Annually           | Rotate VPS SSH keys, update `authorized_keys`                        |
+
+### 5.4 GitHub Actions Environment Configuration
+
+```
+GitHub Repository Settings → Environments:
+
+┌─────────────────────────────┐
+│ Environment: staging        │
+│ Protection: none            │
+│ Secrets:                    │
+│   STAGING_SUPABASE_URL      │
+│   STAGING_ANON_KEY          │
+│   STAGING_SERVICE_ROLE_KEY  │
+│   STAGING_JWT_SECRET        │
+│   STAGING_DEPLOY_SSH_KEY    │
+└─────────────────────────────┘
+
+┌─────────────────────────────┐
+│ Environment: production     │
+│ Protection: manual approval │
+│ Reviewers: project owner    │
+│ Secrets:                    │
+│   PROD_SUPABASE_URL         │
+│   PROD_ANON_KEY             │
+│   PROD_SERVICE_ROLE_KEY     │
+│   PROD_JWT_SECRET           │
+│   PROD_DEPLOY_SSH_KEY       │
+│   APPLE_API_KEY             │
+│   GOOGLE_PLAY_KEY           │
+│   MS_STORE_KEY              │
+│   SENTRY_AUTH_TOKEN         │
+└─────────────────────────────┘
+```
+
+---
+
+## 6. Network Topology & Service Dependencies
+
+### 6.1 Production Network Architecture
+
+```
+                    Internet
+                       │
+                       ▼
+              ┌────────────────┐
+              │   Caddy (TLS)  │  finance-external network
+              │   :80, :443    │
+              └───────┬────────┘
+                      │ finance-internal network (bridge, no external access)
+          ┌───────────┼───────────┬──────────────┐
+          ▼           ▼           ▼              ▼
+    ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐
+    │ PostgREST│ │ GoTrue  │ │ Edge Fns │ │PowerSync │
+    │  :3000   │ │  :9999  │ │  :9000   │ │  :8080   │
+    └────┬─────┘ └────┬────┘ └────┬─────┘ └────┬─────┘
+         │            │           │             │
+         └────────────┴───────────┴─────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │    PostgreSQL      │
+                    │    :5432           │
+                    │  (finance-internal │
+                    │   only)            │
+                    └───────────────────┘
+```
+
+### 6.2 Service Dependency Chain
+
+```
+Startup order (enforced by Docker Compose healthchecks):
+
+1. PostgreSQL (db)        — healthcheck: pg_isready
+2. PostgREST (rest)       — depends_on: db (healthy)
+3. GoTrue (auth)          — depends_on: db (healthy)
+4. Postgres Meta (meta)   — depends_on: db (healthy)
+5. Edge Functions          — depends_on: rest (healthy)
+6. PowerSync              — depends_on: db (healthy)
+7. Caddy                  — depends_on: rest, auth, edge-functions (all healthy)
+```
+
+### 6.3 Port Allocation
+
+| Service        | Internal Port | External Port (Prod)    | External Port (Staging) |
+| -------------- | ------------- | ----------------------- | ----------------------- |
+| PostgreSQL     | 5432          | Not exposed             | Not exposed             |
+| PostgREST      | 3000          | Via Caddy /rest/\*      | Via Caddy /rest/\*      |
+| GoTrue         | 9999          | Via Caddy /auth/\*      | Via Caddy /auth/\*      |
+| Edge Functions | 9000          | Via Caddy /functions/\* | Via Caddy /functions/\* |
+| Postgres Meta  | 8080          | Not exposed             | Not exposed             |
+| PowerSync      | 8080          | Via Caddy /sync/\*      | Via Caddy /sync/\*      |
+| Caddy          | 80, 443       | 80, 443                 | 8080, 8443              |
+
+### 6.4 Firewall Rules (Production VPS)
+
+```bash
+# UFW rules (Ubuntu)
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 80/tcp        # HTTP (redirect to HTTPS)
+ufw allow 443/tcp       # HTTPS
+ufw allow 443/udp       # HTTP/3 (QUIC)
+ufw allow <SSH_PORT>/tcp  # SSH on non-default port
+ufw enable
+```
+
+All inter-service communication happens on the Docker `finance-internal` bridge network, which is marked `internal: true` — no direct external access to any backend service.
+
+---
+
+## 7. Environment Promotion Flow
+
+```
+Local Dev → CI (automated on PR) → Staging (automated on merge) → Production (manual approval)
+
+┌──────────┐    PR opened     ┌──────────┐    Merged to main    ┌──────────┐
+│  Local   │ ───────────────► │    CI    │ ────────────────────► │ Staging  │
+│  Dev     │                  │ (checks) │                       │          │
+└──────────┘                  └──────────┘                       └────┬─────┘
+                                                                      │
+                                                              Manual approval
+                                                              (GitHub Environment)
+                                                                      │
+                                                                      ▼
+                                                                ┌──────────┐
+                                                                │Production│
+                                                                └──────────┘
+```
+
+### Promotion Rules
+
+| Transition           | Trigger               | Gate                                        |
+| -------------------- | --------------------- | ------------------------------------------- |
+| Local → CI           | PR opened             | Automatic (paths-filter selects jobs)       |
+| CI → Staging         | PR merged to `main`   | All CI checks pass                          |
+| Staging → Production | Manual dispatch / tag | GitHub Environment approval (project owner) |
+
+---
+
+## 8. References
+
+- [ADR-0002: Backend & Sync Architecture](0002-backend-sync-architecture.md)
+- [ADR-0006: CI/CD Strategy](0006-cicd-strategy.md)
+- [ADR-0007: Hosting Strategy](0007-hosting-strategy.md)
+- [ADR-0004: Auth & Security Architecture](0004-auth-security-architecture.md)
+- [Deployment Guide](../../deploy/README.md)
+- [Supabase CLI Local Development](https://supabase.com/docs/guides/cli/local-development)
+- [PowerSync Self-Hosting Docs](https://docs.powersync.com/self-hosting)
