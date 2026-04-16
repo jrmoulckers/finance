@@ -23,3 +23,5 @@ export { useAutoCategory } from './useAutoCategory';
 export type { UseAutoCategoryResult } from './useAutoCategory';
 export { useTheme } from './useTheme';
 export type { ThemeValue, ResolvedTheme, UseThemeResult } from './useTheme';
+export { useWebVitals } from './useWebVitals';
+export type { UseWebVitalsResult } from './useWebVitals';
