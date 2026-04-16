@@ -61,6 +61,7 @@ const EXPORTABLE_TABLES = [
   { name: 'transactions', filterBy: 'household_id', isHouseholdScoped: true },
   { name: 'budgets', filterBy: 'household_id', isHouseholdScoped: true },
   { name: 'goals', filterBy: 'household_id', isHouseholdScoped: true },
+  { name: 'recurring_transaction_templates', filterBy: 'household_id', isHouseholdScoped: true },
   { name: 'passkey_credentials', filterBy: 'user_id', isUserScoped: true },
 ] as const;
 

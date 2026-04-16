@@ -167,6 +167,7 @@ serve(async (req: Request): Promise<Response> => {
           'goals',
           'accounts',
           'categories',
+          'recurring_transaction_templates',
           'household_invitations',
         ];
 
