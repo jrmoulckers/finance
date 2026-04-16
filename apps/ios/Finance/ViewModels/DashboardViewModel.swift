@@ -131,13 +131,13 @@ final class DashboardViewModel {
         defer { isLoading = false }
 
         do {
-            async let accountsResult = accountRepository.getAccounts()
-            async let transactionsResult = transactionRepository.getRecentTransactions(limit: 5)
-            async let budgetsResult = budgetRepository.getBudgets()
-
-            accounts = try await accountsResult
-            recentTransactions = try await transactionsResult
-            budgets = try await budgetsResult
+            // Instrumented with os_signpost for Instruments profiling (#903)
+            (accounts, recentTransactions, budgets) = try await PerformanceMonitor.shared.measure("Dashboard Load") {
+                async let a = self.accountRepository.getAccounts()
+                async let t = self.transactionRepository.getRecentTransactions(limit: 5)
+                async let b = self.budgetRepository.getBudgets()
+                return try await (a, t, b)
+            }
 
             recomputeAggregations()
         } catch {

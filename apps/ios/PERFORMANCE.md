@@ -82,7 +82,7 @@ diagnostics from the field:
 - [ ] Index frequently filtered columns (`account_id`, `date`, `category`)
       in SQLDelight `.sq` files.
 - [x] KMP bridge calls are `async` — never block the main thread.
-- [ ] Cache frequently read data (account list, budget summaries) in an
+- [x] Cache frequently read data (account list, budget summaries) in an
       in-memory `actor` to avoid repeated round-trips through KMP.
 - [ ] Batch inserts during sync using SQLDelight transactions.
 
@@ -104,7 +104,7 @@ diagnostics from the field:
 
 - [x] Verify no retain cycles in `@Observable` view models — use
       `Instruments → Leaks` after every sprint.
-- [ ] Release chart data arrays when navigating away from the Charts tab
+- [x] Release chart data arrays when navigating away from the Charts tab
       (use `.onDisappear`).
 - [x] Avoid storing full transaction history in memory — use pagination.
 
@@ -185,3 +185,47 @@ func testTransactionListLoadPerformance() {
 | Date       | Change                                    | Author       |
 | ---------- | ----------------------------------------- | ------------ |
 | 2025-07-14 | Initial performance guidelines (Sprint 6) | iOS Platform |
+| 2025-07-14 | Add instrumentation, cache, signposts     | iOS Platform |
+
+---
+
+## Instrumentation (Sprint 7)
+
+### PerformanceMonitor
+
+The `PerformanceMonitor` actor provides centralized `os_signpost` instrumentation.
+All critical code paths are bracketed with named spans that appear in Instruments:
+
+```swift
+// Automatic measurement
+await PerformanceMonitor.shared.measure("Dashboard Load") {
+    await loadDashboard()
+}
+
+// Manual span control
+let span = PerformanceMonitor.shared.beginSpan("Export Pipeline")
+// ... work ...
+PerformanceMonitor.shared.endSpan(span)
+```
+
+Instrumented paths:
+
+- ✅ Dashboard load (accounts + transactions + budgets in parallel)
+- ✅ Transaction list load (first page)
+- ✅ Account list load
+- ✅ Budget list load
+
+### DataCache
+
+The `DataCache` actor provides a TTL-based in-memory cache with:
+
+- `getOrFetch()` for transparent cache-aside pattern
+- Prefix-based invalidation for mutation consistency
+- Hit/miss statistics for cache effectiveness monitoring
+- Configurable TTL per entry (default: 30 seconds)
+
+```swift
+let accounts = try await DataCache.shared.getOrFetch("accounts") {
+    try await repository.getAccounts()
+}
+```
