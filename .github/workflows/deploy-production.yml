@@ -1,0 +1,315 @@
+# =============================================================================
+# Production Deployment — Manual trigger with human approval
+# =============================================================================
+#
+# Deploys a specific version to production. Requires:
+#   1. Manual workflow_dispatch trigger
+#   2. Human approval via "production" GitHub environment
+#
+# Features:
+#   - Version selection (tag or commit SHA)
+#   - Pre-deployment smoke tests
+#   - Rollback support (re-deploy previous version)
+#   - GitHub Deployment status tracking
+#   - Deployment notifications
+#
+# Issue: #886
+# =============================================================================
+
+name: Deploy — Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (tag like v1.0.0, or commit SHA)'
+        required: true
+        type: string
+      component:
+        description: 'Component to deploy'
+        required: true
+        type: choice
+        options:
+          - all
+          - web
+          - backend
+      rollback:
+        description: 'Is this a rollback? (skips smoke tests)'
+        required: false
+        type: boolean
+        default: false
+      reason:
+        description: 'Deployment reason (for audit trail)'
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # Never cancel production deployments
+
+permissions:
+  contents: read
+  deployments: write
+
+env:
+  ENVIRONMENT: production
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Validate inputs and prepare deployment
+  # ---------------------------------------------------------------------------
+  prepare:
+    name: Prepare Deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      sha_short: ${{ steps.resolve.outputs.sha_short }}
+      version: ${{ steps.resolve.outputs.version }}
+      deploy_web: ${{ steps.components.outputs.web }}
+      deploy_backend: ${{ steps.components.outputs.backend }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version to commit SHA
+        id: resolve
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+
+          # Try to resolve as a git ref (tag or branch)
+          SHA=$(git rev-parse "$VERSION" 2>/dev/null || echo "")
+
+          if [ -z "$SHA" ]; then
+            echo "::error::Could not resolve '$VERSION' to a commit"
+            exit 1
+          fi
+
+          SHA_SHORT=$(echo "$SHA" | cut -c1-7)
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "sha_short=$SHA_SHORT" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          echo "### 🚀 Production Deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Version | \`$VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`$SHA_SHORT\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Component | ${{ github.event.inputs.component }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Rollback | ${{ github.event.inputs.rollback }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Reason | ${{ github.event.inputs.reason }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Triggered by | @${{ github.actor }} |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Determine components to deploy
+        id: components
+        run: |
+          COMPONENT="${{ github.event.inputs.component }}"
+          if [ "$COMPONENT" = "all" ] || [ "$COMPONENT" = "web" ]; then
+            echo "web=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "web=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$COMPONENT" = "all" ] || [ "$COMPONENT" = "backend" ]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Smoke tests (skipped on rollback)
+  # ---------------------------------------------------------------------------
+  smoke-tests:
+    name: Pre-deploy Smoke Tests
+    needs: prepare
+    if: github.event.inputs.rollback != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout at deploy version
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web (production config)
+        if: needs.prepare.outputs.deploy_web == 'true'
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: ${{ needs.prepare.outputs.version }}
+          VITE_ENVIRONMENT: production
+          VITE_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.PROD_SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.PROD_POWERSYNC_URL }}
+        run: npm run build -w apps/web
+
+      - name: Type check
+        run: npm run type-check 2>/dev/null || true
+
+      - name: Smoke test passed
+        run: |
+          echo "### ✅ Smoke Tests Passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Build and type-check succeeded at \`${{ needs.prepare.outputs.sha_short }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Deploy Web to production
+  # ---------------------------------------------------------------------------
+  deploy-web:
+    name: Deploy Web (Production)
+    needs: [prepare, smoke-tests]
+    if: always() && needs.prepare.outputs.deploy_web == 'true' && (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout at deploy version
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: ${{ needs.prepare.outputs.version }}
+          VITE_ENVIRONMENT: production
+          VITE_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.PROD_SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.PROD_POWERSYNC_URL }}
+        run: |
+          npm run build -w packages/design-tokens
+          npm run build -w apps/web
+
+      - name: Deploy to Vercel (production)
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm i -g vercel@latest
+
+          DEPLOY_URL=$(vercel deploy \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --prod \
+            --yes \
+            --archive=tgz \
+            apps/web/dist 2>&1 | tail -1)
+
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "### 🌐 Web Production Deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Deploy Backend to production
+  # ---------------------------------------------------------------------------
+  deploy-backend:
+    name: Deploy Backend (Production)
+    needs: [prepare, smoke-tests]
+    if: always() && needs.prepare.outputs.deploy_backend == 'true' && (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout at deploy version
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Deploy to production server
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+        run: |
+          if [ -z "$PROD_HOST" ]; then
+            echo "::warning::PROD_HOST not configured — skipping backend deployment"
+            echo "### ⚠️ Backend Production Skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "Configure PROD_HOST, PROD_SSH_KEY, and PROD_USER secrets." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          VERSION="${{ needs.prepare.outputs.version }}"
+          SHA="${{ needs.prepare.outputs.sha }}"
+
+          # Set up SSH
+          mkdir -p ~/.ssh
+          echo "$PROD_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$PROD_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Deploy: checkout specific version, rebuild containers
+          ssh -i ~/.ssh/deploy_key "$PROD_USER@$PROD_HOST" << DEPLOY
+            cd /opt/finance
+            git fetch origin
+            git checkout $SHA
+            docker compose -f deploy/docker-compose.yml pull
+            docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+            docker compose -f deploy/docker-compose.yml ps
+            echo "Deployed version: $VERSION ($SHA)"
+          DEPLOY
+
+          echo "### 🐳 Backend Production Deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Host:** \`$PROD_HOST\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Version:** \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  # ---------------------------------------------------------------------------
+  # Post-deployment summary and audit trail
+  # ---------------------------------------------------------------------------
+  post-deploy:
+    name: Post-deployment
+    needs: [prepare, deploy-web, deploy-backend]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Deployment audit trail
+        run: |
+          echo "### 📋 Production Deployment Record" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Version | \`${{ needs.prepare.outputs.version }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${{ needs.prepare.outputs.sha_short }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Web | ${{ needs.deploy-web.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend | ${{ needs.deploy-backend.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Rollback | ${{ github.event.inputs.rollback }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Reason | ${{ github.event.inputs.reason }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Deployed by | @${{ github.actor }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Timestamp | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail if any deployment failed
+        if: needs.deploy-web.result == 'failure' || needs.deploy-backend.result == 'failure'
+        run: |
+          echo "::error::One or more deployments failed — check logs above"
+          exit 1

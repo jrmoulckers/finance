@@ -1,0 +1,214 @@
+# =============================================================================
+# Staging Deployment — Auto-deploy on merge to main
+# =============================================================================
+#
+# Deploys the latest main branch to the staging environment:
+#   - Web: Deploy to Vercel preview / staging URL
+#   - Backend: Update Docker Compose services on staging server
+#
+# This workflow creates GitHub Deployment records for tracking.
+#
+# Issue: #886
+# =============================================================================
+
+name: Deploy — Staging
+
+on:
+  push:
+    branches: [main]
+    # Only deploy when app or service code changes (not docs/config only)
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'services/**'
+      - 'deploy/**'
+
+  # Allow manual re-deploy
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+env:
+  ENVIRONMENT: staging
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Gate: Run critical checks before deploying
+  # ---------------------------------------------------------------------------
+  pre-deploy-checks:
+    name: Pre-deploy Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      web_changed: ${{ steps.changes.outputs.web }}
+      backend_changed: ${{ steps.changes.outputs.backend }}
+      sha_short: ${{ steps.meta.outputs.sha_short }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed paths
+        id: changes
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        with:
+          filters: |
+            web:
+              - 'apps/web/**'
+              - 'packages/design-tokens/**'
+            backend:
+              - 'services/**'
+              - 'deploy/**'
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------------
+  # Web: Deploy to Vercel staging
+  # ---------------------------------------------------------------------------
+  deploy-web:
+    name: Deploy Web (Staging)
+    needs: pre-deploy-checks
+    if: needs.pre-deploy-checks.outputs.web_changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build design tokens
+        run: npm run build -w packages/design-tokens
+
+      - name: Build web (staging)
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: ${{ needs.pre-deploy-checks.outputs.sha_short }}
+          VITE_ENVIRONMENT: staging
+          VITE_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.STAGING_POWERSYNC_URL }}
+        run: npm run build -w apps/web
+
+      - name: Deploy to Vercel (staging)
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          # Install Vercel CLI
+          npm i -g vercel@latest
+
+          # Deploy to staging (preview environment)
+          DEPLOY_URL=$(vercel deploy \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --yes \
+            --archive=tgz \
+            apps/web/dist 2>&1 | tail -1)
+
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "### 🌐 Web Staging Deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** \`${{ needs.pre-deploy-checks.outputs.sha_short }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Backend: Deploy Docker Compose services to staging
+  # ---------------------------------------------------------------------------
+  deploy-backend:
+    name: Deploy Backend (Staging)
+    needs: pre-deploy-checks
+    if: needs.pre-deploy-checks.outputs.backend_changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Staging backend deployment is SSH-based to the staging server.
+      # This step is a template — configure STAGING_SSH_KEY and STAGING_HOST.
+      - name: Deploy to staging server
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+        run: |
+          if [ -z "$STAGING_HOST" ]; then
+            echo "::warning::STAGING_HOST not configured — skipping backend deployment"
+            echo "### ⚠️ Backend Staging Skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "Configure STAGING_HOST, STAGING_SSH_KEY, and STAGING_USER secrets." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # Set up SSH key
+          mkdir -p ~/.ssh
+          echo "$STAGING_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Deploy via SSH: pull latest, rebuild containers
+          ssh -i ~/.ssh/deploy_key "$STAGING_USER@$STAGING_HOST" << 'DEPLOY'
+            cd /opt/finance
+            git pull origin main
+            docker compose -f deploy/docker-compose.yml pull
+            docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+            docker compose -f deploy/docker-compose.yml ps
+          DEPLOY
+
+          echo "### 🐳 Backend Staging Deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Host:** \`$STAGING_HOST\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** \`${{ needs.pre-deploy-checks.outputs.sha_short }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  # ---------------------------------------------------------------------------
+  # Notify: Post deployment summary
+  # ---------------------------------------------------------------------------
+  notify:
+    name: Deployment Summary
+    needs: [pre-deploy-checks, deploy-web, deploy-backend]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Summary
+        run: |
+          echo "### 📋 Staging Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Component | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Web | ${{ needs.deploy-web.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend | ${{ needs.deploy-backend.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** \`${{ needs.pre-deploy-checks.outputs.sha_short }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Trigger:** ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"

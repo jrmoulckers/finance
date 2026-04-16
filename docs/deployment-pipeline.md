@@ -1,0 +1,122 @@
+# Deployment Pipeline — Operations Guide
+
+> **Issue:** #886  
+> **Workflows:** `deploy-staging.yml`, `deploy-production.yml`
+
+## Architecture
+
+```
+PR merge to main
+  → deploy-staging.yml (auto)
+    → Affected detection (web / backend)
+    → Deploy to staging environment
+    → Deployment summary
+
+Manual trigger (workflow_dispatch)
+  → deploy-production.yml
+    → Version resolution (tag or SHA)
+    → Smoke tests (skipped on rollback)
+    → Human approval (production environment)
+    → Deploy to production
+    → Audit trail
+```
+
+## Environments
+
+| Environment | Trigger                    | Approval               | URL                |
+| ----------- | -------------------------- | ---------------------- | ------------------ |
+| Staging     | Auto on push to `main`     | None                   | Vercel preview URL |
+| Production  | Manual `workflow_dispatch` | Required (1+ reviewer) | Production URL     |
+
+## Staging Deployment
+
+**Automatic** — runs on every push to `main` that changes app/service code.
+
+Only affected components are deployed:
+
+- `apps/web/**` or `packages/design-tokens/**` → Web deploy
+- `services/**` or `deploy/**` → Backend deploy
+
+Manual re-deploy: **Actions → Deploy — Staging → Run workflow**
+
+## Production Deployment
+
+**Manual** — requires explicit trigger and human approval.
+
+1. Go to **Actions → Deploy — Production → Run workflow**
+2. Fill in:
+   - **Version**: Git tag (e.g., `v1.0.0`) or commit SHA
+   - **Component**: `all`, `web`, or `backend`
+   - **Rollback**: Check if rolling back to a previous version
+   - **Reason**: Why this deployment is being done
+3. Click **Run workflow**
+4. A reviewer must approve in the `production` environment
+
+## Rollback Procedure
+
+1. Go to **Actions → Deploy — Production → Run workflow**
+2. Enter the **previous known-good version** (tag or SHA)
+3. Check **Rollback** (skips smoke tests for speed)
+4. Enter reason: "Rollback from vX.Y.Z due to [issue]"
+5. Approve and monitor
+
+## Required GitHub Secrets
+
+### Vercel (Web Deployment)
+
+| Secret              | Description                 |
+| ------------------- | --------------------------- |
+| `VERCEL_TOKEN`      | Vercel API token            |
+| `VERCEL_ORG_ID`     | Vercel organization/team ID |
+| `VERCEL_PROJECT_ID` | Vercel project ID           |
+
+### Staging Server (Backend)
+
+| Secret                      | Description                 |
+| --------------------------- | --------------------------- |
+| `STAGING_HOST`              | Staging server hostname     |
+| `STAGING_SSH_KEY`           | SSH private key for staging |
+| `STAGING_USER`              | SSH username for staging    |
+| `STAGING_SUPABASE_URL`      | Staging Supabase URL        |
+| `STAGING_SUPABASE_ANON_KEY` | Staging Supabase anon key   |
+| `STAGING_POWERSYNC_URL`     | Staging PowerSync URL       |
+
+### Production Server (Backend)
+
+| Secret                   | Description                    |
+| ------------------------ | ------------------------------ |
+| `PROD_HOST`              | Production server hostname     |
+| `PROD_SSH_KEY`           | SSH private key for production |
+| `PROD_USER`              | SSH username for production    |
+| `PROD_SUPABASE_URL`      | Production Supabase URL        |
+| `PROD_SUPABASE_ANON_KEY` | Production Supabase anon key   |
+| `PROD_POWERSYNC_URL`     | Production PowerSync URL       |
+
+## GitHub Environment Setup
+
+### Staging Environment
+
+1. Go to **Settings → Environments → New environment**
+2. Name: `staging`
+3. No protection rules needed (auto-deploy)
+
+### Production Environment
+
+1. Go to **Settings → Environments → New environment**
+2. Name: `production`
+3. **Required reviewers**: Add at least 1 team member
+4. **Deployment branches**: Restrict to `main`
+5. **Wait timer**: Optional (e.g., 5 minutes for cool-down)
+
+## Audit Trail
+
+Every production deployment records:
+
+- Version and commit SHA
+- Components deployed
+- Whether it was a rollback
+- Deployment reason
+- Who triggered it
+- Timestamp
+
+This information is available in the workflow run summary.
