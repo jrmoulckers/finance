@@ -13,16 +13,17 @@ AI agents MUST follow this workflow for every code change:
    b. If not found: create a new worktree with the correct naming convention
 3. Implement changes on feature branch inside the worktree
 4. Commit with issue reference: type(scope): description (#N)
-5. **Run `npm run ci:check` locally — MUST be clean before pushing**
-   - `npm run format:check` catches Prettier issues
-   - `npm run lint` catches ESLint issues
-   - `npm run type-check` catches TypeScript errors
-   - If any fail: run `npm run format` and/or `npx eslint . --fix`, re-run `ci:check`, commit fixes
+5. **⚠️ MANDATORY: Run the Pre-Push Lint & Format Checklist (NEVER skip)**
+   a. `npm run format` — auto-fix Prettier
+   b. `npx eslint . --fix` — auto-fix ESLint
+   c. `npm run ci:check` — must be fully clean (format:check + lint + type-check)
+   d. If ci:check fails: fix manually, re-run ci:check
+   e. `git add -A && git commit --amend --no-edit` (to include fixes)
 6. Fetch and rebase onto origin/main (auto-approved, no human needed)
 7. Push feature branch: git push origin <branch-name>
 8. Create PR automatically with `gh pr create` including Closes #N
 9. **Monitor PR with `gh pr checks` — poll until ALL checks are green**
-   - CI failures: read logs, fix locally, run `ci:check` again, push, restart cycle
+   - CI failures: read logs, re-run the Pre-Push Checklist (steps 5a-5e), push, restart cycle
    - Merge conflicts: fetch + rebase + force-with-lease push, restart cycle
    - **Work is NOT complete until all remote checks are green**
 10. Mark work complete once all checks pass and no conflicts remain
@@ -106,14 +107,38 @@ Created (Open) → PR opened with "Closes #N" → PR merged → Issue auto-close
 4. **Reference the issue** in every commit message using the format: `type(scope): description (#N)` where N is the issue number.
 5. **Never implement features, fixes, or refactors** without a corresponding issue — even for small changes.
 6. **When planning work**, decompose into issues BEFORE starting implementation.
-7. **Run `npm run ci:check` locally before every push** — must be fully clean (format + lint + type-check). Auto-fix with `npm run format` and `npx eslint . --fix`, commit fixes, then re-run to confirm. Pushing without a clean `ci:check` is the primary cause of avoidable CI failures.
+7. **⚠️ MANDATORY PRE-PUSH: Run the Lint & Format Checklist (NEVER skip)** — see the full checklist below. Pushing without a clean `ci:check` is the #1 cause of avoidable CI failures.
 8. **Fetch and rebase** onto `origin/main` before pushing: `git fetch origin main && git rebase origin/main` — both are auto-approved.
 9. **Push the feature branch** to origin: `git push origin <branch-name>` — auto-approved.
 10. **Create a PR automatically** with `gh pr create` including a detailed description and `Closes #N` for each resolved issue.
-11. **Monitor the PR with `gh pr checks`** — poll until ALL checks are green. Fix CI failures or merge conflicts, run `ci:check` locally again, push, restart cycle. **Work is NOT complete until all remote checks are green.**
+11. **Monitor the PR with `gh pr checks`** — poll until ALL checks are green. Fix CI failures or merge conflicts, re-run the pre-push checklist, push, restart cycle. **Work is NOT complete until all remote checks are green.**
 12. **Never merge PRs** — PRs are merged by humans after review.
 13. **Never run `gh issue close`** — issues close automatically when their PR merges.
 14. **Clean up your worktree** after the PR is confirmed merged: `git worktree remove <path>`.
+
+### ⚠️ MANDATORY: Pre-Push Lint & Format Checklist (NEVER skip)
+
+> **🚨 This is the #1 cause of fleet CI failures. Run these commands before EVERY `git push`.**
+
+```bash
+# Step 1: Auto-fix formatting and lint issues
+npm run format          # auto-fix all Prettier formatting
+npx eslint . --fix      # auto-fix all ESLint issues
+
+# Step 2: Verify everything passes
+npm run ci:check        # runs format:check + lint + type-check
+
+# Step 3: If ci:check fails, fix remaining issues manually, then re-run:
+npm run ci:check
+
+# Step 4: Include the fixes in your commit
+git add -A && git commit --amend --no-edit
+
+# Step 5: NOW you may push
+git push origin <branch-name>
+```
+
+**Pushing without a clean `npm run ci:check` is the #1 cause of CI failures. Agents that skip this waste CI time and create noise.**
 
 ## Commit Message Format
 

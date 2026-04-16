@@ -33,6 +33,36 @@ Autonomous agent that runs on GitHub's infrastructure:
 - Can run builds and tests to validate its work
 - Managed via the repository's "Agents" tab on GitHub
 
+## ⚠️ MANDATORY: Pre-Push Lint & Format (NEVER skip)
+
+> **🚨 This is the #1 cause of fleet CI failures. Every agent MUST run these steps before EVERY `git push`.**
+
+Before EVERY `git push`, run these commands **in order**:
+
+```bash
+# Step 1: Auto-fix formatting and lint issues
+npm run format          # auto-fix all Prettier formatting
+npx eslint . --fix      # auto-fix all ESLint issues
+
+# Step 2: Verify everything passes
+npm run ci:check        # runs format:check + lint + type-check
+
+# Step 3: If ci:check fails, fix remaining issues manually, then re-run:
+npm run ci:check
+
+# Step 4: Include the fixes in your commit
+git add -A && git commit --amend --no-edit
+
+# Step 5: NOW you may push
+git push origin <branch-name>
+```
+
+**Pushing without a clean `npm run ci:check` is the #1 cause of CI failures. Agents that skip this waste CI time and create noise.**
+
+> **Note:** `lint-staged` is configured in `.husky/pre-commit` and auto-formats staged files on commit. However, agents may bypass hooks or work in worktrees where hooks aren't active. **The explicit checklist above is mandatory regardless of hook status.**
+
+---
+
 ## Daily Workflows
 
 ### 1. Feature Development
@@ -130,7 +160,8 @@ When agents operate as part of a fleet (parallel execution), the autonomous work
 **CI self-healing:**
 
 - Agents monitor their own PRs with `gh pr checks` after pushing
-- On failure: read logs → fix locally → run `npm run ci:check` → re-push
+- On failure: read logs → fix locally → run the [Pre-Push Lint & Format checklist](#️-mandatory-pre-push-lint--format-never-skip) → re-push
+- ⚠️ Before every re-push: `npm run format` → `npx eslint . --fix` → `npm run ci:check` (must be clean)
 - For complex failures, orchestrator dispatches a sub-agent to the affected worktree
 
 **Fleet coordination rules:**

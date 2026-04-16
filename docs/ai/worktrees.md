@@ -74,32 +74,42 @@ cd ../wt-android-feat-transactions-443
 # Begin work...
 ```
 
-### Pre-Push Checklist (Mandatory — Do NOT Skip)
+### ⚠️ MANDATORY: Pre-Push Lint & Format Checklist (NEVER skip)
 
-Before pushing, every agent MUST complete these steps in order:
+> **🚨 This is the #1 cause of fleet CI failures. Run these commands before EVERY `git push`.**
+
+Before pushing, every agent MUST complete these steps **in order**:
 
 ```bash
-# Step 1: Run the full local CI check — catches formatting, lint, and type errors
-#         before they become remote CI failures
+# Step 1: Auto-fix formatting and lint issues FIRST
+npm run format          # auto-fix all Prettier formatting
+npx eslint . --fix      # auto-fix all ESLint issues
+
+# Step 2: Verify everything passes
+npm run ci:check        # runs format:check + lint + type-check
+
+# Step 3: If ci:check fails, fix remaining issues manually, then re-run:
 npm run ci:check
 
-# Step 2: Fix any issues reported (formatting is auto-fixable)
-npm run format       # auto-fix Prettier issues
-npx eslint . --fix   # auto-fix ESLint issues
-npm run ci:check     # re-run to confirm clean
+# Step 4: Include the fixes in your commit
+git add -A && git commit --amend --no-edit
 
-# Step 3: Commit the fixes if any files changed
-git add -A && git commit -m "style: fix formatting and lint issues (#N)"
-
-# Step 4: Sync with main
+# Step 5: Sync with main
 git fetch origin main
 git rebase origin/main
+
+# Step 6: NOW you may push
+git push origin <branch-name>
 ```
 
 > **Why this matters:** `npm run ci:check` runs the exact same checks as the remote CI
 > (`format:check` → `lint` → `type-check`). Skipping this step is the primary cause of
 > avoidable CI failures on PRs. An agent that pushes without running `ci:check` first
 > has not completed its pre-push workflow.
+>
+> **Pushing without a clean `npm run ci:check` is the #1 cause of CI failures. Agents that skip this waste CI time and create noise.**
+
+> **Note:** `lint-staged` is configured in `.husky/pre-commit` (`eslint --fix` + `prettier --write` for TS/JS files; `prettier --write` for JSON/YAML/MD/CSS). However, agents may bypass hooks or work in worktrees where hooks aren't active. **The explicit checklist above is mandatory regardless of hook status.**
 
 Both `git fetch` and `git rebase origin/main` on your own branch are auto-approved — no human confirmation needed.
 

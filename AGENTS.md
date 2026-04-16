@@ -25,6 +25,25 @@ Finance is a multi-platform, native-first financial tracking application for per
 4. **Security** — Follow OWASP guidelines. Never hardcode secrets. Always validate and sanitize inputs. Use parameterized queries.
 5. **Transparency** — Document all significant decisions, trade-offs, and AI-generated code rationale in commit messages and PR descriptions.
 
+## ⚠️ MANDATORY: Pre-Push Lint & Format (NEVER skip)
+
+> **🚨 This is the #1 cause of fleet CI failures. Every agent MUST run these steps before EVERY `git push`.**
+
+Before EVERY `git push`, run these commands **in order**:
+
+1. **`npm run format`** — auto-fix all Prettier formatting
+2. **`npx eslint . --fix`** — auto-fix all ESLint issues
+3. **`npm run ci:check`** — verify everything passes (format:check + lint + type-check)
+4. If `ci:check` fails, fix remaining issues manually, then re-run `ci:check`
+5. Only after `ci:check` is fully clean: **`git add -A && git commit --amend --no-edit`** (to include fixes)
+6. **NOW you may `git push`**
+
+**Pushing without a clean `npm run ci:check` is the #1 cause of CI failures. Agents that skip this waste CI time and create noise.**
+
+> **Note:** `lint-staged` is configured in `.husky/pre-commit` and auto-formats staged files on commit. However, agents may bypass hooks or work in worktrees where hooks aren't active. **The explicit pre-push checklist above is therefore mandatory regardless of hook status.**
+
+---
+
 ## Issue-First Development
 
 All work in this repository follows an issue-first, feature-branch + worktree workflow:
@@ -308,11 +327,19 @@ After opening a PR, each fleet agent monitors its own CI status until all checks
 
 **Sub-agent dispatch:** When a CI failure requires specialist knowledge, the orchestrator can dispatch a sub-agent into the affected worktree. Only one agent should be active in a worktree at a time.
 
-**Proactive prevention:**
+**Proactive prevention (⚠️ MANDATORY — see [Pre-Push Lint & Format](#️-mandatory-pre-push-lint--format-never-skip)):**
 
-- Always run `npm run ci:check` before every push
-- Auto-fix formatting: `npm run format` then `npx eslint . --fix`
-- Rebase before push: `git fetch origin main && git rebase origin/main`
+Before EVERY `git push`, run in order:
+
+1. `npm run format` — auto-fix Prettier
+2. `npx eslint . --fix` — auto-fix ESLint
+3. `npm run ci:check` — must be fully clean
+4. Fix remaining issues manually if needed, re-run `ci:check`
+5. `git add -A && git commit --amend --no-edit` to include fixes
+6. `git fetch origin main && git rebase origin/main`
+7. NOW push: `git push origin <branch>`
+
+**Skipping this checklist is the #1 cause of avoidable CI failures.**
 
 ### Fleet Monitoring Agent
 
