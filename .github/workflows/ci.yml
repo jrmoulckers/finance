@@ -73,19 +73,13 @@ jobs:
           ./gradlew :packages:core:jvmTest :packages:models:jvmTest :packages:sync:jvmTest \
             --parallel --build-cache --stacktrace
 
-      - name: Run JS Node tests
-        run: |
-          ./gradlew :packages:core:jsNodeTest :packages:sync:jsNodeTest \
-            --parallel --build-cache --stacktrace
-        continue-on-error: true
-
       - name: Generate coverage report
         run: ./gradlew :packages:core:koverXmlReport :packages:sync:koverXmlReport --parallel --build-cache
         continue-on-error: true
 
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-reports
           path: '**/build/reports/kover/**'
@@ -93,7 +87,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results
           path: |

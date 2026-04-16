@@ -11,12 +11,16 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.finance.desktop.components.rememberShortcutHandler
 import com.finance.desktop.di.appModule
+import com.finance.desktop.notifications.DesktopNotificationManager
 import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
 
 fun main() {
     startKoin {
         modules(appModule)
     }
+
+    DesktopNotificationManager.initialise()
 
     application {
         val windowState = rememberWindowState(
@@ -27,7 +31,11 @@ fun main() {
         val shortcutHandler = rememberShortcutHandler()
 
         Window(
-            onCloseRequest = ::exitApplication,
+            onCloseRequest = {
+                DesktopNotificationManager.dispose()
+                stopKoin()
+                exitApplication()
+            },
             title = "Finance",
             state = windowState,
             onPreviewKeyEvent = { shortcutHandler.onKeyEvent(it) },

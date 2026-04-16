@@ -4,11 +4,13 @@ package com.finance.android.e2e.robot
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import com.finance.android.MainActivity
@@ -23,6 +25,15 @@ class AccountRobot(
     private val rule: AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>,
 ) {
 
+    /** Wait for the Accounts screen to finish loading after navigation. */
+    fun waitForAccountsScreen() {
+        rule.waitUntil(timeoutMillis = 5_000) {
+            rule.onAllNodes(hasContentDescription("Add new account"))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+    }
+
     /** Assert the accounts empty state is visible. */
     fun assertEmptyStateVisible() {
         rule.onNodeWithText("No accounts yet").assertIsDisplayed()
@@ -35,10 +46,20 @@ class AccountRobot(
         rule.waitForIdle()
     }
 
-    /** Assert the account creation form is displayed. */
+    /**
+     * Assert the account creation form is displayed.
+     *
+     * Waits for the form's name input to appear, which signals
+     * the navigation transition has completed and the form
+     * has been composed.
+     */
     fun assertCreateFormVisible() {
-        rule.onNodeWithContentDescription("New Account screen")
-            .assertIsDisplayed()
+        rule.waitUntil(timeoutMillis = 5_000) {
+            rule.onAllNodes(hasContentDescription("Account name input"))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        rule.waitForIdle()
     }
 
     /** Type the given [name] into the Account Name field. */
@@ -53,9 +74,20 @@ class AccountRobot(
             .performTextInput(balance)
     }
 
-    /** Tap the Save Account button. */
+    /**
+     * Tap the Save Account button.
+     *
+     * Scrolls the [LazyColumn] to the save button before clicking.
+     * Adds [waitForIdle] between scroll and click for API 34 stability,
+     * where the nested Scaffold double top bar (FinanceTopBar + screen
+     * TopAppBar) pushes form content further down the page.
+     */
     fun tapSave() {
-        rule.onNodeWithContentDescription("Save account")
+        rule.waitForIdle()
+        rule.onNode(hasScrollToNodeAction())
+            .performScrollToNode(hasContentDescription("Save account"))
+        rule.waitForIdle()
+        rule.onNode(hasContentDescription("Save account"))
             .performClick()
         rule.waitForIdle()
     }

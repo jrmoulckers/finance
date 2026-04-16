@@ -50,7 +50,14 @@ class NavigationRobot(
 
     /** Assert a bottom-nav item with [label] is displayed. */
     fun assertBottomNavItemVisible(label: String) {
-        rule.onNodeWithText(label).assertIsDisplayed()
+        val a11y = when (label) {
+            "Dashboard" -> "Navigate to Dashboard"
+            "Activity" -> "View transaction activity"
+            "Planning" -> "Navigate to Planning"
+            "Settings" -> "Navigate to Settings"
+            else -> label
+        }
+        rule.onNodeWithContentDescription(a11y).assertIsDisplayed()
     }
 
     /** Assert all four bottom-nav items are present. */

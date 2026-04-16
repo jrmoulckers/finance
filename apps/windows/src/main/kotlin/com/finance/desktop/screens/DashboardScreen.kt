@@ -24,8 +24,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -197,7 +197,7 @@ private fun SpendingSummaryRow(today: String, monthly: String) {
         SpendingCard(
             label = "Today",
             amount = today,
-            icon = Icons.Filled.TrendingDown,
+            icon = Icons.AutoMirrored.Filled.TrendingDown,
             modifier = Modifier.weight(1f),
         )
         SpendingCard(
@@ -350,8 +350,8 @@ private fun TransactionRow(transaction: Transaction) {
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(
-                        imageVector = if (isExpense) Icons.Filled.TrendingDown
-                        else Icons.Filled.TrendingUp,
+                        imageVector = if (isExpense) Icons.AutoMirrored.Filled.TrendingDown
+                        else Icons.AutoMirrored.Filled.TrendingUp,
                         contentDescription = null,
                         tint = amountColor,
                         modifier = Modifier.size(20.dp),

@@ -9,7 +9,14 @@ import { useSyncStatus } from '../useSyncStatus';
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockReplayMutations = vi.fn<() => Promise<void>>();
+const mockReplayMutations = vi.fn<
+  () => Promise<{
+    syncedCount: number;
+    failedCount: number;
+    conflictCount: number;
+    authError: boolean;
+  }>
+>();
 const mockGetPendingMutationCount = vi.fn<() => Promise<number>>();
 
 vi.mock('../../db/sync/replayMutations', () => ({
@@ -36,7 +43,12 @@ beforeEach(() => {
   onlineState = true;
   vi.clearAllMocks();
   mockGetPendingMutationCount.mockResolvedValue(0);
-  mockReplayMutations.mockResolvedValue(undefined);
+  mockReplayMutations.mockResolvedValue({
+    syncedCount: 0,
+    failedCount: 0,
+    conflictCount: 0,
+    authError: false,
+  });
 
   // Mock navigator.onLine
   Object.defineProperty(navigator, 'onLine', {
@@ -192,8 +204,14 @@ describe('useSyncStatus', () => {
 
   it('does not call syncNow when already syncing', async () => {
     // Set up a long-running replay to keep isSyncing true
-    let resolveReplay: () => void;
-    const replayPromise = new Promise<void>((resolve) => {
+    type ReplayResultType = {
+      syncedCount: number;
+      failedCount: number;
+      conflictCount: number;
+      authError: boolean;
+    };
+    let resolveReplay: (value: ReplayResultType) => void;
+    const replayPromise = new Promise<ReplayResultType>((resolve) => {
       resolveReplay = resolve;
     });
     mockReplayMutations.mockReturnValue(replayPromise);
@@ -215,8 +233,64 @@ describe('useSyncStatus', () => {
 
     // Clean up
     await act(async () => {
-      resolveReplay!();
+      resolveReplay!({ syncedCount: 0, failedCount: 0, conflictCount: 0, authError: false });
       await replayPromise;
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Auth error and conflict count
+  // -----------------------------------------------------------------------
+
+  it('initialises authError to false', () => {
+    const { result } = renderHook(() => useSyncStatus());
+    expect(result.current.authError).toBe(false);
+  });
+
+  it('initialises conflictCount to 0', () => {
+    const { result } = renderHook(() => useSyncStatus());
+    expect(result.current.conflictCount).toBe(0);
+  });
+
+  it('sets authError when replayMutations returns authError', async () => {
+    mockReplayMutations.mockResolvedValue({
+      syncedCount: 0,
+      failedCount: 1,
+      conflictCount: 0,
+      authError: true,
+    });
+    const { result } = renderHook(() => useSyncStatus());
+
+    await act(async () => {
+      result.current.syncNow();
+      await vi.waitFor(() => {
+        expect(mockReplayMutations).toHaveBeenCalled();
+      });
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current.authError).toBe(true);
+    });
+  });
+
+  it('sets conflictCount from replayMutations result', async () => {
+    mockReplayMutations.mockResolvedValue({
+      syncedCount: 1,
+      failedCount: 0,
+      conflictCount: 3,
+      authError: false,
+    });
+    const { result } = renderHook(() => useSyncStatus());
+
+    await act(async () => {
+      result.current.syncNow();
+      await vi.waitFor(() => {
+        expect(mockReplayMutations).toHaveBeenCalled();
+      });
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current.conflictCount).toBe(3);
     });
   });
 });

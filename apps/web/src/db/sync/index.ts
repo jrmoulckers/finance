@@ -3,10 +3,12 @@
 export { WebMutationQueue, type EnqueueInput } from './MutationQueue';
 export { enqueueMutation, getMutationQueue, getPendingMutationCount } from './enqueueMutation';
 export {
+  configureSyncEndpoint,
+  getSyncConfig,
   replayMutations,
+  resetSyncConfig,
   type ReplayResult,
   type SyncConfig,
-  getSyncConfig,
 } from './replayMutations';
 export {
   clearResolvedConflicts,

@@ -25,7 +25,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { replayMutations } from '../db/sync/replayMutations';
+import { replayMutations, type ReplayResult } from '../db/sync/replayMutations';
 import {
   LAST_SYNC_TIME_KEY,
   PERIODIC_SYNC_INTERVAL_MS,
@@ -71,6 +71,10 @@ export interface UseSyncStatusResult {
   isSyncing: boolean;
   /** Manually trigger an immediate sync replay. */
   syncNow: () => void;
+  /** Whether the last sync failed due to an authentication error. */
+  authError: boolean;
+  /** Number of conflicts detected that need UI resolution. */
+  conflictCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,6 +97,8 @@ export function useSyncStatus(): UseSyncStatusResult {
     }
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  const [authError, setAuthError] = useState(false);
+  const [conflictCount, setConflictCount] = useState(0);
 
   // Track whether a periodic fallback timer is needed.
   const periodicTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -128,12 +134,19 @@ export function useSyncStatus(): UseSyncStatusResult {
 
         case 'SYNC_COMPLETED':
           setIsSyncing(false);
+          setAuthError(false);
           setLastSyncTime(new Date().toISOString());
+          if (typeof data.conflictCount === 'number') {
+            setConflictCount(data.conflictCount);
+          }
           void refreshPendingCount();
           break;
 
         case 'SYNC_FAILED':
           setIsSyncing(false);
+          if (data.authError) {
+            setAuthError(true);
+          }
           void refreshPendingCount();
           break;
 
@@ -169,7 +182,11 @@ export function useSyncStatus(): UseSyncStatusResult {
       // Also replay from the main thread as a fallback -- the queue is
       // idempotent so double-processing is safe (the server should
       // de-duplicate by mutation ID).
-      void performMainThreadSync();
+      // Only attempt if a SW controller is present, proving we have a real
+      // app context (skips E2E/test environments where SW is blocked).
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        void performMainThreadSync();
+      }
     };
 
     window.addEventListener('online', handleOnline);
@@ -184,7 +201,17 @@ export function useSyncStatus(): UseSyncStatusResult {
     // Check whether Background Sync is supported.
     const hasBackgroundSync = 'serviceWorker' in navigator && 'SyncManager' in self;
 
-    if (!hasBackgroundSync && isOnline) {
+    // Only start the periodic fallback when Background Sync is unavailable,
+    // the browser is online, AND there is an active service-worker controller
+    // (which proves we are in a real app context, not a bare Playwright
+    // browser that has service workers blocked).  Without this guard the
+    // timer fires fetch() calls against the Vite dev server, which has no
+    // sync endpoint and returns HTML error pages — causing test noise and
+    // potential hangs when `waitForLoadState('networkidle')` is used.
+    const hasController =
+      'serviceWorker' in navigator && navigator.serviceWorker.controller !== null;
+
+    if (!hasBackgroundSync && isOnline && hasController) {
       // Poll periodically to flush queued mutations.
       periodicTimerRef.current = setInterval(() => {
         void performMainThreadSync();
@@ -206,13 +233,22 @@ export function useSyncStatus(): UseSyncStatusResult {
   const performMainThreadSync = useCallback(async () => {
     setIsSyncing(true);
     try {
-      await replayMutations();
-      try {
-        const now = new Date().toISOString();
-        localStorage.setItem(LAST_SYNC_TIME_KEY, now);
-        setLastSyncTime(now);
-      } catch {
-        // localStorage may be unavailable.
+      const result: ReplayResult = await replayMutations();
+
+      // Surface auth errors so the UI can prompt re-authentication.
+      setAuthError(result.authError);
+      setConflictCount(result.conflictCount);
+
+      // Only update the last-sync timestamp when the sync was not an
+      // auth failure (the user needs to re-login, not retry blindly).
+      if (!result.authError) {
+        try {
+          const now = new Date().toISOString();
+          localStorage.setItem(LAST_SYNC_TIME_KEY, now);
+          setLastSyncTime(now);
+        } catch {
+          // localStorage may be unavailable.
+        }
       }
     } catch {
       // Sync failed -- will retry later.
@@ -247,5 +283,7 @@ export function useSyncStatus(): UseSyncStatusResult {
     lastSyncTime,
     isSyncing,
     syncNow,
+    authError,
+    conflictCount,
   };
 }

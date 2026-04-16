@@ -20,6 +20,7 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { createAdminClient } from '../_shared/auth.ts';
 import { createLogger, type Logger } from '../_shared/logger.ts';
+import { validateEnv } from '../_shared/env.ts';
 import { checkRateLimit, getClientIp, RATE_LIMITS } from '../_shared/rate-limit.ts';
 
 interface WebhookPayload {
@@ -84,6 +85,10 @@ function verifyWebhookSecret(req: Request, logger: Logger): boolean {
 serve(async (req: Request): Promise<Response> => {
   const logger = createLogger('auth-webhook');
   logger.info('Request received', { method: req.method });
+
+  // Validate required environment variables (#616)
+  const envError = validateEnv('auth-webhook', req);
+  if (envError) return envError;
 
   // Only accept POST
   if (req.method !== 'POST') {

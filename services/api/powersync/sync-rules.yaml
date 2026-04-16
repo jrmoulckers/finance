@@ -92,9 +92,12 @@ bucket_definitions:
         FROM household_members
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
 
-      # Household invitations — lets members see pending/accepted invites
+      # Household invitations — lets members see pending/accepted invites.
+      # SECURITY: invited_email is deliberately excluded — it is PII that
+      # must not be synced to all household members (GDPR). Clients use
+      # invitation_status and role to display invite state.
       - >
-        SELECT id, household_id, invited_by, invite_code, invited_email,
+        SELECT id, household_id, invited_by, invite_code,
                role, expires_at, accepted_at, accepted_by,
                created_at, updated_at, deleted_at
         FROM household_invitations

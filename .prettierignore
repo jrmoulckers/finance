@@ -8,5 +8,6 @@ node_modules/
 *.jar
 *.apk
 *.aab
+*.sql
 packages/design-tokens/build/
 kotlin-js-store/
