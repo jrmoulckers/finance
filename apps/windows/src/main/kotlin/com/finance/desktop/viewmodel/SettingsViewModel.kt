@@ -2,154 +2,253 @@
 
 package com.finance.desktop.viewmodel
 
-import com.finance.desktop.security.SecureTokenStorage
+import com.finance.desktop.data.repository.AppSettings
+import com.finance.desktop.data.repository.SettingsRepository
 import com.finance.desktop.security.WindowsHelloManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.logging.Level
+import java.util.logging.Logger
 
 /**
  * UI state for the Settings screen.
  *
- * All preference values are stored as simple types. Preferences that
- * affect security (Windows Hello, auto-lock) are backed by [SecureTokenStorage]
- * via DPAPI encryption. Display preferences are stored locally.
- *
- * @property darkMode Whether the dark color scheme is active.
- * @property windowsHelloEnabled Whether Windows Hello authentication is enabled.
- * @property windowsHelloAvailable Whether the device supports Windows Hello.
- * @property autoLockEnabled Whether the app auto-locks after inactivity.
- * @property autoLockMinutes Minutes of inactivity before auto-lock triggers.
- * @property budgetNotifications Whether budget alert notifications are enabled.
- * @property goalNotifications Whether goal milestone notifications are enabled.
- * @property syncEnabled Whether cloud sync is active.
- * @property selectedCurrency ISO 4217 currency code for display.
- * @property selectedLanguage Display language name.
- * @property appVersion Application version string.
+ * Mirrors [AppSettings] with additional transient UI flags (loading state,
+ * security re-auth requirement, error messages).
  */
 data class SettingsUiState(
+    val isLoading: Boolean = true,
+
+    // ── Appearance ──
     val darkMode: Boolean = false,
+    val language: String = "English",
+    val accentColor: String = "Blue",
+
+    // ── Security ──
     val windowsHelloEnabled: Boolean = true,
-    val windowsHelloAvailable: Boolean = false,
     val autoLockEnabled: Boolean = true,
-    val autoLockMinutes: Int = 5,
-    val budgetNotifications: Boolean = true,
-    val goalNotifications: Boolean = true,
-    val syncEnabled: Boolean = true,
-    val selectedCurrency: String = "USD",
-    val selectedLanguage: String = "English",
-    val appVersion: String = "1.0.0",
-    val buildDate: String = "2025.06.01",
+    val autoLockTimeoutMinutes: Int = 5,
+
+    // ── Notifications ──
+    val budgetNotificationsEnabled: Boolean = true,
+    val goalNotificationsEnabled: Boolean = true,
+
+    // ── Data & Sync ──
+    val defaultCurrency: String = "USD",
+    val cloudSyncEnabled: Boolean = true,
+
+    // ── Transient UI state ──
+    val requiresAuth: Boolean = false,
+    val errorMessage: String? = null,
+    val lastSavedTimestamp: Long = 0L,
 )
 
 /**
  * ViewModel for the Settings screen.
  *
- * Manages user preferences with persistence for security-related settings
- * via [SecureTokenStorage] and [WindowsHelloManager]. Display preferences
- * are held in memory (to be backed by SharedPreferences/DataStore in a
- * future iteration).
+ * Loads persisted settings from [SettingsRepository] on construction and
+ * exposes them as a [StateFlow]. Each setter method validates the change,
+ * optionally gates on Windows Hello re-authentication for security settings,
+ * and persists the updated settings atomically.
  *
- * Each setter method updates the UI state immediately and persists the
- * value asynchronously. This ensures a responsive UI while maintaining
- * data consistency.
+ * ## Security-gated settings
+ *
+ * Changes to `windowsHelloEnabled` and `autoLockEnabled` require the user to
+ * re-authenticate via [WindowsHelloManager] before the change is applied.
+ * This prevents an attacker with brief physical access from disabling
+ * biometric protection.
  */
 class SettingsViewModel(
+    private val settingsRepository: SettingsRepository,
     private val windowsHelloManager: WindowsHelloManager,
-    private val secureTokenStorage: SecureTokenStorage,
 ) : DesktopViewModel() {
+
+    companion object {
+        private val logger: Logger = Logger.getLogger(SettingsViewModel::class.java.name)
+    }
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
-    companion object {
-        private const val PREF_WINDOWS_HELLO = "pref_windows_hello"
-        private const val PREF_AUTO_LOCK = "pref_auto_lock"
-        private const val PREF_DARK_MODE = "pref_dark_mode"
-    }
-
     init {
-        loadPreferences()
+        loadSettings()
     }
 
-    private fun loadPreferences() {
-        viewModelScope.launch {
-            val windowsHelloAvailable = windowsHelloManager.canAuthenticate()
+    // ── Appearance ───────────────────────────────────────────────────────────
 
-            // Load persisted security preferences from DPAPI-encrypted storage
-            val windowsHelloEnabled = loadBooleanPref(PREF_WINDOWS_HELLO, true)
-            val autoLockEnabled = loadBooleanPref(PREF_AUTO_LOCK, true)
-            val darkMode = loadBooleanPref(PREF_DARK_MODE, false)
+    fun setDarkMode(enabled: Boolean) = updateAndSave { it.copy(darkMode = enabled) }
 
-            _uiState.value = _uiState.value.copy(
-                windowsHelloAvailable = windowsHelloAvailable,
-                windowsHelloEnabled = windowsHelloEnabled && windowsHelloAvailable,
-                autoLockEnabled = autoLockEnabled,
-                darkMode = darkMode,
-            )
-        }
-    }
+    fun setLanguage(language: String) = updateAndSave { it.copy(language = language) }
 
-    fun setDarkMode(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(darkMode = enabled)
-        persistBooleanPref(PREF_DARK_MODE, enabled)
-    }
+    fun setAccentColor(color: String) = updateAndSave { it.copy(accentColor = color) }
 
+    // ── Security (Windows Hello gated) ──────────────────────────────────────
+
+    /**
+     * Toggles Windows Hello. Requires re-authentication before disabling.
+     */
     fun setWindowsHelloEnabled(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(windowsHelloEnabled = enabled)
-        persistBooleanPref(PREF_WINDOWS_HELLO, enabled)
-    }
-
-    fun setAutoLockEnabled(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(autoLockEnabled = enabled)
-        persistBooleanPref(PREF_AUTO_LOCK, enabled)
-    }
-
-    fun setBudgetNotifications(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(budgetNotifications = enabled)
-    }
-
-    fun setGoalNotifications(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(goalNotifications = enabled)
-    }
-
-    fun setSyncEnabled(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(syncEnabled = enabled)
-    }
-
-    fun setCurrency(currency: String) {
-        _uiState.value = _uiState.value.copy(selectedCurrency = currency)
-    }
-
-    fun setLanguage(language: String) {
-        _uiState.value = _uiState.value.copy(selectedLanguage = language)
-    }
-
-    /**
-     * Loads a boolean preference from DPAPI-encrypted storage.
-     * Returns [default] if the preference is not found or cannot be read.
-     */
-    private fun loadBooleanPref(key: String, default: Boolean): Boolean {
-        return try {
-            secureTokenStorage.loadToken(key)?.toBooleanStrictOrNull() ?: default
-        } catch (_: Exception) {
-            default
+        if (!enabled) {
+            // Disabling biometrics requires proof of identity
+            executeWithAuth("Confirm your identity to disable Windows Hello") {
+                updateAndSave { it.copy(windowsHelloEnabled = false) }
+            }
+        } else {
+            updateAndSave { it.copy(windowsHelloEnabled = true) }
         }
     }
 
     /**
-     * Persists a boolean preference to DPAPI-encrypted storage.
+     * Toggles auto-lock. Requires re-authentication before disabling.
      */
-    private fun persistBooleanPref(key: String, value: Boolean) {
+    fun setAutoLockEnabled(enabled: Boolean) {
+        if (!enabled) {
+            executeWithAuth("Confirm your identity to disable auto-lock") {
+                updateAndSave { it.copy(autoLockEnabled = false) }
+            }
+        } else {
+            updateAndSave { it.copy(autoLockEnabled = true) }
+        }
+    }
+
+    // ── Notifications ───────────────────────────────────────────────────────
+
+    fun setBudgetNotifications(enabled: Boolean) =
+        updateAndSave { it.copy(budgetNotificationsEnabled = enabled) }
+
+    fun setGoalNotifications(enabled: Boolean) =
+        updateAndSave { it.copy(goalNotificationsEnabled = enabled) }
+
+    // ── Data & Sync ─────────────────────────────────────────────────────────
+
+    fun setDefaultCurrency(currency: String) =
+        updateAndSave { it.copy(defaultCurrency = currency) }
+
+    fun setCloudSyncEnabled(enabled: Boolean) =
+        updateAndSave { it.copy(cloudSyncEnabled = enabled) }
+
+    // ── Reset ───────────────────────────────────────────────────────────────
+
+    /**
+     * Resets all settings to defaults. Requires Windows Hello.
+     */
+    fun resetToDefaults() {
+        executeWithAuth("Confirm your identity to reset all settings") {
+            viewModelScope.launch {
+                try {
+                    settingsRepository.reset()
+                    val defaults = settingsRepository.load()
+                    _uiState.value = defaults.toUiState().copy(
+                        lastSavedTimestamp = System.currentTimeMillis(),
+                    )
+                } catch (e: Exception) {
+                    logger.log(Level.SEVERE, "Failed to reset settings", e)
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = "Failed to reset settings: ${e.message}",
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    // ── Internal helpers ────────────────────────────────────────────────────
+
+    private fun loadSettings() {
         viewModelScope.launch {
             try {
-                secureTokenStorage.saveToken(key, value.toString())
+                val settings = settingsRepository.load()
+                _uiState.value = settings.toUiState().copy(isLoading = false)
             } catch (e: Exception) {
-                // Log but don't crash — preferences are not critical
-                java.util.logging.Logger.getLogger("SettingsViewModel")
-                    .warning("Failed to persist preference $key: ${e.message}")
+                logger.log(Level.SEVERE, "Failed to load settings", e)
+                _uiState.value = SettingsUiState(
+                    isLoading = false,
+                    errorMessage = "Failed to load settings: ${e.message}",
+                )
+            }
+        }
+    }
+
+    /**
+     * Applies [transform] to the current UI state, then persists.
+     */
+    private fun updateAndSave(transform: (SettingsUiState) -> SettingsUiState) {
+        viewModelScope.launch {
+            try {
+                val updated = transform(_uiState.value)
+                _uiState.value = updated.copy(
+                    errorMessage = null,
+                    lastSavedTimestamp = System.currentTimeMillis(),
+                )
+                settingsRepository.save(updated.toAppSettings())
+            } catch (e: Exception) {
+                logger.log(Level.SEVERE, "Failed to save settings", e)
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Failed to save settings: ${e.message}",
+                )
+            }
+        }
+    }
+
+    /**
+     * Executes [action] only if Windows Hello authentication succeeds.
+     * If Windows Hello is unavailable, the action proceeds (graceful
+     * degradation on devices without biometric hardware).
+     */
+    private fun executeWithAuth(reason: String, action: () -> Unit) {
+        viewModelScope.launch {
+            if (!windowsHelloManager.canAuthenticate()) {
+                // No Windows Hello available — allow change with warning
+                logger.warning("Windows Hello unavailable — bypassing security gate")
+                action()
+                return@launch
+            }
+
+            _uiState.value = _uiState.value.copy(requiresAuth = true)
+            val authenticated = windowsHelloManager.authenticate(reason)
+            _uiState.value = _uiState.value.copy(requiresAuth = false)
+
+            if (authenticated) {
+                action()
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Authentication required to change this setting",
+                )
             }
         }
     }
 }
+
+// ── Mapping helpers ─────────────────────────────────────────────────────────
+
+private fun AppSettings.toUiState(): SettingsUiState = SettingsUiState(
+    isLoading = false,
+    darkMode = darkMode,
+    language = language,
+    accentColor = accentColor,
+    windowsHelloEnabled = windowsHelloEnabled,
+    autoLockEnabled = autoLockEnabled,
+    autoLockTimeoutMinutes = autoLockTimeoutMinutes,
+    budgetNotificationsEnabled = budgetNotificationsEnabled,
+    goalNotificationsEnabled = goalNotificationsEnabled,
+    defaultCurrency = defaultCurrency,
+    cloudSyncEnabled = cloudSyncEnabled,
+)
+
+private fun SettingsUiState.toAppSettings(): AppSettings = AppSettings(
+    darkMode = darkMode,
+    language = language,
+    accentColor = accentColor,
+    windowsHelloEnabled = windowsHelloEnabled,
+    autoLockEnabled = autoLockEnabled,
+    autoLockTimeoutMinutes = autoLockTimeoutMinutes,
+    budgetNotificationsEnabled = budgetNotificationsEnabled,
+    goalNotificationsEnabled = goalNotificationsEnabled,
+    defaultCurrency = defaultCurrency,
+    cloudSyncEnabled = cloudSyncEnabled,
+)

@@ -5,6 +5,7 @@ package com.finance.desktop.screens
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,11 +26,13 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,11 +56,15 @@ import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.SettingsViewModel
 
 // =============================================================================
-// Settings Screen — Form-style layout
+// Settings Screen — ViewModel-driven, DPAPI-persisted
 // =============================================================================
 
 /**
- * Form-style settings screen for the desktop Finance application.
+ * Form-style settings screen backed by [SettingsViewModel].
+ *
+ * All settings are persisted to DPAPI-encrypted storage via the repository
+ * layer. Security-sensitive changes (disabling Windows Hello, disabling
+ * auto-lock) require Windows Hello re-authentication.
  *
  * Groups settings into labelled sections:
  * - **Appearance**: Dark mode, accent color, language
@@ -74,130 +81,160 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<SettingsViewModel>()
     val state by viewModel.uiState.collectAsState()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(FinanceDesktopTheme.spacing.xxl)
-            .verticalScroll(rememberScrollState())
-            .semantics { contentDescription = "Settings screen" },
-    ) {
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.semantics {
-                heading()
-                contentDescription = "Settings heading"
-            },
-        )
-
-        Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
-
-        // ── Appearance ──────────────────────────────────────────────
-        SettingsSection("Appearance") {
-            ToggleSetting(
-                icon = Icons.Filled.DarkMode,
-                label = "Dark Mode",
-                description = "Use dark color scheme",
-                checked = state.darkMode,
-                onCheckedChange = { viewModel.setDarkMode(it) },
-            )
-            DropdownSetting(
-                icon = Icons.Filled.Language,
-                label = "Language",
-                currentValue = state.selectedLanguage,
-                options = listOf("English", "Spanish", "French", "German", "Japanese"),
-                onValueChange = { viewModel.setLanguage(it) },
-            )
-            DropdownSetting(
-                icon = Icons.Filled.ColorLens,
-                label = "Accent Color",
-                currentValue = "Blue",
-                options = listOf("Blue", "Teal", "Purple", "Green", "Orange"),
-                onValueChange = { /* update accent */ },
+    if (state.isLoading) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.semantics {
+                    contentDescription = "Loading settings"
+                },
             )
         }
+        return
+    }
 
-        Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(FinanceDesktopTheme.spacing.xxl)
+                .verticalScroll(rememberScrollState())
+                .semantics { contentDescription = "Settings screen" },
+        ) {
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.semantics {
+                    heading()
+                    contentDescription = "Settings heading"
+                },
+            )
 
-        // ── Security ────────────────────────────────────────────────
-        SettingsSection("Security") {
-            ToggleSetting(
-                icon = Icons.Filled.Fingerprint,
-                label = "Windows Hello",
-                description = if (state.windowsHelloAvailable)
-                    "Use biometric or PIN authentication"
-                else
-                    "Windows Hello is not configured on this device",
-                checked = state.windowsHelloEnabled,
-                onCheckedChange = { viewModel.setWindowsHelloEnabled(it) },
-            )
-            ToggleSetting(
-                icon = Icons.Filled.Lock,
-                label = "Auto-Lock",
-                description = "Lock app after ${state.autoLockMinutes} minutes of inactivity",
-                checked = state.autoLockEnabled,
-                onCheckedChange = { viewModel.setAutoLockEnabled(it) },
-            )
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
+
+            // ── Appearance ──────────────────────────────────────────────
+            SettingsSection("Appearance") {
+                ToggleSetting(
+                    icon = Icons.Filled.DarkMode,
+                    label = "Dark Mode",
+                    description = "Use dark color scheme",
+                    checked = state.darkMode,
+                    onCheckedChange = viewModel::setDarkMode,
+                )
+                DropdownSetting(
+                    icon = Icons.Filled.Language,
+                    label = "Language",
+                    currentValue = state.language,
+                    options = listOf("English", "Spanish", "French", "German", "Japanese"),
+                    onValueChange = viewModel::setLanguage,
+                )
+                DropdownSetting(
+                    icon = Icons.Filled.ColorLens,
+                    label = "Accent Color",
+                    currentValue = state.accentColor,
+                    options = listOf("Blue", "Teal", "Purple", "Green", "Orange"),
+                    onValueChange = viewModel::setAccentColor,
+                )
+            }
+
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
+
+            // ── Security ────────────────────────────────────────────────
+            SettingsSection("Security") {
+                ToggleSetting(
+                    icon = Icons.Filled.Fingerprint,
+                    label = "Windows Hello",
+                    description = "Use biometric or PIN authentication",
+                    checked = state.windowsHelloEnabled,
+                    onCheckedChange = viewModel::setWindowsHelloEnabled,
+                )
+                ToggleSetting(
+                    icon = Icons.Filled.Lock,
+                    label = "Auto-Lock",
+                    description = "Lock app after ${state.autoLockTimeoutMinutes} minutes of inactivity",
+                    checked = state.autoLockEnabled,
+                    onCheckedChange = viewModel::setAutoLockEnabled,
+                )
+            }
+
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
+
+            // ── Notifications ───────────────────────────────────────────
+            SettingsSection("Notifications") {
+                ToggleSetting(
+                    icon = Icons.Filled.Notifications,
+                    label = "Budget Alerts",
+                    description = "Notify when approaching budget limits",
+                    checked = state.budgetNotificationsEnabled,
+                    onCheckedChange = viewModel::setBudgetNotifications,
+                )
+                ToggleSetting(
+                    icon = Icons.Filled.Notifications,
+                    label = "Goal Milestones",
+                    description = "Notify when reaching savings milestones",
+                    checked = state.goalNotificationsEnabled,
+                    onCheckedChange = viewModel::setGoalNotifications,
+                )
+            }
+
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
+
+            // ── Data & Sync ─────────────────────────────────────────────
+            SettingsSection("Data & Sync") {
+                DropdownSetting(
+                    icon = Icons.Filled.CurrencyExchange,
+                    label = "Default Currency",
+                    currentValue = state.defaultCurrency,
+                    options = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD"),
+                    onValueChange = viewModel::setDefaultCurrency,
+                )
+                ToggleSetting(
+                    icon = Icons.Filled.Sync,
+                    label = "Cloud Sync",
+                    description = "Sync data across devices",
+                    checked = state.cloudSyncEnabled,
+                    onCheckedChange = viewModel::setCloudSyncEnabled,
+                )
+            }
+
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
+
+            // ── About ───────────────────────────────────────────────────
+            SettingsSection("About") {
+                InfoSetting(
+                    icon = Icons.Filled.Info,
+                    label = "Version",
+                    value = "1.0.0",
+                )
+                InfoSetting(
+                    icon = Icons.Filled.Info,
+                    label = "Build",
+                    value = "2025.03.06",
+                )
+            }
+
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.massive))
         }
 
-        Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
-
-        // ── Notifications ───────────────────────────────────────────
-        SettingsSection("Notifications") {
-            ToggleSetting(
-                icon = Icons.Filled.Notifications,
-                label = "Budget Alerts",
-                description = "Notify when approaching budget limits",
-                checked = state.budgetNotifications,
-                onCheckedChange = { viewModel.setBudgetNotifications(it) },
-            )
-            ToggleSetting(
-                icon = Icons.Filled.Notifications,
-                label = "Goal Milestones",
-                description = "Notify when reaching savings milestones",
-                checked = state.goalNotifications,
-                onCheckedChange = { viewModel.setGoalNotifications(it) },
-            )
+        // ── Error snackbar ──────────────────────────────────────────────
+        state.errorMessage?.let { message ->
+            Snackbar(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(FinanceDesktopTheme.spacing.lg)
+                    .semantics { contentDescription = "Error: $message" },
+                action = {
+                    TextButton(onClick = viewModel::clearError) {
+                        Text("Dismiss")
+                    }
+                },
+            ) {
+                Text(message)
+            }
         }
-
-        Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
-
-        // ── Data & Sync ─────────────────────────────────────────────
-        SettingsSection("Data & Sync") {
-            DropdownSetting(
-                icon = Icons.Filled.CurrencyExchange,
-                label = "Default Currency",
-                currentValue = state.selectedCurrency,
-                options = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD"),
-                onValueChange = { viewModel.setCurrency(it) },
-            )
-            ToggleSetting(
-                icon = Icons.Filled.Sync,
-                label = "Cloud Sync",
-                description = "Sync data across devices",
-                checked = state.syncEnabled,
-                onCheckedChange = { viewModel.setSyncEnabled(it) },
-            )
-        }
-
-        Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
-
-        // ── About ───────────────────────────────────────────────────
-        SettingsSection("About") {
-            InfoSetting(
-                icon = Icons.Filled.Info,
-                label = "Version",
-                value = state.appVersion,
-            )
-            InfoSetting(
-                icon = Icons.Filled.Info,
-                label = "Build",
-                value = state.buildDate,
-            )
-        }
-
-        Spacer(Modifier.height(FinanceDesktopTheme.spacing.massive))
     }
 }
 
