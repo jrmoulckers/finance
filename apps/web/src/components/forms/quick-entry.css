@@ -1,0 +1,376 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Quick-entry panel styles.
+ *
+ * Mobile-first bottom-sheet design that slides up from the bottom on small
+ * screens and appears as a centered card on larger screens.
+ *
+ * References: issue #319
+ */
+
+/* ---------------------------------------------------------------------------
+ * Panel overlay
+ * ------------------------------------------------------------------------- */
+
+.quick-entry {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.quick-entry__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: -1;
+}
+
+.quick-entry__panel {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-lg, var(--border-radius-md))
+    var(--border-radius-lg, var(--border-radius-md)) 0 0;
+  box-shadow: var(--shadow-lg, 0 -4px 25px rgba(0, 0, 0, 0.15));
+  padding: var(--spacing-4);
+  animation: quick-entry-slide-up var(--duration-normal, 200ms) var(--easing-out, ease-out);
+}
+
+@keyframes quick-entry-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Desktop: centered card instead of bottom sheet */
+@media (min-width: 640px) {
+  .quick-entry {
+    align-items: center;
+  }
+
+  .quick-entry__panel {
+    border-radius: var(--border-radius-lg, var(--border-radius-md));
+  }
+
+  @keyframes quick-entry-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(16px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Header
+ * ------------------------------------------------------------------------- */
+
+.quick-entry__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.quick-entry__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  flex: 1;
+  margin: 0;
+}
+
+.quick-entry__counter {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-status-positive);
+  background: rgba(34, 197, 94, 0.1);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--border-radius-sm, 4px);
+}
+
+.quick-entry__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.quick-entry__close:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.quick-entry__close:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Type toggle
+ * ------------------------------------------------------------------------- */
+
+.quick-entry__type-toggle {
+  display: flex;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+}
+
+.quick-entry__type-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-secondary);
+  font: inherit;
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast, 100ms) ease,
+    border-color var(--duration-fast, 100ms) ease;
+}
+
+.quick-entry__type-btn:hover:not(.quick-entry__type-btn--active) {
+  background: var(--semantic-background-secondary);
+}
+
+.quick-entry__type-btn--active {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  border-color: var(--semantic-interactive-default);
+}
+
+.quick-entry__type-btn:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Amount input
+ * ------------------------------------------------------------------------- */
+
+.quick-entry__amount-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.quick-entry__currency-symbol {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+}
+
+.quick-entry__amount-input {
+  flex: 1;
+  width: 100%;
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-semibold);
+  font-family: inherit;
+  text-align: right;
+  appearance: textfield;
+}
+
+.quick-entry__amount-input:focus {
+  outline: none;
+  border-color: var(--semantic-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Hide spinner buttons */
+.quick-entry__amount-input::-webkit-outer-spin-button,
+.quick-entry__amount-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Description and account
+ * ------------------------------------------------------------------------- */
+
+.quick-entry__description {
+  margin-bottom: var(--spacing-3);
+}
+
+.quick-entry__account {
+  margin-bottom: var(--spacing-3);
+}
+
+/* ---------------------------------------------------------------------------
+ * Category suggestion
+ * ------------------------------------------------------------------------- */
+
+.quick-entry__suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+  background: var(--color-blue-50, #eff6ff);
+  border-radius: var(--border-radius-md);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.quick-entry__suggestion-text {
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ---------------------------------------------------------------------------
+ * Submit button
+ * ------------------------------------------------------------------------- */
+
+.quick-entry__submit {
+  width: 100%;
+  padding: var(--spacing-3);
+  font-size: var(--type-scale-body-font-size);
+  min-height: 48px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Floating Action Button
+ * ------------------------------------------------------------------------- */
+
+.quick-entry-fab {
+  position: fixed;
+  bottom: calc(var(--layout-bottom-nav-height, 56px) + var(--spacing-4));
+  right: var(--spacing-4);
+  z-index: 100;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold, 700);
+  box-shadow: var(--shadow-lg, 0 4px 12px rgba(0, 0, 0, 0.2));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform var(--duration-fast, 100ms) ease,
+    box-shadow var(--duration-fast, 100ms) ease;
+}
+
+.quick-entry-fab:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-xl, 0 8px 24px rgba(0, 0, 0, 0.25));
+}
+
+.quick-entry-fab:active {
+  transform: scale(0.95);
+}
+
+.quick-entry-fab:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 3px;
+}
+
+/* On desktop, move FAB above any bottom nav that might exist */
+@media (min-width: 768px) {
+  .quick-entry-fab {
+    bottom: var(--spacing-6);
+    right: var(--spacing-6);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .quick-entry__backdrop {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  html:not([data-theme='light']) .quick-entry__suggestion {
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  html:not([data-theme='light']) .quick-entry__counter {
+    background: rgba(34, 197, 94, 0.15);
+  }
+}
+
+[data-theme='dark'] .quick-entry__backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+[data-theme='dark'] .quick-entry__suggestion {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+[data-theme='dark'] .quick-entry__counter {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-entry__panel {
+    animation: none;
+  }
+
+  .quick-entry__type-btn,
+  .quick-entry-fab {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .quick-entry__panel {
+    border-width: 2px;
+  }
+
+  .quick-entry__amount-input {
+    border-width: 2px;
+  }
+
+  .quick-entry__type-btn {
+    border-width: 2px;
+  }
+
+  .quick-entry-fab {
+    border: 2px solid var(--semantic-text-inverse);
+  }
+}

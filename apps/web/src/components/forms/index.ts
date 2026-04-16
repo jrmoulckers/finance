@@ -14,3 +14,5 @@ export { GoalForm } from './GoalForm';
 export type { GoalFormProps } from './GoalForm';
 export { TransactionForm } from './TransactionForm';
 export type { TransactionFormProps } from './TransactionForm';
+export { QuickEntry } from './QuickEntry';
+export type { QuickEntryProps } from './QuickEntry';
