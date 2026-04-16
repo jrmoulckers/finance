@@ -64,16 +64,12 @@ struct DataExportView: View {
             .pickerStyle(.segmented)
             .accessibilityLabel(String(localized: "Export format"))
             .accessibilityHint(
-                String(localized: "Select CSV for transactions only, or JSON for all data")
+                String(localized: "Select CSV for transactions, JSON for all data, or PDF for a report")
             )
         } header: {
             Text(String(localized: "Format"))
         } footer: {
-            Text(
-                viewModel.selectedFormat == .csv
-                    ? String(localized: "CSV exports transactions only. Compatible with spreadsheet apps.")
-                    : String(localized: "JSON exports all data: accounts, transactions, budgets, and goals.")
-            )
+            Text(viewModel.selectedFormat.accessibilityDescription)
         }
     }
 

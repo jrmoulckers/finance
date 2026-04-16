@@ -16,6 +16,7 @@ import os
 enum ExportFormat: String, CaseIterable, Sendable {
     case json
     case csv
+    case pdf
 
     var fileExtension: String { rawValue }
 
@@ -23,6 +24,15 @@ enum ExportFormat: String, CaseIterable, Sendable {
         switch self {
         case .json: String(localized: "JSON")
         case .csv: String(localized: "CSV")
+        case .pdf: String(localized: "PDF")
+        }
+    }
+
+    var accessibilityDescription: String {
+        switch self {
+        case .json: String(localized: "JSON format, exports all data including accounts, transactions, budgets, and goals")
+        case .csv: String(localized: "CSV format, exports transactions only, compatible with spreadsheet apps")
+        case .pdf: String(localized: "PDF format, generates a formatted financial report for printing or sharing")
         }
     }
 }

@@ -151,6 +151,7 @@ final class DataExportViewModel {
     private let budgetRepository: BudgetRepository
     private let goalRepository: GoalRepository
     private let exportService: DataExportService
+    private let pdfExportService: PDFExportService
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.finance",
@@ -167,6 +168,7 @@ final class DataExportViewModel {
     ///   - budgetRepository: Data source for budgets.
     ///   - goalRepository: Data source for goals.
     ///   - exportService: Service used to serialise data for export.
+    ///   - pdfExportService: Service used to generate PDF reports.
     ///
     /// Default repositories now delegate through the Swift Export bridge
     /// via `RepositoryProvider.shared`, ensuring consistent data access
@@ -176,13 +178,15 @@ final class DataExportViewModel {
         transactionRepository: TransactionRepository = RepositoryProvider.shared.transactions,
         budgetRepository: BudgetRepository = RepositoryProvider.shared.budgets,
         goalRepository: GoalRepository = RepositoryProvider.shared.goals,
-        exportService: DataExportService = DataExportService()
+        exportService: DataExportService = DataExportService(),
+        pdfExportService: PDFExportService = PDFExportService()
     ) {
         self.accountRepository = accountRepository
         self.transactionRepository = transactionRepository
         self.budgetRepository = budgetRepository
         self.goalRepository = goalRepository
         self.exportService = exportService
+        self.pdfExportService = pdfExportService
     }
 
     // MARK: - Data Loading
@@ -276,6 +280,13 @@ final class DataExportViewModel {
                 selectedIDs: selectedAccountIDs
             )
 
+            // Build GDPR metadata for all formats
+            let isComplete = !dateFilterEnabled && selectedAccountIDs.isEmpty
+            let metadata = GDPRExportMetadata.standard(
+                isComplete: isComplete,
+                filterDescription: isComplete ? nil : filterSummary
+            )
+
             // Step 4: Encode and write
             let fileURL: URL
 
@@ -303,6 +314,18 @@ final class DataExportViewModel {
                     budgets: budgets,
                     goals: goals
                 )
+
+            case .pdf:
+                updateProgress(.fetchingBudgets)
+                let budgets = try await budgetRepository.getBudgets()
+                updateProgress(.encoding)
+                updateProgress(.writingFile)
+                fileURL = try await pdfExportService.generateReport(
+                    accounts: filteredAccounts,
+                    transactions: filteredTransactions,
+                    budgets: budgets,
+                    metadata: metadata
+                )
             }
 
             // Step 5: Complete
@@ -310,10 +333,16 @@ final class DataExportViewModel {
             exportedFileURL = fileURL
             showingShareSheet = true
 
+            // Post VoiceOver announcement for export completion
+            AccessibilityNotification.Announcement(
+                String(localized: "Export complete. Ready to share.")
+            ).post()
+
             Self.logger.info(
                 "Export completed: \(self.selectedFormat.rawValue, privacy: .public), "
                 + "\(filteredTransactions.count, privacy: .public) transactions, "
-                + "\(filteredAccounts.count, privacy: .public) accounts"
+                + "\(filteredAccounts.count, privacy: .public) accounts, "
+                + "GDPR export ID: \(metadata.exportId, privacy: .private)"
             )
         } catch {
             Self.logger.error(
@@ -322,6 +351,11 @@ final class DataExportViewModel {
             exportErrorMessage = error.localizedDescription
             showingExportError = true
             updateProgress(.idle)
+
+            // Post VoiceOver announcement for export failure
+            AccessibilityNotification.Announcement(
+                String(localized: "Export failed. \(error.localizedDescription)")
+            ).post()
         }
     }
 
