@@ -91,9 +91,15 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
 
-  // API requests -> network-first
-  if (url.pathname.startsWith('/api/')) {
+  // Auth & sync API requests -> network-first (prefer fresh data)
+  if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/sync/')) {
     event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Other API requests -> stale-while-revalidate (serve cached, update in background)
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(staleWhileRevalidate(request));
     return;
   }
 
@@ -237,6 +243,50 @@ async function networkFirst(request: Request): Promise<Response> {
       },
     );
   }
+}
+
+/**
+ * **Stale-while-revalidate**: serve from cache immediately (if available),
+ * then update the cache in the background from the network.
+ *
+ * This provides the best user experience for API requests: instant responses
+ * from cache with eventual consistency from the network.
+ */
+async function staleWhileRevalidate(request: Request): Promise<Response> {
+  const cache = await caches.open(API_CACHE);
+  const cached = await cache.match(request);
+
+  // Start the network request in the background
+  const networkPromise = fetch(request)
+    .then(async (response) => {
+      if (response.ok) {
+        await cache.put(request, response.clone());
+      }
+      return response;
+    })
+    .catch(() => null);
+
+  // If we have a cached response, return it immediately
+  if (cached) {
+    // Fire-and-forget: update cache in background
+    void networkPromise;
+    return cached;
+  }
+
+  // No cached response — wait for network
+  const networkResponse = await networkPromise;
+  if (networkResponse) {
+    return networkResponse;
+  }
+
+  return new Response(
+    JSON.stringify({ error: 'offline', message: 'No cached response available' }),
+    {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
 }
 
 /** Returns `true` when the pathname looks like a static asset. */

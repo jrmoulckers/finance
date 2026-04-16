@@ -1,0 +1,159 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * Offline Fallback Page styles
+ *
+ * Centered message with status and retry action.
+ * ------------------------------------------------------------------- */
+
+.offline-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--spacing-6, 24px);
+  background: var(--semantic-background-primary, #fff);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.offline-fallback__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-4, 16px);
+  max-width: 480px;
+  text-align: center;
+}
+
+.offline-fallback__icon {
+  color: var(--semantic-text-secondary, #6b7280);
+  opacity: 0.6;
+}
+
+.offline-fallback__title {
+  margin: 0;
+  font-size: var(--type-scale-h2-font-size, 1.5rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.offline-fallback__description {
+  margin: 0;
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  line-height: var(--line-height-relaxed, 1.625);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.offline-fallback__status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  background: var(--color-amber-50, #fffbeb);
+  border: 1px solid var(--color-amber-200, #fde68a);
+  border-radius: var(--border-radius-md, 8px);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--color-amber-800, #92400e);
+}
+
+.offline-fallback__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  background: var(--color-amber-500, #f59e0b);
+  color: white;
+  border-radius: 12px;
+  font-weight: var(--font-weight-semibold, 600);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+}
+
+.offline-fallback__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+  margin-top: var(--spacing-2, 8px);
+}
+
+.offline-fallback__retry {
+  min-width: 140px;
+  min-height: 44px; /* WCAG 2.2 AA touch target */
+  padding: var(--spacing-3, 12px) var(--spacing-6, 24px);
+  border: none;
+  border-radius: var(--border-radius-md, 8px);
+  background: var(--semantic-interactive-default, #3b82f6);
+  color: var(--semantic-text-inverse, white);
+  font: inherit;
+  font-weight: var(--font-weight-medium, 500);
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.offline-fallback__retry:hover:not(:disabled) {
+  background: var(--semantic-interactive-hover, #2563eb);
+}
+
+.offline-fallback__retry:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #3b82f6);
+  outline-offset: 2px;
+}
+
+.offline-fallback__retry:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.offline-fallback__online-notice {
+  margin: 0;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  background: var(--color-green-50, #f0fdf4);
+  color: var(--color-green-800, #166534);
+  border: 1px solid var(--color-green-200, #bbf7d0);
+  border-radius: var(--border-radius-md, 8px);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .offline-fallback {
+    background: var(--semantic-background-primary, #111827);
+  }
+
+  html:not([data-theme='light']) .offline-fallback__status {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--color-amber-200, #fde68a);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+
+  html:not([data-theme='light']) .offline-fallback__online-notice {
+    background: rgba(34, 197, 94, 0.12);
+    color: var(--color-green-200, #bbf7d0);
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+}
+
+[data-theme='dark'] .offline-fallback {
+  background: var(--semantic-background-primary, #111827);
+}
+
+[data-theme='dark'] .offline-fallback__status {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--color-amber-200, #fde68a);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+[data-theme='dark'] .offline-fallback__online-notice {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--color-green-200, #bbf7d0);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .offline-fallback__retry {
+    transition: none;
+  }
+}

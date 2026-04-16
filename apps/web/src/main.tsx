@@ -11,6 +11,7 @@ import { initMonitoring } from './lib/monitoring';
 import './theme/tokens.css';
 import './styles/responsive.css';
 import './styles/responsive-layout.css';
+import './styles/accessibility.css';
 
 const rootElement = document.getElementById('root');
 
