@@ -19,6 +19,7 @@ vi.mock('../common', () => ({
   KeyboardShortcutsModal: ({ isOpen }: { isOpen: boolean; onClose: () => void }) =>
     isOpen ? <div data-testid="keyboard-shortcuts-modal">Shortcuts Modal</div> : null,
   UpdateBanner: () => <div data-testid="update-banner">Update Banner</div>,
+  SyncStatusBar: () => <div data-testid="sync-status-bar">Sync Status</div>,
 }));
 
 vi.mock('../OfflineBanner', () => ({

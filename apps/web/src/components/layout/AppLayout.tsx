@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 
-import { KeyboardShortcutsModal, UpdateBanner } from '../common';
+import { KeyboardShortcutsModal, UpdateBanner, SyncStatusBar } from '../common';
 import { OfflineBanner } from '../OfflineBanner';
+import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
 import { useKeyboardShortcuts } from '../../hooks';
+import { useSyncStatus } from '../../hooks/useSyncStatus';
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
 import { InstallBanner } from '../common/InstallBanner';
@@ -23,6 +25,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   children,
 }) => {
   const { showHelp, setShowHelp } = useKeyboardShortcuts();
+  const { conflictCount } = useSyncStatus();
+  const [showConflicts, setShowConflicts] = useState(false);
 
   const openKeyboardShortcuts = useCallback(() => {
     setShowHelp(true);
@@ -35,6 +39,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const goToSettings = useCallback(() => {
     onNavigate('/settings');
   }, [onNavigate]);
+
+  const openConflictDialog = useCallback(() => {
+    setShowConflicts(true);
+  }, []);
+
+  const closeConflictDialog = useCallback(() => {
+    setShowConflicts(false);
+  }, []);
 
   return (
     <div className="app-layout">
@@ -49,9 +61,38 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       <div className="app-shell">
         <UpdateBanner />
         <OfflineBanner />
+        <SyncStatusBar />
         <header className="app-header" aria-label="App header">
           <h1 className="app-header__title">{pageTitle}</h1>
           <div className="app-header__actions">
+            {conflictCount > 0 && (
+              <button
+                type="button"
+                className="icon-button icon-button--warning"
+                aria-label={`${conflictCount} sync conflict${conflictCount !== 1 ? 's' : ''} need attention`}
+                onClick={openConflictDialog}
+              >
+                <span className="icon-button__badge" aria-hidden="true">
+                  {conflictCount}
+                </span>
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+                  <path
+                    d="M12 8v4m0 4h.01"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                </svg>
+              </button>
+            )}
             <button
               type="button"
               className="icon-button"
@@ -83,6 +124,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       </div>
       <InstallBanner />
       <KeyboardShortcutsModal isOpen={showHelp} onClose={closeKeyboardShortcuts} />
+      <ConflictResolutionDialog isOpen={showConflicts} onClose={closeConflictDialog} />
     </div>
   );
 };
