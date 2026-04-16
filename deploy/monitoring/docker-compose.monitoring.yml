@@ -1,0 +1,86 @@
+# =============================================================================
+# Finance App — Uptime Kuma Monitoring Stack
+# =============================================================================
+#
+# Self-hosted monitoring using Uptime Kuma. Runs alongside the main
+# deployment stack or on a separate monitoring VPS.
+#
+# Quick start:
+#   1. cp .env.monitoring.example .env
+#   2. docker compose -f docker-compose.monitoring.yml up -d
+#   3. Visit https://monitor.YOUR_DOMAIN_HERE to configure monitors
+#
+# Issues: #887
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Uptime Kuma — self-hosted monitoring dashboard
+  # ---------------------------------------------------------------------------
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    ports:
+      - '${MONITOR_PORT:-3001}:3001'
+    volumes:
+      - uptime-kuma-data:/app/data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:3001/api/entry || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    networks:
+      - monitoring
+
+  # ---------------------------------------------------------------------------
+  # Caddy — reverse proxy for monitoring dashboard (optional)
+  # ---------------------------------------------------------------------------
+  # Only needed if you want HTTPS access to the monitoring dashboard.
+  # Remove this service if running on the same host as the main Caddy.
+  monitor-proxy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    ports:
+      - '${MONITOR_HTTP_PORT:-8080}:80'
+      - '${MONITOR_HTTPS_PORT:-8443}:443'
+    environment:
+      MONITOR_DOMAIN: ${MONITOR_DOMAIN}
+      MONITOR_TLS_EMAIL: ${MONITOR_TLS_EMAIL}
+    volumes:
+      - ./Caddyfile.monitoring:/etc/caddy/Caddyfile:ro
+      - monitor-caddy-data:/data
+      - monitor-caddy-config:/config
+    depends_on:
+      uptime-kuma:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+        reservations:
+          cpus: '0.02'
+          memory: 16M
+    networks:
+      - monitoring
+
+volumes:
+  uptime-kuma-data:
+    driver: local
+  monitor-caddy-data:
+    driver: local
+  monitor-caddy-config:
+    driver: local
+
+networks:
+  monitoring:
+    driver: bridge
