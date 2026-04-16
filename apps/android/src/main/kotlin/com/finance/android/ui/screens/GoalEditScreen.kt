@@ -56,7 +56,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.preview.PreviewData
+import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.viewmodel.GoalEditUiState
 import com.finance.android.ui.viewmodel.GoalEditViewModel
 import com.finance.models.types.SyncId
@@ -496,4 +499,80 @@ private fun GoalEditAccountDropdown(
 private fun goalEditFormatDate(date: LocalDate): String {
     val month = date.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
     return "$month ${date.dayOfMonth}, ${date.year}"
+}
+
+// ── Previews ────────────────────────────────────────────────────────
+
+@Preview(showBackground = true, showSystemUi = true, name = "Goal Edit - Light")
+@Preview(
+    showBackground = true, showSystemUi = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Goal Edit - Dark",
+)
+@Composable
+private fun GoalEditScreenPreview() {
+    FinanceTheme(dynamicColor = false) {
+        GoalEditForm(
+            state = PreviewData.goalEditDefault,
+            onNameChange = {},
+            onTargetAmountChange = {},
+            onCurrentAmountChange = {},
+            onTargetDateChange = {},
+            onAccountSelect = {},
+            onSave = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Goal Edit - Errors - Light")
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Goal Edit - Errors - Dark",
+)
+@Composable
+private fun GoalEditErrorsPreview() {
+    FinanceTheme(dynamicColor = false) {
+        GoalEditForm(
+            state = PreviewData.goalEditWithErrors,
+            onNameChange = {},
+            onTargetAmountChange = {},
+            onCurrentAmountChange = {},
+            onTargetDateChange = {},
+            onAccountSelect = {},
+            onSave = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Goal Edit - Saving")
+@Composable
+private fun GoalEditSavingPreview() {
+    FinanceTheme(dynamicColor = false) {
+        GoalEditForm(
+            state = PreviewData.goalEditSaving,
+            onNameChange = {},
+            onTargetAmountChange = {},
+            onCurrentAmountChange = {},
+            onTargetDateChange = {},
+            onAccountSelect = {},
+            onSave = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, fontScale = 1.5f, name = "Goal Edit - Large Font")
+@Composable
+private fun GoalEditLargeFontPreview() {
+    FinanceTheme(dynamicColor = false) {
+        GoalEditForm(
+            state = PreviewData.goalEditDefault,
+            onNameChange = {},
+            onTargetAmountChange = {},
+            onCurrentAmountChange = {},
+            onTargetDateChange = {},
+            onAccountSelect = {},
+            onSave = {},
+        )
+    }
 }

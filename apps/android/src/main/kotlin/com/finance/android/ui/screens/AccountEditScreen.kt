@@ -53,7 +53,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.preview.PreviewData
+import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.viewmodel.AccountEditUiState
 import com.finance.android.ui.viewmodel.AccountEditViewModel
 import com.finance.models.AccountType
@@ -436,4 +439,80 @@ private fun accountEditTypeDisplayName(type: AccountType): String = when (type) 
     AccountType.INVESTMENT -> "Investment"
     AccountType.LOAN -> "Loan"
     AccountType.OTHER -> "Other"
+}
+
+// ── Previews ────────────────────────────────────────────────────────
+
+@Preview(showBackground = true, showSystemUi = true, name = "Account Edit - Light")
+@Preview(
+    showBackground = true, showSystemUi = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Account Edit - Dark",
+)
+@Composable
+private fun AccountEditScreenPreview() {
+    FinanceTheme(dynamicColor = false) {
+        AccountEditForm(
+            state = PreviewData.accountEditDefault,
+            supportedCurrencies = listOf("USD", "EUR", "GBP", "CAD"),
+            onNameChange = {},
+            onTypeChange = {},
+            onCurrencyChange = {},
+            onBalanceChange = {},
+            onSave = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Account Edit - Errors - Light")
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Account Edit - Errors - Dark",
+)
+@Composable
+private fun AccountEditErrorsPreview() {
+    FinanceTheme(dynamicColor = false) {
+        AccountEditForm(
+            state = PreviewData.accountEditWithErrors,
+            supportedCurrencies = listOf("USD", "EUR", "GBP", "CAD"),
+            onNameChange = {},
+            onTypeChange = {},
+            onCurrencyChange = {},
+            onBalanceChange = {},
+            onSave = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Account Edit - Saving")
+@Composable
+private fun AccountEditSavingPreview() {
+    FinanceTheme(dynamicColor = false) {
+        AccountEditForm(
+            state = PreviewData.accountEditSaving,
+            supportedCurrencies = listOf("USD", "EUR", "GBP", "CAD"),
+            onNameChange = {},
+            onTypeChange = {},
+            onCurrencyChange = {},
+            onBalanceChange = {},
+            onSave = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, fontScale = 1.5f, name = "Account Edit - Large Font")
+@Composable
+private fun AccountEditLargeFontPreview() {
+    FinanceTheme(dynamicColor = false) {
+        AccountEditForm(
+            state = PreviewData.accountEditDefault,
+            supportedCurrencies = listOf("USD", "EUR", "GBP", "CAD"),
+            onNameChange = {},
+            onTypeChange = {},
+            onCurrencyChange = {},
+            onBalanceChange = {},
+            onSave = {},
+        )
+    }
 }

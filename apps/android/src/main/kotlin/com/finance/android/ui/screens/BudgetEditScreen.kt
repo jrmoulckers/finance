@@ -55,7 +55,10 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.preview.PreviewData
+import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.viewmodel.BudgetEditUiState
 import com.finance.android.ui.viewmodel.BudgetEditViewModel
 import com.finance.models.BudgetPeriod
@@ -404,4 +407,72 @@ private fun budgetEditPeriodDisplayName(period: BudgetPeriod): String = when (pe
     BudgetPeriod.MONTHLY -> "Monthly"
     BudgetPeriod.QUARTERLY -> "Quarterly"
     BudgetPeriod.YEARLY -> "Yearly"
+}
+
+// ── Previews ────────────────────────────────────────────────────────
+
+@Preview(showBackground = true, showSystemUi = true, name = "Budget Edit - Light")
+@Preview(
+    showBackground = true, showSystemUi = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Budget Edit - Dark",
+)
+@Composable
+private fun BudgetEditScreenPreview() {
+    FinanceTheme(dynamicColor = false) {
+        BudgetEditForm(
+            state = PreviewData.budgetEditDefault,
+            onCategorySelect = {},
+            onAmountChange = {},
+            onPeriodChange = {},
+            onSave = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Budget Edit - Errors - Light")
+@Preview(
+    showBackground = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Budget Edit - Errors - Dark",
+)
+@Composable
+private fun BudgetEditErrorsPreview() {
+    FinanceTheme(dynamicColor = false) {
+        BudgetEditForm(
+            state = PreviewData.budgetEditWithErrors,
+            onCategorySelect = {},
+            onAmountChange = {},
+            onPeriodChange = {},
+            onSave = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Budget Edit - Saving")
+@Composable
+private fun BudgetEditSavingPreview() {
+    FinanceTheme(dynamicColor = false) {
+        BudgetEditForm(
+            state = PreviewData.budgetEditSaving,
+            onCategorySelect = {},
+            onAmountChange = {},
+            onPeriodChange = {},
+            onSave = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, fontScale = 1.5f, name = "Budget Edit - Large Font")
+@Composable
+private fun BudgetEditLargeFontPreview() {
+    FinanceTheme(dynamicColor = false) {
+        BudgetEditForm(
+            state = PreviewData.budgetEditDefault,
+            onCategorySelect = {},
+            onAmountChange = {},
+            onPeriodChange = {},
+            onSave = {},
+        )
+    }
 }

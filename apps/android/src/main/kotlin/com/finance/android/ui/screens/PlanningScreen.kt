@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.tooling.preview.Preview
+import com.finance.android.ui.theme.FinanceTheme
 
 /**
  * Composite "Planning" screen that hosts Budgets and Goals behind an
@@ -83,5 +85,28 @@ fun PlanningScreen(
                 onGoalClick = { id -> onEditGoal(id) },
             )
         }
+    }
+}
+
+// ── Previews ────────────────────────────────────────────────────────
+
+@Preview(showBackground = true, showSystemUi = true, name = "Planning - Budgets Tab - Light")
+@Preview(
+    showBackground = true, showSystemUi = true,
+    uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES,
+    name = "Planning - Budgets Tab - Dark",
+)
+@Composable
+private fun PlanningScreenBudgetsPreview() {
+    FinanceTheme(dynamicColor = false) {
+        PlanningScreen()
+    }
+}
+
+@Preview(showBackground = true, fontScale = 1.5f, name = "Planning - Large Font")
+@Composable
+private fun PlanningScreenLargeFontPreview() {
+    FinanceTheme(dynamicColor = false) {
+        PlanningScreen()
     }
 }
