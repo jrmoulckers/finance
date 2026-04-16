@@ -39,6 +39,8 @@ venv/
 
 # === Swift / Xcode ===
 DerivedData/
+.derivedData/
+.spm-packages/
 *.pbxuser
 *.mode1v3
 *.mode2v3
@@ -87,6 +89,10 @@ coverage/
 .next/
 .nuxt/
 .output/
+
+# === Playwright ===
+test-results/
+playwright-report/
 
 # === Copilot / AI (session state is local) ===
 .copilot/session-state/

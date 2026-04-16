@@ -208,9 +208,10 @@ export async function recordAbuseSignal(
  * budget. This avoids wasting compute on requests from known
  * abusers within the current window.
  *
- * Implementation: reads the `rate_limits` row for the abuse key.
- * If the counter already equals or exceeds `maxErrors` AND the
- * window has not yet expired, the identifier is blocked.
+ * Implementation: calls the read-only `get_rate_limit_status` RPC
+ * which performs a SELECT (no INSERT/UPDATE) on the rate_limits
+ * table. If the counter already equals or exceeds `maxErrors` AND
+ * the window has not yet expired, the identifier is blocked.
  *
  * **Fail-open**: if the query fails, the request is allowed.
  *
@@ -227,24 +228,9 @@ export async function checkAbuseStatus(
   const key = `${threshold.keyPrefix}:${identifier}`;
 
   try {
-    // Use a read-only RPC call pattern: pass maxErrors = 0 so the
-    // counter effectively can't pass, but we DON'T increment.
-    // Actually, the existing RPC always increments. To avoid
-    // incrementing, we query the rate_limits table directly.
-    //
-    // However, since we only have the RPC available (table is RLS-
-    // protected, service_role only via SECURITY DEFINER), we use a
-    // pragmatic approach: call check_rate_limit with a READ-ONLY
-    // sentinel key that appends `:status` — this key is only used
-    // for status checks and has a very high maxRequests so it never
-    // blocks on its own.
-    //
-    // Instead, we check the actual abuse key by calling the RPC with
-    // the real key but a very high max (to never block) and inspect
-    // the current_count returned.
-    const { data, error } = await supabase.rpc('check_rate_limit', {
+    // Use the read-only RPC — no counter increment (#781).
+    const { data, error } = await supabase.rpc('get_rate_limit_status', {
       p_key: key,
-      p_max_requests: 999999,
       p_window_seconds: threshold.windowSeconds,
     });
 
@@ -253,16 +239,11 @@ export async function checkAbuseStatus(
     }
 
     const result = data as {
-      allowed: boolean;
-      remaining: number;
-      reset_at: string;
       current_count: number;
+      reset_at: string;
     };
 
     const windowResetAt = new Date(result.reset_at);
-    // The actual block decision is based on threshold.maxErrors,
-    // not the inflated 999999 we passed to prevent the RPC from
-    // blocking.
     const isBlocked = result.current_count > threshold.maxErrors;
     const errorsRemaining = Math.max(0, threshold.maxErrors - result.current_count);
     const retryAfterSeconds = isBlocked

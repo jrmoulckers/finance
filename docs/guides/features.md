@@ -493,4 +493,4 @@ Finance believes in education without condescension. You should never feel lost.
 
 ---
 
-_For more help, see the [FAQ](./faq.md) or the [Privacy & Security Guide](./privacy-security.md)._
+_For more help, see the [User Guide](./user-guide.md), the [FAQ](./faq.md), or the [Privacy & Security Guide](./privacy-security.md)._

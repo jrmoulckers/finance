@@ -89,9 +89,8 @@ export const ImportPreview: React.FC<ImportPreviewProps> = ({
           </p>
           <button
             type="button"
-            className="form-button form-button--secondary"
+            className="form-button form-button--secondary import-skip-all-button"
             onClick={onSkipAllDuplicates}
-            style={{ marginBottom: 'var(--spacing-3)' }}
           >
             Skip All Duplicates
           </button>

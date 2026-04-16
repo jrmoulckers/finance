@@ -4,8 +4,9 @@
  * Tests for `_shared/env.ts` (#616).
  *
  * Validates that validateEnv() returns 503 when required env vars are
- * missing and null when all are present, and that requireEnv() throws
- * for missing vars and returns the value for present ones.
+ * missing or malformed and null when all are present and valid, and
+ * that requireEnv() throws for missing vars and returns the value for
+ * present ones.
  */
 
 import { assertEquals, assertThrows } from 'https://deno.land/std@0.208.0/testing/asserts.ts';
@@ -53,7 +54,7 @@ function deleteEnvVars(vars: string[]): () => void {
 }
 
 // ---------------------------------------------------------------------------
-// Tests: validateEnv
+// Tests: validateEnv — presence checks
 // ---------------------------------------------------------------------------
 
 Deno.test('validateEnv — returns null when all base env vars are set', () => {
@@ -195,6 +196,103 @@ Deno.test('validateEnv — 503 response has Content-Type application/json', () =
     const req = createMockRequest({});
     const result = validateEnv('health-check', req);
     assertEquals(result!.headers.get('Content-Type'), 'application/json');
+  } finally {
+    cleanup();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Tests: validateEnv — type validation
+// ---------------------------------------------------------------------------
+
+Deno.test('validateEnv — returns 503 when SUPABASE_URL is not a valid URL', () => {
+  const cleanup = setEnvVars({
+    SUPABASE_URL: 'not-a-url',
+    SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+  });
+  try {
+    const req = createMockRequest({});
+    const result = validateEnv('health-check', req);
+    assertEquals(result instanceof Response, true);
+    assertEquals(result!.status, 503);
+  } finally {
+    cleanup();
+  }
+});
+
+Deno.test('validateEnv — accepts http:// URLs for SUPABASE_URL (local dev)', () => {
+  const cleanup = setEnvVars({
+    SUPABASE_URL: 'http://localhost:54321',
+    SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+  });
+  try {
+    const req = createMockRequest({});
+    const result = validateEnv('health-check', req);
+    assertEquals(result, null);
+  } finally {
+    cleanup();
+  }
+});
+
+Deno.test('validateEnv — returns 503 when WEBAUTHN_ORIGIN is not a valid URL', () => {
+  const cleanup = setEnvVars({
+    SUPABASE_URL: 'https://test.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+    WEBAUTHN_RP_ID: 'finance.example.com',
+    WEBAUTHN_ORIGIN: 'invalid-origin',
+  });
+  try {
+    const req = createMockRequest({});
+    const result = validateEnv('passkey-authenticate', req);
+    assertEquals(result instanceof Response, true);
+    assertEquals(result!.status, 503);
+  } finally {
+    cleanup();
+  }
+});
+
+Deno.test('validateEnv — returns 503 when CSV env var is empty', () => {
+  const cleanup = setEnvVars({
+    SUPABASE_URL: 'https://test.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+    ALLOWED_ORIGINS: '',
+  });
+  try {
+    const req = createMockRequest({});
+    const result = validateEnv('data-export', req);
+    assertEquals(result instanceof Response, true);
+    assertEquals(result!.status, 503);
+  } finally {
+    cleanup();
+  }
+});
+
+Deno.test('validateEnv — accepts valid CSV env var', () => {
+  const cleanup = setEnvVars({
+    SUPABASE_URL: 'https://test.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+    ALLOWED_ORIGINS: 'http://localhost:3000,http://localhost:5173',
+  });
+  try {
+    const req = createMockRequest({});
+    const result = validateEnv('data-export', req);
+    assertEquals(result, null);
+  } finally {
+    cleanup();
+  }
+});
+
+Deno.test('validateEnv — returns 503 when ADMIN_EMAILS CSV is only commas', () => {
+  const cleanup = setEnvVars({
+    SUPABASE_URL: 'https://test.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+    ADMIN_EMAILS: ',,',
+  });
+  try {
+    const req = createMockRequest({});
+    const result = validateEnv('admin-dashboard', req);
+    assertEquals(result instanceof Response, true);
+    assertEquals(result!.status, 503);
   } finally {
     cleanup();
   }

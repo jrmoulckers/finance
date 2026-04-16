@@ -21,6 +21,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { createAdminClient } from '../_shared/auth.ts';
+import { validateEnv } from '../_shared/env.ts';
 import {
   checkRateLimit,
   getClientIp,
@@ -123,6 +124,10 @@ serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return handleCorsPreflightRequest(req);
   }
+
+  // Validate required environment variables (#616)
+  const envError = validateEnv('health-check', req);
+  if (envError) return envError;
 
   const logger = createLogger('health-check');
   logger.info('Request received', { method: req.method });

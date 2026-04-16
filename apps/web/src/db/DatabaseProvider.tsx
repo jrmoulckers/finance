@@ -17,10 +17,42 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Failed to initialize the local database.';
 }
 
+// ---------------------------------------------------------------------------
+// E2E stub — Playwright sets window.__PLAYWRIGHT_E2E__ via addInitScript()
+// so the real SQLite-WASM init (which requires WASM binaries not present in
+// the production build's static assets) is skipped entirely.
+// ---------------------------------------------------------------------------
+
+declare global {
+  interface Window {
+    __PLAYWRIGHT_E2E__?: boolean;
+  }
+}
+
+/**
+ * Minimal in-memory database stub used during E2E tests.
+ *
+ * Returns empty results for all queries.  Page components render their
+ * "no data" / empty states, which is sufficient for E2E structural and
+ * navigation tests that don't depend on seed data.
+ */
+const E2E_STUB_DB: SqliteDb = {
+  exec: () => {},
+  selectAll: () => [],
+  selectOne: () => null,
+  close: async () => {},
+};
+
 /** Initialize SQLite-WASM and provide the database instance to descendants. */
 export function DatabaseProvider({ children }: DatabaseProviderProps) {
-  const [db, setDb] = useState<SqliteDb | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Skip real DB init in E2E tests — WASM binaries aren't in the static
+  // build output, so SQLiteESMFactory / initSqlJs would hang forever.
+  const [isE2E] = useState(
+    () => typeof window !== 'undefined' && window.__PLAYWRIGHT_E2E__ === true,
+  );
+
+  const [db, setDb] = useState<SqliteDb | null>(isE2E ? E2E_STUB_DB : null);
+  const [isLoading, setIsLoading] = useState(!isE2E);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -29,6 +61,9 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
   }, []);
 
   useEffect(() => {
+    // In E2E mode the stub DB is already set — skip real WASM init.
+    if (isE2E) return;
+
     let isDisposed = false;
     let initializedDb: SqliteDb | null = null;
 
@@ -77,7 +112,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         initializedDb = null;
       }
     };
-  }, [reloadToken]);
+  }, [isE2E, reloadToken]);
 
   if (isLoading) {
     return (

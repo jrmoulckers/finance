@@ -4,6 +4,7 @@ package com.finance.android.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,6 +67,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun GoalsScreen(
     onCreateGoal: () -> Unit = {},
+    onGoalClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: GoalsViewModel = koinViewModel(),
 ) {
@@ -89,6 +91,7 @@ fun GoalsScreen(
         state = state,
         onRefresh = viewModel::refresh,
         onCreateGoal = onCreateGoal,
+        onGoalClick = onGoalClick,
         modifier = modifier,
     )
 }
@@ -99,6 +102,7 @@ internal fun GoalsContent(
     state: GoalsUiState,
     onRefresh: () -> Unit,
     onCreateGoal: () -> Unit,
+    onGoalClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -140,7 +144,7 @@ internal fun GoalsContent(
                 // ── Goal cards ──────────────────────────────────────────
                 if (state.goals.isNotEmpty()) {
                     items(state.goals, key = { it.id.value }) { goal ->
-                        GoalCard(goal = goal)
+                        GoalCard(goal = goal, onClick = { onGoalClick(goal.id.value) })
                     }
                 }
 
@@ -270,6 +274,7 @@ private fun GoalsErrorBanner(
 @Composable
 private fun GoalCard(
     goal: GoalItemUi,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val animatedProgress by animateFloatAsState(
@@ -287,6 +292,7 @@ private fun GoalCard(
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .semantics {
                 contentDescription = "${goal.name}: ${goal.currentFormatted} of ${goal.targetFormatted}, " +
                     "$progressPercent percent" +

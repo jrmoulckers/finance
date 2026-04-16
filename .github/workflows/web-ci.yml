@@ -7,6 +7,7 @@ on:
   pull_request:
     branches: [main]
     paths: ['apps/web/**', 'packages/design-tokens/**']
+  workflow_dispatch:
 
 concurrency:
   group: web-${{ github.ref }}
@@ -40,7 +41,7 @@ jobs:
       - run: npm run build -w apps/web
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: web-build
           path: |
@@ -64,7 +65,7 @@ jobs:
       - run: npm ci
 
       - name: Download build artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: web-build
 
@@ -90,12 +91,13 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build -w packages/design-tokens
-
-      - run: npm run build -w apps/web
+      - name: Download build artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: web-build
 
       - name: Cache Playwright browsers
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('apps/web/package.json') }}
@@ -124,7 +126,7 @@ jobs:
       - run: npm ci
 
       - name: Download build artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: web-build
 
@@ -142,3 +144,29 @@ jobs:
         if: always() && (steps.lighthouse-audit.conclusion == 'success' || steps.lighthouse-audit.conclusion == 'failure')
         run: npx @lhci/cli assert --config=apps/web/lighthouserc-budget.json
         continue-on-error: false
+
+  # ── Gate job ─────────────────────────────────────────────────────
+  # Single required status check for branch protection.
+  # Fails if any upstream job (unit tests, E2E shards, Lighthouse) fails.
+  results:
+    name: Web CI Results
+    if: always()
+    needs: [unit-tests, e2e-tests, lighthouse]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check upstream job results
+        run: |
+          if [[ "${{ needs.unit-tests.result }}" != "success" ]]; then
+            echo "::error::Unit tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.e2e-tests.result }}" != "success" ]]; then
+            echo "::error::E2E tests failed"
+            exit 1
+          fi
+          if [[ "${{ needs.lighthouse.result }}" != "success" ]]; then
+            echo "::error::Lighthouse audit failed"
+            exit 1
+          fi
+          echo "✅ All web CI checks passed"

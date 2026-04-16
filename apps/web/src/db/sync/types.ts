@@ -80,8 +80,13 @@ export type ClientToSwMessage =
 /** Messages sent FROM the service worker TO the main thread. */
 export type SwToClientMessage =
   | { readonly type: 'SYNC_STARTED' }
-  | { readonly type: 'SYNC_COMPLETED'; readonly syncedCount: number; readonly failedCount: number }
-  | { readonly type: 'SYNC_FAILED'; readonly error: string }
+  | {
+      readonly type: 'SYNC_COMPLETED';
+      readonly syncedCount: number;
+      readonly failedCount: number;
+      readonly conflictCount?: number;
+    }
+  | { readonly type: 'SYNC_FAILED'; readonly error: string; readonly authError?: boolean }
   | { readonly type: 'PENDING_COUNT'; readonly count: number };
 
 // ---------------------------------------------------------------------------

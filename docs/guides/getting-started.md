@@ -287,6 +287,7 @@ Finance tracks how many days in a row you log something. It's a gentle motivator
 
 You're all set! Here are some things to explore next:
 
+- 📖 **[User Guide](./user-guide.md)** — Quick-reference recipes, daily tips, and a complete documentation map.
 - 📖 **[Feature Guide](./features.md)** — Deep dive into every feature: accounts, transactions, budgets, goals, reports, multi-currency, sharing, and more.
 - 🔒 **[Privacy & Security](./privacy-security.md)** — Learn how your data is protected.
 - 📱 **[Platform Guides](./platforms.md)** — Get the most out of Finance on your specific device.

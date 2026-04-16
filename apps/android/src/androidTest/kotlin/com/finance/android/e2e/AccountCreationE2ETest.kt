@@ -3,8 +3,11 @@
 package com.finance.android.e2e
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollToNode
 import org.junit.Test
 import com.finance.android.e2e.robot.AccountRobot
 import com.finance.android.e2e.robot.DashboardRobot
@@ -29,6 +32,7 @@ class AccountCreationE2ETest : BaseE2ETest() {
 
         dash.waitForDashboardLoaded()
         dash.tapNetWorthCard()
+        acct.waitForAccountsScreen()
         acct.tapAddAccountFab()
         acct.assertCreateFormVisible()
     }
@@ -44,6 +48,7 @@ class AccountCreationE2ETest : BaseE2ETest() {
 
         dash.waitForDashboardLoaded()
         dash.tapNetWorthCard()
+        acct.waitForAccountsScreen()
         acct.tapAddAccountFab()
         acct.assertCreateFormVisible()
 
@@ -66,6 +71,7 @@ class AccountCreationE2ETest : BaseE2ETest() {
 
         dash.waitForDashboardLoaded()
         dash.tapNetWorthCard()
+        acct.waitForAccountsScreen()
         acct.tapAddAccountFab()
         acct.assertAccountTypeDropdownVisible()
     }
@@ -79,7 +85,17 @@ class AccountCreationE2ETest : BaseE2ETest() {
 
         dash.waitForDashboardLoaded()
         dash.tapNetWorthCard()
-        AccountRobot(composeTestRule).tapAddAccountFab()
+        AccountRobot(composeTestRule).apply {
+            waitForAccountsScreen()
+            tapAddAccountFab()
+        }
+        // Wait for the form to fully render before scrolling
+        composeTestRule.waitForIdle()
+        composeTestRule.onNode(hasScrollToNodeAction())
+            .performScrollToNode(hasContentDescription("Save account"))
+        // Allow scroll to settle — nested Scaffold double top bar
+        // can delay final layout on API 34 emulators
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithContentDescription("Save account")
             .assertIsDisplayed()
     }

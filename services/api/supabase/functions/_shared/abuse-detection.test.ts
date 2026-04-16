@@ -164,7 +164,7 @@ Deno.test('recordAbuseSignal — retryAfterSeconds is 0 when reset_at is in the 
 Deno.test('checkAbuseStatus — returns not blocked when under threshold', async () => {
   const resetAt = new Date(Date.now() + 60_000).toISOString();
   const client = createMockRpcClient({
-    data: { allowed: true, remaining: 999996, reset_at: resetAt, current_count: 3 },
+    data: { current_count: 3, reset_at: resetAt },
     error: null,
   });
 
@@ -177,7 +177,7 @@ Deno.test('checkAbuseStatus — returns not blocked when under threshold', async
 Deno.test('checkAbuseStatus — returns blocked when current_count exceeds maxErrors', async () => {
   const resetAt = new Date(Date.now() + 30_000).toISOString();
   const client = createMockRpcClient({
-    data: { allowed: true, remaining: 999993, reset_at: resetAt, current_count: 6 },
+    data: { current_count: 6, reset_at: resetAt },
     error: null,
   });
 
@@ -189,20 +189,44 @@ Deno.test('checkAbuseStatus — returns blocked when current_count exceeds maxEr
   assertEquals(result.retryAfterSeconds! > 0, true);
 });
 
-Deno.test('checkAbuseStatus — uses high maxRequests to avoid RPC blocking', async () => {
+Deno.test(
+  'checkAbuseStatus — calls read-only get_rate_limit_status RPC (not check_rate_limit)',
+  async () => {
+    const { client, calls } = createCapturingRpcClient({
+      data: {
+        current_count: 2,
+        reset_at: new Date().toISOString(),
+      },
+      error: null,
+    });
+
+    await checkAbuseStatus(client, 'test-id', testThreshold);
+
+    assertEquals(calls.length, 1);
+    assertEquals(calls[0].fn, 'get_rate_limit_status');
+    assertEquals(calls[0].params?.p_key, 'abuse-errors:test-function:test-id');
+    assertEquals(calls[0].params?.p_window_seconds, 60);
+    // Must NOT send p_max_requests — read-only RPC does not need it
+    assertEquals(calls[0].params?.p_max_requests, undefined);
+  },
+);
+
+Deno.test('checkAbuseStatus — does not increment counter (no p_max_requests param)', async () => {
   const { client, calls } = createCapturingRpcClient({
-    data: {
-      allowed: true,
-      remaining: 999997,
-      reset_at: new Date().toISOString(),
-      current_count: 2,
-    },
+    data: { current_count: 1, reset_at: new Date().toISOString() },
     error: null,
   });
 
-  await checkAbuseStatus(client, 'test-id', testThreshold);
+  // Call multiple times — counter should never be incremented
+  await checkAbuseStatus(client, 'test-no-increment', testThreshold);
+  await checkAbuseStatus(client, 'test-no-increment', testThreshold);
+  await checkAbuseStatus(client, 'test-no-increment', testThreshold);
 
-  assertEquals(calls[0].params?.p_max_requests, 999999);
+  // All calls should be to the read-only RPC
+  assertEquals(calls.length, 3);
+  for (const call of calls) {
+    assertEquals(call.fn, 'get_rate_limit_status');
+  }
 });
 
 Deno.test('checkAbuseStatus — fails open on RPC error', async () => {
@@ -227,7 +251,7 @@ Deno.test('checkAbuseStatus — fails open on RPC throw', async () => {
 Deno.test('checkAbuseStatus — exactly at maxErrors is not blocked', async () => {
   const resetAt = new Date(Date.now() + 60_000).toISOString();
   const client = createMockRpcClient({
-    data: { allowed: true, remaining: 999994, reset_at: resetAt, current_count: 5 },
+    data: { current_count: 5, reset_at: resetAt },
     error: null,
   });
 
@@ -240,7 +264,7 @@ Deno.test('checkAbuseStatus — exactly at maxErrors is not blocked', async () =
 Deno.test('checkAbuseStatus — one over maxErrors is blocked', async () => {
   const resetAt = new Date(Date.now() + 60_000).toISOString();
   const client = createMockRpcClient({
-    data: { allowed: true, remaining: 999993, reset_at: resetAt, current_count: 6 },
+    data: { current_count: 6, reset_at: resetAt },
     error: null,
   });
 

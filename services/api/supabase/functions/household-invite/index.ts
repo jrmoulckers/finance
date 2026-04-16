@@ -22,6 +22,7 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { validateEnv } from '../_shared/env.ts';
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
 import {
   createdResponse,
@@ -50,6 +51,10 @@ serve(async (req: Request): Promise<Response> => {
 
   const logger = createLogger('household-invite');
   logger.info('Request received', { method: req.method });
+
+  // Validate required environment variables (#616)
+  const envError = validateEnv('household-invite', req);
+  if (envError) return envError;
 
   try {
     // All operations require authentication

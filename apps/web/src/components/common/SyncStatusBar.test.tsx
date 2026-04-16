@@ -10,6 +10,8 @@ const syncStatusMock = {
   lastSyncTime: null as string | null,
   isSyncing: false,
   syncNow: vi.fn(),
+  authError: false,
+  conflictCount: 0,
 };
 
 vi.mock('../../hooks/useSyncStatus', () => ({
@@ -33,6 +35,8 @@ describe('SyncStatusBar', () => {
     syncStatusMock.lastSyncTime = null;
     syncStatusMock.isSyncing = false;
     syncStatusMock.syncNow.mockClear();
+    syncStatusMock.authError = false;
+    syncStatusMock.conflictCount = 0;
     vi.mocked(getUnresolvedConflicts).mockResolvedValue([]);
   });
 
