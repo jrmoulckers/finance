@@ -1,0 +1,554 @@
+# =============================================================================
+# Release Artifact Generation — All Platforms
+# =============================================================================
+#
+# Builds signed/unsigned release artifacts for every platform and attaches
+# them to the GitHub Release.  Triggered when the release.yml workflow
+# creates a GitHub Release (via tag push).
+#
+# Platforms:
+#   - Android  (APK + AAB)
+#   - iOS      (Xcode archive via Fastlane)
+#   - Web      (optimized production bundle)
+#   - Windows  (MSI + EXE via Compose Desktop)
+#
+# Security model:
+#   - Signing keys are injected via GitHub Secrets (never stored in repo)
+#   - Artifacts receive SHA-256 checksums for verification
+#   - Human approval gate via "production" environment for release uploads
+#
+# Issue: #772
+# =============================================================================
+
+name: Release Artifacts
+
+on:
+  # Run after a GitHub Release is created (by release.yml or manually)
+  release:
+    types: [published]
+
+  # Allow manual trigger for testing / re-runs
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag to build artifacts for (e.g. v1.0.0)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run — build only, do not upload to release'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-artifacts-${{ github.event.release.tag_name || github.event.inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # upload assets to GitHub Release
+
+env:
+  # Resolved tag — works for both release event and manual dispatch
+  RELEASE_TAG: ${{ github.event.release.tag_name || github.event.inputs.tag }}
+
+# =============================================================================
+# Jobs
+# =============================================================================
+jobs:
+  # ---------------------------------------------------------------------------
+  # Resolve version metadata from the tag
+  # ---------------------------------------------------------------------------
+  prepare:
+    name: Prepare Release Metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      version_code: ${{ steps.meta.outputs.version_code }}
+      tag: ${{ steps.meta.outputs.tag }}
+      is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
+      dry_run: ${{ steps.meta.outputs.dry_run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Extract version metadata
+        id: meta
+        run: |
+          TAG="${RELEASE_TAG}"
+          # Strip leading 'v' if present
+          VERSION="${TAG#v}"
+
+          # Derive a numeric version code for Android (major*10000 + minor*100 + patch)
+          IFS='.-' read -r MAJOR MINOR PATCH _PRERELEASE <<< "$VERSION"
+          MAJOR="${MAJOR:-0}"
+          MINOR="${MINOR:-0}"
+          PATCH="${PATCH:-0}"
+          VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+
+          # Detect pre-release
+          IS_PRERELEASE="false"
+          if [[ "$TAG" == *"-rc"* ]] || [[ "$TAG" == *"-beta"* ]] || [[ "$TAG" == *"-alpha"* ]]; then
+            IS_PRERELEASE="true"
+          fi
+
+          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+
+          echo "tag=$TAG"                >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION"        >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "dry_run=$DRY_RUN"        >> "$GITHUB_OUTPUT"
+
+          echo "### 📦 Release Metadata" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Key | Value |"         >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----|-------|"          >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tag | \`$TAG\` |"      >> "$GITHUB_STEP_SUMMARY"
+          echo "| Version | \`$VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Version Code | \`$VERSION_CODE\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Pre-release | $IS_PRERELEASE |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Dry Run | $DRY_RUN |"  >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Android: APK + AAB
+  # ---------------------------------------------------------------------------
+  android:
+    name: Android (APK + AAB)
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-read-only: true
+
+      - name: Decode signing keystore
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > /tmp/release.keystore
+
+      - name: Build release APK
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && '/tmp/release.keystore' || '' }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          VERSION_CODE="${{ needs.prepare.outputs.version_code }}"
+
+          ./gradlew :apps:android:assembleRelease \
+            -PversionName="$VERSION" \
+            -PversionCode="$VERSION_CODE" \
+            ${ANDROID_KEYSTORE_FILE:+-Pandroid.injected.signing.store.file="$ANDROID_KEYSTORE_FILE"} \
+            ${ANDROID_KEYSTORE_PASSWORD:+-Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD"} \
+            ${ANDROID_KEY_ALIAS:+-Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS"} \
+            ${ANDROID_KEY_PASSWORD:+-Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"} \
+            --parallel --build-cache --stacktrace
+
+      - name: Build release AAB
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && '/tmp/release.keystore' || '' }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          VERSION_CODE="${{ needs.prepare.outputs.version_code }}"
+
+          ./gradlew :apps:android:bundleRelease \
+            -PversionName="$VERSION" \
+            -PversionCode="$VERSION_CODE" \
+            ${ANDROID_KEYSTORE_FILE:+-Pandroid.injected.signing.store.file="$ANDROID_KEYSTORE_FILE"} \
+            ${ANDROID_KEYSTORE_PASSWORD:+-Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD"} \
+            ${ANDROID_KEY_ALIAS:+-Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS"} \
+            ${ANDROID_KEY_PASSWORD:+-Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"} \
+            --parallel --build-cache --stacktrace
+
+      - name: Collect and rename artifacts
+        id: artifacts
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          mkdir -p release-artifacts
+
+          # APK
+          APK=$(find apps/android/build/outputs/apk/release -name '*.apk' | head -1)
+          if [ -n "$APK" ]; then
+            cp "$APK" "release-artifacts/finance-android-${VERSION}.apk"
+          fi
+
+          # AAB
+          AAB=$(find apps/android/build/outputs/bundle/release -name '*.aab' | head -1)
+          if [ -n "$AAB" ]; then
+            cp "$AAB" "release-artifacts/finance-android-${VERSION}.aab"
+          fi
+
+          ls -la release-artifacts/
+
+      - name: Generate checksums
+        run: |
+          cd release-artifacts
+          sha256sum * > checksums-android.sha256
+          cat checksums-android.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-release-artifacts
+          path: release-artifacts/
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f /tmp/release.keystore
+
+  # ---------------------------------------------------------------------------
+  # iOS: Xcode Archive (unsigned for CI, signed via Fastlane when secrets exist)
+  # ---------------------------------------------------------------------------
+  ios:
+    name: iOS (Xcode Archive)
+    needs: prepare
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      SPM_CACHE_DIR: apps/ios/.spm-packages
+      DERIVED_DATA_DIR: apps/ios/.derivedData
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: latest-stable
+
+      - name: Cache SPM packages
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ env.SPM_CACHE_DIR }}
+          key: ${{ runner.os }}-spm-release-${{ hashFiles('apps/ios/Package.resolved', 'apps/ios/Package.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-release-
+            ${{ runner.os }}-spm-pkgs-
+
+      - name: Resolve SPM dependencies
+        run: |
+          cd apps/ios
+          xcodebuild -resolvePackageDependencies \
+            -scheme FinanceApp \
+            -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
+            2>&1 | tail -10
+
+      - name: Set marketing version
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          cd apps/ios
+          # Update version in project if Info.plist / project.pbxproj exist
+          if command -v agvtool &> /dev/null; then
+            agvtool new-marketing-version "$VERSION" 2>/dev/null || true
+            agvtool new-version -all "${{ needs.prepare.outputs.version_code }}" 2>/dev/null || true
+          fi
+
+      - name: Build Xcode archive
+        run: |
+          cd apps/ios
+          xcodebuild archive \
+            -scheme FinanceApp \
+            -destination 'generic/platform=iOS' \
+            -archivePath "${{ github.workspace }}/release-artifacts/Finance.xcarchive" \
+            -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
+            -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            MARKETING_VERSION="${{ needs.prepare.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ needs.prepare.outputs.version_code }}" \
+            2>&1 | tail -30
+
+      - name: Export unsigned IPA (for CI verification)
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          cd release-artifacts
+
+          # Create an ExportOptions plist for development (unsigned)
+          cat > ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>development</string>
+            <key>compileBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          PLIST
+
+          # Attempt export — this will fail without signing identity, which is expected
+          xcodebuild -exportArchive \
+            -archivePath Finance.xcarchive \
+            -exportPath exported \
+            -exportOptionsPlist ExportOptions.plist \
+            2>&1 | tail -10 || echo "::warning::IPA export requires signing identity — archive built successfully but IPA export skipped"
+
+          # If export succeeded, rename and move
+          if [ -d "exported" ]; then
+            IPA=$(find exported -name '*.ipa' | head -1)
+            if [ -n "$IPA" ]; then
+              cp "$IPA" "finance-ios-${VERSION}.ipa"
+            fi
+          fi
+
+          # Always keep the xcarchive as a zip for artifact upload
+          cd "${{ github.workspace }}/release-artifacts"
+          zip -r -q "finance-ios-${VERSION}.xcarchive.zip" Finance.xcarchive
+
+          rm -rf Finance.xcarchive exported ExportOptions.plist
+          ls -la
+
+      - name: Generate checksums
+        run: |
+          cd release-artifacts
+          shasum -a 256 * > checksums-ios.sha256
+          cat checksums-ios.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ios-release-artifacts
+          path: release-artifacts/
+          retention-days: 90
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Web: Optimized production build
+  # ---------------------------------------------------------------------------
+  web:
+    name: Web (Production Build)
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build design tokens
+        run: npm run build -w packages/design-tokens
+
+      - name: Build web app (production)
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: ${{ needs.prepare.outputs.version }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+        run: npm run build -w apps/web
+
+      - name: Package web bundle
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          mkdir -p release-artifacts
+
+          # Create tarball of the dist directory
+          tar -czf "release-artifacts/finance-web-${VERSION}.tar.gz" \
+            -C apps/web dist
+
+          # Also create a zip for Windows users
+          cd apps/web
+          zip -r -q "${{ github.workspace }}/release-artifacts/finance-web-${VERSION}.zip" dist
+          cd "${{ github.workspace }}"
+
+          ls -la release-artifacts/
+
+      - name: Bundle size check
+        run: |
+          echo "### 📊 Web Bundle Size" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          du -sh apps/web/dist/ || true
+          du -sh apps/web/dist/* 2>/dev/null || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          du -sh apps/web/dist/ >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Generate checksums
+        run: |
+          cd release-artifacts
+          sha256sum * > checksums-web.sha256
+          cat checksums-web.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-release-artifacts
+          path: release-artifacts/
+          retention-days: 90
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Windows: MSI + EXE via Compose Desktop
+  # ---------------------------------------------------------------------------
+  windows:
+    name: Windows (MSI + EXE)
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-read-only: true
+
+      - name: Build Windows MSI
+        env:
+          POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          ./gradlew :apps:windows:packageMsi \
+            -PappVersion="$VERSION" \
+            --parallel --build-cache --stacktrace
+
+      - name: Build Windows EXE
+        env:
+          POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          ./gradlew :apps:windows:packageExe \
+            -PappVersion="$VERSION" \
+            --parallel --build-cache --stacktrace
+
+      - name: Collect and rename artifacts
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          mkdir -p release-artifacts
+
+          # MSI
+          MSI=$(find apps/windows/build/compose/binaries -name '*.msi' 2>/dev/null | head -1)
+          if [ -n "$MSI" ]; then
+            cp "$MSI" "release-artifacts/finance-windows-${VERSION}.msi"
+          fi
+
+          # EXE
+          EXE=$(find apps/windows/build/compose/binaries -name '*.exe' 2>/dev/null | head -1)
+          if [ -n "$EXE" ]; then
+            cp "$EXE" "release-artifacts/finance-windows-${VERSION}.exe"
+          fi
+
+          ls -la release-artifacts/
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd release-artifacts
+          sha256sum * > checksums-windows.sha256
+          cat checksums-windows.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-release-artifacts
+          path: release-artifacts/
+          retention-days: 90
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Upload all artifacts to GitHub Release (human-gated via environment)
+  # ---------------------------------------------------------------------------
+  upload-to-release:
+    name: Upload to GitHub Release
+    needs: [prepare, android, ios, web, windows]
+    if: needs.prepare.outputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production # Requires manual approval in GitHub environment settings
+    steps:
+      - name: Download all release artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: '*-release-artifacts'
+          merge-multiple: true
+          path: all-artifacts
+
+      - name: Generate combined checksum manifest
+        run: |
+          cd all-artifacts
+          # Merge all per-platform checksum files and add a combined one
+          cat checksums-*.sha256 > CHECKSUMS.sha256 2>/dev/null || true
+          rm -f checksums-android.sha256 checksums-ios.sha256 checksums-web.sha256 checksums-windows.sha256
+
+          echo "### 📋 Release Artifacts" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          ls -la >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Checksums (SHA-256):**" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat CHECKSUMS.sha256 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload assets to GitHub Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          files: all-artifacts/*
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

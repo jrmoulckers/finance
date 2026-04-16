@@ -1,5 +1,11 @@
 name: Release
 
+# =============================================================================
+# Creates a GitHub Release from a version tag.
+# The `release-artifacts.yml` workflow then builds platform binaries and
+# uploads them to this release (see docs/release-artifacts-runbook.md).
+# =============================================================================
+
 on:
   push:
     tags:
@@ -44,3 +50,11 @@ jobs:
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "### ✅ Release created: \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Platform artifacts will be built by the **Release Artifacts** workflow" >> "$GITHUB_STEP_SUMMARY"
+          echo "and attached to this release after human approval." >> "$GITHUB_STEP_SUMMARY"
