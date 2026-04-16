@@ -2,6 +2,7 @@
 
 package com.finance.desktop
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,6 +23,7 @@ import com.finance.desktop.screens.GoalsScreen
 import com.finance.desktop.screens.LockScreen
 import com.finance.desktop.screens.SettingsScreen
 import com.finance.desktop.screens.TransactionsScreen
+import com.finance.desktop.screens.VoiceTransactionOverlay
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.AuthViewModel
 
@@ -31,6 +33,8 @@ import com.finance.desktop.viewmodel.AuthViewModel
  * Applies [FinanceDesktopTheme] (Material 3 with design-token colors) and
  * gates access behind Windows Hello authentication when configured. Once
  * authenticated, renders the sidebar navigation shell with all core screens.
+ * The [VoiceTransactionOverlay] is layered on top for voice-driven transaction
+ * entry (activated via Ctrl+Shift+V).
  *
  * ## Authentication Flow
  *
@@ -66,15 +70,20 @@ fun FinanceApp(shortcutHandler: ShortcutHandler) {
                 )
             } else {
                 // Main app — authenticated or auth not required
-                SidebarNavigation(shortcutHandler = shortcutHandler) { screen ->
-                    when (screen) {
-                        Screen.Dashboard -> DashboardScreen()
-                        Screen.Accounts -> AccountsScreen()
-                        Screen.Transactions -> TransactionsScreen()
-                        Screen.Budgets -> BudgetsScreen()
-                        Screen.Goals -> GoalsScreen()
-                        Screen.Settings -> SettingsScreen()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    SidebarNavigation(shortcutHandler = shortcutHandler) { screen ->
+                        when (screen) {
+                            Screen.Dashboard -> DashboardScreen()
+                            Screen.Accounts -> AccountsScreen()
+                            Screen.Transactions -> TransactionsScreen()
+                            Screen.Budgets -> BudgetsScreen()
+                            Screen.Goals -> GoalsScreen()
+                            Screen.Settings -> SettingsScreen()
+                        }
                     }
+
+                    // Voice transaction overlay — rendered on top of all content
+                    VoiceTransactionOverlay()
                 }
             }
         }

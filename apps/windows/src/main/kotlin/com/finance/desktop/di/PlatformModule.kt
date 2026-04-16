@@ -3,6 +3,8 @@
 package com.finance.desktop.di
 
 import com.finance.desktop.notifications.DesktopNotificationManager
+import com.finance.desktop.voice.VoiceCommandManager
+import com.finance.desktop.voice.VoiceCommandParser
 import com.finance.desktop.widgets.WidgetContentRenderer
 import com.finance.desktop.widgets.WidgetDataProvider
 import com.finance.desktop.widgets.WidgetRegistrationManager
@@ -16,6 +18,8 @@ import org.koin.dsl.module
  * - [WidgetDataProvider] — supplies financial data to Windows 11 widget board
  * - [WidgetContentRenderer] — renders Adaptive Card JSON for widget display
  * - [WidgetRegistrationManager] — manages widget lifecycle and registration
+ * - [VoiceCommandManager] — Cortana/voice command integration
+ * - [VoiceCommandParser] — NLP parsing for voice transaction input
  *
  * The notification manager is provided as a singleton. Koin lifecycle
  * management ensures consistent access across all injection sites.
@@ -31,4 +35,8 @@ val platformModule = module {
     single { WidgetDataProvider(get(), get(), get()) }
     single { WidgetContentRenderer() }
     single { WidgetRegistrationManager(get(), get()) }
+
+    // ── Voice / Cortana integration ──
+    single { VoiceCommandManager.create() }
+    single { VoiceCommandParser() }
 }

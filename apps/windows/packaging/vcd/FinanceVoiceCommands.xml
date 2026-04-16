@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Voice Command Definitions (VCD) for Finance Windows desktop application.
+
+  Declares voice commands that activate the Finance app from Cortana or the
+  Windows voice activation surface. When a user speaks one of these commands,
+  Windows launches the Finance app with the parsed voice input.
+
+  References:
+    - https://learn.microsoft.com/uwp/schemas/voicecommands/voice-command-elements-and-attributes-1-2
+    - https://learn.microsoft.com/cortana/skills/
+
+  NOTE: VCD registration requires the app to be packaged as MSIX and installed
+  via the Microsoft Store or sideloaded with developer mode.
+-->
+<VoiceCommands xmlns="http://schemas.microsoft.com/voicecommands/1.2">
+  <CommandSet xml:lang="en-us" Name="FinanceCommandSet_en-us">
+    <AppName>Finance</AppName>
+
+    <Example>Spent 42 dollars on groceries</Example>
+
+    <!-- Quick expense entry -->
+    <Command Name="AddExpense">
+      <Example>Spent 42 dollars on groceries</Example>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        spent {amount} [dollars] on {category}
+      </ListenFor>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        paid {amount} [dollars] for {description}
+      </ListenFor>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        bought {description} for {amount} [dollars]
+      </ListenFor>
+      <Feedback>Adding expense of {amount} for {category}…</Feedback>
+      <Navigate />
+    </Command>
+
+    <!-- Quick income entry -->
+    <Command Name="AddIncome">
+      <Example>Received 500 dollars from payroll</Example>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        received {amount} [dollars] from {description}
+      </ListenFor>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        earned {amount} [dollars] from {description}
+      </ListenFor>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        add {amount} [dollars] to {category}
+      </ListenFor>
+      <Feedback>Adding income of {amount}…</Feedback>
+      <Navigate />
+    </Command>
+
+    <!-- Show dashboard -->
+    <Command Name="ShowDashboard">
+      <Example>Show my finances</Example>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        show [my] finances
+      </ListenFor>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        show [my] dashboard
+      </ListenFor>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        how much have I spent [today]
+      </ListenFor>
+      <Feedback>Opening Finance dashboard…</Feedback>
+      <Navigate />
+    </Command>
+
+    <!-- Show budgets -->
+    <Command Name="ShowBudgets">
+      <Example>Show my budgets</Example>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        show [my] budgets
+      </ListenFor>
+      <ListenFor RequireAppName="BeforeOrAfterPhrase">
+        check [my] budget [status]
+      </ListenFor>
+      <Feedback>Opening budgets…</Feedback>
+      <Navigate />
+    </Command>
+
+    <!-- Phrase lists for dynamic content -->
+    <PhraseList Label="amount">
+      <Item>5</Item>
+      <Item>10</Item>
+      <Item>20</Item>
+      <Item>50</Item>
+      <Item>100</Item>
+    </PhraseList>
+
+    <PhraseList Label="category">
+      <Item>groceries</Item>
+      <Item>food</Item>
+      <Item>dining</Item>
+      <Item>transportation</Item>
+      <Item>gas</Item>
+      <Item>rent</Item>
+      <Item>utilities</Item>
+      <Item>entertainment</Item>
+      <Item>shopping</Item>
+      <Item>healthcare</Item>
+      <Item>savings</Item>
+      <Item>investments</Item>
+    </PhraseList>
+
+    <PhraseList Label="description">
+      <Item>lunch</Item>
+      <Item>dinner</Item>
+      <Item>coffee</Item>
+      <Item>payroll</Item>
+      <Item>salary</Item>
+    </PhraseList>
+  </CommandSet>
+</VoiceCommands>
