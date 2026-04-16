@@ -72,16 +72,23 @@ final class RepositoryProvider: @unchecked Sendable {
     /// Creates a repository provider with the given implementations.
     ///
     /// - Parameters:
-    ///   - accounts:     Account repository (defaults to KMP-bridged).
-    ///   - transactions: Transaction repository (defaults to KMP-bridged).
-    ///   - budgets:      Budget repository (defaults to KMP-bridged).
-    ///   - goals:        Goal repository (defaults to KMP-bridged).
+    ///   - accounts:     Account repository (defaults to Swift Export bridged).
+    ///   - transactions: Transaction repository (defaults to Swift Export bridged).
+    ///   - budgets:      Budget repository (defaults to Swift Export bridged).
+    ///   - goals:        Goal repository (defaults to Swift Export bridged).
+    ///   - categories:   Category repository (defaults to Swift Export bridged).
+    ///
+    /// Since Sprint 7, the default implementations delegate through the
+    /// ``SwiftExportBridgeProvider`` which auto-selects between the live
+    /// KMP XCFramework and the in-process stub. The legacy `KMP*Repository`
+    /// types are retained for backward compatibility but new code should
+    /// use the `Bridged*Repository` adapters. Refs #414, #289
     init(
-        accounts: any AccountRepository = KMPAccountRepository(),
-        transactions: any TransactionRepository = KMPTransactionRepository(),
-        budgets: any BudgetRepository = KMPBudgetRepository(),
-        goals: any GoalRepository = KMPGoalRepository(),
-        categories: any CategoryRepository = KMPCategoryRepository()
+        accounts: any AccountRepository = BridgedAccountRepository(),
+        transactions: any TransactionRepository = BridgedTransactionRepository(),
+        budgets: any BudgetRepository = BridgedBudgetRepository(),
+        goals: any GoalRepository = BridgedGoalRepository(),
+        categories: any CategoryRepository = BridgedCategoryRepository()
     ) {
         self.accounts = accounts
         self.transactions = transactions
