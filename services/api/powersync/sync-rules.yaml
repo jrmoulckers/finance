@@ -44,7 +44,7 @@ bucket_definitions:
       # Financial accounts (checking, savings, credit cards, etc.)
       - >
         SELECT id, household_id, name, type, currency_code, balance_cents,
-               is_active, icon, color, sort_order,
+               is_active, icon, color, sort_order, owner_id,
                created_at, updated_at, deleted_at
         FROM accounts
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
@@ -54,6 +54,7 @@ bucket_definitions:
         SELECT id, household_id, account_id, category_id, amount_cents,
                currency_code, type, payee, note, date, is_recurring,
                recurring_rule, transfer_account_id, status,
+               transfer_transaction_id, recurring_rule_id, owner_id,
                created_at, updated_at, deleted_at
         FROM transactions
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
@@ -61,7 +62,7 @@ bucket_definitions:
       # Spending / income categories
       - >
         SELECT id, household_id, name, icon, color, parent_id, is_income,
-               sort_order,
+               sort_order, owner_id,
                created_at, updated_at, deleted_at
         FROM categories
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
@@ -69,7 +70,7 @@ bucket_definitions:
       # Budget allocations per category/period
       - >
         SELECT id, household_id, category_id, amount_cents, currency_code,
-               period, start_date, end_date,
+               period, start_date, end_date, is_rollover, owner_id,
                created_at, updated_at, deleted_at
         FROM budgets
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
@@ -78,6 +79,7 @@ bucket_definitions:
       - >
         SELECT id, household_id, name, target_cents, current_cents,
                currency_code, target_date, icon, color,
+               account_id, status, owner_id,
                created_at, updated_at, deleted_at
         FROM goals
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
@@ -108,7 +110,7 @@ bucket_definitions:
         SELECT id, household_id, account_id, category_id, amount_cents,
                currency_code, type, payee, note, frequency, day_of_month,
                day_of_week, start_date, end_date, last_generated_date,
-               next_due_date, is_active,
+               next_due_date, is_active, owner_id,
                created_at, updated_at, deleted_at
         FROM recurring_transaction_templates
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
