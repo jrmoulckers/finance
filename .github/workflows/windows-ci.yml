@@ -2,10 +2,22 @@ name: Windows CI
 on:
   push:
     branches: [main]
-    paths: ['apps/windows/**', 'packages/**']
+    paths:
+      - 'apps/windows/**'
+      - 'packages/**'
+      - 'build-logic/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
   pull_request:
     branches: [main]
-    paths: ['apps/windows/**', 'packages/**']
+    paths:
+      - 'apps/windows/**'
+      - 'packages/**'
+      - 'build-logic/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
   workflow_dispatch:
 concurrency:
   group: windows-${{ github.ref }}

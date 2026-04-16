@@ -3,8 +3,44 @@ name: Lint & Format
 on:
   push:
     branches: [main]
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.jsx'
+      - '**/*.mjs'
+      - '**/*.cjs'
+      - '**/*.json'
+      - '**/*.css'
+      - '**/*.html'
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '.eslintrc*'
+      - 'eslint.config.*'
+      - '.prettierrc*'
+      - '.prettierignore'
+      - 'package.json'
+      - 'package-lock.json'
   pull_request:
     branches: [main]
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.jsx'
+      - '**/*.mjs'
+      - '**/*.cjs'
+      - '**/*.json'
+      - '**/*.css'
+      - '**/*.html'
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '.eslintrc*'
+      - 'eslint.config.*'
+      - '.prettierrc*'
+      - '.prettierignore'
+      - 'package.json'
+      - 'package-lock.json'
 
 concurrency:
   group: lint-${{ github.ref }}

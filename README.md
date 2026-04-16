@@ -1,8 +1,12 @@
 # Finance
 
 ![CI — Shared Packages](https://github.com/jrmoulckers/finance/actions/workflows/ci.yml/badge.svg)
-![Lint & Format](https://github.com/jrmoulckers/finance/actions/workflows/lint-format.yml/badge.svg)
+![Android CI](https://github.com/jrmoulckers/finance/actions/workflows/android-ci.yml/badge.svg)
+![iOS CI](https://github.com/jrmoulckers/finance/actions/workflows/ios-ci.yml/badge.svg)
 ![Web CI](https://github.com/jrmoulckers/finance/actions/workflows/web-ci.yml/badge.svg)
+![Windows CI](https://github.com/jrmoulckers/finance/actions/workflows/windows-ci.yml/badge.svg)
+![Lint & Format](https://github.com/jrmoulckers/finance/actions/workflows/lint-format.yml/badge.svg)
+![Security](https://github.com/jrmoulckers/finance/actions/workflows/security.yml/badge.svg)
 ![PR Title](https://github.com/jrmoulckers/finance/actions/workflows/pr-title.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-BSL--1.1-blue)
 

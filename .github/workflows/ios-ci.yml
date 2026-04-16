@@ -3,10 +3,22 @@ name: iOS CI
 on:
   push:
     branches: [main]
-    paths: ['apps/ios/**', 'packages/**']
+    paths:
+      - 'apps/ios/**'
+      - 'packages/**'
+      - 'build-logic/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
   pull_request:
     branches: [main]
-    paths: ['apps/ios/**', 'packages/**']
+    paths:
+      - 'apps/ios/**'
+      - 'packages/**'
+      - 'build-logic/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
   workflow_dispatch:
 
 concurrency:
