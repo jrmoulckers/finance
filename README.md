@@ -60,7 +60,7 @@ The Finance app is in **active development** with core infrastructure complete a
 | 3     | Android App       | 🔄 In Progress |
 | 4     | iOS App           | 🔄 In Progress |
 | 5     | Web PWA           | 🔄 In Progress |
-| 6     | Windows App       | 🔲 Planned     |
+| 6     | Windows App       | 🔄 In Progress |
 | 7     | Advanced Features | 🔄 In Progress |
 | 8     | Polish & Launch   | 🔲 Planned     |
 
@@ -100,8 +100,12 @@ All workflows run on GitHub Actions — see badges at the top of this README.
 | Workflow                                                                                  | What it checks                                 |
 | ----------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | [CI — Shared Packages](https://github.com/jrmoulckers/finance/actions/workflows/ci.yml)   | KMP build + JVM unit tests for `packages/*`    |
+| [Android CI](https://github.com/jrmoulckers/finance/actions/workflows/android-ci.yml)     | Android app build + tests                      |
+| [iOS CI](https://github.com/jrmoulckers/finance/actions/workflows/ios-ci.yml)             | iOS app build + tests                          |
 | [Web CI](https://github.com/jrmoulckers/finance/actions/workflows/web-ci.yml)             | Web app build + tests                          |
+| [Windows CI](https://github.com/jrmoulckers/finance/actions/workflows/windows-ci.yml)     | Windows app build + tests                      |
 | [Lint & Format](https://github.com/jrmoulckers/finance/actions/workflows/lint-format.yml) | ESLint, Prettier, Ktlint across all workspaces |
+| [Security](https://github.com/jrmoulckers/finance/actions/workflows/security.yml)         | CodeQL analysis, dependency review, secrets    |
 | [PR Title](https://github.com/jrmoulckers/finance/actions/workflows/pr-title.yml)         | Conventional commit format for PR titles       |
 
 ## Principles
@@ -230,9 +234,11 @@ npm test
 
 All `npm run` commands work identically on Windows, macOS, and Linux — the `tools/gradle.js` wrapper selects `gradlew` or `gradlew.bat` automatically.
 
+For a detailed walkthrough of Finance's features and first-run setup, see [Getting Started](docs/guides/getting-started.md).
+
 ### Full contributor setup
 
-For VS Code configuration, Copilot agent setup, MCP servers, and commit conventions, see the [Contributing Guide](.github/CONTRIBUTING.md).
+For VS Code configuration, Copilot agent setup, MCP servers, and commit conventions, see the [Contributing Guide](CONTRIBUTING.md).
 
 ## Commands
 
@@ -248,6 +254,8 @@ All commands are run from the repository root.
 | `npm run lint`         | Run linters across all workspaces via Turborepo                                   |
 | `npm run type-check`   | Run TypeScript type checking across all workspaces                                |
 | `npm run format`       | Run formatters across all workspaces                                              |
+| `npm run ci:check`     | Pre-push validation — format:check + lint + type-check                            |
+| `npm run ready-for-pr` | Final validation before marking a PR as ready                                     |
 | `npm run clean`        | Clean all build artifacts (Gradle + Turborepo)                                    |
 
 ### Running Gradle directly

@@ -152,6 +152,7 @@ this pattern:
 - Always include `WHERE deleted_at IS NULL` in reads (soft deletes).
 - Writes must set `is_synced = 0` and `sync_version = 1` to flag records for
   future sync.
+- All new records must include `owner_id` referencing the authenticated user.
 
 ### Soft Deletes
 

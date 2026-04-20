@@ -28,24 +28,27 @@ Each platform provides detection appropriate to its capabilities.
 
 ### Detection Hierarchy
 
-| Level | Detection          | Response                          |
-| ----- | ------------------ | --------------------------------- |
-| 0     | Clean              | Normal operation                  |
-| 1     | Suspicious         | Log + monitor                     |
-| 2     | Compromised        | Disable biometric, require re-auth |
-| 3     | Active Attack      | Clear tokens, lock app            |
-| 4     | Tampered           | Refuse to operate                 |
+| Level | Detection     | Response                           |
+| ----- | ------------- | ---------------------------------- |
+| 0     | Clean         | Normal operation                   |
+| 1     | Suspicious    | Log + monitor                      |
+| 2     | Compromised   | Disable biometric, require re-auth |
+| 3     | Active Attack | Clear tokens, lock app             |
+| 4     | Tampered      | Refuse to operate                  |
 
 ## Implementation Files
 
-| File                                                              | Purpose                        |
-| ----------------------------------------------------------------- | ------------------------------ |
-| `packages/core/src/commonMain/.../RuntimeIntegrityChecker.kt`   | Common interface + types       |
-| `apps/android/src/main/kotlin/.../RootDetector.kt`              | Android root detection         |
-| `apps/android/src/main/kotlin/.../IntegrityVerifier.kt`         | APK signature verification     |
-| `apps/ios/Finance/Security/JailbreakDetector.swift`             | iOS jailbreak detection        |
-| `apps/ios/Finance/Security/IOSDebugDetector.swift`              | iOS debugger detection         |
-| `apps/windows/src/main/kotlin/.../WindowsIntegrityChecker.kt`   | Windows integrity checks       |
+| File                                                          | Purpose                      |
+| ------------------------------------------------------------- | ---------------------------- |
+| `packages/core/src/commonMain/.../RuntimeIntegrityChecker.kt` | Common interface + types     |
+| `apps/android/src/main/kotlin/.../RootDetector.kt`            | Android root detection       |
+| `apps/android/src/main/kotlin/.../IntegrityVerifier.kt`       | APK signature verification   |
+| `apps/ios/Finance/Security/JailbreakDetector.swift`           | iOS jailbreak detection      |
+| `apps/ios/Finance/Security/IOSDebugDetector.swift`            | iOS debugger detection       |
+| `apps/windows/src/main/kotlin/.../WindowsIntegrityChecker.kt` | Windows integrity checks     |
+| `packages/core/src/commonMain/.../BiometricCryptoBinding.kt`  | Biometric crypto common API  |
+| `apps/android/src/main/kotlin/.../BiometricCryptoManager.kt`  | Android CryptoObject binding |
+| `apps/ios/Finance/Security/BiometricCryptoManager.swift`      | iOS Secure Enclave binding   |
 
 ## Privacy Safeguards
 

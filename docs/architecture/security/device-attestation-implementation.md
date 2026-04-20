@@ -30,3 +30,12 @@ running on a genuine, uncompromised device. Extends
 - No device identifiers (IMEI, serial, MAC) collected
 - Attestation IDs are opaque platform-generated values
 - Records deleted with account (GDPR Art. 17)
+
+## Implementation Files
+
+| File                                                                                 | Purpose                       |
+| ------------------------------------------------------------------------------------ | ----------------------------- |
+| `packages/core/src/commonMain/kotlin/com/finance/core/security/DeviceAttestor.kt`    | Common attestation interface  |
+| `apps/android/src/main/kotlin/com/finance/android/security/PlayIntegrityAttestor.kt` | Android Play Integrity client |
+| `apps/ios/Finance/Security/AppAttestManager.swift`                                   | iOS App Attest (DCAppAttest)  |
+| `apps/windows/src/main/kotlin/com/finance/desktop/security/TpmAttestor.kt`           | Windows TPM 2.0 attestation   |

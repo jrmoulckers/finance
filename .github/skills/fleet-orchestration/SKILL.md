@@ -148,10 +148,10 @@ You are working on issue #443: [issue title].
 
 ## Pre-Push Checklist (MANDATORY)
 1. npm run ci:check — must pass clean
-2. If failures: npm run format && npx eslint . --fix, then re-run ci:check
+2. If failures: npm run format && npx eslint . --fix --max-warnings 0, then re-run ci:check
 3. Commit any fixes: git add -A && git commit -m "style(web): fix formatting (#443)"
 4. git fetch origin main && git rebase origin/main
-5. git push origin feat/dashboard-443 --no-verify
+5. $env:HUSKY = "0"; git push origin feat/dashboard-443
 6. gh pr create --title "feat(web): implement dashboard (#443)" \
      --body "## Summary\n[description]\n\n## Issues\nCloses #443\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
@@ -215,7 +215,7 @@ npm run ci:check
 
 # 2. Auto-fix if needed
 npm run format
-npx eslint . --fix
+npx eslint . --fix --max-warnings 0
 npm run ci:check   # confirm clean
 
 # 3. Commit fixes
@@ -225,13 +225,28 @@ git add -A && git commit -m "style(scope): fix formatting (#N)"
 git fetch origin main
 git rebase origin/main
 
-# 5. Push (--no-verify bypasses the interactive pre-push hook)
-git push origin [branch] --no-verify
+# 5. Push (bypass Husky pre-push hook for non-interactive agents)
+$env:HUSKY = "0"
+git push origin [branch]
 
 # 6. Open PR
 gh pr create --title "type(scope): description (#N)" \
   --body "## Summary\n...\n\n## Issues\nCloses #N\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 ```
+
+### Lessons Learned (from 3 waves, 140+ PRs)
+
+These are hard-won operational insights — violating any of these is the most common cause of fleet failures.
+
+| Lesson                                          | Detail                                                                                                                                                                                                                               |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Pre-push sequence is non-negotiable**         | Every agent, every push, every time. Skipping `ci:check` is the #1 source of avoidable CI failures.                                                                                                                                  |
+| **`--max-warnings 0` for lint**                 | ESLint must run with `--max-warnings 0`; otherwise warnings accumulate and CI rejects them.                                                                                                                                          |
+| **`$env:HUSKY = "0"` instead of `--no-verify`** | Setting the env var bypasses Husky cleanly on Windows without `--no-verify`, which can also skip other useful hooks.                                                                                                                 |
+| **Doc agents cannot push autonomously**         | `docs-writer` agents produce commits but cannot push — a human must run the push. This is a known limitation of the pre-push hook's interactivity check. Always note "Needs Human Action: push" in the sprint tracker for doc tasks. |
+| **Worktree branch interference**                | The #1 pain point across all fleet waves. If two agents share a worktree or branch, rebases collide. Every agent MUST have its own isolated worktree and branch. Never reuse worktrees across agents in the same sprint.             |
+| **Always include `Co-authored-by` trailer**     | Omitting it causes the PR title check to flag the commit as non-compliant.                                                                                                                                                           |
+| **Rebase before push, every time**              | Stale branches cause merge conflicts that compound across a fleet. Rebase immediately before push.                                                                                                                                   |
 
 ### Post-Merge Cleanup
 

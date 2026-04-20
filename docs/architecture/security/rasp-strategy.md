@@ -20,13 +20,13 @@ application handling transaction data and cryptographic keys, RASP controls are
 
 ### Current State (from MASVS-RESILIENCE Audit)
 
-| Control                | Android     | iOS              | Web            | Windows        |
-| ---------------------- | ----------- | ---------------- | -------------- | -------------- |
-| Root/Jailbreak detect  | ❌ Not impl | ❌ Not impl      | N/A            | N/A            |
-| Debugger detection     | ⚠️ Partial  | ❌ Not impl      | ⚠️ Partial     | ❌ Not impl    |
-| Code obfuscation       | ⚠️ Partial  | ✅ Bitcode/strip | ⚠️ Source maps | ✅ MSIX signed |
-| Integrity verification | ❌ Not impl | ❌ Not impl      | ✅ SRI/hashes  | ✅ MSIX signed |
-| Anti-instrumentation   | ❌ Not impl | ❌ Not impl      | N/A            | N/A            |
+| Control                | Android        | iOS              | Web            | Windows        |
+| ---------------------- | -------------- | ---------------- | -------------- | -------------- |
+| Root/Jailbreak detect  | ✅ Implemented | ✅ Implemented   | N/A            | N/A            |
+| Debugger detection     | ⚠️ Partial     | ✅ Implemented   | ⚠️ Partial     | ❌ Not impl    |
+| Code obfuscation       | ✅ R8 enabled  | ✅ Bitcode/strip | ✅ No src maps | ✅ MSIX signed |
+| Integrity verification | ✅ Implemented | ❌ Not impl      | ✅ SRI/hashes  | ✅ MSIX signed |
+| Anti-instrumentation   | ❌ Not impl    | ❌ Not impl      | N/A            | N/A            |
 
 **Risk Assessment:** On rooted/jailbroken devices, an attacker can:
 
@@ -500,14 +500,14 @@ RASP telemetry MUST comply with the existing monitoring privacy policy:
 
 ## Implementation Roadmap
 
-| Phase   | Priority | Controls                                 | Effort   | Target           |
+| Phase   | Priority | Controls                                 | Effort   | Status           |
 | ------- | -------- | ---------------------------------------- | -------- | ---------------- |
-| Phase 1 | P0       | Root/jailbreak detection (Android + iOS) | 3-4 days | Pre-launch       |
-| Phase 1 | P0       | APK signature verification (Android)     | 1 day    | Pre-launch       |
-| Phase 1 | P0       | Enable R8 minification (Android)         | 1 hour   | Pre-launch       |
-| Phase 1 | P0       | Disable web source maps (production)     | 1 hour   | Pre-launch       |
+| Phase 1 | P0       | Root/jailbreak detection (Android + iOS) | 3-4 days | ✅ Completed     |
+| Phase 1 | P0       | APK signature verification (Android)     | 1 day    | ✅ Completed     |
+| Phase 1 | P0       | Enable R8 minification (Android)         | 1 hour   | ✅ Completed     |
+| Phase 1 | P0       | Disable web source maps (production)     | 1 hour   | ✅ Completed     |
 | Phase 2 | P1       | Debugger detection (Android + iOS)       | 2-3 days | Launch +1 sprint |
-| Phase 2 | P1       | KMP RuntimeIntegrityChecker interface    | 2 days   | Launch +1 sprint |
+| Phase 2 | P1       | KMP RuntimeIntegrityChecker interface    | 2 days   | ✅ Completed     |
 | Phase 2 | P1       | Security response matrix integration     | 2 days   | Launch +1 sprint |
 | Phase 3 | P2       | Frida detection (Android + iOS)          | 3-4 days | Post-launch      |
 | Phase 3 | P2       | Emulator detection (Android)             | 1 day    | Post-launch      |
@@ -522,3 +522,4 @@ RASP telemetry MUST comply with the existing monitoring privacy policy:
 - MASVS-RESILIENCE Audit (docs/architecture/masvs-resilience-audit.md)
 - Android SafetyNet/Play Integrity API documentation
 - Apple DeviceCheck / App Attest documentation
+- [Implementation Specification](./rasp-implementation.md)

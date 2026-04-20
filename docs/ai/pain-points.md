@@ -108,40 +108,7 @@ What should change to eliminate this pain point?
 
 ### CI/CD
 
-#### PP-0001: `gh pr checks` shows stale CI results
-
-| Field          | Value                            |
-| -------------- | -------------------------------- |
-| **ID**         | PP-0001                          |
-| **Severity**   | 🔴 Critical                      |
-| **Category**   | CI/CD, GitHub CLI                |
-| **First seen** | 2025-06                          |
-| **Status**     | Resolved (workaround documented) |
-| **Owner**      | @devops-engineer                 |
-
-**Description:**
-`gh pr checks <number>` displays results from ALL historical workflow runs on a PR, not just the latest push. Agents interpret stale failures as current, leading to unnecessary fix-push-check cycles.
-
-**Impact:**
-30–60 minutes wasted per occurrence. Agents enter loops attempting to fix already-resolved failures.
-
-**Reproduction steps:**
-
-1. Push a branch with a CI failure
-2. Fix the failure and push again
-3. Run `gh pr checks <number>` — the old failure still appears alongside the new run
-
-**Current workaround:**
-Use `gh run list --branch <branch> --limit 5` instead, then `gh run watch <run-id>`. Documented in [ci-monitoring.md](ci-monitoring.md).
-
-**Suggested fix:**
-GitHub CLI upstream should support `--latest` or `--commit` filtering. Until then, the workaround in `ci-monitoring.md` is canonical.
-
-**Related issues:** None (discovered through agent workflow analysis)
-
----
-
-#### PP-0002: Agents skip `npm run ci:check` before pushing
+#### PP-0002: Agents skip pre-push workflow before pushing
 
 | Field          | Value           |
 | -------------- | --------------- |
@@ -153,25 +120,66 @@ GitHub CLI upstream should support `--latest` or `--commit` filtering. Until the
 | **Owner**      | All agents      |
 
 **Description:**
-Despite documentation in [worktrees.md](worktrees.md) and [fleet-operations.md](fleet-operations.md), agents sometimes push without running `npm run ci:check` first. This causes avoidable CI failures on remote.
+Despite documentation in multiple places, agents sometimes push without running the pre-push workflow first. This causes avoidable CI failures on remote.
 
 **Impact:**
 Each avoidable remote CI failure adds 5–15 minutes of wait time plus a fix-push-recheck cycle. Multiplied across fleet operations, this can add hours to a sprint.
 
-**Reproduction steps:**
-
-1. Agent makes code changes
-2. Agent commits and pushes directly without running `ci:check`
-3. Remote CI fails on formatting/lint that would have been caught locally
-
 **Current workaround:**
-Repeated emphasis in documentation. The pre-push checklist is documented in three places: [worktrees.md](worktrees.md), [fleet-operations.md](fleet-operations.md), and [workflow.md](workflow.md).
+Repeated emphasis in documentation. The canonical pre-push workflow is in [workflow.md](workflow.md).
 
 **Suggested fix:**
+Include the pre-push workflow block in every agent dispatch prompt.
 
-1. Add `npm run ci:check` to the `pre-push` git hook for agent sessions
-2. Create a shell alias or npm script that wraps `git push` with a `ci:check` gate
-3. Consider a Copilot instruction that always includes the checklist when push is mentioned
+---
+
+#### PP-0015: `npm run ci:check` doesn't catch Kotlin/Swift compilation
+
+| Field          | Value            |
+| -------------- | ---------------- |
+| **ID**         | PP-0015          |
+| **Severity**   | 🟡 Medium        |
+| **Category**   | CI/CD            |
+| **First seen** | 2025-07          |
+| **Status**     | Open             |
+| **Owner**      | @devops-engineer |
+
+**Description:**
+`npm run ci:check` only runs format, lint, and type-check for the TypeScript/Node layer. It does not compile Kotlin (KMP) or Swift code. Agents working in `packages/` or `apps/ios/` can push code that passes `ci:check` but fails remote CI's KMP/build checks.
+
+**Impact:**
+KMP and iOS agents encounter CI failures that could have been caught locally. 2–3 occurrences per fleet run.
+
+**Current workaround:**
+`npm run ready-for-pr` includes KMP compilation checks when Kotlin files are changed, but agents are not consistently using it. Remote CI is the source of truth.
+
+**Suggested fix:**
+Document that KMP/Swift agents should run platform-specific build commands locally before pushing (e.g., `./gradlew build` for Kotlin).
+
+---
+
+#### PP-0018: TS 5.9.3 rejects `ignoreDeprecations` locally
+
+| Field          | Value            |
+| -------------- | ---------------- |
+| **ID**         | PP-0018          |
+| **Severity**   | 🟡 Medium        |
+| **Category**   | CI/CD, Tooling   |
+| **First seen** | 2025-07          |
+| **Status**     | Open             |
+| **Owner**      | @devops-engineer |
+
+**Description:**
+TypeScript 5.9.3 rejects the `ignoreDeprecations` compiler option in `tsconfig.json`, causing `npm run type-check` (and therefore `npm run ci:check`) to fail locally even on clean code. Remote CI uses a compatible configuration and is not affected.
+
+**Impact:**
+Agents cannot use `npm run ci:check` as a reliable local gate. The canonical pre-push workflow now skips type-check locally and defers to remote CI.
+
+**Current workaround:**
+The canonical pre-push workflow checks only format and lint locally. Remote CI handles type-check.
+
+**Suggested fix:**
+Pin TypeScript version or update `tsconfig.json` to remove `ignoreDeprecations` when all deprecated APIs have been migrated.
 
 ---
 
@@ -194,12 +202,6 @@ Documentation examples use Unix-style paths (`../wt-agent-branch`), but Windows 
 **Impact:**
 Minor — typically self-correctable, but adds friction for Windows-based development.
 
-**Reproduction steps:**
-
-1. Follow worktree creation instructions on Windows CMD/PowerShell
-2. Path separators may differ from documented examples
-3. Agent may attempt Unix paths that fail on Windows
-
 **Current workaround:**
 Git on Windows accepts forward slashes in most contexts. Agents can normalize paths.
 
@@ -208,34 +210,28 @@ Add a "Windows note" callout to [worktrees.md](worktrees.md) showing both path f
 
 ---
 
-#### PP-0004: No automated detection of stale worktrees
+#### PP-0019: Branch interference when agents share main worktree
 
-| Field          | Value            |
-| -------------- | ---------------- |
-| **ID**         | PP-0004          |
-| **Severity**   | 🟢 Low           |
-| **Category**   | Git / Worktree   |
-| **First seen** | 2025-07          |
-| **Status**     | Open             |
-| **Owner**      | @devops-engineer |
+| Field          | Value          |
+| -------------- | -------------- |
+| **ID**         | PP-0019        |
+| **Severity**   | 🟠 High        |
+| **Category**   | Git / Worktree |
+| **First seen** | 2025-07        |
+| **Status**     | Open           |
+| **Owner**      | All agents     |
 
 **Description:**
-After fleet operations, stale worktrees can accumulate if agents crash or sessions time out before cleanup. There is no automated cleanup or detection mechanism.
+When agents work directly in the main worktree instead of creating their own, they can interfere with each other's branches, stashes, and uncommitted changes. This causes lost work and merge confusion.
 
 **Impact:**
-Disk space waste and confusion when scanning for resumable work. Minor impact.
-
-**Reproduction steps:**
-
-1. Run a fleet operation with multiple agents
-2. One agent session times out before post-merge cleanup
-3. `git worktree list` shows a worktree with no corresponding open PR
+Has caused lost commits and conflicting changes during fleet operations. Significant when multiple agents are active.
 
 **Current workaround:**
-Manual `git worktree list` inspection followed by `git worktree remove`.
+Strict policy: agents MUST always use dedicated worktrees. The main worktree is reserved for human work.
 
 **Suggested fix:**
-Create a `tools/cleanup-worktrees.js` script that compares active worktrees against open PR branches and suggests removal of orphans.
+Already mitigated by worktree policy. Enforce through agent instructions.
 
 ---
 
@@ -252,22 +248,41 @@ Create a `tools/cleanup-worktrees.js` script that compares active worktrees agai
 | **Status**     | Open       |
 
 **Description:**
-Immediately after `git push`, `gh pr view <number> --json mergeable` returns `UNKNOWN` for 10–30 seconds while GitHub computes the merge status. Agents that don't expect this may misinterpret the status.
+Immediately after `git push`, `gh pr view <number> --json mergeable` returns `UNKNOWN` for 10–30 seconds while GitHub computes the merge status.
 
 **Impact:**
-Low — the workaround is a simple retry, but agents not aware of the delay may enter error handling paths unnecessarily.
-
-**Reproduction steps:**
-
-1. Push a new commit to a PR branch
-2. Immediately run `gh pr view <number> --json mergeable`
-3. Result: `UNKNOWN` — GitHub hasn't computed the status yet
+Low — the workaround is a simple retry.
 
 **Current workaround:**
-Wait 10–15 seconds and retry. Documented in [ci-monitoring.md](ci-monitoring.md).
+Wait 10–15 seconds and retry.
 
 **Suggested fix:**
-Already documented. No further action needed unless agents consistently fail to handle this.
+Already documented. No further action needed.
+
+---
+
+#### PP-0013: PowerShell backtick escaping breaks multi-line commands
+
+| Field          | Value               |
+| -------------- | ------------------- |
+| **ID**         | PP-0013             |
+| **Severity**   | 🟠 High             |
+| **Category**   | GitHub CLI, Tooling |
+| **First seen** | 2025-07             |
+| **Status**     | Open                |
+| **Owner**      | All agents          |
+
+**Description:**
+PowerShell uses backtick (`` ` ``) for line continuation, not backslash. Agents frequently generate bash-style multi-line commands (with `\`) that fail silently or produce incorrect results in PowerShell. This affects `gh pr create`, `gh issue create`, and other multi-argument commands. Observed in 6+ agents across fleet operations.
+
+**Impact:**
+Commands fail or produce malformed output. Agents waste time debugging. 30+ minutes per fleet run.
+
+**Current workaround:**
+Use single-line commands or PowerShell splatting. Avoid multi-line `gh` commands.
+
+**Suggested fix:**
+Include PowerShell-specific examples in agent instructions and cookbook recipes. Document that `` ` `` (not `\`) is the line continuation character.
 
 ---
 
@@ -285,73 +300,112 @@ Already documented. No further action needed unless agents consistently fail to 
 | **Owner**      | @devops-engineer |
 
 **Description:**
-MCP servers (especially `sequential-thinking` and `memory`) occasionally lose connection and require manual restart through the VS Code command palette. There is no auto-reconnect mechanism.
+MCP servers (especially `sequential-thinking` and `memory`) occasionally lose connection and require manual restart through the VS Code command palette.
 
 **Impact:**
-Interrupts agent flow. Requires human to open Command Palette → MCP: Start Server. 2–5 minutes lost per occurrence.
-
-**Reproduction steps:**
-
-1. Work in VS Code with Copilot Chat agent mode for an extended session
-2. MCP server silently disconnects (no error in chat, just missing tool capability)
-3. Agent attempts to use MCP tool and gets no response
+Interrupts agent flow. 2–5 minutes lost per occurrence.
 
 **Current workaround:**
 Run `MCP: List Servers` in Command Palette to detect disconnected servers, then restart.
 
 **Suggested fix:**
-VS Code MCP support may improve auto-reconnect in future updates. Document the manual restart procedure more prominently in [mcp.md](mcp.md).
+Document the manual restart procedure more prominently in [mcp.md](mcp.md).
+
+---
+
+#### PP-0014: Husky pre-push hook blocks automated pushes
+
+| Field          | Value                           |
+| -------------- | ------------------------------- |
+| **ID**         | PP-0014                         |
+| **Severity**   | 🟠 High                         |
+| **Category**   | Tooling, Workflow               |
+| **First seen** | 2025-07                         |
+| **Status**     | Resolved (workaround canonical) |
+| **Owner**      | @devops-engineer                |
+
+**Description:**
+The `.husky/pre-push` hook requires interactive terminal confirmation, which AI agents cannot provide. All automated pushes are blocked by default.
+
+**Impact:**
+Every agent push requires a workaround. Was blocking in early fleet runs before workaround was discovered.
+
+**Current workaround:**
+Canonical: `$env:HUSKY = "0" ; git push --no-verify origin <branch>`. This is now the standard push command in all workflow docs.
+
+**Suggested fix:**
+Workaround is canonical and documented. The hook serves its purpose as a safety net for humans.
+
+---
+
+#### PP-0017: Prettier has no Kotlin/Swift parser
+
+| Field          | Value            |
+| -------------- | ---------------- |
+| **ID**         | PP-0017          |
+| **Severity**   | 🟢 Low           |
+| **Category**   | Tooling          |
+| **First seen** | 2025-07          |
+| **Status**     | Resolved         |
+| **Owner**      | @devops-engineer |
+
+**Description:**
+`npm run format` (Prettier) fails when it encounters `.kt` or `.swift` files because no parser exists for these languages. This caused false formatting failures in early fleet runs.
+
+**Resolution:**
+Kotlin and Swift file patterns added to `.prettierignore`. Prettier now skips these files.
+
+---
+
+#### PP-0020: `npm run format` slow on full monorepo
+
+| Field          | Value            |
+| -------------- | ---------------- |
+| **ID**         | PP-0020          |
+| **Severity**   | 🟡 Medium        |
+| **Category**   | Tooling          |
+| **First seen** | 2025-07          |
+| **Status**     | Open             |
+| **Owner**      | @devops-engineer |
+
+**Description:**
+Running `npm run format` on the full monorepo takes 30–60 seconds because Prettier scans all files. For agents working in a single app directory, this is unnecessarily slow.
+
+**Impact:**
+Adds latency to every pre-push cycle. Compounds across fleet operations.
+
+**Current workaround:**
+Use scoped Prettier: `npx prettier --write "apps/web/**"` for targeted formatting.
+
+**Suggested fix:**
+Document scoped formatting in the cookbook. Consider a `format:changed` script that only formats git-changed files.
 
 ---
 
 ### Documentation
 
-#### PP-0007: `fleet-operations.md` references `gh pr checks` in Step 5
+#### PP-0016: Doc agents lack shell access
 
-| Field          | Value         |
-| -------------- | ------------- |
-| **ID**         | PP-0007       |
-| **Severity**   | 🟠 High       |
-| **Category**   | Documentation |
-| **First seen** | 2025-07       |
-| **Status**     | Open          |
-| **Owner**      | @docs-writer  |
+| Field          | Value                           |
+| -------------- | ------------------------------- |
+| **ID**         | PP-0016                         |
+| **Severity**   | 🟡 Medium                       |
+| **Category**   | Documentation, Fleet Operations |
+| **First seen** | 2025-07                         |
+| **Status**     | Open                            |
+| **Owner**      | @docs-writer                    |
 
 **Description:**
-The "Step 5: Complete" section in [fleet-operations.md](fleet-operations.md) (line ~108) says "All PRs have passing CI (`gh pr checks` all green)" — but `gh pr checks` is unreliable (see PP-0001). This contradicts the guidance in [ci-monitoring.md](ci-monitoring.md).
+Documentation-only agents (`@docs-writer`) in some runtime environments lack shell access. They can edit files but cannot run `git commit`, `git push`, `npm run format`, or other CLI commands. This means they cannot complete the full push workflow independently.
 
 **Impact:**
-Agents following fleet-operations.md may use the wrong CI monitoring command.
+Doc agents need a human or shell-capable agent to commit and push their work. Adds a coordination step to every fleet run with doc tasks.
 
 **Current workaround:**
-Agents who have read ci-monitoring.md know to use `gh run list` instead.
+Human commits and pushes the doc agent's changes. Documented in [fleet-operations.md](fleet-operations.md) under Wave 3 Learnings.
 
 **Suggested fix:**
-Update fleet-operations.md line ~108 to reference the correct pattern from ci-monitoring.md.
-
-**Related issues:** PP-0001
-
----
-
-#### PP-0008: Duplicated CI monitoring instructions across three docs
-
-| Field          | Value         |
-| -------------- | ------------- |
-| **ID**         | PP-0008       |
-| **Severity**   | 🟡 Medium     |
-| **Category**   | Documentation |
-| **First seen** | 2025-07       |
-| **Status**     | Open          |
-| **Owner**      | @docs-writer  |
-
-**Description:**
-CI monitoring instructions appear in [workflow.md](workflow.md), [worktrees.md](worktrees.md), and [fleet-operations.md](fleet-operations.md), with varying levels of detail and some inconsistencies. The canonical guide is [ci-monitoring.md](ci-monitoring.md), but the other docs don't consistently defer to it.
-
-**Impact:**
-Agents may follow outdated instructions from a non-canonical source.
-
-**Suggested fix:**
-Replace inline CI monitoring instructions in workflow.md, worktrees.md, and fleet-operations.md with brief summaries and links to ci-monitoring.md as the single source of truth.
+Pair doc agents with a shell-capable agent, or give doc agents a lightweight commit capability.
 
 ---
 
@@ -369,10 +423,10 @@ Replace inline CI monitoring instructions in workflow.md, worktrees.md, and flee
 | **Owner**      | @architect               |
 
 **Description:**
-When one agent's work depends on another (e.g., `@kmp-engineer` finishes the shared API, then `@android-engineer` consumes it), there is no standardized format for the handoff message. Agents must read the full PR to understand the interface.
+When one agent's work depends on another, there is no standardized format for the handoff message. Agents must read the full PR to understand the interface.
 
 **Impact:**
-Downstream agents spend extra time parsing upstream PRs to understand what changed and what API surface is available.
+Downstream agents spend extra time parsing upstream PRs.
 
 **Suggested fix:**
 Define a `## Agent Handoff` PR section template that includes: exported API surface, breaking changes, integration notes, and test commands.
@@ -393,23 +447,16 @@ Define a `## Agent Handoff` PR section template that includes: exported API surf
 | **Owner**      | @architect               |
 
 **Description:**
-After `git rebase origin/main`, agents must force-push their feature branch. The `--force-with-lease` flag requires human approval per [restrictions.md](restrictions.md). This creates a bottleneck when the human is unavailable and the agent has already rebased.
+After `git rebase origin/main`, agents must force-push their feature branch. The `--force-with-lease` flag requires human approval per [restrictions.md](restrictions.md). This creates a bottleneck when the human is unavailable.
 
 **Impact:**
 Agent work is blocked until a human approves the force-push. Can delay a PR by hours.
 
-**Reproduction steps:**
-
-1. Agent rebases feature branch on origin/main
-2. Agent needs to push — requires `--force-with-lease`
-3. Human is not available to approve
-4. Work stalls
-
 **Current workaround:**
-Agents can avoid rebasing until just before requesting human review. But this means CI runs against a stale base, increasing conflict risk.
+Agents can avoid rebasing until just before requesting human review. In practice, most rebases result in a clean fast-forward push without needing `--force-with-lease`.
 
 **Suggested fix:**
-Consider auto-approving `--force-with-lease` on the agent's own feature branch (when no other collaborator has pushed to it). This is safe because the branch is single-writer.
+Consider auto-approving `--force-with-lease` on the agent's own feature branch (when no other collaborator has pushed to it).
 
 ---
 
@@ -427,13 +474,13 @@ Consider auto-approving `--force-with-lease` on the agent's own feature branch (
 | **Owner**      | @devops-engineer |
 
 **Description:**
-Fleet health monitoring (documented in [fleet-operations.md](fleet-operations.md)) requires the orchestrator to manually update a tracking comment in the parent issue with each agent's PR status. This is tedious and prone to going stale.
+Fleet health monitoring requires the orchestrator to manually update a tracking comment in the parent issue with each agent's PR status.
 
 **Impact:**
-Fleet status is often out of date. Human reviewers must manually check each PR instead of reading a centralized status.
+Fleet status is often out of date. Human reviewers must manually check each PR.
 
 **Suggested fix:**
-Create a GitHub Actions workflow or script (`tools/fleet-status.sh`) that automatically generates a fleet status table from open PRs matching a label or issue reference.
+Create a GitHub Actions workflow or script that automatically generates a fleet status table from open PRs matching a label or issue reference.
 
 ---
 
@@ -455,18 +502,20 @@ Each fleet agent's PR passes CI independently, but there is no mechanism to run 
 `main` can break if fleet PRs have subtle interdependencies not caught by individual CI runs.
 
 **Suggested fix:**
-
-1. Define a merge-train pattern: merge PRs one at a time, each rebased on the prior merge
-2. Or: create a temporary integration branch that combines all fleet PRs for a combined CI run
-3. Document the chosen approach in fleet-operations.md
+Define a merge-train pattern: merge PRs one at a time, each rebased on the prior merge.
 
 ---
 
 ## Resolved Pain Points
 
-| ID      | Title                              | Severity | Resolved | Resolution                                |
-| ------- | ---------------------------------- | -------- | -------- | ----------------------------------------- |
-| PP-0001 | `gh pr checks` shows stale results | 🔴       | 2025-06  | Documented workaround in ci-monitoring.md |
+| ID      | Title                                | Severity | Resolved | Resolution                                                                   |
+| ------- | ------------------------------------ | -------- | -------- | ---------------------------------------------------------------------------- |
+| PP-0001 | `gh pr checks` shows stale results   | 🔴       | 2025-07  | `gh pr checks` is now the correct and canonical CI monitoring command        |
+| PP-0004 | No detection of stale worktrees      | 🟢       | 2025-07  | Cleanup script added: `node tools/cleanup-worktrees.js`                      |
+| PP-0007 | fleet-ops referenced wrong CI cmd    | 🟠       | 2025-07  | fleet-operations.md updated to use `gh pr checks`                            |
+| PP-0008 | Duplicated CI monitoring across docs | 🟡       | 2025-07  | Consolidated in this docs audit; ci-monitoring.md is the canonical reference |
+| PP-0014 | Husky pre-push blocks automated push | 🟠       | 2025-07  | Canonical workaround: `$env:HUSKY = "0" ; git push --no-verify`              |
+| PP-0017 | Prettier has no Kotlin/Swift parser  | 🟢       | 2025-07  | Kotlin and Swift patterns added to `.prettierignore`                         |
 
 ---
 
@@ -476,9 +525,9 @@ Track these metrics monthly to measure improvement. See [workflow-metrics.md](wo
 
 | Metric                                  | Current | Target  |
 | --------------------------------------- | ------- | ------- |
-| Total open pain points                  | 11      | < 5     |
+| Total open pain points                  | 13      | < 5     |
 | Critical pain points                    | 0       | 0       |
-| High pain points                        | 3       | 0       |
+| High pain points                        | 4       | 0       |
 | Avg CI failures per PR (avoidable)      | —       | < 0.5   |
 | Avg time from push to merge-ready       | —       | < 30min |
 | Fleet operations completed without help | —       | > 80%   |

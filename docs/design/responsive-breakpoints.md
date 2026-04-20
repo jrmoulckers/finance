@@ -3,6 +3,7 @@
 > **Status:** Active  
 > **Token package:** `@finance/design-tokens`  
 > **Issue:** [#309](../../issues/309)
+> **Token files:** `tokens/primitive/breakpoints.json` · `tokens/semantic/breakpoints.json`
 
 ## Overview
 

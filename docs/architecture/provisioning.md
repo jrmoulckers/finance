@@ -1,6 +1,6 @@
 # Environment Provisioning Guide
 
-**Status:** Proposed
+**Status:** Implemented
 **Date:** 2026-06-15
 **Author:** AI agent (Architect), with human direction
 **Related:** [Environment Architecture](environments.md) · [ADR-0007: Hosting Strategy](0007-hosting-strategy.md) · [Deployment Guide](../../deploy/README.md)

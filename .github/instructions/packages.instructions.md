@@ -34,6 +34,10 @@ You are working in the `packages/` directory, which contains shared libraries co
 
 These are `commonMain` interfaces — platform `actual` implementations live in `androidMain`, `iosMain`, etc. When adding new monitoring capabilities, define the interface in `commonMain` first.
 
+## i18n Framework
+
+`packages/core` includes an internationalization framework for multi-language financial terminology. All user-facing strings in shared business logic must use the i18n layer rather than hardcoded English strings.
+
 ## KMP (Kotlin Multiplatform) Requirements
 
 - Code must compile for applicable KMP targets per package:
@@ -46,11 +50,13 @@ These are `commonMain` interfaces — platform `actual` implementations live in 
 - Use **kotlinx-serialization** for all serialization — annotate models with `@Serializable`
 - All monetary values must be `Long` (cents) — enforce with Kotlin value classes (e.g., `@JvmInline value class Cents(val amount: Long)`)
 - Test with **kotlin.test** — all tests must pass on every target (`commonTest`, `iosTest`, `androidTest`, `jvmTest`, `jsTest`)
+- Kotlin lint: **detekt** runs in CI via GitHub Actions workflow. Follow detekt rules for code style and complexity.
 
 ## Approved Model Additions
 
 The following fields must be added to shared models in `packages/models` and corresponding `.sq` schemas in `packages/core`:
 
+- **All models**: `ownerId: String` — references the authenticated user; required on all sync-enabled models
 - **Transaction**: `transferTransactionId: String?` (paired transfer leg), `recurringRuleId: String?` (originating rule)
 - **Budget**: `isRollover: Boolean` (default `false`) — carry unused budget to next period
 - **Goal**: `accountId: String?` (linked funding account), `status: GoalStatus` (sealed/enum: `Active`, `Completed`, `Archived`)

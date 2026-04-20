@@ -97,13 +97,14 @@ AI-powered insights and multi-device capabilities:
 - Advanced reports and custom visualizations
 - Priority support
 
-### Pricing (Proposed)
+### Pricing
 
-| Plan    | Price                           |
-| ------- | ------------------------------- |
-| Monthly | ~$4.99/mo                       |
-| Annual  | ~$39.99/yr                      |
-| Family  | Household sharing (pricing TBD) |
+| Plan       | Price     |
+| ---------- | --------- |
+| Individual | $4.99/mo  |
+| Annual     | $39.99/yr |
+| Family     | $7.99/mo  |
+| Enterprise | $14.99/mo |
 
 ---
 
@@ -229,14 +230,14 @@ Track consecutive days of logging. Positive framing only. No guilt on break:
 
 ## 9. Competitive Positioning
 
-| Feature                     | Finance | YNAB           | Monarch       | Mint (RIP) |
-| --------------------------- | ------- | -------------- | ------------- | ---------- |
-| Offline-first               | ✅      | ❌             | ❌            | ❌         |
-| Encrypted at rest           | ✅      | ❌             | ❌            | ❌         |
-| No bank connection required | ✅      | ✅             | ❌            | ❌         |
-| Expertise-tiered UI         | ✅      | ❌             | ❌            | ❌         |
-| Contextual education        | ✅      | Blog only      | ❌            | ❌         |
-| ADHD/cognitive-friendly     | ✅      | ❌             | ❌            | ❌         |
-| Native per platform         | ✅      | Web only       | Web only      | Web only   |
-| Free complete tracker       | ✅      | ❌ ($14.99/mo) | ❌ ($9.99/mo) | Was free   |
-| Open source (BSL)           | ✅      | ❌             | ❌            | ❌         |
+| Feature                     | Finance | YNAB           | Monarch        | Mint (RIP) |
+| --------------------------- | ------- | -------------- | -------------- | ---------- |
+| Offline-first               | ✅      | ❌             | ❌             | ❌         |
+| Encrypted at rest           | ✅      | ❌             | ❌             | ❌         |
+| No bank connection required | ✅      | ✅             | ❌             | ❌         |
+| Expertise-tiered UI         | ✅      | ❌             | ❌             | ❌         |
+| Contextual education        | ✅      | Blog only      | ❌             | ❌         |
+| ADHD/cognitive-friendly     | ✅      | ❌             | ❌             | ❌         |
+| Native per platform         | ✅      | Web only       | Web only       | Web only   |
+| Free complete tracker       | ✅      | ❌ ($14.99/mo) | ❌ ($14.99/mo) | Was free   |
+| Open source (BSL)           | ✅      | ❌             | ❌             | ❌         |

@@ -8,18 +8,18 @@ Central table of contents for the Finance monorepo documentation. Use this page 
 
 ## Quick Navigation
 
-| I want to…                     | Start here                                                                                                         |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Use Finance (end user)         | [User Guide](guides/user-guide.md) · [Getting Started](guides/getting-started.md)                                  |
-| Set up my dev environment      | [Getting Started](guides/getting-started.md) · [Workflow Cheat Sheet](guides/workflow-cheatsheet.md)               |
-| Set up Android / iOS / Windows | [Android](guides/android-setup.md) · [iOS](guides/ios-setup.md) · [Windows](guides/windows-setup.md)               |
-| Understand the architecture    | [Roadmap](architecture/roadmap.md) · [Diagrams](architecture/diagrams.md) · [Overview](architecture/overview.md)   |
-| Work with AI agents            | [AI Workflow](ai/workflow.md) · [Agent Cookbook](ai/agent-cookbook.md) · [Agents](ai/agents.md)                    |
-| Troubleshoot agent issues      | [Troubleshooting](ai/troubleshooting.md) · [CI Monitoring](ai/ci-monitoring.md) · [Pain Points](ai/pain-points.md) |
-| Ship a release                 | [Release Process](guides/release-process.md) · [Launch Checklist](guides/launch-checklist.md)                      |
-| Review security posture        | [Security Audit v1](architecture/security-audit-v1.md) · [Security Checklist](audits/security-checklist.md)        |
-| Check compliance status        | [Compliance README](compliance/README.md) · [Privacy Audit](architecture/privacy-audit-v1.md)                      |
-| Understand the data model      | [Data Model](design/data-model.md) · [Feature Specs](design/features.md)                                           |
+| I want to…                     | Start here                                                                                                                 |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| Use Finance (end user)         | [User Guide](guides/user-guide.md) · [Getting Started](guides/getting-started.md)                                          |
+| Set up my dev environment      | [Getting Started](guides/getting-started.md) · [Workflow Cheat Sheet](guides/workflow-cheatsheet.md)                       |
+| Set up Android / iOS / Windows | [Android](guides/android-setup.md) · [iOS](guides/ios-setup.md) · [Windows](guides/windows-setup.md)                       |
+| Understand the architecture    | [Roadmap](architecture/roadmap.md) · [Diagrams](architecture/diagrams.md) · [Overview](architecture/overview.md)           |
+| Work with AI agents            | [AI Workflow](ai/workflow.md) · [Agent Cookbook](ai/agent-cookbook.md) · [Agents](ai/agents.md)                            |
+| Troubleshoot agent issues      | [Troubleshooting](ai/troubleshooting.md) · [Fleet CI Analysis](ai/fleet-ci-analysis.md) · [Pain Points](ai/pain-points.md) |
+| Ship a release                 | [Release Process](guides/release-process.md) · [Launch Checklist](guides/launch-checklist.md)                              |
+| Review security posture        | [Security Audit v1](architecture/security-audit-v1.md) · [Security Checklist](audits/security-checklist.md)                |
+| Check compliance status        | [Compliance README](compliance/README.md) · [Privacy Audit](architecture/privacy-audit-v1.md)                              |
+| Understand the data model      | [Data Model](design/data-model.md) · [Feature Specs](design/features.md)                                                   |
 
 ---
 
@@ -31,6 +31,7 @@ Central table of contents for the Finance monorepo documentation. Use this page 
   - [Security Audits](#security-audits)
   - [Monitoring & Operations](#monitoring--operations)
   - [Project Management](#project-management)
+  - [Infrastructure & Operations](#infrastructure--operations)
 - [📖 Guides](#-guides)
   - [Development Setup](#development-setup)
   - [Release & Distribution](#release--distribution)
@@ -75,6 +76,11 @@ ADRs document significant architectural decisions with context, alternatives, an
 | [ADR-0006](architecture/0006-cicd-strategy.md)               | CI/CD Strategy                     | Affected-only builds in a multi-platform monorepo with agentic contributors    |
 | [ADR-0007](architecture/0007-hosting-strategy.md)            | Hosting Strategy                   | Affordable Supabase + PowerSync hosting for a bootstrapped project             |
 | [ADR-0009](architecture/0009-legal-monetization-analysis.md) | Legal, Licensing & Monetization    | BSL 1.1 licensing analysis and monetization strategy for public release        |
+| [ADR-0010](architecture/0010-v2-architecture-vision.md)      | V2 Architecture Vision             | Bank connections, AI features, multi-currency — proposed future direction      |
+| [ADR-0011](architecture/0011-scaling-architecture.md)        | Scaling Architecture               | Horizontal scaling, database sharding, CDN — proposed growth plan              |
+| [ADR-0012](architecture/0012-api-versioning-strategy.md)     | API Versioning Strategy            | API versioning approach for backward-compatible evolution                      |
+| [ADR-0013](architecture/0013-multi-tenancy-architecture.md)  | Multi-Tenancy Architecture         | Household isolation, enterprise accounts, data partitioning                    |
+| [ADR-0014](architecture/0014-ai-ml-pipeline-architecture.md) | AI/ML Pipeline Architecture        | On-device serving, training pipeline, federated learning — proposed            |
 | [Template](architecture/adr-template.md)                     | ADR Template                       | Standard template for writing new ADRs                                         |
 
 ### Security Audits
@@ -106,11 +112,26 @@ ADRs document significant architectural decisions with context, alternatives, an
 | ------------------------------------------------------------ | ------------------------------------------------------------------- |
 | [Roadmap](architecture/roadmap.md)                           | System architecture roadmap — Phases 0–8 complete, 9–12 in planning |
 | [SDLC](architecture/sdlc.md)                                 | Agentic Kanban methodology — how work flows through the project     |
+| [Architecture Overview](architecture/overview.md)            | High-level system architecture overview                             |
 | [Android Architecture](architecture/android-architecture.md) | Android app architecture — screens, navigation, state management    |
 | [Architecture Diagrams](architecture/diagrams.md)            | Mermaid diagrams — system overview, data flow, sync, CI/CD, fleet   |
 | [Branch Protection](architecture/branch-protection.md)       | `main` branch rules — required checks, review policy                |
 | [Labels](architecture/labels.md)                             | GitHub label taxonomy — type, platform, priority, and status labels |
 | [Project Board](architecture/project-board.md)               | GitHub Projects V2 board structure, custom fields, and views        |
+
+### Infrastructure & Operations
+
+| Document                                                                       | Description                                                 |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| [Environments](architecture/environments.md)                                   | Environment architecture — dev, staging, production         |
+| [Provisioning](architecture/provisioning.md)                                   | Environment provisioning guide                              |
+| [Monitoring Infrastructure](architecture/monitoring-infrastructure.md)         | Observability infrastructure — tooling and deployment       |
+| [Launch Readiness](architecture/launch-readiness.md)                           | Launch readiness checklist — sign-off before public release |
+| [Rollout Strategy](architecture/rollout-strategy.md)                           | Phased rollout strategy across platforms                    |
+| [Financial Insights](architecture/financial-insights.md)                       | Architecture design for the financial insights feature      |
+| [Onboarding Flow](architecture/onboarding-flow.md)                             | Architecture design for first-time user onboarding          |
+| [Performance Optimization Plan](architecture/performance-optimization-plan.md) | Cross-platform performance optimization plan                |
+| [Triage Resolved](architecture/triage-resolved.md)                             | Record of resolved triage issues                            |
 
 ---
 
@@ -128,6 +149,8 @@ ADRs document significant architectural decisions with context, alternatives, an
 | [Local Supabase](guides/local-supabase.md)            | Running Supabase locally with Docker — no cloud account needed        |
 | [KMP Debugging](guides/kmp-debugging.md)              | Debugging Kotlin Multiplatform shared code across targets             |
 | [Dependency Review](guides/dependency-review.md)      | Policy and process for adding, reviewing, and auditing dependencies   |
+| [Turborepo Caching](guides/turborepo-caching.md)      | Remote caching setup to share build artifacts and reduce build times  |
+| [GitHub Discussions](guides/github-discussions.md)    | Async team communication setup and category structure                 |
 
 ### Release & Distribution
 
@@ -143,6 +166,7 @@ ADRs document significant architectural decisions with context, alternatives, an
 | [Windows Store](guides/windows-store.md)                 | Microsoft Store MSIX packaging and submission guide                             |
 | [Beta Testing](guides/beta-testing.md)                   | Beta program planning — recruitment, distribution, feedback, exit criteria      |
 | [Beta Test Plan](guides/beta-test-plan.md)               | 10 critical user journey test scenarios for beta testers                        |
+| [Deployment Runbook](guides/deployment-runbook.md)       | Step-by-step deployment procedures for all platforms                            |
 
 ### Testing & Quality
 
@@ -152,6 +176,7 @@ ADRs document significant architectural decisions with context, alternatives, an
 | [Monitoring Strategy](guides/monitoring.md)          | Privacy-respecting observability — crash reporting, sync health, alerting |
 | [Visual Parity Audit](guides/visual-parity-audit.md) | Cross-platform visual consistency verification guide                      |
 | [Accessibility Guide](guides/accessibility.md)       | WCAG 2.2 AA accessibility features and usage across all platforms         |
+| [Issue Triage Report](guides/issue-triage-report.md) | Backlog triage report — duplicates, stale issues, milestone mismatches    |
 
 ### Product & User-Facing
 
@@ -218,24 +243,25 @@ Legal documents — terms of service, privacy policy, and app store data declara
 
 AI-first development workflow documentation. See the [AI README](ai/README.md) for an overview of the AI development philosophy.
 
-| Document                                   | Description                                                                  |
-| ------------------------------------------ | ---------------------------------------------------------------------------- |
-| [AI README](ai/README.md)                  | Overview — why AI-first development, documentation index                     |
-| [Workflow](ai/workflow.md)                 | Day-to-day AI development workflow — Copilot, Chat, Agent Mode               |
-| [Agent Cookbook](ai/agent-cookbook.md)     | Step-by-step recipes for common agent tasks                                  |
-| [Troubleshooting](ai/troubleshooting.md)   | Common issues and solutions for agent workflows                              |
-| [Agents](ai/agents.md)                     | Custom Copilot agent definitions — roles, tools, and boundaries              |
-| [Skills](ai/skills.md)                     | Reusable domain knowledge bundles for AI agents                              |
-| [Instructions](ai/instructions.md)         | Copilot instruction files — coding standards and architectural constraints   |
-| [MCP Configuration](ai/mcp.md)             | Model Context Protocol (MCP) server setup — external tool integration        |
-| [CI Monitoring](ai/ci-monitoring.md)       | Correct CI monitoring pattern for agents (replaces `gh pr checks`)           |
-| [Fleet Operations](ai/fleet-operations.md) | Fleet dispatch, CI self-healing, and parallel agent coordination             |
-| [Worktrees](ai/worktrees.md)               | Git worktree setup, naming conventions, and lifecycle management             |
-| [Pain Points](ai/pain-points.md)           | Tracked workflow friction, inefficiencies, and known issues                  |
-| [Workflow Metrics](ai/workflow-metrics.md) | Metrics for measuring agent workflow efficiency and quality                  |
-| [Responsible AI](ai/responsible-ai.md)     | Responsible AI framework — ethics, transparency, and commitments             |
-| [Restrictions](ai/restrictions.md)         | Human-gated operations — what AI agents must not do without approval         |
-| [AI Code Policy](ai/ai-code-policy.md)     | Ownership, copyright, and contributor responsibilities for AI-generated code |
+| Document                                       | Description                                                                  |
+| ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| [AI README](ai/README.md)                      | Overview — why AI-first development, documentation index                     |
+| [Workflow](ai/workflow.md)                     | Day-to-day AI development workflow — Copilot, Chat, Agent Mode               |
+| [Agent Cookbook](ai/agent-cookbook.md)         | Step-by-step recipes for common agent tasks                                  |
+| [Agent Instructions](ai/agent-instructions.md) | Canonical reference for AI agent roles, skills, and workflow rules           |
+| [Troubleshooting](ai/troubleshooting.md)       | Common issues and solutions for agent workflows                              |
+| [Agents](ai/agents.md)                         | Custom Copilot agent definitions — roles, tools, and boundaries              |
+| [Skills](ai/skills.md)                         | Reusable domain knowledge bundles for AI agents                              |
+| [Instructions](ai/instructions.md)             | Copilot instruction files — coding standards and architectural constraints   |
+| [MCP Configuration](ai/mcp.md)                 | Model Context Protocol (MCP) server setup — external tool integration        |
+| [Fleet Operations](ai/fleet-operations.md)     | Fleet dispatch, CI self-healing, and parallel agent coordination             |
+| [Fleet CI Analysis](ai/fleet-ci-analysis.md)   | Fleet CI failure analysis — root causes and prevention strategies            |
+| [Worktrees](ai/worktrees.md)                   | Git worktree setup, naming conventions, and lifecycle management             |
+| [Pain Points](ai/pain-points.md)               | Tracked workflow friction, inefficiencies, and known issues                  |
+| [Workflow Metrics](ai/workflow-metrics.md)     | Metrics for measuring agent workflow efficiency and quality                  |
+| [Responsible AI](ai/responsible-ai.md)         | Responsible AI framework — ethics, transparency, and commitments             |
+| [Restrictions](ai/restrictions.md)             | Human-gated operations — what AI agents must not do without approval         |
+| [AI Code Policy](ai/ai-code-policy.md)         | Ownership, copyright, and contributor responsibilities for AI-generated code |
 
 ---
 
@@ -257,17 +283,17 @@ AI-first development workflow documentation. See the [AI README](ai/README.md) f
 
 ## Document Count by Category
 
-| Category     |  Files |
-| ------------ | -----: |
-| Architecture |     28 |
-| Guides       |     29 |
-| Compliance   |      8 |
-| Design       |      6 |
-| Legal        |      5 |
-| AI           |      9 |
-| Testing      |      1 |
-| Audits       |      1 |
-| **Total**    | **87** |
+| Category     |   Files |
+| ------------ | ------: |
+| Architecture |      44 |
+| Guides       |      34 |
+| Compliance   |       8 |
+| Design       |       6 |
+| Legal        |       5 |
+| AI           |      17 |
+| Testing      |       1 |
+| Audits       |       1 |
+| **Total**    | **116** |
 
 ---
 

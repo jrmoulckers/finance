@@ -111,11 +111,25 @@ For the full setup guide, see [`docs/ops/branch-protection-setup.md`](./docs/ops
    ```bash
    git worktree add worktrees/wt-my-feature -b feat/my-feature origin/main
    ```
+   Worktree naming convention: `wt-[agent-type]-[type/description-issue#]` (e.g., `wt-android-feat-transactions-443`).
 3. Make small, focused commits following [Commit Conventions](#commit-conventions).
-4. Run `npm run ci:check` before pushing.
+4. **Before pushing, run the mandatory pre-push validation:**
+   ```bash
+   npm run ci:check          # format:check + lint + type-check — must pass
+   ```
+   If it fails, auto-fix and re-run:
+   ```bash
+   npm run format             # auto-fix Prettier issues
+   npx eslint . --fix         # auto-fix ESLint issues
+   npm run ci:check           # confirm everything is clean
+   ```
 5. Rebase onto `origin/main` before opening your PR:
    ```bash
    git fetch origin main && git rebase origin/main
+   ```
+6. For a final check before marking work complete:
+   ```bash
+   npm run ready-for-pr
    ```
 
 ## Pull Request Process

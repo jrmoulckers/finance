@@ -24,17 +24,22 @@ This report consolidates all security findings from:
 - Security Sprint 3: Biometric Security + Session Binding
 - Security Sprint 4: Anomaly Detection
 
-### Overall Security Rating: **B+ (Strong with Critical Gaps)**
+### Overall Security Rating: **A- (Strong with Targeted Gaps)**
 
 The Finance app demonstrates **mature security architecture** with proper encryption
 (envelope DEK/KEK), PKCE OAuth, origin-validated CORS, parameterized queries,
 platform-secure token storage, and comprehensive RLS. Two previously CRITICAL findings
 (CORS wildcard, non-CSPRNG RandomProvider) have been resolved.
 
-However, **6 HIGH-severity findings** remain that should be addressed before or
-immediately after launch, and the app lacks several defense-in-depth controls
-(certificate pinning, RASP, device attestation, session binding) that are expected
-for financial-grade applications.
+Three previously blocking pre-launch items have been addressed:
+
+- **RL-2 (IP spoofing):** Fixed in PR #933 — `getClientIp()` now uses infrastructure headers
+- **RES-3 (R8 minification):** Enabled — `minifyEnabled = true` in release builds
+- **P-5 (Source maps):** Disabled in production web builds
+
+**3 HIGH-severity findings** remain for post-launch hardening, and the app is adding
+defense-in-depth controls (certificate pinning, RASP, device attestation, session
+binding) per the implementation specs in this security documentation suite.
 
 ---
 
@@ -47,18 +52,18 @@ for financial-grade applications.
 | C-1 | DefaultRandomProvider uses non-CSPRNG  | ✅ RESOLVED | Delegates to PlatformSHA256.randomBytes (CSPRNG)       |
 | P-1 | CORS wildcard origin in Edge Functions | ✅ RESOLVED | getCorsHeaders() validates against ALLOWED_ORIGINS env |
 
-### HIGH Findings (6 Open)
+### HIGH Findings (3 Open / 3 Resolved)
 
-| ID            | Source      | Finding                                            | Impact                                                        | Priority |
-| ------------- | ----------- | -------------------------------------------------- | ------------------------------------------------------------- | -------- |
-| RL-1          | Sprint 1    | Fail-open rate limiting bypass under DB overload   | Sustained attack collapses rate limiting                      | P1       |
-| RL-2          | Sprint 1    | IP spoofing via X-Forwarded-For first entry        | Complete bypass of IP-based rate limits on pre-auth endpoints | P0       |
-| BIO-1         | Sprint 3    | No CryptoObject binding on Android BiometricPrompt | Biometric auth hookable via Frida                             | P0       |
-| SB-1          | Sprint 3    | JWT tokens are pure bearer with no device binding  | Stolen tokens usable from any device                          | P1       |
-| RESILIENCE-1a | MASVS audit | No root detection (Android)                        | Full client compromise on rooted devices                      | P1       |
-| RESILIENCE-1b | MASVS audit | No jailbreak detection (iOS)                       | Keychain bypass, method swizzling possible                    | P1       |
+| ID            | Source      | Finding                                            | Impact                                                        | Status                                              |
+| ------------- | ----------- | -------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------- |
+| RL-2          | Sprint 1    | IP spoofing via X-Forwarded-For first entry        | Complete bypass of IP-based rate limits on pre-auth endpoints | ✅ RESOLVED (PR #933)                               |
+| RL-1          | Sprint 1    | Fail-open rate limiting bypass under DB overload   | Sustained attack collapses rate limiting                      | Open — P1                                           |
+| BIO-1         | Sprint 3    | No CryptoObject binding on Android BiometricPrompt | Biometric auth hookable via Frida                             | Open — P0                                           |
+| SB-1          | Sprint 3    | JWT tokens are pure bearer with no device binding  | Stolen tokens usable from any device                          | Open — P1                                           |
+| RESILIENCE-1a | MASVS audit | No root detection (Android)                        | Full client compromise on rooted devices                      | ✅ RESOLVED — `RootDetector.kt` implemented         |
+| RESILIENCE-1b | MASVS audit | No jailbreak detection (iOS)                       | Keychain bypass, method swizzling possible                    | ✅ RESOLVED — `JailbreakDetector.swift` implemented |
 
-### MEDIUM Findings (15 Open)
+### MEDIUM Findings (14 Open)
 
 | ID    | Source        | Finding                                                 | Priority |
 | ----- | ------------- | ------------------------------------------------------- | -------- |
@@ -76,21 +81,21 @@ for financial-grade applications.
 | N-M1  | Network audit | SyncConfig.endpoint does not enforce HTTPS              | P2       |
 | N-M2  | Network audit | Web app lacks security headers (CSP/HSTS)               | P2       |
 | N-M5  | Network audit | JSON body via string interpolation (Android auth)       | P2       |
-| RES-3 | MASVS audit   | R8 minifyEnabled not explicitly set                     | P0       |
 
-### LOW Findings (9 Open)
+### LOW Findings (7 Open / 2 Resolved)
 
-| ID     | Source         | Finding                                        |
-| ------ | -------------- | ---------------------------------------------- |
-| BIO-4  | Sprint 3       | Biometric lock preference in UserDefaults      |
-| SB-4   | Sprint 3       | No session concurrency limits                  |
-| C-7    | Audit v1       | EncryptedPayload lacks algorithm version field |
-| N-L1   | Network audit  | CORS allows unused HTTP methods                |
-| N-L3   | Network audit  | OAuth redirect URI hardcoded                   |
-| RES-5a | MASVS audit    | No Frida detection                             |
-| RES-5b | MASVS audit    | No emulator detection                          |
-| P-5    | Audit v1       | Vite produces source maps in production        |
-| iOS-L1 | Platform audit | No explicit NSAppTransportSecurity             |
+| ID     | Source         | Finding                                        | Status      |
+| ------ | -------------- | ---------------------------------------------- | ----------- |
+| BIO-4  | Sprint 3       | Biometric lock preference in UserDefaults      | Open        |
+| SB-4   | Sprint 3       | No session concurrency limits                  | Open        |
+| C-7    | Audit v1       | EncryptedPayload lacks algorithm version field | Open        |
+| N-L1   | Network audit  | CORS allows unused HTTP methods                | Open        |
+| N-L3   | Network audit  | OAuth redirect URI hardcoded                   | Open        |
+| RES-3  | MASVS audit    | R8 minifyEnabled not explicitly set            | ✅ RESOLVED |
+| RES-5a | MASVS audit    | No Frida detection                             | Open        |
+| RES-5b | MASVS audit    | No emulator detection                          | Open        |
+| P-5    | Audit v1       | Vite produces source maps in production        | ✅ RESOLVED |
+| iOS-L1 | Platform audit | No explicit NSAppTransportSecurity             | Open        |
 
 ---
 
@@ -126,27 +131,29 @@ for financial-grade applications.
 - ✅ invited_email excluded from sync rules
 - ⚠️ Minor: data-export uses SELECT \* (M-4)
 
-### Network Security — Grade: B
+### Network Security — Grade: B+
 
 - ✅ Origin-validated CORS (no wildcards)
 - ✅ All communication over TLS (Supabase enforced)
 - ✅ Rate limiting on all 12 Edge Functions
 - ✅ Abuse detection layer with error frequency tracking
+- ✅ IP spoofing in `getClientIp()` fixed (PR #933 — RL-2 resolved)
 - ❌ No certificate pinning
-- ❌ IP-based rate limiting spoofable via X-Forwarded-For
-- ⚠️ Web app missing security headers
+- ⚠️ Web app missing some security headers
 
-### Resilience — Grade: C
+### Resilience — Grade: B-
 
-- ✅ R8/ProGuard rules present (but not explicitly enabled)
+- ✅ R8/ProGuard enabled in release builds (RES-3 resolved)
 - ✅ BuildConfig.DEBUG gates logging
 - ✅ MSIX code signing (Windows)
 - ✅ SRI via content-hashed filenames (Web)
-- ❌ No root/jailbreak detection
+- ✅ Root detection implemented (`RootDetector.kt`)
+- ✅ Jailbreak detection implemented (`JailbreakDetector.swift`)
+- ✅ APK signature verification (`IntegrityVerifier.kt`)
+- ✅ Web source maps disabled in production (P-5 resolved)
 - ❌ No debugger detection (runtime)
 - ❌ No Frida/instrumentation detection
-- ❌ No APK signature verification
-- ❌ Web source maps in production
+- ❌ No emulator detection
 
 ### Privacy Compliance — Grade: A-
 
@@ -161,25 +168,25 @@ for financial-grade applications.
 
 ## Prioritized Remediation Roadmap
 
-### Phase 0: Critical Pre-Launch (1-2 days)
+### Phase 0: Critical Pre-Launch (✅ RESOLVED)
 
-| Priority | Action                                      | Effort  | Blocks Launch? |
-| -------- | ------------------------------------------- | ------- | -------------- |
-| P0       | Fix IP spoofing in getClientIp() (RL-2)     | 2 hours | Yes            |
-| P0       | Enable R8 minifyEnabled (RES-3)             | 1 hour  | Yes            |
-| P0       | Disable web source maps in production (P-5) | 1 hour  | Yes            |
+All three pre-launch blocking items have been addressed:
+
+| Priority | Action                                      | Effort  | Status       |
+| -------- | ------------------------------------------- | ------- | ------------ |
+| P0       | Fix IP spoofing in getClientIp() (RL-2)     | 2 hours | ✅ PR #933   |
+| P0       | Enable R8 minifyEnabled (RES-3)             | 1 hour  | ✅ Completed |
+| P0       | Disable web source maps in production (P-5) | 1 hour  | ✅ Completed |
 
 ### Phase 1: Launch Sprint (1-2 weeks)
 
 | Priority | Action                                                      | Effort   | Dependency |
 | -------- | ----------------------------------------------------------- | -------- | ---------- |
 | P1       | Add CryptoObject binding to Android BiometricPrompt (BIO-1) | 3-4 days | None       |
-| P1       | Implement root detection — Android (RESILIENCE-1a)          | 2-3 days | None       |
-| P1       | Implement jailbreak detection — iOS (RESILIENCE-1b)         | 2-3 days | None       |
 | P1       | Add in-memory fallback rate limiter (RL-1)                  | 4 hours  | None       |
 | P1       | Fix JVM KeyStore hardcoded password (M-1)                   | 1 day    | None       |
 | P1       | Remove unsafe-inline from production CSP (M-7)              | 1 day    | None       |
-| P1       | Reduce passkey-authenticate rate limit (RL-3)               | 1 hour   | RL-2       |
+| P1       | Reduce passkey-authenticate rate limit (RL-3)               | 1 hour   | None       |
 
 ### Phase 2: Post-Launch Sprint 1 (2-4 weeks)
 
@@ -239,29 +246,34 @@ for financial-grade applications.
 
 ### New Documentation (Security Sprints)
 
-| Document                           | Location                                                        | Sprint   |
-| ---------------------------------- | --------------------------------------------------------------- | -------- |
-| Certificate Pinning Strategy       | `docs/architecture/security/certificate-pinning-strategy.md`    | Sprint 1 |
-| Rate Limiting Assessment           | `docs/architecture/security/rate-limiting-assessment.md`        | Sprint 1 |
-| RASP Strategy                      | `docs/architecture/security/rasp-strategy.md`                   | Sprint 2 |
-| Device Attestation Strategy        | `docs/architecture/security/device-attestation-strategy.md`     | Sprint 2 |
-| Biometric Liveness Assessment      | `docs/architecture/security/biometric-liveness-assessment.md`   | Sprint 3 |
-| Session Binding Strategy           | `docs/architecture/security/session-binding-strategy.md`        | Sprint 3 |
-| Anomaly Detection Specification    | `docs/architecture/security/anomaly-detection-specification.md` | Sprint 4 |
-| Security Posture Report (this doc) | `docs/architecture/security/security-posture-report.md`         | Sprint 4 |
+| Document                           | Location                                                          | Sprint   |
+| ---------------------------------- | ----------------------------------------------------------------- | -------- |
+| Certificate Pinning Strategy       | `docs/architecture/security/certificate-pinning-strategy.md`      | Sprint 1 |
+| Rate Limiting Assessment           | `docs/architecture/security/rate-limiting-assessment.md`          | Sprint 1 |
+| RASP Strategy                      | `docs/architecture/security/rasp-strategy.md`                     | Sprint 2 |
+| RASP Implementation                | `docs/architecture/security/rasp-implementation.md`               | Sprint 2 |
+| Device Attestation Strategy        | `docs/architecture/security/device-attestation-strategy.md`       | Sprint 2 |
+| Device Attestation Implementation  | `docs/architecture/security/device-attestation-implementation.md` | Sprint 2 |
+| Biometric Liveness Assessment      | `docs/architecture/security/biometric-liveness-assessment.md`     | Sprint 3 |
+| Biometric Liveness Implementation  | `docs/architecture/security/biometric-liveness-implementation.md` | Sprint 3 |
+| Biometric Protected Categories     | `docs/architecture/security/biometric-protected-categories.md`    | Sprint 3 |
+| Session Binding Strategy           | `docs/architecture/security/session-binding-strategy.md`          | Sprint 3 |
+| Anomaly Detection Specification    | `docs/architecture/security/anomaly-detection-specification.md`   | Sprint 4 |
+| Security Testing Framework         | `docs/architecture/security/security-testing-framework.md`        | Sprint 4 |
+| Security Posture Report (this doc) | `docs/architecture/security/security-posture-report.md`           | Sprint 4 |
 
 ---
 
 ## Compliance Status
 
-| Regulation            | Status  | Key Controls                                                                                  | Gaps                                               |
-| --------------------- | ------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| **OWASP MASVS v2**    | PARTIAL | Storage ✅, Crypto ✅, Auth ⚠️, Network ⚠️, Platform ⚠️, Code ✅, Resilience ❌               | Resilience controls, cert pinning, session binding |
-| **OWASP ASVS**        | PARTIAL | V2 (Auth) ✅, V3 (Session) ⚠️, V5 (Validation) ✅, V6 (Crypto) ✅, V8 (Data) ✅               | V3 session binding, V9 communications (pinning)    |
-| **GDPR**              | STRONG  | Art. 17 (erasure) ✅, Art. 20 (portability) ✅, Art. 25 (by design) ✅, Art. 32 (security) ⚠️ | Art. 32 requires ongoing security improvements     |
-| **CCPA**              | STRONG  | Do-not-sell ✅, Access rights ✅, Deletion ✅                                                 | None significant                                   |
-| **PCI DSS Awareness** | N/A     | Not storing payment card data                                                                 | N/A — no card processing                           |
-| **SOC 2 Principles**  | PARTIAL | Availability ✅, Processing integrity ⚠️, Confidentiality ✅, Privacy ✅                      | Monitoring/alerting gaps                           |
+| Regulation            | Status  | Key Controls                                                                                  | Gaps                                            |
+| --------------------- | ------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **OWASP MASVS v2**    | PARTIAL | Storage ✅, Crypto ✅, Auth ⚠️, Network ⚠️, Platform ⚠️, Code ✅, Resilience ⚠️               | Cert pinning, session binding, advanced RASP    |
+| **OWASP ASVS**        | PARTIAL | V2 (Auth) ✅, V3 (Session) ⚠️, V5 (Validation) ✅, V6 (Crypto) ✅, V8 (Data) ✅               | V3 session binding, V9 communications (pinning) |
+| **GDPR**              | STRONG  | Art. 17 (erasure) ✅, Art. 20 (portability) ✅, Art. 25 (by design) ✅, Art. 32 (security) ⚠️ | Art. 32 requires ongoing security improvements  |
+| **CCPA**              | STRONG  | Do-not-sell ✅, Access rights ✅, Deletion ✅                                                 | None significant                                |
+| **PCI DSS Awareness** | N/A     | Not storing payment card data                                                                 | N/A — no card processing                        |
+| **SOC 2 Principles**  | PARTIAL | Availability ✅, Processing integrity ⚠️, Confidentiality ✅, Privacy ✅                      | Monitoring/alerting gaps                        |
 
 ---
 
@@ -272,17 +284,19 @@ for financial-grade applications.
          │                   IMPACT                        │
          │    Low      Medium      High      Critical      │
     ┌────┼─────────┬──────────┬──────────┬────────────────┤
-  L │High│         │ RL-3     │ RL-2     │                │
-  I │    │         │ BIO-3    │ BIO-1    │                │
-  K │    │         │          │ RES-1a/b │                │
+  L │High│         │ RL-3     │ BIO-1    │                │
+  I │    │         │ BIO-3    │          │                │
+  K │    │         │          │          │                │
   E │────┼─────────┼──────────┼──────────┼────────────────┤
   L │Med │ SB-4    │ M-7, M-2 │ SB-1     │                │
   I │    │ BIO-4   │ N-M2     │ RL-1     │                │
   H │    │         │ M-1      │          │                │
   O │────┼─────────┼──────────┼──────────┼────────────────┤
-  O │Low │ C-7     │ P-5      │          │                │
+  O │Low │ C-7     │          │          │                │
   D │    │ N-L1    │ RES-5    │          │                │
     └────┴─────────┴──────────┴──────────┴────────────────┘
+
+Resolved since last report: RL-2, RES-1a/b, RES-3, P-5
 ```
 
 ---
@@ -291,22 +305,28 @@ for financial-grade applications.
 
 The Finance app has a **strong security foundation** that exceeds many production
 financial applications. The critical vulnerabilities have been resolved, and the
-remaining findings are defense-in-depth improvements that reduce risk incrementally.
+pre-launch blockers are all addressed.
 
-**Three actions must happen before launch:**
+**Pre-launch blockers (all resolved):**
 
-1. Fix IP spoofing in `getClientIp()` (RL-2)
-2. Enable R8 minification (RES-3)
-3. Disable web source maps in production (P-5)
+1. ~~Fix IP spoofing in `getClientIp()` (RL-2)~~ — ✅ Fixed in PR #933
+2. ~~Enable R8 minification (RES-3)~~ — ✅ Enabled
+3. ~~Disable web source maps in production (P-5)~~ — ✅ Disabled
 
-**Six actions should happen in the first post-launch sprint:**
+**Root/jailbreak detection (resolved):**
 
-1. CryptoObject binding for Android biometrics
-2. Root/jailbreak detection (Android + iOS)
-3. In-memory fallback rate limiter
-4. JVM KeyStore password fix
-5. Production CSP without unsafe-inline
-6. Certificate pinning (Android + iOS)
+- ✅ Android `RootDetector.kt` implemented
+- ✅ iOS `JailbreakDetector.swift` implemented
+- ✅ Android `IntegrityVerifier.kt` for APK signature verification
+
+**Remaining priorities for post-launch sprint:**
+
+1. CryptoObject binding for Android biometrics (BIO-1)
+2. In-memory fallback rate limiter (RL-1)
+3. JVM KeyStore password fix (M-1)
+4. Production CSP without unsafe-inline (M-7)
+5. Certificate pinning — Android + iOS (M-6)
+6. Session binding — device fingerprint (SB-1)
 
 The security posture will continue to improve with each sprint as the RASP, device
 attestation, session binding, and anomaly detection features are implemented per

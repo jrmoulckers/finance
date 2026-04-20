@@ -29,3 +29,17 @@ You are working in the `apps/` directory, which contains platform-specific appli
 
 - **Android** — Uses **Koin 4.0.1** for dependency injection. Define Koin modules in the app's DI layer; use `koin-compose-viewmodel` for ViewModel injection in Jetpack Compose screens. Use **Timber** (5.0.1) for logging — plant a `DebugTree` in debug builds only.
 - **iOS** — Uses native **`os.Logger`** for structured logging (preferred over `NSLog` or `print`). DI is handled via Swift-native patterns (e.g., environment objects, manual injection via protocols).
+
+## Environment Configurations
+
+All platforms support three build variants with per-environment configuration:
+
+- **debug** — Local development, verbose logging, mock data allowed
+- **staging** — Pre-release testing against staging backend
+- **release** — Production builds, no debug logging, analytics enabled
+
+## Cross-Platform Concerns
+
+- **i18n** — Internationalization framework in `packages/core` provides multi-language financial terminology. Platform apps consume localized strings from the shared layer.
+- **`ownerId`** — All sync-enabled models include an `ownerId` field referencing the authenticated user. Platform apps must populate this on record creation.
+- **Feature flags** — Managed via PostgreSQL + PowerSync; flags sync to clients for runtime evaluation of feature availability.

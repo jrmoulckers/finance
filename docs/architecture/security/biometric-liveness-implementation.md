@@ -41,11 +41,13 @@ biometric verification — hooking the callback is insufficient.
 
 ### Implementation Files
 
-| File                                                            | Purpose                            |
-| --------------------------------------------------------------- | ---------------------------------- |
-| `packages/core/src/commonMain/.../BiometricCryptoBinding.kt`  | Common interface                   |
-| `apps/android/src/main/kotlin/.../BiometricCryptoManager.kt`  | Android Keystore CryptoObject      |
-| `apps/ios/Finance/Security/BiometricCryptoManager.swift`      | iOS Secure Enclave binding         |
+| File                                                         | Purpose                         |
+| ------------------------------------------------------------ | ------------------------------- |
+| `packages/core/src/commonMain/.../BiometricCryptoBinding.kt` | Common interface                |
+| `apps/android/src/main/kotlin/.../BiometricCryptoManager.kt` | Android Keystore CryptoObject   |
+| `apps/ios/Finance/Security/BiometricCryptoManager.swift`     | iOS Secure Enclave binding      |
+| `apps/ios/Finance/Security/BiometricAuthManager.swift`       | iOS LAContext biometric auth    |
+| `apps/android/src/main/kotlin/.../BiometricAuthManager.kt`   | Android BiometricPrompt manager |
 
 ## Platform Details
 
@@ -69,13 +71,13 @@ biometric verification — hooking the callback is insufficient.
 
 ## Security Properties
 
-| Property               | Mechanism                  | Attack Prevented             |
-| ---------------------- | -------------------------- | ---------------------------- |
-| Anti-hook              | CryptoObject / SE key      | Callback hooking (Frida)     |
-| Anti-replay            | Single-use CryptoObject    | Replayed biometric results   |
-| Anti-template-swap     | .biometryCurrentSet        | Added biometric after theft  |
-| Anti-spoofing          | Hardware PAD (Class 3)     | Photo/mask/synthetic attacks |
-| Non-repudiation        | Signed server challenge    | Denial of action             |
+| Property           | Mechanism               | Attack Prevented             |
+| ------------------ | ----------------------- | ---------------------------- |
+| Anti-hook          | CryptoObject / SE key   | Callback hooking (Frida)     |
+| Anti-replay        | Single-use CryptoObject | Replayed biometric results   |
+| Anti-template-swap | .biometryCurrentSet     | Added biometric after theft  |
+| Anti-spoofing      | Hardware PAD (Class 3)  | Photo/mask/synthetic attacks |
+| Non-repudiation    | Signed server challenge | Denial of action             |
 
 ## References
 

@@ -11,6 +11,8 @@ You are working in the `docs/` directory, which contains all project documentati
 - `docs/ai/` — AI development workflow documentation (agents, skills, MCP, instructions)
 - `docs/architecture/` — System architecture, technical decisions, diagrams
 - `docs/design/` — UI/UX design system, components, accessibility guidelines
+- `docs/business/` — Business analysis, pricing strategy, competitive research, revenue modeling
+- `docs/marketing/` — Go-to-market strategy, app store optimization, launch communications
 
 ## Guidelines
 

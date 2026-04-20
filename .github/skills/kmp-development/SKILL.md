@@ -564,6 +564,64 @@ The `packages/core/src/commonMain/kotlin/com/finance/core/monitoring/` directory
 
 These are `commonMain` interfaces with `expect`/`actual` platform bindings — keep implementations in the appropriate platform source sets.
 
+## AI / Smart Engines (packages/core)
+
+The `packages/core/src/commonMain/kotlin/com/finance/core/` tree contains five AI-powered engines:
+
+| Module           | Key File                        | Purpose                             |
+| ---------------- | ------------------------------- | ----------------------------------- |
+| `categorization` | `SmartCategorizationEngine.kt`  | ML-style transaction categorization |
+| `prediction`     | `BalancePredictionEngine.kt`    | Future balance forecasting          |
+| `subscription`   | `SubscriptionDetector.kt`       | Recurring charge detection          |
+| `savings`        | `SavingsEngine.kt`              | Savings opportunity identification  |
+| `recommendation` | `BudgetRecommendationEngine.kt` | Budget allocation suggestions       |
+
+All engines live in `commonMain` and are pure Kotlin — no platform dependencies. When extending an engine, keep heuristics and models in `commonMain` and inject any platform-specific data sources via interfaces.
+
+## Feature Flags (packages/core)
+
+`packages/core/src/commonMain/kotlin/com/finance/core/featureflags/` provides runtime feature gating:
+
+- `FeatureFlag.kt` / `FeatureFlags.kt` — flag definitions and registry.
+- `FeatureFlagEngine.kt` — evaluation engine with `EvaluationContext.kt`.
+- `FeatureFlagProvider.kt` — interface for platform-specific flag sources.
+
+Use the flag engine to gate features at the use-case layer (not UI), consistent with the monetization skill's entitlement architecture.
+
+## Environment Configuration (packages/core)
+
+`packages/core/src/commonMain/kotlin/com/finance/core/config/` centralizes build-variant configuration:
+
+- `EnvironmentConfig.kt` / `EnvironmentConfigs.kt` — typed config per environment (dev, staging, production).
+- `BuildEnvironment.kt` — current environment detection.
+- `ConfigProvider.kt` — abstract config access.
+
+## Internationalization (packages/core)
+
+`packages/core/src/commonMain/kotlin/com/finance/core/i18n/` contains the i18n framework:
+
+- `Strings.kt` / `StringBundle.kt` / `StringProvider.kt` — string catalog abstraction.
+- `EnglishStrings.kt` — default locale implementation.
+- `Locale.kt` / `NumberFormatting.kt` — locale-aware number/currency formatting.
+
+## Analytics (packages/core)
+
+`packages/core/src/commonMain/kotlin/com/finance/core/analytics/` provides privacy-respecting analytics:
+
+- `AnalyticsTracker.kt` / `BufferedAnalyticsTracker.kt` — event tracking with batching.
+- `AnalyticsEvent.kt` — typed event definitions.
+- `KpiMetrics.kt`, `MonthlyComparison.kt`, `NetWorthSnapshot.kt`, `ReportGenerator.kt`, `SpendingInsight.kt` — reporting primitives.
+
+## Security Hardening (packages/core)
+
+`packages/core/src/commonMain/kotlin/com/finance/core/security/` implements MASVS-RESILIENCE controls:
+
+- `RuntimeIntegrityChecker.kt` — RASP (Runtime Application Self-Protection) tamper detection.
+- `DeviceAttestor.kt` — cross-platform device attestation interface (`expect`/`actual`: `PlayIntegrityAttestor` on Android, `TpmAttestor` on Windows).
+- `BiometricCryptoBinding.kt` — ties biometric auth to cryptographic key operations.
+
+Platform `actual` implementations live in `apps/android/…/security/` and `apps/windows/…/security/`.
+
 ## Data Export Module (packages/core)
 
 `packages/core/src/commonMain/kotlin/com/finance/core/export/` is the current shared export module.
@@ -695,13 +753,26 @@ packages/
 │   ├── build.gradle.kts
 │   └── src/
 │       ├── commonMain/kotlin/com/finance/core/
+│       │   ├── aggregation/
+│       │   ├── analytics/
+│       │   ├── budget/
+│       │   ├── categorization/          # SmartCategorizationEngine
+│       │   ├── config/                  # EnvironmentConfig, BuildEnvironment
+│       │   ├── currency/
+│       │   ├── dataimport/
+│       │   ├── events/
 │       │   ├── export/
-│       │   │   ├── DataExportService.kt
-│       │   │   ├── ExportSerializer.kt
-│       │   │   ├── JsonExportSerializer.kt
-│       │   │   ├── CsvExportSerializer.kt
-│       │   │   └── Sha256.kt
+│       │   ├── featureflags/            # FeatureFlagEngine
+│       │   ├── household/
+│       │   ├── i18n/                    # StringProvider, Locale
+│       │   ├── money/
 │       │   ├── monitoring/
+│       │   ├── prediction/              # BalancePredictionEngine
+│       │   ├── recommendation/          # BudgetRecommendationEngine
+│       │   ├── recurring/
+│       │   ├── savings/                 # SavingsEngine
+│       │   ├── security/               # RASP, DeviceAttestor, BiometricCryptoBinding
+│       │   ├── subscription/            # SubscriptionDetector
 │       │   └── validation/
 │       ├── iosMain/kotlin/com/finance/core/
 │       ├── jsMain/kotlin/com/finance/core/

@@ -1,6 +1,6 @@
 # Rollout Strategy
 
-**Status:** Proposed
+**Status:** Implemented
 **Date:** 2026-06-15
 **Author:** AI agent (Architect), with human direction
 **Related:** [Environment Architecture](environments.md) · [ADR-0006: CI/CD Strategy](0006-cicd-strategy.md) · [ADR-0007: Hosting Strategy](0007-hosting-strategy.md) · [Roadmap](roadmap.md)

@@ -28,21 +28,44 @@ services/api/
     │   ├── 20260307000001_monitoring.sql
     │   ├── 20260315000001_export_audit_log.sql
     │   ├── 20260316000001_edge_function_security.sql
-    │   └── 20260316000001_fix_invitation_rls.sql
+    │   ├── 20260316000001_fix_invitation_rls.sql
+    │   ├── 20260323000001_cleanup_and_balance_triggers.sql
+    │   ├── 20260323000002_recurring_transactions.sql
+    │   ├── 20260323000003_rate_limits.sql
+    │   ├── 20260324000001_notification_infrastructure.sql
+    │   ├── 20260324000002_performance_indexes.sql
+    │   ├── 20260324000003_automated_maintenance.sql
+    │   ├── 20260324000004_webhook_infrastructure.sql
+    │   ├── 20260325000001_enhanced_cleanup_and_balance.sql
+    │   ├── 20260325000001_read_only_rate_limit_status.sql
+    │   ├── 20260326000001_production_readiness.sql
+    │   ├── 20260326000002_add_transfer_recurring_to_transactions.sql
+    │   ├── 20260326000003_add_rollover_to_budgets.sql
+    │   ├── 20260326000004_add_account_status_to_goals.sql
+    │   ├── 20260326000005_standardize_owner_id.sql
+    │   ├── 20260326000006_sync_optimization.sql
+    │   ├── 20260327000001_launch_readiness_dashboard.sql
+    │   └── down/                              # Reversals for all up migrations
     └── functions/
-        ├── _shared/
-        │   ├── auth.ts
-        │   ├── cors.ts
-        │   ├── logger.ts
-        │   └── response.ts
-        ├── health-check/
-        ├── auth-webhook/
+        ├── _shared/                           # auth.ts, cors.ts, logger.ts, response.ts
+        ├── _test_helpers/
         ├── account-deletion/
+        ├── admin-dashboard/
+        ├── auth-webhook/
+        ├── data-export/
+        ├── health-check/
         ├── household-invite/
-        ├── passkey-register/
+        ├── launch-readiness/
+        ├── manage-webhooks/
         ├── passkey-authenticate/
-        └── data-export/
+        ├── passkey-register/
+        ├── process-recurring/
+        ├── send-notification/
+        ├── sync-health-report/
+        └── verify-device-attestation/
 ```
+
+There are currently **23 up-migrations** and matching `down/` reversals. The schema includes rate limiting (`rate_limits`), recurring transaction processing, notification infrastructure, webhook infrastructure, production readiness views, and a launch readiness dashboard.
 
 ### Local Development
 
@@ -445,14 +468,14 @@ The checked-in shared sync layer currently uses `packages/sync/src/commonMain/ko
 
 - `LAST_WRITE_WINS` via `LastWriteWinsResolver.kt` is the default for most tables.
 - `MERGE` via `MergeResolver.kt` is used for `budgets`, `goals`, and `households`.
-- There are no checked-in `ClientWins`, `ServerWins`, or CRDT-based budget implementations today.
+- `CLIENT_WINS` via `ClientWinsResolver.kt` and `SERVER_WINS` via `ServerWinsResolver.kt` are available for custom override.
 
 ### Practical Rules
 
 1. Simple records fall back to timestamp-based last-write-wins.
 2. Shared/complex records use field-level merge when possible.
 3. Delta sync should preserve tombstones and checksum validation so bad batches can trigger a full resync.
-4. If you document future conflict strategies, label them clearly as planned rather than current.
+4. ClientWins and ServerWins are available for custom per-table overrides.
 
 ## Migration Patterns
 
@@ -463,7 +486,27 @@ services/api/supabase/migrations/
 ├── 20260306000001_initial_schema.sql
 ├── 20260306000002_rls_policies.sql
 ├── 20260306000003_auth_config.sql
-└── 20260315000001_export_audit_log.sql
+├── 20260307000001_monitoring.sql
+├── 20260315000001_export_audit_log.sql
+├── 20260316000001_edge_function_security.sql
+├── 20260316000001_fix_invitation_rls.sql
+├── 20260323000001_cleanup_and_balance_triggers.sql
+├── 20260323000002_recurring_transactions.sql
+├── 20260323000003_rate_limits.sql
+├── 20260324000001_notification_infrastructure.sql
+├── 20260324000002_performance_indexes.sql
+├── 20260324000003_automated_maintenance.sql
+├── 20260324000004_webhook_infrastructure.sql
+├── 20260325000001_enhanced_cleanup_and_balance.sql
+├── 20260325000001_read_only_rate_limit_status.sql
+├── 20260326000001_production_readiness.sql
+├── 20260326000002_add_transfer_recurring_to_transactions.sql
+├── 20260326000003_add_rollover_to_budgets.sql
+├── 20260326000004_add_account_status_to_goals.sql
+├── 20260326000005_standardize_owner_id.sql
+├── 20260326000006_sync_optimization.sql
+├── 20260327000001_launch_readiness_dashboard.sql
+└── down/                              # Matching reversals
 ```
 
 ### Migration Best Practices

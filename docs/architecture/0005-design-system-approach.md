@@ -7,7 +7,7 @@
 
 ## Context
 
-Finance targets five distinct UI platforms — iOS/macOS (SwiftUI), Android (Jetpack Compose), Web (React), Windows (WinUI 3), and wearables (watchOS/Wear OS). Each platform has its own design language (HIG, Material Design 3, Fluent, etc.), native UI framework, and accessibility APIs.
+Finance targets five distinct UI platforms — iOS/macOS (SwiftUI), Android (Jetpack Compose), Web (React), Windows (Compose Desktop), and wearables (watchOS/Wear OS). Each platform has its own design language (HIG, Material Design 3, Fluent, etc.), native UI framework, and accessibility APIs.
 
 Key forces driving this decision:
 

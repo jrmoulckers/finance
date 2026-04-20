@@ -287,7 +287,18 @@ The Changesets GitHub Action opens a "Version Packages" PR when changesets are p
 
 ### Platform-Specific Release Workflows
 
-Each platform has a dedicated release pipeline triggered by platform-prefixed Git tags:
+Each platform has a dedicated CI pipeline and release pipeline:
+
+**CI Pipelines** (triggered on PRs with path filtering):
+
+| Platform | CI Workflow      | Lint                                  |
+| -------- | ---------------- | ------------------------------------- |
+| Android  | `android-ci.yml` | Detekt (`kotlin-lint.yml`)            |
+| iOS      | `ios-ci.yml`     | —                                     |
+| Web      | `web-ci.yml`     | ESLint + Prettier (`lint-format.yml`) |
+| Windows  | `windows-ci.yml` | Detekt (`kotlin-lint.yml`)            |
+
+**Release Pipelines** (triggered by platform-prefixed Git tags):
 
 | Platform | Tag Format       | Pipeline              | Distribution                  |
 | -------- | ---------------- | --------------------- | ----------------------------- |
@@ -295,6 +306,16 @@ Each platform has a dedicated release pipeline triggered by platform-prefixed Gi
 | Android  | `android/v1.3.0` | `release-android.yml` | Internal → Beta → Play Store  |
 | Web      | `web/v2.1.0`     | `release-web.yml`     | Vercel deployment             |
 | Windows  | `windows/v1.3.0` | `release-windows.yml` | Flight ring → Microsoft Store |
+
+**Additional CI Workflows:**
+
+- `ci.yml` — Root CI orchestrator
+- `ci-health.yml` — CI health monitoring
+- `changesets.yml` — Automated version package PRs
+- `pr-title.yml` — Conventional commit title enforcement
+- `security.yml` — Security scanning
+- `pen-test.yml` — Penetration testing
+- `stale-detection.yml` — Stale issue/PR detection
 
 **Release progression:** Internal testing (1–2 days) → Beta (3–7 days) → Staged rollout → Full release.
 

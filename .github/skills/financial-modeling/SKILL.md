@@ -90,3 +90,15 @@ The repository now has a dedicated export module in `packages/core/src/commonMai
 - Test serializer output for deterministic ordering and stable schemas.
 - Test checksum generation with known fixtures.
 - Test that exported data never includes sync-only fields or raw user IDs.
+
+## AI-Powered Financial Engines
+
+Five AI engines in `packages/core/src/commonMain/kotlin/com/finance/core/` provide intelligent financial features. All run on-device (edge-first, no server calls):
+
+- **`SmartCategorizationEngine`** (`categorization/`) — automatic transaction categorization based on payee patterns and historical data.
+- **`BalancePredictionEngine`** (`prediction/`) — projects future account balances using linear regression on transaction history.
+- **`SubscriptionDetector`** (`subscription/`) — identifies recurring charges from transaction patterns.
+- **`SavingsEngine`** (`savings/`) — finds savings opportunities by analyzing spending habits.
+- **`BudgetRecommendationEngine`** (`recommendation/`) — suggests budget allocations based on income and spending distribution.
+
+When implementing financial features that could benefit from historical analysis, check whether an existing engine already provides the computation. Extend engines via their input data rather than adding new standalone calculators.

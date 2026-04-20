@@ -402,13 +402,14 @@ Target: **60fps = 16.67ms per frame**
 packages/design-tokens/
 ├── tokens/
 │   ├── primitive/
-│   │   └── motion.json            # Duration + easing primitives
+│   │   ├── motion.json            # Duration + easing primitives
+│   │   └── cognitive.json         # Cognitive mode motion overrides
 │   ├── semantic/
 │   │   └── animation.json         # Purpose-mapped animation presets
 │   └── component/
 │       └── animation.json         # Component-level animation bindings
 ├── config/
-│   └── style-dictionary.config.mjs  # Build pipeline (updated)
+│   └── style-dictionary.config.mjs  # Build pipeline
 └── build/
     ├── web/tokens.css              # Generated: --duration-*, --easing-*, --animation-*
     ├── ios/FinanceTokens.swift     # Generated: static constants
@@ -418,7 +419,7 @@ apps/web/src/
 ├── styles/
 │   └── animations.css              # @keyframes + utility classes + reduced motion
 └── theme/
-    └── theme.ts                    # TypeScript animation constants (updated)
+    └── theme.ts                    # TypeScript animation constants
 
 docs/design/
 └── animation-library.md            # This document

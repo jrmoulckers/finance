@@ -449,3 +449,4 @@ Device attestation MUST comply with privacy requirements:
 - OWASP MASVS v2: MASVS-RESILIENCE-4 (Integrity Verification)
 - FIDO Alliance: Device attestation standards
 - TPM 2.0 Specification: https://trustedcomputinggroup.org/resource/tpm-library-specification/
+- [Implementation Specification](./device-attestation-implementation.md)

@@ -3,6 +3,7 @@
 > **Issue:** [#307](https://github.com/nickvdyck/finance-management/issues/307)
 > **Token variant:** `dark-oled`
 > **Selector:** `[data-theme="dark-oled"]`
+> **Token file:** `tokens/semantic/colors.dark-oled.json`
 
 ## Design Rationale
 

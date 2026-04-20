@@ -58,6 +58,35 @@ After install:
 - `npm run lint:fix` — full-repo ESLint and Prettier autofix.
 - `npm run test:kmp` — runs the shared Kotlin tests currently wired into the root workflow.
 
+## Tooling Details
+
+### Detekt (Kotlin Lint)
+
+- Configuration lives in `config/detekt/`.
+- The `kotlin-lint.yml` workflow runs Detekt on KMP packages.
+- Fix violations locally with `./gradlew detekt` before pushing.
+
+### Prettier
+
+- `.prettierignore` controls which files are excluded from formatting.
+- `npm run format` applies Prettier formatting to all applicable files.
+- `npm run format:check` validates formatting without writing changes (used in CI).
+
+### Tools Directory (`tools/`)
+
+| Script                       | Purpose                                |
+| ---------------------------- | -------------------------------------- |
+| `cleanup-worktrees.js`       | Prunes stale worktrees after merges    |
+| `generate-changelog.js`      | Generates changelogs from Changesets   |
+| `ci-check-quick.js`          | Lightweight local CI validation        |
+| `ready-for-pr.js`            | Full pre-PR validation gate            |
+| `pre-release-check.js`       | Pre-release verification               |
+| `setup.js`                   | Initial environment setup              |
+| `sync-mobile-versions.js`    | Syncs version numbers across platforms |
+| `token-preview-generate.mjs` | Design token preview generation        |
+| `token-preview-serve.mjs`    | Design token preview server            |
+| `gradle.js`                  | Gradle helper utilities                |
+
 ## MCP Server Verification
 
 After opening the workspace, verify MCP servers are running:
@@ -77,9 +106,12 @@ Avoid full `repo` access unless a human intentionally needs write capability out
 ## Helpful References
 
 - `README.md` — project overview and root workflow.
+- `AGENTS.md` — AI agent roles, file ownership, and fleet coordination rules.
 - `docs/guides/workflow-cheatsheet.md` — daily branch, commit, validation, and release workflow.
+- `docs/ai/worktrees.md` — worktree lifecycle for AI agent work.
 - `.github/CONTRIBUTING.md` — contributor expectations, including pre-PR validation.
 - `tools/README.md` — hook behavior and local tooling overview.
+- `docs/ai/skills.md` — overview of all available agent skills.
 
 ## Common Onboarding Issues
 

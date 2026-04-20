@@ -5,8 +5,11 @@ Comprehensive reference for all shared UI components in the Finance web applicat
 **Stack:** React 19 · TypeScript · Recharts · D3.js  
 **Source:** [`apps/web/src/components/`](../../apps/web/src/components/)  
 **Design tokens:** [`packages/design-tokens/`](../../packages/design-tokens/) ([token README](../../packages/design-tokens/README.md))  
+**Token preview:** [token-preview.md](./token-preview.md)  
 **Visualization guidelines:** [data-visualization.md](./data-visualization.md)  
-**UX principles:** [ux-principles.md](./ux-principles.md)
+**UX principles:** [ux-principles.md](./ux-principles.md)  
+**Premium UX:** [premium-ux.md](./premium-ux.md) — paywall, gates, premium badge tokens  
+**Accessibility:** [accessibility-patterns.md](./accessibility-patterns.md) · [cognitive-accessibility.md](./cognitive-accessibility.md)
 
 ---
 
@@ -72,6 +75,12 @@ Design tokens are organized in three tiers:
 | **Primitive** | `tokens/primitive/` | Raw values (colors, spacing, radii)      | `--color-blue-500`, `--spacing-4`                       |
 | **Semantic**  | `tokens/semantic/`  | Purpose-mapped tokens with theme support | `--semantic-text-primary`, `--semantic-status-negative` |
 | **Component** | `tokens/component/` | Component-specific tokens                | `--card-border-radius`, `--input-border`                |
+
+**Component token files:** `button.json`, `card.json`, `input.json`, `chart.json`, `navigation.json`, `progress.json`, `premium.json`, `animation.json`, `cognitive.json`
+
+**Theme variants:** `colors.light.json`, `colors.dark.json`, `colors.dark-oled.json`, `colors.high-contrast.json`
+
+**Motion tokens:** `primitive/motion.json` (durations, easings), `semantic/animation.json` (presets), `component/animation.json` (bindings)
 
 **How components consume tokens:**
 

@@ -513,3 +513,50 @@ Tested combinations:
 - ✅ Dark OLED + Cognitive
 - ✅ High Contrast + Cognitive
 - ✅ High Contrast + Cognitive + `forced-colors: active` (Windows)
+
+---
+
+## Token File Inventory
+
+Complete listing of all design token JSON files:
+
+### Primitive Tokens (`tokens/primitive/`)
+
+| File                 | Purpose                               |
+| -------------------- | ------------------------------------- |
+| `colors.json`        | Color scales (neutral, brand, status) |
+| `spacing.json`       | 4px grid spacing scale                |
+| `typography.json`    | Font sizes and weights                |
+| `shadows.json`       | Shadow definitions                    |
+| `border-radius.json` | Border radius scale                   |
+| `breakpoints.json`   | Viewport breakpoint values            |
+| `motion.json`        | Duration and easing primitives        |
+| `cognitive.json`     | Cognitive mode overrides              |
+
+### Semantic Tokens (`tokens/semantic/`)
+
+| File                        | Purpose                           |
+| --------------------------- | --------------------------------- |
+| `colors.light.json`         | Light theme color mappings        |
+| `colors.dark.json`          | Dark theme color mappings         |
+| `colors.dark-oled.json`     | OLED dark theme (true black)      |
+| `colors.high-contrast.json` | High contrast theme mappings      |
+| `typography.json`           | Type scale (display → caption)    |
+| `elevation.json`            | Shadow elevation semantics        |
+| `breakpoints.json`          | Device-oriented breakpoint names  |
+| `animation.json`            | Purpose-mapped animation presets  |
+| `cognitive.json`            | Cognitive accessibility overrides |
+
+### Component Tokens (`tokens/component/`)
+
+| File              | Purpose                                           |
+| ----------------- | ------------------------------------------------- |
+| `button.json`     | Button variants (primary, secondary, destructive) |
+| `card.json`       | Card surface, padding, elevation                  |
+| `input.json`      | Form input styling                                |
+| `chart.json`      | Chart containers, axes, series colors             |
+| `navigation.json` | Sidebar and bottom nav tokens                     |
+| `progress.json`   | Progress bars and rings                           |
+| `premium.json`    | Premium badge, gate, upsell tokens                |
+| `animation.json`  | Component-level animation bindings                |
+| `cognitive.json`  | Cognitive mode component overrides                |

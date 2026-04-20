@@ -1,6 +1,6 @@
 # Monitoring Architecture
 
-**Status:** Proposed
+**Status:** Implemented (Phase 1 complete)
 **Date:** 2026-03-15
 **Related:** [Security Audit](security-audit-v1.md) · [Privacy Audit](privacy-audit-v1.md) · [CI/CD Strategy](0006-cicd-strategy.md)
 **Tickets:** #410
@@ -171,7 +171,7 @@ This endpoint is consumed by external uptime monitoring services.
 
 ### 4.1 External Health Checks
 
-Configure an external uptime service (e.g., Uptime Robot, Better Uptime, or Checkly) to:
+Configure Uptime Kuma (self-hosted, see [Monitoring Infrastructure](monitoring-infrastructure.md)) to:
 
 | Check              | Target                                                    | Interval | Alert              |
 | ------------------ | --------------------------------------------------------- | -------- | ------------------ |
@@ -330,13 +330,13 @@ Every alert must include:
 
 ## 9. Implementation Roadmap
 
-| Phase                  | Scope                                                                   | Prerequisite                |
-| ---------------------- | ----------------------------------------------------------------------- | --------------------------- |
-| **Phase 1** (Pre-beta) | Health check endpoint, performance baselines, alerting rules documented | This document               |
-| **Phase 2** (Beta)     | Sentry integration (web first, then Android), consent UI                | Consent management (#367)   |
-| **Phase 3** (Beta)     | Sentry integration (iOS, Windows), operational dashboard                | Phase 2                     |
-| **Phase 4** (GA)       | External uptime monitoring, PagerDuty integration, runbooks             | Phase 3                     |
-| **Phase 5** (Post-GA)  | Synthetic monitoring, SLO tracking, cost optimization                   | Production traffic baseline |
+| Phase                  | Scope                                                                   | Prerequisite                | Status                                                |
+| ---------------------- | ----------------------------------------------------------------------- | --------------------------- | ----------------------------------------------------- |
+| **Phase 1** (Pre-beta) | Health check endpoint, performance baselines, alerting rules documented | This document               | ✅ Complete                                           |
+| **Phase 2** (Beta)     | Sentry integration (web first, then Android), consent UI                | Consent management (#367)   | ⏳ In Progress (web monitoring.ts implemented)        |
+| **Phase 3** (Beta)     | Sentry integration (iOS, Windows), operational dashboard                | Phase 2                     | 🔲 Planned                                            |
+| **Phase 4** (GA)       | External uptime monitoring, PagerDuty integration, runbooks             | Phase 3                     | ⏳ Partial (Uptime Kuma configured, runbooks written) |
+| **Phase 5** (Post-GA)  | Synthetic monitoring, SLO tracking, cost optimization                   | Production traffic baseline | 🔲 Planned                                            |
 
 ---
 

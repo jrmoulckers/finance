@@ -23,7 +23,7 @@ Complete guide for setting up, building, and developing the Finance iOS app.
 
 1. **Xcode 16.0+** — Download from the [Mac App Store](https://apps.apple.com/app/xcode/id497799835) or [Apple Developer](https://developer.apple.com/xcode/)
 2. **macOS 14.0+ (Sonoma)** — Required for Xcode 16
-3. **JDK 17+** — Required for building KMP shared modules via Gradle
+3. **JDK 21** — Required for building KMP shared modules via Gradle
 4. **Command Line Tools** — Install via `xcode-select --install`
 
 ### Recommended Tools

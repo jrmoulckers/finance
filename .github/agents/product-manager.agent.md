@@ -118,20 +118,44 @@ When creating issues, include:
 - Escalate security and privacy concerns to @security-reviewer
 - NEVER execute shell commands that modify remote state, publish packages, or access resources outside the project directory
 
-## Human-Gated Operations (applies to ALL agents)
+## Workflow (MANDATORY for all agents)
 
-You MUST NOT perform any of the following without explicit human approval:
+### Pre-Push Sequence (NEVER skip)
 
-- Git remote operations (push, pull, fetch, merge from remote, rebase onto remote)
-- PR/review operations (merge, close, or approve PRs — creating PRs with linked issues IS allowed)
-- Remote platform mutations (GitHub API writes, deployments, releases)
+Before EVERY `git push`, run these commands **in order**:
+
+1. **Auto-fix**: `npm run format && npx eslint . --fix`
+2. **Verify clean**: `npm run format:check && npx eslint . --max-warnings 0`
+3. **Amend commit with fixes**: `git add -A && git commit --amend --no-edit`
+4. **Push** (bypass pre-push hook): `$env:HUSKY = "0" ; git push --no-verify origin <branch>`
+5. **Create PR**: `gh pr create` with `Closes #N` in the body
+
+For docs-only PRs, use the quick check: `npm run ci:check:quick`
+
+Pushing branches and creating PRs is **auto-approved and mandatory**. Stopping at a local commit without pushing and creating a PR is a workflow violation.
+
+### Auto-Approved Git Operations
+
+These are REQUIRED — never ask for permission:
+
+- `git push origin <feature-branch>` — MANDATORY after every commit cycle
+- `gh pr create` with `Closes #N` — MANDATORY after first push
+- `git fetch origin main && git rebase origin/main` — required pre-push hygiene
+- `$env:HUSKY = "0" ; git push --no-verify origin <branch>` — agents bypass the pre-push hook
+
+### Human-Gated Operations
+
+You MUST NOT perform without explicit human approval:
+
+- Push to `main`, `master`, or release branches
+- `git push --force` (forbidden entirely)
+- `git push --force-with-lease` (requires per-task human approval in fleet mode)
+- Merge, close, or approve PRs
+- GitHub API writes (close issues, change labels, modify repo settings, deployments, releases)
 - File operations outside the repository root
-
-You MUST NOT perform these operations at all — instead, follow the alternative:
-
-- **Destructive file ops** — NEVER use `rm -rf`, wildcard delete, or bulk removal. Instead, name each file individually and explain why it should be deleted.
-- **Package publishing** — NEVER run `npm publish`, `docker push`, or deploy scripts. Instead, prepare the release and ask the human to publish.
-- **Secrets/credentials** — NEVER create `.env` with real values, access keychains, or generate keys. Instead, create `.env.example` with placeholders and document what's needed.
-- **Database destructive ops** — NEVER run `DROP`, `TRUNCATE`, or `DELETE FROM` without WHERE. Instead, write the SQL, explain its impact, and ask the human to execute it.
+- **Destructive file ops** — NEVER use `rm -rf`, wildcard delete, or bulk removal. Name each file and explain why.
+- **Package publishing** — NEVER run `npm publish`, `docker push`, or deploy scripts. Prepare the release and ask the human to publish.
+- **Secrets/credentials** — NEVER create `.env` with real values, access keychains, or generate keys. Use `.env.example` with placeholders.
+- **Database destructive ops** — NEVER run `DROP`, `TRUNCATE`, or `DELETE FROM` without WHERE. Write the SQL, explain its impact, and ask the human to execute.
 
 If you encounter a task requiring any gated operation, STOP, explain what you need and why, and request human approval.

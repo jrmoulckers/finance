@@ -6,6 +6,7 @@
 > **Last Updated:** 2025-07-15
 > **WCAG Target:** 2.2 Level AA (AAA for target sizing)
 > **Platforms:** Web (React/PWA) · iOS (SwiftUI) · Android (Compose) · Windows (WinUI/XAML)
+> **Token files:** `tokens/primitive/cognitive.json` · `tokens/semantic/cognitive.json` · `tokens/component/cognitive.json`
 
 ---
 

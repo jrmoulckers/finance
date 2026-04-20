@@ -1,6 +1,6 @@
 # Alerting Rules
 
-**Status:** Proposed
+**Status:** Implemented
 **Date:** 2026-03-15
 **Related:** [Monitoring Architecture](monitoring.md) · [Security Audit](security-audit-v1.md)
 **Tickets:** #410

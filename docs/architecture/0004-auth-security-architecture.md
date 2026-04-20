@@ -371,5 +371,5 @@ All platforms use SQLCipher for local SQLite database encryption (AES-256-GCM). 
 - [FIDO Alliance — Passkeys](https://fidoalliance.org/passkeys/)
 - [OWASP MASVS — Mobile Application Security](https://mas.owasp.org/)
 - [SimpleWebAuthn — Passkeys](https://simplewebauthn.dev/docs/advanced/passkeys/)
-- [ADR-0001: Edge-First Sync Architecture](./0001-edge-first-sync-architecture.md) (related — offline auth strategy)
-- [ADR-0002: Cross-Platform Framework Selection](./0002-cross-platform-framework-selection.md) (related — platform APIs)
+- [ADR-0001: Cross-Platform Framework Selection](./0001-cross-platform-framework.md) (related — platform APIs)
+- [ADR-0002: Backend & Sync Architecture](./0002-backend-sync-architecture.md) (related — offline auth strategy)

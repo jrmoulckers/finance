@@ -35,7 +35,7 @@ The framework decision is foundational — it determines the language(s), build 
 - **SwiftUI** for iOS/iPadOS/macOS/watchOS UI
 - **Jetpack Compose** for Android/Wear OS UI
 - **Compose Multiplatform (Desktop)** for Windows 11
-- **Compose for Web (Wasm)** or Kobweb for the web PWA target
+- **TypeScript + React** for the web PWA target, consuming KMP shared logic via compiled JS bindings
 - **SQLDelight** for the shared data layer (cross-platform type-safe SQL)
 - **Ktor** for networking across all platforms
 
@@ -47,7 +47,6 @@ finance/
 │   ├── core/              ← Kotlin commonMain: business logic, domain models
 │   │   └── src/
 │   │       ├── commonMain/    ← Shared Kotlin (expect declarations)
-│   │       ├── androidMain/   ← Android actual declarations
 │   │       ├── iosMain/       ← iOS actual declarations
 │   │       ├── jvmMain/       ← Desktop (Windows) actual declarations
 │   │       └── jsMain/        ← Web actual declarations
@@ -56,10 +55,10 @@ finance/
 ├── apps/
 │   ├── ios/               ← SwiftUI app (imports packages/core as framework)
 │   ├── android/           ← Jetpack Compose app (depends on packages/core)
-│   ├── web/               ← Compose for Web / Kobweb
+│   ├── web/               ← TypeScript + React PWA (consumes KMP via JS bindings)
 │   └── windows/           ← Compose Desktop (JVM target)
 ├── services/
-│   └── api/               ← Ktor server (Kotlin) — thin sync coordination
+│   └── api/               ← Supabase project (PostgreSQL, Auth, Edge Functions)
 └── tools/                 ← Gradle convention plugins, KSP processors
 ```
 
@@ -230,15 +229,15 @@ Flutter uses a single Dart codebase with a custom rendering engine (Impeller/Ski
 
 ### Package Structure
 
-| Package           | Source Sets                                                 | Purpose                                                             |
-| ----------------- | ----------------------------------------------------------- | ------------------------------------------------------------------- |
-| `packages/core`   | `commonMain`, `androidMain`, `iosMain`, `jvmMain`, `jsMain` | Business logic, domain services, validation, financial calculations |
-| `packages/models` | `commonMain` (primarily)                                    | Data classes, serialization (kotlinx.serialization), enums          |
-| `packages/sync`   | `commonMain`, platform actuals for networking               | Sync engine, conflict resolution, delta sync protocol               |
-| `apps/android`    | Android app module                                          | Jetpack Compose UI, Android-specific integrations                   |
-| `apps/ios`        | Xcode project                                               | SwiftUI app that imports KMP framework via SPM or CocoaPods         |
-| `apps/web`        | Kotlin/JS or Kotlin/Wasm                                    | Compose for Web or Kobweb frontend                                  |
-| `apps/windows`    | JVM Desktop module                                          | Compose Desktop app targeting Windows 11                            |
+| Package           | Source Sets                                                           | Purpose                                                             |
+| ----------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `packages/core`   | `commonMain`, `commonTest`, `iosMain`, `jvmMain`, `jsMain`            | Business logic, domain services, validation, financial calculations |
+| `packages/models` | `commonMain`, `androidMain`, `iosMain`, `jvmMain`, `jsMain`           | Data classes, serialization (kotlinx.serialization), enums          |
+| `packages/sync`   | `commonMain`, `androidMain`, `iosMain`, `jvmMain`, `jsMain`, `jsTest` | Sync engine, conflict resolution, delta sync protocol               |
+| `apps/android`    | Android app module                                                    | Jetpack Compose UI, Android-specific integrations                   |
+| `apps/ios`        | Xcode project                                                         | SwiftUI app that imports KMP framework via SPM or CocoaPods         |
+| `apps/web`        | TypeScript + React                                                    | React PWA consuming KMP logic via compiled JS bindings              |
+| `apps/windows`    | JVM Desktop module                                                    | Compose Desktop app targeting Windows 11                            |
 
 ### Build System
 

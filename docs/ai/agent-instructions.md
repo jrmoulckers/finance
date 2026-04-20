@@ -125,10 +125,16 @@ See [`docs/ai/instructions.md`](instructions.md) for details and how to add/upda
 
 **All agents must NOT perform the following without explicit human approval:**
 
-- Git remote operations (push, pull, fetch, merge from remote, rebase onto remote)
 - PR/review operations (merge, close, approve PRs — creating PRs with linked issues IS allowed)
 - Remote platform mutations (GitHub API writes, deployments, releases)
 - File operations outside the repository root
+- `git push --force` or `git push --force-with-lease` (regular push to own feature branch IS allowed)
+
+**Auto-approved operations (no human needed):**
+
+- `git push origin <feature-branch>` — pushing own feature branch
+- `git fetch origin main` and `git rebase origin/main` on own branch — standard pre-push hygiene
+- `gh pr create` — creating PRs with linked issues
 
 **Instead:**
 

@@ -100,8 +100,11 @@ simplified layouts, no animations, clear language.
 │                                       ✓ Bill reminders             │
 │                                       ✓ Year-in-review report      │
 │                                                                     │
-│  FREE: $0 forever                     PREMIUM: $X.XX/month or      │
-│                                                $XX.XX/year         │
+│  FREE: $0 forever                     INDIVIDUAL: $4.99/month or   │
+│                                                   $39.99/year      │
+│                                       FAMILY: $7.99/month or       │
+│                                                $63.99/year         │
+│                                       ENTERPRISE: $14.99/month     │
 │                                       (14-day free trial)          │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -127,6 +130,16 @@ simplified layouts, no animations, clear language.
 | Year-in-review             | —         | ✅        | Feature gate      |
 | Privacy & encryption       | ✅        | ✅        | None (NEVER gate) |
 | Cognitive accessibility    | ✅        | ✅        | None (NEVER gate) |
+
+### Pricing Tiers
+
+| Tier           | Monthly   | Annual    | Savings | Target Audience                     |
+| -------------- | --------- | --------- | ------- | ----------------------------------- |
+| **Individual** | $4.99/mo  | $39.99/yr | 33%     | Single user, all features           |
+| **Family**     | $7.99/mo  | $63.99/yr | 33%     | Household sharing (up to 5 members) |
+| **Enterprise** | $14.99/mo | —         | —       | Teams and organizations             |
+
+All tiers include a **14-day free trial** with no charge until the trial ends.
 
 ---
 
@@ -163,8 +176,8 @@ shown as a blocking interstitial.
 │  └─────────────────────────────────────────────────┘    │
 │                                                         │
 │  ┌─────────────────────────────────────────────────┐    │
-│  │  ○  Monthly    $X.XX/month                        │    │
-│  │  ●  Yearly     $XX.XX/year  (Save XX%)            │    │
+│  │  ○  Monthly    $4.99/month                       │    │
+│  │  ●  Yearly     $39.99/year  (Save 33%)           │    │
 │  └─────────────────────────────────────────────────┘    │
 │                                                         │
 │  ┌─────────────────────────────────────────────────┐    │
@@ -200,7 +213,7 @@ shown as a blocking interstitial.
 | ---------------------------------- | -------------------------------------------- |
 | "Upgrade NOW!"                     | "Start free trial"                           |
 | "Don't miss out!"                  | "See what Premium includes"                  |
-| "Only $X.XX/month!"                | "$X.XX/month" (state the fact)               |
+| "Only $4.99/month!"                | "$4.99/month" (state the fact)               |
 | "Limited time offer"               | _(Don't use artificial urgency)_             |
 | "10,000 users love Premium"        | _(Don't use social proof pressure)_          |
 | "You're missing advanced features" | "Advanced charts are available with Premium" |
@@ -276,7 +289,7 @@ Settings → Subscription → Manage Subscription
 │                                                         │
 │  ┌─────────────────────────────────────────────────┐    │
 │  │  Finance Premium                                  │    │
-│  │  Yearly · $XX.XX/year                             │    │
+│  │  Yearly · $39.99/year                             │    │
 │  │  Next billing: [date]                             │    │
 │  │                                                   │    │
 │  │  [ Manage in [Platform] Settings ]                │    │
@@ -354,9 +367,10 @@ When a user hits a soft gate (e.g., 5-category budget limit):
 
 ## Token Bindings
 
-### New Tokens Required
+### Premium Component Tokens
 
-The following component tokens should be added for premium UI elements:
+Premium tokens are defined in `packages/design-tokens/tokens/component/premium.json`.
+See [token-preview.md](./token-preview.md) for the full token inventory.
 
 | Token Path                    | Value                             | Purpose                  |
 | ----------------------------- | --------------------------------- | ------------------------ |
@@ -392,7 +406,7 @@ The following component tokens should be added for premium UI elements:
 | Feature list    | `role="list"` with `role="listitem"` per feature           |
 | Price selector  | `role="radiogroup"` with `role="radio"` per option         |
 | Selected price  | `aria-checked="true"` on selected option                   |
-| CTA button      | `aria-label="Start 14-day free trial for $X per [period]"` |
+| CTA button      | `aria-label="Start 14-day free trial for $4.99 per month"` |
 | Trial terms     | Readable text, not image                                   |
 | Blurred preview | `aria-hidden="true"` (decorative)                          |
 | Back button     | `aria-label="Go back"` — always keyboard accessible        |
@@ -448,9 +462,9 @@ The following component tokens should be added for premium UI elements:
 │ │ ✓ PDF/Excel export   │ │
 │ └──────────────────────┘ │
 │                          │
-│ ○ Monthly  $X.XX/mo     │
-│ ● Yearly   $XX.XX/yr    │
-│            Save XX%      │
+│ ○ Monthly  $4.99/mo     │
+│ ● Yearly   $39.99/yr    │
+│            Save 33%      │
 │                          │
 │ ┌──────────────────────┐ │
 │ │  Start Free Trial    │ │
@@ -484,8 +498,8 @@ The following component tokens should be added for premium UI elements:
 │ │                              │ │  ✓ Auto-categorize            │ │
 │ │                              │ │  ✓ PDF/Excel export           │ │
 │ │                              │ │                               │ │
-│ │                              │ │  ○ Monthly  $X.XX/mo          │ │
-│ │                              │ │  ● Yearly   $XX.XX/yr        │ │
+│ │                              │ │  ○ Monthly  $4.99/mo          │ │
+│ │                              │ │  ● Yearly   $39.99/yr        │ │
 │ │                              │ │                               │ │
 │ │                              │ │  ┌───────────────────────┐    │ │
 │ │                              │ │  │  Start Free Trial     │    │ │

@@ -1,9 +1,9 @@
 # Environment Architecture
 
-**Status:** Proposed
+**Status:** Implemented
 **Date:** 2026-06-15
 **Author:** AI agent (Architect), with human direction
-**Related:** [ADR-0007: Hosting Strategy](0007-hosting-strategy.md) · [ADR-0006: CI/CD Strategy](0006-cicd-strategy.md) · [ADR-0002: Backend & Sync Architecture](0002-backend-sync-architecture.md)
+**Related:** [ADR-0007: Hosting Strategy](0007-hosting-strategy.md) · [ADR-0006: CI/CD Strategy](0006-cicd-strategy.md) · [ADR-0002: Backend & Sync Architecture](0002-backend-sync-architecture.md) · [Deployment Guide](../../deploy/README.md)
 
 ---
 

@@ -321,3 +321,4 @@ UserDefaults. Consider storing this flag in the Keychain as well.
 - Android BiometricPrompt CryptoObject: https://developer.android.com/reference/android/hardware/biometrics/BiometricPrompt.CryptoObject
 - Apple Face ID Security: https://support.apple.com/en-us/102381
 - NIST SP 800-76-2: Biometric Specifications for PIV
+- [Implementation Specification](./biometric-liveness-implementation.md)

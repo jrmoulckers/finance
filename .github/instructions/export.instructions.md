@@ -18,6 +18,7 @@ You are working in the data export module, which handles GDPR data portability.
 ## Rules
 
 - Never include `syncVersion` or `isSynced` in exported data.
+- Never include raw `ownerId` — anonymize via SHA-256 hash (same as other user IDs).
 - Monetary values: `Cents(Long)` → display as decimal with currency.
 - All dates must be ISO 8601.
 - Compute a SHA-256 checksum for every export.

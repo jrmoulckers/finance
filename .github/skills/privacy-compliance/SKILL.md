@@ -16,12 +16,23 @@ The repository already contains two important audit documents:
 
 - `docs/architecture/privacy-audit-v1.md` — privacy compliance audit and remediation baseline.
 - `docs/architecture/security-audit-v1.md` — security audit findings relevant to privacy controls.
+- `docs/architecture/masvs-resilience-audit.md` — MASVS-RESILIENCE controls audit.
+- `docs/architecture/security/` — detailed specs for device attestation, RASP, session binding, anomaly detection, and security posture reporting.
 
-The current audit snapshot is not launch ready:
+### Security Hardening (Implemented)
 
-- `privacy-audit-v1.md` estimates GDPR compliance at roughly 42%.
-- `privacy-audit-v1.md` estimates CCPA/CPRA compliance at roughly 46%.
-- The same audit calls out incomplete DSAR coverage, incomplete deletion flows, missing consent capture, missing published notices, and undefined retention periods as key blockers.
+The following MASVS-RESILIENCE controls are implemented in `packages/core/src/commonMain/kotlin/com/finance/core/security/`:
+
+- **RASP** (`RuntimeIntegrityChecker.kt`) — runtime tamper detection and integrity verification.
+- **Device Attestation** (`DeviceAttestor.kt`) — platform-specific attestation (`PlayIntegrityAttestor` on Android, `TpmAttestor` on Windows).
+- **Biometric Crypto Binding** (`BiometricCryptoBinding.kt`) — ties biometric authentication to cryptographic key operations for session security.
+
+Additional security strategies are documented in `docs/architecture/security/`:
+
+- Session binding strategy
+- Anomaly detection specification
+- RASP implementation and strategy docs
+- Security posture report
 
 ## Applicable Regulations
 

@@ -1,7 +1,7 @@
 # System Architecture Roadmap — Finance
 
-> **Status:** Phases 0-8 complete — Stages 9-12 in planning (post-launch)
-> **Last Updated:** 2026-03-23
+> **Status:** Phases 0-8 complete — Stage 9-10 features started, Stage 11 security in progress, V2 architecture planned (ADR-0010 through ADR-0014)
+> **Last Updated:** 2025-07-27
 > **Purpose:** Source-of-truth for issue creation and development planning
 
 ---
@@ -278,7 +278,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 #### `apps/web` — Progressive Web App
 
 - **Purpose:** Web-based access with offline PWA support
-- **Technology:** Kotlin/JS or TypeScript + React with KMP logic via compiled JS/WASM (decision pending)
+- **Technology:** TypeScript + React, consuming KMP shared logic via compiled JS/WASM bindings
 - **Key Components:**
   - Responsive design (mobile + desktop web)
   - SQLite-WASM for local database (OPFS persistence)
@@ -292,7 +292,7 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 #### `apps/windows` — Windows 11 Desktop
 
 - **Purpose:** Native Windows desktop app
-- **Technology:** Compose Desktop (JVM) or WinUI 3 (decision pending)
+- **Technology:** Compose Desktop (JVM)
 - **Key Components:**
   - Desktop-optimized UI with sidebar navigation
   - DPAPI / Credential Locker for token storage (TPM-backed)
@@ -347,10 +347,10 @@ All CRUD operations happen against the local SQLite database first. The UI updat
 **What remains in Phase 0:**
 
 - ✅ Technology decisions confirmed (except app name — pending workshop)
-- Write ADRs for each confirmed decision (`docs/architecture/adr-001-*.md` through `adr-007-*.md`)
-- Set up Turborepo workspace configuration (`turbo.json`)
-- Configure Dependabot for all package ecosystems
-- Set up conventional commits enforcement (commitlint + husky)
+- ✅ ADRs written for each confirmed decision (ADR-0001 through ADR-0009)
+- ✅ Turborepo workspace configuration (`turbo.json`)
+- ✅ Dependabot configured for all package ecosystems
+- ✅ Conventional commits enforcement (commitlint + husky)
 
 ### Phase 1: Core Engine ✅
 
@@ -442,7 +442,7 @@ Implement the iOS app using SwiftUI with KMP shared logic via Swift Export.
 
 Implement the web app with offline PWA support.
 
-- Set up web app project in `apps/web/` — Kotlin/JS with Compose for Web OR TypeScript + React (pending decision)
+- Set up web app project in `apps/web/` — TypeScript + React consuming KMP shared logic via JS bindings
 - Integrate KMP shared logic via compiled JavaScript or WASM module
 - Implement responsive UI — mobile-first design scaling to desktop, semantic HTML structure
 - Implement core screens matching mobile apps — dashboard, accounts, transactions, budgets, goals, settings
@@ -462,7 +462,7 @@ Implement the web app with offline PWA support.
 
 Implement the Windows desktop app.
 
-- Set up Windows app project in `apps/windows/` — Compose Desktop (JVM) or WinUI 3 (pending decision)
+- Set up Windows app project in `apps/windows/` — Compose Desktop (JVM)
 - Integrate KMP shared logic — direct via JVM target (Compose Desktop) or via compiled library (WinUI)
 - Implement desktop-optimized UI — sidebar navigation, multi-panel layouts, keyboard shortcuts
 - Implement core screens matching other platforms — dashboard, accounts, transactions, budgets, goals, settings
@@ -493,9 +493,9 @@ Harden, document, and ship v0.1-beta to testers.
 - Configure Gradle build scans (Develocity) for build performance visibility
 - Fix health-check Edge Function CORS import (getCorsHeaders migration)
 
-### Stage 9: UX Polish & Delight
+### Stage 9: UX Polish & Delight ⏳ (In Progress)
 
-Elevate the user experience with animations, accessibility, and interaction refinements.
+Elevate the user experience with animations, accessibility, and interaction refinements. Feature flag infrastructure and prediction/recommendation engines are implemented in `packages/core`.
 
 - Implement celebratory animations library — confetti for goals met, smooth transitions (#313)
 - Achieve sub-100ms microinteraction feedback on all tap/click targets (#314)
@@ -509,9 +509,9 @@ Elevate the user experience with animations, accessibility, and interaction refi
 
 **Acceptance criteria:** All interactions < 100ms response. WCAG 2.2 AA passes on all platforms. Dashboard customization persists across sessions.
 
-### Stage 10: AI & Intelligence
+### Stage 10: AI & Intelligence ⏳ (In Progress)
 
-Add on-device intelligence for categorization, predictions, and recommendations.
+Add on-device intelligence for categorization, predictions, and recommendations. Foundation work is complete: prediction engine, recommendation engine, subscription detection, and auto-categorization hooks exist in `packages/core`. V2 AI/ML pipeline architecture is planned in [ADR-0014](0014-ai-ml-pipeline-architecture.md).
 
 - Implement on-device AI auto-categorization using transaction patterns (#321)
 - Add natural language transaction input — "spent $12 at Starbucks" (#322)
@@ -524,9 +524,9 @@ Add on-device intelligence for categorization, predictions, and recommendations.
 
 **Acceptance criteria:** Auto-categorization > 85% accuracy on user's own data. All AI runs on-device (no financial data sent to cloud). Predictions include confidence intervals. Users can correct/override all AI decisions.
 
-### Stage 11: Security Hardening
+### Stage 11: Security Hardening ⏳ (In Progress)
 
-Production-grade security for a financial application.
+Production-grade security for a financial application. Significant progress: MASVS audits (code, network, platform, resilience, storage) are complete. Security audit v1 and API security audit v2 are documented. Rate limiting infrastructure, device attestation Edge Function, and auth webhook are deployed.
 
 - Implement certificate pinning on all platforms (#329)
 - Add runtime application self-protection (RASP) (#330)
@@ -608,23 +608,24 @@ Final optimization, auditing, and release preparation.
 
 ## Cost Estimates
 
-Estimated monthly costs for a production deployment at moderate scale (~1K users):
+Estimated monthly costs for the self-hosted production deployment ([ADR-0007](0007-hosting-strategy.md)):
 
-| Item                    | Monthly Cost | Notes                                                                        |
-| ----------------------- | ------------ | ---------------------------------------------------------------------------- |
-| Supabase (Pro)          | ~$25         | PostgreSQL, Auth, Edge Functions, 8 GB DB, 100K MAUs                         |
-| PowerSync (Pro)         | ~$49         | Sync layer, 30 GB synced/mo, 1K connections                                  |
-| GitHub Actions (CI/CD)  | ~$143        | Affected-only builds; iOS builds are the primary cost driver (~$64 of total) |
-| Apple Developer Program | ~$8          | $99/year for App Store + TestFlight distribution                             |
-| Google Play Console     | ~$2          | $25 one-time fee amortized                                                   |
-| Domain + web hosting    | ~$10         | Vercel/Cloudflare Pages for PWA hosting                                      |
-| **Total**               | **~$237/mo** | **Before scale optimization**                                                |
+| Item                    | Monthly Cost     | Notes                                                                        |
+| ----------------------- | ---------------- | ---------------------------------------------------------------------------- |
+| VPS (self-hosted)       | ~$10–20          | Supabase + PowerSync self-hosted on single VPS (Docker Compose)              |
+| GitHub Actions (CI/CD)  | ~$143            | Affected-only builds; iOS builds are the primary cost driver (~$64 of total) |
+| Apple Developer Program | ~$8              | $99/year for App Store + TestFlight distribution                             |
+| Google Play Console     | ~$2              | $25 one-time fee amortized                                                   |
+| Domain + web hosting    | ~$10             | Vercel/Cloudflare Pages for PWA hosting                                      |
+| Sentry (optional)       | ~$0–26           | Free tier covers early usage; upgrade at scale                               |
+| **Total**               | **~$173–209/mo** | **Self-hosted, before scale optimization**                                   |
 
-**Scale projections:**
+**Scale projections (per [ADR-0011](0011-scaling-architecture.md)):**
 
-- At 10K users: ~$400–$600/mo (PowerSync + Supabase compute scaling)
-- At 100K users: ~$1,000–$1,500/mo — consider self-hosting Supabase + PowerSync Open Edition to reduce to $200–$500/mo infrastructure-only
-- ElectricSQL (Apache 2.0, self-hosted, CRDT-based) should be re-evaluated in 6–12 months as a potential cost-reducing migration if SDK maturity improves
+- At 1K users (Tier 1): ~$20–40/mo VPS (vertical scaling)
+- At 10K users (Tier 2): ~$40–80/mo (read replicas + service separation)
+- At 100K users (Tier 3): ~$100–200/mo (Citus sharding + load balancer)
+- ElectricSQL (Apache 2.0, self-hosted, CRDT-based) should be re-evaluated in 6–12 months as a potential migration if SDK maturity improves
 
 ---
 
@@ -657,6 +658,16 @@ All technology decisions from Phase 0 have been confirmed and documented as ADRs
 - [ADR-0004: Authentication & Security](./0004-auth-security-architecture.md) — OAuth 2.0/PKCE, Passkeys, biometrics, encryption, RBAC, compliance
 - [ADR-0005: Design System & UI Architecture](./0005-design-system-approach.md) — Design tokens, accessibility, financial UI patterns, charting
 - [ADR-0006: CI/CD & Release Strategy](./0006-cicd-strategy.md) — GitHub Actions, Turborepo, Fastlane, testing strategy, cost optimization
+- [ADR-0007: Hosting Strategy](./0007-hosting-strategy.md) — Self-hosted VPS, Docker Compose, cost optimization
+- [ADR-0009: Legal & Monetization](./0009-legal-monetization-analysis.md) — Freemium model, compliance, licensing
+
+### V2 Architecture ADRs
+
+- [ADR-0010: V2 Architecture Vision](./0010-v2-architecture-vision.md) — Bank connections, AI features, multi-currency
+- [ADR-0011: Scaling Architecture](./0011-scaling-architecture.md) — Horizontal scaling, database sharding, CDN
+- [ADR-0012: API Versioning Strategy](./0012-api-versioning-strategy.md) — URL-prefix versioning, deprecation policy
+- [ADR-0013: Multi-Tenancy Architecture](./0013-multi-tenancy-architecture.md) — Organization layer, JWT-embedded claims
+- [ADR-0014: AI/ML Pipeline Architecture](./0014-ai-ml-pipeline-architecture.md) — On-device serving, model registry, federated learning
 
 ### Project Documents
 

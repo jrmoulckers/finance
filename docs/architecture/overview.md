@@ -1,6 +1,6 @@
 # Finance Monorepo Architecture Overview
 
-_Last updated: 2025-07-17_
+_Last updated: 2025-07-27_
 
 ---
 
@@ -96,16 +96,22 @@ graph TD
 ## 5. Key Components
 
 - **Shared KMP Packages:**
-  - `core`: Business logic, validation, calculations
+  - `core`: Business logic, validation, calculations, feature flags, i18n, monitoring interfaces, data export, prediction/recommendation engines
   - `models`: Data classes, serialization
   - `sync`: Delta sync, conflict resolution
 - **Local Storage:**
   - SQLDelight + SQLCipher for relational data
   - MMKV (Android), Keychain (iOS), DPAPI (Windows), IndexedDB (Web) for key-value
 - **Backend:**
-  - Supabase (PostgreSQL, Auth, Edge Functions)
+  - Supabase (PostgreSQL, Auth, 16 Edge Functions including health-check, launch-readiness, data-export, account-deletion, device-attestation, rate-limiting)
   - PowerSync for delta sync protocol
-  - Row-Level Security (RLS) for tenant isolation
+  - Row-Level Security (RLS) for tenant isolation, with automated RLS verification and schema integrity checks
+  - 23 database migrations with production health summary functions
+- **Infrastructure:**
+  - Self-hosted Docker Compose stack (Supabase + PowerSync + Caddy) on VPS
+  - Uptime Kuma for uptime monitoring
+  - Automated daily backups with off-site encrypted storage
+  - Deploy configuration in `deploy/` with staging and production profiles
 - **Security:**
   - End-to-end encryption for sensitive fields
   - Key management per platform (Secure Enclave, TEE, TPM)
@@ -123,11 +129,35 @@ graph TD
 
 ## 7. Open Questions
 
-- **Web PWA:** Is Compose for Web stable enough for production, or should a TypeScript PWA be used as a fallback?
 - **Key recovery:** What is the final UX for lost device/key recovery?
 - **Household sharing:** Is the key exchange protocol for household E2E fully implemented on all platforms?
-- **Windows app:** Is Compose Desktop the long-term solution, or will a native Windows UI be needed?
+
+### Resolved Questions
+
+- **Web PWA:** ✅ TypeScript + React PWA with KMP logic via JS bindings (Compose for Web deferred). See [ADR-0001](0001-cross-platform-framework.md).
+- **Windows app:** ✅ Compose Desktop (JVM) confirmed as long-term solution. See [ADR-0001](0001-cross-platform-framework.md).
 
 ---
 
 For detailed ADRs and platform-specific diagrams, see the [architecture directory](./) and the [Architecture Diagrams](diagrams.md) document for comprehensive Mermaid diagrams of all system components.
+
+### Architecture Decision Records (ADR) Index
+
+| ADR  | Title                                  | Status   |
+| ---- | -------------------------------------- | -------- |
+| 0001 | Cross-Platform Framework               | Accepted |
+| 0002 | Backend & Sync Architecture            | Accepted |
+| 0003 | Local Storage Strategy                 | Accepted |
+| 0004 | Auth & Security Architecture           | Accepted |
+| 0005 | Design System Approach                 | Accepted |
+| 0006 | CI/CD Strategy                         | Accepted |
+| 0007 | Hosting Strategy                       | Accepted |
+| 0008 | _(reserved — number not yet assigned)_ | —        |
+| 0009 | Legal & Monetization Analysis          | Accepted |
+| 0010 | V2 Architecture Vision                 | Proposed |
+| 0011 | Scaling Architecture                   | Proposed |
+| 0012 | API Versioning Strategy                | Proposed |
+| 0013 | Multi-Tenancy Architecture             | Proposed |
+| 0014 | AI/ML Pipeline Architecture            | Proposed |
+
+> **Note:** ADR-0008 is unassigned (numbering gap). The next new ADR should use number 0008 before proceeding to 0015+.

@@ -1,6 +1,6 @@
 # Launch Readiness Checklist
 
-**Status:** Proposed
+**Status:** Implemented
 **Date:** 2026-06-15
 **Author:** AI agent (Architect), with human direction
 **Related:** [Rollout Strategy](rollout-strategy.md) · [Environment Architecture](environments.md) · [Provisioning Guide](provisioning.md) · [Monitoring Infrastructure](monitoring-infrastructure.md)
@@ -10,6 +10,8 @@
 ## Overview
 
 This checklist defines every verification that must pass before the Finance app launches on each platform. It is organized into categories, with per-platform specifics where applicable. Every item is actionable, testable, and has a clear pass/fail criterion.
+
+**Automated Checks:** Many infrastructure and database items are verified automatically by the `launch-readiness` Edge Function (`services/api/supabase/functions/launch-readiness/`), which queries the `launch_readiness_dashboard` materialized view. The database migration `20260327000001_launch_readiness_dashboard.sql` creates this view along with `production_health_summary()`, `verify_rls_status()`, and `verify_schema_integrity()` functions. Run `SELECT * FROM launch_readiness_dashboard;` or call the Edge Function to get an automated status report.
 
 **Usage:**
 

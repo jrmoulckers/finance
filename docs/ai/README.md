@@ -21,7 +21,7 @@ Finance is developed with AI agents as first-class contributors. This means:
 | [Agent Cookbook](agent-cookbook.md)     | Step-by-step recipes for common agent tasks                            |
 | [Worktrees](worktrees.md)               | Git worktree setup and lifecycle for parallel agent work               |
 | [Fleet Operations](fleet-operations.md) | Fleet dispatch patterns, CI monitoring, self-healing, and coordination |
-| [CI Monitoring](ci-monitoring.md)       | Correct CI monitoring pattern (replaces `gh pr checks`)                |
+| [CI Monitoring](ci-monitoring.md)       | Correct CI monitoring pattern using `gh pr checks`                     |
 | [Troubleshooting](troubleshooting.md)   | Common issues and solutions for agent workflows                        |
 
 ### Agent Configuration
@@ -36,13 +36,14 @@ Finance is developed with AI agents as first-class contributors. This means:
 
 ### Governance & Quality
 
-| Document                                | Description                                                   |
-| --------------------------------------- | ------------------------------------------------------------- |
-| [Pain Points](pain-points.md)           | Tracked workflow friction, inefficiencies, and known issues   |
-| [Workflow Metrics](workflow-metrics.md) | Metrics for measuring workflow efficiency and quality         |
-| [Restrictions](restrictions.md)         | Human-gated operations and AI safety guardrails               |
-| [Responsible AI](responsible-ai.md)     | Ethical AI principles, commitments, and product AI guidelines |
-| [AI Code Policy](ai-code-policy.md)     | Code ownership, copyright, and contributor responsibilities   |
+| Document                                  | Description                                                   |
+| ----------------------------------------- | ------------------------------------------------------------- |
+| [Fleet CI Analysis](fleet-ci-analysis.md) | Root-cause analysis of fleet CI failures from wave 1–2        |
+| [Pain Points](pain-points.md)             | Tracked workflow friction, inefficiencies, and known issues   |
+| [Workflow Metrics](workflow-metrics.md)   | Metrics for measuring workflow efficiency and quality         |
+| [Restrictions](restrictions.md)           | Human-gated operations and AI safety guardrails               |
+| [Responsible AI](responsible-ai.md)       | Ethical AI principles, commitments, and product AI guidelines |
+| [AI Code Policy](ai-code-policy.md)       | Code ownership, copyright, and contributor responsibilities   |
 
 ## Quick Reference
 

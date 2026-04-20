@@ -7,7 +7,7 @@
 
 ## Context
 
-Finance is a multi-platform monorepo containing iOS (Swift), Android (Kotlin), Web (TypeScript/React), and Windows (.NET/WinUI) applications alongside shared packages (`core`, `models`, `sync`) and a backend API. The project uses an **Agentic Kanban** SDLC where Copilot coding agent is a first-class contributor, opening PRs and iterating based on CI feedback.
+Finance is a multi-platform monorepo containing iOS (Swift), Android (Kotlin), Web (TypeScript/React), and Windows (Compose Desktop/JVM) applications alongside shared packages (`core`, `models`, `sync`) and a backend API. The project uses an **Agentic Kanban** SDLC where Copilot coding agent is a first-class contributor, opening PRs and iterating based on CI feedback.
 
 Key forces driving this decision:
 

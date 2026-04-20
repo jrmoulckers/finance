@@ -8,6 +8,8 @@
 **Status:** Active
 **Issue:** [#311](https://github.com/nicholasgubbins/finance-management/issues/311)
 **Last updated:** 2025-07-04
+**Token files:** `tokens/component/chart.json` (series colors, axes, containers) · `tokens/component/progress.json` (progress bars/rings)
+**Related:** [token-preview.md](./token-preview.md) · [component-library.md](./component-library.md) · [chart-component-specs.md](./chart-component-specs.md)
 
 ---
 

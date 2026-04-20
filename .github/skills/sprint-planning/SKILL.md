@@ -10,6 +10,15 @@ description: >
 
 This skill provides structured guidance for planning development sprints in the Finance monorepo, where work is dispatched across specialized AI agents and human contributors operating in parallel worktrees.
 
+## Historical Context
+
+The Finance monorepo has completed **3 fleet waves totaling 140+ PRs** across **17 sprints per agent type**. This velocity data informs the sizing and scheduling guidance below. Key takeaways from fleet history:
+
+- **4–6 issues per sprint** is the sweet spot for parallel agent dispatch.
+- **~20% overhead** for CI failures and rebases is realistic; plan capacity accordingly.
+- **Doc agents** require a human push step (see fleet-orchestration skill for details).
+- **Schema changes** must be strictly serialized (backend → KMP → platform); parallelizing them causes merge conflicts and runtime mismatches.
+
 ## Issue Categorization by Agent Type
 
 Route GitHub issues to the correct agent based on labels. When an issue carries multiple labels, use the most specific match. Cross-platform `feature` issues go to `architect` for design decomposition first, then fan out to platform agents.

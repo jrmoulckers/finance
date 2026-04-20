@@ -48,3 +48,17 @@ Migration naming convention: `YYYYMMDDHHMMSS_<description>.sql` (e.g., `20260325
 - **PowerSync** sync rules define what data syncs to each client — configure in sync rules YAML
 - Sync is bidirectional: local SQLite ↔ PowerSync ↔ Supabase PostgreSQL
 - Conflict resolution uses last-write-wins (LWW) for simple fields with custom merge logic for complex data
+
+## Feature Flags
+
+- Feature flags are managed via a PostgreSQL `feature_flags` table synced to clients through PowerSync
+- Flags sync to client devices for runtime evaluation — no server round-trip needed for flag checks
+- Use feature flags for gradual rollouts, A/B testing, and platform-specific feature gating
+
+## Environment Configurations
+
+Three environments are supported with per-environment configuration:
+
+- **debug** — Local development, verbose logging, mock data allowed
+- **staging** — Pre-release testing against staging Supabase project
+- **release** — Production Supabase project, no debug logging

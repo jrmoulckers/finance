@@ -482,4 +482,4 @@ If a diagram becomes outdated because of a code change, file a pain point in [pa
 
 ---
 
-_Last updated: 2025-07-18. Maintained by `@docs-writer`._
+_Last updated: 2025-07-27. Maintained by `@docs-writer`._
