@@ -122,7 +122,10 @@ final class TransactionsViewModel {
         currentOffset = 0
         currentPage = 1
         do {
-            let page = try await repository.getTransactions(offset: 0, limit: Self.pageSize)
+            // Instrumented with os_signpost for Instruments profiling (#903)
+            let page = try await PerformanceMonitor.shared.measure("Transaction List Load") {
+                try await self.repository.getTransactions(offset: 0, limit: Self.pageSize)
+            }
             transactions = page
             currentOffset = page.count
             hasMorePages = page.count >= Self.pageSize
