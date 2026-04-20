@@ -25,3 +25,5 @@ export { useTheme } from './useTheme';
 export type { ThemeValue, ResolvedTheme, UseThemeResult } from './useTheme';
 export { useWebVitals } from './useWebVitals';
 export type { UseWebVitalsResult } from './useWebVitals';
+export { useQuickEntry } from './useQuickEntry';
+export type { UseQuickEntryResult } from './useQuickEntry';
