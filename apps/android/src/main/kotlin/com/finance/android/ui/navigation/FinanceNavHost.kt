@@ -39,6 +39,7 @@ import com.finance.android.ui.screens.SettingsScreen
 import com.finance.android.ui.screens.TransactionCreateScreen
 import com.finance.android.ui.screens.TransactionDetailScreen
 import com.finance.android.ui.screens.TransactionsScreen
+import com.finance.android.ui.screens.affordability.AffordabilityScreen
 import timber.log.Timber
 
 /** Base URI for all deep link patterns declared in AndroidManifest.xml. */
@@ -119,6 +120,9 @@ sealed class Route(val route: String) {
     /** Analytics / Spending Trends screen. */
     data object Analytics : Route("analytics")
 
+    /** "Can I Afford This?" affordability check screen (#377). */
+    data object Affordability : Route("affordability")
+
     /**
      * Transaction detail deep link destination.
      *
@@ -176,6 +180,11 @@ fun FinanceNavHost(
                 },
                 onViewAccounts = {
                     navController.navigate(Route.Accounts.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onAffordabilityCheck = {
+                    navController.navigate(Route.Affordability.route) {
                         launchSingleTop = true
                     }
                 },
@@ -266,6 +275,12 @@ fun FinanceNavHost(
 
         composable(Route.Analytics.route) {
             AnalyticsScreen()
+        }
+
+        composable(Route.Affordability.route) {
+            AffordabilityScreen(
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(

@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.TrendingDown
@@ -81,6 +82,7 @@ fun DashboardScreen(
     onViewAllTransactions: () -> Unit = {},
     onViewInsights: () -> Unit = {},
     onViewAccounts: () -> Unit = {},
+    onAffordabilityCheck: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DashboardViewModel = koinViewModel(),
 ) {
@@ -92,7 +94,7 @@ fun DashboardScreen(
         }
         return
     }
-    DashboardContent(state, viewModel::refresh, onAddTransaction, onViewAllTransactions, onViewInsights, onViewAccounts, modifier)
+    DashboardContent(state, viewModel::refresh, onAddTransaction, onViewAllTransactions, onViewInsights, onViewAccounts, onAffordabilityCheck, modifier)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,6 +103,7 @@ internal fun DashboardContent(
     state: DashboardUiState, onRefresh: () -> Unit,
     onAddTransaction: () -> Unit, onViewAllTransactions: () -> Unit,
     onViewInsights: () -> Unit, onViewAccounts: () -> Unit,
+    onAffordabilityCheck: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     PullToRefreshBox(isRefreshing = state.isRefreshing, onRefresh = onRefresh,
@@ -109,6 +112,7 @@ internal fun DashboardContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item(key = "net-worth") { NetWorthCard(state.netWorthFormatted, onClick = onViewAccounts) }
             item(key = "spending") { SpendingSummaryRow(state.todaySpendingFormatted, state.monthlySpendingFormatted) }
+            item(key = "affordability") { AffordabilityCheckCard(onAffordabilityCheck) }
             item(key = "insights") { InsightsCard(onViewInsights) }
             if (state.budgetStatuses.isNotEmpty()) {
                 item(key = "budget-hdr") {
@@ -257,6 +261,45 @@ private fun QuickActionsRow(onAdd: () -> Unit, onViewAll: () -> Unit) {
     }
 }
 
+/** Card that navigates to the "Can I Afford This?" affordability check screen (#377). */
+@Composable
+private fun AffordabilityCheckCard(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().semantics {
+            contentDescription = "Can I Afford This? Check if a purchase fits your budget"
+        },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+    ) {
+        Row(
+            Modifier.padding(16.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Calculate,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("Can I Afford This?", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text(
+                        "Check before you spend",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                    )
+                }
+            }
+        }
+    }
+}
+
 /** Card that navigates to the Analytics / Spending Insights screen. */
 @Composable
 private fun InsightsCard(onClick: () -> Unit) {
@@ -312,7 +355,7 @@ private fun DashboardScreenPreview() {
                     BudgetStatusUi("Transport", "$89", "$200", "+$111", 0.45f, BudgetHealth.HEALTHY, null),
                 ),
                 recentTransactions = SampleData.transactions.take(5), currency = Currency.USD),
-            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {}, onViewAccounts = {})
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {}, onViewAccounts = {}, onAffordabilityCheck = {})
     }
 }
 
@@ -326,7 +369,7 @@ private fun DashboardLoadingPreview() {
                 netWorthFormatted = "$0.00", todaySpendingFormatted = "$0.00",
                 monthlySpendingFormatted = "$0.00", budgetStatuses = emptyList(),
                 recentTransactions = emptyList(), currency = Currency.USD),
-            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {}, onViewAccounts = {})
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {}, onViewAccounts = {}, onAffordabilityCheck = {})
     }
 }
 
@@ -344,6 +387,6 @@ private fun DashboardOverBudgetPreview() {
                     BudgetStatusUi("Groceries", "$580", "$600", "+$20", 0.97f, BudgetHealth.WARNING, null),
                 ),
                 recentTransactions = SampleData.transactions.take(3), currency = Currency.USD),
-            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {}, onViewAccounts = {})
+            onRefresh = {}, onAddTransaction = {}, onViewAllTransactions = {}, onViewInsights = {}, onViewAccounts = {}, onAffordabilityCheck = {})
     }
 }
