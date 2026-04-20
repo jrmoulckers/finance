@@ -13,7 +13,8 @@
       "passkey-authenticate/**/*.test.ts",
       "household-invite/**/*.test.ts",
       "data-export/**/*.test.ts",
-      "account-deletion/**/*.test.ts"
+      "account-deletion/**/*.test.ts",
+      "launch-readiness/**/*.test.ts"
     ],
     "exclude": ["node_modules"]
   },

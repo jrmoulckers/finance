@@ -57,6 +57,7 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   'manage-webhooks': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
   'admin-dashboard': [{ name: 'ADMIN_EMAILS', type: 'csv' }],
   'send-notification': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'launch-readiness': [{ name: 'ADMIN_EMAILS', type: 'csv' }],
 };
 
 // ---------------------------------------------------------------------------
