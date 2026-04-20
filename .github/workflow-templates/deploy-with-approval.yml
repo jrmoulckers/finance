@@ -1,0 +1,100 @@
+# Template: Deploy with Approval Gate
+#
+# Copy this template when creating a new deployment workflow.
+# Replace TODOs with platform/service-specific values.
+#
+# Docs: docs/ops/environments.md
+
+name: 'Deploy — TODO: Service Name'
+
+on:
+  push:
+    tags:
+      - 'v*' # TODO: adjust tag pattern if needed
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      dry-run:
+        description: 'Dry run (skip actual deployment)'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: deploy-TODO-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  # ── Build & Test (no environment — runs immediately) ────────────
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # TODO: Add build steps (setup runtime, install deps, compile)
+      - name: Build
+        run: echo "TODO: build command"
+
+      # TODO: Add test steps
+      - name: Test
+        run: echo "TODO: test command"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: build-output
+          path: dist/ # TODO: adjust path
+          retention-days: 7
+
+  # ── Deploy (environment-gated) ──────────────────────────────────
+  deploy:
+    name: Deploy to ${{ inputs.environment || 'staging' }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: inputs.dry-run != true
+
+    # This is the key line — it activates environment secrets and approval gates
+    environment:
+      name: ${{ inputs.environment || 'staging' }}
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: build-output
+
+      - name: Deploy
+        id: deploy
+        run: |
+          ENV="${{ inputs.environment || 'staging' }}"
+          echo "🚀 Deploying to ${ENV}"
+
+          # TODO: Replace with actual deploy command
+          # Secrets resolve to the correct environment automatically:
+          #   ${{ secrets.DEPLOY_TOKEN }} → staging or production value
+          echo "url=https://finance-${ENV}.example.com" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deployment
+        run: |
+          # TODO: Add smoke test or health check
+          echo "✅ Deployment verified"

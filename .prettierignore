@@ -11,3 +11,4 @@ node_modules/
 *.sql
 packages/design-tokens/build/
 kotlin-js-store/
+.github/workflow-templates/

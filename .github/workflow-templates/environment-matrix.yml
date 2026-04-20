@@ -1,0 +1,109 @@
+# Template: Progressive Environment Matrix Deploy
+#
+# Deploys to staging first, then production (with approval gate).
+# Uses matrix strategy with max-parallel: 1 to enforce order.
+#
+# Docs: docs/ops/environments.md
+
+name: 'Deploy — TODO: Service Name (Progressive)'
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      skip-staging:
+        description: 'Skip staging (hotfix only)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: deploy-progressive-TODO-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  # ── Build (runs once, shared by all environments) ───────────────
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # TODO: Add build + test steps
+      - name: Build
+        run: echo "TODO: build"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: build-output
+          path: dist/ # TODO: adjust
+
+  # ── Deploy to staging ───────────────────────────────────────────
+  deploy-staging:
+    name: Deploy to staging
+    needs: build
+    if: inputs.skip-staging != true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: build-output
+
+      - name: Deploy to staging
+        id: deploy
+        run: |
+          echo "🚀 Deploying to staging"
+          # TODO: deploy command using ${{ secrets.* }} (staging values)
+          echo "url=https://finance-staging.example.com" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test staging
+        run: |
+          # TODO: Run smoke tests against staging URL
+          echo "✅ Staging smoke tests passed"
+
+  # ── Deploy to production (requires approval) ────────────────────
+  deploy-production:
+    name: Deploy to production
+    needs: [build, deploy-staging]
+    if: always() && needs.build.result == 'success' && (needs.deploy-staging.result == 'success' || needs.deploy-staging.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: build-output
+
+      - name: Deploy to production
+        id: deploy
+        run: |
+          echo "🚀 Deploying to production"
+          # TODO: deploy command using ${{ secrets.* }} (production values)
+          echo "url=https://finance.example.com" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test production
+        run: |
+          # TODO: Run smoke tests against production URL
+          echo "✅ Production smoke tests passed"
