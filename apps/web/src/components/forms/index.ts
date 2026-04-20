@@ -16,3 +16,5 @@ export { TransactionForm } from './TransactionForm';
 export type { TransactionFormProps } from './TransactionForm';
 export { QuickEntry } from './QuickEntry';
 export type { QuickEntryProps } from './QuickEntry';
+export { BulkEditToolbar } from './BulkEditToolbar';
+export type { BulkEditToolbarProps } from './BulkEditToolbar';

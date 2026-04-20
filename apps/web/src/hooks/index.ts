@@ -29,3 +29,9 @@ export { useQuickEntry } from './useQuickEntry';
 export type { UseQuickEntryResult } from './useQuickEntry';
 export { useWidgetLayout } from './useWidgetLayout';
 export type { UseWidgetLayoutResult } from './useWidgetLayout';
+export { useBulkTransactions } from './useBulkTransactions';
+export type {
+  UseBulkTransactionsResult,
+  BulkUpdateFields,
+  BulkOperationResult,
+} from './useBulkTransactions';
