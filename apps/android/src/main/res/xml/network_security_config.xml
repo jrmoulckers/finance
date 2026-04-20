@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: BUSL-1.1 -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">supabase.co</domain>
+        <domain includeSubdomains="true">powersync.journeyapps.com</domain>
+        <pin-set expiration="2025-10-01">
+            <pin digest="SHA-256">PLACEHOLDER_PRIMARY_PIN=</pin>
+            <pin digest="SHA-256">PLACEHOLDER_BACKUP_PIN_1=</pin>
+            <pin digest="SHA-256">PLACEHOLDER_BACKUP_PIN_2=</pin>
+        </pin-set>
+    </domain-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
