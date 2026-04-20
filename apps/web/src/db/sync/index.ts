@@ -11,6 +11,27 @@ export {
   type SyncConfig,
 } from './replayMutations';
 export {
+  pullChanges,
+  getPullCursor,
+  setPullCursor,
+  resetPullCursor,
+  type PullChange,
+  type PullResponse,
+  type PullResult,
+} from './pullChanges';
+export {
+  checkSyncHealth,
+  clearHealthCheckCache,
+  getCachedHealthCheck,
+  type HealthCheckResult,
+} from './healthCheck';
+export {
+  performFullSync,
+  isSyncInProgress,
+  resetSyncOrchestrator,
+  type FullSyncResult,
+} from './syncOrchestrator';
+export {
   clearResolvedConflicts,
   getAllConflicts,
   getUnresolvedConflicts,
