@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
@@ -80,7 +81,8 @@ enum class Screen(
     Goals("Goals", Icons.Filled.Star, Key.Five, "Ctrl+5"),
     Diagnostics("Diagnostics", Icons.Filled.Speed, Key.Six, "Ctrl+6"),
     Widgets("Widgets", Icons.Filled.Widgets, Key.Seven, "Ctrl+7"),
-    Settings("Settings", Icons.Filled.Settings, Key.Seven, "Ctrl+7"),
+    HealthScore("Health Score", Icons.Filled.Favorite, Key.Eight, "Ctrl+8"),
+    Settings("Settings", Icons.Filled.Settings, Key.Nine, "Ctrl+9"),
 }
 
 /** Width of the sidebar when expanded. */

@@ -21,6 +21,7 @@ import com.finance.desktop.screens.BudgetsScreen
 import com.finance.desktop.screens.DashboardScreen
 import com.finance.desktop.screens.DiagnosticsScreen
 import com.finance.desktop.screens.GoalsScreen
+import com.finance.desktop.screens.HealthScoreScreen
 import com.finance.desktop.screens.LockScreen
 import com.finance.desktop.screens.SettingsScreen
 import com.finance.desktop.screens.TransactionsScreen
@@ -82,6 +83,7 @@ fun FinanceApp(shortcutHandler: ShortcutHandler) {
                             Screen.Goals -> GoalsScreen()
                             Screen.Widgets -> WidgetBoardScreen()
                             Screen.Diagnostics -> DiagnosticsScreen()
+                            Screen.HealthScore -> HealthScoreScreen()
                             Screen.Settings -> SettingsScreen()
                         }
                     }

@@ -30,4 +30,5 @@ val viewModelModule = module {
     single { VoiceTransactionViewModel(get(), get(), get()) }
     single { DiagnosticsViewModel() }
     single { WidgetBoardViewModel(get()) }
+    single { HealthScoreViewModel(get(), get(), get(), get()) }
 }
