@@ -2,6 +2,8 @@ name: Release
 
 # =============================================================================
 # Creates a GitHub Release from a version tag.
+# Generates structured changelogs from conventional commits, categorized by
+# type (feat, fix, perf, etc.) with PR links and contributor attribution.
 # The `release-artifacts.yml` workflow then builds platform binaries and
 # uploads them to this release (see docs/release-artifacts-runbook.md).
 # =============================================================================
@@ -26,26 +28,46 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate release notes
-        id: notes
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+
+      - name: Detect tag range
+        id: tags
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          PREV_TAG=$(git tag --sort=-version:refname | grep -v "$TAG" | head -1)
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${TAG}$" | head -1)
+          echo "current=$TAG" >> "$GITHUB_OUTPUT"
+          echo "previous=$PREV_TAG" >> "$GITHUB_OUTPUT"
 
-          if [ -z "$PREV_TAG" ]; then
-            NOTES=$(git log --pretty=format:"- %s" "$TAG")
+      - name: Generate structured changelog
+        run: |
+          PREV="${{ steps.tags.outputs.previous }}"
+          CURRENT="${{ steps.tags.outputs.current }}"
+
+          if [ -n "$PREV" ]; then
+            node tools/generate-changelog.js --from "$PREV" --to "$CURRENT" > release-notes.md
           else
-            NOTES=$(git log --pretty=format:"- %s" "${PREV_TAG}..${TAG}")
+            node tools/generate-changelog.js --from "" --to "$CURRENT" > release-notes.md
           fi
 
-          # Write to file to handle multiline
-          echo "$NOTES" > release-notes.md
+          # Fallback: if the script produces empty output, use simple commit log
+          if [ ! -s release-notes.md ]; then
+            echo "## ${CURRENT}" > release-notes.md
+            echo "" >> release-notes.md
+            if [ -n "$PREV" ]; then
+              git log --pretty=format:"- %s" "${PREV}..${CURRENT}" >> release-notes.md
+            else
+              git log --pretty=format:"- %s" "${CURRENT}" >> release-notes.md
+            fi
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           body_path: release-notes.md
-          generate_release_notes: true
+          generate_release_notes: false
           draft: false
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
         env:
@@ -55,6 +77,11 @@ jobs:
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           echo "### ✅ Release created: \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Changelog generated from conventional commits** with:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Categorized changes (Features, Bug Fixes, Performance, etc.)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- PR links and commit references" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Contributor attribution" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Platform artifacts will be built by the **Release Artifacts** workflow" >> "$GITHUB_STEP_SUMMARY"
           echo "and attached to this release after human approval." >> "$GITHUB_STEP_SUMMARY"
