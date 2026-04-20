@@ -1,0 +1,20 @@
+# =============================================================================
+# Finance App — Uptime Kuma Monitoring Caddy Configuration
+# =============================================================================
+# Reverse proxy for the monitoring dashboard with automatic HTTPS.
+#
+# Issues: #887
+# =============================================================================
+
+{$MONITOR_DOMAIN} {
+	tls {$MONITOR_TLS_EMAIL}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		-Server
+	}
+
+	reverse_proxy uptime-kuma:3001
+}

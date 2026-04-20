@@ -1,0 +1,37 @@
+# =============================================================================
+# Finance App — Backup Cron Schedule
+# =============================================================================
+# Install on the VPS with:
+#   crontab -e
+# Then paste the relevant lines below.
+#
+# Assumptions:
+#   - The Finance repo is cloned at ~/finance
+#   - The .env file for backups is at ~/finance/deploy/backup/.env
+#   - AWS CLI is installed and configured
+#   - pg_dump is available (install: apt install postgresql-client-15)
+#
+# Issues: #900
+# =============================================================================
+
+# Environment setup for cron (cron does not source .bashrc)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# ---------------------------------------------------------------------------
+# Daily backup at 2:00 AM UTC — local + S3 upload
+# ---------------------------------------------------------------------------
+# Runs pg_dump, encrypts with AES-256, uploads to S3, cleans old backups
+0 2 * * * cd ~/finance/deploy/backup && source .env && ./backup-database.sh --upload >> /var/log/finance-backup.log 2>&1
+
+# ---------------------------------------------------------------------------
+# Weekly verification at 3:00 AM UTC on Sundays
+# ---------------------------------------------------------------------------
+# Verifies the most recent backup's checksum and decryption capability
+0 3 * * 0 cd ~/finance/deploy/backup && source .env && LATEST=$(ls -t ./volumes/db/backups/finance-*.dump.enc 2>/dev/null | head -1) && [ -n "$LATEST" ] && ./backup-database.sh --verify "$LATEST" >> /var/log/finance-backup.log 2>&1
+
+# ---------------------------------------------------------------------------
+# Monthly backup to separate long-term storage (first Sunday of month)
+# ---------------------------------------------------------------------------
+# Creates an additional backup with longer retention for compliance
+0 4 1-7 * 0 cd ~/finance/deploy/backup && source .env && BACKUP_RETENTION_DAYS=365 ./backup-database.sh --upload >> /var/log/finance-backup.log 2>&1
