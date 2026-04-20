@@ -39,6 +39,12 @@ export {
   storeConflicts,
   type SyncConflict,
 } from './sync-conflict';
+export {
+  initSyncEndpoint,
+  resolveSyncEndpointConfig,
+  resetSyncEndpointInit,
+  type SyncEndpointConfig,
+} from './syncEndpoint';
 export type {
   ClientToSwMessage,
   MutationOperation,

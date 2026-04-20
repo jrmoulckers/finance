@@ -1,0 +1,223 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * Complete Responsive Breakpoint System
+ *
+ * Provides a full set of responsive utilities beyond the basic
+ * visibility helpers in breakpoints.css.
+ *
+ * Includes:
+ *   - Spacing utilities that adapt per breakpoint
+ *   - Typography scale adjustments
+ *   - Container query breakpoints for component-level responsive
+ *   - Print breakpoints
+ *
+ * Breakpoint reference (from design tokens):
+ *   mobile:      0 – 639px
+ *   tablet:      640 – 1023px
+ *   desktop:     1024 – 1439px
+ *   widescreen:  1440px+
+ *
+ * References: issue #627
+ * ------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------
+ * Page layout adaptations
+ * ------------------------------------------------------------------- */
+
+.page-section {
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+@media (min-width: 640px) {
+  .page-section {
+    margin-bottom: var(--spacing-6, 24px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-section {
+    margin-bottom: var(--spacing-8, 32px);
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Card grid responsive columns
+ * ------------------------------------------------------------------- */
+
+.card-grid {
+  display: grid;
+  gap: var(--layout-card-gap, var(--spacing-4, 16px));
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .card-grid--3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .card-grid--4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .card-grid--3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .card-grid--4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1440px) {
+  .card-grid--4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Dashboard chart area
+ * ------------------------------------------------------------------- */
+
+.dashboard-charts {
+  display: grid;
+  gap: var(--spacing-4, 16px);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .dashboard-charts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-charts {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Transaction / list item responsive
+ * ------------------------------------------------------------------- */
+
+.transaction-item__actions {
+  display: flex;
+  gap: var(--spacing-1, 4px);
+}
+
+@media (max-width: 639px) {
+  .transaction-list-item__trailing {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-1, 4px);
+  }
+}
+
+@media (min-width: 640px) {
+  .transaction-list-item__trailing {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-3, 12px);
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Form layout
+ * ------------------------------------------------------------------- */
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 12px);
+}
+
+@media (min-width: 640px) {
+  .form-row--inline {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  .form-row--inline > * {
+    flex: 1;
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Page header with actions
+ * ------------------------------------------------------------------- */
+
+.transactions-page-header,
+.page-header-with-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.transactions-page-header h2,
+.page-header-with-actions h2 {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 639px) {
+  .transactions-page-header,
+  .page-header-with-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .transactions-page-header h2,
+  .page-header-with-actions h2 {
+    text-align: center;
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Container query helpers
+ * ------------------------------------------------------------------- */
+
+.cq-container {
+  container-type: inline-size;
+}
+
+@container (min-width: 320px) {
+  .cq-stack-to-row {
+    flex-direction: row;
+  }
+}
+
+@container (min-width: 480px) {
+  .cq-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@container (min-width: 720px) {
+  .cq-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Print
+ * ------------------------------------------------------------------- */
+
+@media print {
+  .hide-print {
+    display: none !important;
+  }
+
+  .card-grid,
+  .dashboard-charts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -17,6 +17,7 @@ export type { KeyboardShortcutsModalProps } from './KeyboardShortcutsModal';
 export { LoadingSpinner } from './LoadingSpinner';
 export type { LoadingSpinnerProps } from './LoadingSpinner';
 export { SyncStatusBar } from './SyncStatusBar';
+export { SyncStatusPanel } from './SyncStatusPanel';
 export { UpdateBanner } from './UpdateBanner';
 
 // Animations

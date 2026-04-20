@@ -1,0 +1,215 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * SyncStatusPanel styles
+ *
+ * Collapsible detail panel for sync status.
+ * Uses design-token CSS custom properties with sensible fallbacks.
+ * ------------------------------------------------------------------- */
+
+.sync-panel {
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-md, 8px);
+  overflow: hidden;
+}
+
+.sync-panel__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  width: 100%;
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  border: none;
+  cursor: pointer;
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  line-height: var(--line-height-normal, 1.5);
+  text-align: start;
+}
+
+.sync-panel__header:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #3b82f6);
+  outline-offset: -2px;
+}
+
+.sync-panel__indicator {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.sync-panel__label {
+  flex: 1;
+  font-weight: 600;
+}
+
+.sync-panel__relative-time {
+  opacity: 0.7;
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+}
+
+.sync-panel__chevron {
+  flex-shrink: 0;
+  font-size: 0.625rem;
+  opacity: 0.6;
+}
+
+/* -------------------------------------------------------------------
+ * Content area
+ * ------------------------------------------------------------------- */
+
+.sync-panel__content {
+  padding: var(--spacing-4, 16px);
+  border-top: 1px solid var(--semantic-border-default, #e5e7eb);
+  background-color: var(--semantic-background-secondary, #f9fafb);
+}
+
+.sync-panel__details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.sync-panel__detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+}
+
+.sync-panel__detail-row dt {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary, #6b7280);
+  font-weight: 500;
+}
+
+.sync-panel__detail-row dd {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  text-align: end;
+}
+
+/* -------------------------------------------------------------------
+ * Badges
+ * ------------------------------------------------------------------- */
+
+.sync-panel__badge {
+  display: inline-block;
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  border-radius: var(--border-radius-full, 9999px);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  font-weight: 600;
+}
+
+.sync-panel__badge--online {
+  background-color: var(--color-green-100, #dcfce7);
+  color: var(--color-green-800, #166534);
+}
+
+.sync-panel__badge--offline {
+  background-color: var(--color-gray-100, #f3f4f6);
+  color: var(--color-gray-600, #4b5563);
+}
+
+.sync-panel__conflict-count {
+  color: var(--color-orange-700, #c2410c);
+  font-weight: 600;
+}
+
+.sync-panel__auth-error {
+  color: var(--color-red-700, #b91c1c);
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------------
+ * Actions
+ * ------------------------------------------------------------------- */
+
+.sync-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sync-panel__sync-button {
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  border: 1px solid var(--semantic-interactive-default, #3b82f6);
+  border-radius: var(--border-radius-sm, 4px);
+  background-color: var(--semantic-interactive-default, #3b82f6);
+  color: #fff;
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--duration-normal, 200ms) ease;
+}
+
+.sync-panel__sync-button:hover:not(:disabled) {
+  background-color: var(--semantic-interactive-hover, #2563eb);
+}
+
+.sync-panel__sync-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sync-panel__sync-button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #3b82f6);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------
+ * Responsive breakpoints — container query
+ * ------------------------------------------------------------------- */
+
+.sync-panel {
+  container-type: inline-size;
+}
+
+@container (min-width: 480px) {
+  .sync-panel__details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------- */
+
+[data-theme='dark'] .sync-panel__content {
+  background-color: var(--semantic-background-elevated, #1f2937);
+}
+
+[data-theme='dark'] .sync-panel__badge--online {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: var(--color-green-300, #86efac);
+}
+
+[data-theme='dark'] .sync-panel__badge--offline {
+  background-color: rgba(107, 114, 128, 0.15);
+  color: var(--color-gray-300, #d1d5db);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .sync-panel__content {
+    background-color: var(--semantic-background-elevated, #1f2937);
+  }
+
+  html:not([data-theme='light']) .sync-panel__badge--online {
+    background-color: rgba(34, 197, 94, 0.15);
+    color: var(--color-green-300, #86efac);
+  }
+
+  html:not([data-theme='light']) .sync-panel__badge--offline {
+    background-color: rgba(107, 114, 128, 0.15);
+    color: var(--color-gray-300, #d1d5db);
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-panel__sync-button {
+    transition: none;
+  }
+}
