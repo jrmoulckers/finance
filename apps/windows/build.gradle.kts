@@ -36,6 +36,13 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "com.finance.desktop.MainKt"
+
+        // ── JVM arguments for production ──
+        jvmArgs += listOf(
+            "-Xmx512m",
+            "-Dfile.encoding=UTF-8",
+        )
+
         nativeDistributions {
             targetFormats(
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
@@ -45,14 +52,26 @@ compose.desktop {
             packageVersion = "1.0.0"
             description = "Personal finance tracker — budgets, accounts, and investments in one place."
             vendor = "Finance App"
+            copyright = "© 2025 Finance App. All rights reserved."
+            licenseFile.set(rootProject.file("LICENSE"))
+
             windows {
                 menuGroup = "Finance"
+                // Stable UUID for MSI upgrade detection across versions
                 upgradeUuid = "d3b07384-d9a3-4e6b-af4a-3b6e2d5c1f8a"
                 shortcut = true
                 menu = true
                 perUserInstall = true
                 dirChooser = true
+                // Icon for the application (exe and installer)
+                iconFile.set(project.file("packaging/icons/finance.ico"))
+                // Console is hidden in production
+                console = false
             }
+
+            // ── Application metadata for Store submission ──
+            appResourcesRootDir.set(project.layout.projectDirectory.dir("packaging/resources"))
         }
     }
 }
+
