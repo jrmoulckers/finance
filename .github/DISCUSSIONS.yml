@@ -1,0 +1,47 @@
+# GitHub Discussions Configuration
+#
+# This file documents the GitHub Discussions category structure for the
+# Finance repository. Apply via GitHub UI: Settings → Discussions → Set up.
+#
+# Issue: #198
+
+categories:
+  - name: '📣 Announcements'
+    description: 'Project-wide announcements from maintainers — releases, breaking changes, policy updates'
+    format: 'announcement'
+    emoji: '📣'
+
+  - name: '💡 Ideas & Feature Requests'
+    description: 'Propose new features, enhancements, or improvements'
+    format: 'open-ended'
+    emoji: '💡'
+
+  - name: '🏗️ Architecture & Design'
+    description: 'Technical design discussions, ADRs, and system design proposals'
+    format: 'open-ended'
+    emoji: '🏗️'
+
+  - name: '🔧 Backend & API'
+    description: 'Backend discussions — Supabase, PostgreSQL, Edge Functions, PowerSync, sync rules'
+    format: 'open-ended'
+    emoji: '🔧'
+
+  - name: '📱 Platform-Specific'
+    description: 'Platform-specific discussions — iOS, Android, Web, Windows'
+    format: 'open-ended'
+    emoji: '📱'
+
+  - name: '❓ Q&A'
+    description: 'Technical questions with definitive answers — mark accepted answers'
+    format: 'question'
+    emoji: '❓'
+
+  - name: '🤝 RFC (Request for Comments)'
+    description: 'Formal proposals requiring team feedback before implementation'
+    format: 'open-ended'
+    emoji: '🤝'
+
+  - name: '🐛 Troubleshooting'
+    description: 'Development environment issues, CI/CD problems, build failures'
+    format: 'question'
+    emoji: '🐛'
