@@ -58,6 +58,7 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   'admin-dashboard': [{ name: 'ADMIN_EMAILS', type: 'csv' }],
   'send-notification': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
   'launch-readiness': [{ name: 'ADMIN_EMAILS', type: 'csv' }],
+  'spending-forecast': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
 };
 
 // ---------------------------------------------------------------------------

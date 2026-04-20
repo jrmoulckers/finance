@@ -81,6 +81,7 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   'admin-dashboard': { maxRequests: 60, windowSeconds: 60, keyPrefix: 'admin-dashboard' },
   'send-notification': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'send-notification' },
   'launch-readiness': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'launch-readiness' },
+  'spending-forecast': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'spending-forecast' },
 };
 
 // ---------------------------------------------------------------------------

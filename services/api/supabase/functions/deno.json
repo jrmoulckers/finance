@@ -14,7 +14,8 @@
       "household-invite/**/*.test.ts",
       "data-export/**/*.test.ts",
       "account-deletion/**/*.test.ts",
-      "launch-readiness/**/*.test.ts"
+      "launch-readiness/**/*.test.ts",
+      "spending-forecast/**/*.test.ts"
     ],
     "exclude": ["node_modules"]
   },
