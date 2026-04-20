@@ -75,6 +75,9 @@ let package = Package(
                 "RecentTransactionsView.swift",
                 "BudgetStatusView.swift",
                 "ComplicationProvider.swift",
+                "BudgetComplicationProvider.swift",
+                "SpendingComplicationProvider.swift",
+                "GoalComplicationProvider.swift",
             ]
         ),
 
