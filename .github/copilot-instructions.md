@@ -114,19 +114,42 @@ All code changes MUST follow this workflow:
 2. **Scan for an existing worktree** for this issue: `git worktree list` — resume if found
 3. **Create a worktree** if none exists: `git worktree add ../wt-[agent-type]-[branch] -b [branch]`
 4. **Implement and commit** with issue references: `type(scope): description (#N)`
-5. **Run `npm run ci:check` locally — must be clean before pushing**
-   - Catches formatting (`format:check`), lint (`eslint`), and type errors before they hit remote CI
-   - Auto-fix: `npm run format && npx eslint . --fix`, then re-run `ci:check` and commit fixes
-   - **Skipping this step is the primary cause of avoidable CI failures**
+5. **⚠️ MANDATORY PRE-PUSH: Lint & Format (NEVER skip — see checklist below)**
 6. **Fetch and rebase**: `git fetch origin main && git rebase origin/main` (auto-approved)
 7. **Push the feature branch**: `git push origin <branch-name>` — **MANDATORY, auto-approved, do NOT ask for permission**
 8. **Create a PR automatically** with `gh pr create` — include `Closes #N` and a detailed description — **MANDATORY, auto-approved, do NOT ask for permission**
-9. **Monitor `gh pr checks`** — poll until ALL checks are green; fix failures locally (re-run `ci:check` before each push), push, restart cycle. **Work is NOT complete until all remote checks are green.**
+9. **Monitor `gh pr checks`** — poll until ALL checks are green; fix failures locally (re-run the pre-push checklist before each push), push, restart cycle. **Work is NOT complete until all remote checks are green.**
 10. **Never commit directly to `main`** — all changes go through feature branches and PRs
 11. **Never merge PRs** — humans review and merge; agents get the PR to merge-ready state
 12. **Clean up the worktree** after merge is confirmed: `git worktree remove <path>`
 
 > ⚠️ **MANDATORY**: Steps 7 and 8 (push + create PR) are auto-approved and required. Stopping at step 6 (local commit only) is a **workflow violation**. A task is incomplete if it ends without a pushed branch and an open PR.
+
+### ⚠️ MANDATORY: Pre-Push Lint & Format Checklist (NEVER skip)
+
+> **🚨 This is the #1 cause of fleet CI failures. Run these commands before EVERY `git push`.**
+
+```bash
+# Step 1: Auto-fix formatting and lint issues
+npm run format          # auto-fix all Prettier formatting
+npx eslint . --fix      # auto-fix all ESLint issues
+
+# Step 2: Verify everything passes
+npm run ci:check        # runs format:check + lint + type-check
+
+# Step 3: If ci:check fails, fix remaining issues manually, then re-run:
+npm run ci:check
+
+# Step 4: Include the fixes in your commit
+git add -A && git commit --amend --no-edit
+
+# Step 5: NOW you may push
+git push origin <branch-name>
+```
+
+**Pushing without a clean `npm run ci:check` is the #1 cause of CI failures. Agents that skip this waste CI time and create noise.**
+
+> **Note:** `lint-staged` is configured in `.husky/pre-commit` and auto-formats staged files on commit (`eslint --fix` + `prettier --write` for TS/JS; `prettier --write` for JSON/YAML/MD/CSS). However, agents may bypass hooks or work in worktrees where hooks aren't active. **The explicit checklist above is mandatory regardless of hook status.**
 
 Worktree naming: `wt-[agent-type]-[type/description-issue#]` — e.g., `wt-android-feat-transactions-443`
 

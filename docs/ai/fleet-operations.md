@@ -240,9 +240,16 @@ When CI fails:
    - Lint issues: `npx eslint . --fix` (partially auto-fixable)
    - Type errors: manual code fix
    - Test failures: manual code fix
-4. **Validate locally**: `npm run ci:check` — this runs the same checks as remote CI
+4. **⚠️ Run the full pre-push checklist before re-pushing**:
+   ```bash
+   npm run format          # auto-fix Prettier
+   npx eslint . --fix      # auto-fix ESLint
+   npm run ci:check        # MUST be clean before pushing
+   ```
 5. **Commit the fix**: `git add -A && git commit -m "fix: resolve CI failure (#N)"`
 6. **Push and re-poll**: `git push origin <branch>` → restart the monitoring loop
+
+> **⚠️ Never re-push without running `npm run format` → `npx eslint . --fix` → `npm run ci:check` first.** This is the most common cause of repeated CI failures.
 
 ### When self-healing fails
 
@@ -345,28 +352,35 @@ When agents operate in fleet mode without a human present, they follow an extend
 3. Commit frequently with conventional commits: `type(scope): description (#N)`
 4. Include issue references in every commit message
 
-### Pre-push checklist (mandatory)
+### ⚠️ MANDATORY: Pre-Push Lint & Format Checklist (NEVER skip)
 
-Every agent must complete these steps before pushing:
+> **🚨 This is the #1 cause of fleet CI failures. Run these commands before EVERY `git push`.**
+
+Every agent MUST complete these steps **in order** before pushing:
 
 ```bash
-# 1. Run local CI check
+# Step 1: Auto-fix formatting and lint issues FIRST
+npm run format          # auto-fix all Prettier formatting
+npx eslint . --fix      # auto-fix all ESLint issues
+
+# Step 2: Verify everything passes
+npm run ci:check        # runs format:check + lint + type-check
+
+# Step 3: If ci:check fails, fix remaining issues manually, then re-run:
 npm run ci:check
 
-# 2. Fix any issues
-npm run format
-npx eslint . --fix
-npm run ci:check    # re-confirm clean
+# Step 4: Include the fixes in your commit
+git add -A && git commit --amend --no-edit
 
-# 3. Commit fixes
-git add -A && git commit -m "style: fix formatting and lint issues (#N)"
-
-# 4. Sync with main
+# Step 5: Sync with main
 git fetch origin main
 git rebase origin/main
+
+# Step 6: NOW you may push
+git push origin <branch-name>
 ```
 
-> **This checklist is not optional.** Skipping `npm run ci:check` before pushing is the primary cause of avoidable CI failures. An agent that pushes without running this check has not completed its pre-push workflow.
+> **Pushing without a clean `npm run ci:check` is the #1 cause of CI failures. Agents that skip this waste CI time and create noise.** This checklist is not optional. An agent that pushes without running these steps has not completed its pre-push workflow.
 
 ### PR creation
 
