@@ -12,21 +12,36 @@ import androidx.compose.ui.window.rememberWindowState
 import com.finance.desktop.components.rememberShortcutHandler
 import com.finance.desktop.di.appModules
 import com.finance.desktop.notifications.DesktopNotificationManager
+import com.finance.desktop.performance.PerformanceMonitor
+import com.finance.desktop.performance.PerformanceTracker
+import com.finance.desktop.performance.timed
 import com.finance.desktop.widgets.WidgetRegistrationManager
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 
 fun main() {
-    startKoin {
-        modules(appModules)
+    PerformanceTracker.recordAppStart()
+
+    timed("koin_init") {
+        startKoin {
+            modules(appModules)
+        }
     }
 
-    DesktopNotificationManager.initialise()
+    timed("notifications_init") {
+        DesktopNotificationManager.initialise()
+    }
 
     // Initialise Windows 11 Widget Board integration
     val widgetManager = GlobalContext.get().get<WidgetRegistrationManager>()
-    widgetManager.initialize()
+    timed("widget_init") {
+        widgetManager.initialize()
+    }
+
+    // Start background performance monitoring
+    PerformanceMonitor.start()
+    PerformanceTracker.recordFirstInteractive()
 
     application {
         val windowState = rememberWindowState(
@@ -38,6 +53,7 @@ fun main() {
 
         Window(
             onCloseRequest = {
+                PerformanceMonitor.stop()
                 widgetManager.dispose()
                 DesktopNotificationManager.dispose()
                 stopKoin()

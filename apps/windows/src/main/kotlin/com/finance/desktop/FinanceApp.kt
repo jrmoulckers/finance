@@ -19,6 +19,7 @@ import com.finance.desktop.navigation.SidebarNavigation
 import com.finance.desktop.screens.AccountsScreen
 import com.finance.desktop.screens.BudgetsScreen
 import com.finance.desktop.screens.DashboardScreen
+import com.finance.desktop.screens.DiagnosticsScreen
 import com.finance.desktop.screens.GoalsScreen
 import com.finance.desktop.screens.LockScreen
 import com.finance.desktop.screens.SettingsScreen
@@ -78,6 +79,7 @@ fun FinanceApp(shortcutHandler: ShortcutHandler) {
                             Screen.Transactions -> TransactionsScreen()
                             Screen.Budgets -> BudgetsScreen()
                             Screen.Goals -> GoalsScreen()
+                            Screen.Diagnostics -> DiagnosticsScreen()
                             Screen.Settings -> SettingsScreen()
                         }
                     }

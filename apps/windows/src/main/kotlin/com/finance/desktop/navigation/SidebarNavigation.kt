@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -76,7 +77,8 @@ enum class Screen(
     Transactions("Transactions", Icons.Filled.Receipt, Key.Three, "Ctrl+3"),
     Budgets("Budgets", Icons.Filled.PieChart, Key.Four, "Ctrl+4"),
     Goals("Goals", Icons.Filled.Star, Key.Five, "Ctrl+5"),
-    Settings("Settings", Icons.Filled.Settings, Key.Six, "Ctrl+6"),
+    Diagnostics("Diagnostics", Icons.Filled.Speed, Key.Six, "Ctrl+6"),
+    Settings("Settings", Icons.Filled.Settings, Key.Seven, "Ctrl+7"),
 }
 
 /** Width of the sidebar when expanded. */
