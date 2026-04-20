@@ -254,6 +254,104 @@ services:
       - finance-internal
 
   # ---------------------------------------------------------------------------
+  # PowerSync — offline-first sync engine (#881)
+  # ---------------------------------------------------------------------------
+  # Bridges PostgreSQL changes to edge clients via logical replication.
+  # Requires a replication slot and publication on the database.
+  #
+  # Setup:
+  #   1. Run on the database:
+  #        SELECT pg_create_logical_replication_slot('powersync', 'pgoutput');
+  #        CREATE PUBLICATION powersync FOR TABLE
+  #          users, households, household_members, accounts, categories,
+  #          transactions, budgets, goals, household_invitations,
+  #          recurring_transaction_templates, passkey_credentials;
+  #   2. Configure sync rules via POWERSYNC_SYNC_RULES_PATH or PowerSync dashboard.
+  #
+  # Ports: 8080 (API) — internal only, routed through Caddy at /sync/*
+  powersync:
+    image: journeyapps/powersync-service:latest
+    restart: unless-stopped
+    environment:
+      # PowerSync configuration via environment variables
+      POWERSYNC_CONFIG: >
+        {
+          "replication": {
+            "connections": [{
+              "type": "postgresql",
+              "uri": "postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}",
+              "slot_name": "${POWERSYNC_SLOT_NAME:-powersync}",
+              "publication_name": "${POWERSYNC_PUBLICATION:-powersync}"
+            }]
+          },
+          "storage": {
+            "type": "mongodb",
+            "uri": "${POWERSYNC_MONGO_URI}"
+          },
+          "api": {
+            "tokens": [{
+              "type": "supabase",
+              "project_id": "${POWERSYNC_SUPABASE_PROJECT_ID}",
+              "url": "https://${DOMAIN}",
+              "jwks_uri": "${POWERSYNC_JWKS_URI:-}"
+            }]
+          },
+          "sync_rules_path": "/sync-rules/sync-rules.yaml",
+          "port": 8080
+        }
+    volumes:
+      - ${POWERSYNC_SYNC_RULES_PATH:-../services/api/powersync}:/sync-rules:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:8080/api/status || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    networks:
+      - finance-internal
+
+  # ---------------------------------------------------------------------------
+  # MongoDB — PowerSync bucket storage (#881)
+  # ---------------------------------------------------------------------------
+  # PowerSync requires MongoDB for its internal bucket storage.
+  # This is NOT used for application data — only sync-engine state.
+  mongo:
+    image: mongo:7-jammy
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-powersync}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    networks:
+      - finance-internal
+
+  # ---------------------------------------------------------------------------
   # Caddy — reverse proxy with automatic Let's Encrypt TLS
   # ---------------------------------------------------------------------------
   caddy:
@@ -283,6 +381,8 @@ services:
         condition: service_healthy
       edge-functions:
         condition: service_healthy
+      powersync:
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -300,6 +400,8 @@ services:
 # =============================================================================
 volumes:
   pgdata:
+    driver: local
+  mongodata:
     driver: local
   caddy_data:
     driver: local

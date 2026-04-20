@@ -1,0 +1,142 @@
+# =============================================================================
+# Finance App — Staging Environment Deployment
+# =============================================================================
+#
+# Extends the production docker-compose.yml with staging-specific overrides:
+#   - Lower resource limits (staging VPS is typically smaller)
+#   - Internal TLS via Caddy (staging.finance.example.com)
+#   - Debug-level logging for Edge Functions
+#   - Exposed ports for debugging (PostgreSQL, Mongo)
+#   - Auto-confirmed email signups for QA testing
+#
+# Quick start:
+#   1. cp .env.staging.example .env    # Fill in staging values
+#   2. docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+#   3. Apply migrations (see services/api/docs/staging-provisioning.md)
+#
+# Issues: #881, #883
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — expose port for direct debugging access
+  # ---------------------------------------------------------------------------
+  db:
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    command: >
+      postgres
+      -c wal_level=logical
+      -c max_wal_senders=5
+      -c max_replication_slots=5
+      -c shared_buffers=64MB
+      -c effective_cache_size=128MB
+      -c work_mem=2MB
+      -c maintenance_work_mem=32MB
+      -c checkpoint_completion_target=0.9
+      -c log_min_duration_statement=500
+      -c log_statement=all
+
+  # ---------------------------------------------------------------------------
+  # PostgREST — same image, lower resources
+  # ---------------------------------------------------------------------------
+  rest:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+
+  # ---------------------------------------------------------------------------
+  # GoTrue Auth — auto-confirm signups for QA testing
+  # ---------------------------------------------------------------------------
+  auth:
+    environment:
+      GOTRUE_MAILER_AUTOCONFIRM: 'true'
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: '100'
+      GOTRUE_RATE_LIMIT_TOKEN_REFRESH: '300'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Meta — lower resources
+  # ---------------------------------------------------------------------------
+  meta:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+        reservations:
+          cpus: '0.02'
+          memory: 16M
+
+  # ---------------------------------------------------------------------------
+  # Edge Functions — verbose logging for staging debugging
+  # ---------------------------------------------------------------------------
+  edge-functions:
+    environment:
+      LOG_LEVEL: debug
+      STAGING: 'true'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+
+  # ---------------------------------------------------------------------------
+  # PowerSync — lower resources for staging
+  # ---------------------------------------------------------------------------
+  powersync:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  # ---------------------------------------------------------------------------
+  # MongoDB — expose port for debugging, lower resources
+  # ---------------------------------------------------------------------------
+  mongo:
+    ports:
+      - '${MONGO_PORT:-27017}:27017'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.05'
+          memory: 64M
+
+  # ---------------------------------------------------------------------------
+  # Caddy — use staging Caddyfile with Let's Encrypt staging CA
+  # ---------------------------------------------------------------------------
+  caddy:
+    volumes:
+      - ./Caddyfile.staging:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config

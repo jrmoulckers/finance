@@ -1,44 +1,31 @@
 # =============================================================================
-# Finance App — Caddy Reverse Proxy Configuration
+# Finance App — Staging Caddy Configuration
 # =============================================================================
 #
-# Provides automatic HTTPS via Let's Encrypt and routes requests to the
-# appropriate backend service based on the URL path.
+# Same as production Caddyfile but uses Let's Encrypt Staging CA to avoid
+# hitting rate limits during frequent re-deployments.
 #
-# Route mapping:
-#   /rest/*          → PostgREST (API)
-#   /auth/*          → GoTrue (authentication)
-#   /functions/*     → Edge Functions (Deno)
-#   /health          → Edge Functions health check
-#
-# Issue: #268
+# Issues: #883
 # =============================================================================
+
+{
+	# Use Let's Encrypt staging CA — certificates will NOT be trusted by
+	# browsers, but this avoids rate limits during testing.
+	acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
 
 {$DOMAIN} {
-	# TLS with Let's Encrypt
+	# TLS with Let's Encrypt staging CA
 	tls {$TLS_EMAIL}
 
-	# Security headers
+	# Security headers (same as production)
 	header {
-		# HSTS — enforce HTTPS for 1 year, including subdomains
-		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-
-		# Prevent MIME type sniffing
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
-
-		# Prevent clickjacking
 		X-Frame-Options "DENY"
-
-		# XSS protection (legacy browsers)
 		X-XSS-Protection "1; mode=block"
-
-		# Referrer policy
 		Referrer-Policy "strict-origin-when-cross-origin"
-
-		# Content Security Policy
 		Content-Security-Policy "default-src 'self'; connect-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'"
-
-		# Remove server identification
 		-Server
 	}
 
@@ -101,9 +88,9 @@
 	# Access logging
 	log {
 		output file /data/access.log {
-			roll_size 10mb
-			roll_keep 5
-			roll_keep_for 168h
+			roll_size 5mb
+			roll_keep 3
+			roll_keep_for 72h
 		}
 		format json
 	}
