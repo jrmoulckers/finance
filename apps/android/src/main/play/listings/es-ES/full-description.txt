@@ -1,0 +1,30 @@
+Finance es un rastreador de finanzas personales moderno y privado que te ayuda a tomar el control de tu dinero. Diseñado con Material You, Finance se adapta al tema de tu dispositivo mientras mantiene tus datos financieros cifrados y seguros.
+
+<b>Características principales</b>
+
+📊 <b>Panel de control</b>
+Consulta tu patrimonio neto, gastos del día y estado de presupuestos al instante.
+
+💰 <b>Seguimiento inteligente de presupuestos</b>
+Crea presupuestos por categoría con anillos de progreso visuales. Recibe alertas antes de gastar de más.
+
+📈 <b>Análisis de gastos</b>
+Comprende a dónde va tu dinero con gráficos interactivos y análisis de tendencias.
+
+🏦 <b>Gestión de múltiples cuentas</b>
+Controla cuentas corrientes, de ahorro, tarjetas de crédito, inversiones y más.
+
+🎯 <b>Metas financieras</b>
+Establece metas de ahorro y sigue tu progreso con indicadores visuales.
+
+🔐 <b>Seguridad primero</b>
+Autenticación biométrica, cifrado respaldado por hardware y base de datos cifrada localmente.
+
+♿ <b>Totalmente accesible</b>
+Compatible con TalkBack, Switch Access, modo de alto contraste y texto escalable.
+
+🎨 <b>Diseño Material You</b>
+Temas de color dinámicos que coinciden con tu fondo de pantalla (Android 12+).
+
+🌍 <b>Soporte multilingüe</b>
+Disponible en inglés, español y francés.

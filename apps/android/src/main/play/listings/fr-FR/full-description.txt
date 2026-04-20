@@ -1,0 +1,30 @@
+Finance est un outil moderne et respectueux de la vie privée pour gérer vos finances personnelles. Conçu avec Material You, Finance s'adapte au thème de votre appareil tout en gardant vos données financières chiffrées et sécurisées.
+
+<b>Fonctionnalités principales</b>
+
+📊 <b>Tableau de bord</b>
+Consultez votre patrimoine net, vos dépenses du jour et l'état de vos budgets instantanément.
+
+💰 <b>Suivi intelligent des budgets</b>
+Créez des budgets par catégorie avec des anneaux de progression visuels. Recevez des alertes avant de dépasser.
+
+📈 <b>Analyse des dépenses</b>
+Comprenez où va votre argent avec des graphiques interactifs et l'analyse des tendances.
+
+🏦 <b>Gestion multi-comptes</b>
+Suivez comptes courants, épargne, cartes de crédit, investissements et plus encore.
+
+🎯 <b>Objectifs financiers</b>
+Définissez des objectifs d'épargne et suivez votre progression avec des indicateurs visuels.
+
+🔐 <b>Sécurité avant tout</b>
+Authentification biométrique, chiffrement matériel et base de données chiffrée localement.
+
+♿ <b>Entièrement accessible</b>
+Compatible TalkBack, Switch Access, mode contraste élevé et texte évolutif.
+
+🎨 <b>Design Material You</b>
+Thèmes de couleurs dynamiques assortis à votre fond d'écran (Android 12+).
+
+🌍 <b>Support multilingue</b>
+Disponible en anglais, espagnol et français.

@@ -1,0 +1,14 @@
+v0.1.0 — Initial Release
+
+🎉 Welcome to Finance! Your privacy-first personal finance tracker.
+
+• Dashboard with net worth, spending summary, and budget health
+• Multi-account management (checking, savings, credit, investment)
+• Transaction tracking with search, filters, and categories
+• Budget creation with visual progress rings and health indicators
+• Financial goal setting and progress tracking
+• Spending insights and analytics
+• Biometric authentication with Android Keystore
+• Material You dynamic theming (Android 12+)
+• Full TalkBack and Switch Access accessibility
+• Available in English, Spanish, and French

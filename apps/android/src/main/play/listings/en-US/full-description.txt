@@ -1,0 +1,42 @@
+Finance is a modern, privacy-first personal finance tracker that helps you take control of your money. Built with Material You design, Finance adapts to your device's theme while keeping your financial data encrypted and secure.
+
+<b>Key Features</b>
+
+📊 <b>Dashboard at a Glance</b>
+See your net worth, today's spending, and budget health instantly. Pull to refresh for the latest data from all your accounts.
+
+💰 <b>Smart Budget Tracking</b>
+Create budgets by category with visual progress rings. Get warnings before you overspend, and track monthly or custom period budgets.
+
+📈 <b>Spending Insights & Analytics</b>
+Understand where your money goes with interactive charts and trend analysis. Identify spending patterns and find opportunities to save.
+
+🏦 <b>Multi-Account Management</b>
+Track checking, savings, credit cards, investment accounts, and more. See unified net worth across all your accounts.
+
+🎯 <b>Financial Goals</b>
+Set savings goals and track progress with visual indicators. Whether it's an emergency fund, vacation, or down payment — stay motivated.
+
+🔄 <b>Real-Time Sync</b>
+Your data syncs securely across devices. Never worry about losing your financial records.
+
+🔐 <b>Security First</b>
+- Biometric authentication (fingerprint, face)
+- Hardware-backed encryption via Android Keystore
+- SQLCipher encrypted local database
+- No ads, no selling your data
+
+♿ <b>Fully Accessible</b>
+Designed for everyone with complete TalkBack support, Switch Access compatibility, high contrast mode, and scalable text.
+
+🎨 <b>Material You Design</b>
+Dynamic color theming that matches your wallpaper (Android 12+). Light, dark, and high contrast themes available.
+
+🌍 <b>Multi-Language Support</b>
+Available in English, Spanish, and French with full localization.
+
+<b>Privacy</b>
+Finance is built with privacy as a core principle. Your financial data is encrypted on-device and never shared with third parties. We don't show ads, and we don't sell your data. Period.
+
+<b>Open Source</b>
+Finance is open-source software licensed under BUSL-1.1. Inspect the code, contribute, and help build better financial tools for everyone.

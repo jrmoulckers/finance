@@ -37,6 +37,36 @@ android {
         )
     }
 
+    // ── Release signing ─────────────────────────────────────────────
+    // Credentials are read from gradle.properties or environment variables.
+    // See docs/android/play-store-submission.md for setup instructions.
+    signingConfigs {
+        create("release") {
+            val keystoreFile = project.findProperty("FINANCE_KEYSTORE_FILE") as String?
+            if (keystoreFile != null) {
+                storeFile = file(keystoreFile)
+                storePassword = project.findProperty("FINANCE_KEYSTORE_PASSWORD") as String?
+                keyAlias = project.findProperty("FINANCE_KEY_ALIAS") as String?
+                keyPassword = project.findProperty("FINANCE_KEY_PASSWORD") as String?
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            val keystoreFile = project.findProperty("FINANCE_KEYSTORE_FILE") as String?
+            if (keystoreFile != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
