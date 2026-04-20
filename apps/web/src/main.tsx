@@ -10,6 +10,7 @@ import { DatabaseProvider } from './db/DatabaseProvider';
 import { initMonitoring } from './lib/monitoring';
 import './theme/tokens.css';
 import './styles/responsive.css';
+import './styles/responsive-layout.css';
 
 const rootElement = document.getElementById('root');
 

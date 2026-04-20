@@ -1,0 +1,99 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * Responsive Layout Component Styles
+ *
+ * Companion CSS for ResponsiveLayout.tsx components.
+ * Uses design token custom properties with safe fallbacks.
+ * ------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------
+ * ResponsiveContainer
+ * ------------------------------------------------------------------- */
+
+.responsive-container {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--spacing-4, 16px);
+}
+
+/* Padding increases at tablet+ */
+@media (min-width: 640px) {
+  .responsive-container {
+    padding-inline: var(--spacing-6, 24px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-container {
+    padding-inline: var(--spacing-8, 32px);
+  }
+}
+
+/* Max-width variants */
+.responsive-container--narrow {
+  max-width: 720px;
+}
+
+.responsive-container--default {
+  max-width: var(--layout-content-max-width, 1200px);
+}
+
+.responsive-container--wide {
+  max-width: 1440px;
+}
+
+.responsive-container--full {
+  max-width: none;
+}
+
+/* -------------------------------------------------------------------
+ * ResponsiveGrid
+ * ------------------------------------------------------------------- */
+
+.responsive-grid {
+  display: grid;
+  gap: var(--layout-card-gap, var(--spacing-4, 16px));
+  grid-template-columns: repeat(auto-fill, minmax(var(--layout-grid-min-col, 280px), 1fr));
+}
+
+/* -------------------------------------------------------------------
+ * ResponsiveStack
+ * ------------------------------------------------------------------- */
+
+.responsive-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+}
+
+/* Break at tablet (640px) */
+@media (min-width: 640px) {
+  .responsive-stack--break-tablet {
+    flex-direction: row;
+  }
+}
+
+/* Break at desktop (1024px) */
+@media (min-width: 1024px) {
+  .responsive-stack--break-desktop {
+    flex-direction: row;
+  }
+}
+
+/* Align variants (only apply when in row mode) */
+.responsive-stack--align-start {
+  align-items: flex-start;
+}
+
+.responsive-stack--align-center {
+  align-items: center;
+}
+
+.responsive-stack--align-end {
+  align-items: flex-end;
+}
+
+.responsive-stack--align-stretch {
+  align-items: stretch;
+}
