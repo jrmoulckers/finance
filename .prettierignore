@@ -12,3 +12,19 @@ node_modules/
 packages/design-tokens/build/
 kotlin-js-store/
 .github/workflow-templates/
+
+# Kotlin — Prettier has no parser for .kt/.kts files
+*.kt
+*.kts
+
+# Swift — Prettier has no parser for .swift files
+*.swift
+
+# Caddy server config — no Prettier parser
+Caddyfile
+Caddyfile.*
+
+# Environment files — contain KEY=VALUE pairs, not parseable
+*.env
+*.env.*
+.env*

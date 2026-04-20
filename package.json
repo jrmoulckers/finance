@@ -39,9 +39,6 @@
     ],
     "*.{json,yaml,yml,md,css,html}": [
       "prettier --write"
-    ],
-    "*.{kt,kts}": [
-      "prettier --write"
     ]
   },
   "keywords": [
