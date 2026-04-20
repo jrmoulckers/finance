@@ -12,6 +12,8 @@ import androidx.compose.ui.window.rememberWindowState
 import com.finance.desktop.components.rememberShortcutHandler
 import com.finance.desktop.di.appModules
 import com.finance.desktop.notifications.DesktopNotificationManager
+import com.finance.desktop.widgets.WidgetRegistrationManager
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 
@@ -21,6 +23,10 @@ fun main() {
     }
 
     DesktopNotificationManager.initialise()
+
+    // Initialise Windows 11 Widget Board integration
+    val widgetManager = GlobalContext.get().get<WidgetRegistrationManager>()
+    widgetManager.initialize()
 
     application {
         val windowState = rememberWindowState(
@@ -32,6 +38,7 @@ fun main() {
 
         Window(
             onCloseRequest = {
+                widgetManager.dispose()
                 DesktopNotificationManager.dispose()
                 stopKoin()
                 exitApplication()

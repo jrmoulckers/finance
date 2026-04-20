@@ -13,6 +13,7 @@
     - https://learn.microsoft.com/windows/msix/
     - https://learn.microsoft.com/uwp/schemas/appxpackage/uapmanifestschema/schema-root
     - https://learn.microsoft.com/windows/apps/publish/store-policies
+    - https://learn.microsoft.com/windows/apps/design/widgets/
 -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -20,7 +21,8 @@
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
-  IgnorableNamespaces="uap uap3 rescap desktop">
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  IgnorableNamespaces="uap uap3 rescap desktop com">
 
   <Identity
     Name="${MSIX_PACKAGE_IDENTITY}"
@@ -89,6 +91,84 @@
           <desktop:ToastNotificationActivation
             ToastActivatorCLSID="d3b07384-d9a3-4e6b-af4a-3b6e2d5c1f8b" />
         </desktop:Extension>
+
+        <!-- Windows 11 Widget Board provider extensions -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="Finance.exe" DisplayName="Finance Widget Provider">
+              <com:Class Id="${WIDGET_PROVIDER_CLSID}" DisplayName="Finance Widget Provider" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension
+            Name="com.microsoft.windows.widgets"
+            DisplayName="Finance Widgets"
+            Description="Financial overview widgets for the Windows 11 widget board"
+            Id="FinanceWidgetProvider">
+            <uap3:Properties>
+              <WidgetProvider>
+                <ProviderIcons>
+                  <Icon Path="assets\Square44x44Logo.png" />
+                </ProviderIcons>
+                <Activation>
+                  <CreateInstance ClassId="${WIDGET_PROVIDER_CLSID}" />
+                </Activation>
+                <Definitions>
+                  <Definition
+                    Id="com.finance.widget.networth"
+                    DisplayName="Net Worth"
+                    Description="At-a-glance net worth with today's and monthly spending.">
+                    <Capabilities>
+                      <Capability>
+                        <Size Name="small" />
+                        <Size Name="medium" />
+                      </Capability>
+                    </Capabilities>
+                    <ThemeResources>
+                      <Icons>
+                        <Icon Path="assets\widget-networth-light.png" />
+                      </Icons>
+                    </ThemeResources>
+                  </Definition>
+                  <Definition
+                    Id="com.finance.widget.budgets"
+                    DisplayName="Budget Overview"
+                    Description="Budget progress bars with health status indicators.">
+                    <Capabilities>
+                      <Capability>
+                        <Size Name="medium" />
+                        <Size Name="large" />
+                      </Capability>
+                    </Capabilities>
+                    <ThemeResources>
+                      <Icons>
+                        <Icon Path="assets\widget-budgets-light.png" />
+                      </Icons>
+                    </ThemeResources>
+                  </Definition>
+                  <Definition
+                    Id="com.finance.widget.transactions"
+                    DisplayName="Recent Transactions"
+                    Description="Last 5 transactions with amounts and dates.">
+                    <Capabilities>
+                      <Capability>
+                        <Size Name="medium" />
+                        <Size Name="large" />
+                      </Capability>
+                    </Capabilities>
+                    <ThemeResources>
+                      <Icons>
+                        <Icon Path="assets\widget-transactions-light.png" />
+                      </Icons>
+                    </ThemeResources>
+                  </Definition>
+                </Definitions>
+              </WidgetProvider>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
       </Extensions>
     </Application>
   </Applications>

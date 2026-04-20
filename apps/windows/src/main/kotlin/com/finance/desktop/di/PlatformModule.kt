@@ -3,6 +3,9 @@
 package com.finance.desktop.di
 
 import com.finance.desktop.notifications.DesktopNotificationManager
+import com.finance.desktop.widgets.WidgetContentRenderer
+import com.finance.desktop.widgets.WidgetDataProvider
+import com.finance.desktop.widgets.WidgetRegistrationManager
 import org.koin.dsl.module
 
 /**
@@ -10,6 +13,9 @@ import org.koin.dsl.module
  *
  * Provides DI-managed access to:
  * - [DesktopNotificationManager] — Windows toast notifications via system tray
+ * - [WidgetDataProvider] — supplies financial data to Windows 11 widget board
+ * - [WidgetContentRenderer] — renders Adaptive Card JSON for widget display
+ * - [WidgetRegistrationManager] — manages widget lifecycle and registration
  *
  * The notification manager is provided as a singleton. Koin lifecycle
  * management ensures consistent access across all injection sites.
@@ -20,4 +26,9 @@ import org.koin.dsl.module
  */
 val platformModule = module {
     single { DesktopNotificationManager }
+
+    // ── Windows 11 Widget Board integration ──
+    single { WidgetDataProvider(get(), get(), get()) }
+    single { WidgetContentRenderer() }
+    single { WidgetRegistrationManager(get(), get()) }
 }
