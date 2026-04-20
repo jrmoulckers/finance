@@ -27,6 +27,7 @@
     "ci:check:quick": "node tools/ci-check-quick.js",
     "ready-for-pr": "node tools/ready-for-pr.js",
     "clean": "node tools/gradle.js clean && turbo run clean",
+    "cleanup:worktrees": "node tools/cleanup-worktrees.js",
     "setup": "node tools/setup.js",
     "prepare": "husky",
     "changeset": "changeset",
