@@ -21,6 +21,7 @@ import com.finance.android.notifications.NotificationSettingsViewModel
 import com.finance.android.ui.screens.BiometricAvailabilityChecker
 import com.finance.android.ui.screens.DefaultBiometricAvailabilityChecker
 import com.finance.android.ui.screens.SettingsViewModel
+import com.finance.android.ui.screens.affordability.AffordabilityViewModel
 import com.finance.android.ui.streak.StreakRepository
 import com.finance.android.ui.streak.StreakViewModel
 import com.finance.android.ui.streak.TransactionBackedStreakRepository
@@ -134,4 +135,5 @@ val appModule = module {
     viewModelOf(::SettingsViewModel)
     viewModelOf(::StreakViewModel)
     viewModelOf(::NotificationSettingsViewModel)
+    viewModelOf(::AffordabilityViewModel)
 }
