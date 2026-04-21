@@ -22,6 +22,7 @@ export default [
       'tools/**/*.js',
       'tools/**/*.mjs',
       'tools/**/*.ts',
+      'scripts/**/*.js',
       '**/*.config.mjs',
     ],
     rules: {
@@ -32,6 +33,7 @@ export default [
     files: [
       'tools/**/*.js',
       'tools/**/*.mjs',
+      'scripts/**/*.js',
       '*.js',
       '*.cjs',
       '**/*.config.mjs',
