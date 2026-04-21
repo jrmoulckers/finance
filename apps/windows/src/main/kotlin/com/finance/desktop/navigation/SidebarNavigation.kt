@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
@@ -83,6 +84,7 @@ enum class Screen(
     Budgets("Budgets", Icons.Filled.PieChart, Key.Four, "Ctrl+4"),
     Goals("Goals", Icons.Filled.Star, Key.Five, "Ctrl+5"),
     Upgrade("Upgrade", Icons.Filled.WorkspacePremium, Key.Six, "Ctrl+6"),
+    Tips("Tips", Icons.Filled.Lightbulb, Key.T, "Ctrl+T"),
     Widgets("Widgets", Icons.Filled.Widgets, Key.Seven, "Ctrl+7"),
     HealthScore("Health Score", Icons.Filled.Favorite, Key.Eight, "Ctrl+8"),
     Reports("Reports", Icons.Filled.Assessment, Key.Nine, "Ctrl+9"),
