@@ -22,6 +22,7 @@ const GoalDetail = lazy(() => import('./pages/GoalDetailPage'));
 const Import = lazy(() => import('./pages/ImportPage'));
 const Insights = lazy(() => import('./pages/InsightsPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
+const DataImportWizard = lazy(() => import('./pages/DataImportWizardPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
@@ -219,6 +220,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Watchlists />
+          </Suspense>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/import/wizard"
+      element={
+        <AuthenticatedRoute>
+          <Suspense fallback={<PageLoader />}>
+            <DataImportWizard />
           </Suspense>
         </AuthenticatedRoute>
       }

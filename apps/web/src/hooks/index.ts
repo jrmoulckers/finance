@@ -54,5 +54,15 @@ export type {
 } from './useSpendingWatchlists';
 export { useFinancialTips } from './useFinancialTips';
 export type { UseFinancialTipsResult } from './useFinancialTips';
-export { usePredictiveBalance } from './usePredictiveBalance';
-export type { UsePredictiveBalanceResult } from './usePredictiveBalance';
+export { useDataImportWizard, parseCsv, detectFormat } from './useDataImportWizard';
+export type {
+  UseDataImportWizardResult,
+  ImportWizardStep,
+  DetectedFormat,
+  CsvColumn,
+  ColumnMapping,
+  TransactionField,
+  ImportPreviewRow,
+  ImportProgress as DataImportProgress,
+  ImportResult,
+} from './useDataImportWizard';
