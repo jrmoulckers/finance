@@ -1,0 +1,500 @@
+# =============================================================================
+# Load Testing Pipeline — k6 performance tests against staging
+# =============================================================================
+#
+# Runs k6 load tests with scenarios for:
+#   - Sync endpoint performance
+#   - Authentication flows
+#   - API endpoint latency & throughput
+#   - Concurrent user simulation
+#
+# Generates performance report with pass/fail thresholds.
+#
+# Sprint: 12
+# =============================================================================
+
+name: Load Tests
+
+on:
+  # Run after staging deployment
+  workflow_run:
+    workflows: ['Deploy — Staging']
+    types: [completed]
+    branches: [main]
+
+  # Manual trigger with custom parameters
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL for load tests'
+        required: false
+        type: string
+        default: ''
+      vus:
+        description: 'Number of virtual users'
+        required: false
+        type: number
+        default: 50
+      duration:
+        description: 'Test duration (e.g. 2m, 5m, 10m)'
+        required: false
+        type: string
+        default: '2m'
+      scenario:
+        description: 'Scenario to run'
+        required: false
+        type: choice
+        options:
+          - all
+          - sync
+          - auth
+          - api
+          - stress
+
+  # Weekly performance baseline
+  schedule:
+    - cron: '0 4 * * 3' # Wednesdays 4 AM UTC
+
+concurrency:
+  group: load-tests
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  K6_VERSION: '0.54.0'
+
+jobs:
+  load-test:
+    name: k6 Load Tests (${{ github.event.inputs.scenario || 'all' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Only run if staging deploy succeeded (or manual/schedule trigger)
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install k6
+        run: |
+          curl -fsSL "https://github.com/grafana/k6/releases/download/v${K6_VERSION}/k6-v${K6_VERSION}-linux-amd64.tar.gz" \
+            | tar xz --strip-components=1
+          sudo mv k6 /usr/local/bin/k6
+          k6 version
+
+      - name: Create k6 test scripts
+        run: |
+          mkdir -p tools/load-tests
+
+          TARGET_URL="${{ github.event.inputs.target_url || secrets.STAGING_URL || 'http://localhost:3000' }}"
+          VUS="${{ github.event.inputs.vus || '50' }}"
+          DURATION="${{ github.event.inputs.duration || '2m' }}"
+          SCENARIO="${{ github.event.inputs.scenario || 'all' }}"
+
+          # ---- Shared options ----
+          cat > tools/load-tests/options.js << 'OPTS'
+          // Shared k6 thresholds for Finance API
+          export const defaultThresholds = {
+            http_req_duration: ['p(95)<500', 'p(99)<1500'],
+            http_req_failed: ['rate<0.05'],
+            http_reqs: ['rate>10'],
+          };
+
+          export const strictThresholds = {
+            http_req_duration: ['p(95)<300', 'p(99)<1000'],
+            http_req_failed: ['rate<0.01'],
+            http_reqs: ['rate>50'],
+          };
+          OPTS
+
+          # ---- Auth scenario ----
+          cat > tools/load-tests/auth.js << AUTHSCRIPT
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+          import { Rate, Trend } from 'k6/metrics';
+
+          const BASE_URL = '${TARGET_URL}';
+
+          const loginDuration = new Trend('login_duration');
+          const loginFailRate = new Rate('login_failures');
+
+          export const options = {
+            scenarios: {
+              auth_flow: {
+                executor: 'ramping-vus',
+                startVUs: 0,
+                stages: [
+                  { duration: '30s', target: Math.ceil(${VUS} * 0.5) },
+                  { duration: '${DURATION}', target: ${VUS} },
+                  { duration: '30s', target: 0 },
+                ],
+              },
+            },
+            thresholds: {
+              http_req_duration: ['p(95)<1000', 'p(99)<2000'],
+              http_req_failed: ['rate<0.05'],
+              login_failures: ['rate<0.1'],
+              login_duration: ['p(95)<2000'],
+            },
+          };
+
+          export default function () {
+            // Signup/login flow
+            const signupRes = http.post(\`\${BASE_URL}/auth/v1/signup\`, JSON.stringify({
+              email: \`loadtest+\${__VU}-\${__ITER}@example.com\`,
+              password: 'LoadTest123!',
+            }), {
+              headers: { 'Content-Type': 'application/json' },
+              tags: { endpoint: 'signup' },
+            });
+
+            check(signupRes, {
+              'signup status 2xx': (r) => r.status >= 200 && r.status < 300,
+            });
+
+            // Login
+            const start = Date.now();
+            const loginRes = http.post(\`\${BASE_URL}/auth/v1/token?grant_type=password\`, JSON.stringify({
+              email: \`loadtest+\${__VU}-\${__ITER}@example.com\`,
+              password: 'LoadTest123!',
+            }), {
+              headers: { 'Content-Type': 'application/json' },
+              tags: { endpoint: 'login' },
+            });
+
+            loginDuration.add(Date.now() - start);
+            loginFailRate.add(loginRes.status !== 200);
+
+            check(loginRes, {
+              'login status 200': (r) => r.status === 200,
+              'login has access_token': (r) => {
+                try { return JSON.parse(r.body).access_token !== undefined; }
+                catch { return false; }
+              },
+            });
+
+            sleep(1);
+          }
+          AUTHSCRIPT
+
+          # ---- Sync scenario ----
+          cat > tools/load-tests/sync.js << SYNCSCRIPT
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+          import { Trend } from 'k6/metrics';
+
+          const BASE_URL = '${TARGET_URL}';
+
+          const syncDuration = new Trend('sync_duration');
+
+          export const options = {
+            scenarios: {
+              sync_operations: {
+                executor: 'constant-vus',
+                vus: ${VUS},
+                duration: '${DURATION}',
+              },
+            },
+            thresholds: {
+              http_req_duration: ['p(95)<500', 'p(99)<1500'],
+              http_req_failed: ['rate<0.05'],
+              sync_duration: ['p(95)<3000'],
+            },
+          };
+
+          export default function () {
+            // Simulate sync pull — get changes since last checkpoint
+            const checkpoint = Date.now() - 60000; // 1 min ago
+            const start = Date.now();
+
+            const pullRes = http.get(\`\${BASE_URL}/api/sync/pull?since=\${checkpoint}\`, {
+              headers: {
+                'Authorization': 'Bearer test-token',
+                'Content-Type': 'application/json',
+              },
+              tags: { endpoint: 'sync_pull' },
+            });
+
+            syncDuration.add(Date.now() - start);
+
+            check(pullRes, {
+              'sync pull status ok': (r) => r.status >= 200 && r.status < 400,
+              'sync pull response time < 3s': (r) => r.timings.duration < 3000,
+            });
+
+            // Simulate sync push — send local changes
+            const pushRes = http.post(\`\${BASE_URL}/api/sync/push\`, JSON.stringify({
+              changes: [{
+                table: 'transactions',
+                type: 'create',
+                data: {
+                  id: \`lt-\${__VU}-\${__ITER}\`,
+                  amount: Math.random() * 1000,
+                  description: 'Load test transaction',
+                  date: new Date().toISOString(),
+                },
+              }],
+            }), {
+              headers: {
+                'Authorization': 'Bearer test-token',
+                'Content-Type': 'application/json',
+              },
+              tags: { endpoint: 'sync_push' },
+            });
+
+            check(pushRes, {
+              'sync push status ok': (r) => r.status >= 200 && r.status < 400,
+            });
+
+            sleep(0.5);
+          }
+          SYNCSCRIPT
+
+          # ---- API scenario ----
+          cat > tools/load-tests/api.js << APISCRIPT
+          import http from 'k6/http';
+          import { check, sleep, group } from 'k6';
+
+          const BASE_URL = '${TARGET_URL}';
+
+          export const options = {
+            scenarios: {
+              api_endpoints: {
+                executor: 'ramping-vus',
+                startVUs: 0,
+                stages: [
+                  { duration: '15s', target: Math.ceil(${VUS} * 0.3) },
+                  { duration: '${DURATION}', target: ${VUS} },
+                  { duration: '15s', target: 0 },
+                ],
+              },
+            },
+            thresholds: {
+              http_req_duration: ['p(95)<500', 'p(99)<1500'],
+              http_req_failed: ['rate<0.05'],
+            },
+          };
+
+          const headers = {
+            'Authorization': 'Bearer test-token',
+            'Content-Type': 'application/json',
+          };
+
+          export default function () {
+            group('Health check', () => {
+              const res = http.get(\`\${BASE_URL}/api/health\`, { tags: { endpoint: 'health' } });
+              check(res, { 'health 200': (r) => r.status === 200 });
+            });
+
+            group('List transactions', () => {
+              const res = http.get(\`\${BASE_URL}/api/transactions?limit=50\`, {
+                headers,
+                tags: { endpoint: 'transactions_list' },
+              });
+              check(res, {
+                'transactions 2xx': (r) => r.status >= 200 && r.status < 300,
+                'transactions response < 500ms': (r) => r.timings.duration < 500,
+              });
+            });
+
+            group('List accounts', () => {
+              const res = http.get(\`\${BASE_URL}/api/accounts\`, {
+                headers,
+                tags: { endpoint: 'accounts_list' },
+              });
+              check(res, {
+                'accounts 2xx': (r) => r.status >= 200 && r.status < 300,
+              });
+            });
+
+            group('Budget summary', () => {
+              const res = http.get(\`\${BASE_URL}/api/budgets/summary\`, {
+                headers,
+                tags: { endpoint: 'budget_summary' },
+              });
+              check(res, {
+                'budget 2xx': (r) => r.status >= 200 && r.status < 300,
+              });
+            });
+
+            group('Create transaction', () => {
+              const res = http.post(\`\${BASE_URL}/api/transactions\`, JSON.stringify({
+                amount: Math.random() * 500,
+                description: \`k6 test \${__ITER}\`,
+                category: 'testing',
+                date: new Date().toISOString(),
+              }), {
+                headers,
+                tags: { endpoint: 'transaction_create' },
+              });
+              check(res, {
+                'create 2xx': (r) => r.status >= 200 && r.status < 300,
+              });
+            });
+
+            sleep(1);
+          }
+          APISCRIPT
+
+          # ---- Stress scenario ----
+          cat > tools/load-tests/stress.js << STRESSSCRIPT
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+
+          const BASE_URL = '${TARGET_URL}';
+
+          export const options = {
+            scenarios: {
+              stress_test: {
+                executor: 'ramping-vus',
+                startVUs: 0,
+                stages: [
+                  { duration: '1m', target: ${VUS} },
+                  { duration: '2m', target: ${VUS} * 2 },
+                  { duration: '2m', target: ${VUS} * 4 },
+                  { duration: '1m', target: ${VUS} * 6 },
+                  { duration: '2m', target: 0 },
+                ],
+              },
+            },
+            thresholds: {
+              http_req_duration: ['p(95)<2000'],
+              http_req_failed: ['rate<0.15'],
+            },
+          };
+
+          export default function () {
+            const res = http.get(\`\${BASE_URL}/api/health\`, {
+              tags: { endpoint: 'health_stress' },
+            });
+            check(res, { 'status ok': (r) => r.status < 500 });
+
+            const txRes = http.get(\`\${BASE_URL}/api/transactions?limit=20\`, {
+              headers: {
+                'Authorization': 'Bearer test-token',
+                'Content-Type': 'application/json',
+              },
+              tags: { endpoint: 'transactions_stress' },
+            });
+            check(txRes, { 'transactions ok': (r) => r.status < 500 });
+
+            sleep(0.5);
+          }
+          STRESSSCRIPT
+
+      - name: Run k6 load tests
+        id: k6
+        run: |
+          SCENARIO="${{ github.event.inputs.scenario || 'all' }}"
+          RESULTS_DIR="load-test-results"
+          mkdir -p "$RESULTS_DIR"
+
+          RUN_SCENARIOS=()
+          if [ "$SCENARIO" = "all" ]; then
+            RUN_SCENARIOS=("auth" "sync" "api")
+          else
+            RUN_SCENARIOS=("$SCENARIO")
+          fi
+
+          OVERALL_STATUS="pass"
+          SUMMARY_TABLE="| Scenario | Status | VUs | Requests | p95 Latency | Fail Rate |\n|----------|--------|-----|----------|-------------|-----------|"
+
+          for scenario in "${RUN_SCENARIOS[@]}"; do
+            SCRIPT="tools/load-tests/${scenario}.js"
+            if [ ! -f "$SCRIPT" ]; then
+              echo "::warning::Script $SCRIPT not found — skipping"
+              continue
+            fi
+
+            echo "::group::Running $scenario scenario"
+
+            # Run k6 with JSON summary output
+            SUMMARY_FILE="$RESULTS_DIR/${scenario}-summary.json"
+
+            if k6 run \
+              --summary-export="$SUMMARY_FILE" \
+              --out "json=$RESULTS_DIR/${scenario}-results.json" \
+              --tag testid="$scenario" \
+              "$SCRIPT" 2>&1; then
+              SCENARIO_STATUS="✅ Pass"
+            else
+              SCENARIO_STATUS="❌ Fail"
+              OVERALL_STATUS="fail"
+            fi
+
+            echo "::endgroup::"
+
+            # Extract metrics from summary
+            if [ -f "$SUMMARY_FILE" ]; then
+              VUS_MAX=$(python3 -c "
+          import json
+          data = json.load(open('$SUMMARY_FILE'))
+          metrics = data.get('metrics', {})
+          vus = metrics.get('vus_max', {}).get('values', {}).get('max', 0)
+          print(int(vus))
+          " 2>/dev/null || echo "?")
+
+              REQUESTS=$(python3 -c "
+          import json
+          data = json.load(open('$SUMMARY_FILE'))
+          reqs = data.get('metrics', {}).get('http_reqs', {}).get('values', {}).get('count', 0)
+          print(int(reqs))
+          " 2>/dev/null || echo "?")
+
+              P95=$(python3 -c "
+          import json
+          data = json.load(open('$SUMMARY_FILE'))
+          dur = data.get('metrics', {}).get('http_req_duration', {}).get('values', {}).get('p(95)', 0)
+          print(f'{dur:.0f}ms')
+          " 2>/dev/null || echo "?")
+
+              FAIL_RATE=$(python3 -c "
+          import json
+          data = json.load(open('$SUMMARY_FILE'))
+          fails = data.get('metrics', {}).get('http_req_failed', {}).get('values', {}).get('rate', 0)
+          print(f'{fails*100:.2f}%')
+          " 2>/dev/null || echo "?")
+            else
+              VUS_MAX="?"
+              REQUESTS="?"
+              P95="?"
+              FAIL_RATE="?"
+            fi
+
+            SUMMARY_TABLE="$SUMMARY_TABLE\n| $scenario | $SCENARIO_STATUS | $VUS_MAX | $REQUESTS | $P95 | $FAIL_RATE |"
+          done
+
+          echo "overall_status=$OVERALL_STATUS" >> "$GITHUB_OUTPUT"
+
+          # Write summary
+          echo "### 🏋️ Load Test Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Target:** ${{ github.event.inputs.target_url || 'staging' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Trigger:** ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo -e "$SUMMARY_TABLE" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$OVERALL_STATUS" = "fail" ]; then
+            echo "🔴 **Some load tests failed** — review thresholds and performance" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "🟢 **All load tests passed**" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: load-test-results
+          path: load-test-results/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Performance gate
+        if: steps.k6.outputs.overall_status == 'fail'
+        run: |
+          echo "::error::Load tests failed — performance thresholds not met"
+          exit 1
