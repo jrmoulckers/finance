@@ -83,6 +83,32 @@
                 android:resource="@xml/quick_transaction_widget_info" />
         </receiver>
 
+        <!-- Budget Summary Widget — budget health overview (#381) -->
+        <receiver
+            android:name=".widget.BudgetSummaryWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_budget_summary_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/budget_summary_widget_info" />
+        </receiver>
+
+        <!-- Goal Progress Widget — savings goal progress (#381) -->
+        <receiver
+            android:name=".widget.GoalProgressWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_goal_progress_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/goal_progress_widget_info" />
+        </receiver>
+
         <!-- ── Quick Settings Tile (#381) ──────────────────────────── -->
 
         <!-- Quick transaction entry from notification shade -->

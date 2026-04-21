@@ -32,7 +32,7 @@ import timber.log.Timber
 object WidgetUpdater {
 
     /**
-     * Triggers a refresh of all Balance Summary widgets on the home screen.
+     * Triggers a refresh of all Finance widgets on the home screen.
      *
      * @param context Application context.
      */
@@ -40,9 +40,11 @@ object WidgetUpdater {
         withContext(Dispatchers.IO) {
             try {
                 BalanceSummaryWidget().updateAll(context)
-                Timber.d("All balance summary widgets refreshed")
+                BudgetSummaryWidget().updateAll(context)
+                GoalProgressWidget().updateAll(context)
+                Timber.d("All finance widgets refreshed")
             } catch (e: Exception) {
-                Timber.e(e, "Failed to refresh balance summary widgets")
+                Timber.e(e, "Failed to refresh finance widgets")
             }
         }
     }
@@ -62,7 +64,9 @@ object WidgetUpdater {
                 val manager = GlanceAppWidgetManager(context)
                 val balanceIds = manager.getGlanceIds(BalanceSummaryWidget::class.java)
                 val quickIds = manager.getGlanceIds(QuickTransactionWidget::class.java)
-                (balanceIds.size + quickIds.size) > 0
+                val budgetIds = manager.getGlanceIds(BudgetSummaryWidget::class.java)
+                val goalIds = manager.getGlanceIds(GoalProgressWidget::class.java)
+                (balanceIds.size + quickIds.size + budgetIds.size + goalIds.size) > 0
             } catch (e: Exception) {
                 Timber.e(e, "Failed to check active widgets")
                 false

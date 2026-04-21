@@ -358,5 +358,9 @@
     <string name="widget_quick_transaction_description">Quick buttons to add expense or income transactions.</string>
     <string name="widget_balance_summary_label">Account Balance</string>
     <string name="widget_quick_transaction_label">Quick Transaction</string>
+    <string name="widget_budget_summary_label">Budget Health</string>
+    <string name="widget_budget_summary_description">Shows how your budgets are doing — on track, warning, and over budget counts.</string>
+    <string name="widget_goal_progress_label">Goal Progress</string>
+    <string name="widget_goal_progress_description">Shows progress toward your top savings goal.</string>
     <string name="tile_quick_transaction_label">Add Transaction</string>
 </resources>
