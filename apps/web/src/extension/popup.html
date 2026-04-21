@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Finance Receipt Capture</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main id="popup-root" role="main" aria-label="Receipt capture form">
+      <header class="popup-header">
+        <h1 class="popup-title">💰 Finance</h1>
+        <p class="popup-subtitle">Capture Receipt</p>
+      </header>
+
+      <form id="receipt-form" class="receipt-form" aria-label="Receipt entry form">
+        <div class="form-group">
+          <label for="receipt-payee" class="form-label">
+            Payee / Merchant <span class="required" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="text"
+            id="receipt-payee"
+            name="payee"
+            class="form-input"
+            placeholder="e.g., Amazon, Starbucks"
+            aria-required="true"
+            autocomplete="off"
+          />
+          <span id="payee-error" class="form-error" role="alert" aria-live="polite"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="receipt-amount" class="form-label">
+            Amount <span class="required" aria-hidden="true">*</span>
+          </label>
+          <div class="input-with-prefix">
+            <span class="input-prefix" aria-hidden="true">$</span>
+            <input
+              type="number"
+              id="receipt-amount"
+              name="amount"
+              class="form-input form-input--amount"
+              placeholder="0.00"
+              step="0.01"
+              min="0"
+              aria-required="true"
+              aria-describedby="amount-error"
+            />
+          </div>
+          <span id="amount-error" class="form-error" role="alert" aria-live="polite"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="receipt-date" class="form-label">Date</label>
+          <input type="date" id="receipt-date" name="date" class="form-input" />
+        </div>
+
+        <div class="form-group">
+          <label for="receipt-category" class="form-label">Category</label>
+          <select id="receipt-category" name="category" class="form-input">
+            <option value="">Select category...</option>
+            <option value="food">Food & Dining</option>
+            <option value="transport">Transportation</option>
+            <option value="shopping">Shopping</option>
+            <option value="entertainment">Entertainment</option>
+            <option value="utilities">Utilities</option>
+            <option value="health">Health & Fitness</option>
+            <option value="education">Education</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="receipt-note" class="form-label">Note</label>
+          <textarea
+            id="receipt-note"
+            name="note"
+            class="form-input form-input--textarea"
+            placeholder="Optional note about this transaction"
+            rows="2"
+          ></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="button"
+            id="btn-autofill"
+            class="btn btn--secondary"
+            aria-label="Auto-detect transaction details from current page"
+          >
+            🔍 Auto-detect
+          </button>
+          <button
+            type="submit"
+            id="btn-save"
+            class="btn btn--primary"
+            aria-label="Save receipt to Finance app"
+          >
+            Save Receipt
+          </button>
+        </div>
+      </form>
+
+      <div id="status-message" class="status-message" role="status" aria-live="polite" hidden></div>
+
+      <footer class="popup-footer">
+        <a href="#" id="open-app-link" class="footer-link" aria-label="Open Finance web app">
+          Open Finance App →
+        </a>
+      </footer>
+    </main>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

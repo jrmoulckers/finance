@@ -1,0 +1,262 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Popup styles for the Finance Receipt Capture browser extension.
+ *
+ * Uses a self-contained design system (cannot import from main app tokens
+ * since extensions load separately). Mirrors the main app's visual style.
+ */
+
+:root {
+  --ext-bg: #ffffff;
+  --ext-bg-secondary: #f9fafb;
+  --ext-text: #111827;
+  --ext-text-secondary: #6b7280;
+  --ext-border: #e5e7eb;
+  --ext-primary: #2563eb;
+  --ext-primary-hover: #1d4ed8;
+  --ext-success: #059669;
+  --ext-error: #dc2626;
+  --ext-warning: #f59e0b;
+  --ext-radius: 8px;
+  --ext-radius-sm: 4px;
+  --ext-spacing-1: 4px;
+  --ext-spacing-2: 8px;
+  --ext-spacing-3: 12px;
+  --ext-spacing-4: 16px;
+  --ext-spacing-5: 20px;
+  --ext-font-sm: 12px;
+  --ext-font-base: 14px;
+  --ext-font-lg: 16px;
+  --ext-font-xl: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ext-bg: #1f2937;
+    --ext-bg-secondary: #111827;
+    --ext-text: #f9fafb;
+    --ext-text-secondary: #9ca3af;
+    --ext-border: #374151;
+    --ext-primary: #3b82f6;
+    --ext-primary-hover: #60a5fa;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 360px;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: var(--ext-font-base);
+  color: var(--ext-text);
+  background: var(--ext-bg);
+  line-height: 1.5;
+}
+
+/* Header */
+.popup-header {
+  padding: var(--ext-spacing-4);
+  border-bottom: 1px solid var(--ext-border);
+  text-align: center;
+}
+
+.popup-title {
+  font-size: var(--ext-font-xl);
+  font-weight: 700;
+  margin: 0;
+}
+
+.popup-subtitle {
+  font-size: var(--ext-font-sm);
+  color: var(--ext-text-secondary);
+  margin: var(--ext-spacing-1) 0 0 0;
+}
+
+/* Form */
+.receipt-form {
+  padding: var(--ext-spacing-4);
+}
+
+.form-group {
+  margin-bottom: var(--ext-spacing-3);
+}
+
+.form-label {
+  display: block;
+  font-size: var(--ext-font-sm);
+  font-weight: 500;
+  color: var(--ext-text);
+  margin-bottom: var(--ext-spacing-1);
+}
+
+.required {
+  color: var(--ext-error);
+}
+
+.form-input {
+  width: 100%;
+  padding: var(--ext-spacing-2) var(--ext-spacing-3);
+  font-size: var(--ext-font-base);
+  color: var(--ext-text);
+  background: var(--ext-bg);
+  border: 1px solid var(--ext-border);
+  border-radius: var(--ext-radius-sm);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+  border-color: var(--ext-primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.form-input--amount {
+  padding-left: var(--ext-spacing-1);
+}
+
+.form-input--textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+
+.form-input[aria-invalid='true'] {
+  border-color: var(--ext-error);
+}
+
+.input-with-prefix {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.input-prefix {
+  display: flex;
+  align-items: center;
+  padding: var(--ext-spacing-2) var(--ext-spacing-2);
+  font-size: var(--ext-font-base);
+  color: var(--ext-text-secondary);
+  background: var(--ext-bg-secondary);
+  border: 1px solid var(--ext-border);
+  border-right: none;
+  border-radius: var(--ext-radius-sm) 0 0 var(--ext-radius-sm);
+}
+
+.input-with-prefix .form-input {
+  border-radius: 0 var(--ext-radius-sm) var(--ext-radius-sm) 0;
+}
+
+.form-error {
+  display: block;
+  font-size: var(--ext-font-sm);
+  color: var(--ext-error);
+  margin-top: var(--ext-spacing-1);
+  min-height: 0;
+}
+
+.form-error:empty {
+  display: none;
+}
+
+/* Actions */
+.form-actions {
+  display: flex;
+  gap: var(--ext-spacing-2);
+  margin-top: var(--ext-spacing-4);
+}
+
+.btn {
+  flex: 1;
+  padding: var(--ext-spacing-2) var(--ext-spacing-3);
+  font-size: var(--ext-font-base);
+  font-weight: 500;
+  border-radius: var(--ext-radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  text-align: center;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ext-primary);
+  outline-offset: 2px;
+}
+
+.btn--primary {
+  background: var(--ext-primary);
+  color: #ffffff;
+}
+
+.btn--primary:hover {
+  background: var(--ext-primary-hover);
+}
+
+.btn--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--secondary {
+  background: var(--ext-bg-secondary);
+  color: var(--ext-text);
+  border: 1px solid var(--ext-border);
+}
+
+.btn--secondary:hover {
+  background: var(--ext-border);
+}
+
+/* Status message */
+.status-message {
+  padding: var(--ext-spacing-3) var(--ext-spacing-4);
+  font-size: var(--ext-font-sm);
+  text-align: center;
+  border-radius: var(--ext-radius-sm);
+  margin: 0 var(--ext-spacing-4) var(--ext-spacing-3);
+}
+
+.status-message--success {
+  background: rgba(5, 150, 105, 0.1);
+  color: var(--ext-success);
+  border: 1px solid var(--ext-success);
+}
+
+.status-message--error {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--ext-error);
+  border: 1px solid var(--ext-error);
+}
+
+/* Footer */
+.popup-footer {
+  padding: var(--ext-spacing-3) var(--ext-spacing-4);
+  border-top: 1px solid var(--ext-border);
+  text-align: center;
+}
+
+.footer-link {
+  font-size: var(--ext-font-sm);
+  color: var(--ext-primary);
+  text-decoration: none;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .form-input,
+  .btn {
+    transition: none;
+  }
+}
