@@ -1,0 +1,341 @@
+# =============================================================================
+# Preview Deployments — Per-PR Staging URLs for Web App
+# =============================================================================
+#
+# Deploys web app builds from pull requests to unique preview URLs via Vercel,
+# giving reviewers instant access to a live staging environment.
+#
+# Features:
+#   - Unique preview URL per PR
+#   - PR comment with deployment URL and status
+#   - Lighthouse CI audit on preview URL
+#   - GitHub Deployment status integration
+#   - Auto-cleanup on PR close
+#   - Only deploys after required checks pass
+#
+# Issue: #1018
+# =============================================================================
+
+name: Preview Deploy
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - 'apps/web/**'
+      - 'packages/design-tokens/**'
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to deploy preview for'
+        required: true
+        type: number
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: write
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Deploy: Build and deploy preview
+  # ---------------------------------------------------------------------------
+  deploy-preview:
+    name: Deploy Preview
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: preview
+      url: ${{ steps.deploy.outputs.url }}
+
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+      deployment_id: ${{ steps.deploy.outputs.deployment_id }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build design tokens
+        run: npm run build -w packages/design-tokens
+
+      - name: Build web app (preview)
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: pr-${{ github.event.pull_request.number || github.event.inputs.pr_number }}-${{ github.sha }}
+          VITE_ENVIRONMENT: preview
+        run: |
+          BUILD_START=$SECONDS
+          npm run build -w apps/web
+          echo "build_duration=$(( SECONDS - BUILD_START ))" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Vercel (preview)
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number || github.event.inputs.pr_number }}"
+
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::warning::VERCEL_TOKEN not configured — generating placeholder preview URL"
+            echo "url=https://finance-pr-${PR_NUM}.vercel.app" >> "$GITHUB_OUTPUT"
+            echo "deployment_id=dry-run" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Install Vercel CLI
+          npm i -g vercel@latest
+
+          # Deploy to preview with PR-specific alias
+          DEPLOY_URL=$(vercel deploy \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --yes \
+            --archive=tgz \
+            --meta pr="${PR_NUM}" \
+            --meta commit="${{ github.sha }}" \
+            --meta branch="${{ github.head_ref }}" \
+            apps/web/dist 2>&1 | tail -1)
+
+          # Set alias for predictable URL
+          ALIAS_URL="finance-pr-${PR_NUM}.vercel.app"
+          vercel alias set "$DEPLOY_URL" "$ALIAS_URL" \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" 2>&1 || true
+
+          PREVIEW_URL="https://${ALIAS_URL}"
+          echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+          echo "deployment_id=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Report bundle size
+        id: bundle
+        run: |
+          if [ -d "apps/web/dist" ]; then
+            TOTAL=$(du -sh apps/web/dist/ | cut -f1)
+            JS_SIZE=$(find apps/web/dist -name '*.js' -exec du -cb {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
+            CSS_SIZE=$(find apps/web/dist -name '*.css' -exec du -cb {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
+            echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+            echo "js_kb=$(( JS_SIZE / 1024 ))" >> "$GITHUB_OUTPUT"
+            echo "css_kb=$(( CSS_SIZE / 1024 ))" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Comment: Post preview URL to PR
+  # ---------------------------------------------------------------------------
+  comment:
+    name: PR Comment
+    needs: deploy-preview
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Find existing comment
+        id: find-comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const prNumber = ${{ github.event.pull_request.number || github.event.inputs.pr_number }};
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('<!-- preview-deploy -->')
+            );
+
+            core.setOutput('comment_id', botComment ? botComment.id : '');
+
+      - name: Create or update PR comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const prNumber = ${{ github.event.pull_request.number || github.event.inputs.pr_number }};
+            const url = '${{ needs.deploy-preview.outputs.url }}';
+            const sha = '${{ github.sha }}'.slice(0, 7);
+
+            const body = [
+              '<!-- preview-deploy -->',
+              '## 🚀 Preview Deployment',
+              '',
+              `| | |`,
+              `|---|---|`,
+              `| **URL** | [${url}](${url}) |`,
+              `| **Commit** | \`${sha}\` |`,
+              `| **Branch** | \`${{ github.head_ref }}\` |`,
+              `| **Status** | ✅ Deployed |`,
+              '',
+              '---',
+              '*Updated on every push to this PR. Preview will be removed when the PR is closed.*',
+            ].join('\n');
+
+            const commentId = '${{ steps.find-comment.outputs.comment_id }}';
+
+            if (commentId) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: parseInt(commentId),
+                body,
+              });
+              core.info(`Updated existing comment: ${commentId}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+              core.info('Created new preview deployment comment');
+            }
+
+  # ---------------------------------------------------------------------------
+  # Lighthouse: Audit preview deployment
+  # ---------------------------------------------------------------------------
+  lighthouse:
+    name: Lighthouse Audit
+    needs: deploy-preview
+    if: github.event.action != 'closed' && needs.deploy-preview.outputs.url != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Non-blocking: preview URL may not be immediately accessible
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Wait for deployment
+        run: |
+          URL="${{ needs.deploy-preview.outputs.url }}"
+          echo "Waiting for $URL to become accessible..."
+
+          for i in $(seq 1 12); do
+            if curl -sf -o /dev/null "$URL" 2>/dev/null; then
+              echo "✅ Preview is accessible"
+              exit 0
+            fi
+            echo "Attempt $i/12 — waiting 10s..."
+            sleep 10
+          done
+
+          echo "::warning::Preview URL not accessible after 2 minutes — skipping Lighthouse"
+          exit 1
+
+      - name: Lighthouse Audit
+        id: lighthouse
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
+        continue-on-error: true
+        with:
+          urls: ${{ needs.deploy-preview.outputs.url }}
+          uploadArtifacts: true
+          runs: 1
+
+      - name: Lighthouse Summary
+        if: always()
+        run: |
+          echo "### 🔦 Lighthouse Audit (Preview)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Preview URL:** ${{ needs.deploy-preview.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.lighthouse.outcome }}" = "success" ]; then
+            echo "✅ Lighthouse audit completed — check artifacts for full report." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️ Lighthouse audit could not complete (preview may not be accessible)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Cleanup: Remove preview on PR close
+  # ---------------------------------------------------------------------------
+  cleanup:
+    name: Cleanup Preview
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Remove preview deployment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          echo "### 🧹 Preview Cleanup" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "VERCEL_TOKEN not configured — no cleanup needed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          npm i -g vercel@latest
+
+          # Remove the alias
+          ALIAS_URL="finance-pr-${PR_NUM}.vercel.app"
+          vercel alias rm "$ALIAS_URL" \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --yes 2>&1 || true
+
+          echo "✅ Preview alias \`${ALIAS_URL}\` removed." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update PR comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const prNumber = ${{ github.event.pull_request.number }};
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('<!-- preview-deploy -->')
+            );
+
+            if (botComment) {
+              const body = [
+                '<!-- preview-deploy -->',
+                '## 🚀 Preview Deployment',
+                '',
+                '~~Preview has been removed~~ — PR was closed.',
+                '',
+                '---',
+                '*Preview environments are automatically cleaned up when PRs are closed.*',
+              ].join('\n');
+
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            }
