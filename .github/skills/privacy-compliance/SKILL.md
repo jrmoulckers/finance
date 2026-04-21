@@ -8,101 +8,156 @@ description: >
 
 # Privacy Compliance Skill
 
-This skill provides implementation-aware privacy and regulatory guidance for the Finance application.
+## Privacy Architecture Advantage
 
-## Current Audit Baseline
+Finance's edge-first architecture provides **structural privacy** — not just policy-based:
 
-The repository already contains two important audit documents:
-
-- `docs/architecture/privacy-audit-v1.md` — privacy compliance audit and remediation baseline.
-- `docs/architecture/security-audit-v1.md` — security audit findings relevant to privacy controls.
-- `docs/architecture/masvs-resilience-audit.md` — MASVS-RESILIENCE controls audit.
-- `docs/architecture/security/` — detailed specs for device attestation, RASP, session binding, anomaly detection, and security posture reporting.
-
-### Security Hardening (Implemented)
-
-The following MASVS-RESILIENCE controls are implemented in `packages/core/src/commonMain/kotlin/com/finance/core/security/`:
-
-- **RASP** (`RuntimeIntegrityChecker.kt`) — runtime tamper detection and integrity verification.
-- **Device Attestation** (`DeviceAttestor.kt`) — platform-specific attestation (`PlayIntegrityAttestor` on Android, `TpmAttestor` on Windows).
-- **Biometric Crypto Binding** (`BiometricCryptoBinding.kt`) — ties biometric authentication to cryptographic key operations for session security.
-
-Additional security strategies are documented in `docs/architecture/security/`:
-
-- Session binding strategy
-- Anomaly detection specification
-- RASP implementation and strategy docs
-- Security posture report
+- **Data lives on-device by default** — server sync is opt-in
+- **AI engines run on-device** — no financial data sent to cloud ML services
+- **Field-level encryption** — sensitive data (notes, payees) encrypted before storage
+- **Crypto-shredding** — GDPR erasure by destroying household encryption key
+- **No telemetry by default** — analytics are opt-in, anonymized, aggregatable
 
 ## Applicable Regulations
 
 ### GDPR (EU/EEA)
 
-- Lawful basis, data minimization, purpose limitation, and transparency still apply to all Finance features.
-- Data portability is especially relevant because the app stores sensitive financial histories.
-- Article 17 erasure and Article 20 portability are both directly relevant to the current codebase.
+- **Article 17**: Right to erasure → implemented via soft-delete + crypto-shredding
+- **Article 20**: Data portability → implemented via JSON/CSV export
+- **Article 25**: Data protection by design → edge-first architecture
+- Lawful basis, data minimization, purpose limitation, transparency all apply
 
 ### CCPA/CPRA (California)
 
-- Right to know, delete, and opt out still apply.
-- Published notice and disclosure obligations remain incomplete per the audit findings.
-- Non-discrimination and data-minimization expectations should shape product defaults.
+- Right to know, delete, opt out
+- Non-discrimination (free tier = same privacy as premium)
+- Published notice/disclosure obligations (documented gap in audit)
 
-## Current Repository Evidence
+## Audit Baseline
 
-### Data Portability
+| Document          | Path                                          | Purpose                                  |
+| ----------------- | --------------------------------------------- | ---------------------------------------- |
+| Privacy audit v1  | `docs/architecture/privacy-audit-v1.md`       | Compliance baseline + remediation        |
+| Security audit v1 | `docs/architecture/security-audit-v1.md`      | Security findings affecting privacy      |
+| MASVS audit       | `docs/architecture/masvs-resilience-audit.md` | Mobile security controls                 |
+| Security specs    | `docs/architecture/security/`                 | Session binding, anomaly detection, RASP |
 
-- `services/api/supabase/functions/data-export/index.ts` implements a GDPR Article 20 data export endpoint.
-- The Edge Function supports JSON and CSV responses, authenticates the caller, validates origin allowlists, redacts sensitive columns, rate limits exports, and writes export audit records.
-- `packages/core/src/commonMain/kotlin/com/finance/core/export/` contains the client-side export module used for portable JSON and CSV generation plus SHA-256 checksums.
+## Data Portability (GDPR Article 20)
 
-### Data Export Audit Trail
+### Server-Side Export
 
-- `services/api/supabase/migrations/20260315000001_export_audit_log.sql` creates `data_export_audit_log` for export history and rate-limiting evidence.
-- Audit records are scoped by RLS so users can only view their own export history.
+- **Edge Function**: `services/api/supabase/functions/data-export/index.ts`
+- Supports JSON and CSV responses
+- Authenticated, origin-validated CORS, rate-limited (10/user/hour)
+- Redacts sensitive columns before streaming
+- Writes to `data_export_audit_log` (migration: `20260315000001_export_audit_log.sql`)
 
-### Deletion and Crypto-Shredding
+### Client-Side Export
 
-- `docs/architecture/security-audit-v1.md` marks crypto-shredding for GDPR compliance as a PASS.
-- The same audit also records account deletion coverage for GDPR Article 17 as implemented but still worth reviewing alongside the privacy audit.
+- **Module**: `packages/core/src/commonMain/kotlin/com/finance/core/export/`
+- `DataExportService.kt` → 4-phase pipeline (GATHER → SERIALIZE → CHECKSUM → COMPLETE)
+- SHA-256 checksum for integrity verification
+- User IDs anonymized via `sha256:<digest>`
+- **Never** includes `syncVersion` or `isSynced` in exports
 
-## Implementation Requirements
+### GDPR Export Compliance Checklist
 
-### Data Inventory
+- [ ] All user-owned entities included in export (accounts, transactions, budgets, goals, categories)
+- [ ] Sync-internal fields stripped (`syncVersion`, `isSynced`)
+- [ ] Monetary values as decimal display with currency code
+- [ ] Dates as ISO 8601
+- [ ] User IDs anonymized via SHA-256
+- [ ] Export audit trail written
+- [ ] Rate limiting enforced
 
-- Treat `docs/architecture/privacy-audit-v1.md` as the current source of truth for what personal data exists, where it is stored, and where retention gaps remain.
-- Any new field or table should update the privacy inventory and its legal basis, retention, and storage location.
+## Data Deletion (GDPR Article 17)
 
-### Consent Management
+### Erasure Flow
 
-- Optional processing must remain opt-in.
-- Consent capture and withdrawal flows are still a documented gap, so new optional telemetry must not bypass that missing foundation.
+1. User requests deletion
+2. Soft-delete all data: `UPDATE ... SET deleted_at = now()`
+3. 30-day grace period (allows undo)
+4. Hard-delete + vacuum after grace period
+5. **Crypto-shredding**: destroy household DEK → all encrypted fields permanently unreadable
+6. Log erasure request for audit compliance
 
-### Data Export (Portability)
+### Edge Cases
 
-- Support complete export in machine-readable formats.
-- Never omit user-owned financial entities from portability flows.
-- Prefer self-service export backed by auditable server-side logging.
-- Verify that export serializers exclude sync-only fields and anonymize raw user IDs.
+- **Shared households**: Check other members before full deletion; per-user data shredded, shared data retained for other members
+- **Pending sync**: Drain mutation queue before deletion
+- **Backups**: Crypto-shredding makes backup data unreadable without DEK
 
-### Data Deletion
+## Crypto-Shredding
 
-- Support account deletion that removes or irreversibly shreds all personal data.
-- Maintain deletion evidence without storing unnecessary PII.
-- Watch for shared-household edge cases and pending sync state before final deletion.
+`packages/sync/src/commonMain/.../sync/crypto/`:
 
-### Encryption and Logging
+- `EnvelopeEncryption.kt` — DEK/KEK envelope pattern
+- `FieldEncryptor.kt` — Field-level encryption for sensitive data
+- `CryptoShredder.kt` — Destroys household DEK for permanent erasure
+- `HouseholdKeyManager.kt` — Per-household key lifecycle + rotation
 
-- Keep financial data encrypted at rest and in transit.
-- Do not log raw financial records, account numbers, or other sensitive identifiers.
-- Structured logs should prefer request IDs, function names, and coarse operational metadata.
+```
+Household created → generate DEK → encrypt with KEK → store
+Write sensitive field → decrypt DEK → encrypt field → store ciphertext
+Delete household → DELETE FROM encryption_key → all encrypted data permanently unreadable
+```
+
+## Privacy-Preserving Fingerprinting (Session Binding)
+
+From `docs/architecture/security/session-binding-strategy.md`:
+
+- Device fingerprinting for session binding uses **non-identifying hardware characteristics** only
+- No tracking cookies, advertising IDs, or cross-app identifiers
+- Fingerprint hashed with session token — cannot be used to track across sessions
+- Purpose: detect session hijacking, not user tracking
+
+## On-Device AI Privacy Advantages
+
+All 5 AI engines run locally (see financial-modeling skill):
+
+- **SmartCategorizationEngine**: Learns from user's own transaction history — data never leaves device
+- **BalancePredictionEngine**: Linear regression on local data only
+- **SubscriptionDetector**: Pattern matching against local transactions
+- **SavingsEngine**: Spending analysis from local data
+- **BudgetRecommendationEngine**: Based on local income/spending distribution
+
+**Competitive advantage**: Competitors send financial data to cloud ML. Finance does not.
+
+## Security Hardening (MASVS-RESILIENCE)
+
+Implemented in `packages/core/src/commonMain/.../security/`:
+
+- **RASP**: `RuntimeIntegrityChecker.kt` — tamper detection
+- **Device attestation**: `DeviceAttestor.kt` — PlayIntegrity (Android), TPM (Windows)
+- **Biometric crypto binding**: `BiometricCryptoBinding.kt` — ties biometric to key operations
+
+Detailed specs in `docs/architecture/security/`:
+
+- Session binding strategy
+- Anomaly detection specification
+- RASP implementation docs
+- Security posture report
+
+## Consent Management
+
+**Current state**: Documented gap in privacy audit
+
+- Optional processing must remain opt-in
+- No telemetry may bypass the missing consent foundation
+- When implementing: granular opt-in per data category, easy withdrawal
 
 ## Privacy Review Triggers
 
 Run a privacy review when:
 
-- Adding a new personal-data field, export surface, or storage location.
-- Integrating a third-party SDK or cloud processor.
-- Changing sync, retention, deletion, or audit-log behavior.
-- Adding analytics, crash reporting, or consent-dependent features.
-- Modifying data portability or erasure implementations.
+- Adding a new personal-data field, storage location, or export surface
+- Integrating a third-party SDK or cloud processor
+- Changing sync, retention, deletion, or audit-log behavior
+- Adding analytics, crash reporting, or consent-dependent features
+- Modifying data portability or erasure implementations
+
+## Data Inventory
+
+- Source of truth: `docs/architecture/privacy-audit-v1.md`
+- Any new field/table must update: inventory, legal basis, retention period, storage location
+- All personal data classified by sensitivity level

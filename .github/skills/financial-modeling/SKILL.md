@@ -9,96 +9,162 @@ description: >
 
 # Financial Modeling Skill
 
-This skill provides domain knowledge for implementing correct financial calculations, reporting, and export flows in the Finance application.
+## Money Representation — The Golden Rule
 
-## Money Representation
+**Never use floating-point for money.** All monetary values are `Long` cents.
 
-### The Golden Rule: No Floating Point
-
+```kotlin
+// KMP value class (packages/models)
+@JvmInline
+value class Cents(val amount: Long) {
+    operator fun plus(other: Cents) = Cents(amount + other.amount)
+    operator fun minus(other: Cents) = Cents(amount - other.amount)
+    fun toDollars(): String {
+        val sign = if (amount < 0) "-" else ""
+        return "$sign\$${abs(amount) / 100}.${(abs(amount) % 100).toString().padStart(2, '0')}"
+    }
+    companion object {
+        fun fromDollars(d: Double) = Cents((d * 100).roundToLong())
+        val ZERO = Cents(0L)
+    }
+}
 ```
-WRONG: let balance = 19.99          // floating point — will cause rounding errors
-RIGHT: let balanceCents = 1999      // integer cents — exact representation
-RIGHT: let balance = Decimal("19.99") // fixed-precision decimal
+
+```typescript
+// Web helper (apps/web)
+const cents = (dollars: number): number => Math.round(parseFloat(String(dollars)) * 100);
 ```
 
-- Store monetary values as integers in the smallest currency unit.
-- Keep the ISO 4217 currency code alongside every amount.
-- Convert `Cents` to a decimal display string only when serializing or rendering.
+**Rules**:
 
-## Current Export Module
-
-The repository now has a dedicated export module in `packages/core/src/commonMain/kotlin/com/finance/core/export/`.
-
-### Core Types
-
-- `DataExportService.kt` — object singleton that orchestrates export generation.
-- `ExportSerializer.kt` — format contract for export implementations.
-- `JsonExportSerializer.kt` — JSON envelope serializer.
-- `CsvExportSerializer.kt` — multi-section CSV serializer.
-- `ExportData.kt` — input container for accounts, transactions, categories, budgets, and goals.
-- `ExportTypes.kt` — `ExportResult`, `ExportMetadata`, `ExportProgress`, `ExportOutcome`, and `ExportError`.
-- `Sha256.kt` — multiplatform SHA-256 implementation used for checksums and anonymized user IDs.
-
-### DataExportService Responsibilities
-
-- Runs the export pipeline in four phases: `GATHERING_DATA`, `SERIALIZING`, `COMPUTING_CHECKSUM`, and `COMPLETE`.
-- Builds `ExportMetadata` with entity counts, schema version, export timestamp, and a SHA-256 user hash.
-- Computes a SHA-256 checksum for every export payload before returning `ExportResult`.
-- Returns `ExportOutcome.Success` or `ExportOutcome.Failure` instead of throwing business-logic errors.
-
-## Serialization Rules
-
-- `ExportSerializer` implementations are responsible for stripping sync-internal fields such as `syncVersion` and `isSynced`.
-- Dates and timestamps are serialized as ISO 8601 strings.
-- JSON exports wrap data in an envelope with metadata and entity counts.
-- CSV exports emit metadata plus separate sections for accounts, transactions, categories, budgets, and goals.
-- Monetary values are serialized as decimal display strings paired with currency codes.
-
-## Integrity and Privacy
-
-- `Sha256.hexDigest(...)` is the canonical checksum implementation for exports.
-- `DataExportService.hashUserId(...)` prefixes anonymized IDs as `sha256:<digest>`.
-- Export checksums are returned with `ExportResult` so downstream consumers can verify integrity.
-- Export callers must pre-filter soft-deleted records before constructing `ExportData`.
-
-## Financial Modeling Guidance
-
-### Budgeting
-
-- Use zero-based or envelope-style allocation semantics for category budgets.
-- Keep rollover and overspending rules explicit rather than implicit.
-- Recalculate availability from allocations, spending, and carry-over values.
-- **Rollover logic**: When `is_rollover = true`, compute carry-forward as `previous_period_budget - previous_period_spent` (clamped to zero minimum). Add carry-forward to the new period's available amount. Never reduce next-period budget below zero due to overspend rollover.
-
-### Goals
-
-- Track goal amounts in minor units (cents).
-- Recompute projections whenever contributions, deadlines, or funding sources change.
-- Show both percentage progress and absolute values.
-- **Goal status lifecycle**: Goals transition through `active → completed` when `current_cents >= target_cents`, or `active → archived` when manually dismissed. Completed and archived goals are excluded from active projections but retained for history.
-- **Account linkage**: When `account_id` is set, goal progress is driven by changes to that account's balance. When null, the goal tracks manual contributions only.
-
-### Reporting
-
-- Net worth remains: assets minus liabilities.
-- Spending analysis should compare actuals to budget and highlight pacing over time.
-- Export output is part of the reporting surface because portability is a compliance feature, not just a transport concern.
-
-## Testing Focus
-
-- Test rounding boundaries, negative amounts, zero values, and high-value totals.
-- Test serializer output for deterministic ordering and stable schemas.
-- Test checksum generation with known fixtures.
-- Test that exported data never includes sync-only fields or raw user IDs.
+- Store as `INTEGER`/`BIGINT` (cents) in SQLite and PostgreSQL
+- Keep ISO 4217 currency code alongside every amount
+- Convert to display only at the UI rendering layer
+- Use `Cents` value class in KMP, `number` (cents) in TypeScript
 
 ## AI-Powered Financial Engines
 
-Five AI engines in `packages/core/src/commonMain/kotlin/com/finance/core/` provide intelligent financial features. All run on-device (edge-first, no server calls):
+Five on-device engines in `packages/core/src/commonMain/kotlin/com/finance/core/`:
 
-- **`SmartCategorizationEngine`** (`categorization/`) — automatic transaction categorization based on payee patterns and historical data.
-- **`BalancePredictionEngine`** (`prediction/`) — projects future account balances using linear regression on transaction history.
-- **`SubscriptionDetector`** (`subscription/`) — identifies recurring charges from transaction patterns.
-- **`SavingsEngine`** (`savings/`) — finds savings opportunities by analyzing spending habits.
-- **`BudgetRecommendationEngine`** (`recommendation/`) — suggests budget allocations based on income and spending distribution.
+| Engine                         | Module            | Input                          | Output                                        |
+| ------------------------------ | ----------------- | ------------------------------ | --------------------------------------------- |
+| **SmartCategorizationEngine**  | `categorization/` | Transaction payee + history    | Predicted `Category`                          |
+| **BalancePredictionEngine**    | `prediction/`     | Account transaction history    | Projected future balances (linear regression) |
+| **SubscriptionDetector**       | `subscription/`   | Transaction list               | Detected recurring charges with frequency     |
+| **SavingsEngine**              | `savings/`        | Spending history + categories  | Savings opportunities with estimated amounts  |
+| **BudgetRecommendationEngine** | `recommendation/` | Income + spending distribution | Suggested per-category budget allocations     |
 
-When implementing financial features that could benefit from historical analysis, check whether an existing engine already provides the computation. Extend engines via their input data rather than adding new standalone calculators.
+**Usage pattern**:
+
+```kotlin
+// All engines are pure Kotlin — no platform dependencies
+val engine = SmartCategorizationEngine()
+val category = engine.categorize(transaction, historicalTransactions)
+
+val predictions = BalancePredictionEngine().predict(
+    account, transactions, forecastDays = 30
+)
+
+val subscriptions = SubscriptionDetector().detect(transactions)
+val savings = SavingsEngine().analyze(transactions, budgets)
+val recommendations = BudgetRecommendationEngine().recommend(income, spending)
+```
+
+**Design rules**:
+
+- All engines run on-device (edge-first, no server calls) — privacy advantage
+- Extend via input data, not new standalone calculators
+- Keep heuristics in `commonMain`; inject platform data sources via interfaces
+- Check if an existing engine handles your use case before creating a new one
+
+## Budget Modeling
+
+### Rollover Logic
+
+When `is_rollover = true` on a budget:
+
+1. Compute carry-forward: `previous_budget_cents - previous_spent_cents`
+2. Clamp to zero minimum (never carry negative overspend forward)
+3. Add carry-forward to new period's available amount
+4. Formula: `available = budget_cents + max(0, carry_forward) - current_spent`
+
+### Budget Periods
+
+- `monthly`, `weekly`, `biweekly`, `yearly`
+- Recalculate availability from: allocations + carry-over − spending
+
+### Schema
+
+```sql
+-- packages/core SQLDelight
+CREATE TABLE budget (
+    id TEXT NOT NULL PRIMARY KEY,
+    category_id TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL,  -- Long (cents)
+    is_rollover INTEGER NOT NULL DEFAULT 0,  -- Boolean
+    period TEXT NOT NULL,
+    ...
+);
+```
+
+## Goal Tracking
+
+### Status Lifecycle
+
+```
+active → completed  (when current_cents >= target_cents)
+active → archived   (manual dismissal)
+```
+
+- Completed/archived goals excluded from active projections, retained for history
+- When `account_id` is set → progress driven by account balance changes
+- When `account_id` is null → tracks manual contributions only
+
+### Projection
+
+```kotlin
+// Time to goal at current savings rate
+val monthlyRate = recentContributions.sum() / months
+val remaining = goal.targetCents - goal.currentCents
+val monthsToGoal = if (monthlyRate > 0) remaining / monthlyRate else Long.MAX_VALUE
+```
+
+## Data Export Module
+
+Located at `packages/core/src/commonMain/kotlin/com/finance/core/export/`:
+
+| File                      | Purpose                                                                |
+| ------------------------- | ---------------------------------------------------------------------- |
+| `DataExportService.kt`    | Orchestrator (4 phases: GATHERING → SERIALIZING → CHECKSUM → COMPLETE) |
+| `ExportSerializer.kt`     | Format contract                                                        |
+| `JsonExportSerializer.kt` | JSON envelope with metadata                                            |
+| `CsvExportSerializer.kt`  | Multi-section CSV                                                      |
+| `ExportData.kt`           | Input container                                                        |
+| `ExportTypes.kt`          | Result types (`ExportOutcome.Success`/`Failure`)                       |
+| `Sha256.kt`               | Checksums + anonymized user IDs                                        |
+
+**Export rules**:
+
+- **Never** include `syncVersion` or `isSynced` in exported data
+- Monetary values → decimal display string with currency code
+- Dates → ISO 8601
+- User IDs → anonymized via `sha256:<digest>`
+- SHA-256 checksum computed for every export payload
+- Callers must pre-filter soft-deleted records before constructing `ExportData`
+
+## Reporting
+
+- **Net worth** = assets − liabilities (sum account balances by type)
+- **Spending analysis** = actuals vs. budget, pacing over time
+- **Category breakdown** = spending grouped by category with period comparison
+- Report primitives: `KpiMetrics`, `MonthlyComparison`, `NetWorthSnapshot`, `SpendingInsight` in `packages/core/.../analytics/`
+
+## Testing Checklist
+
+- [ ] Rounding boundaries (e.g., `Cents(1)` + `Cents(1)` = `Cents(2)`, not 0.02 float)
+- [ ] Negative amounts, zero values, high-value totals (`Long.MAX_VALUE` proximity)
+- [ ] Serializer output: deterministic ordering, stable schemas
+- [ ] Checksum generation with known fixtures
+- [ ] Exported data never includes sync fields or raw user IDs
+- [ ] Budget rollover carry-forward clamped to zero
+- [ ] Goal status transitions are one-way (no `completed → active`)

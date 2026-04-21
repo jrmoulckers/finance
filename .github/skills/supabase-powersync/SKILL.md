@@ -8,417 +8,140 @@ description: >
 
 # Supabase & PowerSync Skill
 
-This skill provides domain knowledge for configuring and developing against the Supabase backend and PowerSync sync engine used by the Finance application.
+## Current Backend State
 
-## Supabase Project Setup and Configuration
+- **23 up-migrations** with matching `down/` reversals
+- **16 Edge Functions**: data-export, health-check, account-deletion, admin-dashboard, auth-webhook, household-invite, launch-readiness, manage-webhooks, passkey-authenticate, passkey-register, process-recurring, send-notification, sync-health-report, verify-device-attestation
+- **Rate limiting**: `rate_limits` table with configurable per-user/per-endpoint limits
+- **Anomaly detection**: Spending pattern analysis via Edge Functions
+- **Spending forecast**: Balance prediction via `BalancePredictionEngine` (KMP, on-device)
+- **Bank connection stubs**: Placeholder for future Plaid/MX integration
+- **Launch readiness dashboard**: `20260327000001_launch_readiness_dashboard.sql`
+- **Recurring transactions**: `process-recurring` Edge Function + `20260323000002_recurring_transactions.sql`
 
-### Project Structure
+## Project Structure
 
 ```
 services/api/
-├── openapi.yaml
-├── powersync/
-│   └── sync-rules.yaml
-└── supabase/
-    ├── config.toml
-    ├── migrations/
-    │   ├── 20260306000001_initial_schema.sql
-    │   ├── 20260306000002_rls_policies.sql
-    │   ├── 20260306000003_auth_config.sql
-    │   ├── 20260307000001_monitoring.sql
-    │   ├── 20260315000001_export_audit_log.sql
-    │   ├── 20260316000001_edge_function_security.sql
-    │   ├── 20260316000001_fix_invitation_rls.sql
-    │   ├── 20260323000001_cleanup_and_balance_triggers.sql
-    │   ├── 20260323000002_recurring_transactions.sql
-    │   ├── 20260323000003_rate_limits.sql
-    │   ├── 20260324000001_notification_infrastructure.sql
-    │   ├── 20260324000002_performance_indexes.sql
-    │   ├── 20260324000003_automated_maintenance.sql
-    │   ├── 20260324000004_webhook_infrastructure.sql
-    │   ├── 20260325000001_enhanced_cleanup_and_balance.sql
-    │   ├── 20260325000001_read_only_rate_limit_status.sql
-    │   ├── 20260326000001_production_readiness.sql
-    │   ├── 20260326000002_add_transfer_recurring_to_transactions.sql
-    │   ├── 20260326000003_add_rollover_to_budgets.sql
-    │   ├── 20260326000004_add_account_status_to_goals.sql
-    │   ├── 20260326000005_standardize_owner_id.sql
-    │   ├── 20260326000006_sync_optimization.sql
-    │   ├── 20260327000001_launch_readiness_dashboard.sql
-    │   └── down/                              # Reversals for all up migrations
-    └── functions/
-        ├── _shared/                           # auth.ts, cors.ts, logger.ts, response.ts
-        ├── _test_helpers/
-        ├── account-deletion/
-        ├── admin-dashboard/
-        ├── auth-webhook/
-        ├── data-export/
-        ├── health-check/
-        ├── household-invite/
-        ├── launch-readiness/
-        ├── manage-webhooks/
-        ├── passkey-authenticate/
-        ├── passkey-register/
-        ├── process-recurring/
-        ├── send-notification/
-        ├── sync-health-report/
-        └── verify-device-attestation/
++-- openapi.yaml
++-- powersync/
+|   +-- sync-rules.yaml
++-- supabase/
+    +-- config.toml
+    +-- migrations/           # 23 up-migrations + down/ reversals
+    +-- functions/
+        +-- _shared/          # auth.ts, cors.ts, logger.ts, response.ts
+        +-- _test_helpers/
+        +-- account-deletion/
+        +-- admin-dashboard/
+        +-- auth-webhook/
+        +-- data-export/
+        +-- health-check/
+        +-- household-invite/
+        +-- launch-readiness/
+        +-- manage-webhooks/
+        +-- passkey-authenticate/
+        +-- passkey-register/
+        +-- process-recurring/
+        +-- send-notification/
+        +-- sync-health-report/
+        +-- verify-device-attestation/
 ```
 
-There are currently **23 up-migrations** and matching `down/` reversals. The schema includes rate limiting (`rate_limits`), recurring transaction processing, notification infrastructure, webhook infrastructure, production readiness views, and a launch readiness dashboard.
+## Migration Naming Convention
 
-### Local Development
-
-```bash
-cd services/api
-
-# Start local Supabase stack
-supabase start
-
-# Apply pending migrations to the running stack
-supabase migration up
-
-# Serve current Edge Functions locally
-supabase functions serve data-export --env-file .env.local
-supabase functions serve health-check --env-file .env.local
+```
+YYYYMMDDHHMMSS_description.sql
 ```
 
-### Environment Configuration
+Examples from current migrations:
 
-```toml
-# supabase/config.toml
-[api]
-port = 54321
-schemas = ["public", "auth", "storage"]
+- `20260306000001_initial_schema.sql`
+- `20260323000003_rate_limits.sql`
+- `20260326000005_standardize_owner_id.sql`
+- `20260327000001_launch_readiness_dashboard.sql`
 
-[db]
-port = 54322
+### Migration Rules
 
-[auth]
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000"]
-```
+- **Reversible**: Every up-migration has a matching `down/` reversal
+- **Zero-downtime**: Use expand-contract pattern (add column → dual-write → backfill → switch → drop old)
+- **Idempotent**: Use `IF NOT EXISTS` / `IF EXISTS` guards
+- **Add-only**: New columns must be nullable or have defaults
 
-## PostgreSQL Schema Design for Financial Data
+## Schema Design Principles
 
-### Core Principles
+- **BIGINT for money** — All monetary values as cents, never float
+- **UUID primary keys** — `gen_random_uuid()` for offline-first sync
+- **Soft deletes** — `deleted_at TIMESTAMPTZ` on all user-facing tables
+- **Household isolation** — `household_id FK` on every user-facing table
+- **Owner tracking** — `owner_id UUID REFERENCES auth.users(id)` for direct per-user queries
+- **Sync columns** — `sync_version BIGINT DEFAULT 0` + `is_synced BOOLEAN DEFAULT false`
+- **Audit timestamps** — `created_at` + `updated_at` on every table
 
-- **BIGINT for money** — All monetary values stored as cents (BIGINT), never floating-point.
-- **UUID primary keys** — All tables use `gen_random_uuid()` for globally unique IDs suitable for offline-first sync.
-- **Soft deletes** — `deleted_at TIMESTAMPTZ` column on all user-facing tables; never hard-delete synced records.
-- **Audit timestamps** — Every table has `created_at` and `updated_at` columns.
-- **Household isolation** — Every user-facing table has a `household_id` FK for multi-user household support.
-- **Owner tracking** — Every sync-enabled table also carries `owner_id UUID REFERENCES auth.users(id)` for direct per-user queries alongside household-level RLS.
-- **Sync columns** — All sync-enabled tables include `sync_version BIGINT NOT NULL DEFAULT 0` and `is_synced BOOLEAN NOT NULL DEFAULT false` for PowerSync delta tracking.
-
-### Schema Definition
+### Core Tables (Approved Schema)
 
 ```sql
-CREATE TABLE users (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email         TEXT NOT NULL,
-    display_name  TEXT NOT NULL,
-    avatar_url    TEXT,
-    currency_code TEXT NOT NULL DEFAULT 'USD',
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at    TIMESTAMPTZ
-);
+-- transactions: transfer + recurring support
+transfer_transaction_id UUID REFERENCES transactions(id),  -- paired transfer leg
+recurring_rule_id UUID REFERENCES recurring_rules(id),      -- originating rule
+owner_id UUID NOT NULL REFERENCES auth.users(id),
 
-CREATE TABLE households (
-    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name       TEXT NOT NULL,
-    created_by UUID NOT NULL REFERENCES users(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at TIMESTAMPTZ
-);
+-- budgets: rollover support
+is_rollover BOOLEAN NOT NULL DEFAULT false,
 
-CREATE TABLE accounts (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    household_id  UUID NOT NULL REFERENCES households(id),
-    name          TEXT NOT NULL,
-    type          TEXT NOT NULL,
-    currency_code TEXT NOT NULL DEFAULT 'USD',
-    balance_cents BIGINT NOT NULL DEFAULT 0,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at    TIMESTAMPTZ,
-    sync_version  BIGINT NOT NULL DEFAULT 0,
-    is_synced     BOOLEAN NOT NULL DEFAULT false
-);
-
-CREATE TABLE transactions (
-    id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    household_id             UUID NOT NULL REFERENCES households(id),
-    owner_id                 UUID NOT NULL REFERENCES auth.users(id),
-    account_id               UUID NOT NULL REFERENCES accounts(id),
-    category_id              UUID REFERENCES categories(id),
-    amount_cents             BIGINT NOT NULL,
-    currency_code            TEXT NOT NULL DEFAULT 'USD',
-    payee                    TEXT,
-    note                     TEXT,
-    date                     DATE NOT NULL,
-    -- Transfer support: links the paired transaction for account-to-account transfers
-    transfer_transaction_id  UUID REFERENCES transactions(id),
-    -- Recurring rule support: links to the rule that generated this transaction
-    recurring_rule_id        UUID REFERENCES recurring_rules(id),
-    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at               TIMESTAMPTZ,
-    sync_version             BIGINT NOT NULL DEFAULT 0,
-    is_synced                BOOLEAN NOT NULL DEFAULT false
-);
-
-CREATE TABLE budgets (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    household_id  UUID NOT NULL REFERENCES households(id),
-    owner_id      UUID NOT NULL REFERENCES auth.users(id),
-    category_id   UUID NOT NULL REFERENCES categories(id),
-    amount_cents  BIGINT NOT NULL,
-    currency_code TEXT NOT NULL DEFAULT 'USD',
-    period        TEXT NOT NULL,
-    start_date    DATE NOT NULL,
-    end_date      DATE,
-    -- Rollover support: carry unused budget amounts into the next period
-    is_rollover   BOOLEAN NOT NULL DEFAULT false,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at    TIMESTAMPTZ,
-    sync_version  BIGINT NOT NULL DEFAULT 0,
-    is_synced     BOOLEAN NOT NULL DEFAULT false
-);
-
-CREATE TABLE goals (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    household_id    UUID NOT NULL REFERENCES households(id),
-    owner_id        UUID NOT NULL REFERENCES auth.users(id),
-    -- Optional FK to a specific account funding this goal
-    account_id      UUID REFERENCES accounts(id),
-    name            TEXT NOT NULL,
-    target_cents    BIGINT NOT NULL,
-    current_cents   BIGINT NOT NULL DEFAULT 0,
-    currency_code   TEXT NOT NULL DEFAULT 'USD',
-    target_date     DATE,
-    -- Goal lifecycle status: active | completed | archived
-    status          TEXT NOT NULL DEFAULT 'active',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    deleted_at      TIMESTAMPTZ,
-    sync_version    BIGINT NOT NULL DEFAULT 0,
-    is_synced       BOOLEAN NOT NULL DEFAULT false,
-    CONSTRAINT goals_status_check CHECK (status IN ('active', 'completed', 'archived'))
-);
+-- goals: account linkage + lifecycle
+account_id UUID REFERENCES accounts(id),     -- funding account
+status TEXT NOT NULL DEFAULT 'active',        -- active | completed | archived
+CONSTRAINT goals_status_check CHECK (status IN ('active', 'completed', 'archived'))
 ```
 
-## Row-Level Security (RLS) Policy Patterns
+## RLS Policy Patterns
 
-### Household Isolation Pattern
-
-All RLS policies follow the same pattern: the authenticated user can only access rows tied to one of their active household memberships.
+### Household Isolation (Standard Pattern)
 
 ```sql
+-- Helper function: returns all household IDs for the authenticated user
 CREATE OR REPLACE FUNCTION auth.household_ids()
 RETURNS UUID[] AS $$
     SELECT COALESCE(array_agg(household_id), ARRAY[]::UUID[])
     FROM household_members
-    WHERE user_id = auth.uid()
-      AND deleted_at IS NULL
+    WHERE user_id = auth.uid() AND deleted_at IS NULL
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
-```
 
-### Account Policies
-
-```sql
+-- Apply to every table:
 ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY accounts_select ON accounts
-    FOR SELECT
+CREATE POLICY accounts_select ON accounts FOR SELECT
     USING (household_id = ANY(auth.household_ids()));
-
-CREATE POLICY accounts_insert ON accounts
-    FOR INSERT
+CREATE POLICY accounts_insert ON accounts FOR INSERT
     WITH CHECK (household_id = ANY(auth.household_ids()));
-
-CREATE POLICY accounts_update ON accounts
-    FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
-```
-
-### Transaction Policies
-
-```sql
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY transactions_select ON transactions
-    FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
-
-CREATE POLICY transactions_insert ON transactions
-    FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
-
-CREATE POLICY transactions_update ON transactions
-    FOR UPDATE
-    USING (household_id = ANY(auth.household_ids()))
-    WITH CHECK (household_id = ANY(auth.household_ids()));
-```
-
-### Budget Policies
-
-```sql
-ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY budgets_select ON budgets
-    FOR SELECT
-    USING (household_id = ANY(auth.household_ids()));
-
-CREATE POLICY budgets_insert ON budgets
-    FOR INSERT
-    WITH CHECK (household_id = ANY(auth.household_ids()));
-
-CREATE POLICY budgets_update ON budgets
-    FOR UPDATE
+CREATE POLICY accounts_update ON accounts FOR UPDATE
     USING (household_id = ANY(auth.household_ids()))
     WITH CHECK (household_id = ANY(auth.household_ids()));
 ```
 
 ### Service Role Bypass
 
-Edge Functions that need cross-household access (e.g., scheduled aggregation jobs) use the `service_role` key, which bypasses RLS.
+Edge Functions needing cross-household access use `service_role` key (bypasses RLS).
 
-## Supabase Auth Configuration
+### Subscription-Gated RLS
 
-### Passkeys (WebAuthn)
-
-```toml
-# config.toml
-[auth]
-[auth.mfa]
-max_enrolled_factors = 10
-
-[auth.mfa.web_authn]
-enabled = true
+```sql
+-- Example: premium-only data access
+CREATE POLICY premium_export ON data_export_audit_log FOR SELECT
+    USING (auth.uid() = user_id
+    AND auth.jwt() -> 'app_metadata' ->> 'subscription_tier' IN ('PREMIUM', 'FAMILY'));
 ```
 
-Passkey registration and login are handled via the Supabase Auth JS/Kotlin SDK:
-
-```kotlin
-// Kotlin (Android/JVM)
-val supabase = createSupabaseClient(url, key) {
-    install(Auth)
-    install(GoTrue) {
-        flowType = FlowType.PKCE
-    }
-}
-```
-
-### OAuth Providers
-
-Configure in the Supabase Dashboard or `config.toml`:
-
-```toml
-[auth.external.google]
-enabled = true
-client_id = "env(GOOGLE_CLIENT_ID)"
-secret = "env(GOOGLE_CLIENT_SECRET)"
-
-[auth.external.apple]
-enabled = true
-client_id = "env(APPLE_CLIENT_ID)"
-secret = "env(APPLE_CLIENT_SECRET)"
-```
-
-### Auth Flow
-
-1. User authenticates via Passkey or OAuth.
-2. On first login, a trigger creates a `user_profile` record and assigns/creates a `household`.
-3. JWT includes the user's `id` — RLS uses `auth.uid()` to look up `household_id`.
-
-## Edge Functions Patterns
-
-### Structure (Deno + TypeScript)
-
-```typescript
-// functions/data-export/index.ts
-import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
-import { createAdminClient, requireAuth } from '../_shared/auth.ts';
-import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
-import { createLogger } from '../_shared/logger.ts';
-
-serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return handleCorsPreflightRequest(req);
-  }
-
-  const logger = createLogger('data-export');
-
-  try {
-    if (req.method !== 'GET') {
-      return new Response(JSON.stringify({ code: 'METHOD_NOT_ALLOWED' }), {
-        status: 405,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-      });
-    }
-
-    const user = await requireAuth(req);
-    logger.setUserId(user.id);
-
-    const supabase = createAdminClient();
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-    });
-  } catch (error) {
-    logger.error('Unhandled edge function error', {
-      errorMessage: error instanceof Error ? error.message : 'unknown',
-    });
-    return new Response(JSON.stringify({ code: 'INTERNAL_ERROR' }), {
-      status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
-    });
-  }
-});
-```
-
-### Shared CORS Configuration
-
-- `services/api/supabase/functions/_shared/cors.ts` parses `ALLOWED_ORIGINS` from the environment.
-- Use `getCorsHeaders(req)` to echo back only approved origins.
-- Use `handleCorsPreflightRequest(req)` for `OPTIONS` requests.
-- Never use wildcard `Access-Control-Allow-Origin: *` in production Edge Functions.
-
-### Structured Logging
-
-- `services/api/supabase/functions/_shared/logger.ts` emits structured JSON logs with `timestamp`, `level`, `message`, `requestId`, `function`, optional `userId`, and `duration_ms`.
-- Create one logger per request with `createLogger(functionName)` and enrich it after auth with `setUserId(...)`.
-
-### Health Check Edge Function
-
-- `services/api/supabase/functions/health-check/index.ts` is the current public uptime endpoint.
-- It checks database connectivity plus Supabase Auth availability and returns `healthy` or `degraded` without exposing schema details.
-- It uses the same shared CORS and structured-logging helpers as the other Edge Functions.
-
-### Validation Pattern
-
-Always validate inputs at the Edge Function boundary before touching the database:
-
-- Check auth header is present and valid.
-- Parse and validate JSON body with explicit type checks.
-- Use Supabase client with the user's auth token (not service role) unless cross-household access is needed.
-
-## PowerSync Sync Rules Configuration
-
-### Sync Rules File
-
-PowerSync uses a YAML-based sync rules file to define which data syncs to each client:
+## PowerSync Sync Rules
 
 ```yaml
 # services/api/powersync/sync-rules.yaml
 bucket_definitions:
   by_household:
     parameters:
-      - SELECT household_id FROM household_members WHERE user_id = token_parameters.user_id AND deleted_at IS NULL
+      - SELECT household_id FROM household_members
+        WHERE user_id = token_parameters.user_id AND deleted_at IS NULL
     data:
       - SELECT * FROM accounts WHERE household_id = bucket.household_id AND deleted_at IS NULL
       - SELECT * FROM transactions WHERE household_id = bucket.household_id AND deleted_at IS NULL
@@ -427,280 +150,154 @@ bucket_definitions:
       - SELECT * FROM goals WHERE household_id = bucket.household_id AND deleted_at IS NULL
   user_profile:
     parameters:
-      - SELECT id AS user_id FROM users WHERE id = token_parameters.user_id AND deleted_at IS NULL
+      - SELECT id AS user_id FROM users WHERE id = token_parameters.user_id
     data:
       - SELECT * FROM users WHERE id = bucket.user_id AND deleted_at IS NULL
       - SELECT * FROM household_members WHERE user_id = bucket.user_id AND deleted_at IS NULL
 ```
 
-### Key Sync Rules Concepts
+### Sync Rules Concepts
 
-- **Buckets** define groups of data that sync together. A client subscribes to one or more buckets.
-- **Parameters** determine which buckets a user subscribes to (derived from the auth token).
-- **Data queries** define which rows belong to each bucket instance.
-- PowerSync automatically tracks changes (INSERT, UPDATE, DELETE) and syncs deltas.
+- **Buckets**: Groups of data that sync together
+- **Parameters**: Derive from JWT `token_parameters.user_id`
+- **Data queries**: Define which rows belong to each bucket
+- PowerSync auto-tracks INSERT/UPDATE/DELETE and syncs deltas
 
-## PowerSync Client Integration
+### Adding a New Synced Table
 
-### Android Wiring
+1. Create Supabase migration (up + down)
+2. Add RLS policies (household isolation pattern)
+3. Add to sync-rules.yaml data queries
+4. Add SQLDelight `.sq` in `packages/core/`
+5. Add KMP model in `packages/models/`
+6. Update platform data layers
 
-- `apps/android/build.gradle.kts` injects `BuildConfig.POWERSYNC_URL` so the app can point at the configured sync endpoint.
-- `apps/android/src/main/kotlin/com/finance/android/di/SyncModule.kt` wires `SyncConfig`, `DeltaSyncManager`, `MutationQueue`, token storage, and `AndroidSyncManager`.
-- `apps/android/src/main/kotlin/com/finance/android/sync/AndroidSyncManager.kt` wraps the shared `SyncEngine` and exposes sync state plus pending mutation counts as `StateFlow` values for the UI.
+## Edge Function Patterns
 
-### Shared Sync Abstractions
+### Structure (Deno + TypeScript)
 
-- `packages/sync/src/commonMain/kotlin/com/finance/sync/SyncProvider.kt` keeps the shared layer backend-agnostic.
-- `packages/sync/src/commonMain/kotlin/com/finance/sync/delta/DeltaSyncManager.kt` handles incremental sequence tracking and checksum verification.
-- `packages/sync/src/commonMain/kotlin/com/finance/sync/queue/QueueProcessor.kt` pushes queued mutations with retry/backoff behavior.
+```typescript
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { requireAuth } from '../_shared/auth.ts';
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { createLogger } from '../_shared/logger.ts';
 
-### Web Offline Replay
-
-- `apps/web/src/db/sync/MutationQueue.ts` implements the IndexedDB-backed offline mutation queue.
-- `apps/web/src/db/sync/replayMutations.ts` replays queued writes when connectivity returns.
-- `apps/web/src/sw/service-worker.ts` runs replay from the service worker when Background Sync is available.
-
-## Conflict Resolution Strategy
-
-The checked-in shared sync layer currently uses `packages/sync/src/commonMain/kotlin/com/finance/sync/conflict/ConflictStrategy.kt`.
-
-### Current Strategies
-
-- `LAST_WRITE_WINS` via `LastWriteWinsResolver.kt` is the default for most tables.
-- `MERGE` via `MergeResolver.kt` is used for `budgets`, `goals`, and `households`.
-- `CLIENT_WINS` via `ClientWinsResolver.kt` and `SERVER_WINS` via `ServerWinsResolver.kt` are available for custom override.
-
-### Practical Rules
-
-1. Simple records fall back to timestamp-based last-write-wins.
-2. Shared/complex records use field-level merge when possible.
-3. Delta sync should preserve tombstones and checksum validation so bad batches can trigger a full resync.
-4. ClientWins and ServerWins are available for custom per-table overrides.
-
-## Migration Patterns
-
-### Numbered Migrations
-
-```
-services/api/supabase/migrations/
-├── 20260306000001_initial_schema.sql
-├── 20260306000002_rls_policies.sql
-├── 20260306000003_auth_config.sql
-├── 20260307000001_monitoring.sql
-├── 20260315000001_export_audit_log.sql
-├── 20260316000001_edge_function_security.sql
-├── 20260316000001_fix_invitation_rls.sql
-├── 20260323000001_cleanup_and_balance_triggers.sql
-├── 20260323000002_recurring_transactions.sql
-├── 20260323000003_rate_limits.sql
-├── 20260324000001_notification_infrastructure.sql
-├── 20260324000002_performance_indexes.sql
-├── 20260324000003_automated_maintenance.sql
-├── 20260324000004_webhook_infrastructure.sql
-├── 20260325000001_enhanced_cleanup_and_balance.sql
-├── 20260325000001_read_only_rate_limit_status.sql
-├── 20260326000001_production_readiness.sql
-├── 20260326000002_add_transfer_recurring_to_transactions.sql
-├── 20260326000003_add_rollover_to_budgets.sql
-├── 20260326000004_add_account_status_to_goals.sql
-├── 20260326000005_standardize_owner_id.sql
-├── 20260326000006_sync_optimization.sql
-├── 20260327000001_launch_readiness_dashboard.sql
-└── down/                              # Matching reversals
+serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return handleCorsPreflightRequest(req);
+  const logger = createLogger('function-name');
+  try {
+    const user = await requireAuth(req);
+    logger.setUserId(user.id);
+    // ... business logic ...
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    logger.error('Error', { errorMessage: error instanceof Error ? error.message : 'unknown' });
+    return new Response(JSON.stringify({ code: 'INTERNAL_ERROR' }), {
+      status: 500,
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+    });
+  }
+});
 ```
 
-### Migration Best Practices
+### Shared Utilities (`_shared/`)
 
-- **Timestamp prefix** — `YYYYMMDDHHMMSS_description.sql` for ordering.
-- **Reversible** — Include both `-- migrate:up` and `-- migrate:down` sections.
-- **Zero-downtime** — Never rename/drop columns directly. Use the expand-contract pattern:
-  1. Add the new column (nullable or with default).
-  2. Deploy code that writes to both old and new columns.
-  3. Backfill the new column.
-  4. Deploy code that reads only from the new column.
-  5. Drop the old column in a later migration.
-- **Idempotent** — Use `IF NOT EXISTS` / `IF EXISTS` guards.
+- **`auth.ts`**: `requireAuth(req)` validates JWT, `createAdminClient()` for service role
+- **`cors.ts`**: `ALLOWED_ORIGINS` from env, never wildcard in production
+- **`logger.ts`**: Structured JSON logs (timestamp, level, requestId, function, userId)
+- **`response.ts`**: Standard response helpers
 
-### Example Migration
+### Key Edge Functions
 
-```sql
--- 20260315000001_export_audit_log.sql
-CREATE TABLE IF NOT EXISTS data_export_audit_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id),
-    export_format TEXT NOT NULL CHECK (export_format IN ('json', 'csv')),
-    status TEXT NOT NULL CHECK (status IN ('success', 'failure')),
-    error_message TEXT,
-    ip_address INET,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+| Function                        | Purpose                                |
+| ------------------------------- | -------------------------------------- |
+| `data-export`                   | GDPR Article 20 portability (JSON/CSV) |
+| `health-check`                  | Uptime probe (DB + Auth availability)  |
+| `account-deletion`              | GDPR Article 17 erasure                |
+| `process-recurring`             | Recurring transaction generation       |
+| `launch-readiness`              | Pre-launch system health dashboard     |
+| `admin-dashboard`               | Internal metrics and monitoring        |
+| `passkey-register/authenticate` | WebAuthn passkey flows                 |
 
-ALTER TABLE data_export_audit_log ENABLE ROW LEVEL SECURITY;
+## Auth Configuration
 
-CREATE POLICY "Users can view own export logs"
-    ON data_export_audit_log FOR SELECT
-    USING (auth.uid() = user_id);
+```toml
+# config.toml
+[auth.mfa.web_authn]
+enabled = true
+
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+
+[auth.external.apple]
+enabled = true
+client_id = "env(APPLE_CLIENT_ID)"
 ```
 
-## Backup and Recovery Strategy
+Auth flow: Passkey/OAuth → trigger creates `user_profile` + assigns household → JWT includes `auth.uid()` → RLS resolves `household_id`.
 
-### Automated Backups
+## Conflict Resolution
 
-- **Supabase Pro** provides daily automated backups with point-in-time recovery (PITR).
-- Configure PITR retention in the Supabase Dashboard (up to 7 days on Pro, 28 days on Enterprise).
+Configured in `packages/sync/src/commonMain/.../sync/conflict/`:
 
-### Manual Backups
-
-```bash
-# Full database dump
-pg_dump "$DATABASE_URL" --no-owner --no-acl -F c -f finance_backup_$(date +%Y%m%d).dump
-
-# Restore from dump
-pg_restore -d "$DATABASE_URL" --no-owner --no-acl finance_backup_20250115.dump
-```
-
-### Recovery Procedure
-
-1. Identify the incident timestamp.
-2. Use PITR to restore to the moment before the incident.
-3. Verify data integrity with checksums and row counts.
-4. PowerSync clients will automatically re-sync after the backend recovers.
+| Strategy          | Tables                     | Logic                      |
+| ----------------- | -------------------------- | -------------------------- |
+| `LAST_WRITE_WINS` | Most tables (default)      | Timestamp comparison       |
+| `MERGE`           | budgets, goals, households | Field-level reconciliation |
+| `CLIENT_WINS`     | User preferences           | Always picks local         |
+| `SERVER_WINS`     | Admin data                 | Always picks remote        |
 
 ## Performance Optimization
 
-### Indexes
-
 ```sql
--- Partial indexes (only index non-deleted rows)
+-- Partial indexes (only non-deleted rows)
 CREATE INDEX idx_transactions_household_date
-    ON transactions(household_id, date DESC)
-    WHERE deleted_at IS NULL;
+    ON transactions(household_id, date DESC) WHERE deleted_at IS NULL;
 
--- Composite index for common query patterns
+-- Composite for common queries
 CREATE INDEX idx_transactions_account_date
-    ON transactions(account_id, date DESC)
-    WHERE deleted_at IS NULL;
+    ON transactions(account_id, date DESC) WHERE deleted_at IS NULL;
 
--- GIN index for text search over user-entered notes
+-- Full-text search on notes
 CREATE INDEX idx_transactions_note_fts
     ON transactions USING GIN (to_tsvector('english', coalesce(note, '')));
 ```
 
-### Materialized Views for Reports
+### Query Tips
 
-```sql
--- Monthly spending summary per category
-CREATE MATERIALIZED VIEW monthly_spending AS
-SELECT
-    household_id,
-    date_trunc('month', date::timestamp) AS month,
-    category_id,
-    SUM(amount_cents) AS total_cents,
-    COUNT(*) AS transaction_count
-FROM transactions
-WHERE deleted_at IS NULL AND amount_cents < 0
-GROUP BY household_id, date_trunc('month', date::timestamp), category_id;
+- Always filter by `household_id` first (matches RLS + indexes)
+- Use `WHERE deleted_at IS NULL` to leverage partial indexes
+- Keyset pagination: `WHERE date < $last_date ORDER BY date DESC LIMIT 50`
+- Avoid `SELECT *` — only select needed columns
 
-CREATE UNIQUE INDEX idx_monthly_spending_unique
-    ON monthly_spending(household_id, month, category_id);
-
--- Refresh on a schedule (e.g., every hour via pg_cron)
-SELECT cron.schedule('refresh-monthly-spending', '0 * * * *',
-    'REFRESH MATERIALIZED VIEW CONCURRENTLY monthly_spending');
-```
-
-### Query Optimization Tips
-
-- Always filter by `household_id` first (matches RLS and indexes).
-- Use `WHERE deleted_at IS NULL` to leverage partial indexes.
-- Paginate large result sets with keyset pagination (`WHERE date < $last_date ORDER BY date DESC LIMIT 50`).
-- Avoid `SELECT *` — only select needed columns.
-
-## Data Export for GDPR Compliance
-
-### Self-Service Export Edge Function
-
-`services/api/supabase/functions/data-export/index.ts` is the current portability implementation.
-
-- Supports `json` and `csv` responses.
-- Requires authentication via shared `_shared/auth.ts` helpers.
-- Limits output to the caller's user-scoped or household-scoped data.
-- Redacts sensitive columns before streaming results.
-- Uses origin-validated CORS and structured logging.
-- Enforces rate limiting at 10 exports per user per hour.
-- Writes success and failure records to `data_export_audit_log`.
-
-### Export Audit Log Migration
-
-`services/api/supabase/migrations/20260315000001_export_audit_log.sql` creates `data_export_audit_log` with:
-
-- `user_id`, `export_format`, per-entity counts, `status`, `error_message`, `ip_address`, and `created_at`
-- RLS that lets users view only their own export-log rows
-- A `(user_id, created_at DESC)` index for rate-limit lookups and audit queries
-
-### Shared Edge Utilities Used by Export
-
-- `_shared/cors.ts` parses `ALLOWED_ORIGINS` and never uses wildcard CORS.
-- `_shared/logger.ts` emits structured JSON logs for auditability without leaking financial data.
-- `functions/health-check/index.ts` provides a separate uptime probe for database/auth availability.
-
-### GDPR Right to Erasure
-
-When a user requests deletion:
-
-1. Soft-delete all their data (`UPDATE ... SET deleted_at = now()`).
-2. After a 30-day grace period, hard-delete and vacuum.
-3. Trigger crypto-shredding (see below) for any encrypted fields.
-4. Log the erasure request for audit compliance.
-
-## Crypto-Shredding Implementation Pattern
-
-Crypto-shredding allows permanent data destruction by destroying the encryption key rather than the data itself. This is useful for GDPR "right to be forgotten" where data may exist in backups.
-
-### Approach
-
-1. Each household has a unique data encryption key (DEK) stored in a key management table.
-2. Sensitive fields (notes, receipt URLs) are encrypted with the household's DEK before storage.
-3. To "forget" a household, delete the DEK — all encrypted data becomes permanently unreadable, even in backups.
-
-### Schema
+## Crypto-Shredding (GDPR Erasure)
 
 ```sql
 CREATE TABLE encryption_key (
     household_id UUID PRIMARY KEY REFERENCES household(id),
-    dek_encrypted TEXT NOT NULL,      -- DEK encrypted with master key (KEK)
-    key_version  INTEGER NOT NULL DEFAULT 1,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    rotated_at   TIMESTAMPTZ
+    dek_encrypted TEXT NOT NULL,      -- DEK encrypted with master key
+    key_version INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    rotated_at TIMESTAMPTZ
 );
 ```
 
-### Implementation Flow
+Flow: Create household → generate DEK → encrypt with KEK → store. Delete household → delete DEK → all encrypted data permanently unreadable (even in backups).
 
-```
-1. Household created → generate DEK → encrypt DEK with KEK → store in encryption_key
-2. Write sensitive data → decrypt DEK → encrypt field → store ciphertext
-3. Read sensitive data → decrypt DEK → decrypt field → return plaintext
-4. Delete household → DELETE FROM encryption_key WHERE household_id = $1
-   → All encrypted fields in all backups are now permanently unreadable
-```
+## Local Development
 
-### Key Rotation
-
-```sql
--- Rotate DEK for a household
-UPDATE encryption_key
-SET dek_encrypted = $new_encrypted_dek,
-    key_version = key_version + 1,
-    rotated_at = now()
-WHERE household_id = $1;
-
--- Re-encrypt all sensitive data with the new DEK (background job)
+```bash
+cd services/api
+supabase start                # Start local stack
+supabase migration up         # Apply migrations
+supabase functions serve data-export --env-file .env.local  # Serve function
 ```
 
-### Security Considerations
+## Backup & Recovery
 
-- Store the KEK (key encryption key) in a cloud KMS (AWS KMS, GCP KMS, Azure Key Vault) — never in the database.
-- Use AES-256-GCM for field-level encryption.
-- Log all key access for audit trails.
-- Rotate DEKs periodically (e.g., annually) and on security incidents.
+- Supabase Pro: Daily automated backups + PITR (7-day retention)
+- Manual: `pg_dump` for full dumps
+- Recovery: PITR to pre-incident timestamp → PowerSync clients auto-re-sync
