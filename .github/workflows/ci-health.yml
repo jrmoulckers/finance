@@ -7,10 +7,12 @@
 #   - Average build duration trends
 #   - Cache hit ratios
 #   - Flaky test detection
+#   - Week-over-week trend comparison
+#   - Automated alerting for degraded pipelines
 #
 # Also runs as a reusable summary step for individual workflows.
 #
-# Issue: #860
+# Issues: #860, #1016
 # =============================================================================
 
 name: CI Health Monitor
@@ -28,27 +30,35 @@ on:
         required: false
         type: number
         default: 7
+      create_issues:
+        description: 'Create GitHub issues for degraded pipelines'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
   actions: read
+  issues: write
 
 jobs:
   health-report:
     name: Generate Health Report
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Collect workflow metrics
+        id: metrics
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const days = ${{ github.event.inputs.days || 7 }};
             const since = new Date(Date.now() - days * 86400000).toISOString();
+            const prevSince = new Date(Date.now() - days * 2 * 86400000).toISOString();
 
             const workflows = [
               'ci.yml', 'android-ci.yml', 'ios-ci.yml',
@@ -58,8 +68,11 @@ jobs:
 
             let report = `## 🏥 CI Health Report\n\n`;
             report += `**Period:** Last ${days} days (since ${since.split('T')[0]})\n\n`;
-            report += `| Workflow | Total | ✅ Pass | ❌ Fail | ⏭️ Skip | Success Rate | Avg Duration |\n`;
-            report += `|----------|-------|---------|---------|---------|--------------|---------------|\n`;
+            report += `| Workflow | Total | ✅ Pass | ❌ Fail | ⏭️ Skip | Success Rate | Avg Duration | Trend |\n`;
+            report += `|----------|-------|---------|---------|---------|--------------|--------------|-------|\n`;
+
+            const degraded = [];
+            const allMetrics = [];
 
             for (const wf of workflows) {
               try {
@@ -71,12 +84,21 @@ jobs:
                 const workflow = wfData.workflows.find(w => w.path.endsWith(wf));
                 if (!workflow) continue;
 
-                // Get runs for this workflow
+                // Get runs for current period
                 const { data: runs } = await github.rest.actions.listWorkflowRuns({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   workflow_id: workflow.id,
                   created: `>=${since}`,
+                  per_page: 100,
+                });
+
+                // Get runs for previous period (for trend)
+                const { data: prevRuns } = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: workflow.id,
+                  created: `${prevSince}..${since}`,
                   per_page: 100,
                 });
 
@@ -87,8 +109,15 @@ jobs:
                 const total = completed.length;
                 const rate = total > 0 ? ((success / total) * 100).toFixed(1) : 'N/A';
 
+                // Previous period rate for trend
+                const prevCompleted = prevRuns.workflow_runs.filter(r => r.status === 'completed');
+                const prevSuccess = prevCompleted.filter(r => r.conclusion === 'success').length;
+                const prevTotal = prevCompleted.length;
+                const prevRate = prevTotal > 0 ? ((prevSuccess / prevTotal) * 100) : null;
+
                 // Calculate average duration
                 let avgDuration = 'N/A';
+                let avgMinutes = 0;
                 if (completed.length > 0) {
                   const durations = completed
                     .filter(r => r.run_started_at)
@@ -98,33 +127,190 @@ jobs:
                       return (end - start) / 1000 / 60; // minutes
                     });
                   if (durations.length > 0) {
-                    const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
-                    avgDuration = `${avg.toFixed(1)}m`;
+                    avgMinutes = durations.reduce((a, b) => a + b, 0) / durations.length;
+                    avgDuration = `${avgMinutes.toFixed(1)}m`;
                   }
+                }
+
+                // Trend indicator
+                let trend = '➡️';
+                if (rate !== 'N/A' && prevRate !== null) {
+                  const diff = parseFloat(rate) - prevRate;
+                  if (diff > 5) trend = '📈 +' + diff.toFixed(0) + '%';
+                  else if (diff < -5) trend = '📉 ' + diff.toFixed(0) + '%';
                 }
 
                 const rateEmoji = rate === 'N/A' ? '⚪' :
                   parseFloat(rate) >= 95 ? '🟢' :
                   parseFloat(rate) >= 80 ? '🟡' : '🔴';
 
-                report += `| ${rateEmoji} ${wf.replace('.yml', '')} | ${total} | ${success} | ${failure} | ${skipped} | ${rate}% | ${avgDuration} |\n`;
+                report += `| ${rateEmoji} ${wf.replace('.yml', '')} | ${total} | ${success} | ${failure} | ${skipped} | ${rate}% | ${avgDuration} | ${trend} |\n`;
+
+                // Track degraded pipelines
+                if (rate !== 'N/A' && parseFloat(rate) < 80) {
+                  degraded.push({
+                    name: wf.replace('.yml', ''),
+                    rate: parseFloat(rate),
+                    failures: failure,
+                    total,
+                  });
+                }
+
+                allMetrics.push({
+                  name: wf.replace('.yml', ''),
+                  rate: rate === 'N/A' ? null : parseFloat(rate),
+                  avgMinutes,
+                  total,
+                  failure,
+                  success,
+                });
               } catch (e) {
-                report += `| ⚪ ${wf.replace('.yml', '')} | — | — | — | — | Error | — |\n`;
+                report += `| ⚪ ${wf.replace('.yml', '')} | — | — | — | — | Error | — | — |\n`;
               }
             }
 
+            // Flaky test detection
+            report += `\n### 🎲 Flaky Test Detection\n\n`;
+
+            let flakyFound = false;
+            for (const wf of workflows) {
+              try {
+                const { data: wfData } = await github.rest.actions.listRepoWorkflows({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                });
+                const workflow = wfData.workflows.find(w => w.path.endsWith(wf));
+                if (!workflow) continue;
+
+                const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: workflow.id,
+                  created: `>=${since}`,
+                  per_page: 100,
+                });
+
+                // Look for runs that were re-run (attempt_number > 1) — indicates flakiness
+                const reRuns = runs.workflow_runs.filter(r => r.run_attempt > 1);
+                if (reRuns.length > 0) {
+                  flakyFound = true;
+                  report += `- ⚠️ **${wf.replace('.yml', '')}**: ${reRuns.length} re-run(s) detected (possible flaky tests)\n`;
+
+                  // Check for pattern: same commit with pass-then-fail or fail-then-pass
+                  const byHeadSha = new Map();
+                  for (const r of runs.workflow_runs) {
+                    if (!byHeadSha.has(r.head_sha)) byHeadSha.set(r.head_sha, []);
+                    byHeadSha.get(r.head_sha).push(r);
+                  }
+
+                  for (const [sha, attempts] of byHeadSha) {
+                    if (attempts.length > 1) {
+                      const conclusions = attempts.map(a => a.conclusion).filter(Boolean);
+                      const hasPass = conclusions.includes('success');
+                      const hasFail = conclusions.includes('failure');
+                      if (hasPass && hasFail) {
+                        report += `  - 🔄 Commit \`${sha.slice(0, 7)}\`: mixed results (${conclusions.join(', ')}) — **flaky**\n`;
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                // Skip
+              }
+            }
+
+            if (!flakyFound) {
+              report += `✅ No flaky test patterns detected in the last ${days} days.\n`;
+            }
+
+            // Interpretation guide
             report += `\n### 📊 Interpretation\n\n`;
             report += `- 🟢 **≥95%** — Healthy\n`;
             report += `- 🟡 **80-95%** — Needs attention (check flaky tests or infra issues)\n`;
             report += `- 🔴 **<80%** — Critical (investigate immediately)\n`;
+            report += `- 📈 Improving / 📉 Degrading (compared to previous ${days}-day period)\n`;
+
+            // Recommendations
+            if (degraded.length > 0) {
+              report += `\n### 🚨 Action Required\n\n`;
+              for (const d of degraded) {
+                report += `- **${d.name}**: ${d.rate}% success rate (${d.failures}/${d.total} failures) — investigate recent changes\n`;
+              }
+            }
 
             core.summary.addRaw(report);
             await core.summary.write();
 
-      - name: Check for degraded pipelines
+            // Export degraded list for issue creation
+            core.setOutput('degraded', JSON.stringify(degraded));
+            core.setOutput('degraded_count', degraded.length);
+
+      - name: Create issues for degraded pipelines
+        if: >-
+          (github.event.inputs.create_issues == 'true' || github.event_name == 'schedule') &&
+          steps.metrics.outputs.degraded_count > 0
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            // This step could be extended to create issues for degraded pipelines
-            // or send notifications. For now, it logs a warning.
-            core.info('CI health report generated — check the workflow summary for details');
+            const degraded = JSON.parse('${{ steps.metrics.outputs.degraded }}');
+
+            for (const d of degraded) {
+              // Check if an issue already exists for this pipeline
+              const { data: existingIssues } = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                labels: 'comp:ci-cd',
+                per_page: 100,
+              });
+
+              const alreadyExists = existingIssues.some(i =>
+                i.title.includes(d.name) && i.title.includes('degraded')
+              );
+
+              if (alreadyExists) {
+                core.info(`Issue already exists for degraded pipeline: ${d.name}`);
+                continue;
+              }
+
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `ci(health): ${d.name} pipeline degraded — ${d.rate}% success rate`,
+                body: [
+                  `## 🚨 Pipeline Health Alert`,
+                  ``,
+                  `The **${d.name}** pipeline has dropped below 80% success rate.`,
+                  ``,
+                  `| Metric | Value |`,
+                  `|--------|-------|`,
+                  `| Success Rate | ${d.rate}% |`,
+                  `| Failures | ${d.failures} |`,
+                  `| Total Runs | ${d.total} |`,
+                  ``,
+                  `### Investigation Checklist`,
+                  `- [ ] Check recent workflow run logs for error patterns`,
+                  `- [ ] Verify infrastructure (runner availability, secrets)`,
+                  `- [ ] Check for flaky tests`,
+                  `- [ ] Review recent dependency updates`,
+                  `- [ ] Check for environment/API changes`,
+                  ``,
+                  `*Auto-created by CI Health Monitor workflow.*`,
+                ].join('\n'),
+                labels: ['comp:ci-cd', 'bug', 'priority:high'],
+              });
+
+              core.info(`Created issue for degraded pipeline: ${d.name}`);
+            }
+
+      - name: Health check summary
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const degradedCount = parseInt('${{ steps.metrics.outputs.degraded_count }}') || 0;
+            if (degradedCount > 0) {
+              core.warning(`${degradedCount} pipeline(s) are degraded — check the workflow summary for details`);
+            } else {
+              core.info('All pipelines are healthy — check the workflow summary for the full report');
+            }
