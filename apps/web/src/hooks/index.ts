@@ -54,13 +54,11 @@ export type {
 } from './useSpendingWatchlists';
 export { useFinancialTips } from './useFinancialTips';
 export type { UseFinancialTipsResult } from './useFinancialTips';
-export { useReportBuilder } from './useReportBuilder';
+export { useHousehold } from './useHousehold';
 export type {
-  UseReportBuilderResult,
-  ReportConfig,
-  ReportField,
-  ReportFieldType,
-  ReportPreview,
-  ExportFormat,
-  GroupBy,
-} from './useReportBuilder';
+  UseHouseholdResult,
+  HouseholdInvitation,
+  CreateHouseholdInput,
+  InviteMemberInput,
+  BudgetVisibility,
+} from './useHousehold';
