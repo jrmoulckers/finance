@@ -365,9 +365,9 @@ class ReportBuilderViewModel(
         val rows = accounts.map { account ->
             ReportRow(
                 label = account.name,
-                value = CurrencyFormatter.format(account.balance, currency),
+                value = CurrencyFormatter.format(account.currentBalance, currency),
                 percentage = if (netWorth.amount != 0L) {
-                    account.balance.amount.toFloat() / netWorth.amount.toFloat()
+                    account.currentBalance.amount.toFloat() / netWorth.amount.toFloat()
                 } else {
                     0f
                 },
@@ -440,14 +440,14 @@ class ReportBuilderViewModel(
         currency: Currency,
     ): GeneratedReport {
         val accounts = accountRepository.observeAll(hid).first()
-        val totalBalance = accounts.sumOf { it.balance.amount }
+        val totalBalance = accounts.sumOf { it.currentBalance.amount }
 
         val rows = accounts.map { account ->
             ReportRow(
                 label = account.name,
-                value = CurrencyFormatter.format(account.balance, currency),
+                value = CurrencyFormatter.format(account.currentBalance, currency),
                 percentage = if (totalBalance != 0L) {
-                    (account.balance.amount.toFloat() / totalBalance.toFloat()).coerceIn(0f, 1f)
+                    (account.currentBalance.amount.toFloat() / totalBalance.toFloat()).coerceIn(0f, 1f)
                 } else {
                     0f
                 },
