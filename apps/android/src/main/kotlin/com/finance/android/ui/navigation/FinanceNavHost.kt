@@ -44,6 +44,7 @@ import com.finance.android.ui.education.FinancialGlossaryScreen
 import com.finance.android.ui.expertise.ExpertiseTierScreen
 import com.finance.android.ui.learning.LearningPathsScreen
 import com.finance.android.ui.nlp.NlpTransactionScreen
+import com.finance.android.ui.insights.InsightsScreen
 import timber.log.Timber
 
 /** Base URI for all deep link patterns declared in AndroidManifest.xml. */
@@ -123,6 +124,9 @@ sealed class Route(val route: String) {
 
     /** Analytics / Spending Trends screen. */
     data object Analytics : Route("analytics")
+
+    /** Financial Insights Dashboard screen (#241). */
+    data object Insights : Route("insights")
 
     /** "Can I Afford This?" affordability check screen (#377). */
     data object Affordability : Route("affordability")
@@ -288,6 +292,10 @@ fun FinanceNavHost(
 
         composable(Route.Analytics.route) {
             AnalyticsScreen()
+        }
+
+        composable(Route.Insights.route) {
+            InsightsScreen()
         }
 
         composable(Route.Affordability.route) {
