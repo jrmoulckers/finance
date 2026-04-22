@@ -1,6 +1,6 @@
 # Finance Monorepo Architecture Overview
 
-_Last updated: 2025-07-27_
+_Last updated: 2025-07-28_
 
 ---
 
@@ -143,21 +143,38 @@ For detailed ADRs and platform-specific diagrams, see the [architecture director
 
 ### Architecture Decision Records (ADR) Index
 
-| ADR  | Title                                  | Status   |
-| ---- | -------------------------------------- | -------- |
-| 0001 | Cross-Platform Framework               | Accepted |
-| 0002 | Backend & Sync Architecture            | Accepted |
-| 0003 | Local Storage Strategy                 | Accepted |
-| 0004 | Auth & Security Architecture           | Accepted |
-| 0005 | Design System Approach                 | Accepted |
-| 0006 | CI/CD Strategy                         | Accepted |
-| 0007 | Hosting Strategy                       | Accepted |
-| 0008 | _(reserved — number not yet assigned)_ | —        |
-| 0009 | Legal & Monetization Analysis          | Accepted |
-| 0010 | V2 Architecture Vision                 | Proposed |
-| 0011 | Scaling Architecture                   | Proposed |
-| 0012 | API Versioning Strategy                | Proposed |
-| 0013 | Multi-Tenancy Architecture             | Proposed |
-| 0014 | AI/ML Pipeline Architecture            | Proposed |
+| ADR  | Title                                   | Status                 |
+| ---- | --------------------------------------- | ---------------------- |
+| 0001 | Cross-Platform Framework                | Accepted               |
+| 0002 | Backend & Sync Architecture             | Accepted               |
+| 0003 | Local Storage Strategy                  | Accepted               |
+| 0004 | Auth & Security Architecture            | Accepted               |
+| 0005 | Design System Approach                  | Accepted               |
+| 0006 | CI/CD Strategy                          | Accepted               |
+| 0007 | Hosting Strategy                        | Accepted               |
+| 0008 | _(reserved — number not yet assigned)_  | —                      |
+| 0009 | Legal & Monetization Analysis           | Accepted               |
+| 0010 | V2 Architecture Vision                  | Proposed               |
+| 0011 | Scaling Architecture                    | Proposed               |
+| 0012 | API Versioning Strategy                 | Superseded by ADR-0017 |
+| 0013 | Multi-Tenancy Architecture              | Proposed               |
+| 0014 | AI/ML Pipeline Architecture             | Proposed               |
+| 0015 | _(reserved — premium features)_         | —                      |
+| 0016 | _(reserved — gamification)_             | —                      |
+| 0017 | API Versioning Strategy (Enhanced)      | Proposed               |
+| 0018 | Offline-First Conflict Resolution       | Proposed               |
+| 0019 | Migration & Schema Evolution Strategy   | Proposed               |
+| 0020 | Monitoring & Observability Architecture | Proposed               |
 
-> **Note:** ADR-0008 is unassigned (numbering gap). The next new ADR should use number 0008 before proceeding to 0015+.
+### Design & Analysis Documents
+
+| Document                                                                | Focus                                                    |
+| ----------------------------------------------------------------------- | -------------------------------------------------------- |
+| [Performance Budget Architecture](./performance-budget-architecture.md) | Per-platform budgets, CI enforcement, runtime monitoring |
+| [Platform Parity Analysis](./platform-parity-analysis.md)               | Cross-platform feature gap analysis and convergence plan |
+| [Performance Baselines](./performance-baselines.md)                     | Target metrics per platform                              |
+| [Sync Architecture Deep Dive](./sync-architecture.md)                   | Sync protocol, conflict resolution, encryption pipeline  |
+| [Monitoring Architecture](./monitoring.md)                              | Sentry integration, sync health, privacy guardrails      |
+| [Monitoring Infrastructure](./monitoring-infrastructure.md)             | Uptime Kuma, Docker logs, rollout dashboards             |
+
+> **Note:** ADR-0008 is unassigned (numbering gap). ADRs 0015–0016 are reserved for prior sprint deliverables.
