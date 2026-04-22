@@ -25,6 +25,7 @@ import com.finance.desktop.screens.LockScreen
 import com.finance.desktop.screens.SettingsScreen
 import com.finance.desktop.screens.TransactionsScreen
 import com.finance.desktop.screens.VoiceTransactionOverlay
+import com.finance.desktop.screens.WidgetBoardScreen
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.AuthViewModel
 
@@ -79,6 +80,7 @@ fun FinanceApp(shortcutHandler: ShortcutHandler) {
                             Screen.Transactions -> TransactionsScreen()
                             Screen.Budgets -> BudgetsScreen()
                             Screen.Goals -> GoalsScreen()
+                            Screen.Widgets -> WidgetBoardScreen()
                             Screen.Diagnostics -> DiagnosticsScreen()
                             Screen.Settings -> SettingsScreen()
                         }

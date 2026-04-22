@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -78,6 +79,7 @@ enum class Screen(
     Budgets("Budgets", Icons.Filled.PieChart, Key.Four, "Ctrl+4"),
     Goals("Goals", Icons.Filled.Star, Key.Five, "Ctrl+5"),
     Diagnostics("Diagnostics", Icons.Filled.Speed, Key.Six, "Ctrl+6"),
+    Widgets("Widgets", Icons.Filled.Widgets, Key.Seven, "Ctrl+7"),
     Settings("Settings", Icons.Filled.Settings, Key.Seven, "Ctrl+7"),
 }
 

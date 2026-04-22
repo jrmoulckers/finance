@@ -259,6 +259,160 @@ class WidgetContentRenderer {
 
     // ── Adaptive Card JSON helpers ──────────────────────────────────────────
 
+    /**
+     * Renders the **Goals Progress** widget card.
+     *
+     * Shows up to 4 savings goals with progress percentages and amounts.
+     */
+    fun renderGoalsProgressCard(data: WidgetData): String {
+        val goalItems = data.goalSummaries.map { goal ->
+            val color = when {
+                goal.progressPercent >= 75 -> "Good"
+                goal.progressPercent >= 40 -> "Default"
+                else -> "Warning"
+            }
+            JsonObject(
+                mapOf(
+                    "type" to JsonPrimitive("Container"),
+                    "items" to JsonArray(
+                        listOf(
+                            JsonObject(
+                                mapOf(
+                                    "type" to JsonPrimitive("ColumnSet"),
+                                    "columns" to JsonArray(
+                                        listOf(
+                                            JsonObject(
+                                                mapOf(
+                                                    "type" to JsonPrimitive("Column"),
+                                                    "width" to JsonPrimitive("stretch"),
+                                                    "items" to JsonArray(
+                                                        listOf(
+                                                            textBlock(goal.name, "Default", "Bolder"),
+                                                        ),
+                                                    ),
+                                                ),
+                                            ),
+                                            JsonObject(
+                                                mapOf(
+                                                    "type" to JsonPrimitive("Column"),
+                                                    "width" to JsonPrimitive("auto"),
+                                                    "items" to JsonArray(
+                                                        listOf(
+                                                            textBlock(
+                                                                "${goal.currentFormatted} / ${goal.targetFormatted}",
+                                                                "Small",
+                                                                "Default",
+                                                            ),
+                                                        ),
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ),
+                            JsonObject(
+                                mapOf(
+                                    "type" to JsonPrimitive("TextBlock"),
+                                    "text" to JsonPrimitive("${goal.progressPercent}%"),
+                                    "size" to JsonPrimitive("Small"),
+                                    "color" to JsonPrimitive(color),
+                                    "altText" to JsonPrimitive(
+                                        "${goal.name}: ${goal.progressPercent}% saved, " +
+                                            "${goal.currentFormatted} of ${goal.targetFormatted}",
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                    "separator" to JsonPrimitive(true),
+                ),
+            )
+        }
+
+        val card = JsonObject(
+            mapOf(
+                "\$schema" to JsonPrimitive(SCHEMA_URL),
+                "type" to JsonPrimitive("AdaptiveCard"),
+                "version" to JsonPrimitive(SCHEMA_VERSION),
+                "fallbackText" to JsonPrimitive(
+                    "Goals Progress: " + data.goalSummaries.joinToString(". ") {
+                        "${it.name}: ${it.progressPercent}% saved"
+                    },
+                ),
+                "body" to JsonArray(
+                    listOf(
+                        textBlock("Finance — Goals", "Large", "Bolder"),
+                    ) + goalItems + listOf(
+                        textBlock(data.lastUpdated, "Small", "Lighter", isSubtle = true),
+                    ),
+                ),
+            ),
+        )
+        return card.toString()
+    }
+
+    /**
+     * Renders the **Spending Trends** widget card.
+     *
+     * Shows week-over-week and month-over-month spending comparison.
+     */
+    fun renderSpendingTrendsCard(data: WidgetData): String {
+        val trend = data.spendingTrend
+        val weekColor = if (trend.weekOverWeekPercent > 0) "Attention" else "Good"
+        val monthColor = if (trend.monthOverMonthPercent > 0) "Attention" else "Good"
+        val weekSign = if (trend.weekOverWeekPercent >= 0) "+" else ""
+        val monthSign = if (trend.monthOverMonthPercent >= 0) "+" else ""
+
+        val card = JsonObject(
+            mapOf(
+                "\$schema" to JsonPrimitive(SCHEMA_URL),
+                "type" to JsonPrimitive("AdaptiveCard"),
+                "version" to JsonPrimitive(SCHEMA_VERSION),
+                "fallbackText" to JsonPrimitive(
+                    "Spending Trends: This week ${trend.thisWeekFormatted} " +
+                        "(${weekSign}${trend.weekOverWeekPercent}%), " +
+                        "This month ${trend.thisMonthFormatted} " +
+                        "(${monthSign}${trend.monthOverMonthPercent}%).",
+                ),
+                "body" to JsonArray(
+                    listOf(
+                        textBlock("Finance — Trends", "Large", "Bolder"),
+                        textBlock("Weekly Spending", "Small", "Default", true),
+                        columnSet(
+                            column("This Week", trend.thisWeekFormatted),
+                            column("Last Week", trend.lastWeekFormatted),
+                        ),
+                        JsonObject(
+                            mapOf(
+                                "type" to JsonPrimitive("TextBlock"),
+                                "text" to JsonPrimitive("${weekSign}${trend.weekOverWeekPercent}% vs last week"),
+                                "size" to JsonPrimitive("Small"),
+                                "color" to JsonPrimitive(weekColor),
+                            ),
+                        ),
+                        textBlock("Monthly Spending", "Small", "Default", true),
+                        columnSet(
+                            column("This Month", trend.thisMonthFormatted),
+                            column("Last Month", trend.lastMonthFormatted),
+                        ),
+                        JsonObject(
+                            mapOf(
+                                "type" to JsonPrimitive("TextBlock"),
+                                "text" to JsonPrimitive("${monthSign}${trend.monthOverMonthPercent}% vs last month"),
+                                "size" to JsonPrimitive("Small"),
+                                "color" to JsonPrimitive(monthColor),
+                            ),
+                        ),
+                        textBlock(data.lastUpdated, "Small", "Lighter", isSubtle = true),
+                    ),
+                ),
+            ),
+        )
+        return card.toString()
+    }
+
+
     private fun textBlock(
         text: String,
         size: String,

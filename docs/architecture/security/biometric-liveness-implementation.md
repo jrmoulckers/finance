@@ -41,13 +41,11 @@ biometric verification — hooking the callback is insufficient.
 
 ### Implementation Files
 
-| File                                                         | Purpose                         |
-| ------------------------------------------------------------ | ------------------------------- |
-| `packages/core/src/commonMain/.../BiometricCryptoBinding.kt` | Common interface                |
-| `apps/android/src/main/kotlin/.../BiometricCryptoManager.kt` | Android Keystore CryptoObject   |
-| `apps/ios/Finance/Security/BiometricCryptoManager.swift`     | iOS Secure Enclave binding      |
-| `apps/ios/Finance/Security/BiometricAuthManager.swift`       | iOS LAContext biometric auth    |
-| `apps/android/src/main/kotlin/.../BiometricAuthManager.kt`   | Android BiometricPrompt manager |
+| File                                                         | Purpose                       |
+| ------------------------------------------------------------ | ----------------------------- |
+| `packages/core/src/commonMain/.../BiometricCryptoBinding.kt` | Common interface              |
+| `apps/android/src/main/kotlin/.../BiometricCryptoManager.kt` | Android Keystore CryptoObject |
+| `apps/ios/Finance/Security/BiometricCryptoManager.swift`     | iOS Secure Enclave binding    |
 
 ## Platform Details
 

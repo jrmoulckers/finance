@@ -8,6 +8,7 @@ import com.finance.core.budget.BudgetHealth
 import com.finance.core.currency.CurrencyFormatter
 import com.finance.desktop.data.repository.AccountRepository
 import com.finance.desktop.data.repository.BudgetRepository
+import com.finance.desktop.data.repository.GoalRepository
 import com.finance.desktop.data.repository.TransactionRepository
 import com.finance.models.Transaction
 import com.finance.models.types.Currency
@@ -32,6 +33,8 @@ data class WidgetData(
     val monthlySpendingFormatted: String = "",
     val budgetSummaries: List<WidgetBudgetSummary> = emptyList(),
     val recentTransactions: List<WidgetTransaction> = emptyList(),
+    val goalSummaries: List<WidgetGoalSummary> = emptyList(),
+    val spendingTrend: WidgetSpendingTrend = WidgetSpendingTrend(),
     val lastUpdated: String = "",
 )
 
@@ -57,6 +60,28 @@ data class WidgetTransaction(
 )
 
 /**
+ * Goal progress summary formatted for widget display.
+ */
+data class WidgetGoalSummary(
+    val name: String,
+    val currentFormatted: String,
+    val targetFormatted: String,
+    val progressPercent: Int,
+)
+
+/**
+ * Spending trend data comparing periods, formatted for widget display.
+ */
+data class WidgetSpendingTrend(
+    val thisWeekFormatted: String = "$0.00",
+    val lastWeekFormatted: String = "$0.00",
+    val thisMonthFormatted: String = "$0.00",
+    val lastMonthFormatted: String = "$0.00",
+    val weekOverWeekPercent: Int = 0,
+    val monthOverMonthPercent: Int = 0,
+)
+
+/**
  * Aggregates financial data from repositories into [WidgetData] snapshots
  * suitable for rendering in Windows 11 Widget Board Adaptive Cards.
  *
@@ -73,6 +98,7 @@ class WidgetDataProvider(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val budgetRepository: BudgetRepository,
+    private val goalRepository: GoalRepository,
 ) {
     companion object {
         private val logger: Logger = Logger.getLogger(WidgetDataProvider::class.java.name)
@@ -82,6 +108,9 @@ class WidgetDataProvider(
 
         /** Maximum number of budget summaries shown in the widget. */
         private const val MAX_BUDGET_SUMMARIES = 4
+
+        /** Maximum number of goal summaries shown in the widget. */
+        private const val MAX_GOAL_SUMMARIES = 4
     }
 
     /**
@@ -123,6 +152,54 @@ class WidgetDataProvider(
                 .take(MAX_RECENT_TRANSACTIONS)
                 .map { tx -> tx.toWidgetTransaction(currency) }
 
+            // Goals data
+            val goals = goalRepository.observeAll(hid).first()
+            val goalSummaries = goals.take(MAX_GOAL_SUMMARIES).map { goal ->
+                WidgetGoalSummary(
+                    name = goal.name,
+                    currentFormatted = CurrencyFormatter.format(goal.currentAmount, currency),
+                    targetFormatted = CurrencyFormatter.format(goal.targetAmount, currency),
+                    progressPercent = (goal.progress * 100).toInt().coerceIn(0, 100),
+                )
+            }
+
+            // Spending trends — compare this week vs last week, this month vs last month
+            val dayOfWeek = today.dayOfWeek.ordinal
+            val weekStart = LocalDate.fromEpochDays(today.toEpochDays() - dayOfWeek)
+            val lastWeekStart = LocalDate.fromEpochDays(weekStart.toEpochDays() - 7)
+            val lastWeekEnd = LocalDate.fromEpochDays(weekStart.toEpochDays() - 1)
+
+            val thisWeekSpending = FinancialAggregator.totalSpending(transactions, weekStart, today)
+            val lastWeekSpending = FinancialAggregator.totalSpending(transactions, lastWeekStart, lastWeekEnd)
+
+            val lastMonthStart = if (today.monthNumber == 1) {
+                LocalDate(today.year - 1, 12, 1)
+            } else {
+                LocalDate(today.year, today.monthNumber - 1, 1)
+            }
+            val lastMonthEnd = LocalDate.fromEpochDays(monthStart.toEpochDays() - 1)
+            val lastMonthSpending = FinancialAggregator.totalSpending(transactions, lastMonthStart, lastMonthEnd)
+
+            val weekOverWeek = if (lastWeekSpending.amount != 0L) {
+                ((thisWeekSpending.amount - lastWeekSpending.amount) * 100 / lastWeekSpending.amount).toInt()
+            } else {
+                0
+            }
+            val monthOverMonth = if (lastMonthSpending.amount != 0L) {
+                ((monthlySpending.amount - lastMonthSpending.amount) * 100 / lastMonthSpending.amount).toInt()
+            } else {
+                0
+            }
+
+            val spendingTrend = WidgetSpendingTrend(
+                thisWeekFormatted = CurrencyFormatter.format(thisWeekSpending, currency),
+                lastWeekFormatted = CurrencyFormatter.format(lastWeekSpending, currency),
+                thisMonthFormatted = CurrencyFormatter.format(monthlySpending, currency),
+                lastMonthFormatted = CurrencyFormatter.format(lastMonthSpending, currency),
+                weekOverWeekPercent = weekOverWeek,
+                monthOverMonthPercent = monthOverMonth,
+            )
+
             val timeFormatted = "%02d:%02d".format(
                 now.toLocalDateTime(TimeZone.currentSystemDefault()).hour,
                 now.toLocalDateTime(TimeZone.currentSystemDefault()).minute,
@@ -134,6 +211,8 @@ class WidgetDataProvider(
                 monthlySpendingFormatted = CurrencyFormatter.format(monthlySpending, currency),
                 budgetSummaries = budgetSummaries,
                 recentTransactions = recentTransactions,
+                goalSummaries = goalSummaries,
+                spendingTrend = spendingTrend,
                 lastUpdated = "Updated at $timeFormatted",
             )
         } catch (e: Exception) {

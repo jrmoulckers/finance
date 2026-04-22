@@ -32,7 +32,7 @@ val platformModule = module {
     single { DesktopNotificationManager }
 
     // ── Windows 11 Widget Board integration ──
-    single { WidgetDataProvider(get(), get(), get()) }
+    single { WidgetDataProvider(get(), get(), get(), get()) }
     single { WidgetContentRenderer() }
     single { WidgetRegistrationManager(get(), get()) }
 

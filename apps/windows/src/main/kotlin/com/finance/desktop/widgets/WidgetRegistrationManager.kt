@@ -16,10 +16,24 @@ import java.util.logging.Logger
  * @property displayName Human-readable name shown in the widget picker.
  * @property description Brief description for the widget gallery.
  */
+/**
+ * Available widget sizes following Windows 11 Widget Board conventions.
+ *
+ * @property columns Grid columns consumed.
+ * @property displayName Human-readable size label.
+ */
+enum class WidgetSize(val columns: Int, val displayName: String) {
+    SMALL(1, "Small"),
+    MEDIUM(2, "Medium"),
+    LARGE(3, "Large"),
+}
+
 enum class FinanceWidgetType(
     val id: String,
     val displayName: String,
     val description: String,
+    val supportedSizes: List<WidgetSize> = listOf(WidgetSize.SMALL, WidgetSize.MEDIUM, WidgetSize.LARGE),
+    val defaultSize: WidgetSize = WidgetSize.MEDIUM,
 ) {
     NET_WORTH(
         id = "com.finance.widget.networth",
@@ -35,6 +49,18 @@ enum class FinanceWidgetType(
         id = "com.finance.widget.transactions",
         displayName = "Recent Transactions",
         description = "Last 5 transactions with amounts and dates.",
+    ),
+    GOALS_PROGRESS(
+        id = "com.finance.widget.goals",
+        displayName = "Goals Progress",
+        description = "Savings goal progress bars with target amounts.",
+        supportedSizes = listOf(WidgetSize.MEDIUM, WidgetSize.LARGE),
+    ),
+    SPENDING_TRENDS(
+        id = "com.finance.widget.trends",
+        displayName = "Spending Trends",
+        description = "Weekly and monthly spending trend comparison.",
+        supportedSizes = listOf(WidgetSize.MEDIUM, WidgetSize.LARGE),
     ),
 }
 
@@ -125,6 +151,10 @@ class WidgetRegistrationManager(
                 renderer.renderBudgetOverviewCard(data)
             widgetContentCache[FinanceWidgetType.RECENT_TRANSACTIONS] =
                 renderer.renderRecentTransactionsCard(data)
+            widgetContentCache[FinanceWidgetType.GOALS_PROGRESS] =
+                renderer.renderGoalsProgressCard(data)
+            widgetContentCache[FinanceWidgetType.SPENDING_TRENDS] =
+                renderer.renderSpendingTrendsCard(data)
 
             logger.fine("All widget content refreshed successfully")
         } catch (e: Exception) {
