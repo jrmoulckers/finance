@@ -35,3 +35,12 @@ export type {
   BulkUpdateFields,
   BulkOperationResult,
 } from './useBulkTransactions';
+export { useInsights } from './useInsights';
+export type {
+  UseInsightsResult,
+  InsightsData,
+  CategorySpending,
+  DailySpending,
+  MonthComparison,
+  Recommendation,
+} from './useInsights';
