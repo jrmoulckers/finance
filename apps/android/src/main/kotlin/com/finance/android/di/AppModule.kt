@@ -2,9 +2,22 @@
 
 package com.finance.android.di
 
-import com.finance.android.ui.gdpr.ConsentCategory
-import com.finance.android.ui.gdpr.ConsentManager
-import com.finance.android.ui.gdpr.PrivacySettingsViewModel
+import com.finance.android.data.repository.AccountRepository
+import com.finance.android.data.repository.BudgetRepository
+import com.finance.android.data.repository.CategoryRepository
+import com.finance.android.data.repository.GoalRepository
+import com.finance.android.data.repository.TransactionRepository
+import com.finance.android.data.repository.impl.InMemoryAccountRepository
+import com.finance.android.ui.screens.bills.BillRemindersViewModel
+import com.finance.android.ui.screens.household.HouseholdViewModel
+import com.finance.android.ui.screens.investment.InvestmentViewModel
+import com.finance.android.ui.screens.nlp.NlpInputViewModel
+import com.finance.android.ui.screens.referral.ReferralViewModel
+import com.finance.android.ui.screens.report.ReportBuilderViewModel
+import com.finance.android.data.repository.impl.InMemoryBudgetRepository
+import com.finance.android.data.repository.impl.InMemoryCategoryRepository
+import com.finance.android.data.repository.impl.InMemoryGoalRepository
+import com.finance.android.data.repository.impl.InMemoryTransactionRepository
 import com.finance.android.logging.TimberCrashReporter
 import com.finance.android.notifications.NotificationContentBuilder
 import com.finance.android.notifications.NotificationDispatcher
@@ -25,8 +38,6 @@ import com.finance.android.ui.streak.TransactionBackedStreakRepository
 import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.android.ui.tips.TipsViewModel
 import com.finance.android.ui.insights.InsightsViewModel
-import com.finance.android.billing.SubscriptionManager
-import com.finance.android.ui.paywall.PaywallViewModel
 import com.finance.android.ui.viewmodel.AccountCreateViewModel
 import com.finance.android.ui.viewmodel.AccountEditViewModel
 import com.finance.android.ui.viewmodel.AnalyticsViewModel
@@ -44,7 +55,9 @@ import com.finance.android.ui.viewmodel.TransactionsViewModel
 import com.finance.core.monitoring.CrashReporter
 import com.finance.core.monitoring.MetricsCollector
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 /**
@@ -59,7 +72,7 @@ val appModule = module {
 
     /** Crash reporting — backed by Timber for on-device logging. */
     single<CrashReporter> {
-        run { val cm: ConsentManager = get(); TimberCrashReporter(consentProvider = { cm.isConsentedTo(ConsentCategory.ANALYTICS) }) }
+        TimberCrashReporter(consentProvider = { false })
     }
 
     /**
@@ -68,13 +81,18 @@ val appModule = module {
      * to the user's preference in Settings.
      */
     single {
-        run { val cm: ConsentManager = get(); MetricsCollector(consentProvider = { cm.isConsentedTo(ConsentCategory.ANALYTICS) }) }
+        MetricsCollector(consentProvider = { false })
     }
 
     // ── Repositories ────────────────────────────────────────────────
-    // Real SQLDelight-backed repositories are provided by [dataModule].
-    // (encrypted via SQLCipher + Android Keystore)
+    // Temporary in-memory implementations.
+    // Swap these to real SQLDelight-backed implementations later.
 
+    singleOf(::InMemoryAccountRepository) bind AccountRepository::class
+    singleOf(::InMemoryTransactionRepository) bind TransactionRepository::class
+    singleOf(::InMemoryBudgetRepository) bind BudgetRepository::class
+    singleOf(::InMemoryGoalRepository) bind GoalRepository::class
+    singleOf(::InMemoryCategoryRepository) bind CategoryRepository::class
 
     // ── Settings dependencies ───────────────────────────────────────
 
@@ -135,7 +153,6 @@ val appModule = module {
     viewModelOf(::StreakViewModel)
     viewModelOf(::NotificationSettingsViewModel)
     viewModelOf(::AffordabilityViewModel)
-    viewModelOf(::PrivacySettingsViewModel)
     viewModelOf(::ExpertiseTierViewModel)
     viewModelOf(::LearningPathViewModel)
     viewModelOf(::NlpTransactionViewModel)
@@ -146,7 +163,23 @@ val appModule = module {
     // ── Insights ─────────────────────────────────────────────────────
     viewModelOf(::InsightsViewModel)
 
-    // ── Billing & Paywall ────────────────────────────────────────────
-    single { SubscriptionManager() }
-    viewModelOf(::PaywallViewModel)
+    // ── Wave 5 ViewModels (Sprints 18-23) ───────────────────────────
+
+    /** Household/Family Plan management (#1114). */
+    viewModelOf(::HouseholdViewModel)
+
+    /** Referral Program (#1116). */
+    viewModelOf(::ReferralViewModel)
+
+    /** Custom Report Builder (#1117). */
+    viewModelOf(::ReportBuilderViewModel)
+
+    /** Natural Language Transaction Input (#1118). */
+    viewModelOf(::NlpInputViewModel)
+
+    /** Investment Portfolio View (#1119). */
+    viewModelOf(::InvestmentViewModel)
+
+    /** Bill Reminders (#1125). */
+    viewModelOf(::BillRemindersViewModel)
 }
