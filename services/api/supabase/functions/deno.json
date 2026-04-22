@@ -15,7 +15,8 @@
       "data-export/**/*.test.ts",
       "account-deletion/**/*.test.ts",
       "launch-readiness/**/*.test.ts",
-      "spending-forecast/**/*.test.ts"
+      "spending-forecast/**/*.test.ts",
+      "bank-connection/**/*.test.ts"
     ],
     "exclude": ["node_modules"]
   },

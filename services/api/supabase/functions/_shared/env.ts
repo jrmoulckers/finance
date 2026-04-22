@@ -59,6 +59,14 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   'send-notification': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
   'launch-readiness': [{ name: 'ADMIN_EMAILS', type: 'csv' }],
   'spending-forecast': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'bank-connection': [
+    { name: 'ALLOWED_ORIGINS', type: 'csv' },
+    { name: 'BANK_ENCRYPTION_KEY', type: 'string' },
+  ],
+  'bank-webhook': [
+    { name: 'PLAID_WEBHOOK_SECRET', type: 'string' },
+    { name: 'MX_WEBHOOK_SECRET', type: 'string' },
+  ],
 };
 
 // ---------------------------------------------------------------------------
