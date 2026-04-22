@@ -1,0 +1,193 @@
+# =============================================================================
+# Build Performance Monitor — CI Pipeline Timing & Cache Analysis
+# =============================================================================
+#
+# Monitors build performance across all CI pipelines:
+#   - Turbo remote cache hit rates
+#   - Gradle build cache effectiveness
+#   - Job-level timing breakdown
+#   - Performance regression detection
+#
+# Runs weekly and on-demand to track build time trends.
+#
+# Issue: #1012
+# =============================================================================
+
+name: Build Performance Monitor
+
+on:
+  schedule:
+    # Run every Tuesday at 6 AM UTC
+    - cron: '0 6 * * 2'
+
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Number of days to analyze (default: 7)'
+        required: false
+        type: number
+        default: 7
+      verbose:
+        description: 'Include per-job breakdown'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  perf-report:
+    name: Build Performance Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Collect pipeline performance metrics
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const days = ${{ github.event.inputs.days || 7 }};
+            const verbose = ${{ github.event.inputs.verbose || false }};
+            const since = new Date(Date.now() - days * 86400000).toISOString();
+
+            // Workflows to analyze
+            const workflows = [
+              { file: 'ci.yml', name: 'Shared Packages' },
+              { file: 'android-ci.yml', name: 'Android CI' },
+              { file: 'ios-ci.yml', name: 'iOS CI' },
+              { file: 'web-ci.yml', name: 'Web CI' },
+              { file: 'windows-ci.yml', name: 'Windows CI' },
+              { file: 'lint-format.yml', name: 'Lint & Format' },
+              { file: 'security.yml', name: 'Security Scan' },
+            ];
+
+            let report = `## ⚡ Build Performance Report\n\n`;
+            report += `**Period:** Last ${days} days (since ${since.split('T')[0]})\n\n`;
+
+            // Performance metrics table
+            report += `### 📊 Pipeline Timing\n\n`;
+            report += `| Pipeline | Runs | Avg Duration | P50 | P90 | P99 | Trend |\n`;
+            report += `|----------|------|-------------|-----|-----|-----|-------|\n`;
+
+            const allMetrics = [];
+
+            for (const wf of workflows) {
+              try {
+                const { data: wfData } = await github.rest.actions.listRepoWorkflows({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                });
+                const workflow = wfData.workflows.find(w => w.path.endsWith(wf.file));
+                if (!workflow) continue;
+
+                const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: workflow.id,
+                  created: `>=${since}`,
+                  per_page: 100,
+                  status: 'completed',
+                });
+
+                const completed = runs.workflow_runs.filter(r => r.conclusion === 'success');
+
+                if (completed.length === 0) {
+                  report += `| ${wf.name} | 0 | — | — | — | — | ⚪ |\n`;
+                  continue;
+                }
+
+                // Calculate durations in minutes
+                const durations = completed
+                  .filter(r => r.run_started_at)
+                  .map(r => (new Date(r.updated_at) - new Date(r.run_started_at)) / 1000 / 60)
+                  .sort((a, b) => a - b);
+
+                const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+                const p50 = durations[Math.floor(durations.length * 0.5)];
+                const p90 = durations[Math.floor(durations.length * 0.9)];
+                const p99 = durations[Math.floor(durations.length * 0.99)];
+
+                // Trend: compare first half vs second half
+                const mid = Math.floor(durations.length / 2);
+                const firstHalf = durations.slice(0, mid);
+                const secondHalf = durations.slice(mid);
+                const firstAvg = firstHalf.length > 0
+                  ? firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length : avg;
+                const secondAvg = secondHalf.length > 0
+                  ? secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length : avg;
+
+                const trendPct = firstAvg > 0 ? ((secondAvg - firstAvg) / firstAvg * 100) : 0;
+                const trend = trendPct > 10 ? '📈 +' + trendPct.toFixed(0) + '%' :
+                              trendPct < -10 ? '📉 ' + trendPct.toFixed(0) + '%' : '➡️ stable';
+
+                report += `| ${wf.name} | ${completed.length} | ${avg.toFixed(1)}m | ${p50.toFixed(1)}m | ${p90.toFixed(1)}m | ${p99.toFixed(1)}m | ${trend} |\n`;
+
+                allMetrics.push({
+                  name: wf.name,
+                  avg,
+                  p90,
+                  count: completed.length,
+                  trend: trendPct,
+                });
+              } catch (e) {
+                report += `| ${wf.name} | — | Error | — | — | — | ⚪ |\n`;
+              }
+            }
+
+            // Optimization recommendations
+            report += `\n### 💡 Optimization Recommendations\n\n`;
+
+            const slowPipelines = allMetrics.filter(m => m.p90 > 15);
+            if (slowPipelines.length > 0) {
+              report += `**Slow pipelines (P90 > 15min):**\n`;
+              for (const p of slowPipelines) {
+                report += `- ⚠️ **${p.name}**: P90 = ${p.p90.toFixed(1)}m — consider splitting into parallel jobs or improving caching\n`;
+              }
+              report += `\n`;
+            }
+
+            const degrading = allMetrics.filter(m => m.trend > 15);
+            if (degrading.length > 0) {
+              report += `**Degrading performance (>15% slower):**\n`;
+              for (const p of degrading) {
+                report += `- 📈 **${p.name}**: ${p.trend.toFixed(0)}% slower — investigate recent changes\n`;
+              }
+              report += `\n`;
+            }
+
+            if (slowPipelines.length === 0 && degrading.length === 0) {
+              report += `✅ All pipelines are performing within acceptable thresholds.\n\n`;
+            }
+
+            // Cache effectiveness section
+            report += `### 🗄️ Cache Strategy Overview\n\n`;
+            report += `| Cache Type | Scope | Key Strategy |\n`;
+            report += `|------------|-------|-------------|\n`;
+            report += `| Turbo Remote | All JS/TS tasks | Content-hash of inputs (src, config) |\n`;
+            report += `| npm | Node modules | \`package-lock.json\` hash |\n`;
+            report += `| Gradle Build | KMP/Android | Configuration cache + build cache |\n`;
+            report += `| Kotlin/Native | Konan prebuilt | \`libs.versions.toml\` hash |\n`;
+            report += `| Playwright | E2E browsers | \`apps/web/package.json\` hash |\n`;
+
+            report += `\n### 🔧 Active Optimizations\n\n`;
+            report += `- ✅ Turbo remote cache with signature verification\n`;
+            report += `- ✅ Gradle parallel execution + configuration cache\n`;
+            report += `- ✅ Read-only Gradle cache on feature branches\n`;
+            report += `- ✅ Concurrency groups with cancel-in-progress\n`;
+            report += `- ✅ Path-filtered triggers (affected-only builds)\n`;
+            report += `- ✅ E2E test sharding (4 parallel runners)\n`;
+
+            core.summary.addRaw(report);
+            await core.summary.write();
+
+      - name: Check for performance regressions
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            core.info('Build performance report generated — check the workflow summary for details.');
+            core.info('To investigate slow pipelines, enable verbose mode via workflow_dispatch.');

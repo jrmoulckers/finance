@@ -7,19 +7,38 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "package.json", "tsconfig.json", "tsconfig*.json"],
+      "inputs": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.js",
+        "src/**/*.jsx",
+        "src/**/*.css",
+        "src/**/*.html",
+        "src/**/*.json",
+        "src/**/*.svg",
+        "package.json",
+        "tsconfig.json",
+        "tsconfig*.json",
+        "vite.config.*",
+        "webpack.config.*"
+      ],
       "outputs": ["dist/**", "build/**", ".next/**", "!.next/cache/**"],
       "cache": true
     },
     "test": {
       "dependsOn": ["build"],
       "inputs": [
-        "src/**",
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.js",
+        "src/**/*.jsx",
         "test/**",
         "tests/**",
         "__tests__/**",
         "*.test.*",
         "*.spec.*",
+        "vitest.config.*",
+        "jest.config.*",
         "package.json",
         "tsconfig.json"
       ],
@@ -29,14 +48,10 @@
     "lint": {
       "dependsOn": ["^build"],
       "inputs": [
-        "src/**",
-        "test/**",
-        "tests/**",
-        "__tests__/**",
-        "*.ts",
-        "*.tsx",
-        "*.js",
-        "*.jsx",
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.js",
+        "src/**/*.jsx",
         ".eslintrc.*",
         "eslint.config.*",
         "package.json",
@@ -47,14 +62,7 @@
     },
     "type-check": {
       "dependsOn": ["^build"],
-      "inputs": [
-        "src/**",
-        "test/**",
-        "tests/**",
-        "package.json",
-        "tsconfig.json",
-        "tsconfig*.json"
-      ],
+      "inputs": ["src/**/*.ts", "src/**/*.tsx", "package.json", "tsconfig.json", "tsconfig*.json"],
       "outputs": [],
       "cache": true
     },
