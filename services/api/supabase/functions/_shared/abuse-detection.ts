@@ -133,6 +133,11 @@ export const ABUSE_THRESHOLDS: Record<string, AbuseThreshold> = {
     windowSeconds: 300,
     keyPrefix: 'abuse-errors:send-notification',
   },
+  'consent-management': {
+    maxErrors: 10,
+    windowSeconds: 300,
+    keyPrefix: 'abuse-errors:consent-management',
+  },
 };
 
 // ---------------------------------------------------------------------------
