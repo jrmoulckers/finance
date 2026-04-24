@@ -5,15 +5,27 @@ package com.finance.android.di
 import com.finance.android.BuildConfig
 import com.finance.android.sync.AndroidSyncManager
 import com.finance.android.sync.ConnectivityObserver
+import com.finance.android.ui.sync.SyncStatusViewModel
+import com.finance.sync.DefaultSyncEngine
 import com.finance.sync.SyncConfig
+import com.finance.sync.SyncEngine
+import com.finance.sync.SyncProvider
 import com.finance.sync.auth.TokenManager
 import com.finance.sync.auth.TokenStorage
 import com.finance.sync.delta.DeltaSyncManager
 import com.finance.sync.delta.InMemorySequenceTracker
 import com.finance.sync.delta.SequenceTracker
+import com.finance.sync.provider.HttpSyncProvider
 import com.finance.sync.queue.InMemoryMutationQueue
 import com.finance.sync.queue.MutationQueue
 import org.koin.android.ext.koin.androidContext
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
+import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
@@ -64,4 +76,6 @@ val syncModule = module {
             context = androidContext(),
         )
     }
+
+    viewModelOf(::SyncStatusViewModel)
 }

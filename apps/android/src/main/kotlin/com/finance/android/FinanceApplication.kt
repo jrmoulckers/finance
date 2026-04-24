@@ -6,6 +6,8 @@ import android.app.Application
 import com.finance.android.di.appModule
 import com.finance.android.di.authModule
 import com.finance.android.di.dataModule
+import com.finance.android.di.syncModule
+import com.finance.android.di.syncModule
 import com.finance.android.notifications.NotificationChannelManager
 import com.finance.android.sync.SyncWorker
 import org.koin.android.ext.koin.androidContext
@@ -41,7 +43,7 @@ class FinanceApplication : Application() {
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.DEBUG else Level.NONE)
             androidContext(this@FinanceApplication)
-            modules(appModule, authModule, dataModule)
+            modules(appModule, authModule, dataModule, syncModule)
         }
         Timber.i("Koin DI initialized")
     }

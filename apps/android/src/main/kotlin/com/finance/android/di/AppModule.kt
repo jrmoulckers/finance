@@ -2,16 +2,9 @@
 
 package com.finance.android.di
 
-import com.finance.android.data.repository.AccountRepository
-import com.finance.android.data.repository.BudgetRepository
-import com.finance.android.data.repository.CategoryRepository
-import com.finance.android.data.repository.GoalRepository
-import com.finance.android.data.repository.TransactionRepository
-import com.finance.android.data.repository.impl.InMemoryAccountRepository
-import com.finance.android.data.repository.impl.InMemoryBudgetRepository
-import com.finance.android.data.repository.impl.InMemoryCategoryRepository
-import com.finance.android.data.repository.impl.InMemoryGoalRepository
-import com.finance.android.data.repository.impl.InMemoryTransactionRepository
+import com.finance.android.ui.gdpr.ConsentCategory
+import com.finance.android.ui.gdpr.ConsentManager
+import com.finance.android.ui.gdpr.PrivacySettingsViewModel
 import com.finance.android.logging.TimberCrashReporter
 import com.finance.android.notifications.NotificationContentBuilder
 import com.finance.android.notifications.NotificationDispatcher
@@ -49,9 +42,7 @@ import com.finance.android.ui.viewmodel.TransactionsViewModel
 import com.finance.core.monitoring.CrashReporter
 import com.finance.core.monitoring.MetricsCollector
 import org.koin.android.ext.koin.androidContext
-import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
-import org.koin.dsl.bind
 import org.koin.dsl.module
 
 /**
@@ -66,7 +57,7 @@ val appModule = module {
 
     /** Crash reporting — backed by Timber for on-device logging. */
     single<CrashReporter> {
-        TimberCrashReporter(consentProvider = { false })
+        run { val cm: ConsentManager = get(); TimberCrashReporter(consentProvider = { cm.isConsentedTo(ConsentCategory.ANALYTICS) }) }
     }
 
     /**
@@ -75,18 +66,13 @@ val appModule = module {
      * to the user's preference in Settings.
      */
     single {
-        MetricsCollector(consentProvider = { false })
+        run { val cm: ConsentManager = get(); MetricsCollector(consentProvider = { cm.isConsentedTo(ConsentCategory.ANALYTICS) }) }
     }
 
     // ── Repositories ────────────────────────────────────────────────
-    // Temporary in-memory implementations.
-    // Swap these to real SQLDelight-backed implementations later.
+    // Real SQLDelight-backed repositories are provided by [dataModule].
+    // (encrypted via SQLCipher + Android Keystore)
 
-    singleOf(::InMemoryAccountRepository) bind AccountRepository::class
-    singleOf(::InMemoryTransactionRepository) bind TransactionRepository::class
-    singleOf(::InMemoryBudgetRepository) bind BudgetRepository::class
-    singleOf(::InMemoryGoalRepository) bind GoalRepository::class
-    singleOf(::InMemoryCategoryRepository) bind CategoryRepository::class
 
     // ── Settings dependencies ───────────────────────────────────────
 
@@ -147,6 +133,7 @@ val appModule = module {
     viewModelOf(::StreakViewModel)
     viewModelOf(::NotificationSettingsViewModel)
     viewModelOf(::AffordabilityViewModel)
+    viewModelOf(::PrivacySettingsViewModel)
     viewModelOf(::ExpertiseTierViewModel)
     viewModelOf(::LearningPathViewModel)
     viewModelOf(::NlpTransactionViewModel)

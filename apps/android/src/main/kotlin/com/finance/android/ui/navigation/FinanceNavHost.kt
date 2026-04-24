@@ -41,6 +41,7 @@ import com.finance.android.ui.screens.TransactionDetailScreen
 import com.finance.android.ui.screens.TransactionsScreen
 import com.finance.android.ui.screens.affordability.AffordabilityScreen
 import com.finance.android.ui.education.FinancialGlossaryScreen
+import com.finance.android.ui.gdpr.PrivacySettingsScreen
 import com.finance.android.ui.expertise.ExpertiseTierScreen
 import com.finance.android.ui.learning.LearningPathsScreen
 import com.finance.android.ui.nlp.NlpTransactionScreen
@@ -132,6 +133,7 @@ sealed class Route(val route: String) {
     data object Affordability : Route("affordability")
 
     /** Financial Glossary screen - contextual education tooltips (#378). */
+    data object PrivacySettings : Route("privacy-settings")
     data object FinancialGlossary : Route("glossary")
 
     /** Expertise tier selection screen (#379). */
@@ -314,6 +316,10 @@ fun FinanceNavHost(
                     }
                 },
             )
+        }
+
+        composable(Route.PrivacySettings.route) {
+            PrivacySettingsScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Route.FinancialGlossary.route) {

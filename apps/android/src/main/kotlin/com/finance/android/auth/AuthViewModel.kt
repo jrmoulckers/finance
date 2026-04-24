@@ -226,6 +226,24 @@ class AuthViewModel(
      * transition to [AuthState.Unauthenticated], causing the UI to
      * show the login screen.
      */
+    fun signInWithEmail(email: String, password: String) {
+        if (email.isBlank() || password.isBlank()) {
+            _authState.value = AuthState.Error("Email and password are required.")
+            return
+        }
+        Timber.d("Starting email sign-in flow")
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val result = authManager.signIn(
+                AuthCredentials.EmailPassword(email = email.trim(), password = password),
+            )
+            result.onFailure { error ->
+                Timber.e(error, "Email sign-in failed")
+                _authState.value = AuthState.Error(error.message ?: "Sign-in failed.")
+            }
+        }
+    }
+
     fun signOut() {
         viewModelScope.launch {
             authManager.signOut()
