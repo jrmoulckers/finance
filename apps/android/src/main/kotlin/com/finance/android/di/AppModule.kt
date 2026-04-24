@@ -24,6 +24,7 @@ import com.finance.android.ui.screens.SettingsViewModel
 import com.finance.android.ui.screens.affordability.AffordabilityViewModel
 import com.finance.android.ui.expertise.ExpertiseTierManager
 import com.finance.android.ui.expertise.ExpertiseTierViewModel
+import com.finance.android.ui.learning.LearningPathViewModel
 import com.finance.android.ui.streak.StreakRepository
 import com.finance.android.ui.streak.StreakViewModel
 import com.finance.android.ui.streak.TransactionBackedStreakRepository
@@ -144,4 +145,5 @@ val appModule = module {
     viewModelOf(::NotificationSettingsViewModel)
     viewModelOf(::AffordabilityViewModel)
     viewModelOf(::ExpertiseTierViewModel)
+    viewModelOf(::LearningPathViewModel)
 }
