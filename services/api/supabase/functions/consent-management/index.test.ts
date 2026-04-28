@@ -75,7 +75,7 @@ async function handleConsent(req: Request, deps: MockConsentDeps = {}): Promise<
   }
 
   // Simulated auth check
-  const userId = deps.userId ?? TEST_USER.id;
+  const _userId = deps.userId ?? TEST_USER.id;
 
   if (req.method === 'GET') {
     const url = new URL(req.url);
