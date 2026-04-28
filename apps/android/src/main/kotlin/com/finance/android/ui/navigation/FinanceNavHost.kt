@@ -43,6 +43,7 @@ import com.finance.android.ui.screens.affordability.AffordabilityScreen
 import com.finance.android.ui.education.FinancialGlossaryScreen
 import com.finance.android.ui.expertise.ExpertiseTierScreen
 import com.finance.android.ui.learning.LearningPathsScreen
+import com.finance.android.ui.nlp.NlpTransactionScreen
 import timber.log.Timber
 
 /** Base URI for all deep link patterns declared in AndroidManifest.xml. */
@@ -132,8 +133,8 @@ sealed class Route(val route: String) {
     /** Expertise tier selection screen (#379). */
     data object ExpertiseTier : Route("expertise-tier")
 
-    /** Learning paths — structured financial education modules (#382). */
     data object LearningPaths : Route("learning-paths")
+    data object NlpTransaction : Route("nlp-transaction")
 
     /**
      * Transaction detail deep link destination.
@@ -292,6 +293,17 @@ fun FinanceNavHost(
         composable(Route.Affordability.route) {
             AffordabilityScreen(
                 onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Route.NlpTransaction.route) {
+            NlpTransactionScreen(
+                onBack = { navController.popBackStack() },
+                onTransactionConfirmed = {
+                    // Navigate to create screen with parsed data
+                    navController.navigate(Route.TransactionCreate.createRoute()) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
 
