@@ -15,6 +15,9 @@ import com.finance.desktop.notifications.DesktopNotificationManager
 import com.finance.desktop.performance.PerformanceMonitor
 import com.finance.desktop.performance.PerformanceTracker
 import com.finance.desktop.performance.timed
+import com.finance.desktop.tray.FinanceSystemTray
+import com.finance.desktop.tray.QuickAddTransactionManager
+import com.finance.desktop.tray.TrayActionHandler
 import com.finance.desktop.widgets.WidgetRegistrationManager
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
@@ -39,6 +42,10 @@ fun main() {
         widgetManager.initialize()
     }
 
+    // Initialise system tray integration
+    val systemTray = GlobalContext.get().get<FinanceSystemTray>()
+    val quickAddManager = GlobalContext.get().get<QuickAddTransactionManager>()
+
     // Start background performance monitoring
     PerformanceMonitor.start()
     PerformanceTracker.recordFirstInteractive()
@@ -51,9 +58,38 @@ fun main() {
 
         val shortcutHandler = rememberShortcutHandler()
 
+        // Initialise tray with action handler
+        timed("tray_init") {
+            systemTray.initialise(
+                handler = object : TrayActionHandler {
+                    override fun onQuickAddTransaction() {
+                        quickAddManager.show()
+                    }
+
+                    override fun onOpenApp() {
+                        // Bring window to front (WindowState is managed by Compose)
+                        windowState.isMinimized = false
+                    }
+
+                    override fun onShowSummary() {
+                        systemTray.showDailySummary()
+                    }
+                },
+                onQuit = {
+                    PerformanceMonitor.stop()
+                    systemTray.dispose()
+                    widgetManager.dispose()
+                    DesktopNotificationManager.dispose()
+                    stopKoin()
+                    exitApplication()
+                },
+            )
+        }
+
         Window(
             onCloseRequest = {
                 PerformanceMonitor.stop()
+                systemTray.dispose()
                 widgetManager.dispose()
                 DesktopNotificationManager.dispose()
                 stopKoin()
@@ -63,7 +99,7 @@ fun main() {
             state = windowState,
             onPreviewKeyEvent = { shortcutHandler.onKeyEvent(it) },
         ) {
-            FinanceApp(shortcutHandler)
+            FinanceApp(shortcutHandler, quickAddManager, systemTray)
         }
     }
 }

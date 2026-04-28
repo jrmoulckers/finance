@@ -5,6 +5,8 @@ package com.finance.desktop.di
 import com.finance.desktop.notifications.DesktopNotificationManager
 import com.finance.desktop.voice.VoiceCommandManager
 import com.finance.desktop.voice.VoiceCommandParser
+import com.finance.desktop.tray.FinanceSystemTray
+import com.finance.desktop.tray.QuickAddTransactionManager
 import com.finance.desktop.widgets.WidgetContentRenderer
 import com.finance.desktop.widgets.WidgetDataProvider
 import com.finance.desktop.widgets.WidgetRegistrationManager
@@ -39,4 +41,8 @@ val platformModule = module {
     // ── Voice / Cortana integration ──
     single { VoiceCommandManager.create() }
     single { VoiceCommandParser() }
+
+    // ── System tray integration ──
+    single { FinanceSystemTray(get(), get(), get()) }
+    single { QuickAddTransactionManager(get()) }
 }

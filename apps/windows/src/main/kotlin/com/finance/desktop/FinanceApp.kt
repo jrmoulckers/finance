@@ -25,11 +25,14 @@ import com.finance.desktop.screens.GoalsScreen
 import com.finance.desktop.screens.HealthScoreScreen
 import com.finance.desktop.screens.LockScreen
 import com.finance.desktop.screens.ReportBuilderScreen
+import com.finance.desktop.screens.QuickAddTransactionDialog
 import com.finance.desktop.screens.SettingsScreen
 import com.finance.desktop.screens.TransactionsScreen
 import com.finance.desktop.screens.VoiceTransactionOverlay
 import com.finance.desktop.screens.WidgetBoardScreen
 import com.finance.desktop.theme.FinanceDesktopTheme
+import com.finance.desktop.tray.FinanceSystemTray
+import com.finance.desktop.tray.QuickAddTransactionManager
 import com.finance.desktop.viewmodel.AuthViewModel
 
 /**
@@ -39,7 +42,8 @@ import com.finance.desktop.viewmodel.AuthViewModel
  * gates access behind Windows Hello authentication when configured. Once
  * authenticated, renders the sidebar navigation shell with all core screens.
  * The [VoiceTransactionOverlay] is layered on top for voice-driven transaction
- * entry (activated via Ctrl+Shift+V).
+ * entry (activated via Ctrl+Shift+V). The [QuickAddTransactionDialog] is
+ * triggered from the system tray context menu.
  *
  * ## Authentication Flow
  *
@@ -50,10 +54,16 @@ import com.finance.desktop.viewmodel.AuthViewModel
  * 5. Auto-lock returns to the lock screen after inactivity
  *
  * @param shortcutHandler The [ShortcutHandler] wired to the application
- *   window's [onPreviewKeyEvent], enabling Ctrl+1 through Ctrl+6 shortcuts.
+ *   window's [onPreviewKeyEvent], enabling Ctrl+1 through Ctrl+8 shortcuts.
+ * @param quickAddManager Manager for system tray quick-add transaction.
+ * @param systemTray The system tray integration for notifications.
  */
 @Composable
-fun FinanceApp(shortcutHandler: ShortcutHandler) {
+fun FinanceApp(
+    shortcutHandler: ShortcutHandler,
+    quickAddManager: QuickAddTransactionManager,
+    systemTray: FinanceSystemTray,
+) {
     val authViewModel = koinGet<AuthViewModel>()
     val authState by authViewModel.uiState.collectAsState()
 
@@ -94,6 +104,12 @@ fun FinanceApp(shortcutHandler: ShortcutHandler) {
 
                     // Voice transaction overlay — rendered on top of all content
                     VoiceTransactionOverlay()
+
+                    // Quick-add transaction dialog — triggered from system tray
+                    QuickAddTransactionDialog(
+                        quickAddManager = quickAddManager,
+                        systemTray = systemTray,
+                    )
                 }
             }
         }
