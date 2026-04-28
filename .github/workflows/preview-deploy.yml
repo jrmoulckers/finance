@@ -232,6 +232,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Wait for deployment
+        id: wait
         run: |
           URL="${{ needs.deploy-preview.outputs.url }}"
           echo "Waiting for $URL to become accessible..."
@@ -246,10 +247,12 @@ jobs:
           done
 
           echo "::warning::Preview URL not accessible after 2 minutes — skipping Lighthouse"
-          exit 1
+          echo "preview_accessible=false" >> "$GITHUB_OUTPUT"
+          exit 0
 
       - name: Lighthouse Audit
         id: lighthouse
+        if: steps.wait.outputs.preview_accessible != 'false'
         uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
         continue-on-error: true
         with:

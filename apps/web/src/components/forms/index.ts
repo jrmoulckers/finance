@@ -18,3 +18,5 @@ export { QuickEntry } from './QuickEntry';
 export type { QuickEntryProps } from './QuickEntry';
 export { BulkEditToolbar } from './BulkEditToolbar';
 export type { BulkEditToolbarProps } from './BulkEditToolbar';
+export { NaturalLanguageInput } from './NaturalLanguageInput';
+export type { NaturalLanguageInputProps } from './NaturalLanguageInput';
