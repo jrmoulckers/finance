@@ -17,6 +17,7 @@ import com.finance.desktop.di.koinGet
 import com.finance.desktop.navigation.Screen
 import com.finance.desktop.navigation.SidebarNavigation
 import com.finance.desktop.screens.AccountsScreen
+import com.finance.desktop.screens.BudgetNegotiationScreen
 import com.finance.desktop.screens.BudgetsScreen
 import com.finance.desktop.screens.DashboardScreen
 import com.finance.desktop.screens.DiagnosticsScreen
@@ -86,6 +87,7 @@ fun FinanceApp(shortcutHandler: ShortcutHandler) {
                             Screen.Diagnostics -> DiagnosticsScreen()
                             Screen.HealthScore -> HealthScoreScreen()
                             Screen.Reports -> ReportBuilderScreen()
+                            Screen.Negotiate -> BudgetNegotiationScreen()
                             Screen.Settings -> SettingsScreen()
                         }
                     }

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
@@ -84,6 +85,7 @@ enum class Screen(
     Widgets("Widgets", Icons.Filled.Widgets, Key.Seven, "Ctrl+7"),
     HealthScore("Health Score", Icons.Filled.Favorite, Key.Eight, "Ctrl+8"),
     Reports("Reports", Icons.Filled.Assessment, Key.Nine, "Ctrl+9"),
+    Negotiate("Negotiate", Icons.Filled.Groups, Key.N, "Ctrl+N"),
     Settings("Settings", Icons.Filled.Settings, Key.Zero, "Ctrl+0"),
 }
 
