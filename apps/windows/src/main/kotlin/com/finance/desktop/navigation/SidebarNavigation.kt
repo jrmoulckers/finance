@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Widgets
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -81,11 +82,12 @@ enum class Screen(
     Transactions("Transactions", Icons.Filled.Receipt, Key.Three, "Ctrl+3"),
     Budgets("Budgets", Icons.Filled.PieChart, Key.Four, "Ctrl+4"),
     Goals("Goals", Icons.Filled.Star, Key.Five, "Ctrl+5"),
-    Diagnostics("Diagnostics", Icons.Filled.Speed, Key.Six, "Ctrl+6"),
+    Upgrade("Upgrade", Icons.Filled.WorkspacePremium, Key.Six, "Ctrl+6"),
     Widgets("Widgets", Icons.Filled.Widgets, Key.Seven, "Ctrl+7"),
     HealthScore("Health Score", Icons.Filled.Favorite, Key.Eight, "Ctrl+8"),
     Reports("Reports", Icons.Filled.Assessment, Key.Nine, "Ctrl+9"),
     Negotiate("Negotiate", Icons.Filled.Groups, Key.N, "Ctrl+N"),
+    Diagnostics("Diagnostics", Icons.Filled.Speed, Key.D, "Ctrl+D"),
     Settings("Settings", Icons.Filled.Settings, Key.Zero, "Ctrl+0"),
 }
 

@@ -28,6 +28,7 @@ import com.finance.desktop.screens.ReportBuilderScreen
 import com.finance.desktop.screens.QuickAddTransactionDialog
 import com.finance.desktop.screens.SettingsScreen
 import com.finance.desktop.screens.TransactionsScreen
+import com.finance.desktop.screens.UpgradeScreen
 import com.finance.desktop.screens.VoiceTransactionOverlay
 import com.finance.desktop.screens.WidgetBoardScreen
 import com.finance.desktop.theme.FinanceDesktopTheme
@@ -94,6 +95,7 @@ fun FinanceApp(
                             Screen.Budgets -> BudgetsScreen()
                             Screen.Goals -> GoalsScreen()
                             Screen.Widgets -> WidgetBoardScreen()
+                            Screen.Upgrade -> UpgradeScreen()
                             Screen.Diagnostics -> DiagnosticsScreen()
                             Screen.HealthScore -> HealthScoreScreen()
                             Screen.Reports -> ReportBuilderScreen()
