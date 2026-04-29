@@ -133,6 +133,7 @@ sealed class Route(val route: String) {
     /** Expertise tier selection screen (#379). */
     data object ExpertiseTier : Route("expertise-tier")
 
+    /** Learning paths — structured financial education modules (#382). */
     data object LearningPaths : Route("learning-paths")
     data object NlpTransaction : Route("nlp-transaction")
 
