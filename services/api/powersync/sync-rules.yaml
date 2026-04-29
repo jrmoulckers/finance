@@ -114,6 +114,45 @@ bucket_definitions:
                created_at, updated_at, deleted_at
         FROM recurring_transaction_templates
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Family plan subscriptions
+      - >
+        SELECT id, household_id, billing_owner_id, owner_id, plan_type,
+               status, price_cents, currency_code, billing_cycle,
+               max_members, current_members, started_at,
+               current_period_end, canceled_at, expires_at,
+               created_at, updated_at, deleted_at
+        FROM family_plan_subscriptions
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Report configurations
+      - >
+        SELECT id, household_id, owner_id, name, report_type, config,
+               last_generated_at,
+               created_at, updated_at, deleted_at
+        FROM report_configs
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Detected recurring bills
+      - >
+        SELECT id, household_id, owner_id, merchant,
+               estimated_amount_cents, currency_code, frequency,
+               confidence_score, last_transaction_date,
+               next_expected_date, transaction_count, avg_amount_cents,
+               status, category_id, account_id,
+               created_at, updated_at, deleted_at
+        FROM detected_bills
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Import job status (for progress tracking)
+      - >
+        SELECT id, household_id, owner_id, account_id, file_name,
+               format, status, total_rows, imported_rows,
+               duplicate_rows, error_rows, started_at, completed_at,
+               created_at, updated_at, deleted_at
+        FROM import_jobs
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
   # ---------------------------------------------------------------------------
   # user_profile — per-user data that is NOT household-scoped.
   # Contains the user's own profile and their passkey credential metadata
@@ -147,3 +186,30 @@ bucket_definitions:
                created_at, updated_at, deleted_at
         FROM passkey_credentials
         WHERE user_id = bucket.user_id AND deleted_at IS NULL
+
+      # Referrals — user's own referrals (as referrer or referee)
+      - >
+        SELECT id, referrer_id, referee_id, referral_code, status,
+               reward_type, accepted_at, expires_at,
+               created_at, updated_at, deleted_at
+        FROM referrals
+        WHERE (referrer_id = bucket.user_id OR referee_id = bucket.user_id)
+              AND deleted_at IS NULL
+
+  # ---------------------------------------------------------------------------
+  # exchange_rates — global exchange rate data synced to all authenticated users.
+  # A single bucket instance shared across all users. Rates are read-only
+  # on clients (only the server can insert/update via service_role).
+  # ---------------------------------------------------------------------------
+  exchange_rates:
+    parameters:
+      - SELECT id AS user_id FROM users WHERE id = token_parameters.user_id AND deleted_at IS NULL
+
+    data:
+      # Exchange rates (global, read-only on clients)
+      - >
+        SELECT id, base_currency, target_currency, rate_multiplied,
+               rate_precision, source, valid_date,
+               created_at, updated_at, deleted_at
+        FROM exchange_rates
+        WHERE deleted_at IS NULL

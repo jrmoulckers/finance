@@ -58,16 +58,12 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   'admin-dashboard': [{ name: 'ADMIN_EMAILS', type: 'csv' }],
   'send-notification': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
   'launch-readiness': [{ name: 'ADMIN_EMAILS', type: 'csv' }],
-  'spending-forecast': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
-  'bank-connection': [
-    { name: 'ALLOWED_ORIGINS', type: 'csv' },
-    { name: 'BANK_ENCRYPTION_KEY', type: 'string' },
-  ],
-  'bank-webhook': [
-    { name: 'PLAID_WEBHOOK_SECRET', type: 'string' },
-    { name: 'MX_WEBHOOK_SECRET', type: 'string' },
-  ],
-  'anomaly-detection': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'family-plan': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  referral: [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'generate-report': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'exchange-rates': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'detect-bills': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'import-data': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
 };
 
 // ---------------------------------------------------------------------------

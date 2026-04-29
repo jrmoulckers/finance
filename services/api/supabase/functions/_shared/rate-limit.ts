@@ -81,10 +81,12 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   'admin-dashboard': { maxRequests: 60, windowSeconds: 60, keyPrefix: 'admin-dashboard' },
   'send-notification': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'send-notification' },
   'launch-readiness': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'launch-readiness' },
-  'spending-forecast': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'spending-forecast' },
-  'bank-connection': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'bank-connection' },
-  'bank-webhook': { maxRequests: 120, windowSeconds: 60, keyPrefix: 'bank-webhook' },
-  'anomaly-detection': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'anomaly-detection' },
+  'family-plan': { maxRequests: 20, windowSeconds: 60, keyPrefix: 'family-plan' },
+  referral: { maxRequests: 20, windowSeconds: 60, keyPrefix: 'referral' },
+  'generate-report': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'generate-report' },
+  'exchange-rates': { maxRequests: 60, windowSeconds: 60, keyPrefix: 'exchange-rates' },
+  'detect-bills': { maxRequests: 10, windowSeconds: 60, keyPrefix: 'detect-bills' },
+  'import-data': { maxRequests: 5, windowSeconds: 60, keyPrefix: 'import-data' },
 };
 
 // ---------------------------------------------------------------------------
