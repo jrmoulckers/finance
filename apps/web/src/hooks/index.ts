@@ -54,5 +54,13 @@ export type {
 } from './useSpendingWatchlists';
 export { useFinancialTips } from './useFinancialTips';
 export type { UseFinancialTipsResult } from './useFinancialTips';
-export { useGamification } from './useGamification';
-export type { UseGamificationResult } from './useGamification';
+export { useReportBuilder } from './useReportBuilder';
+export type {
+  UseReportBuilderResult,
+  ReportConfig,
+  ReportField,
+  ReportFieldType,
+  ReportPreview,
+  ExportFormat,
+  GroupBy,
+} from './useReportBuilder';

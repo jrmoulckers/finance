@@ -17,3 +17,4 @@ export { LoginPage } from './LoginPage';
 export { NotFoundPage } from './NotFoundPage';
 export { SignupPage } from './SignupPage';
 export { WatchlistsPage } from './WatchlistsPage';
+export { ReportBuilderPage } from './ReportBuilderPage';

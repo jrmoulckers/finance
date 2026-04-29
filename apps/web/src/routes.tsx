@@ -23,6 +23,7 @@ const Import = lazy(() => import('./pages/ImportPage'));
 const Insights = lazy(() => import('./pages/InsightsPage'));
 const Achievements = lazy(() => import('./pages/AchievementsPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
+const ReportBuilder = lazy(() => import('./pages/ReportBuilderPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
@@ -230,6 +231,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Watchlists />
+          </Suspense>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/reports/builder"
+      element={
+        <AuthenticatedRoute>
+          <Suspense fallback={<PageLoader />}>
+            <ReportBuilder />
           </Suspense>
         </AuthenticatedRoute>
       }
