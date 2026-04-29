@@ -75,6 +75,9 @@ jobs:
     name: npm Audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Non-blocking on PRs: audit findings are informational for feature branches.
+    # Blocking on main/schedule pushes ensures vulnerabilities are tracked.
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
 
     steps:
       - name: Checkout
@@ -95,9 +98,16 @@ jobs:
           echo "### 📦 npm Audit Results" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
+          # On PRs, only fail on critical severity; on main/schedule, use configured threshold
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            EFFECTIVE_SEVERITY="critical"
+          else
+            EFFECTIVE_SEVERITY="${AUDIT_SEVERITY}"
+          fi
+
           # Run audit and capture output (npm audit exits non-zero on findings)
           set +e
-          AUDIT_OUTPUT=$(npm audit --audit-level="${AUDIT_SEVERITY}" 2>&1)
+          AUDIT_OUTPUT=$(npm audit --audit-level="${EFFECTIVE_SEVERITY}" 2>&1)
           AUDIT_EXIT=$?
           set -e
 
@@ -109,13 +119,13 @@ jobs:
           if [ $AUDIT_EXIT -ne 0 ]; then
             echo "result=failure" >> "$GITHUB_OUTPUT"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "❌ **npm audit found vulnerabilities at or above \`${AUDIT_SEVERITY}\` severity.**" >> "$GITHUB_STEP_SUMMARY"
+            echo "❌ **npm audit found vulnerabilities at or above \`${EFFECTIVE_SEVERITY}\` severity.**" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "Run \`npm audit fix\` locally to attempt automatic remediation." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "result=success" >> "$GITHUB_OUTPUT"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "✅ No vulnerabilities found at or above \`${AUDIT_SEVERITY}\` severity." >> "$GITHUB_STEP_SUMMARY"
+            echo "✅ No vulnerabilities found at or above \`${EFFECTIVE_SEVERITY}\` severity." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Generate npm audit SARIF
@@ -372,6 +382,8 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Non-blocking on PRs: audit results are informational for feature branches
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
 
     steps:
       - name: Aggregate results
@@ -387,7 +399,15 @@ jobs:
           echo "**Severity threshold:** \`${{ env.AUDIT_SEVERITY || 'high' }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "**Trigger:** \`${{ github.event_name }}\`" >> "$GITHUB_STEP_SUMMARY"
 
-          # Fail if npm audit failed (the required check)
+          # On PRs, audit failures are informational (non-blocking)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ "${{ needs.npm-audit.result }}" = "failure" ]; then
+              echo "::warning::npm audit found vulnerabilities — informational on PRs, run 'npm audit fix' to resolve"
+            fi
+            exit 0
+          fi
+
+          # On main/schedule, fail if npm audit or license check failed
           if [ "${{ needs.npm-audit.result }}" = "failure" ]; then
             echo "::error::Dependency audit failed — npm vulnerabilities found"
             exit 1

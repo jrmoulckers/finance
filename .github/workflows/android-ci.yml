@@ -34,6 +34,10 @@ env:
     -Xmx2g
     -XX:MaxMetaspaceSize=512m
     -Dorg.gradle.daemon=false
+    -Dorg.gradle.parallel=true
+    -Dorg.gradle.caching=true
+    -Dorg.gradle.configureondemand=true
+    -Dkotlin.incremental=true
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 

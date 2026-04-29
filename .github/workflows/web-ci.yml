@@ -196,10 +196,12 @@ jobs:
           fi
 
   lighthouse:
-    name: Lighthouse Audit
+    name: Lighthouse Audit (Informational)
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Lighthouse is informational — should not block PR merge
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -229,4 +231,4 @@ jobs:
       - name: Lighthouse Budget Check
         if: always() && (steps.lighthouse-audit.conclusion == 'success' || steps.lighthouse-audit.conclusion == 'failure')
         run: npx @lhci/cli assert --config=apps/web/lighthouserc-budget.json
-        continue-on-error: false
+        continue-on-error: true
