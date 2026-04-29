@@ -30,6 +30,7 @@ class FinanceApplication : Application() {
         initDependencyInjection()
         initNotificationChannels()
         initBackgroundSync()
+        initBillReminders()
     }
 
     private fun initLogging() {
@@ -56,5 +57,10 @@ class FinanceApplication : Application() {
     private fun initBackgroundSync() {
         SyncWorker.enqueuePeriodicSync(this)
         Timber.i("Background sync scheduled")
+    }
+
+    private fun initBillReminders() {
+        com.finance.android.ui.screens.bills.BillReminderWorker.enqueueDaily(this)
+        Timber.i("Bill reminder check scheduled")
     }
 }

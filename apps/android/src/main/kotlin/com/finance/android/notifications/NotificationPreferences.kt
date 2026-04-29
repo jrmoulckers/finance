@@ -38,6 +38,16 @@ class NotificationPreferences(private val prefs: SharedPreferences) {
     )
     val monthlyReflectionEnabled: StateFlow<Boolean> = _monthlyReflectionEnabled.asStateFlow()
 
+    private val _billReminderEnabled = MutableStateFlow(
+        prefs.getBoolean(KEY_BILL_REMINDER, false),
+    )
+    val billReminderEnabled: StateFlow<Boolean> = _billReminderEnabled.asStateFlow()
+
+    private val _billOverdueEnabled = MutableStateFlow(
+        prefs.getBoolean(KEY_BILL_OVERDUE, false),
+    )
+    val billOverdueEnabled: StateFlow<Boolean> = _billOverdueEnabled.asStateFlow()
+
     /**
      * Checks whether a specific notification type is enabled.
      */
@@ -45,6 +55,8 @@ class NotificationPreferences(private val prefs: SharedPreferences) {
         NotificationType.DAILY_SNAPSHOT -> _dailySnapshotEnabled.value
         NotificationType.WEEKLY_INSIGHT -> _weeklyInsightEnabled.value
         NotificationType.MONTHLY_REFLECTION -> _monthlyReflectionEnabled.value
+        NotificationType.BILL_REMINDER -> _billReminderEnabled.value
+        NotificationType.BILL_OVERDUE -> _billOverdueEnabled.value
     }
 
     /**
@@ -64,6 +76,8 @@ class NotificationPreferences(private val prefs: SharedPreferences) {
             NotificationType.DAILY_SNAPSHOT -> _dailySnapshotEnabled.value = enabled
             NotificationType.WEEKLY_INSIGHT -> _weeklyInsightEnabled.value = enabled
             NotificationType.MONTHLY_REFLECTION -> _monthlyReflectionEnabled.value = enabled
+            NotificationType.BILL_REMINDER -> _billReminderEnabled.value = enabled
+            NotificationType.BILL_OVERDUE -> _billOverdueEnabled.value = enabled
         }
 
         Timber.d("Notification preference updated: %s = %s", type.name, enabled)
@@ -73,11 +87,15 @@ class NotificationPreferences(private val prefs: SharedPreferences) {
         NotificationType.DAILY_SNAPSHOT -> KEY_DAILY_SNAPSHOT
         NotificationType.WEEKLY_INSIGHT -> KEY_WEEKLY_INSIGHT
         NotificationType.MONTHLY_REFLECTION -> KEY_MONTHLY_REFLECTION
+        NotificationType.BILL_REMINDER -> KEY_BILL_REMINDER
+        NotificationType.BILL_OVERDUE -> KEY_BILL_OVERDUE
     }
 
     internal companion object {
         const val KEY_DAILY_SNAPSHOT = "notification_daily_snapshot"
         const val KEY_WEEKLY_INSIGHT = "notification_weekly_insight"
         const val KEY_MONTHLY_REFLECTION = "notification_monthly_reflection"
+        const val KEY_BILL_REMINDER = "notification_bill_reminder"
+        const val KEY_BILL_OVERDUE = "notification_bill_overdue"
     }
 }
