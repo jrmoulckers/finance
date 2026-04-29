@@ -12,6 +12,7 @@ export { GoalDetailPage } from './GoalDetailPage';
 export { SettingsPage } from './SettingsPage';
 export { ImportPage } from './ImportPage';
 export { InsightsPage } from './InsightsPage';
+export { AchievementsPage } from './AchievementsPage';
 export { LoginPage } from './LoginPage';
 export { NotFoundPage } from './NotFoundPage';
 export { SignupPage } from './SignupPage';
