@@ -31,6 +31,7 @@ import com.finance.android.ui.streak.StreakViewModel
 import com.finance.android.ui.streak.TransactionBackedStreakRepository
 import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.android.ui.tips.TipsViewModel
+import com.finance.android.ui.insights.InsightsViewModel
 import com.finance.android.ui.viewmodel.AccountCreateViewModel
 import com.finance.android.ui.viewmodel.AccountEditViewModel
 import com.finance.android.ui.viewmodel.AnalyticsViewModel
@@ -152,4 +153,7 @@ val appModule = module {
 
     // ── Tips ─────────────────────────────────────────────────────────
     viewModelOf(::TipsViewModel)
+
+    // ── Insights ─────────────────────────────────────────────────────
+    viewModelOf(::InsightsViewModel)
 }
