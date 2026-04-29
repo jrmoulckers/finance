@@ -23,7 +23,7 @@ const Import = lazy(() => import('./pages/ImportPage'));
 const Insights = lazy(() => import('./pages/InsightsPage'));
 const Achievements = lazy(() => import('./pages/AchievementsPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
-const ReportBuilder = lazy(() => import('./pages/ReportBuilderPage'));
+const Household = lazy(() => import('./pages/HouseholdPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
@@ -236,11 +236,11 @@ export const AppRoutes: FC = () => (
       }
     />
     <Route
-      path="/reports/builder"
+      path="/household"
       element={
         <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
-            <ReportBuilder />
+            <Household />
           </Suspense>
         </AuthenticatedRoute>
       }
