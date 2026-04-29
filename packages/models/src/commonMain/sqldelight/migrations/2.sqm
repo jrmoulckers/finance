@@ -1,0 +1,8 @@
+-- Migration v2 → v3: Add composite performance indexes
+
+CREATE INDEX IF NOT EXISTS idx_transaction_account_date ON "transaction" (account_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_transaction_household_date_type ON "transaction" (household_id, date, type);
+CREATE INDEX IF NOT EXISTS idx_budget_household_period ON budget (household_id, period);
+CREATE INDEX IF NOT EXISTS idx_goal_household_status ON goal (household_id, status);
+CREATE INDEX IF NOT EXISTS idx_category_household_income ON category (household_id, is_income);
+CREATE INDEX IF NOT EXISTS idx_account_household_active ON account (household_id, is_archived);
