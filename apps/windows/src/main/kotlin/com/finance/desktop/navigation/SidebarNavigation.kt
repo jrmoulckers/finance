@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Speed
@@ -100,6 +101,7 @@ enum class Screen(
     Referral("Referral", Icons.Filled.Share, Key.R, "Ctrl+R"),
     Negotiate("Negotiate", Icons.Filled.Groups, Key.N, "Ctrl+N"),
     Diagnostics("Diagnostics", Icons.Filled.Speed, Key.D, "Ctrl+D"),
+    Achievements("Achievements", Icons.Filled.EmojiEvents, Key.A, "Ctrl+A"),
     Settings("Settings", Icons.Filled.Settings, Key.Zero, "Ctrl+0"),
 }
 
