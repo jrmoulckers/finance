@@ -34,6 +34,7 @@ import {
   checkRateLimit,
   getClientIp,
   rateLimitResponse,
+  appendRateLimitHeaders,
   RATE_LIMITS,
 } from '../_shared/rate-limit.ts';
 import { validateEnv, requireEnv } from '../_shared/env.ts';
@@ -204,6 +205,19 @@ serve(async (req: Request): Promise<Response> => {
 
       const credential = storedCred as StoredCredential;
 
+      // Verify credential owner is still active (#1102)
+      const { data: credOwner, error: ownerError } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('id', credential.user_id)
+        .is('deleted_at', null)
+        .single();
+
+      if (ownerError || !credOwner) {
+        logger.warn('Passkey auth for deleted user', { credentialId: credential.id });
+        return errorResponse(req, 'Account is no longer active', 403);
+      }
+
       // ── Scoped challenge lookup (#362, API-9) ────────────────────────
       // Extract the challenge from clientDataJSON so we look up by exact
       // value — never "the most recent challenge globally".
@@ -311,12 +325,32 @@ serve(async (req: Request): Promise<Response> => {
         return internalErrorResponse(req);
       }
 
+      // Session integrity validation (#1102)
+      if (
+        !session.access_token ||
+        !session.refresh_token ||
+        typeof session.expires_in !== 'number' ||
+        !session.user?.id
+      ) {
+        logger.error('Session minted with missing fields', {
+          hasAccessToken: !!session.access_token,
+          hasRefreshToken: !!session.refresh_token,
+          hasUser: !!session.user?.id,
+        });
+        return internalErrorResponse(req);
+      }
+      if (session.user.id !== credential.user_id) {
+        logger.error('Session user mismatch', {
+          expected: credential.user_id,
+          actual: session.user.id,
+        });
+        return internalErrorResponse(req);
+      }
+
       logger.setUserId(credential.user_id);
       logger.info('Passkey authentication successful', { httpStatus: 200 });
 
-      // Return a standard Supabase session payload — clients can use
-      // supabase.auth.setSession() with these tokens.
-      return jsonResponse(req, {
+      const successResponse = jsonResponse(req, {
         access_token: session.access_token,
         refresh_token: session.refresh_token,
         expires_in: session.expires_in,
@@ -328,6 +362,11 @@ serve(async (req: Request): Promise<Response> => {
           created_at: session.user.created_at,
         },
       });
+      return appendRateLimitHeaders(
+        successResponse,
+        rateLimitResult,
+        RATE_LIMITS['passkey-authenticate'],
+      );
     } else {
       return new Response(
         JSON.stringify({

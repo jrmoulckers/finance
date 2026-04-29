@@ -14,6 +14,7 @@
       "household-invite/**/*.test.ts",
       "data-export/**/*.test.ts",
       "account-deletion/**/*.test.ts",
+      "consent-management/**/*.test.ts",
       "launch-readiness/**/*.test.ts",
       "spending-forecast/**/*.test.ts",
       "bank-connection/**/*.test.ts",
@@ -32,7 +33,8 @@
     "test:passkey-authenticate": "deno test --allow-env --allow-net=none --no-check passkey-authenticate/",
     "test:household-invite": "deno test --allow-env --allow-net=none --no-check household-invite/",
     "test:data-export": "deno test --allow-env --allow-net=none --no-check data-export/",
-    "test:account-deletion": "deno test --allow-env --allow-net=none --no-check account-deletion/"
+    "test:account-deletion": "deno test --allow-env --allow-net=none --no-check account-deletion/",
+    "test:consent-management": "deno test --allow-env --allow-net=none --no-check consent-management/"
   },
   "imports": {
     "std/testing/": "https://deno.land/std@0.208.0/testing/",

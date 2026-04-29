@@ -40,6 +40,8 @@ import androidx.core.util.Consumer
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.finance.android.auth.AuthState
+import com.finance.android.ui.gdpr.ConsentDialog
+import com.finance.android.ui.gdpr.ConsentManager
 import com.finance.android.auth.AuthViewModel
 import com.finance.android.auth.LoginScreen
 import com.finance.android.auth.SignupScreen
@@ -106,6 +108,20 @@ fun FinanceApp(modifier: Modifier = Modifier) {
     val authViewModel: AuthViewModel = koinViewModel()
     val authState by authViewModel.authState.collectAsState()
     var showSignup by rememberSaveable { mutableStateOf(false) }
+    val consentManager: ConsentManager = org.koin.compose.koinInject()
+    val consentState by consentManager.consentState.collectAsState()
+
+    if (!consentState.hasConsented) {
+        androidx.compose.foundation.layout.Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            ConsentDialog(
+                onConsentGiven = { a, p, m -> consentManager.saveConsent(a, p, m) },
+            )
+        }
+        return
+    }
 
     when (authState) {
         is AuthState.Loading -> {

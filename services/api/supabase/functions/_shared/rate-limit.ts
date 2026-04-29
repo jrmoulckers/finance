@@ -87,6 +87,11 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   'exchange-rates': { maxRequests: 60, windowSeconds: 60, keyPrefix: 'exchange-rates' },
   'detect-bills': { maxRequests: 10, windowSeconds: 60, keyPrefix: 'detect-bills' },
   'import-data': { maxRequests: 5, windowSeconds: 60, keyPrefix: 'import-data' },
+  'spending-forecast': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'spending-forecast' },
+  'bank-connection': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'bank-connection' },
+  'bank-webhook': { maxRequests: 120, windowSeconds: 60, keyPrefix: 'bank-webhook' },
+  'anomaly-detection': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'anomaly-detection' },
+  'consent-management': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'consent-management' },
 };
 
 // ---------------------------------------------------------------------------
@@ -252,6 +257,51 @@ export function appendRateLimitHeaders(
     statusText: response.statusText,
     headers,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Enhanced rate-limit check with burst detection (#1103)
+// ---------------------------------------------------------------------------
+
+export async function checkRateLimitEnhanced(
+  supabase: RpcClient,
+  identifier: string,
+  config: RateLimitConfig,
+  burstLimit?: number,
+  blockSeconds: number = 300,
+): Promise<RateLimitResult & { blocked?: boolean; blockReason?: string }> {
+  const key = `${config.keyPrefix}:${identifier}`;
+  try {
+    const { data, error } = await supabase.rpc('check_rate_limit_enhanced', {
+      p_key: key,
+      p_max_requests: config.maxRequests,
+      p_window_seconds: config.windowSeconds,
+      p_burst_limit: burstLimit ?? null,
+      p_block_seconds: blockSeconds,
+    });
+    if (error || !data) return checkRateLimit(supabase, identifier, config);
+    const r = data as {
+      allowed: boolean;
+      remaining: number;
+      reset_at: string;
+      current_count: number;
+      blocked: boolean;
+      block_reason: string | null;
+    };
+    const resetAt = new Date(r.reset_at);
+    return {
+      allowed: r.allowed,
+      remaining: r.remaining,
+      resetAt,
+      retryAfterSeconds: r.allowed
+        ? undefined
+        : Math.max(0, Math.ceil((resetAt.getTime() - Date.now()) / 1000)),
+      blocked: r.blocked,
+      blockReason: r.block_reason ?? undefined,
+    };
+  } catch {
+    return checkRateLimit(supabase, identifier, config);
+  }
 }
 
 // ---------------------------------------------------------------------------
