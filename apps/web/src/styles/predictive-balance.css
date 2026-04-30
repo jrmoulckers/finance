@@ -1,0 +1,179 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * Predictive Balance Card styles
+ *
+ * Dashboard widget for end-of-month balance prediction.
+ * Mobile-first responsive design with design tokens.
+ * ------------------------------------------------------------------- */
+
+.predictive-card {
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-md, 8px);
+  padding: var(--spacing-4, 16px);
+  background-color: var(--semantic-background-primary, #fff);
+}
+
+.predictive-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-3, 12px);
+}
+
+.predictive-card__title {
+  font-size: var(--type-scale-title-font-size, 1.125rem);
+  font-weight: 600;
+}
+
+.predictive-card__date {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+/* Main prediction area */
+.predictive-card__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 12px);
+  margin-bottom: var(--spacing-3, 12px);
+}
+
+@media (min-width: 640px) {
+  .predictive-card__main {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.predictive-card__prediction,
+.predictive-card__current {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+}
+
+.predictive-card__label {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary, #6b7280);
+  font-weight: 500;
+}
+
+.predictive-card__amount {
+  font-size: var(--type-scale-headline-font-size, 1.5rem);
+  font-weight: 700;
+}
+
+.predictive-card__amount--current {
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  font-weight: 500;
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+/* Trend */
+.predictive-card__change {
+  display: flex;
+  align-items: center;
+}
+
+.predictive-card__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1, 4px);
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  font-weight: 600;
+}
+
+.predictive-card__trend--positive {
+  color: var(--semantic-status-positive, #22c55e);
+}
+
+.predictive-card__trend--negative {
+  color: var(--semantic-status-negative, #ef4444);
+}
+
+.predictive-card__trend--flat {
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+/* Toggle */
+.predictive-card__toggle {
+  width: 100%;
+  padding: var(--spacing-2, 8px);
+  border: none;
+  border-top: 1px solid var(--semantic-border-default, #e5e7eb);
+  background: none;
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-interactive-default, #3b82f6);
+  cursor: pointer;
+  text-align: center;
+  font-weight: 500;
+}
+
+.predictive-card__toggle:hover {
+  text-decoration: underline;
+}
+
+.predictive-card__toggle:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #3b82f6);
+  outline-offset: 2px;
+}
+
+/* Account details */
+.predictive-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 12px);
+  padding-top: var(--spacing-3, 12px);
+  border-top: 1px solid var(--semantic-border-default, #e5e7eb);
+}
+
+.predictive-card__account {
+  padding: var(--spacing-2, 8px) 0;
+}
+
+.predictive-card__account-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-1, 4px);
+}
+
+.predictive-card__account-name {
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  font-weight: 600;
+}
+
+.predictive-card__account-trend {
+  font-size: 0.875rem;
+}
+
+.predictive-card__account-amounts {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  margin-bottom: var(--spacing-1, 4px);
+}
+
+.predictive-card__account-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary, #6b7280);
+  flex-wrap: wrap;
+  gap: var(--spacing-2, 8px);
+}
+
+.predictive-card__confidence {
+  font-style: italic;
+}
+
+/* Dark mode */
+[data-theme='dark'] .predictive-card {
+  background-color: var(--semantic-background-elevated, #1f2937);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .predictive-card {
+    background-color: var(--semantic-background-elevated, #1f2937);
+  }
+}

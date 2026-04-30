@@ -40,4 +40,20 @@ enum class NotificationType(
         channelId = "finance_monthly_reflection",
         channelName = "Monthly Reflection",
     ),
+
+    /** Bill reminder notification — alerts for upcoming and overdue bills (#1125). */
+    BILL_REMINDER(
+        displayName = "Bill reminders",
+        description = "Notifications for upcoming and overdue recurring bills",
+        channelId = "finance_bill_reminder",
+        channelName = "Bill Reminders",
+    ),
+
+    /** Bill overdue notification — urgent alerts for overdue bills (#1125). */
+    BILL_OVERDUE(
+        displayName = "Overdue bills",
+        description = "Urgent notifications for bills past their due date",
+        channelId = "finance_bill_overdue",
+        channelName = "Overdue Bills",
+    ),
 }

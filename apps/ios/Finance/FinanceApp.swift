@@ -18,10 +18,13 @@ struct FinanceApp: App {
     @State private var deepLinkHandler = DeepLinkHandler()
     @State private var networkMonitor = NetworkMonitor()
     @State private var watchDataSender = WatchDataSender()
+    @State private var authService = AuthenticationService()
+    @State private var consentManager = ConsentManager.shared
     @State private var isLocked = true
     @State private var showOnboarding = !UserDefaults.standard.bool(
         forKey: OnboardingView.hasCompletedOnboardingKey
     )
+    @State private var showConsent = !ConsentManager.shared.hasShownConsentDialog
     @Environment(\.scenePhase) private var scenePhase
 
     private static let logger = Logger(
@@ -42,12 +45,19 @@ struct FinanceApp: App {
                         showOnboarding = false
                     })
                     .transition(.opacity)
+                } else if showConsent {
+                    ConsentView(onAccept: {
+                        showConsent = false
+                    })
+                    .transition(.opacity)
                 } else {
-                    ContentView(
+                    AuthGateView(
+                        authService: authService,
                         deepLinkHandler: deepLinkHandler,
                         networkMonitor: networkMonitor
                     )
                     .environment(biometricManager)
+                    .environment(authService)
                     .accessibilityHidden(biometricLockEnabled && isLocked)
 
                     if biometricLockEnabled && isLocked {

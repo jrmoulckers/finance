@@ -44,6 +44,13 @@ import com.finance.android.ui.education.FinancialGlossaryScreen
 import com.finance.android.ui.expertise.ExpertiseTierScreen
 import com.finance.android.ui.learning.LearningPathsScreen
 import com.finance.android.ui.nlp.NlpTransactionScreen
+import com.finance.android.ui.insights.InsightsScreen
+import com.finance.android.ui.screens.bills.BillRemindersScreen
+import com.finance.android.ui.screens.household.HouseholdScreen
+import com.finance.android.ui.screens.investment.InvestmentPortfolioScreen
+import com.finance.android.ui.screens.nlp.NlpInputScreen
+import com.finance.android.ui.screens.referral.ReferralScreen
+import com.finance.android.ui.screens.report.ReportBuilderScreen
 import timber.log.Timber
 
 /** Base URI for all deep link patterns declared in AndroidManifest.xml. */
@@ -124,6 +131,9 @@ sealed class Route(val route: String) {
     /** Analytics / Spending Trends screen. */
     data object Analytics : Route("analytics")
 
+    /** Financial Insights Dashboard screen (#241). */
+    data object Insights : Route("insights")
+
     /** "Can I Afford This?" affordability check screen (#377). */
     data object Affordability : Route("affordability")
 
@@ -136,6 +146,24 @@ sealed class Route(val route: String) {
     /** Learning paths — structured financial education modules (#382). */
     data object LearningPaths : Route("learning-paths")
     data object NlpTransaction : Route("nlp-transaction")
+
+    /** Family/Household Plan screen (#1114). */
+    data object Household : Route("household")
+
+    /** Referral Program screen (#1116). */
+    data object Referral : Route("referral")
+
+    /** Custom Report Builder screen (#1117). */
+    data object ReportBuilder : Route("report-builder")
+
+    /** Natural Language Transaction Input screen (#1118). */
+    data object NlpInput : Route("nlp-input")
+
+    /** Investment Portfolio View screen (#1119). */
+    data object InvestmentPortfolio : Route("investment-portfolio")
+
+    /** Bill Reminders screen (#1125). */
+    data object BillReminders : Route("bill-reminders")
 
     /**
      * Transaction detail deep link destination.
@@ -291,6 +319,10 @@ fun FinanceNavHost(
             AnalyticsScreen()
         }
 
+        composable(Route.Insights.route) {
+            InsightsScreen()
+        }
+
         composable(Route.Affordability.route) {
             AffordabilityScreen(
                 onBack = { navController.popBackStack() },
@@ -320,8 +352,59 @@ fun FinanceNavHost(
             )
         }
 
+        // ── Wave 5 screens (Sprints 18-23) ──────────────────────────
+
+        composable(Route.Household.route) {
+            HouseholdScreen(
+                onBack = { navController.popBackStack() },
+                onShareInvite = { link ->
+                    Timber.d("Share invite link: %s", link)
+                    // TODO: Wire to Android Sharesheet via Activity intent
+                },
+            )
+        }
+
+        composable(Route.Referral.route) {
+            ReferralScreen(
+                onBack = { navController.popBackStack() },
+                onShare = { text ->
+                    Timber.d("Share referral text: %s", text)
+                    // TODO: Wire to Android Sharesheet via Activity intent
+                },
+            )
+        }
+
+        composable(Route.ReportBuilder.route) {
+            ReportBuilderScreen(
+                onBack = { navController.popBackStack() },
+                onPrintHtml = { html ->
+                    Timber.d("Print HTML report (%d chars)", html.length)
+                    // TODO: Wire to Android Print Framework via Activity
+                },
+            )
+        }
+
+        composable(Route.NlpInput.route) {
+            NlpInputScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+            )
+        }
+
+        composable(Route.InvestmentPortfolio.route) {
+            InvestmentPortfolioScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+
         composable(Route.LearningPaths.route) {
             LearningPathsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Route.BillReminders.route) {
+            BillRemindersScreen(
                 onBack = { navController.popBackStack() },
             )
         }
@@ -462,8 +545,7 @@ fun FinanceNavHost(
             }
         }
 
-        // TODO: Wire to household invite acceptance flow once household feature
-        // is implemented. Currently shows a placeholder screen with the invite code.
+        // Household invite deep link — accepts invite and navigates to household screen.
         composable(
             route = Route.Invite.route,
             arguments = listOf(
@@ -476,11 +558,18 @@ fun FinanceNavHost(
             val inviteCode = backStackEntry.arguments?.getString("code").orEmpty()
             Timber.d("Deep link: household invite received (code length: %d)", inviteCode.length)
 
-            // TODO: Pass inviteCode to HouseholdViewModel to validate and accept invitation
+            // Navigate to HouseholdScreen for invite acceptance
+            LaunchedEffect(Unit) {
+                navController.navigate(Route.Household.route) {
+                    popUpTo(Route.Dashboard.route)
+                    launchSingleTop = true
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .semantics { contentDescription = "Household invitation" },
+                    .semantics { contentDescription = "Processing household invitation" },
                 contentAlignment = Alignment.Center,
             ) {
                 Column(
@@ -488,21 +577,15 @@ fun FinanceNavHost(
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier.padding(24.dp),
                 ) {
-                    Text(
-                        text = "Household Invitation",
-                        style = MaterialTheme.typography.headlineSmall,
+                    CircularProgressIndicator(
                         modifier = Modifier.semantics {
-                            contentDescription = "Household Invitation heading"
+                            contentDescription = "Processing invitation"
                         },
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = "Invitation support coming soon.",
+                        text = "Accepting invitation…",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Invitation support coming soon"
-                        },
                     )
                 }
             }

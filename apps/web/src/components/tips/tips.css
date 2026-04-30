@@ -1,0 +1,181 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for contextual financial tips.
+ *
+ * Uses design token CSS custom properties for all visual values.
+ * Supports light/dark themes and reduced motion preferences.
+ */
+
+.contextual-tips {
+  margin-bottom: var(--spacing-6);
+}
+
+.contextual-tips__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+/* Individual tip card */
+.contextual-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--semantic-border-default);
+  background: var(--semantic-background-elevated);
+  transition: opacity 0.2s ease-out;
+}
+
+/* Severity variants */
+.contextual-tip--info {
+  border-left: 3px solid var(--semantic-status-info);
+}
+
+.contextual-tip--warning {
+  border-left: 3px solid var(--semantic-status-warning);
+}
+
+.contextual-tip--success {
+  border-left: 3px solid var(--semantic-status-positive);
+}
+
+.contextual-tip--critical {
+  border-left: 3px solid var(--semantic-status-negative);
+  background: color-mix(
+    in srgb,
+    var(--semantic-status-negative) 5%,
+    var(--semantic-background-elevated)
+  );
+}
+
+/* Icon */
+.contextual-tip__icon {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+/* Content area */
+.contextual-tip__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.contextual-tip__title {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-1) 0;
+  line-height: var(--line-height-tight);
+}
+
+.contextual-tip__description {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0;
+  line-height: var(--line-height-normal);
+}
+
+/* Action button */
+.contextual-tip__action {
+  display: inline-block;
+  margin-top: var(--spacing-2);
+  padding: var(--spacing-1) var(--spacing-3);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-interactive-default);
+  background: none;
+  border: 1px solid var(--semantic-interactive-default);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.contextual-tip__action:hover {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+}
+
+.contextual-tip__action:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* Dismiss button */
+.contextual-tip__dismiss {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--semantic-text-secondary);
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.contextual-tip__dismiss:hover {
+  color: var(--semantic-text-primary);
+  background: var(--semantic-background-secondary);
+}
+
+.contextual-tip__dismiss:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .contextual-tip,
+  .contextual-tip__action,
+  .contextual-tip__dismiss {
+    transition: none;
+  }
+}
+
+/* High contrast */
+@media (prefers-contrast: more) {
+  .contextual-tip {
+    border-width: 2px;
+  }
+
+  .contextual-tip--info {
+    border-left-width: 4px;
+  }
+
+  .contextual-tip--warning {
+    border-left-width: 4px;
+  }
+
+  .contextual-tip--success {
+    border-left-width: 4px;
+  }
+
+  .contextual-tip--critical {
+    border-left-width: 4px;
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+  .contextual-tip {
+    padding: var(--spacing-3);
+    gap: var(--spacing-2);
+  }
+
+  .contextual-tip__icon {
+    font-size: 1rem;
+  }
+}

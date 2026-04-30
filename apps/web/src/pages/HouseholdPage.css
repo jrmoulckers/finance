@@ -1,0 +1,442 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the Household/Family Plan page.
+ *
+ * Uses design tokens for consistent theming. Provides layout for
+ * household creation, member management, invitations, and budget
+ * visibility toggles.
+ *
+ * References: issue #339
+ */
+
+/* ---------------------------------------------------------------------------
+ * Page layout
+ * ------------------------------------------------------------------------- */
+
+.household-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--spacing-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.household-page__loading {
+  text-align: center;
+  color: var(--semantic-text-secondary);
+  padding: var(--spacing-8) 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Header
+ * ------------------------------------------------------------------------- */
+
+.household-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.household-header__title {
+  font-size: var(--type-scale-heading-font-size);
+  font-weight: var(--type-scale-heading-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.household-header__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-3);
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  border-radius: var(--border-radius-full, 9999px);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ---------------------------------------------------------------------------
+ * Card sections
+ * ------------------------------------------------------------------------- */
+
+.household-card {
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-lg, var(--border-radius-md));
+  padding: var(--spacing-5);
+}
+
+.household-card__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin-bottom: var(--spacing-3);
+}
+
+.household-card__description {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+  margin-bottom: var(--spacing-4);
+  line-height: var(--line-height-relaxed, 1.5);
+}
+
+.household-card__empty {
+  color: var(--semantic-text-secondary);
+  font-style: italic;
+}
+
+/* ---------------------------------------------------------------------------
+ * Form elements
+ * ------------------------------------------------------------------------- */
+
+.household-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  margin-bottom: var(--spacing-4);
+}
+
+.household-form-group__label {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+.household-form-group__label--required::after {
+  content: ' *';
+  color: var(--semantic-status-negative);
+}
+
+.household-form-input,
+.household-form-select {
+  width: 100%;
+  padding: var(--input-padding-y, 0.5rem) var(--input-padding-x, 0.75rem);
+  border: 1px solid var(--input-border, var(--semantic-border-default));
+  border-radius: var(--input-border-radius, var(--border-radius-md));
+  background: var(--input-background, var(--semantic-background-primary));
+  color: var(--input-text, var(--semantic-text-primary));
+  font-size: var(--type-scale-body-font-size);
+  font-family: inherit;
+  line-height: var(--line-height-normal);
+}
+
+.household-form-input:focus,
+.household-form-select:focus {
+  outline: none;
+  border-color: var(--input-border-focus, var(--semantic-border-focus));
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.household-form-select--small {
+  width: auto;
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.household-invite-form {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------------------------------------------------------------------
+ * Buttons
+ * ------------------------------------------------------------------------- */
+
+.household-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-5);
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-md);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  min-height: 40px;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.household-button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.household-button--primary {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  border-color: var(--semantic-interactive-default);
+}
+
+.household-button--primary:hover:not(:disabled) {
+  background: var(--semantic-interactive-hover);
+}
+
+.household-button--secondary {
+  background: transparent;
+  color: var(--semantic-text-primary);
+  border-color: var(--semantic-border-default);
+}
+
+.household-button--secondary:hover:not(:disabled) {
+  background: var(--semantic-background-secondary);
+}
+
+.household-button--danger {
+  background: var(--semantic-status-negative);
+  color: var(--color-neutral-50, #ffffff);
+  border-color: var(--semantic-status-negative);
+}
+
+.household-button--danger:hover:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+.household-button--small {
+  padding: var(--spacing-1) var(--spacing-3);
+  font-size: var(--type-scale-caption-font-size);
+  min-height: 32px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Member list
+ * ------------------------------------------------------------------------- */
+
+.household-member-list,
+.household-invitation-list,
+.household-budget-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.household-member-item,
+.household-invitation-item,
+.household-budget-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-3);
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-md);
+  gap: var(--spacing-3);
+}
+
+.household-member-item__info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.household-member-item__avatar {
+  font-size: 1.5rem;
+}
+
+.household-member-item__name {
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+  display: block;
+}
+
+.household-member-item__role {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.household-member-item__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+/* ---------------------------------------------------------------------------
+ * Invitation list
+ * ------------------------------------------------------------------------- */
+
+.household-invitation-item__info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex: 1;
+}
+
+.household-invitation-item__email {
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+.household-invitation-item__role {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.household-invitation-item__status {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-status-warning);
+  text-transform: capitalize;
+}
+
+/* ---------------------------------------------------------------------------
+ * Budget visibility toggle
+ * ------------------------------------------------------------------------- */
+
+.household-budget-item__name {
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+.household-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-1);
+  border-radius: var(--border-radius-md);
+  font-family: inherit;
+}
+
+.household-toggle:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.household-toggle__track {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--semantic-border-default);
+  border-radius: var(--border-radius-full, 9999px);
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.household-toggle--active .household-toggle__track {
+  background: var(--semantic-interactive-default);
+}
+
+.household-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--color-neutral-50, #ffffff);
+  border-radius: var(--border-radius-full, 9999px);
+  transition: transform var(--duration-fast, 100ms) ease;
+}
+
+.household-toggle--active .household-toggle__thumb {
+  transform: translateX(20px);
+}
+
+.household-toggle__label {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  min-width: 60px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Banners
+ * ------------------------------------------------------------------------- */
+
+.household-banner--error {
+  padding: var(--spacing-3);
+  background: var(--color-red-50, #fef2f2);
+  border: 1px solid var(--semantic-status-negative);
+  border-radius: var(--border-radius-md);
+  color: var(--semantic-status-negative);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-3);
+}
+
+.household-banner--success {
+  padding: var(--spacing-3);
+  background: var(--color-green-50, #f0fdf4);
+  border: 1px solid var(--semantic-status-positive);
+  border-radius: var(--border-radius-md);
+  color: var(--semantic-status-positive);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-3);
+}
+
+/* ---------------------------------------------------------------------------
+ * Responsive
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .household-page {
+    padding: var(--spacing-4);
+  }
+
+  .household-member-item,
+  .household-invitation-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .household-member-item__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .household-banner--error {
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  html:not([data-theme='light']) .household-banner--success {
+    background: rgba(34, 197, 94, 0.1);
+  }
+}
+
+[data-theme='dark'] .household-banner--error {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+[data-theme='dark'] .household-banner--success {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .household-toggle__track,
+  .household-toggle__thumb,
+  .household-button {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .household-card {
+    border-width: 2px;
+  }
+
+  .household-form-input,
+  .household-form-select {
+    border-width: 2px;
+  }
+
+  .household-button {
+    border-width: 2px;
+  }
+}

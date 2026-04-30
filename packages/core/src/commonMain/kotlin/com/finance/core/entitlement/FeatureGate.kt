@@ -251,7 +251,7 @@ object FeatureGate {
         }
     }
 
-    internal fun tierDisplayName(tier: Tier): String = when (tier) {
+    fun tierDisplayName(tier: Tier): String = when (tier) {
         Tier.FREE -> "Free"
         Tier.PLUS -> "Plus"
         Tier.PREMIUM -> "Premium"

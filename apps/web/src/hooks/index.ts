@@ -52,3 +52,7 @@ export type {
   AlertLevel,
   CreateWatchlistInput,
 } from './useSpendingWatchlists';
+export { useFinancialTips } from './useFinancialTips';
+export type { UseFinancialTipsResult } from './useFinancialTips';
+export { useMultiCurrency } from './useMultiCurrency';
+export type { UseMultiCurrencyResult, ExchangeRate, CurrencyTotal } from './useMultiCurrency';

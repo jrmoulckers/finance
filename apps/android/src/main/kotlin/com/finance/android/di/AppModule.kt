@@ -8,6 +8,12 @@ import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.GoalRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.android.data.repository.impl.InMemoryAccountRepository
+import com.finance.android.ui.screens.bills.BillRemindersViewModel
+import com.finance.android.ui.screens.household.HouseholdViewModel
+import com.finance.android.ui.screens.investment.InvestmentViewModel
+import com.finance.android.ui.screens.nlp.NlpInputViewModel
+import com.finance.android.ui.screens.referral.ReferralViewModel
+import com.finance.android.ui.screens.report.ReportBuilderViewModel
 import com.finance.android.data.repository.impl.InMemoryBudgetRepository
 import com.finance.android.data.repository.impl.InMemoryCategoryRepository
 import com.finance.android.data.repository.impl.InMemoryGoalRepository
@@ -31,6 +37,7 @@ import com.finance.android.ui.streak.StreakViewModel
 import com.finance.android.ui.streak.TransactionBackedStreakRepository
 import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.android.ui.tips.TipsViewModel
+import com.finance.android.ui.insights.InsightsViewModel
 import com.finance.android.ui.viewmodel.AccountCreateViewModel
 import com.finance.android.ui.viewmodel.AccountEditViewModel
 import com.finance.android.ui.viewmodel.AnalyticsViewModel
@@ -152,4 +159,27 @@ val appModule = module {
 
     // ── Tips ─────────────────────────────────────────────────────────
     viewModelOf(::TipsViewModel)
+
+    // ── Insights ─────────────────────────────────────────────────────
+    viewModelOf(::InsightsViewModel)
+
+    // ── Wave 5 ViewModels (Sprints 18-23) ───────────────────────────
+
+    /** Household/Family Plan management (#1114). */
+    viewModelOf(::HouseholdViewModel)
+
+    /** Referral Program (#1116). */
+    viewModelOf(::ReferralViewModel)
+
+    /** Custom Report Builder (#1117). */
+    viewModelOf(::ReportBuilderViewModel)
+
+    /** Natural Language Transaction Input (#1118). */
+    viewModelOf(::NlpInputViewModel)
+
+    /** Investment Portfolio View (#1119). */
+    viewModelOf(::InvestmentViewModel)
+
+    /** Bill Reminders (#1125). */
+    viewModelOf(::BillRemindersViewModel)
 }

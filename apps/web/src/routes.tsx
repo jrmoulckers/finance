@@ -21,7 +21,9 @@ const Goals = lazy(() => import('./pages/GoalsPage'));
 const GoalDetail = lazy(() => import('./pages/GoalDetailPage'));
 const Import = lazy(() => import('./pages/ImportPage'));
 const Insights = lazy(() => import('./pages/InsightsPage'));
+const Achievements = lazy(() => import('./pages/AchievementsPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
+const Referral = lazy(() => import('./pages/ReferralPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
@@ -204,6 +206,16 @@ export const AppRoutes: FC = () => (
       }
     />
     <Route
+      path="/achievements"
+      element={
+        <AuthenticatedRoute>
+          <Suspense fallback={<PageLoader />}>
+            <Achievements />
+          </Suspense>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
       path="/settings"
       element={
         <AuthenticatedRoute>
@@ -219,6 +231,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <Suspense fallback={<PageLoader />}>
             <Watchlists />
+          </Suspense>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/referral"
+      element={
+        <AuthenticatedRoute>
+          <Suspense fallback={<PageLoader />}>
+            <Referral />
           </Suspense>
         </AuthenticatedRoute>
       }

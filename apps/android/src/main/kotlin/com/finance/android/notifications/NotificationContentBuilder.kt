@@ -41,6 +41,8 @@ class NotificationContentBuilder {
             NotificationType.DAILY_SNAPSHOT -> buildDailySnapshot()
             NotificationType.WEEKLY_INSIGHT -> buildWeeklyInsight()
             NotificationType.MONTHLY_REFLECTION -> buildMonthlyReflection()
+            NotificationType.BILL_REMINDER -> buildBillReminder()
+            NotificationType.BILL_OVERDUE -> buildBillOverdue()
         }
     }
 
@@ -64,6 +66,20 @@ class NotificationContentBuilder {
         return NotificationContent(
             title = "Monthly reflection",
             body = "Your monthly financial summary is ready. Tap to review.",
+        )
+    }
+
+    private fun buildBillReminder(): NotificationContent {
+        return NotificationContent(
+            title = "Upcoming bill",
+            body = "You have a bill due soon. Tap to review.",
+        )
+    }
+
+    private fun buildBillOverdue(): NotificationContent {
+        return NotificationContent(
+            title = "Overdue bill",
+            body = "You have an overdue bill that needs attention. Tap to review.",
         )
     }
 }
