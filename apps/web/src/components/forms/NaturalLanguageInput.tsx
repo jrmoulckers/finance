@@ -1,192 +1,271 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Natural language transaction input component.
+ * Natural Language Transaction Input component.
  *
- * Provides a single text input that parses free-text like
- * "coffee at starbucks $5.50" into structured transaction data.
- * Shows a live preview of the parsed result as the user types.
- *
- * Accessibility:
- *   - Descriptive label and placeholder
- *   - aria-describedby for parse preview
- *   - Keyboard: Enter to submit, Escape to clear
- *   - role="status" for live parse feedback
+ * Text input that parses "Coffee at Starbucks $4.50" into a
+ * structured transaction, with autocomplete suggestions.
  *
  * References: issue #322
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
-import { parseNaturalLanguageTransaction, type ParsedTransaction } from '../../lib/nlParser';
-import { centsFromDollars } from '../../kmp/bridge';
-import type { CreateTransactionInput } from '../../db/repositories/transactions';
-import type { Account, Category } from '../../kmp/bridge';
+import { useCallback, useRef, useState } from 'react';
+import type { FormEvent, KeyboardEvent } from 'react';
 
-import '../../styles/nl-input.css';
+import { useNaturalLanguageInput } from '../../hooks/useNaturalLanguageInput';
+
+import './NaturalLanguageInput.css';
 
 // ---------------------------------------------------------------------------
-// Types
+// Props
 // ---------------------------------------------------------------------------
 
 export interface NaturalLanguageInputProps {
-  /** Available accounts for default assignment. */
-  accounts: Account[];
-  /** Available categories for matching category hints. */
-  categories: Category[];
-  /** Callback when a transaction is submitted. */
-  onSubmit: (input: CreateTransactionInput) => void;
-  /** Optional default account ID. */
-  defaultAccountId?: string;
-  /** Optional default household ID. */
-  householdId?: string;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function matchCategory(hint: string | null, categories: Category[]): string | null {
-  if (!hint) return null;
-  const lower = hint.toLowerCase();
-  return categories.find((c) => c.name.toLowerCase().includes(lower))?.id ?? null;
-}
-
-function getConfidenceLabel(confidence: number): string {
-  if (confidence >= 0.8) return 'High confidence';
-  if (confidence >= 0.5) return 'Medium confidence';
-  return 'Low confidence';
-}
-
-function getConfidenceClass(confidence: number): string {
-  if (confidence >= 0.8) return 'nl-input__confidence--high';
-  if (confidence >= 0.5) return 'nl-input__confidence--medium';
-  return 'nl-input__confidence--low';
+  /** Called when the user submits a valid parsed transaction. */
+  onSubmit: (parsed: {
+    payee: string;
+    amountCents: number;
+    category: string | null;
+    date: string | null;
+    type: 'EXPENSE' | 'INCOME' | 'TRANSFER';
+  }) => void;
+  /** Placeholder text for the input. */
+  placeholder?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({
-  accounts,
-  categories,
+export function NaturalLanguageInput({
   onSubmit,
-  defaultAccountId,
-  householdId = 'default',
-}) => {
-  const [input, setInput] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  placeholder = 'Type a transaction, e.g. "Coffee at Starbucks $4.50"',
+}: NaturalLanguageInputProps) {
+  const {
+    inputText,
+    setInputText,
+    parsedTransaction,
+    suggestions,
+    parsing,
+    validationErrors,
+    acceptSuggestion,
+    clearInput,
+    isValid,
+  } = useNaturalLanguageInput();
 
-  const parsed: ParsedTransaction | null = useMemo(() => {
-    if (!input.trim()) return null;
-    return parseNaturalLanguageTransaction(input);
-  }, [input]);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedSuggestion, setSelectedSuggestion] = useState(-1);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const accountId = defaultAccountId ?? accounts[0]?.id ?? '';
-  const matchedCategoryId = parsed ? matchCategory(parsed.categoryHint, categories) : null;
-  const matchedCategoryName = matchedCategoryId
-    ? categories.find((c) => c.id === matchedCategoryId)?.name
-    : null;
+  const formatCents = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    (e: FormEvent) => {
       e.preventDefault();
-      if (!parsed || parsed.amount === null || !accountId) return;
 
-      const txInput: CreateTransactionInput = {
-        householdId,
-        accountId,
-        categoryId: matchedCategoryId,
-        type: parsed.type,
-        amount: centsFromDollars(parsed.amount),
-        payee: parsed.payee || null,
-        date: parsed.date,
-      };
+      if (!isValid || !parsedTransaction?.payee || !parsedTransaction.amountCents) {
+        return;
+      }
 
-      onSubmit(txInput);
-      setInput('');
-      setSubmitted(true);
-      setTimeout(() => setSubmitted(false), 3000);
+      onSubmit({
+        payee: parsedTransaction.payee,
+        amountCents: parsedTransaction.amountCents,
+        category: parsedTransaction.category,
+        date: parsedTransaction.date,
+        type: parsedTransaction.type,
+      });
+
+      clearInput();
+      setShowSuggestions(false);
     },
-    [parsed, accountId, householdId, matchedCategoryId, onSubmit],
+    [isValid, parsedTransaction, onSubmit, clearInput],
   );
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setInput('');
-    }
-  }, []);
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!showSuggestions || suggestions.length === 0) return;
 
-  const canSubmit = parsed !== null && parsed.amount !== null && accountId !== '';
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedSuggestion((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSuggestion((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+      } else if (e.key === 'Enter' && selectedSuggestion >= 0) {
+        e.preventDefault();
+        acceptSuggestion(suggestions[selectedSuggestion]!);
+        setShowSuggestions(false);
+        setSelectedSuggestion(-1);
+      } else if (e.key === 'Escape') {
+        setShowSuggestions(false);
+        setSelectedSuggestion(-1);
+      }
+    },
+    [showSuggestions, suggestions, selectedSuggestion, acceptSuggestion],
+  );
+
+  const handleInputChange = useCallback(
+    (value: string) => {
+      setInputText(value);
+      setShowSuggestions(true);
+      setSelectedSuggestion(-1);
+    },
+    [setInputText],
+  );
+
+  const confidenceLevel =
+    parsedTransaction?.confidence != null
+      ? parsedTransaction.confidence >= 0.7
+        ? 'high'
+        : parsedTransaction.confidence >= 0.4
+          ? 'medium'
+          : 'low'
+      : null;
 
   return (
-    <form className="nl-input" onSubmit={handleSubmit}>
-      <div className="nl-input__field">
-        <label htmlFor="nl-transaction-input" className="nl-input__label">
-          Quick add transaction
-        </label>
-        <input
-          id="nl-transaction-input"
-          type="text"
-          className="nl-input__text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder='e.g. "coffee at starbucks $5.50"'
-          autoComplete="off"
-          aria-describedby="nl-parse-preview"
-        />
-      </div>
-
-      {/* Live parse preview */}
-      {parsed && (
-        <div id="nl-parse-preview" className="nl-input__preview" role="status" aria-live="polite">
-          <div className="nl-input__preview-row">
-            {parsed.amount !== null && (
-              <span className="nl-input__preview-tag nl-input__preview-tag--amount">
-                ${parsed.amount.toFixed(2)}
-              </span>
-            )}
-            {parsed.payee && (
-              <span className="nl-input__preview-tag nl-input__preview-tag--payee">
-                {parsed.payee}
-              </span>
-            )}
-            <span className="nl-input__preview-tag nl-input__preview-tag--type">{parsed.type}</span>
-            <span className="nl-input__preview-tag nl-input__preview-tag--date">{parsed.date}</span>
-            {matchedCategoryName && (
-              <span className="nl-input__preview-tag nl-input__preview-tag--category">
-                {matchedCategoryName}
-              </span>
+    <div className="nl-input-wrapper">
+      <form onSubmit={handleSubmit} noValidate className="nl-input-form">
+        <div className="nl-input-container">
+          <label htmlFor="nl-transaction-input" className="nl-input-label">
+            Quick Add Transaction
+          </label>
+          <div className="nl-input-field-wrapper">
+            <input
+              ref={inputRef}
+              id="nl-transaction-input"
+              className="nl-input-field"
+              type="text"
+              value={inputText}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              placeholder={placeholder}
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={showSuggestions && suggestions.length > 0}
+              aria-controls="nl-suggestions-list"
+              aria-activedescendant={
+                selectedSuggestion >= 0 ? `nl-suggestion-${selectedSuggestion}` : undefined
+              }
+              aria-label="Natural language transaction input"
+            />
+            {inputText && (
+              <button
+                type="button"
+                className="nl-input-clear"
+                onClick={() => {
+                  clearInput();
+                  inputRef.current?.focus();
+                }}
+                aria-label="Clear input"
+              >
+                ×
+              </button>
             )}
           </div>
-          <div className="nl-input__preview-meta">
-            <span
-              className={`nl-input__confidence ${getConfidenceClass(parsed.confidence)}`}
-              aria-label={`Parse confidence: ${getConfidenceLabel(parsed.confidence)}`}
+
+          {/* Suggestions dropdown */}
+          {showSuggestions && suggestions.length > 0 && (
+            <ul
+              id="nl-suggestions-list"
+              className="nl-suggestions"
+              role="listbox"
+              aria-label="Transaction suggestions"
             >
-              {getConfidenceLabel(parsed.confidence)}
+              {suggestions.map((suggestion, index) => (
+                <li
+                  key={suggestion.id}
+                  id={`nl-suggestion-${index}`}
+                  className={`nl-suggestion-item ${
+                    index === selectedSuggestion ? 'nl-suggestion-item--selected' : ''
+                  }`}
+                  role="option"
+                  aria-selected={index === selectedSuggestion}
+                  onMouseDown={() => {
+                    acceptSuggestion(suggestion);
+                    setShowSuggestions(false);
+                  }}
+                >
+                  {suggestion.text}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          className="nl-input-submit"
+          disabled={!isValid || parsing}
+          aria-label="Add transaction"
+        >
+          {parsing ? '…' : 'Add'}
+        </button>
+      </form>
+
+      {/* Parsed preview */}
+      {parsedTransaction && inputText.trim() && (
+        <div
+          className="nl-parsed-preview"
+          aria-live="polite"
+          aria-label="Parsed transaction preview"
+        >
+          <div className="nl-parsed-preview__fields">
+            {parsedTransaction.payee && (
+              <span className="nl-parsed-tag nl-parsed-tag--payee">
+                📍 {parsedTransaction.payee}
+              </span>
+            )}
+            {parsedTransaction.amountCents != null && (
+              <span className="nl-parsed-tag nl-parsed-tag--amount">
+                💰 {formatCents(parsedTransaction.amountCents)}
+              </span>
+            )}
+            {parsedTransaction.category && (
+              <span className="nl-parsed-tag nl-parsed-tag--category">
+                🏷️ {parsedTransaction.category}
+              </span>
+            )}
+            {parsedTransaction.date && (
+              <span className="nl-parsed-tag nl-parsed-tag--date">📅 {parsedTransaction.date}</span>
+            )}
+            <span className="nl-parsed-tag nl-parsed-tag--type">
+              {parsedTransaction.type === 'INCOME'
+                ? '📈'
+                : parsedTransaction.type === 'TRANSFER'
+                  ? '🔄'
+                  : '📉'}{' '}
+              {parsedTransaction.type}
             </span>
           </div>
+
+          {confidenceLevel && (
+            <div
+              className={`nl-confidence nl-confidence--${confidenceLevel}`}
+              aria-label={`Parse confidence: ${confidenceLevel}`}
+            >
+              <span
+                className="nl-confidence__bar"
+                style={{ width: `${(parsedTransaction.confidence ?? 0) * 100}%` }}
+              />
+              <span className="nl-confidence__text">
+                {Math.round((parsedTransaction.confidence ?? 0) * 100)}% match
+              </span>
+            </div>
+          )}
+
+          {validationErrors.length > 0 && (
+            <ul className="nl-validation-errors" role="alert" aria-label="Validation errors">
+              {validationErrors.map((err, i) => (
+                <li key={i} className="nl-validation-error">
+                  {err}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
-
-      <button
-        type="submit"
-        className="nl-input__submit"
-        disabled={!canSubmit}
-        aria-label="Add transaction from natural language input"
-      >
-        Add
-      </button>
-
-      {submitted && (
-        <div className="nl-input__success" role="status" aria-live="polite">
-          Transaction added!
-        </div>
-      )}
-    </form>
+    </div>
   );
-};
-
-export default NaturalLanguageInput;
+}

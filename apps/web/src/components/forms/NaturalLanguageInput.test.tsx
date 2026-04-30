@@ -1,168 +1,161 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { useNaturalLanguageInput } from '../../hooks/useNaturalLanguageInput';
+import type { UseNaturalLanguageInputResult } from '../../hooks/useNaturalLanguageInput';
 import { NaturalLanguageInput } from './NaturalLanguageInput';
-import type { NaturalLanguageInputProps } from './NaturalLanguageInput';
 
-const syncMetadata = {
-  createdAt: '2025-01-01T00:00:00Z',
-  updatedAt: '2025-01-01T00:00:00Z',
-  deletedAt: null,
-  syncVersion: 1,
-  isSynced: true,
-};
+vi.mock('../../hooks/useNaturalLanguageInput', () => ({
+  useNaturalLanguageInput: vi.fn(),
+}));
 
-const defaultAccounts = [
-  {
-    id: 'acc-1',
-    householdId: 'h1',
-    name: 'Checking',
-    type: 'CHECKING' as const,
-    currency: { code: 'USD', decimalPlaces: 2 },
-    currentBalance: { amount: 100000 },
-    isArchived: false,
-    sortOrder: 1,
-    icon: null,
-    color: null,
-    ...syncMetadata,
-  },
-];
+const mockedHook = vi.mocked(useNaturalLanguageInput);
 
-const defaultCategories = [
-  {
-    id: 'cat-food',
-    householdId: 'h1',
-    name: 'Food',
-    icon: null,
-    color: null,
-    parentId: null,
-    isIncome: false,
-    isSystem: false,
-    sortOrder: 1,
-    ...syncMetadata,
-  },
-];
-
-function renderInput(overrides: Partial<NaturalLanguageInputProps> = {}) {
-  const defaultProps: NaturalLanguageInputProps = {
-    accounts: defaultAccounts,
-    categories: defaultCategories,
-    onSubmit: vi.fn(),
-    defaultAccountId: 'acc-1',
-    householdId: 'h1',
+function mockResult(
+  overrides: Partial<UseNaturalLanguageInputResult> = {},
+): UseNaturalLanguageInputResult {
+  return {
+    inputText: '',
+    setInputText: vi.fn(),
+    parsedTransaction: null,
+    suggestions: [],
+    parsing: false,
+    validationErrors: [],
+    acceptSuggestion: vi.fn(),
+    clearInput: vi.fn(),
+    isValid: false,
     ...overrides,
   };
-
-  return render(<NaturalLanguageInput {...defaultProps} />);
 }
 
 describe('NaturalLanguageInput', () => {
-  it('renders the input field with label', () => {
-    renderInput();
-    expect(screen.getByLabelText('Quick add transaction')).toBeInTheDocument();
+  const onSubmit = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('renders the placeholder text', () => {
-    renderInput();
-    expect(screen.getByPlaceholderText(/coffee at starbucks/i)).toBeInTheDocument();
+  it('renders the input field', () => {
+    mockedHook.mockReturnValue(mockResult());
+
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
+
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByLabelText(/quick add transaction/i)).toBeInTheDocument();
   });
 
-  it('shows parse preview when input has content', () => {
-    renderInput();
-    fireEvent.change(screen.getByLabelText('Quick add transaction'), {
-      target: { value: 'coffee $5.50' },
-    });
-    expect(screen.getByText('$5.50')).toBeInTheDocument();
-    expect(screen.getByText('EXPENSE')).toBeInTheDocument();
+  it('shows parsed transaction preview when data is available', () => {
+    mockedHook.mockReturnValue(
+      mockResult({
+        inputText: 'Coffee at Starbucks $4.50',
+        parsedTransaction: {
+          payee: 'Starbucks',
+          amountCents: 450,
+          category: 'Dining',
+          date: null,
+          type: 'EXPENSE',
+          note: null,
+          confidence: 0.8,
+        },
+        isValid: true,
+      }),
+    );
+
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
+
+    expect(screen.getByText(/starbucks/i)).toBeInTheDocument();
+    expect(screen.getByText(/\$4\.50/)).toBeInTheDocument();
+    expect(screen.getByText(/dining/i)).toBeInTheDocument();
   });
 
-  it('shows matched category in preview', () => {
-    renderInput();
-    fireEvent.change(screen.getByLabelText('Quick add transaction'), {
-      target: { value: 'coffee at cafe $5.50' },
-    });
-    expect(screen.getByText('Food')).toBeInTheDocument();
+  it('shows suggestions when available', () => {
+    mockedHook.mockReturnValue(
+      mockResult({
+        inputText: 'coffee',
+        suggestions: [
+          {
+            id: 'suggestion-0',
+            text: 'Coffee at Starbucks $4.50',
+            parsedTransaction: {
+              payee: 'Starbucks',
+              amountCents: 450,
+              category: 'Dining',
+              date: null,
+              type: 'EXPENSE',
+              note: null,
+              confidence: 0.8,
+            },
+          },
+        ],
+      }),
+    );
+
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
+
+    // The combobox should indicate it has expanded suggestions
+    const input = screen.getByRole('combobox');
+    expect(input).toHaveAttribute('aria-controls', 'nl-suggestions-list');
   });
 
-  it('shows confidence level', () => {
-    renderInput();
-    fireEvent.change(screen.getByLabelText('Quick add transaction'), {
-      target: { value: 'coffee at starbucks $5.50 today' },
-    });
-    const confidenceEl = screen.getByText(/confidence/i);
-    expect(confidenceEl).toBeInTheDocument();
+  it('shows validation errors', () => {
+    mockedHook.mockReturnValue(
+      mockResult({
+        inputText: 'something',
+        parsedTransaction: {
+          payee: null,
+          amountCents: null,
+          category: null,
+          date: null,
+          type: 'EXPENSE',
+          note: null,
+          confidence: 0.1,
+        },
+        validationErrors: ['Amount is required.', 'Payee could not be detected.'],
+      }),
+    );
+
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
+
+    expect(screen.getByText('Amount is required.')).toBeInTheDocument();
+    expect(screen.getByText('Payee could not be detected.')).toBeInTheDocument();
   });
 
-  it('disables submit button when no amount parsed', () => {
-    renderInput();
-    fireEvent.change(screen.getByLabelText('Quick add transaction'), {
-      target: { value: 'just some text' },
-    });
+  it('disables submit button when not valid', () => {
+    mockedHook.mockReturnValue(mockResult({ isValid: false }));
+
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
+
     expect(screen.getByRole('button', { name: /add transaction/i })).toBeDisabled();
   });
 
-  it('enables submit button when amount is parsed', () => {
-    renderInput();
-    fireEvent.change(screen.getByLabelText('Quick add transaction'), {
-      target: { value: 'coffee $5.50' },
-    });
-    expect(screen.getByRole('button', { name: /add transaction/i })).not.toBeDisabled();
+  it('shows clear button when input has text', () => {
+    mockedHook.mockReturnValue(mockResult({ inputText: 'test' }));
+
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
+
+    expect(screen.getByRole('button', { name: /clear input/i })).toBeInTheDocument();
   });
 
-  it('calls onSubmit with parsed data on form submit', () => {
-    const onSubmit = vi.fn();
-    renderInput({ onSubmit });
-    fireEvent.change(screen.getByLabelText('Quick add transaction'), {
-      target: { value: 'coffee $5.50' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /add transaction/i }));
-    expect(onSubmit).toHaveBeenCalledOnce();
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        householdId: 'h1',
-        accountId: 'acc-1',
-        type: 'EXPENSE',
-        amount: { amount: 550 },
+  it('shows confidence indicator', () => {
+    mockedHook.mockReturnValue(
+      mockResult({
+        inputText: 'Coffee at Starbucks $4.50',
+        parsedTransaction: {
+          payee: 'Starbucks',
+          amountCents: 450,
+          category: 'Dining',
+          date: null,
+          type: 'EXPENSE',
+          note: null,
+          confidence: 0.8,
+        },
       }),
     );
-  });
 
-  it('clears input after submit', () => {
-    const onSubmit = vi.fn();
-    renderInput({ onSubmit });
-    const input = screen.getByLabelText('Quick add transaction');
-    fireEvent.change(input, { target: { value: 'coffee $5.50' } });
-    fireEvent.click(screen.getByRole('button', { name: /add transaction/i }));
-    expect(input).toHaveValue('');
-  });
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
 
-  it('shows success message after submit', () => {
-    const onSubmit = vi.fn();
-    renderInput({ onSubmit });
-    fireEvent.change(screen.getByLabelText('Quick add transaction'), {
-      target: { value: 'coffee $5.50' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /add transaction/i }));
-    expect(screen.getByText('Transaction added!')).toBeInTheDocument();
-  });
-
-  it('clears input on Escape key', () => {
-    renderInput();
-    const input = screen.getByLabelText('Quick add transaction');
-    fireEvent.change(input, { target: { value: 'coffee $5.50' } });
-    fireEvent.keyDown(input, { key: 'Escape' });
-    expect(input).toHaveValue('');
-  });
-
-  it('has aria-describedby linking to preview', () => {
-    renderInput();
-    const input = screen.getByLabelText('Quick add transaction');
-    expect(input).toHaveAttribute('aria-describedby', 'nl-parse-preview');
-  });
-
-  it('does not show preview when input is empty', () => {
-    renderInput();
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByText('80% match')).toBeInTheDocument();
   });
 });
