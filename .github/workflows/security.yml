@@ -87,6 +87,8 @@ jobs:
         with:
           fail-on-severity: high
           deny-licenses: GPL-3.0, AGPL-3.0
+          # trufflehog is a CI-only secret scanner, not bundled with the app
+          allow-dependencies-licenses: pkg:githubactions/trufflesecurity/trufflehog
 
   secret-scanning:
     name: Secret Detection
