@@ -54,7 +54,9 @@ export type {
 } from './useSpendingWatchlists';
 export { useFinancialTips } from './useFinancialTips';
 export type { UseFinancialTipsResult } from './useFinancialTips';
-export { usePowerSyncStatus } from './usePowerSyncStatus';
-export type { UsePowerSyncStatusResult } from './usePowerSyncStatus';
-export { useConsent } from './useConsent';
-export type { UseConsentResult } from './useConsent';
+export { useNaturalLanguageInput, parseTransactionText } from './useNaturalLanguageInput';
+export type {
+  UseNaturalLanguageInputResult,
+  ParsedTransaction,
+  NLSuggestion,
+} from './useNaturalLanguageInput';

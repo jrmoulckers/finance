@@ -67,17 +67,20 @@ final class SwiftExportBridgeProvider: @unchecked Sendable {
         }
 
         #if canImport(FinanceSync)
-        // When the real XCFramework is available, use the live bridge.
-        // TODO: Replace StubSwiftExportBridge with LiveSwiftExportBridge
-        // once KMP factory functions are exported via Swift Export.
-        self.bridge = StubSwiftExportBridge()
+        // FinanceSync XCFramework is linked — use the live bridge with
+        // PersistentDataStore (SQLCipher-encrypted, Keychain-managed key).
+        self.bridge = LiveSwiftExportBridge()
         Self.logger.info(
-            "SwiftExportBridgeProvider: FinanceSync available, using stub (pending factory wiring)"
+            "SwiftExportBridgeProvider: FinanceSync available, using LiveSwiftExportBridge"
         )
         #else
-        self.bridge = StubSwiftExportBridge()
+        // XCFramework not available — use PersistentDataStore-backed live
+        // bridge for real disk persistence, or fall back to stub for tests.
+        // The LiveSwiftExportBridge works without FinanceSync because it
+        // delegates to PersistentDataStore rather than KMP factories.
+        self.bridge = LiveSwiftExportBridge()
         Self.logger.info(
-            "SwiftExportBridgeProvider: FinanceSync not available, using stub bridge"
+            "SwiftExportBridgeProvider: using LiveSwiftExportBridge (PersistentDataStore)"
         )
         #endif
     }

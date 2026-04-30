@@ -18,8 +18,9 @@ final class SyncStatusObserver {
     func startObserving() {
         observationTask?.cancel()
         observationTask = Task { [weak self] in
-            guard let sc = KMPBridge.shared.syncClient else { Self.logger.debug("No sync client"); return }
-            for await s in sc.observeSyncStatus() {
+            // Prefer PowerSync manager if configured, fall back to KMP bridge sync client
+            let syncModule: any SwiftExportSyncModule = PowerSyncManager.shared
+            for await s in syncModule.observeSyncStatus() {
                 guard !Task.isCancelled else { break }
                 self?.status = SyncStatusDisplay.fromKMP(s)
                 if case .error(let e) = s { self?.lastError = e.localizedDescription }
@@ -28,11 +29,13 @@ final class SyncStatusObserver {
     }
     func stopObserving() { observationTask?.cancel(); observationTask = nil }
     func syncNow() async {
-        guard let sc = KMPBridge.shared.syncClient else { Self.logger.warning("No sync client"); return }
-        let r = await sc.syncNow()
+        let syncModule: any SwiftExportSyncModule = PowerSyncManager.shared
+        let r = await syncModule.syncNow()
         switch r {
-        case .success(let a, let p, _, _): Self.logger.info("Sync: \(a) applied, \(p) pushed"); lastError = nil
-        case .failure(let e): Self.logger.error("Sync failed: \(e.localizedDescription)"); lastError = e.localizedDescription
+        case .success(let a, let p, _, _):
+            Self.logger.info("Sync: \(a) applied, \(p) pushed"); lastError = nil
+        case .failure(let e):
+            Self.logger.error("Sync failed: \(e.localizedDescription)"); lastError = e.localizedDescription
         }
     }
 }

@@ -18,6 +18,8 @@ data class NotificationSettingsUiState(
     val dailySnapshotEnabled: Boolean = false,
     val weeklyInsightEnabled: Boolean = false,
     val monthlyReflectionEnabled: Boolean = false,
+    val billReminderEnabled: Boolean = false,
+    val billOverdueEnabled: Boolean = false,
 )
 
 /**
@@ -40,6 +42,8 @@ class NotificationSettingsViewModel(
             dailySnapshotEnabled = preferences.dailySnapshotEnabled.value,
             weeklyInsightEnabled = preferences.weeklyInsightEnabled.value,
             monthlyReflectionEnabled = preferences.monthlyReflectionEnabled.value,
+            billReminderEnabled = preferences.billReminderEnabled.value,
+            billOverdueEnabled = preferences.billOverdueEnabled.value,
         ),
     )
     val uiState: StateFlow<NotificationSettingsUiState> = _uiState.asStateFlow()
@@ -60,6 +64,10 @@ class NotificationSettingsViewModel(
                     state.copy(weeklyInsightEnabled = enabled)
                 NotificationType.MONTHLY_REFLECTION ->
                     state.copy(monthlyReflectionEnabled = enabled)
+                NotificationType.BILL_REMINDER ->
+                    state.copy(billReminderEnabled = enabled)
+                NotificationType.BILL_OVERDUE ->
+                    state.copy(billOverdueEnabled = enabled)
             }
         }
 

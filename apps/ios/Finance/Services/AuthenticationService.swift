@@ -22,6 +22,28 @@ private enum AuthKeychainKeys { static let accessToken = "com.finance.auth.acces
             currentUser = AuthUser(id: sess.user.id, email: cred.email ?? sess.user.email, name: name); state = .authenticated
         } catch let e as AppleSignInError where e.isCancellation { state = .unauthenticated
         } catch { authError = error.localizedDescription; state = .error(error.localizedDescription) } }
+    func signInWithEmail(email: String, password: String) async {
+        state = .loading; authError = nil
+        do {
+            let sess = try await supabaseClient.signInWithEmail(email: email, password: password)
+            try storeTokens(accessToken: sess.accessToken, refreshToken: sess.refreshToken)
+            if let d = sess.user.id.data(using: .utf8) { try keychain.save(key: "com.finance.auth.userId", data: d) }
+            if let e = sess.user.email, let d = e.data(using: .utf8) { try keychain.save(key: "com.finance.auth.userEmail", data: d) }
+            currentUser = AuthUser(id: sess.user.id, email: sess.user.email ?? email, name: nil); state = .authenticated
+            Self.logger.info("Email sign-in succeeded")
+        } catch { authError = error.localizedDescription; state = .error(error.localizedDescription) }
+    }
+    func signUpWithEmail(email: String, password: String) async {
+        state = .loading; authError = nil
+        do {
+            let sess = try await supabaseClient.signUpWithEmail(email: email, password: password)
+            try storeTokens(accessToken: sess.accessToken, refreshToken: sess.refreshToken)
+            if let d = sess.user.id.data(using: .utf8) { try keychain.save(key: "com.finance.auth.userId", data: d) }
+            if let e = sess.user.email, let d = e.data(using: .utf8) { try keychain.save(key: "com.finance.auth.userEmail", data: d) }
+            currentUser = AuthUser(id: sess.user.id, email: sess.user.email ?? email, name: nil); state = .authenticated
+            Self.logger.info("Email sign-up succeeded")
+        } catch { authError = error.localizedDescription; state = .error(error.localizedDescription) }
+    }
     func signOut() async {
         if let d = keychain.load(key: AuthKeychainKeys.accessToken), let t = String(data: d, encoding: .utf8) {
             do { try await supabaseClient.signOut(accessToken: t) } catch { Self.logger.warning("Server sign-out failed: \(error.localizedDescription, privacy: .public)") } }

@@ -23,16 +23,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Widgets
@@ -85,11 +91,17 @@ enum class Screen(
     Goals("Goals", Icons.Filled.Star, Key.Five, "Ctrl+5"),
     Upgrade("Upgrade", Icons.Filled.WorkspacePremium, Key.Six, "Ctrl+6"),
     Tips("Tips", Icons.Filled.Lightbulb, Key.T, "Ctrl+T"),
+    Investments("Investments", Icons.AutoMirrored.Filled.ShowChart, Key.F1, "Ctrl+F1"),
+    Household("Household", Icons.Filled.Group, Key.H, "Ctrl+H"),
     Widgets("Widgets", Icons.Filled.Widgets, Key.Seven, "Ctrl+7"),
     HealthScore("Health Score", Icons.Filled.Favorite, Key.Eight, "Ctrl+8"),
     Reports("Reports", Icons.Filled.Assessment, Key.Nine, "Ctrl+9"),
+    QuickAdd("Quick Add", Icons.Filled.AutoAwesome, Key.Q, "Ctrl+Q"),
+    Import("Import", Icons.Filled.FileUpload, Key.I, "Ctrl+I"),
+    Referral("Referral", Icons.Filled.Share, Key.R, "Ctrl+R"),
     Negotiate("Negotiate", Icons.Filled.Groups, Key.N, "Ctrl+N"),
     Diagnostics("Diagnostics", Icons.Filled.Speed, Key.D, "Ctrl+D"),
+    Achievements("Achievements", Icons.Filled.EmojiEvents, Key.A, "Ctrl+A"),
     Settings("Settings", Icons.Filled.Settings, Key.Zero, "Ctrl+0"),
 }
 

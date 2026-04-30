@@ -6,6 +6,8 @@ import android.app.Application
 import com.finance.android.di.appModule
 import com.finance.android.di.authModule
 import com.finance.android.di.dataModule
+import com.finance.android.di.syncModule
+import com.finance.android.di.syncModule
 import com.finance.android.notifications.NotificationChannelManager
 import com.finance.android.sync.SyncWorker
 import org.koin.android.ext.koin.androidContext
@@ -28,6 +30,7 @@ class FinanceApplication : Application() {
         initDependencyInjection()
         initNotificationChannels()
         initBackgroundSync()
+        initBillReminders()
     }
 
     private fun initLogging() {
@@ -41,7 +44,7 @@ class FinanceApplication : Application() {
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.DEBUG else Level.NONE)
             androidContext(this@FinanceApplication)
-            modules(appModule, authModule, dataModule)
+            modules(appModule, authModule, dataModule, syncModule)
         }
         Timber.i("Koin DI initialized")
     }
@@ -54,5 +57,10 @@ class FinanceApplication : Application() {
     private fun initBackgroundSync() {
         SyncWorker.enqueuePeriodicSync(this)
         Timber.i("Background sync scheduled")
+    }
+
+    private fun initBillReminders() {
+        com.finance.android.ui.screens.bills.BillReminderWorker.enqueueDaily(this)
+        Timber.i("Bill reminder check scheduled")
     }
 }

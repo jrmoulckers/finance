@@ -13,7 +13,10 @@ export default [
     files: ['**/*.ts', '**/*.tsx', '**/*.mjs', '**/*.js'],
     rules: {
       'no-console': 'warn',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
     },
   },
   {

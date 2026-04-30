@@ -196,6 +196,17 @@ bucket_definitions:
         WHERE (referrer_id = bucket.user_id OR referee_id = bucket.user_id)
               AND deleted_at IS NULL
 
+      # User consent records (GDPR compliance).
+      # Synced to client so the app can display current consent state and
+      # prompt for re-consent when policy versions change.
+      # SECURITY: ip_address and user_agent are excluded — they are PII
+      # stored server-side for audit only.
+      - >
+        SELECT id, user_id, consent_type, status, policy_version,
+               created_at
+        FROM user_consents
+        WHERE user_id = bucket.user_id
+
   # ---------------------------------------------------------------------------
   # exchange_rates — global exchange rate data synced to all authenticated users.
   # A single bucket instance shared across all users. Rates are read-only

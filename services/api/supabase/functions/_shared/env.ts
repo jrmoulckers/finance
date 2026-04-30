@@ -64,6 +64,17 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   'exchange-rates': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
   'detect-bills': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
   'import-data': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'spending-forecast': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'bank-connection': [
+    { name: 'ALLOWED_ORIGINS', type: 'csv' },
+    { name: 'BANK_ENCRYPTION_KEY', type: 'string' },
+  ],
+  'bank-webhook': [
+    { name: 'PLAID_WEBHOOK_SECRET', type: 'string' },
+    { name: 'MX_WEBHOOK_SECRET', type: 'string' },
+  ],
+  'anomaly-detection': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'consent-management': [],
 };
 
 // ---------------------------------------------------------------------------

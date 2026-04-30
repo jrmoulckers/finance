@@ -26,6 +26,8 @@ struct AuthUserResponse: Codable, Sendable {
 }
 protocol SupabaseAuthClientProtocol: Sendable {
     func signInWithApple(idToken: String, nonce: String?) async throws -> AuthSession
+    func signInWithEmail(email: String, password: String) async throws -> AuthSession
+    func signUpWithEmail(email: String, password: String) async throws -> AuthSession
     func refreshToken(_ refreshToken: String) async throws -> AuthSession
     func signOut(accessToken: String) async throws
 }
@@ -37,6 +39,16 @@ actor SupabaseAuthClient: SupabaseAuthClientProtocol {
     func signInWithApple(idToken: String, nonce: String?) async throws -> AuthSession {
         let url = try buildURL(path: "/auth/v1/token", queryItems: [URLQueryItem(name: "grant_type", value: "id_token")])
         var body: [String: Any] = ["provider": "apple", "id_token": idToken]; if let nonce { body["nonce"] = nonce }
+        return try await execute(try buildRequest(url: url, method: "POST", body: body))
+    }
+    func signInWithEmail(email: String, password: String) async throws -> AuthSession {
+        let url = try buildURL(path: "/auth/v1/token", queryItems: [URLQueryItem(name: "grant_type", value: "password")])
+        let body: [String: Any] = ["email": email, "password": password]
+        return try await execute(try buildRequest(url: url, method: "POST", body: body))
+    }
+    func signUpWithEmail(email: String, password: String) async throws -> AuthSession {
+        let url = try buildURL(path: "/auth/v1/signup")
+        let body: [String: Any] = ["email": email, "password": password]
         return try await execute(try buildRequest(url: url, method: "POST", body: body))
     }
     func refreshToken(_ refreshToken: String) async throws -> AuthSession {
