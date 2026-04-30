@@ -8,6 +8,12 @@ import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.GoalRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.android.data.repository.impl.InMemoryAccountRepository
+import com.finance.android.ui.screens.bills.BillRemindersViewModel
+import com.finance.android.ui.screens.household.HouseholdViewModel
+import com.finance.android.ui.screens.investment.InvestmentViewModel
+import com.finance.android.ui.screens.nlp.NlpInputViewModel
+import com.finance.android.ui.screens.referral.ReferralViewModel
+import com.finance.android.ui.screens.report.ReportBuilderViewModel
 import com.finance.android.data.repository.impl.InMemoryBudgetRepository
 import com.finance.android.data.repository.impl.InMemoryCategoryRepository
 import com.finance.android.data.repository.impl.InMemoryGoalRepository
@@ -156,4 +162,24 @@ val appModule = module {
 
     // ── Insights ─────────────────────────────────────────────────────
     viewModelOf(::InsightsViewModel)
+
+    // ── Wave 5 ViewModels (Sprints 18-23) ───────────────────────────
+
+    /** Household/Family Plan management (#1114). */
+    viewModelOf(::HouseholdViewModel)
+
+    /** Referral Program (#1116). */
+    viewModelOf(::ReferralViewModel)
+
+    /** Custom Report Builder (#1117). */
+    viewModelOf(::ReportBuilderViewModel)
+
+    /** Natural Language Transaction Input (#1118). */
+    viewModelOf(::NlpInputViewModel)
+
+    /** Investment Portfolio View (#1119). */
+    viewModelOf(::InvestmentViewModel)
+
+    /** Bill Reminders (#1125). */
+    viewModelOf(::BillRemindersViewModel)
 }

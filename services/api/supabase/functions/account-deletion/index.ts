@@ -144,7 +144,6 @@ serve(async (req: Request): Promise<Response> => {
     // Calls the destroy_*_encryption_keys() RPCs which set key_material
     // to NULL, making all encrypted data permanently unrecoverable.
     for (const householdId of householdIds) {
-      // Check if user is the sole member
       const { data: otherMembers } = await supabase
         .from('household_members')
         .select('id')
@@ -180,7 +179,6 @@ serve(async (req: Request): Promise<Response> => {
           }
         }
 
-        // Soft-delete the household and all its data
         const tables = [
           'transactions',
           'budgets',
@@ -190,7 +188,6 @@ serve(async (req: Request): Promise<Response> => {
           'recurring_transaction_templates',
           'household_invitations',
         ];
-
         for (const table of tables) {
           await supabase
             .from(table)
@@ -198,8 +195,6 @@ serve(async (req: Request): Promise<Response> => {
             .eq('household_id', householdId)
             .is('deleted_at', null);
         }
-
-        // Soft-delete the household itself
         await supabase
           .from('households')
           .update({ deleted_at: deletionTimestamp })

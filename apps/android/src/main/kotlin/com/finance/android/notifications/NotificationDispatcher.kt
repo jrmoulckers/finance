@@ -87,11 +87,15 @@ class NotificationDispatcher(private val context: Context) {
         NotificationType.DAILY_SNAPSHOT -> NOTIFICATION_ID_DAILY
         NotificationType.WEEKLY_INSIGHT -> NOTIFICATION_ID_WEEKLY
         NotificationType.MONTHLY_REFLECTION -> NOTIFICATION_ID_MONTHLY
+        NotificationType.BILL_REMINDER -> NOTIFICATION_ID_BILL_REMINDER
+        NotificationType.BILL_OVERDUE -> NOTIFICATION_ID_BILL_OVERDUE
     }
 
     internal companion object {
         const val NOTIFICATION_ID_DAILY = 1001
         const val NOTIFICATION_ID_WEEKLY = 1002
         const val NOTIFICATION_ID_MONTHLY = 1003
+        const val NOTIFICATION_ID_BILL_REMINDER = 1004
+        const val NOTIFICATION_ID_BILL_OVERDUE = 1005
     }
 }
