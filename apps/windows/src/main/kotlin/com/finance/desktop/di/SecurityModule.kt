@@ -3,7 +3,7 @@
 package com.finance.desktop.di
 
 import com.finance.desktop.security.AutoLockManager
-import com.finance.desktop.security.CertificatePinningConfig
+import com.finance.desktop.security.CertificatePinningManager
 import com.finance.desktop.security.CredentialManager
 import com.finance.desktop.security.DpapiManager
 import com.finance.desktop.security.SecureTokenStorage
@@ -41,5 +41,5 @@ val securityModule = module {
         )
     }
     single { SessionManager(get(), get(), get()) }
-    single { CertificatePinningConfig.default() }
+    single { CertificatePinningManager.createDefault() }
 }

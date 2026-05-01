@@ -88,7 +88,7 @@ object PerformanceOptimizer {
         val totalMb = rt.totalMemory() / (1024 * 1024)
         val freeMb = rt.freeMemory() / (1024 * 1024)
         val usedMb = totalMb - freeMb
-        return MemorySnapshot(usedMb = usedMb, totalMb = totalMb, maxMb = maxMb, utilizationPercent = if (maxMb > 0) usedMb.toFloat() / maxMb * 100f else 0f)
+        return MemorySnapshot(timestampMs = System.currentTimeMillis(), usedMb = usedMb, totalMb = totalMb, maxMb = maxMb)
     }
 
     /** Returns JVM uptime in milliseconds. */
@@ -108,7 +108,7 @@ object PerformanceOptimizer {
     fun resetRecompositionCounts() { recompositionCounts.clear() }
 }
 
-data class MemorySnapshot(val usedMb: Long, val totalMb: Long, val maxMb: Long, val utilizationPercent: Float)
+// MemorySnapshot is defined in PerformanceTracker.kt -- reuse it here.
 
 /**
  * A debounce utility for window resize events to prevent excessive
