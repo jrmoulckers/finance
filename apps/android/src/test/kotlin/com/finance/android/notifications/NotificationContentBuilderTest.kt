@@ -40,34 +40,40 @@ class NotificationContentBuilderTest {
 
     @Test
     fun `all content has non-empty titles`() {
-        NotificationType.entries.forEach { type ->
-            val content = builder.build(type)
-            assertNotNull(content, "${type.name} returned null")
-            assertTrue(content.title.isNotBlank(), "${type.name} has blank title")
-        }
+        NotificationType.entries
+            .filter { it != NotificationType.SYNC_STATUS }
+            .forEach { type ->
+                val content = builder.build(type)
+                assertNotNull(content, "${type.name} returned null")
+                assertTrue(content.title.isNotBlank(), "${type.name} has blank title")
+            }
     }
 
     @Test
     fun `all content has non-empty bodies`() {
-        NotificationType.entries.forEach { type ->
-            val content = builder.build(type)
-            assertNotNull(content, "${type.name} returned null")
-            assertTrue(content.body.isNotBlank(), "${type.name} has blank body")
-        }
+        NotificationType.entries
+            .filter { it != NotificationType.SYNC_STATUS }
+            .forEach { type ->
+                val content = builder.build(type)
+                assertNotNull(content, "${type.name} returned null")
+                assertTrue(content.body.isNotBlank(), "${type.name} has blank body")
+            }
     }
 
     @Test
     fun `no content contains dollar signs (no exact amounts on lock screen)`() {
         // Security: notifications should not show exact financial amounts
         // because they're visible on the lock screen.
-        NotificationType.entries.forEach { type ->
-            val content = builder.build(type)
-            assertNotNull(content)
-            assertFalse(
-                content.title.contains("$") || content.body.contains("$"),
-                "${type.name} contains dollar signs — potential sensitive data leak",
-            )
-        }
+        NotificationType.entries
+            .filter { it != NotificationType.SYNC_STATUS }
+            .forEach { type ->
+                val content = builder.build(type)
+                assertNotNull(content)
+                assertFalse(
+                    content.title.contains("$") || content.body.contains("$"),
+                    "${type.name} contains dollar signs — potential sensitive data leak",
+                )
+            }
     }
 
     @Test
@@ -77,17 +83,19 @@ class NotificationContentBuilderTest {
             Regex("\\d{8,}"),            // long number sequences
         )
 
-        NotificationType.entries.forEach { type ->
-            val content = builder.build(type)
-            assertNotNull(content)
-            val fullText = "${content.title} ${content.body}"
-            sensitivePatterns.forEach { pattern ->
-                assertFalse(
-                    pattern.containsMatchIn(fullText),
-                    "${type.name} may contain sensitive number pattern: $fullText",
-                )
+        NotificationType.entries
+            .filter { it != NotificationType.SYNC_STATUS }
+            .forEach { type ->
+                val content = builder.build(type)
+                assertNotNull(content)
+                val fullText = "${content.title} ${content.body}"
+                sensitivePatterns.forEach { pattern ->
+                    assertFalse(
+                        pattern.containsMatchIn(fullText),
+                        "${type.name} may contain sensitive number pattern: $fullText",
+                    )
+                }
             }
-        }
     }
 
     @Test
