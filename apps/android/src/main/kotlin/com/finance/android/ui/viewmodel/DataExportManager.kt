@@ -7,6 +7,7 @@ import android.net.Uri
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.models.Transaction
+import com.finance.models.types.SyncId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -43,11 +44,13 @@ sealed class ExportResult {
  * - No export metadata is logged beyond record counts.
  *
  * @param context Application context for content resolver access.
+ * @param householdId The household whose data to export.
  * @param transactionRepository Source of transaction data.
  * @param accountRepository Source of account data for enrichment.
  */
 class DataExportManager(
     private val context: Context,
+    private val householdId: SyncId,
     private val transactionRepository: TransactionRepository,
     private val accountRepository: AccountRepository,
 ) {
@@ -64,9 +67,9 @@ class DataExportManager(
         accountId: String? = null,
     ): ExportResult = withContext(Dispatchers.IO) {
         try {
-            val transactions = transactionRepository.observeAll().first()
+            val transactions = transactionRepository.observeAll(householdId).first()
             val filtered = if (accountId != null) {
-                transactions.filter { it.accountId == accountId }
+                transactions.filter { it.accountId.value == accountId }
             } else {
                 transactions
             }
@@ -107,9 +110,9 @@ class DataExportManager(
         accountId: String? = null,
     ): ExportResult = withContext(Dispatchers.IO) {
         try {
-            val transactions = transactionRepository.observeAll().first()
+            val transactions = transactionRepository.observeAll(householdId).first()
             val filtered = if (accountId != null) {
-                transactions.filter { it.accountId == accountId }
+                transactions.filter { it.accountId.value == accountId }
             } else {
                 transactions
             }
@@ -145,10 +148,10 @@ class DataExportManager(
         return listOf(
             txn.date.toString(),
             txn.amount.amount.toString(),
-            escapeCsv(txn.payee),
-            escapeCsv(txn.categoryId ?: ""),
-            escapeCsv(txn.notes ?: ""),
-            txn.accountId,
+            escapeCsv(txn.payee ?: ""),
+            escapeCsv(txn.categoryId?.value ?: ""),
+            escapeCsv(txn.note ?: ""),
+            txn.accountId.value,
         ).joinToString(",")
     }
 

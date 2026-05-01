@@ -148,7 +148,7 @@ private fun CategoryButton(
 ) {
     Box(
         modifier = GlanceModifier
-            .defaultWeight()
+            .fillMaxWidth()
             .cornerRadius(12.dp)
             .background(GlanceTheme.colors.primaryContainer)
             .padding(vertical = 8.dp, horizontal = 4.dp)

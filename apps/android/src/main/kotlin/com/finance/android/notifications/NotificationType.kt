@@ -49,6 +49,14 @@ enum class NotificationType(
         channelName = "Bill Reminders",
     ),
 
+    /** Sync status notification — progress and completion of background sync (#1187). */
+    SYNC_STATUS(
+        displayName = "Sync status",
+        description = "Background sync progress and completion notifications",
+        channelId = "finance_sync_status",
+        channelName = "Sync Status",
+    ),
+
     /** Bill overdue notification — urgent alerts for overdue bills (#1125). */
     BILL_OVERDUE(
         displayName = "Overdue bills",

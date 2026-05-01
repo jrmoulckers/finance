@@ -5,7 +5,7 @@ package com.finance.android.sync
 import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
-import com.finance.android.notifications.NotificationChannelManager
+import com.finance.android.notifications.NotificationType
 import timber.log.Timber
 
 /**
@@ -34,7 +34,7 @@ class SyncNotificationManager(private val context: Context) {
     fun showSyncInProgress(pendingCount: Int) {
         val notification = NotificationCompat.Builder(
             context,
-            NotificationChannelManager.CHANNEL_SYNC_STATUS,
+            NotificationType.SYNC_STATUS.channelId,
         )
             .setSmallIcon(android.R.drawable.ic_popup_sync)
             .setContentTitle("Syncing")
@@ -59,7 +59,7 @@ class SyncNotificationManager(private val context: Context) {
     fun updateSyncProgress(syncedCount: Int, totalCount: Int) {
         val notification = NotificationCompat.Builder(
             context,
-            NotificationChannelManager.CHANNEL_SYNC_STATUS,
+            NotificationType.SYNC_STATUS.channelId,
         )
             .setSmallIcon(android.R.drawable.ic_popup_sync)
             .setContentTitle("Syncing")
@@ -82,7 +82,7 @@ class SyncNotificationManager(private val context: Context) {
     fun showSyncComplete(syncedCount: Int) {
         val notification = NotificationCompat.Builder(
             context,
-            NotificationChannelManager.CHANNEL_SYNC_STATUS,
+            NotificationType.SYNC_STATUS.channelId,
         )
             .setSmallIcon(android.R.drawable.ic_popup_sync)
             .setContentTitle("Sync Complete")
@@ -106,7 +106,7 @@ class SyncNotificationManager(private val context: Context) {
     fun showSyncError(message: String) {
         val notification = NotificationCompat.Builder(
             context,
-            NotificationChannelManager.CHANNEL_SYNC_STATUS,
+            NotificationType.SYNC_STATUS.channelId,
         )
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle("Sync Failed")

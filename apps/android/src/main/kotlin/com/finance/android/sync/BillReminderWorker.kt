@@ -13,7 +13,7 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.finance.android.notifications.NotificationChannelManager
+import com.finance.android.notifications.NotificationType
 import org.koin.core.component.KoinComponent
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -88,7 +88,7 @@ class BillReminderWorker(
 
         val notification = NotificationCompat.Builder(
             applicationContext,
-            NotificationChannelManager.CHANNEL_BILL_REMINDERS,
+            NotificationType.BILL_REMINDER.channelId,
         )
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Bills Due Soon")

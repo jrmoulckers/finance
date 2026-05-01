@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
+import com.finance.android.auth.HouseholdIdProvider
 import com.finance.models.Account
 import com.finance.models.Category
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,11 +83,13 @@ data class DataImportUiState(
  * @param transactionRepository Repository for creating imported transactions.
  * @param accountRepository Repository for listing target accounts.
  * @param categoryRepository Repository for category lookups.
+ * @param householdIdProvider Provider of the current household ID.
  */
 class DataImportViewModel(
     private val transactionRepository: TransactionRepository,
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
+    private val householdIdProvider: HouseholdIdProvider,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DataImportUiState())
@@ -232,7 +235,8 @@ class DataImportViewModel(
     private fun loadAccounts() {
         viewModelScope.launch {
             try {
-                accountRepository.observeAll().collect { accounts ->
+                val householdId = householdIdProvider.householdId.value ?: return@launch
+                accountRepository.observeAll(householdId).collect { accounts ->
                     _uiState.update { it.copy(accounts = accounts) }
                 }
             } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
@@ -244,7 +248,8 @@ class DataImportViewModel(
     private fun loadCategories() {
         viewModelScope.launch {
             try {
-                categoryRepository.observeAll().collect { categories ->
+                val householdId = householdIdProvider.householdId.value ?: return@launch
+                categoryRepository.observeAll(householdId).collect { categories ->
                     _uiState.update { it.copy(categories = categories) }
                 }
             } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {

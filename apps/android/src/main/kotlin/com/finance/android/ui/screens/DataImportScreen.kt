@@ -314,8 +314,8 @@ private fun AccountSelectionSection(
     Spacer(modifier = Modifier.height(8.dp))
     accounts.forEach { account ->
         FilterChip(
-            selected = account.id == selectedAccountId,
-            onClick = { onAccountSelected(account.id) },
+            selected = account.id.value == selectedAccountId,
+            onClick = { onAccountSelected(account.id.value) },
             label = { Text(account.name) },
             modifier = Modifier
                 .padding(end = 8.dp)
