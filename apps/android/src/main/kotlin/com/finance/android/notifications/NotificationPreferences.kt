@@ -57,6 +57,7 @@ class NotificationPreferences(private val prefs: SharedPreferences) {
         NotificationType.MONTHLY_REFLECTION -> _monthlyReflectionEnabled.value
         NotificationType.BILL_REMINDER -> _billReminderEnabled.value
         NotificationType.BILL_OVERDUE -> _billOverdueEnabled.value
+        NotificationType.SYNC_STATUS -> true // Sync status is always enabled when syncing
     }
 
     /**
@@ -78,6 +79,7 @@ class NotificationPreferences(private val prefs: SharedPreferences) {
             NotificationType.MONTHLY_REFLECTION -> _monthlyReflectionEnabled.value = enabled
             NotificationType.BILL_REMINDER -> _billReminderEnabled.value = enabled
             NotificationType.BILL_OVERDUE -> _billOverdueEnabled.value = enabled
+            NotificationType.SYNC_STATUS -> { /* Sync status is not user-togglable */ }
         }
 
         Timber.d("Notification preference updated: %s = %s", type.name, enabled)
@@ -89,6 +91,7 @@ class NotificationPreferences(private val prefs: SharedPreferences) {
         NotificationType.MONTHLY_REFLECTION -> KEY_MONTHLY_REFLECTION
         NotificationType.BILL_REMINDER -> KEY_BILL_REMINDER
         NotificationType.BILL_OVERDUE -> KEY_BILL_OVERDUE
+        NotificationType.SYNC_STATUS -> KEY_SYNC_STATUS
     }
 
     internal companion object {
@@ -97,5 +100,6 @@ class NotificationPreferences(private val prefs: SharedPreferences) {
         const val KEY_MONTHLY_REFLECTION = "notification_monthly_reflection"
         const val KEY_BILL_REMINDER = "notification_bill_reminder"
         const val KEY_BILL_OVERDUE = "notification_bill_overdue"
+        const val KEY_SYNC_STATUS = "notification_sync_status"
     }
 }

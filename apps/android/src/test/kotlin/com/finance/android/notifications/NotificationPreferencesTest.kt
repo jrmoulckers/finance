@@ -90,9 +90,11 @@ class NotificationPreferencesTest {
     @Test
     fun `isEnabled returns false for all types by default`() {
         val prefs = NotificationPreferences(FakeSharedPreferences())
-        NotificationType.entries.forEach { type ->
-            assertFalse(prefs.isEnabled(type), "${type.name} should be disabled by default")
-        }
+        NotificationType.entries
+            .filter { it != NotificationType.SYNC_STATUS }
+            .forEach { type ->
+                assertFalse(prefs.isEnabled(type), "${type.name} should be disabled by default")
+            }
     }
 
     @Test

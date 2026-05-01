@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+﻿// SPDX-License-Identifier: BUSL-1.1
 
 package com.finance.android
 
@@ -7,7 +7,8 @@ import com.finance.android.di.appModule
 import com.finance.android.di.authModule
 import com.finance.android.di.dataModule
 import com.finance.android.di.syncModule
-import com.finance.android.di.syncModule
+import com.finance.android.network.networkSecurityModule
+import com.finance.android.security.SecurityChecker
 import com.finance.android.notifications.NotificationChannelManager
 import com.finance.android.sync.SyncWorker
 import org.koin.android.ext.koin.androidContext
@@ -28,6 +29,7 @@ class FinanceApplication : Application() {
         super.onCreate()
         initLogging()
         initDependencyInjection()
+        initSecurityChecks()
         initNotificationChannels()
         initBackgroundSync()
         initBillReminders()
@@ -44,9 +46,18 @@ class FinanceApplication : Application() {
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.DEBUG else Level.NONE)
             androidContext(this@FinanceApplication)
-            modules(appModule, authModule, dataModule, syncModule)
+            modules(appModule, authModule, dataModule, syncModule, networkSecurityModule)
         }
         Timber.i("Koin DI initialized")
+    }
+
+    private fun initSecurityChecks() {
+        // RASP checks run at startup — non-blocking.
+        val checker = SecurityChecker(this)
+        val report = checker.performFullCheck()
+        if (!report.isSecure) {
+            Timber.w("Security: %d issue(s) detected at startup", report.events.size)
+        }
     }
 
     private fun initNotificationChannels() {

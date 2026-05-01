@@ -89,6 +89,7 @@ class NotificationScheduler(
         NotificationType.MONTHLY_REFLECTION -> 30L * 24 to TimeUnit.HOURS
         NotificationType.BILL_REMINDER -> 24L to TimeUnit.HOURS
         NotificationType.BILL_OVERDUE -> 12L to TimeUnit.HOURS
+        NotificationType.SYNC_STATUS -> 1L to TimeUnit.HOURS // Sync status checked hourly
     }
 
     internal companion object {

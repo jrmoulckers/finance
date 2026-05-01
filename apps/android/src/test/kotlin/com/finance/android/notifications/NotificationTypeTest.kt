@@ -16,8 +16,8 @@ import kotlin.test.assertTrue
 class NotificationTypeTest {
 
     @Test
-    fun `has exactly five notification types`() {
-        assertEquals(5, NotificationType.entries.size)
+    fun `has exactly six notification types`() {
+        assertEquals(6, NotificationType.entries.size)
     }
 
     @Test

@@ -1,24 +1,57 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
+<!--
+    Network security configuration for the Finance app.
+
+    Enforces certificate pinning for Supabase and PowerSync endpoints
+    with backup pins for certificate rotation. Cleartext traffic is
+    disabled globally.
+
+    Pin hashes are SHA-256 digests of the Subject Public Key Info (SPKI)
+    from the server's TLS certificate chain. Replace PLACEHOLDER values
+    with real hashes before production deployment.
+
+    Sprint 24: Certificate Pinning & Network Security
+-->
 <network-security-config>
+
+    <!-- Supabase API endpoints -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">supabase.co</domain>
-        <domain includeSubdomains="true">powersync.journeyapps.com</domain>
-        <pin-set expiration="2025-10-01">
-            <pin digest="SHA-256">PLACEHOLDER_PRIMARY_PIN=</pin>
-            <pin digest="SHA-256">PLACEHOLDER_BACKUP_PIN_1=</pin>
-            <pin digest="SHA-256">PLACEHOLDER_BACKUP_PIN_2=</pin>
+        <pin-set expiration="2026-06-01">
+            <!-- Primary: leaf certificate pin -->
+            <pin digest="SHA-256">PLACEHOLDER_SUPABASE_LEAF_PIN=</pin>
+            <!-- Backup: intermediate CA pin -->
+            <pin digest="SHA-256">PLACEHOLDER_SUPABASE_INTERMEDIATE_PIN=</pin>
+            <!-- Rotation: next certificate pin -->
+            <pin digest="SHA-256">PLACEHOLDER_SUPABASE_ROTATION_PIN=</pin>
         </pin-set>
     </domain-config>
+
+    <!-- PowerSync sync endpoints -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">powersync.journeyapps.com</domain>
+        <pin-set expiration="2026-06-01">
+            <!-- Primary: leaf certificate pin -->
+            <pin digest="SHA-256">PLACEHOLDER_POWERSYNC_LEAF_PIN=</pin>
+            <!-- Backup: intermediate CA pin -->
+            <pin digest="SHA-256">PLACEHOLDER_POWERSYNC_INTERMEDIATE_PIN=</pin>
+        </pin-set>
+    </domain-config>
+
+    <!-- Debug overrides: allow user-installed certificates for proxy tools -->
     <debug-overrides>
         <trust-anchors>
             <certificates src="user" />
             <certificates src="system" />
         </trust-anchors>
     </debug-overrides>
+
+    <!-- Global default: system CAs only, no cleartext -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+
 </network-security-config>

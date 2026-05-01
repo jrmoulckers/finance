@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+﻿// SPDX-License-Identifier: BUSL-1.1
 
 package com.finance.android.ui.navigation
 
@@ -164,6 +164,23 @@ sealed class Route(val route: String) {
 
     /** Bill Reminders screen (#1125). */
     data object BillReminders : Route("bill-reminders")
+
+    // ── Wave 6 Routes (Sprints 24-33) ───────────────────────────────
+
+    /** Data Import screen (#Sprint26). */
+    data object DataImport : Route("data-import")
+
+    /** Conflict Resolution screen (#Sprint27). */
+    data object ConflictResolution : Route("conflict-resolution")
+
+    /** Accessibility Preferences screen (#Sprint28). */
+    data object AccessibilityPreferences : Route("accessibility-preferences")
+
+    /** Theme Preferences screen (#Sprint29). */
+    data object ThemePreferences : Route("theme-preferences")
+
+    /** Platform Parity Audit screen (#Sprint33). */
+    data object PlatformParity : Route("platform-parity")
 
     /**
      * Transaction detail deep link destination.

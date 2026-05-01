@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -11,6 +11,7 @@
         android:allowBackup="false"
         android:label="@string/app_name"
         android:supportsRtl="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@android:style/Theme.Material.NoActionBar">
 
         <activity
@@ -94,6 +95,19 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/budget_summary_widget_info" />
+        </receiver>
+
+        <!-- Quick Entry Widget — one-tap expense entry with categories (Sprint 30) -->
+        <receiver
+            android:name=".widget.QuickEntryWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_quick_entry_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_entry_widget_info" />
         </receiver>
 
         <!-- Goal Progress Widget — savings goal progress (#381) -->

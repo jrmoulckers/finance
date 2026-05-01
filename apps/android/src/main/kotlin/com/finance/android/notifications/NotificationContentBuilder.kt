@@ -43,6 +43,7 @@ class NotificationContentBuilder {
             NotificationType.MONTHLY_REFLECTION -> buildMonthlyReflection()
             NotificationType.BILL_REMINDER -> buildBillReminder()
             NotificationType.BILL_OVERDUE -> buildBillOverdue()
+            NotificationType.SYNC_STATUS -> null // Sync notifications are managed by SyncNotificationManager
         }
     }
 

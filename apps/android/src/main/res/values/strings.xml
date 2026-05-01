@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Finance</string>
 
@@ -363,4 +363,58 @@
     <string name="widget_goal_progress_label">Goal Progress</string>
     <string name="widget_goal_progress_description">Shows progress toward your top savings goal.</string>
     <string name="tile_quick_transaction_label">Add Transaction</string>
+
+    <!-- Sprint 24-33: Wave 6 Features -->
+
+    <!-- Data Import/Export (Sprint 26) -->
+    <string name="import_title">Import Data</string>
+    <string name="import_select_format">Select format</string>
+    <string name="import_choose_file">Choose File</string>
+    <string name="import_map_columns">Map Columns</string>
+    <string name="import_start">Start Import</string>
+    <string name="import_complete">Import Complete</string>
+    <string name="export_title">Export Data</string>
+    <string name="export_csv">Export to CSV</string>
+    <string name="export_pdf">Export to PDF</string>
+    <string name="a11y_import_screen">Data import screen</string>
+
+    <!-- Conflict Resolution (Sprint 27) -->
+    <string name="conflicts_title">Sync Conflicts</string>
+    <string name="conflicts_keep_local">Keep Local</string>
+    <string name="conflicts_keep_remote">Keep Remote</string>
+    <string name="conflicts_merge">Merge</string>
+    <string name="conflicts_none">No sync conflicts</string>
+    <string name="conflicts_resolved">All conflicts resolved</string>
+    <string name="a11y_conflict_screen">Sync conflict resolution</string>
+
+    <!-- Cognitive Accessibility (Sprint 28) -->
+    <string name="accessibility_title">Accessibility</string>
+    <string name="accessibility_simplified_mode">Simplified Mode</string>
+    <string name="accessibility_large_targets">Large Touch Targets</string>
+    <string name="accessibility_plain_language">Plain Language</string>
+    <string name="accessibility_step_by_step">Step-by-Step Guides</string>
+    <string name="accessibility_reduced_animations">Reduced Animations</string>
+    <string name="accessibility_font_scale">Text Size</string>
+    <string name="a11y_accessibility_prefs">Accessibility preferences</string>
+
+    <!-- Theme Preferences (Sprint 29) -->
+    <string name="theme_title">Appearance</string>
+    <string name="theme_mode">Theme</string>
+    <string name="theme_material_you">Material You</string>
+    <string name="theme_accent_color">Accent Color</string>
+    <string name="theme_high_contrast">High Contrast</string>
+    <string name="theme_font_scale">Text Size</string>
+    <string name="theme_reset">Reset to Defaults</string>
+    <string name="a11y_theme_prefs">Theme preferences</string>
+
+    <!-- Quick Entry Widget (Sprint 30) -->
+    <string name="widget_quick_entry_label">Finance Quick Entry</string>
+    <string name="widget_quick_entry_description">Quick expense entry with category shortcuts</string>
+    <string name="a11y_quick_entry_widget">Finance quick entry widget</string>
+
+    <!-- Platform Parity (Sprint 33) -->
+    <string name="parity_title">Platform Parity</string>
+    <string name="parity_complete">Complete</string>
+    <string name="parity_partial">Partial</string>
+    <string name="parity_missing">Missing</string>
 </resources>

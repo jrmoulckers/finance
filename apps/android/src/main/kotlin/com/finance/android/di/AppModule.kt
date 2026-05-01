@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+﻿// SPDX-License-Identifier: BUSL-1.1
 
 package com.finance.android.di
 
@@ -35,9 +35,16 @@ import com.finance.android.ui.nlp.NlpTransactionViewModel
 import com.finance.android.ui.streak.StreakRepository
 import com.finance.android.ui.streak.StreakViewModel
 import com.finance.android.ui.streak.TransactionBackedStreakRepository
+import com.finance.android.ui.accessibility.CognitiveAccessibilityManager
+import com.finance.android.ui.theme.ThemeManager
 import com.finance.android.ui.theme.ThemePreferenceManager
 import com.finance.android.ui.tips.TipsViewModel
 import com.finance.android.ui.insights.InsightsViewModel
+import com.finance.android.ui.viewmodel.ConflictResolutionViewModel
+import com.finance.android.ui.viewmodel.DataExportManager
+import com.finance.android.ui.viewmodel.DataImportViewModel
+import com.finance.android.sync.SyncNotificationManager
+import com.finance.android.sync.SyncScheduler
 import com.finance.android.ui.viewmodel.AccountCreateViewModel
 import com.finance.android.ui.viewmodel.AccountEditViewModel
 import com.finance.android.ui.viewmodel.AnalyticsViewModel
@@ -182,4 +189,27 @@ val appModule = module {
 
     /** Bill Reminders (#1125). */
     viewModelOf(::BillRemindersViewModel)
+
+    // ── Wave 6 (Sprints 24-33) ──────────────────────────────────────
+
+    /** Cognitive accessibility manager — simplified UI preferences (#Sprint28). */
+    single { CognitiveAccessibilityManager(get()) }
+
+    /** Theme manager — custom accent colors, font scaling (#Sprint29). */
+    single { ThemeManager(get()) }
+
+    /** Data export manager — CSV/PDF export (#Sprint26). */
+    single { DataExportManager(androidContext(), get(), get(), get()) }
+
+    /** Sync scheduler — configurable sync intervals (#Sprint32). */
+    single { SyncScheduler(androidContext(), get()) }
+
+    /** Sync notification manager — sync status notifications (#Sprint32). */
+    single { SyncNotificationManager(androidContext()) }
+
+    /** Data import ViewModel (#Sprint26). */
+    viewModelOf(::DataImportViewModel)
+
+    /** Conflict resolution ViewModel (#Sprint27). */
+    viewModelOf(::ConflictResolutionViewModel)
 }

@@ -68,6 +68,8 @@ class NotificationSettingsViewModel(
                     state.copy(billReminderEnabled = enabled)
                 NotificationType.BILL_OVERDUE ->
                     state.copy(billOverdueEnabled = enabled)
+                NotificationType.SYNC_STATUS ->
+                    state // Sync status is not shown in settings UI
             }
         }
 
