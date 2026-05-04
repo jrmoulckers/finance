@@ -12,6 +12,7 @@ import com.finance.android.ui.screens.bills.BillRemindersViewModel
 import com.finance.android.ui.screens.household.HouseholdViewModel
 import com.finance.android.ui.screens.investment.InvestmentViewModel
 import com.finance.android.ui.screens.nlp.NlpInputViewModel
+import com.finance.android.ui.screens.currency.CurrencyViewModel
 import com.finance.android.ui.screens.referral.ReferralViewModel
 import com.finance.android.ui.screens.report.ReportBuilderViewModel
 import com.finance.android.data.repository.impl.InMemoryBudgetRepository
@@ -189,6 +190,9 @@ val appModule = module {
 
     /** Bill Reminders (#1125). */
     viewModelOf(::BillRemindersViewModel)
+
+    /** Multi-currency picker, conversion, and transaction currency support (#1130). */
+    viewModelOf(::CurrencyViewModel)
 
     // ── Wave 6 (Sprints 24-33) ──────────────────────────────────────
 

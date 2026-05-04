@@ -51,6 +51,8 @@ import com.finance.android.ui.screens.investment.InvestmentPortfolioScreen
 import com.finance.android.ui.screens.nlp.NlpInputScreen
 import com.finance.android.ui.screens.referral.ReferralScreen
 import com.finance.android.ui.screens.report.ReportBuilderScreen
+import com.finance.android.ui.screens.currency.CurrencyConversionScreen
+import com.finance.android.ui.screens.currency.CurrencyPickerScreen
 import timber.log.Timber
 
 /** Base URI for all deep link patterns declared in AndroidManifest.xml. */
@@ -181,6 +183,12 @@ sealed class Route(val route: String) {
 
     /** Platform Parity Audit screen (#Sprint33). */
     data object PlatformParity : Route("platform-parity")
+
+    /** Currency Picker screen (#1130). */
+    data object CurrencyPicker : Route("currency-picker")
+
+    /** Currency Conversion calculator screen (#1130). */
+    data object CurrencyConversion : Route("currency-conversion")
 
     /**
      * Transaction detail deep link destination.
@@ -422,6 +430,24 @@ fun FinanceNavHost(
 
         composable(Route.BillReminders.route) {
             BillRemindersScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // ── Multi-currency screens (#1130) ──────────────────────────
+
+        composable(Route.CurrencyPicker.route) {
+            CurrencyPickerScreen(
+                onBack = { navController.popBackStack() },
+                onCurrencySelected = { currency ->
+                    Timber.d("Currency picked: %s", currency.code)
+                    navController.popBackStack()
+                },
+            )
+        }
+
+        composable(Route.CurrencyConversion.route) {
+            CurrencyConversionScreen(
                 onBack = { navController.popBackStack() },
             )
         }
