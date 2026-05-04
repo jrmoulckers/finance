@@ -85,11 +85,25 @@ jobs:
           sudo mv k6 /usr/local/bin/k6
           k6 version
 
+      - name: Resolve target URL
+        id: target
+        run: |
+          URL="${{ github.event.inputs.target_url || secrets.STAGING_URL || '' }}"
+          if [ -z "$URL" ]; then
+            echo "url=http://localhost:3000" >> "$GITHUB_OUTPUT"
+            echo "has_real_target=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No staging URL configured — load tests will run against localhost (soft-fail mode)"
+          else
+            echo "url=$URL" >> "$GITHUB_OUTPUT"
+            echo "has_real_target=true" >> "$GITHUB_OUTPUT"
+            echo "Target URL: $URL"
+          fi
+
       - name: Create k6 test scripts
         run: |
           mkdir -p tools/load-tests
 
-          TARGET_URL="${{ github.event.inputs.target_url || secrets.STAGING_URL || 'http://localhost:3000' }}"
+          TARGET_URL="${{ steps.target.outputs.url }}"
           VUS="${{ github.event.inputs.vus || '50' }}"
           DURATION="${{ github.event.inputs.duration || '2m' }}"
           SCENARIO="${{ github.event.inputs.scenario || 'all' }}"
@@ -495,6 +509,13 @@ jobs:
 
       - name: Performance gate
         if: steps.k6.outputs.overall_status == 'fail'
+        # Soft-fail when no real staging URL is configured (localhost with no server)
+        continue-on-error: ${{ steps.target.outputs.has_real_target != 'true' }}
         run: |
-          echo "::error::Load tests failed — performance thresholds not met"
+          if [ "${{ steps.target.outputs.has_real_target }}" != "true" ]; then
+            echo "::warning::Load tests failed against localhost (no staging URL configured) — soft-failing"
+            echo "Configure the STAGING_URL secret to enforce performance gates"
+          else
+            echo "::error::Load tests failed — performance thresholds not met"
+          fi
           exit 1

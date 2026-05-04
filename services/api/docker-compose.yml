@@ -55,7 +55,7 @@ services:
         condition: service_healthy
 
   studio:
-    image: supabase/studio:2024.12.02-sha-ba9da5e
+    image: supabase/studio:latest
     ports:
       - '54323:3000'
     environment:
