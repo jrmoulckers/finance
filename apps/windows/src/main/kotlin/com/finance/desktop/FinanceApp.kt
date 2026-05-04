@@ -19,6 +19,7 @@ import com.finance.desktop.navigation.SidebarNavigation
 import com.finance.desktop.screens.AccountsScreen
 import com.finance.desktop.screens.BudgetNegotiationScreen
 import com.finance.desktop.screens.BudgetsScreen
+import com.finance.desktop.screens.CurrencyConversionScreen
 import com.finance.desktop.screens.DashboardScreen
 import com.finance.desktop.screens.DiagnosticsScreen
 import com.finance.desktop.screens.GamificationScreen
@@ -134,6 +135,7 @@ fun FinanceApp(
                             Screen.Import -> {} // placeholder
                             Screen.Referral -> {} // placeholder
                             Screen.Negotiate -> BudgetNegotiationScreen()
+                            Screen.Currency -> CurrencyConversionScreen()
                             Screen.Settings -> SettingsScreen()
                         }
                     }

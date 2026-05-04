@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FileUpload
@@ -100,6 +101,7 @@ enum class Screen(
     Import("Import", Icons.Filled.FileUpload, Key.I, "Ctrl+I"),
     Referral("Referral", Icons.Filled.Share, Key.R, "Ctrl+R"),
     Negotiate("Negotiate", Icons.Filled.Groups, Key.N, "Ctrl+N"),
+    Currency("Currency", Icons.Filled.CurrencyExchange, Key.F2, "Ctrl+F2"),
     Diagnostics("Diagnostics", Icons.Filled.Speed, Key.D, "Ctrl+D"),
     Achievements("Achievements", Icons.Filled.EmojiEvents, Key.A, "Ctrl+A"),
     Settings("Settings", Icons.Filled.Settings, Key.Zero, "Ctrl+0"),
