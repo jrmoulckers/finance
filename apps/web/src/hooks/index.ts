@@ -60,3 +60,7 @@ export type {
   ParsedTransaction,
   NLSuggestion,
 } from './useNaturalLanguageInput';
+export { useInvestments } from './useInvestments';
+export type { UseInvestmentsResult, PortfolioSummary } from './useInvestments';
+export { useBills } from './useBills';
+export type { UseBillsResult, BillsSummary } from './useBills';

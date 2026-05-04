@@ -18,3 +18,8 @@ export { NotFoundPage } from './NotFoundPage';
 export { SignupPage } from './SignupPage';
 export { WatchlistsPage } from './WatchlistsPage';
 export { DataImportWizardPage } from './DataImportWizardPage';
+export { InvestmentsPage } from './InvestmentsPage';
+export { InvestmentDetailPage } from './InvestmentDetailPage';
+export { BillsPage } from './BillsPage';
+export { BillDetailPage } from './BillDetailPage';
+export { CreateBillPage } from './CreateBillPage';

@@ -143,8 +143,8 @@ test.describe('Mobile viewport (375px)', () => {
     const bottomNav = page.locator('nav.bottom-nav');
     const navButtons = bottomNav.getByRole('button');
 
-    // Expect the 5 nav items: Dashboard, Accounts, Transactions, Budgets, Goals
-    await expect(navButtons).toHaveCount(5);
+    // Expect the 7 nav items: Dashboard, Accounts, Transactions, Budgets, Goals, Investments, Bills
+    await expect(navButtons).toHaveCount(7);
   });
 
   test('form dialog is full-screen on small mobile', async ({ authenticatedPage: page }) => {

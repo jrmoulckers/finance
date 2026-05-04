@@ -197,6 +197,57 @@ export interface HouseholdMember extends SyncMetadata {
   readonly joinedAt: Instant;
 }
 
+/** Maps to KMP `com.finance.models.InvestmentType`. */
+export type InvestmentType =
+  | 'STOCK'
+  | 'BOND'
+  | 'ETF'
+  | 'MUTUAL_FUND'
+  | 'CRYPTO'
+  | 'REAL_ESTATE'
+  | 'COMMODITY'
+  | 'OTHER';
+
+/** Maps to KMP `com.finance.models.Investment`. */
+export interface Investment extends SyncMetadata {
+  readonly id: SyncId;
+  readonly householdId: SyncId;
+  readonly accountId: SyncId | null;
+  readonly symbol: string;
+  readonly name: string;
+  readonly type: InvestmentType;
+  readonly shares: number;
+  readonly costBasisPerShare: Cents;
+  readonly currentPricePerShare: Cents;
+  readonly currency: Currency;
+  readonly lastPriceUpdate: Instant | null;
+}
+
+/** Maps to KMP `com.finance.models.BillFrequency`. */
+export type BillFrequency = 'ONE_TIME' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+
+/** Maps to KMP `com.finance.models.BillStatus`. */
+export type BillStatus = 'UPCOMING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+
+/** Maps to KMP `com.finance.models.Bill`. */
+export interface Bill extends SyncMetadata {
+  readonly id: SyncId;
+  readonly householdId: SyncId;
+  readonly name: string;
+  readonly payee: string;
+  readonly amount: Cents;
+  readonly currency: Currency;
+  readonly dueDate: LocalDate;
+  readonly frequency: BillFrequency;
+  readonly status: BillStatus;
+  readonly categoryId: SyncId | null;
+  readonly accountId: SyncId | null;
+  readonly note: string | null;
+  readonly isAutoPay: boolean;
+  readonly reminderDaysBefore: number;
+  readonly lastPaidDate: LocalDate | null;
+}
+
 // ---------------------------------------------------------------------------
 // Utility helpers
 // ---------------------------------------------------------------------------
