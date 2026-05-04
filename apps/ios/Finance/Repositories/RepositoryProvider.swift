@@ -60,6 +60,12 @@ final class RepositoryProvider: @unchecked Sendable {
     /// Category data access.
     let categories: any CategoryRepository
 
+    /// Investment portfolio data access.
+    let investments: any InvestmentRepository
+
+    /// Bill reminder data access.
+    let bills: any BillRepository
+
     // MARK: - Logging
 
     private static let logger = Logger(
@@ -77,6 +83,8 @@ final class RepositoryProvider: @unchecked Sendable {
     ///   - budgets:      Budget repository (defaults to Swift Export bridged).
     ///   - goals:        Goal repository (defaults to Swift Export bridged).
     ///   - categories:   Category repository (defaults to Swift Export bridged).
+    ///   - investments:  Investment repository (defaults to mock — KMP bridge pending).
+    ///   - bills:        Bill repository (defaults to mock — KMP bridge pending).
     ///
     /// Since Sprint 7, the default implementations delegate through the
     /// ``SwiftExportBridgeProvider`` which auto-selects between the live
@@ -88,13 +96,17 @@ final class RepositoryProvider: @unchecked Sendable {
         transactions: any TransactionRepository = BridgedTransactionRepository(),
         budgets: any BudgetRepository = BridgedBudgetRepository(),
         goals: any GoalRepository = BridgedGoalRepository(),
-        categories: any CategoryRepository = BridgedCategoryRepository()
+        categories: any CategoryRepository = BridgedCategoryRepository(),
+        investments: any InvestmentRepository = MockInvestmentRepository(),
+        bills: any BillRepository = MockBillRepository()
     ) {
         self.accounts = accounts
         self.transactions = transactions
         self.budgets = budgets
         self.goals = goals
         self.categories = categories
+        self.investments = investments
+        self.bills = bills
 
         Self.logger.info("RepositoryProvider initialised")
     }

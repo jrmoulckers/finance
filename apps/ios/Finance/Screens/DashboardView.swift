@@ -38,6 +38,7 @@ struct DashboardView: View {
                             netWorthCard
                             spendingSummaryCard
                             budgetHealthSection
+                            quickAccessSection
                             recentTransactionsSection
                         }
                         .padding(.horizontal)
@@ -139,6 +140,75 @@ struct DashboardView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(budget.name)
         .accessibilityValue(String(localized: "\(Int(budget.progress * 100)) percent of budget used"))
+    }
+
+    // MARK: - Quick Access
+
+    private var quickAccessSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(localized: "More"))
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+            ], spacing: 12) {
+                NavigationLink {
+                    InvestmentPortfolioView()
+                } label: {
+                    quickAccessCard(
+                        title: String(localized: "Investments"),
+                        icon: "chart.line.uptrend.xyaxis",
+                        color: .blue
+                    )
+                }
+                .accessibilityLabel(String(localized: "Investments"))
+                .accessibilityHint(String(localized: "Opens your investment portfolio"))
+
+                NavigationLink {
+                    BillsListView()
+                } label: {
+                    quickAccessCard(
+                        title: String(localized: "Bills"),
+                        icon: "calendar.badge.clock",
+                        color: .orange
+                    )
+                }
+                .accessibilityLabel(String(localized: "Bills"))
+                .accessibilityHint(String(localized: "Opens your bill reminders"))
+
+                NavigationLink {
+                    ReportBuilderView()
+                } label: {
+                    quickAccessCard(
+                        title: String(localized: "Reports"),
+                        icon: "doc.text.magnifyingglass",
+                        color: .purple
+                    )
+                }
+                .accessibilityLabel(String(localized: "Reports"))
+                .accessibilityHint(String(localized: "Opens the custom report builder"))
+            }
+        }
+    }
+
+    private func quickAccessCard(title: String, icon: String, color: Color) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(color)
+                .frame(width: 44, height: 44)
+                .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 
     // MARK: - Recent Transactions
