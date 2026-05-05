@@ -58,7 +58,7 @@ export function ariaLive(
   politeness: 'polite' | 'assertive' = 'polite',
 ): void {
   element.setAttribute('aria-live', politeness);
-  element.setAttribute('role', 'status');
+  element.setAttribute('role', politeness === 'assertive' ? 'alert' : 'status');
 }
 
 /* ------------------------------------------------------------------ */
@@ -232,16 +232,21 @@ export function getFirstFocusable(container: HTMLElement): HTMLElement | null {
   return container.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
 }
 
-/** Announce a message to screen readers via a visually-hidden live region. */
-let liveRegion: HTMLElement | null = null;
+/**
+ * Announce a message to screen readers via a visually-hidden live region.
+ *
+ * Uses two dedicated live regions (one polite, one assertive) to avoid
+ * screen reader caching issues when toggling aria-live on a single element.
+ */
+const liveRegions: Record<string, HTMLElement> = {};
 
 export function announce(message: string, politeness: 'polite' | 'assertive' = 'polite'): void {
-  if (!liveRegion) {
-    liveRegion = document.createElement('div');
-    liveRegion.setAttribute('aria-live', politeness);
-    liveRegion.setAttribute('aria-atomic', 'true');
-    liveRegion.setAttribute('role', 'status');
-    Object.assign(liveRegion.style, {
+  if (!liveRegions[politeness]) {
+    const el = document.createElement('div');
+    el.setAttribute('aria-live', politeness);
+    el.setAttribute('aria-atomic', 'true');
+    el.setAttribute('role', politeness === 'assertive' ? 'alert' : 'status');
+    Object.assign(el.style, {
       position: 'absolute',
       width: '1px',
       height: '1px',
@@ -252,11 +257,12 @@ export function announce(message: string, politeness: 'polite' | 'assertive' = '
       whiteSpace: 'nowrap',
       border: '0',
     });
-    document.body.appendChild(liveRegion);
+    document.body.appendChild(el);
+    liveRegions[politeness] = el;
   }
-  liveRegion.setAttribute('aria-live', politeness);
-  liveRegion.textContent = '';
+  const region = liveRegions[politeness];
+  region.textContent = '';
   requestAnimationFrame(() => {
-    if (liveRegion) liveRegion.textContent = message;
+    region.textContent = message;
   });
 }
