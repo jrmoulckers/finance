@@ -3,15 +3,22 @@
 /**
  * React hook for the custom report builder.
  *
- * Manages report configuration with draggable fields, date range filters,
- * category/account filters, and export preview (PDF/CSV).
+ * Manages report configuration with:
+ * - Report template picker (monthly summary, category breakdown, trend, custom)
+ * - Date range presets + custom picker
+ * - Category/account multi-select filters
+ * - Chart type selection (bar, line, pie)
+ * - Preview with tabular + chart data
+ * - Export (PDF, CSV, email)
+ * - Saved reports with localStorage persistence
+ * - Scheduled report toggle
  *
  * Usage:
  * ```tsx
- * const { config, addField, removeField, reorderFields, generatePreview } = useReportBuilder();
+ * const { config, applyTemplate, generatePreview, savedReports } = useReportBuilder();
  * ```
  *
- * References: issue #303
+ * References: issue #303, #1113
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -41,29 +48,72 @@ export interface ReportField {
   readonly sortOrder: number;
 }
 
-export type ExportFormat = 'csv' | 'pdf';
+export type ExportFormat = 'csv' | 'pdf' | 'email';
 
 export type GroupBy = 'none' | 'category' | 'account' | 'month' | 'week';
 
+export type ChartType = 'bar' | 'line' | 'pie' | 'none';
+
+export type ReportTemplate = 'monthly-summary' | 'category-breakdown' | 'trend-analysis' | 'custom';
+
+export type DatePreset =
+  | 'this-month'
+  | 'last-month'
+  | 'this-quarter'
+  | 'last-quarter'
+  | 'ytd'
+  | 'last-year'
+  | 'custom';
+
 export interface ReportConfig {
   readonly name: string;
+  readonly template: ReportTemplate;
   readonly fields: ReportField[];
   readonly startDate: LocalDate | null;
   readonly endDate: LocalDate | null;
+  readonly datePreset: DatePreset;
   readonly categoryIds: SyncId[];
   readonly accountIds: SyncId[];
   readonly groupBy: GroupBy;
+  readonly chartType: ChartType;
   readonly exportFormat: ExportFormat;
+  readonly isScheduled: boolean;
+  readonly scheduleFrequency: 'weekly' | 'monthly' | 'quarterly';
 }
 
 export interface ReportPreviewRow {
   [key: string]: string | number;
 }
 
+/** Chart data point for Recharts rendering. */
+export interface ChartDataPoint {
+  readonly name: string;
+  readonly value: number;
+}
+
 export interface ReportPreview {
   readonly headers: string[];
   readonly rows: ReportPreviewRow[];
   readonly totalRows: number;
+  readonly chartData: ChartDataPoint[];
+  readonly summary: ReportSummary;
+}
+
+/** Summary statistics for the report preview. */
+export interface ReportSummary {
+  readonly totalIncome: number;
+  readonly totalExpenses: number;
+  readonly netAmount: number;
+  readonly transactionCount: number;
+}
+
+/** A saved report configuration. */
+export interface SavedReport {
+  readonly id: string;
+  readonly name: string;
+  readonly config: ReportConfig;
+  readonly createdAt: number;
+  readonly updatedAt: number;
 }
 
 export interface UseReportBuilderResult {
@@ -89,20 +139,38 @@ export interface UseReportBuilderResult {
   toggleFieldVisibility: (fieldId: string) => void;
   /** Set date range filter. */
   setDateRange: (startDate: LocalDate | null, endDate: LocalDate | null) => void;
+  /** Apply a date preset (this month, last quarter, etc.). */
+  applyDatePreset: (preset: DatePreset) => void;
   /** Set category filter. */
   setCategoryFilter: (categoryIds: SyncId[]) => void;
   /** Set account filter. */
   setAccountFilter: (accountIds: SyncId[]) => void;
   /** Set grouping mode. */
   setGroupBy: (groupBy: GroupBy) => void;
+  /** Set chart type for visualization. */
+  setChartType: (chartType: ChartType) => void;
   /** Set export format. */
   setExportFormat: (format: ExportFormat) => void;
+  /** Apply a report template (sets fields, grouping, chart type). */
+  applyTemplate: (template: ReportTemplate) => void;
+  /** Toggle scheduled report on/off. */
+  setScheduled: (scheduled: boolean) => void;
+  /** Set scheduled report frequency. */
+  setScheduleFrequency: (freq: 'weekly' | 'monthly' | 'quarterly') => void;
   /** Generate preview data. */
   generatePreview: () => void;
   /** Export the report in the selected format. Returns a data URL. */
   exportReport: () => string | null;
   /** Reset configuration to defaults. */
   resetConfig: () => void;
+  /** List of saved reports. */
+  savedReports: SavedReport[];
+  /** Save the current configuration as a named report. */
+  saveReport: () => void;
+  /** Load a saved report by ID. */
+  loadReport: (reportId: string) => void;
+  /** Delete a saved report by ID. */
+  deleteSavedReport: (reportId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,14 +192,130 @@ const DEFAULT_FIELDS: ReportField[] = [
 function createDefaultConfig(): ReportConfig {
   return {
     name: 'Custom Report',
+    template: 'custom',
     fields: DEFAULT_FIELDS,
     startDate: null,
     endDate: null,
+    datePreset: 'this-month',
     categoryIds: [],
     accountIds: [],
     groupBy: 'none',
+    chartType: 'none',
     exportFormat: 'csv',
+    isScheduled: false,
+    scheduleFrequency: 'monthly',
   };
+}
+
+// ---------------------------------------------------------------------------
+// Template configurations
+// ---------------------------------------------------------------------------
+
+function getTemplateConfig(template: ReportTemplate): Partial<ReportConfig> {
+  switch (template) {
+    case 'monthly-summary':
+      return {
+        name: 'Monthly Summary',
+        template: 'monthly-summary',
+        groupBy: 'month',
+        chartType: 'bar',
+        datePreset: 'this-month',
+        fields: DEFAULT_FIELDS.map((f) =>
+          ['date', 'payee', 'amount', 'category'].includes(f.type)
+            ? { ...f, visible: true }
+            : { ...f, visible: false },
+        ),
+      };
+    case 'category-breakdown':
+      return {
+        name: 'Category Breakdown',
+        template: 'category-breakdown',
+        groupBy: 'category',
+        chartType: 'pie',
+        datePreset: 'this-month',
+        fields: DEFAULT_FIELDS.map((f) =>
+          ['category', 'amount'].includes(f.type)
+            ? { ...f, visible: true }
+            : { ...f, visible: false },
+        ),
+      };
+    case 'trend-analysis':
+      return {
+        name: 'Trend Analysis',
+        template: 'trend-analysis',
+        groupBy: 'month',
+        chartType: 'line',
+        datePreset: 'ytd',
+        fields: DEFAULT_FIELDS.map((f) =>
+          ['date', 'amount', 'category'].includes(f.type)
+            ? { ...f, visible: true }
+            : { ...f, visible: false },
+        ),
+      };
+    case 'custom':
+    default:
+      return {
+        name: 'Custom Report',
+        template: 'custom',
+      };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Date preset helpers
+// ---------------------------------------------------------------------------
+
+function formatDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function getDatePresetRange(preset: DatePreset): { start: string | null; end: string | null } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  switch (preset) {
+    case 'this-month':
+      return {
+        start: formatDate(new Date(year, month, 1)),
+        end: formatDate(new Date(year, month + 1, 0)),
+      };
+    case 'last-month':
+      return {
+        start: formatDate(new Date(year, month - 1, 1)),
+        end: formatDate(new Date(year, month, 0)),
+      };
+    case 'this-quarter': {
+      const qStart = Math.floor(month / 3) * 3;
+      return {
+        start: formatDate(new Date(year, qStart, 1)),
+        end: formatDate(new Date(year, qStart + 3, 0)),
+      };
+    }
+    case 'last-quarter': {
+      const lqStart = Math.floor(month / 3) * 3 - 3;
+      return {
+        start: formatDate(new Date(year, lqStart, 1)),
+        end: formatDate(new Date(year, lqStart + 3, 0)),
+      };
+    }
+    case 'ytd':
+      return {
+        start: formatDate(new Date(year, 0, 1)),
+        end: formatDate(now),
+      };
+    case 'last-year':
+      return {
+        start: formatDate(new Date(year - 1, 0, 1)),
+        end: formatDate(new Date(year - 1, 11, 31)),
+      };
+    case 'custom':
+    default:
+      return { start: null, end: null };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -223,7 +407,37 @@ function generateMockPreview(config: ReportConfig): ReportPreview {
     return mapped;
   });
 
-  return { headers, rows, totalRows: rows.length };
+  // Generate chart data grouped by category
+  const chartMap = new Map<string, number>();
+  for (const row of sampleData) {
+    const existing = chartMap.get(row.category) ?? 0;
+    chartMap.set(row.category, existing + Math.abs(row.amount));
+  }
+  const chartData: ChartDataPoint[] = Array.from(chartMap.entries()).map(([name, value]) => ({
+    name,
+    value,
+  }));
+
+  // Summary stats
+  const totalIncome = sampleData
+    .filter((r) => r.type === 'INCOME')
+    .reduce((sum, r) => sum + r.amount, 0);
+  const totalExpenses = sampleData
+    .filter((r) => r.type === 'EXPENSE')
+    .reduce((sum, r) => sum + Math.abs(r.amount), 0);
+
+  return {
+    headers,
+    rows,
+    totalRows: rows.length,
+    chartData,
+    summary: {
+      totalIncome,
+      totalExpenses,
+      netAmount: totalIncome - totalExpenses,
+      transactionCount: sampleData.length,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -250,6 +464,32 @@ function generateCsvExport(preview: ReportPreview): string {
 }
 
 // ---------------------------------------------------------------------------
+// Saved reports storage
+// ---------------------------------------------------------------------------
+
+const SAVED_REPORTS_KEY = 'finance-saved-reports';
+
+function loadSavedReports(): SavedReport[] {
+  try {
+    const stored = localStorage.getItem(SAVED_REPORTS_KEY);
+    if (stored) {
+      return JSON.parse(stored) as SavedReport[];
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return [];
+}
+
+function persistSavedReports(reports: SavedReport[]): void {
+  try {
+    localStorage.setItem(SAVED_REPORTS_KEY, JSON.stringify(reports));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
@@ -258,6 +498,7 @@ export function useReportBuilder(): UseReportBuilderResult {
   const [preview, setPreview] = useState<ReportPreview | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedReports, setSavedReports] = useState<SavedReport[]>(loadSavedReports);
 
   const availableFields = useMemo(() => config.fields.filter((f) => !f.visible), [config.fields]);
 
@@ -314,7 +555,12 @@ export function useReportBuilder(): UseReportBuilderResult {
   }, []);
 
   const setDateRange = useCallback((startDate: LocalDate | null, endDate: LocalDate | null) => {
-    setConfig((prev) => ({ ...prev, startDate, endDate }));
+    setConfig((prev) => ({ ...prev, startDate, endDate, datePreset: 'custom' as DatePreset }));
+  }, []);
+
+  const applyDatePreset = useCallback((preset: DatePreset) => {
+    const { start, end } = getDatePresetRange(preset);
+    setConfig((prev) => ({ ...prev, datePreset: preset, startDate: start, endDate: end }));
   }, []);
 
   const setCategoryFilter = useCallback((categoryIds: SyncId[]) => {
@@ -329,9 +575,36 @@ export function useReportBuilder(): UseReportBuilderResult {
     setConfig((prev) => ({ ...prev, groupBy }));
   }, []);
 
+  const setChartType = useCallback((chartType: ChartType) => {
+    setConfig((prev) => ({ ...prev, chartType }));
+  }, []);
+
   const setExportFormat = useCallback((exportFormat: ExportFormat) => {
     setConfig((prev) => ({ ...prev, exportFormat }));
   }, []);
+
+  const applyTemplate = useCallback((template: ReportTemplate) => {
+    const templateConfig = getTemplateConfig(template);
+    const { start, end } = getDatePresetRange(templateConfig.datePreset ?? 'this-month');
+    setConfig((prev) => ({
+      ...prev,
+      ...templateConfig,
+      startDate: start,
+      endDate: end,
+    }));
+    setPreview(null);
+  }, []);
+
+  const setScheduled = useCallback((isScheduled: boolean) => {
+    setConfig((prev) => ({ ...prev, isScheduled }));
+  }, []);
+
+  const setScheduleFrequency = useCallback(
+    (scheduleFrequency: 'weekly' | 'monthly' | 'quarterly') => {
+      setConfig((prev) => ({ ...prev, scheduleFrequency }));
+    },
+    [],
+  );
 
   const generatePreview = useCallback(() => {
     setGenerating(true);
@@ -357,19 +630,68 @@ export function useReportBuilder(): UseReportBuilderResult {
       if (config.exportFormat === 'csv') {
         return generateCsvExport(preview);
       }
+      if (config.exportFormat === 'email') {
+        // Email export — placeholder for mailto integration
+        return `mailto:?subject=${encodeURIComponent(config.name)}&body=${encodeURIComponent('Report data attached.')}`;
+      }
       // PDF export would use a library — return placeholder
       return `data:application/pdf;base64,placeholder`;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to export report.');
       return null;
     }
-  }, [preview, config.exportFormat]);
+  }, [preview, config.exportFormat, config.name]);
 
   const resetConfig = useCallback(() => {
     setConfig(createDefaultConfig());
     setPreview(null);
     setError(null);
   }, []);
+
+  const saveReport = useCallback(() => {
+    const now = Date.now();
+    const existing = savedReports.find((r) => r.name === config.name);
+
+    if (existing) {
+      const updated = savedReports.map((r) =>
+        r.id === existing.id ? { ...r, config, updatedAt: now } : r,
+      );
+      setSavedReports(updated);
+      persistSavedReports(updated);
+    } else {
+      const newReport: SavedReport = {
+        id: crypto.randomUUID(),
+        name: config.name,
+        config,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const updated = [newReport, ...savedReports];
+      setSavedReports(updated);
+      persistSavedReports(updated);
+    }
+  }, [config, savedReports]);
+
+  const loadReport = useCallback(
+    (reportId: string) => {
+      const report = savedReports.find((r) => r.id === reportId);
+      if (report) {
+        setConfig(report.config);
+        setPreview(null);
+        setError(null);
+      }
+    },
+    [savedReports],
+  );
+
+  const deleteSavedReport = useCallback(
+    (reportId: string) => {
+      const updated = savedReports.filter((r) => r.id !== reportId);
+      setSavedReports(updated);
+      persistSavedReports(updated);
+    },
+    [savedReports],
+  );
 
   return {
     config,
@@ -383,12 +705,21 @@ export function useReportBuilder(): UseReportBuilderResult {
     reorderFields,
     toggleFieldVisibility,
     setDateRange,
+    applyDatePreset,
     setCategoryFilter,
     setAccountFilter,
     setGroupBy,
+    setChartType,
     setExportFormat,
+    applyTemplate,
+    setScheduled,
+    setScheduleFrequency,
     generatePreview,
     exportReport,
     resetConfig,
+    savedReports,
+    saveReport,
+    loadReport,
+    deleteSavedReport,
   };
 }

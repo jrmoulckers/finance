@@ -23,3 +23,4 @@ export { InvestmentDetailPage } from './InvestmentDetailPage';
 export { BillsPage } from './BillsPage';
 export { BillDetailPage } from './BillDetailPage';
 export { CreateBillPage } from './CreateBillPage';
+export { ReportBuilderPage } from './ReportBuilderPage';
