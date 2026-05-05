@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useNaturalLanguageInput } from '../../hooks/useNaturalLanguageInput';
@@ -12,6 +12,14 @@ vi.mock('../../hooks/useNaturalLanguageInput', () => ({
 }));
 
 const mockedHook = vi.mocked(useNaturalLanguageInput);
+
+const defaultFieldConfidences = {
+  payee: { value: 0.9, label: 'high' as const },
+  amount: { value: 0.9, label: 'high' as const },
+  category: { value: 0.75, label: 'high' as const },
+  date: { value: 0, label: 'low' as const },
+  type: { value: 0.3, label: 'low' as const },
+};
 
 function mockResult(
   overrides: Partial<UseNaturalLanguageInputResult> = {},
@@ -26,6 +34,15 @@ function mockResult(
     acceptSuggestion: vi.fn(),
     clearInput: vi.fn(),
     isValid: false,
+    recentInputs: [],
+    merchantSuggestions: [],
+    addToHistory: vi.fn(),
+    clearHistory: vi.fn(),
+    quickFixField: vi.fn(),
+    editingField: null,
+    setEditingField: vi.fn(),
+    locale: 'en-US',
+    setLocale: vi.fn(),
     ...overrides,
   };
 }
@@ -58,6 +75,7 @@ describe('NaturalLanguageInput', () => {
           type: 'EXPENSE',
           note: null,
           confidence: 0.8,
+          fieldConfidences: defaultFieldConfidences,
         },
         isValid: true,
       }),
@@ -86,7 +104,9 @@ describe('NaturalLanguageInput', () => {
               type: 'EXPENSE',
               note: null,
               confidence: 0.8,
+              fieldConfidences: defaultFieldConfidences,
             },
+            source: 'common',
           },
         ],
       }),
@@ -111,6 +131,7 @@ describe('NaturalLanguageInput', () => {
           type: 'EXPENSE',
           note: null,
           confidence: 0.1,
+          fieldConfidences: buildLowConfidences(),
         },
         validationErrors: ['Amount is required.', 'Payee could not be detected.'],
       }),
@@ -150,6 +171,7 @@ describe('NaturalLanguageInput', () => {
           type: 'EXPENSE',
           note: null,
           confidence: 0.8,
+          fieldConfidences: defaultFieldConfidences,
         },
       }),
     );
@@ -158,4 +180,95 @@ describe('NaturalLanguageInput', () => {
 
     expect(screen.getByText('80% match')).toBeInTheDocument();
   });
+
+  it('renders the locale picker', () => {
+    mockedHook.mockReturnValue(mockResult());
+
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
+
+    expect(screen.getByRole('button', { name: /current locale/i })).toBeInTheDocument();
+  });
+
+  it('shows per-field confidence indicators on parsed tags', () => {
+    mockedHook.mockReturnValue(
+      mockResult({
+        inputText: 'Coffee at Starbucks $4.50',
+        parsedTransaction: {
+          payee: 'Starbucks',
+          amountCents: 450,
+          category: 'Dining',
+          date: null,
+          type: 'EXPENSE',
+          note: null,
+          confidence: 0.8,
+          fieldConfidences: defaultFieldConfidences,
+        },
+      }),
+    );
+
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
+
+    // Parsed tags are clickable buttons for quick-fix
+    const payeeButton = screen.getByRole('button', { name: /payee.*starbucks/i });
+    expect(payeeButton).toBeInTheDocument();
+
+    const amountButton = screen.getByRole('button', { name: /amount.*\$4\.50/i });
+    expect(amountButton).toBeInTheDocument();
+  });
+
+  it('shows merchant suggestion chips', () => {
+    mockedHook.mockReturnValue(
+      mockResult({
+        inputText: 'coffee',
+        merchantSuggestions: ['Starbucks', "Peet's Coffee"],
+      }),
+    );
+
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
+
+    expect(screen.getByRole('button', { name: /use merchant: starbucks/i })).toBeInTheDocument();
+  });
+
+  it('shows history badge on history-sourced suggestions', () => {
+    mockedHook.mockReturnValue(
+      mockResult({
+        inputText: 'coffee',
+        suggestions: [
+          {
+            id: 'merchant-0',
+            text: 'Coffee at Starbucks $4.50',
+            parsedTransaction: {
+              payee: 'Starbucks',
+              amountCents: 450,
+              category: 'Dining',
+              date: null,
+              type: 'EXPENSE',
+              note: null,
+              confidence: 0.8,
+              fieldConfidences: defaultFieldConfidences,
+            },
+            source: 'history',
+          },
+        ],
+      }),
+    );
+
+    render(<NaturalLanguageInput onSubmit={onSubmit} />);
+
+    // Focus the input to show suggestions dropdown
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+
+    expect(screen.getByLabelText('From history')).toBeInTheDocument();
+  });
 });
+
+function buildLowConfidences() {
+  return {
+    payee: { value: 0, label: 'low' as const },
+    amount: { value: 0, label: 'low' as const },
+    category: { value: 0, label: 'low' as const },
+    date: { value: 0, label: 'low' as const },
+    type: { value: 0.3, label: 'low' as const },
+  };
+}

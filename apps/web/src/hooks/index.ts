@@ -59,6 +59,10 @@ export type {
   UseNaturalLanguageInputResult,
   ParsedTransaction,
   NLSuggestion,
+  RecentNLInput,
+  EditableField,
+  FieldConfidence,
+  ParsedFieldConfidences,
 } from './useNaturalLanguageInput';
 export { useInvestments } from './useInvestments';
 export type { UseInvestmentsResult, PortfolioSummary } from './useInvestments';
