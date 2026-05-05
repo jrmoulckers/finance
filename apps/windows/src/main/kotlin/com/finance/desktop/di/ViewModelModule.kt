@@ -39,4 +39,5 @@ val viewModelModule = module {
     single { TipsViewModel(get(), get(), get()) }
     single { GamificationViewModel(get(), get()) }
     single { CurrencyViewModel(get(), get()) }
+    single { NaturalLanguageViewModel(get(), get()) }
 }
