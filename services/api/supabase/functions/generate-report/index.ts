@@ -33,6 +33,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createAdminClient, requireAuth } from '../_shared/auth.ts';
 import { handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { getCorsHeaders } from '../_shared/cors.ts';
 import { validateEnv } from '../_shared/env.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '../_shared/rate-limit.ts';
@@ -128,6 +129,131 @@ function validateConfig(body: Record<string, unknown>): ReportConfig | string {
     group_by: group_by ?? 'month',
     currency_code: currency_code ?? 'USD',
   };
+}
+
+// ---------------------------------------------------------------------------
+// CSV Export Helpers
+// ---------------------------------------------------------------------------
+
+/** Valid CSV export columns. Never includes raw financial identifiers. */
+const CSV_COLUMNS = [
+  'date',
+  'type',
+  'amount_cents',
+  'currency_code',
+  'category_name',
+  'account_name',
+  'payee',
+  'notes',
+] as const;
+
+/**
+ * Escape a CSV field value (RFC 4180 compliant).
+ *
+ * @param value The value to escape.
+ * @returns The escaped string.
+ */
+export function escapeCsvField(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const str = String(value);
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * Convert transaction rows to CSV format.
+ *
+ * @param rows Array of transaction records.
+ * @param columns Column names to include.
+ * @returns CSV string with header row.
+ */
+export function transactionsToCsv(
+  rows: Record<string, unknown>[],
+  columns: readonly string[] = CSV_COLUMNS,
+): string {
+  const lines: string[] = [columns.join(',')];
+  for (const row of rows) {
+    const values = columns.map((col) => escapeCsvField(row[col]));
+    lines.push(values.join(','));
+  }
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// PDF Generation Stub
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a simple text-based report document.
+ *
+ * This produces a plain-text formatted report suitable for download.
+ * A full PDF implementation (using e.g. pdf-lib) can replace this
+ * function in a future iteration.
+ *
+ * @param reportData The report data object.
+ * @param config The report configuration.
+ * @returns A formatted text report string.
+ */
+export function generateTextReport(
+  reportData: Record<string, unknown>,
+  config: ReportConfig,
+): string {
+  const lines: string[] = [];
+  const separator = '='.repeat(60);
+
+  lines.push(separator);
+  lines.push(`FINANCIAL REPORT — ${config.report_type.replace(/_/g, ' ').toUpperCase()}`);
+  lines.push(separator);
+  lines.push(`Date Range: ${config.date_from} to ${config.date_to}`);
+  lines.push(`Currency: ${config.currency_code}`);
+  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push('');
+
+  // Format based on report type
+  switch (config.report_type) {
+    case 'spending_summary': {
+      const totals = (reportData.period_totals as Array<Record<string, unknown>>) ?? [];
+      lines.push('PERIOD TOTALS');
+      lines.push('-'.repeat(40));
+      for (const period of totals) {
+        const cents = period.total_cents as number;
+        lines.push(`  ${period.period}:  ${(cents / 100).toFixed(2)} ${config.currency_code}`);
+      }
+      lines.push('');
+      const grand = (reportData.grand_total_cents as number) ?? 0;
+      lines.push(`TOTAL: ${(grand / 100).toFixed(2)} ${config.currency_code}`);
+      break;
+    }
+    case 'income_expense': {
+      const income = ((reportData.income_cents as number) ?? 0) / 100;
+      const expense = ((reportData.expense_cents as number) ?? 0) / 100;
+      const net = ((reportData.net_cents as number) ?? 0) / 100;
+      lines.push(`Income:  ${income.toFixed(2)} ${config.currency_code}`);
+      lines.push(`Expense: ${expense.toFixed(2)} ${config.currency_code}`);
+      lines.push(`Net:     ${net.toFixed(2)} ${config.currency_code}`);
+      break;
+    }
+    case 'category_breakdown': {
+      const cats = (reportData.categories as Array<Record<string, unknown>>) ?? [];
+      lines.push('CATEGORY BREAKDOWN');
+      lines.push('-'.repeat(40));
+      for (const cat of cats) {
+        const cents = cat.total_cents as number;
+        const pct = cat.percentage as number;
+        lines.push(`  ${cat.category_name}: ${(cents / 100).toFixed(2)} (${pct.toFixed(1)}%)`);
+      }
+      break;
+    }
+    default:
+      lines.push(JSON.stringify(reportData, null, 2));
+  }
+
+  lines.push('');
+  lines.push(separator);
+  lines.push('END OF REPORT');
+  return lines.join('\n');
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -286,6 +412,177 @@ serve(async (req: Request): Promise<Response> => {
 
       logger.info('Report scheduled', { httpStatus: 201 });
       return createdResponse(req, { scheduled_report: schedule });
+    }
+
+    if (action === 'export_csv') {
+      // ===================================================================
+      // CSV EXPORT — raw transaction data with configurable columns
+      // ===================================================================
+      const configOrError = validateConfig(body);
+      if (typeof configOrError === 'string') {
+        return errorResponse(req, configOrError);
+      }
+
+      // Verify household membership
+      const { data: membership } = await supabase
+        .from('household_members')
+        .select('id')
+        .eq('household_id', configOrError.household_id)
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .single();
+
+      if (!membership) {
+        return errorResponse(req, 'You are not a member of this household', 403);
+      }
+
+      // Query transactions for export
+      let csvQuery = supabase
+        .from('transactions')
+        .select('date, type, amount_cents, currency_code, payee, notes, category_id, account_id')
+        .eq('household_id', configOrError.household_id)
+        .gte('date', configOrError.date_from)
+        .lte('date', configOrError.date_to)
+        .is('deleted_at', null)
+        .order('date', { ascending: true });
+
+      if (configOrError.account_ids?.length) {
+        csvQuery = csvQuery.in('account_id', configOrError.account_ids);
+      }
+      if (configOrError.category_ids?.length) {
+        csvQuery = csvQuery.in('category_id', configOrError.category_ids);
+      }
+
+      const { data: csvTxs, error: csvErr } = await csvQuery;
+      if (csvErr) {
+        logger.error('Failed to query transactions for CSV', { errorMessage: csvErr.message });
+        return internalErrorResponse(req);
+      }
+
+      // Fetch category and account names for enrichment
+      const { data: categories } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('household_id', configOrError.household_id)
+        .is('deleted_at', null);
+
+      const { data: accounts } = await supabase
+        .from('accounts')
+        .select('id, name')
+        .eq('household_id', configOrError.household_id)
+        .is('deleted_at', null);
+
+      const categoryMap = new Map(
+        (categories ?? []).map((c: { id: string; name: string }) => [c.id, c.name]),
+      );
+      const accountMap = new Map(
+        (accounts ?? []).map((a: { id: string; name: string }) => [a.id, a.name]),
+      );
+
+      // Enrich rows with names
+      const enrichedRows = (csvTxs ?? []).map((tx: Record<string, unknown>) => ({
+        date: tx.date,
+        type: tx.type,
+        amount_cents: tx.amount_cents,
+        currency_code: tx.currency_code,
+        category_name: categoryMap.get(tx.category_id as string) ?? 'Uncategorized',
+        account_name: accountMap.get(tx.account_id as string) ?? 'Unknown',
+        payee: tx.payee ?? '',
+        notes: tx.notes ?? '',
+      }));
+
+      const csvContent = transactionsToCsv(enrichedRows);
+      const filename = `report_${configOrError.report_type}_${configOrError.date_from}_${configOrError.date_to}.csv`;
+
+      logger.info('CSV export generated', {
+        httpStatus: 200,
+        rowCount: enrichedRows.length,
+      });
+
+      return new Response(csvContent, {
+        status: 200,
+        headers: {
+          ...getCorsHeaders(req),
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      });
+    }
+
+    if (action === 'export_pdf') {
+      // ===================================================================
+      // PDF/TEXT EXPORT — formatted report document
+      // ===================================================================
+      const configOrError = validateConfig(body);
+      if (typeof configOrError === 'string') {
+        return errorResponse(req, configOrError);
+      }
+
+      // Verify household membership
+      const { data: membership } = await supabase
+        .from('household_members')
+        .select('id')
+        .eq('household_id', configOrError.household_id)
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .single();
+
+      if (!membership) {
+        return errorResponse(req, 'You are not a member of this household', 403);
+      }
+
+      // Generate the report data first (reuse existing report logic inline)
+      // For now, generate a simple spending summary for the text report
+      const { data: txData, error: txErr } = await supabase
+        .from('transactions')
+        .select('amount_cents, currency_code, date, type, category_id')
+        .eq('household_id', configOrError.household_id)
+        .gte('date', configOrError.date_from)
+        .lte('date', configOrError.date_to)
+        .is('deleted_at', null);
+
+      if (txErr) {
+        logger.error('Failed to query transactions for export', { errorMessage: txErr.message });
+        return internalErrorResponse(req);
+      }
+
+      // Build summary data
+      const periodTotals: Record<string, bigint> = {};
+      let totalCents = BigInt(0);
+      for (const tx of txData ?? []) {
+        if (tx.type === 'expense') {
+          const period = tx.date.substring(0, 7);
+          const amount = BigInt(tx.amount_cents);
+          periodTotals[period] = (periodTotals[period] ?? BigInt(0)) + amount;
+          totalCents += amount;
+        }
+      }
+
+      const reportData = {
+        report_type: configOrError.report_type,
+        period_totals: Object.entries(periodTotals).map(([period, cents]) => ({
+          period,
+          total_cents: Number(cents),
+        })),
+        grand_total_cents: Number(totalCents),
+        transaction_count: txData?.length ?? 0,
+      };
+
+      const textContent = generateTextReport(reportData, configOrError);
+      const filename = `report_${configOrError.report_type}_${configOrError.date_from}_${configOrError.date_to}.txt`;
+
+      logger.info('Text report exported', { httpStatus: 200 });
+
+      // TODO: Replace with actual PDF generation (e.g., pdf-lib) when available.
+      // For now, returns a plain-text formatted report.
+      return new Response(textContent, {
+        status: 200,
+        headers: {
+          ...getCorsHeaders(req),
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      });
     }
 
     // =====================================================================
