@@ -63,6 +63,7 @@ final class TransactionsViewModel {
     var isLoading = false
     var searchText = "" { didSet { scheduleSearchDebounce() } }
     var showingCreateTransaction = false
+    var showingNlpInput = false
     var editingTransaction: TransactionItem?
     var showingDeleteConfirmation = false
     var pendingDeleteId: String?

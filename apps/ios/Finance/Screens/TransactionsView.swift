@@ -45,18 +45,37 @@ struct TransactionsView: View {
             .searchable(text: $viewModel.searchText, prompt: String(localized: "Search by payee, category, or account"))
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button { viewModel.showingCreateTransaction = true } label: {
+                    Menu {
+                        Button {
+                            viewModel.showingCreateTransaction = true
+                        } label: {
+                            Label(String(localized: "Manual Entry"), systemImage: "square.and.pencil")
+                        }
+                        .accessibilityIdentifier("manual_entry_button")
+
+                        Button {
+                            viewModel.showingNlpInput = true
+                        } label: {
+                            Label(String(localized: "Quick Add (NLP)"), systemImage: "text.bubble")
+                        }
+                        .accessibilityIdentifier("nlp_input_button")
+                    } label: {
                         Image(systemName: "plus")
                     }
                     .accessibilityIdentifier("add_transaction_button")
-                        .accessibilityLabel(String(localized: "Add transaction"))
-                    .accessibilityHint(String(localized: "Opens a form to create a new transaction"))
+                    .accessibilityLabel(String(localized: "Add transaction"))
+                    .accessibilityHint(String(localized: "Opens options to create a new transaction"))
                 }
             }
             .sheet(isPresented: $viewModel.showingCreateTransaction, onDismiss: {
                 Task { await viewModel.loadTransactions() }
             }) {
                 TransactionCreateView()
+            }
+            .sheet(isPresented: $viewModel.showingNlpInput, onDismiss: {
+                Task { await viewModel.loadTransactions() }
+            }) {
+                NlpInputView()
             }
             .sheet(item: $viewModel.editingTransaction, onDismiss: {
                 Task { await viewModel.loadTransactions() }
