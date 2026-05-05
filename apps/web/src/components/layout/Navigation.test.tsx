@@ -19,11 +19,11 @@ describe('BottomNavigation', () => {
     onNavigate: vi.fn(),
   };
 
-  it('renders 5 navigation items', () => {
+  it('renders 7 navigation items', () => {
     render(<BottomNavigation {...defaultProps} />);
 
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(7);
   });
 
   it('renders all expected nav item labels', () => {
