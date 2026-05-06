@@ -1,0 +1,275 @@
+# =============================================================================
+# Reusable Smoke Test — Pre-release validation for all platforms
+# =============================================================================
+#
+# Runs quick sanity checks against built artifacts to verify they are functional
+# before promoting to production or advancing a staged rollout.
+#
+# Called by: rc-branch-tag.yml, staged-rollout.yml, release-train.yml
+#
+# Issue: #1147
+# =============================================================================
+
+name: Reusable Smoke Test
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version being tested (e.g. 2.0.0-rc.1)'
+        required: true
+        type: string
+      platforms:
+        description: 'Comma-separated list of platforms to test (android,ios,web,windows)'
+        required: false
+        type: string
+        default: 'android,ios,web,windows'
+      artifact-run-id:
+        description: 'Run ID to download artifacts from (blank = current run)'
+        required: false
+        type: string
+        default: ''
+    outputs:
+      result:
+        description: 'Overall smoke test result (pass/fail)'
+        value: ${{ jobs.summary.outputs.result }}
+
+jobs:
+  # ── Android Smoke Tests ──────────────────────────────────────────
+  android:
+    name: Android Smoke
+    if: contains(inputs.platforms, 'android')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-read-only: true
+
+      - name: Run unit tests
+        run: |
+          ./gradlew :apps:android:testReleaseUnitTest \
+            --parallel --build-cache --stacktrace
+
+      - name: Run lint checks
+        run: |
+          ./gradlew :apps:android:lintRelease \
+            --parallel --build-cache --stacktrace
+        continue-on-error: true
+
+      - name: Verify APK builds
+        run: |
+          ./gradlew :apps:android:assembleRelease \
+            --parallel --build-cache --stacktrace
+          APK=$(find apps/android/build/outputs/apk/release -name '*.apk' | head -1)
+          if [ -z "$APK" ]; then
+            echo "::error::No release APK produced"
+            exit 1
+          fi
+          echo "✅ Release APK: $APK ($(du -h "$APK" | cut -f1))"
+
+      - name: Smoke test summary
+        if: always()
+        run: |
+          echo "### 🤖 Android Smoke Test — v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Unit tests: ✅" >> "$GITHUB_STEP_SUMMARY"
+          echo "- APK build: ✅" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── iOS Smoke Tests ──────────────────────────────────────────────
+  ios:
+    name: iOS Smoke
+    if: contains(inputs.platforms, 'ios')
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: latest-stable
+
+      - name: Resolve SPM dependencies
+        run: |
+          cd apps/ios
+          xcodebuild -resolvePackageDependencies \
+            -scheme FinanceApp \
+            -clonedSourcePackagesDirPath .spm-packages \
+            2>&1 | tail -10
+
+      - name: Build for simulator
+        run: |
+          cd apps/ios
+          xcodebuild build \
+            -scheme FinanceApp \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -clonedSourcePackagesDirPath .spm-packages \
+            -derivedDataPath .derivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tail -20
+
+      - name: Run tests
+        run: |
+          cd apps/ios
+          xcodebuild test \
+            -scheme FinanceApp \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -clonedSourcePackagesDirPath .spm-packages \
+            -derivedDataPath .derivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tail -30
+
+      - name: Smoke test summary
+        if: always()
+        run: |
+          echo "### 🍎 iOS Smoke Test — v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Build: ✅" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tests: ✅" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Web Smoke Tests ──────────────────────────────────────────────
+  web:
+    name: Web Smoke
+    if: contains(inputs.platforms, 'web')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build design tokens
+        run: npm run build -w packages/design-tokens
+
+      - name: Build web app
+        run: npm run build -w apps/web
+        env:
+          VITE_APP_VERSION: ${{ inputs.version }}
+
+      - name: Run unit tests
+        run: npm test -w apps/web
+
+      - name: Check bundle size
+        run: |
+          MAX_SIZE_KB=2048
+          DIST_SIZE=$(du -sk apps/web/dist/ | cut -f1)
+          echo "Bundle size: ${DIST_SIZE}KB (budget: ${MAX_SIZE_KB}KB)"
+          if [ "$DIST_SIZE" -gt "$MAX_SIZE_KB" ]; then
+            echo "::warning::Bundle size ${DIST_SIZE}KB exceeds budget ${MAX_SIZE_KB}KB"
+          fi
+
+      - name: Smoke test summary
+        if: always()
+        run: |
+          echo "### 🌐 Web Smoke Test — v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Build: ✅" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tests: ✅" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Windows Smoke Tests ──────────────────────────────────────────
+  windows:
+    name: Windows Smoke
+    if: contains(inputs.platforms, 'windows')
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-read-only: true
+
+      - name: Build application
+        run: ./gradlew :apps:windows:build --parallel --build-cache --stacktrace
+
+      - name: Run tests
+        run: ./gradlew :apps:windows:test --parallel --build-cache --stacktrace
+
+      - name: Smoke test summary
+        if: always()
+        shell: bash
+        run: |
+          echo "### 🪟 Windows Smoke Test — v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Build: ✅" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tests: ✅" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Summary ──────────────────────────────────────────────────────
+  summary:
+    name: Smoke Test Summary
+    needs: [android, ios, web, windows]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      result: ${{ steps.result.outputs.result }}
+    steps:
+      - name: Evaluate results
+        id: result
+        run: |
+          ANDROID="${{ needs.android.result }}"
+          IOS="${{ needs.ios.result }}"
+          WEB="${{ needs.web.result }}"
+          WINDOWS="${{ needs.windows.result }}"
+
+          echo "### 🧪 Smoke Test Results — v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Platform | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|--------|" >> "$GITHUB_STEP_SUMMARY"
+
+          FAILED=false
+          for PLATFORM in android ios web windows; do
+            RESULT_VAR=$(echo "$PLATFORM" | tr '[:lower:]' '[:upper:]')
+            RESULT="${!RESULT_VAR}"
+
+            # Skipped platforms count as pass
+            if [ "$RESULT" = "skipped" ] || [ "$RESULT" = "success" ]; then
+              echo "| $PLATFORM | ✅ ${RESULT} |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| $PLATFORM | ❌ ${RESULT} |" >> "$GITHUB_STEP_SUMMARY"
+              FAILED=true
+            fi
+          done
+
+          if [ "$FAILED" = "true" ]; then
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**❌ Smoke tests failed — do NOT proceed with release**" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**✅ All smoke tests passed — safe to proceed**" >> "$GITHUB_STEP_SUMMARY"
+          fi

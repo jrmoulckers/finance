@@ -41,6 +41,16 @@ on:
         required: false
         type: boolean
         default: false
+      skip_smoke_tests:
+        description: 'Skip pre-release smoke tests'
+        required: false
+        type: boolean
+        default: false
+      generate_store_metadata:
+        description: 'Generate store submission metadata'
+        required: false
+        type: boolean
+        default: true
       dry_run:
         description: 'Dry run — validate without creating anything'
         required: false
@@ -403,6 +413,82 @@ jobs:
           echo "This tag will trigger:" >> "$GITHUB_STEP_SUMMARY"
           echo "- ✅ \`release.yml\` — Create GitHub Release" >> "$GITHUB_STEP_SUMMARY"
           echo "- ✅ \`release-artifacts.yml\` — Build platform binaries" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Smoke Tests: Run pre-release validation on all platforms
+  # ---------------------------------------------------------------------------
+  smoke-tests:
+    name: Pre-Release Smoke Tests
+    needs: prepare
+    if: >-
+      needs.prepare.outputs.is_dry_run != 'true' &&
+      github.event.inputs.skip_smoke_tests != 'true' &&
+      github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/reusable-smoke-test.yml
+    with:
+      version: ${{ needs.prepare.outputs.next_version }}
+      platforms: 'android,ios,web,windows'
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # Store Metadata: Generate store submission artifacts
+  # ---------------------------------------------------------------------------
+  store-metadata:
+    name: Generate Store Metadata
+    needs: prepare
+    if: >-
+      needs.prepare.outputs.is_dry_run != 'true' &&
+      github.event.inputs.generate_store_metadata != 'false' &&
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+
+      - name: Generate store metadata
+        run: |
+          node tools/generate-store-metadata.js \
+            --version "${{ needs.prepare.outputs.next_version }}"
+
+      - name: Generate enhanced release notes
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname --list 'v*' | head -1)
+          if [ -n "$PREV_TAG" ]; then
+            node tools/generate-release-notes.js \
+              --from "$PREV_TAG" \
+              --to HEAD \
+              --include-breaking \
+              > release-metadata/${{ needs.prepare.outputs.next_version }}/release-notes.md \
+              2>/dev/null || true
+          fi
+
+      - name: Upload store metadata
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: store-metadata-${{ needs.prepare.outputs.next_version }}
+          path: release-metadata/
+          retention-days: 90
+
+      - name: Summary
+        run: |
+          echo "### 🏪 Store Metadata Generated" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Version: \`${{ needs.prepare.outputs.next_version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Platform | Artifacts |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-----------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Android | release-notes.txt, metadata.json |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| iOS | release-notes.txt, metadata.json |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Web | changelog.md |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Windows | release-notes.txt, metadata.json |" >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
   # Dry Run Summary

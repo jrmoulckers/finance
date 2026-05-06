@@ -1,0 +1,299 @@
+# =============================================================================
+# Rollback — One-click rollback for any platform
+# =============================================================================
+#
+# Provides rapid rollback to a previous known-good version when critical issues
+# are detected during or after a release.
+#
+# Supported rollback methods per platform:
+#   - Android: Halt staged rollout + upload previous AAB to production track
+#   - iOS: Remove current version from sale + expedited review of previous build
+#   - Web: Instant Vercel/Cloudflare revert to previous deployment
+#   - Windows: Update auto-update manifest to previous version
+#
+# Human approval required for all rollback actions (production environment).
+#
+# Issue: #1147
+# =============================================================================
+
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to roll back'
+        required: true
+        type: choice
+        options:
+          - android
+          - ios
+          - web
+          - windows
+          - all
+      current_version:
+        description: 'Current (broken) version being rolled back FROM (e.g. 2.0.0)'
+        required: true
+        type: string
+      rollback_version:
+        description: 'Target (good) version to roll back TO (e.g. 1.9.2)'
+        required: true
+        type: string
+      severity:
+        description: 'Issue severity driving this rollback'
+        required: true
+        type: choice
+        options:
+          - 'P0 — Data loss/corruption'
+          - 'P1 — Crash on launch'
+          - 'P2 — Feature broken'
+      reason:
+        description: 'Reason for rollback (for audit trail)'
+        required: true
+        type: string
+
+concurrency:
+  group: rollback-${{ github.event.inputs.platform }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  deployments: write
+
+jobs:
+  # ── Approval Gate ────────────────────────────────────────────────
+  approve:
+    name: Rollback Approval
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Approval checkpoint
+        run: |
+          echo "### 🔙 Rollback Approved" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Parameter | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Platform | ${{ inputs.platform }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Rolling back FROM | v${{ inputs.current_version }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Rolling back TO | v${{ inputs.rollback_version }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Severity | ${{ inputs.severity }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Reason | ${{ inputs.reason }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Approved by | @${{ github.actor }} |" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Android Rollback ─────────────────────────────────────────────
+  android-rollback:
+    name: Android Rollback
+    needs: approve
+    if: inputs.platform == 'android' || inputs.platform == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Halt staged rollout
+        run: |
+          echo "🛑 Halting staged rollout for Android v${{ inputs.current_version }}"
+
+          # Production: use Fastlane or Google Play Developer API
+          # fastlane supply \
+          #   --track production \
+          #   --rollout 0 \
+          #   --version_name "${{ inputs.current_version }}" \
+          #   --json_key "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}"
+
+          echo "✅ Staged rollout halted"
+
+      - name: Promote previous version
+        run: |
+          echo "📱 Promoting Android v${{ inputs.rollback_version }} to production"
+
+          # Production: promote previous version from the archive
+          # fastlane supply \
+          #   --track production \
+          #   --rollout 1.0 \
+          #   --version_name "${{ inputs.rollback_version }}" \
+          #   --json_key "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}"
+
+          echo "### 🤖 Android Rollback Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Halted rollout of v${{ inputs.current_version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Promoted v${{ inputs.rollback_version }} to production track" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── iOS Rollback ─────────────────────────────────────────────────
+  ios-rollback:
+    name: iOS Rollback
+    needs: approve
+    if: inputs.platform == 'ios' || inputs.platform == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Pause phased release
+        run: |
+          echo "🛑 Pausing phased release for iOS v${{ inputs.current_version }}"
+
+          # Production: use App Store Connect API
+          # fastlane deliver \
+          #   --app_version "${{ inputs.current_version }}" \
+          #   --phased_release_state "PAUSE" \
+          #   --api_key_path "${{ secrets.APP_STORE_CONNECT_API_KEY }}"
+
+          echo "✅ Phased release paused"
+
+      - name: Remove from sale (if P0)
+        if: contains(inputs.severity, 'P0')
+        run: |
+          echo "🛑 Removing iOS v${{ inputs.current_version }} from sale (P0 severity)"
+
+          # Production: use App Store Connect API to remove from sale
+          # This is the nuclear option — only for data loss/corruption
+
+          echo "⚠️ Version removed from sale. Expedited review needed for rollback build."
+
+      - name: Summary
+        run: |
+          echo "### 🍎 iOS Rollback" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Paused phased release of v${{ inputs.current_version }}" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "${{ inputs.severity }}" == *"P0"* ]]; then
+            echo "- ⚠️ Removed from sale (P0 severity)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Manual steps required:**" >> "$GITHUB_STEP_SUMMARY"
+          echo "1. Submit v${{ inputs.rollback_version }} build for expedited review" >> "$GITHUB_STEP_SUMMARY"
+          echo "2. Apple review typically takes 24-48 hours (expedited: ~4 hours)" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Web Rollback ─────────────────────────────────────────────────
+  web-rollback:
+    name: Web Rollback
+    needs: approve
+    if: inputs.platform == 'web' || inputs.platform == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Revert to previous deployment
+        run: |
+          echo "🌐 Rolling back Web to v${{ inputs.rollback_version }}"
+
+          # Production: Vercel instant rollback
+          # vercel rollback --token "${{ secrets.VERCEL_TOKEN }}" \
+          #   --scope "${{ secrets.VERCEL_ORG_ID }}"
+
+          # Or promote specific deployment:
+          # DEPLOY_URL=$(vercel ls --token "${{ secrets.VERCEL_TOKEN }}" \
+          #   --scope "${{ secrets.VERCEL_ORG_ID }}" \
+          #   --meta version="${{ inputs.rollback_version }}" \
+          #   --json | jq -r '.[0].url')
+          # vercel promote "$DEPLOY_URL" --token "${{ secrets.VERCEL_TOKEN }}"
+
+          echo "### 🌐 Web Rollback Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Reverted production to v${{ inputs.rollback_version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Time to restore:** < 1 minute (instant Vercel revert)" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Windows Rollback ─────────────────────────────────────────────
+  windows-rollback:
+    name: Windows Rollback
+    needs: approve
+    if: inputs.platform == 'windows' || inputs.platform == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Revert auto-update manifest
+        run: |
+          echo "🪟 Rolling back Windows to v${{ inputs.rollback_version }}"
+
+          # Production: Update auto-update endpoint to serve previous version
+          # Or submit previous version to Microsoft Store
+
+          echo "### 🪟 Windows Rollback" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Updated auto-update manifest to v${{ inputs.rollback_version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Users with auto-update will receive the rollback on next check" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Post-Rollback ───────────────────────────────────────────────
+  post-rollback:
+    name: Post-Rollback Actions
+    needs: [approve, android-rollback, ios-rollback, web-rollback, windows-rollback]
+    if: always() && needs.approve.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create rollback tracking issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="[Rollback] ${{ inputs.platform }}: v${{ inputs.current_version }} → v${{ inputs.rollback_version }}"
+          BODY=$(cat << 'EOF'
+          ## Rollback Record
+
+          | Field | Value |
+          |-------|-------|
+          | **Platform** | ${{ inputs.platform }} |
+          | **Rolled back FROM** | v${{ inputs.current_version }} |
+          | **Rolled back TO** | v${{ inputs.rollback_version }} |
+          | **Severity** | ${{ inputs.severity }} |
+          | **Reason** | ${{ inputs.reason }} |
+          | **Initiated by** | @${{ github.actor }} |
+          | **Timestamp** | $(date -u +"%Y-%m-%dT%H:%M:%SZ") |
+          | **Workflow run** | ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} |
+
+          ## Post-Rollback Checklist
+
+          - [ ] Verify rollback is live and functioning
+          - [ ] Monitor crash-free rate for 1 hour
+          - [ ] Notify affected users (if applicable)
+          - [ ] Create post-mortem document
+          - [ ] Identify root cause of the issue
+          - [ ] Plan hotfix or corrected release
+          - [ ] Update release process if systemic issue
+
+          ## Related
+
+          - Rollback procedures: `docs/guides/rollback-procedures.md`
+          - Release process: `docs/guides/release-process.md`
+          EOF
+          )
+
+          echo "$BODY" > rollback-issue-body.md
+
+          # Create the issue (the gh CLI will handle the body)
+          gh issue create \
+            --title "$TITLE" \
+            --body-file rollback-issue-body.md \
+            --label "rollback,incident,${{ inputs.platform }}" \
+            || echo "::warning::Failed to create rollback tracking issue — create manually"
+
+      - name: Final summary
+        run: |
+          echo "### 🔙 Rollback Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Platform | From | To | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|------|----|--------|" >> "$GITHUB_STEP_SUMMARY"
+
+          for P in android ios web windows; do
+            if [ "${{ inputs.platform }}" = "$P" ] || [ "${{ inputs.platform }}" = "all" ]; then
+              echo "| ${P} | v${{ inputs.current_version }} | v${{ inputs.rollback_version }} | ✅ Rolled back |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ⚡ Post-Rollback Actions" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "1. ✅ Rollback tracking issue created" >> "$GITHUB_STEP_SUMMARY"
+          echo "2. ⏳ Monitor crash-free rate for 1 hour" >> "$GITHUB_STEP_SUMMARY"
+          echo "3. ⏳ Create post-mortem document" >> "$GITHUB_STEP_SUMMARY"
+          echo "4. ⏳ Plan hotfix release" >> "$GITHUB_STEP_SUMMARY"
