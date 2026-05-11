@@ -490,7 +490,7 @@ serve(async (req: Request): Promise<Response> => {
     // =====================================================================
     // ANALYZE TRANSACTIONS FOR RECURRING BILLS
     // =====================================================================
-    const actionParam = url.searchParams.get('action');
+    // Reuse actionParam parsed earlier (query param)
     if (actionParam !== 'analyze') {
       return errorResponse(req, 'POST requires action=analyze query parameter');
     }
