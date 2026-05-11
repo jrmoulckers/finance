@@ -39,7 +39,7 @@ jobs:
               - 'gradle/**'
               - 'settings.gradle*'
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
-        uses: github/codeql-action/init@e46ed2cbd01164d986452f91f178727624ae40d7 # v4.35.3
+        uses: github/codeql-action/init@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
         with:
           languages: java-kotlin
           queries: +security-and-quality
@@ -55,7 +55,7 @@ jobs:
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
         run: ./gradlew jvmMainClasses --no-daemon
       - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
-        uses: github/codeql-action/analyze@e46ed2cbd01164d986452f91f178727624ae40d7 # v4.35.3
+        uses: github/codeql-action/analyze@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
         continue-on-error: true
         with:
           category: '/language:java-kotlin'
@@ -66,11 +66,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: github/codeql-action/init@e46ed2cbd01164d986452f91f178727624ae40d7 # v4.35.3
+      - uses: github/codeql-action/init@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
         with:
           languages: javascript-typescript
           queries: +security-and-quality
-      - uses: github/codeql-action/analyze@e46ed2cbd01164d986452f91f178727624ae40d7 # v4.35.3
+      - uses: github/codeql-action/analyze@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
         with:
           category: '/language:javascript-typescript'
 
@@ -83,7 +83,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
           deny-licenses: GPL-3.0, AGPL-3.0

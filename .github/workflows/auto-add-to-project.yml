@@ -20,7 +20,7 @@ jobs:
         # Setup: create a PAT (classic) with `project` scope, add it as a repository
         # secret named ADD_TO_PROJECT_PAT.
         if: ${{ env.ADD_TO_PROJECT_PAT != '' }}
-        uses: actions/add-to-project@244f685bbc3b7adfa8466e08b698b5577571133e # v1.0.2
+        uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd # v2.0.0
         env:
           ADD_TO_PROJECT_PAT: ${{ secrets.ADD_TO_PROJECT_PAT }}
         with:
