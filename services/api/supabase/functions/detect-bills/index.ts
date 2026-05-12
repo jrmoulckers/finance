@@ -68,6 +68,163 @@ const FREQUENCY_RANGES: { name: string; minDays: number; maxDays: number; target
 ];
 
 // ---------------------------------------------------------------------------
+// Subscription Category Detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Known subscription/bill category keywords for automatic categorization.
+ * Merchant names are matched case-insensitively against these patterns.
+ */
+export const SUBSCRIPTION_CATEGORIES: {
+  category: string;
+  keywords: string[];
+}[] = [
+  {
+    category: 'streaming',
+    keywords: [
+      'netflix',
+      'hulu',
+      'disney',
+      'hbo',
+      'paramount',
+      'peacock',
+      'apple tv',
+      'spotify',
+      'youtube',
+      'amazon prime',
+      'crunchyroll',
+      'dazn',
+      'audible',
+    ],
+  },
+  {
+    category: 'saas',
+    keywords: [
+      'adobe',
+      'microsoft',
+      'google workspace',
+      'slack',
+      'zoom',
+      'notion',
+      'dropbox',
+      'github',
+      'atlassian',
+      'figma',
+      'canva',
+      'openai',
+      'chatgpt',
+    ],
+  },
+  {
+    category: 'insurance',
+    keywords: [
+      'insurance',
+      'allstate',
+      'geico',
+      'progressive',
+      'state farm',
+      'liberty mutual',
+      'usaa',
+      'aetna',
+      'cigna',
+      'humana',
+      'anthem',
+    ],
+  },
+  {
+    category: 'utilities',
+    keywords: [
+      'electric',
+      'gas',
+      'water',
+      'sewage',
+      'trash',
+      'waste',
+      'power',
+      'energy',
+      'utility',
+      'comcast',
+      'xfinity',
+      'att',
+      'verizon',
+      't-mobile',
+      'sprint',
+      'internet',
+      'broadband',
+      'spectrum',
+    ],
+  },
+  {
+    category: 'fitness',
+    keywords: [
+      'gym',
+      'fitness',
+      'planet fitness',
+      'anytime fitness',
+      'la fitness',
+      'peloton',
+      'crossfit',
+      'yoga',
+      'equinox',
+      'orangetheory',
+    ],
+  },
+  {
+    category: 'news_media',
+    keywords: [
+      'new york times',
+      'washington post',
+      'wsj',
+      'wall street journal',
+      'medium',
+      'substack',
+      'economist',
+      'bbc',
+      'cnn',
+      'reuters',
+    ],
+  },
+  {
+    category: 'cloud_storage',
+    keywords: ['icloud', 'google one', 'onedrive', 'backblaze', 'idrive'],
+  },
+  {
+    category: 'rent_mortgage',
+    keywords: ['rent', 'mortgage', 'apartment', 'housing', 'lease', 'landlord'],
+  },
+];
+
+/**
+ * Detect subscription category from merchant name.
+ *
+ * @param merchant The merchant/payee name.
+ * @returns Detected category or 'other' if no match.
+ */
+export function detectSubscriptionCategory(merchant: string): string {
+  const lower = merchant.toLowerCase();
+  for (const { category, keywords } of SUBSCRIPTION_CATEGORIES) {
+    for (const keyword of keywords) {
+      if (lower.includes(keyword)) {
+        return category;
+      }
+    }
+  }
+  return 'other';
+}
+
+/**
+ * Map confidence score to a human-readable level.
+ *
+ * @param score Numeric confidence (0-100).
+ * @returns 'high' (80+), 'medium' (60-79), or 'low' (below 60).
+ */
+export function confidenceLevel(score: number): 'high' | 'medium' | 'low' {
+  if (score >= 80) return 'high';
+  if (score >= 60) return 'medium';
+  return 'low';
+}
+
+// ---------------------------------------------------------------------------
 // Detection Helpers
 // ---------------------------------------------------------------------------
 
@@ -150,7 +307,7 @@ function daysBetween(d1: string, d2: string): number {
 
 /** Safe columns to return for detected bills. */
 const SAFE_COLUMNS =
-  'id, household_id, merchant, estimated_amount_cents, currency_code, frequency, confidence_score, last_transaction_date, next_expected_date, transaction_count, avg_amount_cents, status, category_id, account_id, created_at, updated_at';
+  'id, household_id, merchant, estimated_amount_cents, currency_code, frequency, confidence_score, last_transaction_date, next_expected_date, transaction_count, avg_amount_cents, amount_variance_cents, status, category_id, account_id, subscription_category, created_at, updated_at';
 
 serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
@@ -183,15 +340,74 @@ serve(async (req: Request): Promise<Response> => {
 
     const url = new URL(req.url);
     const householdId = url.searchParams.get('household_id');
+    const actionParam = url.searchParams.get('action');
 
     if (req.method === 'GET') {
-      // ===================================================================
-      // LIST DETECTED BILLS
-      // ===================================================================
       if (!householdId) {
         return errorResponse(req, 'household_id query parameter is required');
       }
 
+      if (actionParam === 'calendar') {
+        // =================================================================
+        // BILL CALENDAR — next 30 days of expected bills
+        // =================================================================
+        const daysAhead = parseInt(url.searchParams.get('days') ?? '30', 10);
+        const today = new Date().toISOString().substring(0, 10);
+        const endDate = addDays(today, Math.min(daysAhead, 90));
+
+        const { data: upcomingBills, error: calErr } = await supabase
+          .from('detected_bills')
+          .select(SAFE_COLUMNS)
+          .eq('household_id', householdId)
+          .in('status', ['detected', 'confirmed'])
+          .gte('next_expected_date', today)
+          .lte('next_expected_date', endDate)
+          .is('deleted_at', null)
+          .order('next_expected_date', { ascending: true });
+
+        if (calErr) {
+          logger.error('Failed to fetch bill calendar', { errorMessage: calErr.message });
+          return internalErrorResponse(req);
+        }
+
+        // Enrich with confidence level and subscription category
+        const enrichedBills = (upcomingBills ?? []).map((bill: Record<string, unknown>) => ({
+          ...bill,
+          confidence_level: confidenceLevel(bill.confidence_score as number),
+          subscription_category:
+            (bill.subscription_category as string) ??
+            detectSubscriptionCategory(bill.merchant as string),
+        }));
+
+        // Aggregate totals
+        let totalEstimatedCents = BigInt(0);
+        for (const bill of enrichedBills) {
+          totalEstimatedCents += BigInt(bill.estimated_amount_cents as number);
+        }
+
+        logger.info('Bill calendar fetched', {
+          httpStatus: 200,
+          count: enrichedBills.length,
+          daysAhead,
+        });
+
+        return jsonResponse(req, {
+          calendar: {
+            from_date: today,
+            to_date: endDate,
+            days: daysAhead,
+            bills: enrichedBills,
+            total_bills: enrichedBills.length,
+            total_estimated_cents: Number(totalEstimatedCents),
+            currency_code:
+              enrichedBills.length > 0 ? (enrichedBills[0].currency_code as string) : 'USD',
+          },
+        });
+      }
+
+      // ===================================================================
+      // LIST DETECTED BILLS (with enrichment)
+      // ===================================================================
       const statusFilter = url.searchParams.get('status');
       let query = supabase
         .from('detected_bills')
@@ -211,8 +427,17 @@ serve(async (req: Request): Promise<Response> => {
         return internalErrorResponse(req);
       }
 
-      logger.info('Detected bills listed', { httpStatus: 200, count: bills?.length ?? 0 });
-      return jsonResponse(req, { detected_bills: bills ?? [] });
+      // Enrich with confidence level and subscription category
+      const enrichedBills = (bills ?? []).map((bill: Record<string, unknown>) => ({
+        ...bill,
+        confidence_level: confidenceLevel(bill.confidence_score as number),
+        subscription_category:
+          (bill.subscription_category as string) ??
+          detectSubscriptionCategory(bill.merchant as string),
+      }));
+
+      logger.info('Detected bills listed', { httpStatus: 200, count: enrichedBills.length });
+      return jsonResponse(req, { detected_bills: enrichedBills });
     }
 
     if (req.method === 'PUT') {
@@ -265,7 +490,7 @@ serve(async (req: Request): Promise<Response> => {
     // =====================================================================
     // ANALYZE TRANSACTIONS FOR RECURRING BILLS
     // =====================================================================
-    const actionParam = url.searchParams.get('action');
+    // Reuse actionParam parsed earlier (query param)
     if (actionParam !== 'analyze') {
       return errorResponse(req, 'POST requires action=analyze query parameter');
     }
@@ -398,6 +623,9 @@ serve(async (req: Request): Promise<Response> => {
       // Predict next expected date
       const nextDate = addDays(latestTx.date, frequency.targetDays);
 
+      // Detect subscription category from merchant name
+      const subscriptionCategory = detectSubscriptionCategory(originalPayee);
+
       detectedBills.push({
         household_id: bodyHouseholdId,
         owner_id: user.id,
@@ -415,6 +643,7 @@ serve(async (req: Request): Promise<Response> => {
         status: 'detected',
         category_id: latestTx.category_id,
         account_id: latestTx.account_id,
+        subscription_category: subscriptionCategory,
       });
     }
 
@@ -462,6 +691,41 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
+    // Queue notifications for newly detected high-confidence bills
+    if (insertedCount > 0) {
+      const highConfBills = detectedBills.filter((b) => (b.confidence_score as number) >= 80);
+      if (highConfBills.length > 0) {
+        const notifications = highConfBills.map((bill) => ({
+          user_id: user.id,
+          household_id: bodyHouseholdId,
+          type: 'bill_detected',
+          title: 'Recurring bill detected',
+          body: `We detected a recurring ${bill.frequency} payment to ${bill.merchant}.`,
+          metadata: {
+            merchant: bill.merchant,
+            frequency: bill.frequency,
+            estimated_amount_cents: bill.estimated_amount_cents,
+            confidence_score: bill.confidence_score,
+            subscription_category: bill.subscription_category,
+          },
+        }));
+
+        // Best-effort notification insert — don't fail the analysis if this errors
+        const { error: notifErr } = await supabase.from('notifications').insert(notifications);
+
+        if (notifErr) {
+          logger.warn('Failed to queue bill detection notifications', {
+            errorMessage: notifErr.message,
+            billCount: notifications.length,
+          });
+        } else {
+          logger.info('Bill detection notifications queued', {
+            count: notifications.length,
+          });
+        }
+      }
+    }
+
     logger.info('Bill detection completed', {
       httpStatus: 200,
       analyzed: merchantGroups.size,
@@ -475,6 +739,8 @@ serve(async (req: Request): Promise<Response> => {
       bills_detected: detectedBills.length,
       bills_inserted: insertedCount,
       bills_updated: updatedCount,
+      high_confidence_count: detectedBills.filter((b) => (b.confidence_score as number) >= 80)
+        .length,
       analyzed_at: new Date().toISOString(),
     });
   } catch (err) {
