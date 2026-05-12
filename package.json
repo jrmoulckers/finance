@@ -70,7 +70,9 @@
     "protobufjs": ">=7.5.5",
     "brace-expansion": ">=2.0.3",
     "postcss": ">=8.5.10",
-    "styled-components": ">=6.4.1"
+    "styled-components": ">=6.4.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.6.0",
