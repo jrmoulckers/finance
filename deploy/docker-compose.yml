@@ -82,6 +82,8 @@ services:
       PGRST_DB_USE_LEGACY_GUCS: 'false'
       PGRST_DB_MAX_ROWS: 1000
       PGRST_SERVER_PORT: 3000
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
     healthcheck:
       test: ['CMD-SHELL', 'curl -sf http://localhost:3000/ready || exit 1']
       interval: 15s
