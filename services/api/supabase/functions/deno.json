@@ -20,7 +20,8 @@
       "bank-connection/**/*.test.ts",
       "anomaly-detection/**/*.test.ts",
       "investment-sync/**/*.test.ts",
-      "detect-bills/**/*.test.ts"
+      "detect-bills/**/*.test.ts",
+      "generate-report/**/*.test.ts"
     ],
     "exclude": ["node_modules"]
   },
@@ -37,7 +38,8 @@
     "test:data-export": "deno test --allow-env --allow-net=none --no-check data-export/",
     "test:account-deletion": "deno test --allow-env --allow-net=none --no-check account-deletion/",
     "test:consent-management": "deno test --allow-env --allow-net=none --no-check consent-management/",
-    "test:detect-bills": "deno test --allow-env --allow-net=none --no-check detect-bills/"
+    "test:detect-bills": "deno test --allow-env --allow-net=none --no-check detect-bills/",
+    "test:generate-report": "deno test --allow-env --allow-net=none --no-check generate-report/"
   },
   "imports": {
     "std/testing/": "https://deno.land/std@0.208.0/testing/",
