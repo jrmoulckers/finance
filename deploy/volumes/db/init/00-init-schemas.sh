@@ -1,15 +1,17 @@
 #!/bin/bash
 # =============================================================================
-# Minimal Supabase schema and role initialization
+# Supabase schema, role, and init-scripts initialization
 # =============================================================================
-# Creates the roles and schemas that GoTrue (auth) and PostgREST expect.
-# The supabase/postgres image does NOT create these automatically.
-# This runs only on first boot (when pgdata volume is empty).
+# The supabase/postgres image ships SQL files in /docker-entrypoint-initdb.d/init-scripts/
+# but Docker's postgres entrypoint ignores subdirectories. This script:
+#   1. Creates roles and schemas FIRST (GoTrue and init-scripts depend on these)
+#   2. Then processes the init-scripts directory (creates base types like factor_type)
+# GoTrue runs its own migrations on top of this foundation.
 # =============================================================================
 
 set -e
 
-echo "Creating Supabase roles and schemas..."
+echo "Step 1: Creating Supabase roles and schemas..."
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'EOSQL'
     -- Roles required by Supabase services
@@ -48,7 +50,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     GRANT service_role TO authenticator;
     GRANT supabase_admin TO postgres;
 
-    -- Schemas required by GoTrue and extensions
+    -- Schemas (must exist BEFORE init-scripts run)
     CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;
     CREATE SCHEMA IF NOT EXISTS extensions;
 
@@ -59,4 +61,17 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     ALTER ROLE authenticator SET statement_timeout = '8s';
 EOSQL
 
-echo "Supabase roles and schemas created successfully."
+echo "Step 1 complete: roles and schemas created."
+
+# Step 2: Process supabase init-scripts (creates base types, functions, etc.)
+INIT_SCRIPTS_DIR="/docker-entrypoint-initdb.d/init-scripts"
+if [ -d "$INIT_SCRIPTS_DIR" ]; then
+    echo "Step 2: Processing init-scripts directory..."
+    for f in $(find "$INIT_SCRIPTS_DIR" -name '*.sql' | sort); do
+        echo "  Running: $f"
+        psql -v ON_ERROR_STOP=0 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$f"
+    done
+    echo "Step 2 complete: init-scripts processed."
+else
+    echo "Step 2: No init-scripts directory found (skipping)."
+fi
