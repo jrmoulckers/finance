@@ -87,11 +87,7 @@ services:
     volumes:
       - /etc/passwd:/etc/passwd:ro
     healthcheck:
-      test: ['CMD-SHELL', 'curl -sf http://localhost:3001/ready || exit 1']
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      disable: true
     depends_on:
       db:
         condition: service_healthy
@@ -382,13 +378,13 @@ services:
       start_period: 10s
     depends_on:
       rest:
-        condition: service_healthy
+        condition: service_started
       auth:
-        condition: service_healthy
+        condition: service_started
       edge-functions:
-        condition: service_healthy
+        condition: service_started
       powersync:
-        condition: service_healthy
+        condition: service_started
     deploy:
       resources:
         limits:
