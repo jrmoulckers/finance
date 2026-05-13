@@ -72,8 +72,8 @@ Finance observes and informs — it never shames. Over budget? The app offers to
 FREE FOREVER (CORE)
 All core financial tracking features are free, forever. Premium unlocks AI-powered insights, multi-device sync, and household sharing.
 
-Privacy policy: {{PRIVACY_POLICY_URL}}
-Terms of service: {{TERMS_OF_SERVICE_URL}}
+Privacy policy: https://finance.jrmoulckers.com/privacy
+Terms of service: https://finance.jrmoulckers.com/terms
 ```
 
 ### Platform-Specific Overrides

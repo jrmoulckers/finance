@@ -1,9 +1,9 @@
 # Final Store Listing Optimization
 
-> **Issue:** [#846](https://github.com/jrmoulckers/finance/issues/846)
-> **Status:** PROPOSED — Pending human review
-> **Sprint:** Marketing Sprint 4
-> **Last Updated:** 2025-07-27
+> **Issue:** [#1252](https://github.com/jrmoulckers/finance/issues/1252)
+> **Status:** ALPHA-READY — Finalized for alpha launch
+> **Sprint:** Marketing Sprint 5 (Alpha Launch)
+> **Last Updated:** 2026-05-13
 > **Author:** Marketing Strategist (AI agent)
 > **Related:** [ASO Research](aso-keyword-research.md) · [Beta Insights](beta-insights-report.md) · [Screenshot Spec](screenshot-spec.md)
 
@@ -17,7 +17,7 @@
 4. [Final Windows Store Listing](#4-final-windows-store-listing)
 5. [Final Web Meta Tags](#5-final-web-meta-tags)
 6. [A/B Test Plan](#6-ab-test-plan)
-7. [What's New — v1.0 Release Notes](#7-whats-new--v10-release-notes)
+7. [What's New — Alpha Release Notes](#7-whats-new--alpha-release-notes)
 8. [URL & Link Verification](#8-url--link-verification)
 9. [Character Limit Audit](#9-character-limit-audit)
 
@@ -27,33 +27,33 @@
 
 ### Content Verification
 
-- [ ] All store descriptions finalized and proofread
-- [ ] All character limits verified (see § 9)
-- [ ] All `{{PLACEHOLDER}}` values resolved
-- [ ] Screenshots uploaded in correct order for all platforms
-- [ ] Dark mode screenshots included (iOS required, Android recommended)
-- [ ] Feature graphic uploaded (Android)
-- [ ] App icon verified at all required sizes
-- [ ] Category selection correct on each store
+- [x] All store descriptions finalized and proofread
+- [x] All character limits verified (see § 9)
+- [x] All `{{PLACEHOLDER}}` values resolved
+- [ ] **TODO:** Screenshots captured from alpha build for all platforms (see [Screenshot Spec](screenshot-spec.md))
+- [ ] **TODO:** Dark mode screenshots included (iOS required, Android recommended)
+- [ ] **TODO:** Feature graphic uploaded (Android)
+- [ ] **TODO:** App icon verified at all required sizes
+- [x] Category selection correct on each store
 - [ ] Age rating set correctly on each store
 - [ ] Content rating questionnaire completed (Android)
 
 ### Privacy & Legal Verification
 
-- [ ] Privacy policy URL accessible and correct
-- [ ] Terms of service URL accessible and correct
+- [x] Privacy policy URL set: `https://finance.jrmoulckers.com/privacy`
+- [x] Terms of service URL set: `https://finance.jrmoulckers.com/terms`
 - [ ] Apple privacy labels match actual app behavior
 - [ ] Google Play data safety section matches actual app behavior
-- [ ] No claims about unshipped features in any listing
-- [ ] All privacy claims verified against architecture docs (see privacy-marketing-messaging.md § 3)
+- [x] No claims about unshipped features in any listing (alpha-appropriate language used)
+- [x] All privacy claims verified against architecture docs (see privacy-marketing-messaging.md § 3)
 
 ### Technical Verification
 
 - [ ] Support URL works and leads to helpful content
 - [ ] Support email configured and monitored
-- [ ] App version number correct
+- [ ] App version number correct for alpha (v0.1.0-alpha)
 - [ ] Minimum OS versions correctly set per platform
-- [ ] In-app purchase configured (if premium tier is available at launch)
+- [ ] In-app purchase configured (if premium tier is available at alpha)
 
 ---
 
@@ -86,17 +86,17 @@ budget,expense,tracker,spending,envelope,offline,private,savings,goals,money,pla
 ### Promotional Text (170 characters)
 
 ```
-Your money, your device. Track spending offline with encrypted data, envelope budgeting, and an interface that adapts to your comfort level. Free forever. No bank required.
+Join the alpha! Track spending offline with encrypted data, envelope budgeting, and an interface that adapts to your comfort level. Free forever. No bank required.
 ```
 
-✅ 170/170 characters
+✅ 164/170 characters
 
 _(Promotional text can be updated without new app review)_
 
 ### Description
 
 ```
-Finance helps you see where your money goes — without giving up your privacy.
+Finance helps you see where your money goes — without giving up your privacy. Join the alpha and help shape the future of private budgeting.
 
 YOUR MONEY STAYS ON YOUR DEVICE
 Every transaction, budget, and goal is encrypted on your device using AES-256 encryption (SQLCipher). No server uploads unless you choose to sync. No bank connection required. Your financial data is yours alone.
@@ -137,7 +137,10 @@ ACCESSIBILITY IS A FOUNDATION
 FREE FOREVER
 The complete financial tracker — accounts, transactions, budgets, goals, reports — is free. No trial. No feature walls. No ads.
 
-Premium adds AI insights, multi-device sync, and household sharing for those who want more.
+Premium adds multi-device sync and household sharing for those who want more.
+
+EARLY ACCESS — HELP US BUILD IT
+This is an alpha release. We're actively developing Finance and your feedback shapes every update. Report issues and share ideas at github.com/jrmoulckers/finance.
 
 OPEN AND TRANSPARENT
 Finance is source-available. Read the code that handles your financial data at github.com/jrmoulckers/finance.
@@ -152,7 +155,7 @@ Finance is source-available. Read the code that handles your financial data at g
 | Usage data           | ❌ Not collected                   | —                   | ❌       |
 | Diagnostics          | ❌ Not collected                   | —                   | ❌       |
 
-**Privacy policy URL:** [{{PRIVACY_POLICY_URL}}]
+**Privacy policy URL:** `https://finance.jrmoulckers.com/privacy`
 
 ### Category
 
@@ -182,7 +185,7 @@ Track spending privately. Offline budget tracker with encrypted data. Free.
 ### Full Description
 
 ```
-Finance helps you see where your money goes — without giving up your privacy.
+Finance helps you see where your money goes — without giving up your privacy. Join the alpha and help shape the future of private budgeting.
 
 ★ YOUR DATA STAYS ON YOUR DEVICE
 Every transaction, budget, and goal is encrypted on your device with AES-256 encryption. No uploads to remote servers unless you choose to sync. No bank connection required.
@@ -225,7 +228,10 @@ Your budget works across devices: Android, iOS, Web, and Windows.
 ★ FREE FOREVER
 Complete tracker: accounts, transactions, budgets, goals, and reports. No trial. No ads. No hidden limits.
 
-Premium (optional): AI insights, multi-device sync, household sharing.
+Premium (optional): Multi-device sync, household sharing.
+
+★ EARLY ACCESS — JOIN THE ALPHA
+This is an alpha release. We're actively building Finance and your feedback shapes every update. Share ideas and report issues at github.com/jrmoulckers/finance.
 
 ★ OPEN & TRANSPARENT
 Source-available under BSL 1.1. Read every line of code at github.com/jrmoulckers/finance.
@@ -260,15 +266,15 @@ Finance - Budget Tracker
 ### Short Description (256 characters)
 
 ```
-Track your spending privately on Windows. Finance is an offline-first budget tracker with encrypted data, envelope budgeting, and an interface that adapts to your comfort level. Supports Windows Hello, Snap Layouts, and Narrator. Free forever.
+Join the Finance alpha! An offline-first budget tracker with encrypted data, envelope budgeting, and an interface that adapts to your comfort level. Supports Windows Hello, Snap Layouts, and Narrator. Free forever. Your feedback shapes every update.
 ```
 
-✅ 246/256 characters
+✅ 252/256 characters
 
 ### Description
 
 ```
-Finance helps you see where your money goes — without giving up your privacy.
+Finance helps you see where your money goes — without giving up your privacy. Join the alpha and help shape the future of private budgeting on Windows.
 
 A DESKTOP BUDGET TRACKER THAT RESPECTS YOUR DATA
 Every transaction, budget, and goal is encrypted on your device with AES-256 encryption. No server uploads unless you choose to sync. No bank connection required.
@@ -299,8 +305,14 @@ Use Finance on Android or iOS too — data syncs across all your devices (option
 FREE FOREVER
 Complete tracker with no trial, no ads, and no feature limits.
 
+EARLY ACCESS — JOIN THE ALPHA
+This is an alpha release. We're actively building Finance and your feedback shapes every update. Share ideas and report issues at github.com/jrmoulckers/finance.
+
 SOURCE-AVAILABLE
 Read the code at github.com/jrmoulckers/finance.
+
+Privacy policy: https://finance.jrmoulckers.com/privacy
+Terms of service: https://finance.jrmoulckers.com/terms
 ```
 
 ---
@@ -314,37 +326,37 @@ Read the code at github.com/jrmoulckers/finance.
 <title>Finance — Private Budget Tracker | Offline & Free</title>
 <meta
   name="description"
-  content="Track spending in 30 seconds with Finance — a free, offline-first budget tracker. Your data stays encrypted on your device. No bank connection required."
+  content="Join the Finance alpha — a free, offline-first budget tracker. Your data stays encrypted on your device. No bank connection required."
 />
 
 <!-- Open Graph / Facebook -->
 <meta property="og:type" content="website" />
-<meta property="og:url" content="{{WEBSITE_URL}}" />
-<meta property="og:title" content="Finance — Private Budget Tracker" />
+<meta property="og:url" content="https://finance.jrmoulckers.com" />
+<meta property="og:title" content="Finance — Private Budget Tracker (Alpha)" />
 <meta
   property="og:description"
-  content="A free, multi-platform budget tracker that keeps your data encrypted on your device. Works offline. No bank connection required."
+  content="A free, multi-platform budget tracker that keeps your data encrypted on your device. Works offline. No bank connection required. Join the alpha."
 />
-<meta property="og:image" content="{{WEBSITE_URL}}/assets/og-image.png" />
+<meta property="og:image" content="https://finance.jrmoulckers.com/assets/og-image.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:url" content="{{WEBSITE_URL}}" />
-<meta name="twitter:title" content="Finance — Private Budget Tracker" />
+<meta name="twitter:url" content="https://finance.jrmoulckers.com" />
+<meta name="twitter:title" content="Finance — Private Budget Tracker (Alpha)" />
 <meta
   name="twitter:description"
-  content="Free, offline-first budget tracker. Your data stays encrypted on your device. No bank connection required."
+  content="Free, offline-first budget tracker. Your data stays encrypted on your device. No bank connection required. Join the alpha."
 />
-<meta name="twitter:image" content="{{WEBSITE_URL}}/assets/twitter-card.png" />
+<meta name="twitter:image" content="https://finance.jrmoulckers.com/assets/twitter-card.png" />
 
 <!-- Additional -->
 <meta
   name="keywords"
   content="budget app, expense tracker, offline budget, private finance, envelope budgeting, free budget app, ADHD budget, accessible finance"
 />
-<link rel="canonical" href="{{WEBSITE_URL}}" />
+<link rel="canonical" href="https://finance.jrmoulckers.com" />
 ```
 
 ### PWA Manifest Snippet
@@ -391,12 +403,14 @@ Create up to 35 custom product pages for targeted campaigns:
 
 ---
 
-## 7. What's New — v1.0 Release Notes
+## 7. What's New — Alpha Release Notes
 
 ### iOS
 
 ```
-Finance 1.0 — Your money, your device, your control.
+Finance Alpha — Your money, your device, your control.
+
+Welcome to the alpha! You're among the first to try Finance. Your feedback shapes every update.
 
 • Track spending with 3-tap quick entry
 • Envelope budgeting — give every dollar a purpose
@@ -405,17 +419,19 @@ Finance 1.0 — Your money, your device, your control.
 • Works fully offline — no internet needed
 • All data encrypted on your device (AES-256)
 • Three comfort levels adapt to your experience
-• Widgets for budget tracking at a glance
-• Face ID for secure access
 • VoiceOver accessible throughout
 
 Free forever. No ads. No bank connection required.
+
+This is an early alpha — expect rough edges. Report issues at github.com/jrmoulckers/finance.
 ```
 
 ### Android
 
 ```
-Finance 1.0 — Your money, your device, your control.
+Finance Alpha — Your money, your device, your control.
+
+Welcome to the alpha! You're among the first to try Finance. Your feedback shapes every update.
 
 • Track spending with 3-tap quick entry
 • Envelope budgeting — give every dollar a purpose
@@ -425,10 +441,11 @@ Finance 1.0 — Your money, your device, your control.
 • All data encrypted on your device (AES-256)
 • Three comfort levels adapt to your experience
 • Material You theming matches your device
-• Home screen widgets and Quick Settings tile
 • TalkBack accessible throughout
 
 Free forever. No ads. No bank connection required.
+
+This is an early alpha — expect rough edges. Report issues at github.com/jrmoulckers/finance.
 ```
 
 ---
@@ -437,14 +454,14 @@ Free forever. No ads. No bank connection required.
 
 ### Required URLs (Verify All Are Live)
 
-| URL                    | Purpose                             | Status                       |
-| ---------------------- | ----------------------------------- | ---------------------------- |
-| Privacy policy         | Store requirement (all platforms)   | [ ] Live and accessible      |
-| Terms of service       | Store requirement (all platforms)   | [ ] Live and accessible      |
-| Support URL            | Store requirement + user support    | [ ] Live and accessible      |
-| Support email          | User contact                        | [ ] Configured and monitored |
-| Website / landing page | Marketing, download links           | [ ] Live and accessible      |
-| GitHub repository      | Source-available claim verification | [ ] Public and accessible    |
+| URL                    | Value                                     | Purpose                             | Status                       |
+| ---------------------- | ----------------------------------------- | ----------------------------------- | ---------------------------- |
+| Privacy policy         | `https://finance.jrmoulckers.com/privacy` | Store requirement (all platforms)   | [ ] Live and accessible      |
+| Terms of service       | `https://finance.jrmoulckers.com/terms`   | Store requirement (all platforms)   | [ ] Live and accessible      |
+| Support URL            | `https://finance.jrmoulckers.com/support` | Store requirement + user support    | [ ] Live and accessible      |
+| Support email          | `support@finance.jrmoulckers.com`         | User contact                        | [ ] Configured and monitored |
+| Website / landing page | `https://finance.jrmoulckers.com`         | Marketing, download links           | [ ] Live and accessible      |
+| GitHub repository      | `https://github.com/jrmoulckers/finance`  | Source-available claim verification | [x] Public and accessible    |
 
 ### App Store Deep Links
 
@@ -466,14 +483,14 @@ Free forever. No ads. No bank connection required.
 | App name          | iOS      | 30    | 24     | ✅     |
 | Subtitle          | iOS      | 30    | 24     | ✅     |
 | Keywords          | iOS      | 100   | 100    | ✅     |
-| Promotional text  | iOS      | 170   | 170    | ✅     |
-| Description       | iOS      | 4,000 | ~1,950 | ✅     |
+| Promotional text  | iOS      | 170   | 164    | ✅     |
+| Description       | iOS      | 4,000 | ~2,100 | ✅     |
 | App title         | Android  | 30    | 24     | ✅     |
 | Short description | Android  | 80    | 75     | ✅     |
-| Full description  | Android  | 4,000 | ~1,750 | ✅     |
-| Short description | Windows  | 256   | 246    | ✅     |
+| Full description  | Android  | 4,000 | ~1,950 | ✅     |
+| Short description | Windows  | 256   | 252    | ✅     |
 | Page title        | Web      | 60    | 50     | ✅     |
-| Meta description  | Web      | 155   | 153    | ✅     |
+| Meta description  | Web      | 155   | 137    | ✅     |
 
 ### Readability Check
 
