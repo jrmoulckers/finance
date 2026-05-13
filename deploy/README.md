@@ -116,7 +116,7 @@ npm install -g supabase
 for migration in ../services/api/supabase/migrations/*.sql; do
   echo "Applying: $migration"
   docker compose exec -T db psql \
-    -U "${POSTGRES_USER:-postgres}" \
+    -U "${POSTGRES_USER:-supabase_admin}" \
     -d "${POSTGRES_DB:-postgres}" \
     -f - < "$migration"
 done
@@ -245,20 +245,20 @@ docker compose ps
 
 ### Optional
 
-| Variable                  | Default                              | Description                          |
-| ------------------------- | ------------------------------------ | ------------------------------------ |
-| `POSTGRES_DB`             | `postgres`                           | Database name                        |
-| `POSTGRES_USER`           | `postgres`                           | Database superuser name              |
-| `POSTGRES_PORT`           | `5432`                               | Host port for direct database access |
-| `JWT_EXPIRY`              | `3600`                               | JWT lifetime in seconds              |
-| `AUTH_RATE_LIMIT_EMAIL`   | `30`                                 | Max email sends per hour             |
-| `AUTH_RATE_LIMIT_REFRESH` | `150`                                | Max token refreshes per hour         |
-| `MAILER_AUTOCONFIRM`      | `false`                              | Skip email confirmation (testing)    |
-| `AUTH_REDIRECT_URLS`      | —                                    | Allowed OAuth redirect URLs          |
-| `EDGE_FUNCTIONS_PATH`     | `../services/api/supabase/functions` | Path to Edge Functions source        |
-| `BACKUP_RETENTION_DAYS`   | `30`                                 | Number of daily backups to keep      |
-| `POWERSYNC_URL`           | —                                    | PowerSync instance URL (optional)    |
-| `POWERSYNC_PUBLIC_KEY`    | —                                    | PowerSync public key (optional)      |
+| Variable                  | Default                              | Description                                                                      |
+| ------------------------- | ------------------------------------ | -------------------------------------------------------------------------------- |
+| `POSTGRES_DB`             | `postgres`                           | Database name                                                                    |
+| `POSTGRES_USER`           | `supabase_admin`                     | Database superuser name (must be supabase_admin for the supabase/postgres image) |
+| `POSTGRES_PORT`           | `5432`                               | Host port for direct database access                                             |
+| `JWT_EXPIRY`              | `3600`                               | JWT lifetime in seconds                                                          |
+| `AUTH_RATE_LIMIT_EMAIL`   | `30`                                 | Max email sends per hour                                                         |
+| `AUTH_RATE_LIMIT_REFRESH` | `150`                                | Max token refreshes per hour                                                     |
+| `MAILER_AUTOCONFIRM`      | `false`                              | Skip email confirmation (testing)                                                |
+| `AUTH_REDIRECT_URLS`      | —                                    | Allowed OAuth redirect URLs                                                      |
+| `EDGE_FUNCTIONS_PATH`     | `../services/api/supabase/functions` | Path to Edge Functions source                                                    |
+| `BACKUP_RETENTION_DAYS`   | `30`                                 | Number of daily backups to keep                                                  |
+| `POWERSYNC_URL`           | —                                    | PowerSync instance URL (optional)                                                |
+| `POWERSYNC_PUBLIC_KEY`    | —                                    | PowerSync public key (optional)                                                  |
 
 ---
 
