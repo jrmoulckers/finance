@@ -89,8 +89,8 @@ services:
       test: ['CMD-SHELL', 'curl -sf http://localhost:3000/ready || exit 1']
       interval: 15s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 10
+      start_period: 30s
     depends_on:
       db:
         condition: service_healthy
