@@ -254,6 +254,7 @@ services:
           memory: 64M
     networks:
       - finance-internal
+      - finance-external
 
   # ---------------------------------------------------------------------------
   # PowerSync — offline-first sync engine (#881)

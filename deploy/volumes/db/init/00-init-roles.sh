@@ -66,6 +66,15 @@ else
         GRANT service_role TO authenticator;
         GRANT supabase_admin TO postgres;
 
+        -- Create schemas required by Supabase services
+        CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;
+        CREATE SCHEMA IF NOT EXISTS extensions;
+
+        -- Grant schema usage
+        GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, service_role, postgres;
+        GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
+        ALTER ROLE supabase_auth_admin SET search_path = 'auth';
+
         -- Set passwords
         ALTER ROLE authenticator SET statement_timeout = '8s';
         ALTER ROLE supabase_admin WITH PASSWORD current_setting('app.settings.jwt_secret', true);
