@@ -55,6 +55,7 @@ services:
     shm_size: 128mb
     command: >
       postgres
+      -c listen_addresses='*'
       -c wal_level=logical
       -c max_wal_senders=10
       -c max_replication_slots=10
