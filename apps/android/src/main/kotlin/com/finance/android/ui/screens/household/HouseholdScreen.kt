@@ -81,6 +81,7 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun HouseholdScreen(
     onBack: () -> Unit = {},
     onShareInvite: (String) -> Unit = {},
@@ -198,6 +199,7 @@ fun HouseholdScreen(
 }
 
 @Composable
+@Suppress("UnusedParameter") // Reserved for future implementation
 internal fun HouseholdContent(
     state: HouseholdUiState,
     onCreateHousehold: () -> Unit,
@@ -515,6 +517,7 @@ private fun CreateHouseholdDialog(
 }
 
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun InviteMemberDialog(
     email: String,
     role: HouseholdRole,
@@ -694,6 +697,7 @@ private fun RoleChangeDialog(
 
 // ── Previews ─────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Household - With Members - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Household - With Members - Dark")
 @Composable
@@ -738,6 +742,7 @@ private fun HouseholdWithMembersPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Household - Empty - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Household - Empty - Dark")
 @Composable

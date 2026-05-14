@@ -38,6 +38,7 @@ object WidgetUpdater {
      */
     suspend fun refreshAll(context: Context) {
         withContext(Dispatchers.IO) {
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 BalanceSummaryWidget().updateAll(context)
                 BudgetSummaryWidget().updateAll(context)
@@ -60,6 +61,7 @@ object WidgetUpdater {
      */
     suspend fun hasActiveWidgets(context: Context): Boolean {
         return withContext(Dispatchers.IO) {
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val manager = GlanceAppWidgetManager(context)
                 val balanceIds = manager.getGlanceIds(BalanceSummaryWidget::class.java)

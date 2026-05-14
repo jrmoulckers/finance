@@ -272,6 +272,7 @@ private fun GoalsErrorBanner(
 }
 
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun GoalCard(
     goal: GoalItemUi,
     onClick: () -> Unit = {},
@@ -413,6 +414,7 @@ private fun GoalCard(
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Goals - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Goals - Dark")
 @Preview(showBackground = true, showSystemUi = true, name = "Goals – with data")
@@ -466,6 +468,7 @@ private fun GoalsScreenPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Goals – empty")
 @Composable
 private fun GoalsEmptyPreview() {
@@ -483,6 +486,7 @@ private fun GoalsEmptyPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Goals – error")
 @Composable
 private fun GoalsErrorPreview() {

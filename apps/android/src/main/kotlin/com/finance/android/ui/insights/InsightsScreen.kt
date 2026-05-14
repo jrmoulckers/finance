@@ -519,6 +519,7 @@ private fun RecommendationItem(text: String) {
     name = "Insights - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun InsightsScreenPreview() {
     FinanceTheme(dynamicColor = false) {
         InsightsContent(

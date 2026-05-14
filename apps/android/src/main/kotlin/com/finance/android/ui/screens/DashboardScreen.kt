@@ -343,6 +343,7 @@ private fun InsightsCard(onClick: () -> Unit) {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Dashboard - Light")
 @Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Dashboard - Dark")
 @Composable
@@ -361,6 +362,7 @@ private fun DashboardScreenPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Dashboard - Loading - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Dashboard - Loading - Dark")
 @Composable
@@ -375,6 +377,7 @@ private fun DashboardLoadingPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Dashboard - Over Budget - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Dashboard - Over Budget - Dark")
 @Composable

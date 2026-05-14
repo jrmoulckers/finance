@@ -187,6 +187,7 @@ class SyncStatusViewModel(
      *
      * @param conflictId Identifier matching [ConflictItem.id].
      */
+    @Suppress("UnusedParameter") // Reserved for future implementation
     fun cancelConflict(conflictId: String) {
         // No-op on the conflict list — keep it visible for the next sync pass
     }

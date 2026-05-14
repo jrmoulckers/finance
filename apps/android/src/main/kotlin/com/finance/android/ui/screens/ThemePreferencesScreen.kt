@@ -78,6 +78,7 @@ private val ACCENT_COLORS = listOf(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun ThemePreferencesScreen(
     themeManager: ThemeManager,
 ) {

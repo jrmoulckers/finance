@@ -57,7 +57,7 @@ class GoalProgressWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         Timber.d("Providing glance content for GoalProgressWidget (id=%s)", id)
 
-        // TODO: Read real data from repository once wired.
+        // TODO(#1296): Read real data from repository once wired.
         val widgetData = WidgetGoalData(
             goalName = "No goals yet",
             currentFormatted = "$0.00",
@@ -116,6 +116,7 @@ data class WidgetGoalData(
  * ```
  */
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun GoalProgressContent(data: WidgetGoalData) {
     Box(
         modifier = GlanceModifier

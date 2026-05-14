@@ -4,6 +4,7 @@
 
 package com.finance.android.ui.screens.currency
 
+import java.util.Locale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -465,8 +466,8 @@ internal fun ExchangeRateInfo(
  */
 private fun formatRate(rate: Double): String {
     return when {
-        rate >= 100 -> String.format("%.2f", rate)
-        rate >= 1 -> String.format("%.4f", rate)
-        else -> String.format("%.6f", rate)
+        rate >= 100 -> String.format(java.util.Locale.ROOT, "%.2f", rate)
+        rate >= 1 -> String.format(java.util.Locale.ROOT, "%.4f", rate)
+        else -> String.format(java.util.Locale.ROOT, "%.6f", rate)
     }
 }

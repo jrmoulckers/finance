@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.CategoryRepository
-import com.finance.android.data.repository.TransactionRepository
 import com.finance.android.auth.HouseholdIdProvider
 import com.finance.models.Account
 import com.finance.models.Category
@@ -80,13 +79,11 @@ data class DataImportUiState(
  * File contents are processed locally and never transmitted. Transaction
  * amounts and payee names are not logged.
  *
- * @param transactionRepository Repository for creating imported transactions.
  * @param accountRepository Repository for listing target accounts.
  * @param categoryRepository Repository for category lookups.
  * @param householdIdProvider Provider of the current household ID.
  */
 class DataImportViewModel(
-    private val transactionRepository: TransactionRepository,
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val householdIdProvider: HouseholdIdProvider,

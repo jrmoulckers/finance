@@ -58,10 +58,10 @@ class NotificationPreferencesTest {
         override fun edit(): SharedPreferences.Editor = editor
         override fun registerOnSharedPreferenceChangeListener(
             listener: SharedPreferences.OnSharedPreferenceChangeListener?,
-        ) {}
+        ) { /* No-op */ }
         override fun unregisterOnSharedPreferenceChangeListener(
             listener: SharedPreferences.OnSharedPreferenceChangeListener?,
-        ) {}
+        ) { /* No-op */ }
 
         private class FakeEditor(private val data: MutableMap<String, Any?>) : SharedPreferences.Editor {
             override fun putString(key: String?, value: String?) = apply { data[key!!] = value }
@@ -73,7 +73,7 @@ class NotificationPreferencesTest {
             override fun remove(key: String?) = apply { data.remove(key) }
             override fun clear() = apply { data.clear() }
             override fun commit() = true
-            override fun apply() {}
+            override fun apply() { /* No-op */ }
         }
     }
 

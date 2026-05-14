@@ -125,6 +125,7 @@ fun GoalCreateScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun GoalCreateForm(
     state: GoalCreateUiState,
     onNameChange: (String) -> Unit,
@@ -477,6 +478,7 @@ private fun formatDateDisplay(date: LocalDate): String {
     name = "Goal Create - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun GoalCreateFormPreview() {
     val now = Clock.System.now()
     FinanceTheme(dynamicColor = false) {
@@ -513,6 +515,7 @@ private fun GoalCreateFormPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Goal Create - Errors")
 @Composable
 private fun GoalCreateErrorsPreview() {
@@ -535,6 +538,7 @@ private fun GoalCreateErrorsPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Goal Create - Saving")
 @Composable
 private fun GoalCreateSavingPreview() {

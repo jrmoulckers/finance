@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 @file:OptIn(ExperimentalMaterial3Api::class)
+@file:Suppress("TooManyFunctions") // Settings screen with many related section composables
 
 package com.finance.android.ui.screens
 
@@ -104,6 +105,7 @@ import java.io.File
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
+    @Suppress("UnusedParameter") // Reserved for future back-navigation implementation
     onNavigateBack: () -> Unit,
     onSignOut: () -> Unit,
     onSetThemePreference: (ThemePreference) -> Unit,
@@ -1071,6 +1073,7 @@ private fun shareExportFile(
     uiMode = Configuration.UI_MODE_NIGHT_NO,
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun SettingsScreenPreviewLight() {
     MaterialTheme {
         Surface {
@@ -1105,6 +1108,7 @@ private fun SettingsScreenPreviewLight() {
     uiMode = Configuration.UI_MODE_NIGHT_YES,
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun SettingsScreenPreviewDark() {
     MaterialTheme(
         colorScheme = androidx.compose.material3.darkColorScheme(),
@@ -1134,6 +1138,7 @@ private fun SettingsScreenPreviewDark() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Export Dialog")
 @Composable
 private fun ExportDialogPreview() {
@@ -1145,6 +1150,7 @@ private fun ExportDialogPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Delete Dialog")
 @Composable
 private fun DeleteDialogPreview() {

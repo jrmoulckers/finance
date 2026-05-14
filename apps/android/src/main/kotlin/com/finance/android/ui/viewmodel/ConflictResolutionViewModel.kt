@@ -75,7 +75,7 @@ class ConflictResolutionViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            // TODO: Wire to actual PowerSync conflict detection.
+            // TODO(#1296): Wire to actual PowerSync conflict detection.
             // For now, set empty list — conflicts will appear when
             // sync engine detects divergent records.
             _uiState.update {
@@ -102,7 +102,7 @@ class ConflictResolutionViewModel : ViewModel() {
                     strategy.name,
                 )
 
-                // TODO: Delegate to ConflictStrategy.resolverFor() from KMP sync package.
+                // TODO(#1296): Delegate to ConflictStrategy.resolverFor() from KMP sync package.
                 // For now, simply remove the conflict from the list.
                 _uiState.update { state ->
                     state.copy(

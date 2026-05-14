@@ -176,6 +176,7 @@ private fun NotificationToggleCard(
 
 // ── Previews ─────────────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Notifications — All Off (default)")
 @Composable
 private fun NotificationSettingsAllOffPreview() {
@@ -188,6 +189,7 @@ private fun NotificationSettingsAllOffPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Notifications — Mixed")
 @Composable
 private fun NotificationSettingsMixedPreview() {

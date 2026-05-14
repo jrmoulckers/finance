@@ -88,6 +88,7 @@ class ConnectivityObserver(private val context: Context) {
          * Uses [ConnectivityManager.getActiveNetwork] + [NetworkCapabilities] —
          * the non-deprecated path for API 23+.
          */
+        @Suppress("ReturnCount") // Multiple early returns improve readability
         private fun ConnectivityManager.isCurrentlyConnected(): Boolean {
             val activeNetwork = activeNetwork ?: return false
             val capabilities = getNetworkCapabilities(activeNetwork) ?: return false

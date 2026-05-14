@@ -145,6 +145,7 @@ class BudgetEditViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errors = emptyList()) }
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val original = originalBudget ?: run {
                     _uiState.update {
@@ -181,6 +182,7 @@ class BudgetEditViewModel(
     fun delete() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 budgetRepository.delete(budgetId)
                 Timber.d("Budget deleted: id=%s", budgetId.value)

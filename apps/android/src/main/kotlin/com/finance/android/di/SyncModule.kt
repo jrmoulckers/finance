@@ -73,7 +73,6 @@ val syncModule = module {
             syncEngine = get(),
             mutationQueue = get(),
             connectivityObserver = get(),
-            context = androidContext(),
         )
     }
 

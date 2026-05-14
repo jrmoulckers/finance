@@ -33,8 +33,8 @@ private class FakeSharedPreferences : SharedPreferences {
     override fun contains(key: String?): Boolean = data.containsKey(key)
     override fun getAll(): MutableMap<String, *> = data.toMutableMap()
     override fun edit(): SharedPreferences.Editor = FakeEditor(data)
-    override fun registerOnSharedPreferenceChangeListener(l: SharedPreferences.OnSharedPreferenceChangeListener?) {}
-    override fun unregisterOnSharedPreferenceChangeListener(l: SharedPreferences.OnSharedPreferenceChangeListener?) {}
+    override fun registerOnSharedPreferenceChangeListener(l: SharedPreferences.OnSharedPreferenceChangeListener?) { /* No-op */ }
+    override fun unregisterOnSharedPreferenceChangeListener(l: SharedPreferences.OnSharedPreferenceChangeListener?) { /* No-op */ }
     private class FakeEditor(private val data: MutableMap<String, Any?>) : SharedPreferences.Editor {
         private val pending = mutableMapOf<String, Any?>()
         override fun putString(k: String?, v: String?): SharedPreferences.Editor { k?.let { pending[it] = v }; return this }

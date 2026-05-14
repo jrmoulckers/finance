@@ -187,6 +187,7 @@ fun NoAccountsEmptyState(
 // Previews
 // ---------------------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "EmptyState — Generic")
 @Composable
 private fun EmptyStatePreview() {
@@ -202,6 +203,7 @@ private fun EmptyStatePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "NoTransactionsEmptyState")
 @Composable
 private fun NoTransactionsEmptyStatePreview() {
@@ -210,6 +212,7 @@ private fun NoTransactionsEmptyStatePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "NoBudgetsEmptyState")
 @Composable
 private fun NoBudgetsEmptyStatePreview() {
@@ -218,6 +221,7 @@ private fun NoBudgetsEmptyStatePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "NoGoalsEmptyState")
 @Composable
 private fun NoGoalsEmptyStatePreview() {
@@ -226,6 +230,7 @@ private fun NoGoalsEmptyStatePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "NoAccountsEmptyState")
 @Composable
 private fun NoAccountsEmptyStatePreview() {

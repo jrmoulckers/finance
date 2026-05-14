@@ -63,6 +63,7 @@ import org.koin.compose.viewmodel.koinViewModel
  * @param viewModel The [CurrencyViewModel] providing picker state.
  */
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun CurrencyPickerScreen(
     onBack: () -> Unit,
     onCurrencySelected: (Currency) -> Unit,

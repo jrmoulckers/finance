@@ -62,6 +62,7 @@ data class HouseholdUiState(
  *
  * @param householdIdProvider Provides the current household scope.
  */
+@Suppress("TooManyFunctions") // ViewModel/screen with related operations
 class HouseholdViewModel(
     private val householdIdProvider: HouseholdIdProvider,
 ) : ViewModel() {

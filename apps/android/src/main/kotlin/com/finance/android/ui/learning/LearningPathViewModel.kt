@@ -73,6 +73,7 @@ class LearningPathViewModel : ViewModel() {
     /**
      * Advances to the next module and marks the current one as complete.
      */
+    @Suppress("ReturnCount") // Multiple early returns improve readability
     fun completeModuleAndAdvance() {
         val state = _uiState.value
         val pathId = state.selectedPathId ?: return

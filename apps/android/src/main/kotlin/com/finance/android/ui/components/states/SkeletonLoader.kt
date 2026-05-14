@@ -280,6 +280,7 @@ fun BudgetListSkeleton(modifier: Modifier = Modifier) {
 // Previews
 // ---------------------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "SkeletonBox")
 @Composable
 private fun SkeletonBoxPreview() {
@@ -288,6 +289,7 @@ private fun SkeletonBoxPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "TransactionListSkeleton")
 @Composable
 private fun TransactionListSkeletonPreview() {
@@ -296,6 +298,7 @@ private fun TransactionListSkeletonPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "DashboardSkeleton")
 @Composable
 private fun DashboardSkeletonPreview() {
@@ -304,6 +307,7 @@ private fun DashboardSkeletonPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "BudgetListSkeleton")
 @Composable
 private fun BudgetListSkeletonPreview() {

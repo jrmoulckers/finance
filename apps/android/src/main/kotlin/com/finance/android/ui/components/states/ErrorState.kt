@@ -210,6 +210,7 @@ fun SyncErrorDialog(
 // Previews
 // ---------------------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "ErrorSnackbar")
 @Composable
 private fun ErrorSnackbarPreview() {
@@ -221,6 +222,7 @@ private fun ErrorSnackbarPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "NetworkErrorBanner")
 @Composable
 private fun NetworkErrorBannerPreview() {
@@ -229,6 +231,7 @@ private fun NetworkErrorBannerPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "ValidationError")
 @Composable
 private fun ValidationErrorPreview() {
@@ -240,6 +243,7 @@ private fun ValidationErrorPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "SyncErrorDialog")
 @Composable
 private fun SyncErrorDialogPreview() {

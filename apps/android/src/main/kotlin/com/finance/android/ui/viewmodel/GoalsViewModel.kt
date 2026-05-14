@@ -106,6 +106,7 @@ class GoalsViewModel(
     }
 
     private suspend fun loadData() {
+        @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
         try {
             val householdId = householdIdProvider.householdId.value ?: run {
                 Timber.w("No household ID available — skipping goals load")
@@ -143,6 +144,7 @@ class GoalsViewModel(
                 )
             }
         } catch (e: Exception) {
+            Timber.e(e, "Error occurred")
             _uiState.update {
                 it.copy(errorMessage = "Unable to load goals. Pull down to retry.")
             }

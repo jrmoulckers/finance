@@ -100,6 +100,7 @@ class AffordabilityViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isAnalysing = true, errorMessage = null) }
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val result = runAnalysis(cents)
                 _uiState.update { it.copy(result = result, isAnalysing = false) }

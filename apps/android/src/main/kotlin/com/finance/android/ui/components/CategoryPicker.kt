@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName") // File contains multiple related declarations
+
 // SPDX-License-Identifier: BUSL-1.1
 
 package com.finance.android.ui.components
@@ -265,6 +267,7 @@ private val sampleCategories = listOf(
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "CategoryPicker - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CategoryPicker - Dark")
 @Composable
@@ -279,6 +282,7 @@ private fun CategoryPickerPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "CategoryGridCell Unselected - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CategoryGridCell Unselected - Dark")
 @Composable
@@ -292,6 +296,7 @@ private fun CategoryGridCellUnselectedPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "CategoryGridCell Selected - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CategoryGridCell Selected - Dark")
 @Composable

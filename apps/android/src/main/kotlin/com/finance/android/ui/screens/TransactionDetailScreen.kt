@@ -194,6 +194,7 @@ fun TransactionDetailScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun TransactionDetailContent(state: TransactionDetailUiState.Success) {
     val amountColor = when (state.type) {
         TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
@@ -520,6 +521,7 @@ private fun detailCatIcon(name: String?): ImageVector = when (name) {
     name = "Detail - Expense Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun TransactionDetailExpensePreview() {
     FinanceTheme(dynamicColor = false) {
         TransactionDetailContent(
@@ -542,6 +544,7 @@ private fun TransactionDetailExpensePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Detail - Income Light")
 @Composable
 private fun TransactionDetailIncomePreview() {
@@ -566,18 +569,21 @@ private fun TransactionDetailIncomePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Detail - Loading")
 @Composable
 private fun TransactionDetailLoadingPreview() {
     FinanceTheme(dynamicColor = false) { DetailLoadingState() }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Detail - Not Found")
 @Composable
 private fun TransactionDetailNotFoundPreview() {
     FinanceTheme(dynamicColor = false) { DetailNotFoundState(onBack = {}) }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Delete Dialog")
 @Composable
 private fun DeleteDialogPreview() {

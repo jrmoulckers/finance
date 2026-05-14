@@ -86,6 +86,7 @@ import com.finance.android.ui.theme.FinanceTheme
     name = "Typography Scale - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun TypographyScalePreview() {
     FinanceTheme(dynamicColor = false) {
         Surface {
@@ -116,6 +117,7 @@ private fun TypographyScalePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, fontScale = 2.0f, name = "Typography Scale - 2x Font")
 @Composable
 private fun TypographyScaleLargeFontPreview() {
@@ -147,6 +149,7 @@ private fun TypographyScaleLargeFontPreview() {
     name = "Color Tokens - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun ColorTokensPreview() {
     FinanceTheme(dynamicColor = false) {
         Surface {
@@ -203,6 +206,7 @@ private fun ColorTokenRow(
     name = "Buttons - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun ButtonsPreview() {
     FinanceTheme(dynamicColor = false) {
         Surface {
@@ -282,6 +286,7 @@ private fun ButtonsPreview() {
     name = "Cards - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun CardsPreview() {
     FinanceTheme(dynamicColor = false) {
         Surface {
@@ -380,6 +385,7 @@ private fun CardsPreview() {
     name = "Inputs - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun InputFieldsPreview() {
     FinanceTheme(dynamicColor = false) {
         Surface {
@@ -443,6 +449,7 @@ private fun InputFieldsPreview() {
     name = "Chips - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun ChipsPreview() {
     FinanceTheme(dynamicColor = false) {
         Surface {
@@ -517,6 +524,7 @@ private fun ChipsPreview() {
     name = "Icons - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun FinancialIconsPreview() {
     FinanceTheme(dynamicColor = false) {
         Surface {

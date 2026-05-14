@@ -71,6 +71,7 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun AccountEditScreen(
     onSaved: () -> Unit = {},
     onDeleted: () -> Unit = {},
@@ -196,6 +197,7 @@ fun AccountEditScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun AccountEditForm(
     state: AccountEditUiState,
     supportedCurrencies: List<String>,
@@ -450,6 +452,7 @@ private fun accountEditTypeDisplayName(type: AccountType): String = when (type) 
     name = "Account Edit - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun AccountEditScreenPreview() {
     FinanceTheme(dynamicColor = false) {
         AccountEditForm(
@@ -471,6 +474,7 @@ private fun AccountEditScreenPreview() {
     name = "Account Edit - Errors - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun AccountEditErrorsPreview() {
     FinanceTheme(dynamicColor = false) {
         AccountEditForm(
@@ -485,6 +489,7 @@ private fun AccountEditErrorsPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Account Edit - Saving")
 @Composable
 private fun AccountEditSavingPreview() {
@@ -501,6 +506,7 @@ private fun AccountEditSavingPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, fontScale = 1.5f, name = "Account Edit - Large Font")
 @Composable
 private fun AccountEditLargeFontPreview() {

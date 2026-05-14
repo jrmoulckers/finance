@@ -141,6 +141,7 @@ private fun QuickEntryContent() {
  * Single category shortcut button within the widget.
  */
 @Composable
+@Suppress("UnusedParameter") // Reserved for future implementation
 private fun CategoryButton(
     emoji: String,
     label: String,

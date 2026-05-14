@@ -220,6 +220,7 @@ data class ReportGroupUi(
  * @param accountRepository Source for account list.
  * @param categoryRepository Source for category list.
  */
+@Suppress("TooManyFunctions") // ViewModel/screen with related operations
 class ReportBuilderViewModel(
     private val householdIdProvider: HouseholdIdProvider,
     private val transactionRepository: TransactionRepository,
@@ -466,6 +467,7 @@ class ReportBuilderViewModel(
     fun generateReport() {
         viewModelScope.launch {
             _uiState.update { it.copy(isGenerating = true, errorMessage = null) }
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val householdId = householdIdProvider.householdId.value
                     ?: error("No household ID")

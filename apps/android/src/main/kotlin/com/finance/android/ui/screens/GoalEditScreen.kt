@@ -78,6 +78,7 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun GoalEditScreen(
     onSaved: () -> Unit = {},
     onDeleted: () -> Unit = {},
@@ -203,6 +204,7 @@ fun GoalEditScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun GoalEditForm(
     state: GoalEditUiState,
     onNameChange: (String) -> Unit,
@@ -510,6 +512,7 @@ private fun goalEditFormatDate(date: LocalDate): String {
     name = "Goal Edit - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun GoalEditScreenPreview() {
     FinanceTheme(dynamicColor = false) {
         GoalEditForm(
@@ -531,6 +534,7 @@ private fun GoalEditScreenPreview() {
     name = "Goal Edit - Errors - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun GoalEditErrorsPreview() {
     FinanceTheme(dynamicColor = false) {
         GoalEditForm(
@@ -545,6 +549,7 @@ private fun GoalEditErrorsPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Goal Edit - Saving")
 @Composable
 private fun GoalEditSavingPreview() {
@@ -561,6 +566,7 @@ private fun GoalEditSavingPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, fontScale = 1.5f, name = "Goal Edit - Large Font")
 @Composable
 private fun GoalEditLargeFontPreview() {

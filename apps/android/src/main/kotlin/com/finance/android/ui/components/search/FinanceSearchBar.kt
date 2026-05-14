@@ -139,6 +139,7 @@ fun FinanceSearchBar(
 // Previews
 // ---------------------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "SearchBar — empty", showBackground = true)
 @Composable
 private fun FinanceSearchBarEmptyPreview() {
@@ -153,6 +154,7 @@ private fun FinanceSearchBarEmptyPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "SearchBar — with text", showBackground = true)
 @Composable
 private fun FinanceSearchBarWithTextPreview() {

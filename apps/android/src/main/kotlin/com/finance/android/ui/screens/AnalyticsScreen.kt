@@ -931,6 +931,7 @@ private fun SectionHeader(
     name = "Analytics - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun AnalyticsScreenPreview() {
     FinanceTheme(dynamicColor = false) {
         AnalyticsContent(
@@ -975,6 +976,7 @@ private fun AnalyticsScreenPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Analytics - Empty - Light")
 @Composable
 private fun AnalyticsEmptyPreview() {

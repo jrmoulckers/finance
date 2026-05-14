@@ -283,6 +283,7 @@ private fun accountTypeIcon(type: AccountType): ImageVector = when (type) {
     AccountType.OTHER -> Icons.Filled.AccountBalance
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Accounts List - Light")
 @Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Accounts List - Dark")
 @Composable
@@ -300,6 +301,7 @@ private fun AccountsScreenPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Accounts Empty - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Accounts Empty - Dark")
 @Composable
@@ -307,6 +309,7 @@ private fun AccountsEmptyPreview() {
     FinanceTheme(dynamicColor = false) { AccountsEmptyState() }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Accounts All Types - Light")
 @Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Accounts All Types - Dark")
 @Composable

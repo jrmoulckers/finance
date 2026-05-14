@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.nlp
 
+import java.util.Locale
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -125,6 +126,7 @@ fun NlpTransactionScreen(
 }
 
 @OptIn(ExperimentalLayoutApi::class)
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 @Composable
 internal fun NlpTransactionContent(
     state: NlpInputUiState,
@@ -327,7 +329,7 @@ private fun ParsedFieldsCard(parsed: ParsedTransaction) {
             .semantics {
                 contentDescription = buildString {
                     append("Parsed transaction: ")
-                    parsed.amount?.let { append("Amount: dollar ${String.format("%.2f", it)}. ") }
+                    parsed.amount?.let { append("Amount: dollar ${String.format(java.util.Locale.ROOT, "%.2f", it)}. ") }
                     parsed.payee?.let { append("Payee: $it. ") }
                     parsed.category?.let { append("Category: $it. ") }
                     parsed.date?.let { append("Date: $it. ") }
@@ -348,7 +350,7 @@ private fun ParsedFieldsCard(parsed: ParsedTransaction) {
                 ParsedFieldRow(
                     icon = null,
                     label = "Amount",
-                    value = "$${String.format("%.2f", amount)}",
+                    value = "$${String.format(java.util.Locale.ROOT, "%.2f", amount)}",
                     valueColor = if (parsed.type == TransactionNlpType.INCOME) Color(0xFF2E7D32)
                     else MaterialTheme.colorScheme.error,
                 )
@@ -410,6 +412,7 @@ private fun ParsedFieldRow(
 
 // ── Previews ────────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "NLP Input - Empty")
 @Composable
 private fun NlpEmptyPreview() {
@@ -425,6 +428,7 @@ private fun NlpEmptyPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "NLP Input - Parsed")
 @Composable
 private fun NlpParsedPreview() {

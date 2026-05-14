@@ -14,11 +14,8 @@ import com.finance.core.security.DeviceAttestor
  *
  * The integrity token is sent to the backend for server-side verification.
  * The client NEVER evaluates the token directly.
- *
- * @param cloudProjectNumber Google Cloud project number for the API.
  */
 class PlayIntegrityAttestor(
-    private val cloudProjectNumber: Long,
 ) : DeviceAttestor {
     override val isSupported: Boolean = true
 
@@ -29,8 +26,9 @@ class PlayIntegrityAttestor(
      * @return The integrity token string to send to the backend.
      */
     override suspend fun requestAttestation(nonce: String): Result<String> {
+        @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
         return try {
-            // TODO: Wire Play Integrity API dependency
+            // TODO(#1296): Wire Play Integrity API dependency
             // val integrityManager = IntegrityManagerFactory.create(context)
             // val request = IntegrityTokenRequest.builder()
             //     .setNonce(nonce)

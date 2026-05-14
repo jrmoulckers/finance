@@ -128,6 +128,7 @@ fun CircularProgressRing(
 
 // -- Previews -----------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "ProgressRing 0% - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing 0% - Dark")
 @Composable
@@ -146,6 +147,7 @@ private fun ProgressRing0Preview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "ProgressRing 50% - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing 50% - Dark")
 @Composable
@@ -164,6 +166,7 @@ private fun ProgressRing50Preview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "ProgressRing 80% - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing 80% - Dark")
 @Composable
@@ -182,6 +185,7 @@ private fun ProgressRing80Preview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "ProgressRing 100% - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing 100% - Dark")
 @Composable
@@ -200,6 +204,7 @@ private fun ProgressRing100Preview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "ProgressRing 130% - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing 130% - Dark")
 @Composable
@@ -221,6 +226,7 @@ private fun ProgressRing130Preview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "ProgressRing All States - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "ProgressRing All States - Dark")
 @Composable

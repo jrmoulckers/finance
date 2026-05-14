@@ -48,7 +48,7 @@ class SubscriptionManager {
     val currentTier: Tier get() = _state.value.tier
 
     init {
-        // TODO: Connect to Google Play BillingClient and query active purchases
+        // TODO(#1296): Connect to Google Play BillingClient and query active purchases
         _state.value = SubscriptionState(tier = Tier.FREE, isLoading = false)
         Timber.d("SubscriptionManager initialized with FREE tier (stub)")
     }
@@ -62,7 +62,7 @@ class SubscriptionManager {
      */
     fun launchPurchase(targetTier: Tier) {
         Timber.d("Purchase flow requested for tier: %s (stub — not implemented)", targetTier.name)
-        // TODO: Implement Google Play billing flow
+        // TODO(#1296): Implement Google Play billing flow
         // 1. Query SkuDetails for the targetTier product
         // 2. Launch BillingClient.launchBillingFlow()
         // 3. Handle PurchasesUpdatedListener callback
@@ -77,6 +77,6 @@ class SubscriptionManager {
      */
     fun restorePurchases() {
         Timber.d("Restore purchases requested (stub — not implemented)")
-        // TODO: Query Play Store for existing purchases
+        // TODO(#1296): Query Play Store for existing purchases
     }
 }

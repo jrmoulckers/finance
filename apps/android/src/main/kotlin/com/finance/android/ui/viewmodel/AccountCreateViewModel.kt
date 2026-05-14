@@ -120,6 +120,7 @@ class AccountCreateViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errors = emptyList()) }
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val householdId = householdIdProvider.householdId.value ?: run {
                     Timber.w("No household ID available — cannot create account")

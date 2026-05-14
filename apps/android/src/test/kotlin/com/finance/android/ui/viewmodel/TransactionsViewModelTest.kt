@@ -166,7 +166,7 @@ class TransactionsViewModelTest {
         }
 
         override suspend fun getUnsynced(householdId: SyncId): List<Transaction> = emptyList()
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     private class TestCategoryRepository(
@@ -208,7 +208,7 @@ class TransactionsViewModelTest {
         }
 
         override suspend fun getUnsynced(householdId: SyncId): List<Category> = emptyList()
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     private fun createViewModel(

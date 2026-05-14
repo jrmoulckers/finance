@@ -68,6 +68,7 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun DataImportScreen(
     onNavigateBack: () -> Unit,
     viewModel: DataImportViewModel = koinViewModel(),

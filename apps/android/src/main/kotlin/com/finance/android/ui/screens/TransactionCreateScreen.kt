@@ -328,6 +328,7 @@ private fun catIcon(name: String?): ImageVector = when (name) {
     else -> Icons.Filled.Category
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Amount Step - Light")
 @Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Amount Step - Dark")
 @Composable
@@ -338,6 +339,7 @@ private fun AmountStepPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Confirm Step - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Confirm Step - Dark")
 @Composable
@@ -349,6 +351,7 @@ private fun ConfirmPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Category Step - Light")
 @Preview(showBackground = true, showSystemUi = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Category Step - Dark")
 @Composable
@@ -368,6 +371,7 @@ private fun CategoryStepPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Transaction Create - Errors - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Transaction Create - Errors - Dark")
 @Composable

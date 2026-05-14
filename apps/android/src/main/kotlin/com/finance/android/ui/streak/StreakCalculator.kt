@@ -36,6 +36,7 @@ object StreakCalculator {
      *   that appear in [loggingDates]. Returns 0 if today/yesterday are
      *   not in the set.
      */
+    @Suppress("ReturnCount") // Multiple early returns improve readability
     fun currentStreak(
         loggingDates: Set<LocalDate>,
         today: LocalDate = Clock.System.now()

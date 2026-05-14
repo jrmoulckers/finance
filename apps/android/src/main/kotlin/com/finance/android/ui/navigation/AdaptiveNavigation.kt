@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName") // File contains multiple related declarations
+
 // SPDX-License-Identifier: BUSL-1.1
 
 package com.finance.android.ui.navigation

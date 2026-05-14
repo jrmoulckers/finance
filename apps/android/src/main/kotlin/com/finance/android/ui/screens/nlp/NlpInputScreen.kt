@@ -143,6 +143,7 @@ fun NlpInputScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+@Suppress("LongMethod", "UnusedParameter") // Compose UI function; some params reserved for future use
 internal fun NlpInputContent(
     state: NlpInputUiState,
     onInputChanged: (String) -> Unit,
@@ -692,6 +693,7 @@ private fun ConfidenceBadge(confidence: ParseConfidence) {
 
 // ── Previews ─────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "NLP Enhanced - Active - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "NLP Enhanced - Active - Dark")
 @Composable
@@ -731,6 +733,7 @@ private fun NlpInputActivePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "NLP Enhanced - Empty - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "NLP Enhanced - Empty - Dark")
 @Composable
@@ -761,6 +764,7 @@ private fun NlpInputEmptyPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "NLP Enhanced - Quick Fix - Light")
 @Composable
 private fun NlpInputQuickFixPreview() {

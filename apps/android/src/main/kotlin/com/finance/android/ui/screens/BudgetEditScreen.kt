@@ -73,6 +73,7 @@ import org.koin.compose.viewmodel.koinViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun BudgetEditScreen(
     onSaved: () -> Unit = {},
     onDeleted: () -> Unit = {},
@@ -196,6 +197,7 @@ fun BudgetEditScreen(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun BudgetEditForm(
     state: BudgetEditUiState,
     onCategorySelect: (SyncId) -> Unit,
@@ -418,6 +420,7 @@ private fun budgetEditPeriodDisplayName(period: BudgetPeriod): String = when (pe
     name = "Budget Edit - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun BudgetEditScreenPreview() {
     FinanceTheme(dynamicColor = false) {
         BudgetEditForm(
@@ -437,6 +440,7 @@ private fun BudgetEditScreenPreview() {
     name = "Budget Edit - Errors - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun BudgetEditErrorsPreview() {
     FinanceTheme(dynamicColor = false) {
         BudgetEditForm(
@@ -449,6 +453,7 @@ private fun BudgetEditErrorsPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Budget Edit - Saving")
 @Composable
 private fun BudgetEditSavingPreview() {
@@ -463,6 +468,7 @@ private fun BudgetEditSavingPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, fontScale = 1.5f, name = "Budget Edit - Large Font")
 @Composable
 private fun BudgetEditLargeFontPreview() {

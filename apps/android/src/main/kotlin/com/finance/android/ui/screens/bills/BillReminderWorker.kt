@@ -37,7 +37,7 @@ class BillReminderWorker(
         Timber.i("BillReminderWorker starting — checking for upcoming bills")
 
         return try {
-            // TODO: Query detected bills and dispatch notifications for:
+            // TODO(#1296): Query detected bills and dispatch notifications for:
             // - Bills due today
             // - Bills due tomorrow
             // - Overdue bills

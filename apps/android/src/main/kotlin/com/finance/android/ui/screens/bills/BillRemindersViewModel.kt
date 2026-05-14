@@ -115,10 +115,6 @@ class BillRemindersViewModel(
                 .sortedBy { it.nextDueDate }
             val overdue = detectedBills.filter { it.isOverdue }
                 .sortedBy { it.nextDueDate }
-            val totalUpcoming = upcoming.sumOf {
-                // Parse cents from formatted amount (simplified)
-                0L
-            }
 
             val calendarDays = generateCalendarDays(today, detectedBills)
 
@@ -140,6 +136,7 @@ class BillRemindersViewModel(
         }
     }
 
+    @Suppress("CyclomaticComplexMethod") // Complex branching inherent to this logic
     private fun detectRecurringBills(
         transactions: List<Transaction>,
         today: LocalDate,
@@ -153,6 +150,7 @@ class BillRemindersViewModel(
         val bills = mutableListOf<BillUi>()
         var billId = 0
 
+        @Suppress("LoopWithTooManyJumpStatements") // Loop logic requires multiple exits
         for ((payee, txns) in payeeGroups) {
             val sortedDates = txns.map { it.date }.sorted()
             if (sortedDates.size < 2) continue

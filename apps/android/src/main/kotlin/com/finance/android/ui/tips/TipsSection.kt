@@ -244,6 +244,7 @@ private fun tipCategoryLabel(category: TipCategory): String = when (category) {
     name = "Tips Section - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun TipsSectionPreview() {
     FinanceTheme(dynamicColor = false) {
         TipsSectionContent(
@@ -279,6 +280,7 @@ private fun TipsSectionPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Tip Card - High Priority")
 @Composable
 private fun TipCardHighPreview() {

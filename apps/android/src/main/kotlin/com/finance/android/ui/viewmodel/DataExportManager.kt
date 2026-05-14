@@ -4,7 +4,6 @@ package com.finance.android.ui.viewmodel
 
 import android.content.Context
 import android.net.Uri
-import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.android.auth.HouseholdIdProvider
 import com.finance.models.Transaction
@@ -46,13 +45,11 @@ sealed class ExportResult {
  * @param context Application context for content resolver access.
  * @param householdIdProvider Provider of the current household ID.
  * @param transactionRepository Source of transaction data.
- * @param accountRepository Source of account data for enrichment.
  */
 class DataExportManager(
     private val context: Context,
     private val householdIdProvider: HouseholdIdProvider,
     private val transactionRepository: TransactionRepository,
-    private val accountRepository: AccountRepository,
 ) {
 
     /**
@@ -121,7 +118,7 @@ class DataExportManager(
                 transactions
             }
 
-            // TODO: Implement PDF generation using Android PdfDocument API.
+            // TODO(#1296): Implement PDF generation using Android PdfDocument API.
             // For now, write a plain-text report as a placeholder.
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
                 val writer = outputStream.bufferedWriter()

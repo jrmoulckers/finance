@@ -87,6 +87,7 @@ fun FinancialGlossaryScreen(
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Glossary - Light")
 @Composable
 private fun GlossaryPreview() {

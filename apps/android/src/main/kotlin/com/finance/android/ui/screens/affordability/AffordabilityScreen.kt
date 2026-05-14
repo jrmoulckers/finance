@@ -121,6 +121,7 @@ fun AffordabilityScreen(
 }
 
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 internal fun AffordabilityContent(
     state: AffordabilityUiState,
     onAmountChanged: (String) -> Unit,
@@ -439,6 +440,7 @@ private fun verdictPresentation(verdict: AffordabilityVerdict): Triple<ImageVect
         )
     }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Affordability - Empty")
 @Composable
 private fun AffordabilityEmptyPreview() {
@@ -454,6 +456,7 @@ private fun AffordabilityEmptyPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Affordability - Comfortable")
 @Composable
 private fun AffordabilityComfortablePreview() {
@@ -486,6 +489,7 @@ private fun AffordabilityComfortablePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Affordability - Cannot Afford")
 @Composable
 private fun AffordabilityCannotAffordPreview() {

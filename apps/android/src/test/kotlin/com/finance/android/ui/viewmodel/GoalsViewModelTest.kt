@@ -133,7 +133,7 @@ class GoalsViewModelTest {
 
         override suspend fun getUnsynced(householdId: SyncId): List<Goal> = emptyList()
 
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     // ═══════════════════════════════════════════════════════════════════

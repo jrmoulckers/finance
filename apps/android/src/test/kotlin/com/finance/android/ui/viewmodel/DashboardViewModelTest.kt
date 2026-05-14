@@ -204,7 +204,7 @@ class DashboardViewModelTest {
         }
 
         override suspend fun getUnsynced(householdId: SyncId): List<Account> = emptyList()
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     private class TestTransactionRepository(
@@ -257,7 +257,7 @@ class DashboardViewModelTest {
         }
 
         override suspend fun getUnsynced(householdId: SyncId): List<Transaction> = emptyList()
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     private class TestBudgetRepository(
@@ -296,7 +296,7 @@ class DashboardViewModelTest {
         }
 
         override suspend fun getUnsynced(householdId: SyncId): List<Budget> = emptyList()
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     private class TestCategoryRepository(
@@ -338,7 +338,7 @@ class DashboardViewModelTest {
         }
 
         override suspend fun getUnsynced(householdId: SyncId): List<Category> = emptyList()
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     private fun createViewModel(

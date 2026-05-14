@@ -168,7 +168,7 @@ class BudgetsViewModelTest {
 
         override suspend fun getUnsynced(householdId: SyncId): List<Budget> = emptyList()
 
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     /**
@@ -225,7 +225,7 @@ class BudgetsViewModelTest {
 
         override suspend fun getUnsynced(householdId: SyncId): List<Transaction> = emptyList()
 
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     /**
@@ -271,7 +271,7 @@ class BudgetsViewModelTest {
 
         override suspend fun getUnsynced(householdId: SyncId): List<Category> = emptyList()
 
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     // ═══════════════════════════════════════════════════════════════════

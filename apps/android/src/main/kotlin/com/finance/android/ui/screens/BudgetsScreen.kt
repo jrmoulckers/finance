@@ -446,6 +446,7 @@ private fun BudgetsErrorState(
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Budgets")
 @Composable
 private fun BudgetsScreenPreview() {
@@ -483,6 +484,7 @@ private fun BudgetsScreenPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Budgets - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "Budgets - Dark")
 @Preview(showBackground = true, name = "Budgets Empty")
@@ -493,6 +495,7 @@ private fun BudgetsEmptyPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Budgets Error")
 @Composable
 private fun BudgetsErrorPreview() {
