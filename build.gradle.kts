@@ -13,6 +13,22 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
 }
 
+// Force all transitive io.netty dependencies to the latest patched version.
+// Fixes 21 Dependabot security alerts (HTTP/2 attacks, request smuggling, DoS,
+// decompression bombs, CRLF injection) across Ktor, Compose Desktop, and
+// Gradle Develocity transitive dependency trees.
+val nettyVersion = libs.versions.netty.get()
+allprojects {
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "io.netty") {
+                useVersion(nettyVersion)
+                because("Fix Dependabot security alerts for Netty CVEs (#1292)")
+            }
+        }
+    }
+}
+
 // Configure detekt for all Kotlin files in the project
 detekt {
     basePath = projectDir.absolutePath

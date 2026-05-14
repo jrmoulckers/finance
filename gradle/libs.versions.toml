@@ -14,6 +14,7 @@ turbine = "1.2.0"
 kover = "0.9.1"
 paparazzi = "1.3.5"
 compose-multiplatform = "1.7.3"
+netty = "4.1.133.Final"
 
 # Android / Compose
 android-compileSdk = "35"
