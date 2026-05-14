@@ -147,6 +147,7 @@ data class NlpInputUiState(
  * @param transactionRepository Source for payee history and saving transactions.
  * @param categoryRepository Source for category matching.
  */
+@Suppress("TooManyFunctions") // ViewModel/screen with related operations
 class NlpInputViewModel(
     private val householdIdProvider: HouseholdIdProvider,
     private val transactionRepository: TransactionRepository,
@@ -587,6 +588,7 @@ class NlpInputViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val householdId = householdIdProvider.householdId.value
                     ?: error("No household ID")

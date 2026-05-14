@@ -29,6 +29,7 @@ class NotificationWorker(
     private val dispatcher: NotificationDispatcher by inject()
     private val preferences: NotificationPreferences by inject()
 
+    @Suppress("ReturnCount") // Multiple early returns improve readability
     override suspend fun doWork(): Result {
         val typeName = inputData.getString(KEY_NOTIFICATION_TYPE)
         if (typeName == null) {

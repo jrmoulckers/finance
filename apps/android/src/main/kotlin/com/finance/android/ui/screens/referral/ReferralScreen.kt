@@ -370,6 +370,7 @@ private fun ReferralHistoryItem(referral: ReferralItemUi) {
 }
 
 @Composable
+@Suppress("UnusedParameter") // Reserved for future implementation
 private fun CelebrationOverlay(onDismiss: () -> Unit) {
     val transition = rememberInfiniteTransition(label = "celebration")
     val particleProgress by transition.animateFloat(
@@ -425,6 +426,7 @@ private fun CelebrationOverlay(onDismiss: () -> Unit) {
 
 // ── Previews ─────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Referral - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Referral - Dark")
 @Composable

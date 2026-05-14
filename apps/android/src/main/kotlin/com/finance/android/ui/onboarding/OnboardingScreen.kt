@@ -84,6 +84,7 @@ private const val TRANSITION_DURATION_MS = 350
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun OnboardingScreen(
     viewModel: OnboardingViewModel,
     onOnboardingComplete: () -> Unit,
@@ -942,6 +943,7 @@ private fun isReducedMotionEnabled(): Boolean {
 
 // ── Previews ─────────────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Step 1 — Welcome")
 @Composable
 private fun WelcomeStepPreview() {
@@ -950,6 +952,7 @@ private fun WelcomeStepPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Step 2 — Path Selection")
 @Composable
 private fun PathSelectionStepPreview() {
@@ -961,6 +964,7 @@ private fun PathSelectionStepPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Step 3 — Currency")
 @Composable
 private fun CurrencyStepPreview() {
@@ -974,6 +978,7 @@ private fun CurrencyStepPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Step 4 — First Account")
 @Composable
 private fun FirstAccountStepPreview() {
@@ -991,6 +996,7 @@ private fun FirstAccountStepPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Step 5 — First Budget")
 @Composable
 private fun FirstBudgetStepPreview() {
@@ -1005,6 +1011,7 @@ private fun FirstBudgetStepPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Step 6 — Done")
 @Composable
 private fun DoneStepPreview() {

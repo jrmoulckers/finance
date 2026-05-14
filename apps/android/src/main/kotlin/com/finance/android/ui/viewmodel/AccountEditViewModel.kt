@@ -137,6 +137,7 @@ class AccountEditViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errors = emptyList()) }
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val original = originalAccount ?: run {
                     _uiState.update {
@@ -173,6 +174,7 @@ class AccountEditViewModel(
     fun delete() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 accountRepository.delete(accountId)
                 Timber.d("Account deleted: id=%s", accountId.value)

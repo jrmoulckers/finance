@@ -136,6 +136,7 @@ fun LoginScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun LoginContent(
     isError: Boolean,
     onSignInWithGoogle: () -> Unit,
@@ -310,6 +311,7 @@ private fun LoadingContent() {
  * @return The authorization code, or `null` if this intent does not
  *         contain an auth callback.
  */
+@Suppress("ReturnCount") // Multiple early returns improve readability
 private fun extractOAuthCode(intent: Intent?): String? {
     val data = intent?.data ?: return null
     if (data.host != "finance.app" || data.path != "/auth/callback") return null
@@ -327,6 +329,7 @@ private fun extractOAuthCode(intent: Intent?): String? {
     uiMode = Configuration.UI_MODE_NIGHT_NO,
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun LoginScreenPreviewLight() {
     MaterialTheme {
         Surface {
@@ -347,6 +350,7 @@ private fun LoginScreenPreviewLight() {
     uiMode = Configuration.UI_MODE_NIGHT_YES,
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun LoginScreenPreviewDark() {
     MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme()) {
         Surface {
@@ -360,6 +364,7 @@ private fun LoginScreenPreviewDark() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Login – Error")
 @Composable
 private fun LoginScreenPreviewError() {
@@ -375,6 +380,7 @@ private fun LoginScreenPreviewError() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Login – Loading")
 @Composable
 private fun LoginScreenPreviewLoading() {

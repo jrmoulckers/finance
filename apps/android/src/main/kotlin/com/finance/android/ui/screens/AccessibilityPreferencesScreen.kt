@@ -45,6 +45,7 @@ import com.finance.android.ui.accessibility.CognitiveAccessibilityManager
  * @param accessibilityManager Manager for persisting preferences.
  */
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun AccessibilityPreferencesScreen(
     accessibilityManager: CognitiveAccessibilityManager,
 ) {

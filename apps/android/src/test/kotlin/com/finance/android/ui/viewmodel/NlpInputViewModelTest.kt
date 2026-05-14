@@ -133,10 +133,10 @@ class NlpInputViewModelTest {
         override fun observeById(id: SyncId): Flow<Transaction?> = txns.map { it.find { t -> t.id == id } }
         override suspend fun getById(id: SyncId): Transaction? = null
         override suspend fun insert(entity: Transaction) { txns.value = txns.value + entity }
-        override suspend fun update(entity: Transaction) {}
-        override suspend fun delete(id: SyncId) {}
+        override suspend fun update(entity: Transaction) { /* No-op */ }
+        override suspend fun delete(id: SyncId) { /* No-op */ }
         override suspend fun getUnsynced(householdId: SyncId): List<Transaction> = emptyList()
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
         override fun observeByAccount(accountId: SyncId): Flow<List<Transaction>> = txns
         override fun observeByCategory(categoryId: SyncId): Flow<List<Transaction>> = txns
         override fun observeByDateRange(householdId: SyncId, start: LocalDate, end: LocalDate): Flow<List<Transaction>> = txns
@@ -160,10 +160,10 @@ class NlpInputViewModelTest {
         override fun observeExpense(householdId: SyncId): Flow<List<Category>> = cats.map { it.filter { c -> !c.isIncome } }
         override fun observeById(id: SyncId): Flow<Category?> = cats.map { it.find { c -> c.id == id } }
         override suspend fun getById(id: SyncId): Category? = cats.value.find { it.id == id }
-        override suspend fun insert(entity: Category) {}
-        override suspend fun update(entity: Category) {}
-        override suspend fun delete(id: SyncId) {}
+        override suspend fun insert(entity: Category) { /* No-op */ }
+        override suspend fun update(entity: Category) { /* No-op */ }
+        override suspend fun delete(id: SyncId) { /* No-op */ }
         override suspend fun getUnsynced(householdId: SyncId): List<Category> = emptyList()
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 }

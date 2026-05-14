@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName") // File contains multiple related declarations
+
 // SPDX-License-Identifier: BUSL-1.1
 
 package com.finance.android.monitoring
@@ -38,7 +40,7 @@ import com.finance.core.monitoring.CrashReporter
  * 6. Implement consent UI (#367) and wire `consentProvider` to user preference
  */
 
-// TODO (#367): Uncomment and complete when consent UI is implemented.
+// TODO(#1296): (#367): Uncomment and complete when consent UI is implemented.
 //
 // import io.sentry.Sentry
 // import io.sentry.SentryEvent
@@ -54,16 +56,12 @@ import com.finance.core.monitoring.CrashReporter
  * locally via Timber for on-device diagnostics.
  *
  * @param consentProvider Returns true when the user has opted in to crash reporting.
- * @param dsn Sentry project DSN. Must be provided via BuildConfig, never hardcoded.
- * @param environment Sentry environment name (e.g., "production", "staging").
  */
 class SentryCrashReporter(
     private val consentProvider: () -> Boolean,
-    private val dsn: String,
-    private val environment: String,
 ) : CrashReporter {
 
-    // TODO: Uncomment when Sentry dependency is added.
+    // TODO(#1296): Uncomment when Sentry dependency is added.
     //
     // init {
     //     if (dsn.isNotBlank()) {
@@ -95,7 +93,7 @@ class SentryCrashReporter(
 
         if (!consentProvider()) return
 
-        // TODO: Uncomment when Sentry is initialized.
+        // TODO(#1296): Uncomment when Sentry is initialized.
         // val scrubbed = scrubContextMap(context)
         // Sentry.captureException(exception) { scope ->
         //     scrubbed.forEach { (key, value) -> scope.setExtra(key, value) }
@@ -107,7 +105,7 @@ class SentryCrashReporter(
 
         if (!consentProvider()) return
 
-        // TODO: Uncomment when Sentry is initialized.
+        // TODO(#1296): Uncomment when Sentry is initialized.
         // if (id != null) {
         //     Sentry.setUser(User().apply { this.id = id })
         // } else {
@@ -120,7 +118,7 @@ class SentryCrashReporter(
 
         if (!consentProvider()) return
 
-        // TODO: Uncomment when Sentry is initialized.
+        // TODO(#1296): Uncomment when Sentry is initialized.
         // Sentry.addBreadcrumb(Breadcrumb().apply {
         //     this.message = message
         //     this.category = "app"
@@ -177,15 +175,6 @@ class SentryCrashReporter(
      * @param context Original key-value pairs from error context.
      * @return New map with sensitive keys and values redacted.
      */
-    private fun scrubContextMap(context: Map<String, String>): Map<String, String> {
-        return context.mapValues { (key, value) ->
-            when {
-                SENSITIVE_KEYS.contains(key) -> REDACTED
-                FINANCIAL_VALUE_KEYS.contains(key) -> REDACTED
-                else -> scrubString(value)
-            }
-        }
-    }
 
     /**
      * Scrub sensitive patterns from a string value.
@@ -197,7 +186,7 @@ class SentryCrashReporter(
         return scrubbed
     }
 
-    // TODO: Uncomment when Sentry dependency is added.
+    // TODO(#1296): Uncomment when Sentry dependency is added.
     //
     // /**
     //  * Scrub financial data from a Sentry event.

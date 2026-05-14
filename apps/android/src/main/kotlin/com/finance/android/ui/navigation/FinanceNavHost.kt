@@ -210,6 +210,7 @@ sealed class Route(val route: String) {
  * @param onNavigateToSettings Callback invoked when the user taps the Settings action.
  */
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun FinanceNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
@@ -384,7 +385,7 @@ fun FinanceNavHost(
                 onBack = { navController.popBackStack() },
                 onShareInvite = { link ->
                     Timber.d("Share invite link: %s", link)
-                    // TODO: Wire to Android Sharesheet via Activity intent
+                    // TODO(#1296): Wire to Android Sharesheet via Activity intent
                 },
             )
         }
@@ -394,7 +395,7 @@ fun FinanceNavHost(
                 onBack = { navController.popBackStack() },
                 onShare = { text ->
                     Timber.d("Share referral text: %s", text)
-                    // TODO: Wire to Android Sharesheet via Activity intent
+                    // TODO(#1296): Wire to Android Sharesheet via Activity intent
                 },
             )
         }
@@ -404,7 +405,7 @@ fun FinanceNavHost(
                 onBack = { navController.popBackStack() },
                 onPrintHtml = { html ->
                     Timber.d("Print HTML report (%d chars)", html.length)
-                    // TODO: Wire to Android Print Framework via Activity
+                    // TODO(#1296): Wire to Android Print Framework via Activity
                 },
             )
         }

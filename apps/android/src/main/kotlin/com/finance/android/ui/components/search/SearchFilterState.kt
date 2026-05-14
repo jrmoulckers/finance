@@ -103,6 +103,7 @@ data class SearchFilterData(
      * @param today Supplier for the current date; injected so the function
      *              remains deterministic in tests.
      */
+    @Suppress("ReturnCount") // Multiple early returns improve readability
     fun matches(
         transaction: Transaction,
         today: LocalDate,

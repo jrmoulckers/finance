@@ -197,6 +197,7 @@ fun ReportBuilderScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+@Suppress("LongMethod", "CyclomaticComplexMethod") // Complex Compose UI function with cohesive layout logic
 internal fun ReportBuilderContent(
     state: ReportBuilderUiState,
     onTemplateSelected: (ReportTemplate) -> Unit,
@@ -1122,6 +1123,7 @@ private fun ReportGroupCard(group: ReportGroupUi) {
 
 // ── Previews ─────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Template Picker - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Template Picker - Dark")
 @Composable
@@ -1157,6 +1159,7 @@ private fun TemplatePickerPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Report Config - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Report Config - Dark")
 @Composable
@@ -1200,6 +1203,7 @@ private fun ReportConfigPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Report Results with Chart - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Report Results with Chart - Dark")
 @Composable

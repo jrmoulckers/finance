@@ -155,6 +155,7 @@ private object PrefKeys {
  * @param authManager Shared auth manager for sign-out and session management.
  * @param themePreferenceManager Reactive manager for the user's theme preference.
  */
+@Suppress("TooManyFunctions") // ViewModel/screen with related operations
 class SettingsViewModel(
     private val prefs: SharedPreferences,
     private val biometricChecker: BiometricAvailabilityChecker,
@@ -287,6 +288,7 @@ class SettingsViewModel(
             _uiState.update { it.copy(isExporting = true) }
             _events.emit(SettingsEvent.ExportStarted)
 
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val outcome = withContext(Dispatchers.IO) {
                     buildExportResult(format)

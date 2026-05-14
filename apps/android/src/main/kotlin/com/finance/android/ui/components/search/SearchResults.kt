@@ -221,6 +221,7 @@ fun HighlightedText(
 // Previews
 // ---------------------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "SearchResults — with results", showBackground = true)
 @Composable
 private fun SearchResultsWithResultsPreview() {
@@ -238,6 +239,7 @@ private fun SearchResultsWithResultsPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "SearchResults — empty state", showBackground = true)
 @Composable
 private fun SearchResultsEmptyPreview() {
@@ -251,6 +253,7 @@ private fun SearchResultsEmptyPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "SearchResults — no query, no results", showBackground = true)
 @Composable
 private fun SearchResultsNoQueryPreview() {
@@ -264,6 +267,7 @@ private fun SearchResultsNoQueryPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "HighlightedText — match", showBackground = true)
 @Composable
 private fun HighlightedTextPreview() {

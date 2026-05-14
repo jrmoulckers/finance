@@ -241,6 +241,7 @@ fun EducationTooltipCard(
 
 // ── Previews ────────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "InfoTooltipIcon - Light")
 @Composable
 private fun InfoTooltipIconPreview() {
@@ -252,6 +253,7 @@ private fun InfoTooltipIconPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "InfoTooltipLabel - Light")
 @Composable
 private fun InfoTooltipLabelPreview() {
@@ -263,6 +265,7 @@ private fun InfoTooltipLabelPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "EducationTooltipCard - Light")
 @Composable
 private fun EducationTooltipCardPreview() {

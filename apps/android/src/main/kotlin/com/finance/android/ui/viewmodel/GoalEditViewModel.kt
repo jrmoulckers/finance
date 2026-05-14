@@ -165,6 +165,7 @@ class GoalEditViewModel(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errors = emptyList()) }
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val original = originalGoal ?: run {
                     _uiState.update {
@@ -203,6 +204,7 @@ class GoalEditViewModel(
     fun delete() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 goalRepository.delete(goalId)
                 Timber.d("Goal deleted: id=%s", goalId.value)

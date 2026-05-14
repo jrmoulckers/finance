@@ -117,7 +117,7 @@ class AccountCreateViewModelTest {
         }
 
         override suspend fun getUnsynced(householdId: SyncId): List<Account> = emptyList()
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
     }
 
     // ═══════════════════════════════════════════════════════════════════

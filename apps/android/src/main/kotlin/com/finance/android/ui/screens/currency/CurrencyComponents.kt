@@ -4,6 +4,7 @@
 
 package com.finance.android.ui.screens.currency
 
+import java.util.Locale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -195,7 +196,6 @@ private fun ForeignCurrencyConversionCard(
             if (exchangeRate != null) {
                 val converted = MultiCurrencyEngine.convert(amount, exchangeRate)
                 val formattedConverted = CurrencyFormatter.format(converted, toCurrency)
-                val formattedOriginal = CurrencyFormatter.format(amount, fromCurrency)
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -292,8 +292,8 @@ fun AccountBalanceMultiCurrency(
  */
 private fun formatExchangeRate(rate: Double): String {
     return when {
-        rate >= 100 -> String.format("%.2f", rate)
-        rate >= 1 -> String.format("%.4f", rate)
-        else -> String.format("%.6f", rate)
+        rate >= 100 -> String.format(java.util.Locale.ROOT, "%.2f", rate)
+        rate >= 1 -> String.format(java.util.Locale.ROOT, "%.4f", rate)
+        else -> String.format(java.util.Locale.ROOT, "%.6f", rate)
     }
 }

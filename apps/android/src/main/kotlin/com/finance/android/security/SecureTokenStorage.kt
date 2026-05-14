@@ -71,6 +71,7 @@ class SecureTokenStorage(context: Context) {
     // ── Convenience ─────────────────────────────────────────────────────
 
     /** Returns `true` when a non-expired access token is available. */
+    @Suppress("ReturnCount") // Multiple early returns improve readability
     fun hasValidToken(): Boolean {
         val token = getAccessToken() ?: return false
         if (token.isBlank()) return false

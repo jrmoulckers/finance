@@ -111,6 +111,7 @@ fun AccountCreateScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun AccountCreateForm(
     state: AccountCreateUiState,
     supportedCurrencies: List<String>,
@@ -408,6 +409,7 @@ private fun accountTypeDisplayName(type: AccountType): String = when (type) {
     name = "Account Create - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun AccountCreateFormPreview() {
     FinanceTheme(dynamicColor = false) {
         AccountCreateForm(
@@ -428,6 +430,7 @@ private fun AccountCreateFormPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Account Create - Errors")
 @Composable
 private fun AccountCreateErrorsPreview() {
@@ -447,6 +450,7 @@ private fun AccountCreateErrorsPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Account Create - Saving")
 @Composable
 private fun AccountCreateSavingPreview() {

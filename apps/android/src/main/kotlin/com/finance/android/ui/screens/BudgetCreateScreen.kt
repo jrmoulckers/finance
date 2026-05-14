@@ -115,6 +115,7 @@ fun BudgetCreateScreen(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun BudgetCreateForm(
     state: BudgetCreateUiState,
     onCategorySelect: (SyncId) -> Unit,
@@ -351,6 +352,7 @@ private fun budgetPeriodDisplayName(period: BudgetPeriod): String = when (period
     name = "Budget Create - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun BudgetCreateFormPreview() {
     val now = Clock.System.now()
     FinanceTheme(dynamicColor = false) {
@@ -374,6 +376,7 @@ private fun BudgetCreateFormPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Budget Create - Errors")
 @Composable
 private fun BudgetCreateErrorsPreview() {
@@ -390,6 +393,7 @@ private fun BudgetCreateErrorsPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Budget Create - Saving")
 @Composable
 private fun BudgetCreateSavingPreview() {

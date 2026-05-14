@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName") // File contains multiple related declarations
+
 // SPDX-License-Identifier: BUSL-1.1
 
 package com.finance.android.ui.components
@@ -159,6 +161,7 @@ fun FinanceDatePicker(
 // -- Previews -----------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "DatePicker Single - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "DatePicker Single - Dark")
 @Composable
@@ -172,6 +175,7 @@ private fun FinanceDatePickerSinglePreview() {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "DatePicker Range - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "DatePicker Range - Dark")
 @Composable

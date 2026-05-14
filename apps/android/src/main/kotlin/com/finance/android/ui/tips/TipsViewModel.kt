@@ -100,6 +100,7 @@ class TipsViewModel(
                 return@launch
             }
 
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val transactions = transactionRepository.observeAll(householdId).first()
                 val budgets = budgetRepository.observeAll(householdId).first()

@@ -97,12 +97,14 @@ fun PlanningScreen(
     name = "Planning - Budgets Tab - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun PlanningScreenBudgetsPreview() {
     FinanceTheme(dynamicColor = false) {
         PlanningScreen()
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, fontScale = 1.5f, name = "Planning - Large Font")
 @Composable
 private fun PlanningScreenLargeFontPreview() {

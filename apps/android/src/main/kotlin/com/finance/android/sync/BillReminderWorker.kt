@@ -46,7 +46,7 @@ class BillReminderWorker(
         Timber.i("BillReminderWorker starting — checking for upcoming bills")
 
         return try {
-            // TODO: Query bills from repository that are due within 3 days.
+            // TODO(#1296): Query bills from repository that are due within 3 days.
             // For now, this is a placeholder that demonstrates the
             // notification pattern.
             val dueBillCount = checkUpcomingBills()
@@ -70,8 +70,9 @@ class BillReminderWorker(
      *
      * @return The number of bills due soon.
      */
+    @Suppress("FunctionOnlyReturningConstant") // Kept as function for API consistency
     private suspend fun checkUpcomingBills(): Int {
-        // TODO: Wire to actual bill/recurring transaction repository.
+        // TODO(#1296): Wire to actual bill/recurring transaction repository.
         // Return 0 until the data layer is connected.
         return 0
     }

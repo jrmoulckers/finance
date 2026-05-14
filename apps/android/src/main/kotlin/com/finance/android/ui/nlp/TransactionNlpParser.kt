@@ -177,6 +177,7 @@ object TransactionNlpParser {
         return if (cleaned.isNotEmpty()) cleaned.joinToString(" ") else null
     }
 
+    @Suppress("ReturnCount") // Multiple early returns improve readability
     private fun extractDate(lower: String): LocalDate? {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 

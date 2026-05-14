@@ -41,6 +41,7 @@ class BiometricCryptoManager : BiometricCryptoBinding {
         }
 
     override suspend fun getOrCreateKeyPair(): Result<ByteArray> {
+        @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
         return try {
             val ks = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
             if (!ks.containsAlias(KEY_ALIAS)) {
@@ -54,6 +55,7 @@ class BiometricCryptoManager : BiometricCryptoBinding {
     }
 
     override suspend fun signWithBiometric(challenge: ByteArray): Result<ByteArray> {
+        @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
         return try {
             val ks = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
             val privateKey = ks.getKey(KEY_ALIAS, null)

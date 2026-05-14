@@ -61,7 +61,7 @@ class BudgetSummaryWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         Timber.d("Providing glance content for BudgetSummaryWidget (id=%s)", id)
 
-        // TODO: Read real data from repository once wired.
+        // TODO(#1296): Read real data from repository once wired.
         val widgetData = WidgetBudgetData(
             totalBudgets = 0,
             onTrack = 0,
@@ -118,6 +118,7 @@ data class WidgetBudgetData(
  * ```
  */
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun BudgetSummaryContent(data: WidgetBudgetData) {
     Box(
         modifier = GlanceModifier

@@ -245,6 +245,7 @@ private fun amountRangeAccessibilityLabel(amountRange: AmountRangeFilter?): Stri
 // Previews
 // ---------------------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "FilterChipRow — no active filters", showBackground = true)
 @Composable
 private fun FilterChipRowInactivePreview() {
@@ -254,6 +255,7 @@ private fun FilterChipRowInactivePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "FilterChipRow — mixed active/inactive", showBackground = true)
 @Composable
 private fun FilterChipRowMixedPreview() {
@@ -275,6 +277,7 @@ private fun FilterChipRowMixedPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "FilterChipRow — all active", showBackground = true)
 @Composable
 private fun FilterChipRowAllActivePreview() {

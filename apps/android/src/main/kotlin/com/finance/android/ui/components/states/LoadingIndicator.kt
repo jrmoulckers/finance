@@ -83,6 +83,7 @@ fun PullToRefreshWrapper(
 // Previews
 // ---------------------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "FinanceLoadingIndicator")
 @Composable
 private fun FinanceLoadingIndicatorPreview() {
@@ -91,6 +92,7 @@ private fun FinanceLoadingIndicatorPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "PullToRefreshWrapper")
 @Composable
 private fun PullToRefreshWrapperPreview() {

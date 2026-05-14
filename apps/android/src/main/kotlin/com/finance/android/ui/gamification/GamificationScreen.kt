@@ -513,6 +513,7 @@ private fun achievementIcon(icon: String): ImageVector = when (icon) {
     name = "Gamification - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun GamificationScreenPreview() {
     FinanceTheme(dynamicColor = false) {
         GamificationContent(

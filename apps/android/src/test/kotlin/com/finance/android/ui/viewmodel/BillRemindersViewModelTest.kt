@@ -143,11 +143,11 @@ class BillRemindersViewModelTest {
         override fun observeAll(householdId: SyncId): Flow<List<Transaction>> = flow
         override fun observeById(id: SyncId): Flow<Transaction?> = flow.map { it.find { t -> t.id == id } }
         override suspend fun getById(id: SyncId): Transaction? = transactions.find { it.id == id }
-        override suspend fun insert(entity: Transaction) {}
-        override suspend fun update(entity: Transaction) {}
-        override suspend fun delete(id: SyncId) {}
+        override suspend fun insert(entity: Transaction) { /* No-op */ }
+        override suspend fun update(entity: Transaction) { /* No-op */ }
+        override suspend fun delete(id: SyncId) { /* No-op */ }
         override suspend fun getUnsynced(householdId: SyncId): List<Transaction> = emptyList()
-        override suspend fun markSynced(ids: List<SyncId>) {}
+        override suspend fun markSynced(ids: List<SyncId>) { /* No-op */ }
         override fun observeByAccount(accountId: SyncId): Flow<List<Transaction>> = flow
         override fun observeByCategory(categoryId: SyncId): Flow<List<Transaction>> = flow
         override fun observeByDateRange(householdId: SyncId, start: LocalDate, end: LocalDate): Flow<List<Transaction>> = flow

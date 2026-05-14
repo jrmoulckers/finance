@@ -122,6 +122,7 @@ object AffordabilityCalculator {
         )
     }
 
+    @Suppress("UnusedParameter") // Reserved for future implementation
     private fun buildRecommendations(
         verdict: AffordabilityVerdict,
         remaining: Cents,

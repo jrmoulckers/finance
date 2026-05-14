@@ -133,6 +133,7 @@ fun SignupScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun SignupContent(
     uiState: SignupUiState,
     onEmailChanged: (String) -> Unit,
@@ -401,6 +402,7 @@ private fun SignupContent(
     uiMode = Configuration.UI_MODE_NIGHT_NO,
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun SignupScreenPreviewLight() {
     MaterialTheme {
         Surface {
@@ -424,6 +426,7 @@ private fun SignupScreenPreviewLight() {
     uiMode = Configuration.UI_MODE_NIGHT_YES,
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun SignupScreenPreviewDark() {
     MaterialTheme(colorScheme = androidx.compose.material3.darkColorScheme()) {
         Surface {
@@ -440,6 +443,7 @@ private fun SignupScreenPreviewDark() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Signup – Validation Errors")
 @Composable
 private fun SignupScreenPreviewErrors() {
@@ -465,6 +469,7 @@ private fun SignupScreenPreviewErrors() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Signup – API Error")
 @Composable
 private fun SignupScreenPreviewApiError() {
@@ -488,6 +493,7 @@ private fun SignupScreenPreviewApiError() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Signup – Loading")
 @Composable
 private fun SignupScreenPreviewLoading() {

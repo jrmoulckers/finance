@@ -61,7 +61,7 @@ class BalanceSummaryWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         Timber.d("Providing glance content for BalanceSummaryWidget (id=%s)", id)
 
-        // TODO: Read real data from repository once SQLDelight is wired.
+        // TODO(#1296): Read real data from repository once SQLDelight is wired.
         // For now, use placeholder data to validate the widget layout.
         val widgetData = WidgetBalanceData(
             netWorth = "$0.00",

@@ -98,6 +98,7 @@ private fun decimalPlacesFor(code: String): Int = when (code) {
     else -> 2
 }
 
+@Suppress("ReturnCount") // Multiple early returns improve readability
 private fun formatAmountInternal(
     cents: Long,
     currencyCode: String,
@@ -169,6 +170,7 @@ private fun currencyPow10(n: Int): Long {
 
 // -- Previews -----------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "CurrencyText Income - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText Income - Dark")
 @Composable
@@ -183,6 +185,7 @@ private fun CurrencyTextIncomePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "CurrencyText Expense - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText Expense - Dark")
 @Composable
@@ -197,6 +200,7 @@ private fun CurrencyTextExpensePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "CurrencyText Zero - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText Zero - Dark")
 @Composable
@@ -211,6 +215,7 @@ private fun CurrencyTextZeroPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "CurrencyText Compact - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText Compact - Dark")
 @Composable
@@ -241,6 +246,7 @@ private fun CurrencyTextCompactPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "CurrencyText EUR - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText EUR - Dark")
 @Composable
@@ -256,6 +262,7 @@ private fun CurrencyTextEurPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "CurrencyText JPY - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText JPY - Dark")
 @Composable
@@ -270,6 +277,7 @@ private fun CurrencyTextJpyPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "CurrencyText With Sign - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "CurrencyText With Sign - Dark")
 @Composable

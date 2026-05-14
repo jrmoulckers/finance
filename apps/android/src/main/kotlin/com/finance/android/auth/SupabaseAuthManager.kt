@@ -106,6 +106,7 @@ class SupabaseAuthManager(
 
     override suspend fun signOut() {
         Timber.i("Signing out")
+        @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
         try {
             val session = _currentSession.value
             if (session != null) {
@@ -425,6 +426,7 @@ class SupabaseAuthManager(
      * }
      * ```
      */
+    @Suppress("ThrowsCount") // Validation requires multiple distinct error paths
     private fun parseAuthResponse(body: String): AuthSession {
         val root = json.parseToJsonElement(body).jsonObject
 
@@ -469,6 +471,7 @@ class SupabaseAuthManager(
          * BuildConfig. This placeholder returns an empty string to avoid
          * blocking development.
          */
+        @Suppress("FunctionOnlyReturningConstant") // Kept as function for API consistency
         private fun String.extractSupabaseApiKey(): String = ""
     }
 }

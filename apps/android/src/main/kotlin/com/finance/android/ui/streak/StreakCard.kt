@@ -72,6 +72,7 @@ fun StreakCard(
  * Stateless streak card content — useful for previews and testing.
  */
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun StreakCardContent(
     state: StreakUiState,
     onDismiss: () -> Unit,
@@ -193,6 +194,7 @@ fun StreakCardContent(
 
 // ── Previews ─────────────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Streak — Active (7 days)")
 @Composable
 private fun StreakCardActivePreview() {
@@ -209,6 +211,7 @@ private fun StreakCardActivePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Streak — No streak")
 @Composable
 private fun StreakCardNoStreakPreview() {
@@ -225,6 +228,7 @@ private fun StreakCardNoStreakPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Streak — New user (1 day)")
 @Composable
 private fun StreakCardOneDayPreview() {

@@ -63,7 +63,6 @@ class ReferralViewModelTest {
         val vm = createViewModel()
         advanceUntilIdle()
 
-        val oldCode = vm.uiState.value.referralCode
         vm.generateNewCode()
         advanceUntilIdle()
 

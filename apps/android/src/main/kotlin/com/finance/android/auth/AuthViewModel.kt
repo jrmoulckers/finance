@@ -92,6 +92,7 @@ class AuthViewModel(
      */
     fun signInWithGoogle(context: Context) {
         Timber.d("Starting Google OAuth flow")
+        @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
         try {
             val url = authManager.buildOAuthUrl("google")
             val customTabsIntent = CustomTabsIntent.Builder()
@@ -165,6 +166,7 @@ class AuthViewModel(
         viewModelScope.launch {
             _authState.value = AuthState.Loading
 
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 // Step 1: Get WebAuthn challenge from server.
                 val challengeJson = authManager.requestPasskeyChallenge().getOrThrow()
@@ -201,10 +203,10 @@ class AuthViewModel(
                 }
                 // Success handled by currentSession collector.
             } catch (e: GetCredentialCancellationException) {
-                Timber.d("Passkey sign-in cancelled by user")
+                Timber.d(e, "Passkey sign-in cancelled by user")
                 _authState.value = AuthState.Unauthenticated
             } catch (e: NoCredentialException) {
-                Timber.w("No passkeys available on this device")
+                Timber.w(e, "No passkeys available on this device")
                 _authState.value = AuthState.Error(
                     "No passkeys found. Sign in with Google or set up a passkey first.",
                 )

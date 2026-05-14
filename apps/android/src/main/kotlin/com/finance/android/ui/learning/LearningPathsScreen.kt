@@ -246,6 +246,7 @@ private fun PathCard(
 }
 
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun ModuleDetailContent(
     path: LearningPath,
     moduleIndex: Int,
@@ -406,6 +407,7 @@ private fun ModuleDetailContent(
 }
 
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun QuizSection(
     quiz: QuizQuestion,
     selectedAnswer: Int,
@@ -526,6 +528,7 @@ private fun QuizSection(
 
 // ── Previews ────────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Learning Paths - List")
 @Composable
 private fun LearningPathsListPreview() {

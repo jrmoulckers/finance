@@ -125,6 +125,7 @@ class BudgetsViewModel(
     }
 
     private suspend fun loadData() {
+        @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
         try {
             val householdId = householdIdProvider.householdId.value ?: run {
                 Timber.w("No household ID available — skipping budgets load")

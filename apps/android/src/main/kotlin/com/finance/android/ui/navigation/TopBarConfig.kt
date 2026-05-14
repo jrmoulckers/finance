@@ -21,6 +21,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 /**
  * Resolves a human-readable title for the given route string.
  */
+@Suppress("CyclomaticComplexMethod") // Complex branching inherent to this logic
 private fun titleForRoute(route: String?): String = when (route) {
     Route.Dashboard.route -> "Dashboard"
     Route.Accounts.route -> "Accounts"

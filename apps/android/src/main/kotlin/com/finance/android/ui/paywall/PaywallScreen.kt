@@ -202,13 +202,13 @@ private fun CurrentTierCard(tierName: String) {
 }
 
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 private fun TierCard(
     pricing: TierPricing,
     onSelect: () -> Unit,
     isPurchasing: Boolean,
 ) {
     val isRecommended = pricing.tier == Tier.PLUS
-    val borderColor = if (isRecommended) MaterialTheme.colorScheme.primary else Color.Transparent
 
     Card(
         modifier = Modifier
@@ -420,6 +420,7 @@ fun UpgradePromptSheet(
     name = "Paywall - Dark",
 )
 @Composable
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 private fun PaywallScreenPreview() {
     FinanceTheme(dynamicColor = false) {
         PaywallContent(
@@ -442,6 +443,7 @@ private fun PaywallScreenPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Upgrade Prompt")
 @Composable
 private fun UpgradePromptPreview() {

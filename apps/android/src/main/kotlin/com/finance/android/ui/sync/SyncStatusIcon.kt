@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName") // File contains multiple related declarations
+
 // SPDX-License-Identifier: BUSL-1.1
 
 package com.finance.android.ui.sync
@@ -138,6 +140,7 @@ private fun StaticSyncIcon(state: SyncIconState) {
 
 // region Previews
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Synced", showBackground = true)
 @Composable
 private fun SyncStatusIconSyncedPreview() {
@@ -149,6 +152,7 @@ private fun SyncStatusIconSyncedPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Syncing", showBackground = true)
 @Composable
 private fun SyncStatusIconSyncingPreview() {
@@ -160,6 +164,7 @@ private fun SyncStatusIconSyncingPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Offline", showBackground = true)
 @Composable
 private fun SyncStatusIconOfflinePreview() {
@@ -171,6 +176,7 @@ private fun SyncStatusIconOfflinePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Error", showBackground = true)
 @Composable
 private fun SyncStatusIconErrorPreview() {

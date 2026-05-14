@@ -93,6 +93,7 @@ class GamificationViewModel(
                 return@launch
             }
 
+            @Suppress("TooGenericExceptionCaught") // Multiple exception types possible
             try {
                 val transactions = transactionRepository.observeAll(householdId).first()
                 val accounts = accountRepository.observeAll(householdId).first()

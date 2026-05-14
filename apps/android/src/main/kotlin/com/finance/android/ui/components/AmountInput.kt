@@ -163,6 +163,7 @@ private fun pow10(n: Int): Long {
 
 // -- Previews -----------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "AmountInput Zero - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AmountInput Zero - Dark")
 @Composable
@@ -177,6 +178,7 @@ private fun AmountInputZeroPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "AmountInput Formatted - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AmountInput Formatted - Dark")
 @Composable
@@ -191,6 +193,7 @@ private fun AmountInputFormattedPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "AmountInput Euro - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AmountInput Euro - Dark")
 @Composable
@@ -206,6 +209,7 @@ private fun AmountInputSmallPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "AmountInput Error - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AmountInput Error - Dark")
 @Composable
@@ -222,6 +226,7 @@ private fun AmountInputErrorPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "AmountInput JPY - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AmountInput JPY - Dark")
 @Composable

@@ -139,6 +139,7 @@ fun BillRemindersScreen(
 }
 
 @Composable
+@Suppress("UnusedParameter") // Reserved for future implementation
 internal fun BillRemindersContent(
     state: BillRemindersUiState,
     onToggleCalendar: () -> Unit,
@@ -255,6 +256,7 @@ internal fun BillRemindersContent(
 }
 
 @Composable
+@Suppress("UnusedParameter") // Reserved for future implementation
 private fun BillSummaryCard(
     upcomingCount: Int,
     overdueCount: Int,
@@ -461,6 +463,7 @@ private fun BillCalendar(
 
 // ── Previews ─────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Bill Reminders - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Bill Reminders - Dark")
 @Composable
@@ -488,6 +491,7 @@ private fun BillRemindersPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Bill Reminders - Empty - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Bill Reminders - Empty - Dark")
 @Composable

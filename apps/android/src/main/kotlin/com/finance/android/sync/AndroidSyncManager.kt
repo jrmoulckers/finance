@@ -2,7 +2,6 @@
 
 package com.finance.android.sync
 
-import android.content.Context
 import com.finance.sync.SyncEngine
 import com.finance.sync.SyncCredentials
 import com.finance.sync.SyncError
@@ -42,13 +41,11 @@ import timber.log.Timber
  * @property syncEngine     The shared KMP sync engine.
  * @property mutationQueue  The queue of pending local mutations.
  * @property connectivityObserver Network state observer.
- * @property context        Android application context (for WorkManager coordination).
  */
 class AndroidSyncManager(
     private val syncEngine: SyncEngine,
     private val mutationQueue: MutationQueue,
     private val connectivityObserver: ConnectivityObserver,
-    private val context: Context,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

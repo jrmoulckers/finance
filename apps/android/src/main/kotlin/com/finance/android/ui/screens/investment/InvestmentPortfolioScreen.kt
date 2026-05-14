@@ -489,6 +489,7 @@ private fun HoldingCard(holding: HoldingUi) {
 
 // ── Previews ─────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "Portfolio - Light")
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "Portfolio - Dark")
 @Composable

@@ -132,6 +132,7 @@ fun OfflineBanner(
 // Previews
 // ---------------------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Visible", showBackground = true)
 @Composable
 private fun OfflineBannerVisiblePreview() {
@@ -144,6 +145,7 @@ private fun OfflineBannerVisiblePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Dismissed", showBackground = true)
 @Composable
 private fun OfflineBannerDismissedPreview() {
@@ -156,6 +158,7 @@ private fun OfflineBannerDismissedPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Online (hidden)", showBackground = true)
 @Composable
 private fun OfflineBannerOnlinePreview() {

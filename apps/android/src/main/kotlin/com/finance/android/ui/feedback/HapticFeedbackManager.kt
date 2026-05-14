@@ -43,6 +43,7 @@ class HapticFeedbackManager(
      * No-ops silently when [hapticsEnabled] is `false` or the device
      * lacks a vibrator.
      */
+    @Suppress("ReturnCount") // Multiple early returns improve readability
     fun triggerEvent(event: FinancialEvent) {
         if (!hapticsEnabled) return
         val vib = vibrator ?: return

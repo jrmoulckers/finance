@@ -279,6 +279,7 @@ private fun iconForTier(tier: ExpertiseTier): ImageVector = when (tier) {
 
 // ── Previews ────────────────────────────────────────────────────────────
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Expertise Tier - Beginner")
 @Composable
 private fun ExpertiseTierBeginnerPreview() {
@@ -291,6 +292,7 @@ private fun ExpertiseTierBeginnerPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, showSystemUi = true, name = "Expertise Tier - Advanced")
 @Composable
 private fun ExpertiseTierAdvancedPreview() {

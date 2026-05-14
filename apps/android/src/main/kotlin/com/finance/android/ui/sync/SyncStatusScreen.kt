@@ -112,6 +112,7 @@ data class ConflictItem(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun SyncStatusScreen(
     uiState: SyncStatusUiState,
     onSyncNowClick: () -> Unit,
@@ -478,6 +479,7 @@ private fun ConflictCard(
 // Previews
 // ---------------------------------------------------------------------------
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Synced state", showBackground = true, showSystemUi = true)
 @Composable
 private fun SyncStatusScreenSyncedPreview() {
@@ -497,6 +499,7 @@ private fun SyncStatusScreenSyncedPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Offline state", showBackground = true, showSystemUi = true)
 @Composable
 private fun SyncStatusScreenOfflinePreview() {
@@ -536,6 +539,7 @@ private fun SyncStatusScreenOfflinePreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(name = "Conflicted state", showBackground = true, showSystemUi = true)
 @Composable
 private fun SyncStatusScreenConflictedPreview() {

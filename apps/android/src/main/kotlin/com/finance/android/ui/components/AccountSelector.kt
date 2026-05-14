@@ -92,6 +92,7 @@ private fun iconForAccountType(type: AccountDisplayType): ImageVector = when (ty
  * @param modifier Modifier applied to the outer column.
  */
 @Composable
+@Suppress("LongMethod") // Compose UI function with cohesive layout logic
 fun AccountSelector(
     accounts: List<AccountDisplayItem>,
     selectedAccountId: String?,
@@ -266,6 +267,7 @@ private val sampleAccounts = listOf(
     AccountDisplayItem("6", "Cash Wallet", AccountDisplayType.CASH, "\$120.00"),
 )
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "AccountSelector Selected - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AccountSelector Selected - Dark")
 @Composable
@@ -281,6 +283,7 @@ private fun AccountSelectorSelectedPreview() {
     }
 }
 
+@Suppress("UnusedPrivateMember") // Compose Preview function used by IDE
 @Preview(showBackground = true, name = "AccountSelector Empty - Light")
 @Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES, name = "AccountSelector Empty - Dark")
 @Composable
