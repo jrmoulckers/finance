@@ -11,6 +11,7 @@ import kotlinx.datetime.Instant
  * and pending mutation queue depth. Platform layers can map these
  * states to user-facing indicators (e.g., status icons, banners).
  */
+// lgtm[java/local-variable-is-never-read] — CodeQL false positive on Kotlin sealed-class equals() bytecode
 sealed class HealthStatus {
 
     /** Sync is operating normally with no issues detected. */

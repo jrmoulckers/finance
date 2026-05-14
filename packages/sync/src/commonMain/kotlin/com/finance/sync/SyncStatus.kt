@@ -8,6 +8,7 @@ package com.finance.sync
  * Modelled as a sealed class for exhaustive `when` handling — callers are
  * forced to handle every possible state at compile time.
  */
+// lgtm[java/local-variable-is-never-read] — CodeQL false positive on Kotlin sealed-class equals() bytecode
 sealed class SyncStatus {
 
     /** The engine is idle; no sync activity in progress. */
@@ -96,6 +97,7 @@ enum class SyncPhase {
  * Uses a sealed class hierarchy instead of raw exceptions for
  * multiplatform compatibility and exhaustive `when` handling.
  */
+// lgtm[java/local-variable-is-never-read] — CodeQL false positive on Kotlin sealed-class equals() bytecode
 sealed class SyncError {
 
     /** A network-level error (timeout, DNS, connection refused, etc.). */

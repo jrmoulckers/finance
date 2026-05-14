@@ -198,7 +198,12 @@ function pushPR(id) {
   console.log('\n✅ ' + id + ' PR created!');
 }
 
+const VALID_TARGETS = ['devops', 'backend', 'security', 'windows', 'android', 'all'];
 const target = process.argv[2] || 'all';
+if (!VALID_TARGETS.includes(target)) {
+  console.error(`Invalid target: ${target}. Must be one of: ${VALID_TARGETS.join(', ')}`);
+  process.exit(1);
+}
 if (target === 'all') {
   for (const id of ['devops', 'backend', 'security', 'windows', 'android']) {
     pushPR(id);

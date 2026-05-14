@@ -90,6 +90,7 @@ enum class Feature {
 /**
  * Result of a feature access check.
  */
+// lgtm[java/local-variable-is-never-read] — CodeQL false positive on Kotlin sealed-class equals() bytecode
 @Serializable
 sealed class AccessResult {
     /** Feature is accessible. */

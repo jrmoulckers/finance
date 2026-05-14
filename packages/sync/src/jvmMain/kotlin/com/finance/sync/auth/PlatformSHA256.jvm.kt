@@ -9,6 +9,9 @@ package com.finance.sync.auth
  * java.security.SecureRandom for CSPRNG.
  */
 actual object PlatformSHA256 {
+    /** Reusable CSPRNG instance — avoids re-seeding on every call. */
+    private val secureRandom = java.security.SecureRandom()
+
     actual fun sha256(input: ByteArray): ByteArray {
         val digest = java.security.MessageDigest.getInstance("SHA-256")
         return digest.digest(input)
@@ -16,7 +19,7 @@ actual object PlatformSHA256 {
 
     actual fun randomBytes(size: Int): ByteArray {
         val bytes = ByteArray(size)
-        java.security.SecureRandom().nextBytes(bytes)
+        secureRandom.nextBytes(bytes)
         return bytes
     }
 }

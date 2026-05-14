@@ -18,10 +18,9 @@ actual object CertificatePinningConfig {
         return if (invalid.isEmpty()) {
             Result.success(Unit)
         } else {
-            val names = invalid.joinToString { it.first }
             Result.failure(
                 IllegalStateException(
-                    "Certificate pins not configured: ${'$'}names. " +
+                    "Certificate pins not configured: ${invalid.joinToString { it.first }}. " +
                         "Replace PLACEHOLDER values before release.",
                 ),
             )

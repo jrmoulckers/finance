@@ -19,6 +19,7 @@ import kotlin.random.Random
 /**
  * Observable processing state for the queue processor.
  */
+// lgtm[java/local-variable-is-never-read] — CodeQL false positive on Kotlin sealed-class equals() bytecode
 sealed class ProcessingState {
     /** No processing activity. */
     data object Idle : ProcessingState()

@@ -11,6 +11,7 @@ import kotlinx.datetime.*
  * Designed for pre-construction validation of raw input data,
  * complementing the model-level init checks in [Transaction].
  */
+// lgtm[java/local-variable-is-never-read] — CodeQL false positive on Kotlin sealed-class equals() bytecode
 object TransactionValidator {
 
     /**

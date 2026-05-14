@@ -6,6 +6,7 @@ package com.finance.core.household
  * Outcome of a household member invitation attempt.
  * Modelled as a sealed hierarchy for exhaustive `when` handling.
  */
+// lgtm[java/local-variable-is-never-read] — CodeQL false positive on Kotlin sealed-class equals() bytecode
 sealed class InviteResult {
 
     /**

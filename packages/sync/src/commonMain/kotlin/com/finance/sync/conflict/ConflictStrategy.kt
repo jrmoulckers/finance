@@ -104,6 +104,7 @@ data class SyncConflict(
  * Every branch is exhaustively handleable in a `when` expression. Consumers
  * inspect the resolution to decide which row data to persist locally.
  */
+// lgtm[java/local-variable-is-never-read] — CodeQL false positive on Kotlin sealed-class equals() bytecode
 sealed class ConflictResolution {
 
     /**

@@ -196,7 +196,6 @@ serve(async (req: Request): Promise<Response> => {
         // Try user auth as fallback (admin users)
         try {
           await requireAuth(req);
-          isAuthorized = true;
         } catch {
           return errorResponse(req, 'Unauthorized', 401);
         }

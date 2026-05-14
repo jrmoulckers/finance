@@ -58,9 +58,15 @@ const npmOnly = args.includes('--npm');
 const gradleOnly = args.includes('--gradle');
 const doFix = args.includes('--fix');
 const doJson = args.includes('--json');
-const severity = args.includes('--severity')
+const VALID_SEVERITIES = ['low', 'moderate', 'high', 'critical'];
+const rawSeverity = args.includes('--severity')
   ? args[args.indexOf('--severity') + 1]
   : process.env.AUDIT_SEVERITY || 'high';
+if (!VALID_SEVERITIES.includes(rawSeverity)) {
+  console.error(`Invalid severity: ${rawSeverity}. Must be one of: ${VALID_SEVERITIES.join(', ')}`);
+  process.exit(2);
+}
+const severity = rawSeverity;
 const isCI = process.env.CI === 'true';
 
 const supportsColor = process.stdout.isTTY && !process.env.NO_COLOR && !isCI;

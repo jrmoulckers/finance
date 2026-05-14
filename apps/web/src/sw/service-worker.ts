@@ -143,6 +143,10 @@ self.addEventListener('sync', (event: SyncEvent) => {
  *   - `GET_PENDING_COUNT` -- reply with the current pending mutation count.
  */
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
+  // Verify the message originates from our own origin to prevent
+  // cross-origin iframes or windows from triggering SW actions.
+  if (event.origin && event.origin !== self.location.origin) return;
+
   const data = event.data as ClientToSwMessage | undefined;
   if (!data?.type) return;
 

@@ -24,7 +24,7 @@ object SyncChecksum {
         IntArray(256) { n ->
             var crc = n
             repeat(8) {
-                crc = if (crc and 1 != 0) {
+                crc = if ((crc and 1) != 0) {
                     (crc ushr 1) xor 0xEDB88320.toInt()
                 } else {
                     crc ushr 1
