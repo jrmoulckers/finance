@@ -179,10 +179,6 @@ object MultiCurrencyService {
         rateCache: MultiCurrencyEngine.ExchangeRateCache,
         staleCutoff: Instant,
     ): MultiCurrencyReportResult? {
-        // For offline, use a long-lived cache to avoid staleness rejection
-        val longCache = MultiCurrencyEngine.ExchangeRateCache(maxAgeSeconds = Long.MAX_VALUE / 2)
-
-        // Copy existing rates to long-lived cache
         // In practice, the caller should pass a cache that doesn't expire for offline use
         // For now, delegate to the standard aggregation
         return aggregateForReport(amounts, displayCurrency, rateCache, staleCutoff)

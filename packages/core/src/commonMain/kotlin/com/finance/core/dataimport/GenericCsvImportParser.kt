@@ -213,7 +213,7 @@ object GenericCsvImportParser {
         // YYYY/MM/DD
         if (a > 31) return tryLocalDate(a, b, c)
         // MM/DD/YYYY or DD/MM/YYYY — disambiguate by range
-        val year = if (c > 31) c else if (c < 100) 2000 + c else c
+        val year = if (c > 31) c else 2000 + c
         // If b > 12 it must be DD, so a = month
         if (b > 12) return tryLocalDate(year, a, b)
         // If a > 12 it must be DD, so b = month
