@@ -1,0 +1,1 @@
+No Paparazzi failures produced; build failed due to missing Android SDK. See reproduction steps in report.

@@ -1,0 +1,118 @@
+name: Nightly Android Paparazzi
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # daily at 03:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  checks: write
+  issues: write
+
+concurrency:
+  group: nightly-paparazzi-${{ github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  nightly-paparazzi:
+    name: Nightly Paparazzi verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Run Paparazzi verification
+        id: run-paparazzi
+        run: |
+          set -e
+          echo "Running Paparazzi verification..."
+          # Run without daemon and without build cache to get fresh verification state
+          if ./gradlew :apps:android:verifyPaparazziDebug --no-daemon --no-build-cache --stacktrace; then
+            echo "PAPARAZZI_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "PAPARAZZI_STATUS=failure" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Upload failure artifacts
+        if: env.PAPARAZZI_STATUS == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: paparazzi-failures
+          path: apps/android/build/paparazzi/failures/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Create issue on failure (summarize failures)
+        if: env.PAPARAZZI_STATUS == 'failure'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          FAIL_DIR: apps/android/build/paparazzi/failures
+        run: |
+          echo "Preparing failure report..."
+          if [ -d "$FAIL_DIR" ] && [ "$(ls -A $FAIL_DIR)" ]; then
+            python - <<'PY'
+import os, json, sys, urllib.request
+repo=os.environ['GITHUB_REPOSITORY']
+run_id=os.environ.get('GITHUB_RUN_ID')
+fail_dir=os.environ['FAIL_DIR']
+files=[]
+for root,_,fnames in os.walk(fail_dir):
+    for f in fnames:
+        files.append(os.path.join(root,f))
+body_lines=[
+    f"Nightly Paparazzi verification failed on main (workflow run: {run_id}).",
+    "",
+    "Artifacts are uploaded to the workflow run under the `paparazzi-failures` artifact.",
+    "",
+    "Failing files:",
+]
+body_lines.extend([f"- {f}" for f in files])
+body='\n'.join(body_lines)
+post = json.dumps({"title": f"Nightly Paparazzi failures on main (run {run_id})", "body": body}).encode()
+req = urllib.request.Request(f"https://api.github.com/repos/{repo}/issues", data=post, headers={
+    'Authorization': f"token {os.environ['GITHUB_TOKEN']}",
+    'Accept': 'application/vnd.github+json'
+})
+try:
+    resp = urllib.request.urlopen(req)
+    print('Created issue, response code', resp.getcode())
+except Exception as e:
+    print('Failed to create issue:', e)
+PY
+          else
+            echo "No failure artifacts found to report."
+          fi
+
+      - name: CI Summary
+        if: always()
+        run: |
+          echo "### Nightly Paparazzi" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Schedule: daily 03:00 UTC" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Command: ./gradlew :apps:android:verifyPaparazziDebug --no-daemon --no-build-cache --stacktrace" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ env.PAPARAZZI_STATUS }}" = "failure" ]; then
+            echo "- Result: FAILURE" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Artifacts: paparazzi-failures (uploaded)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- Result: SUCCESS" >> "$GITHUB_STEP_SUMMARY"
+          fi
