@@ -59,6 +59,7 @@ class LoginViewModel(
         )
     }
 
+    @Suppress("ReturnCount") // Multi-step auth validation
     fun signIn() {
         val state = _uiState.value
         if (state.isLoading) return
@@ -91,6 +92,7 @@ class LoginViewModel(
         }
     }
 
+    @Suppress("ReturnCount") // Multi-step auth validation
     fun signUp() {
         val state = _uiState.value
         if (state.isLoading) return
@@ -136,6 +138,7 @@ class LoginViewModel(
         }
     }
 
+    @Suppress("ReturnCount") // Multi-step auth validation
     private fun validateEmail(email: String): String? {
         if (email.isBlank()) return "Email is required"
         if (!email.trim().contains("@")) return "Please enter a valid email address"

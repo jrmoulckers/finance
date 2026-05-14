@@ -42,6 +42,7 @@ class CachedExchangeRateProvider(
         val cachedAt: Instant,
     )
 
+    @Suppress("ReturnCount") // Validation logic with early returns
     override suspend fun getRate(from: Currency, to: Currency): ExchangeRate? {
         if (from == to) return null
 
@@ -71,6 +72,7 @@ class CachedExchangeRateProvider(
         return (Clock.System.now() - cachedAt) > cacheTtl
     }
 
+    @Suppress("ReturnCount") // Validation logic with early returns
     private fun getOfflineRate(from: Currency, to: Currency): ExchangeRate? {
         val fromToUsd = if (from.code == "USD") 1.0 else OFFLINE_RATES[from.code] ?: return null
         val toToUsd = if (to.code == "USD") 1.0 else OFFLINE_RATES[to.code] ?: return null

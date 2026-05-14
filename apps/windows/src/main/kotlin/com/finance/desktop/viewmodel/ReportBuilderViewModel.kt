@@ -118,6 +118,7 @@ data class ReportBuilderUiState(
  * generates a preview of the data with chart-ready points, handles export to
  * PDF/CSV/Share format, and supports saving/loading report configurations.
  */
+@Suppress("TooManyFunctions") // ViewModel exposes granular actions for report builder UI
 class ReportBuilderViewModel(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,

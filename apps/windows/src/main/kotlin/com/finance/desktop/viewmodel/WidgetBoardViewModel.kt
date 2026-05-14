@@ -133,6 +133,7 @@ class WidgetBoardViewModel(
     fun refreshWidgets() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isRefreshing = true, errorMessage = null)
+            @Suppress("TooGenericExceptionCaught") // Widget operation error boundary
             try {
                 widgetManager.refreshAllWidgets()
                 _uiState.value = _uiState.value.copy(isRefreshing = false)

@@ -118,6 +118,7 @@ object GamificationEngine {
         )
     }
 
+    @Suppress("LongMethod") // Score calculation with many rule evaluations
     private fun evaluateAchievements(
         transactions: List<Transaction>,
         budgets: List<Budget>,

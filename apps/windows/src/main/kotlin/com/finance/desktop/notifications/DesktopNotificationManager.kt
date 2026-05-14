@@ -114,6 +114,7 @@ object DesktopNotificationManager {
     @Synchronized
     fun dispose() {
         trayIcon?.let { icon ->
+            @Suppress("TooGenericExceptionCaught") // Notification delivery error boundary
             try {
                 SystemTray.getSystemTray().remove(icon)
             } catch (e: Exception) {
@@ -257,6 +258,7 @@ object DesktopNotificationManager {
             body
         }
 
+        @Suppress("TooGenericExceptionCaught") // Notification delivery error boundary
         try {
             icon.displayMessage(title, truncatedBody, type)
         } catch (e: Exception) {

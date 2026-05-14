@@ -91,6 +91,7 @@ private enum class SortDirection { ASC, DESC }
  * Sort controls announce column name and direction.
  */
 @Composable
+@Suppress("LongMethod") // Transactions list composable
 fun TransactionsScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<TransactionsViewModel>()
     val state by viewModel.uiState.collectAsState()
@@ -225,6 +226,7 @@ fun TransactionsScreen(modifier: Modifier = Modifier) {
 // =============================================================================
 
 @Composable
+@Suppress("LongMethod") // Transaction detail composable
 private fun SearchAndFilterBar(
     searchQuery: String,
     onSearchChange: (String) -> Unit,

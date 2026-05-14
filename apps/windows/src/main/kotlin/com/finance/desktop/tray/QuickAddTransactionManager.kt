@@ -72,6 +72,7 @@ class QuickAddTransactionManager(
      * Persist the transaction and return success/failure.
      * Returns the formatted amount string on success, null on failure.
      */
+    @Suppress("ReturnCount") // Input validation with early returns
     suspend fun save(): Pair<String, String>? {
         val current = _state.value
 
@@ -88,6 +89,7 @@ class QuickAddTransactionManager(
 
         _state.value = current.copy(isSaving = true)
 
+        @Suppress("TooGenericExceptionCaught") // Tray operation must not crash the app
         return try {
             val cents = Cents.fromDollars(amountDouble)
             val now = Clock.System.now()

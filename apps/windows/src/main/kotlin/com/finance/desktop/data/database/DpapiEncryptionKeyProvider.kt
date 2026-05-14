@@ -45,6 +45,7 @@ class DpapiEncryptionKeyProvider(
     @Volatile
     private var cachedKey: String? = null
 
+    @Suppress("ReturnCount") // Key derivation with validation steps
     override fun getOrCreateKey(): String {
         cachedKey?.let { return it }
 
@@ -67,6 +68,7 @@ class DpapiEncryptionKeyProvider(
 
     override fun deleteKey() {
         synchronized(this) {
+            @Suppress("TooGenericExceptionCaught") // DPAPI operations may throw various native errors
             try {
                 java.nio.file.Files.deleteIfExists(keyFile)
                 cachedKey = null

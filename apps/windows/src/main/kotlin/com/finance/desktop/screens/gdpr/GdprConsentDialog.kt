@@ -36,6 +36,7 @@ import com.finance.desktop.theme.FinanceDesktopTheme
  * @param onCustomize Callback with (analytics, crashReporting) booleans.
  */
 @Composable
+@Suppress("LongMethod") // Dialog composable with consent items
 fun GdprConsentDialog(
     onAcceptAll: () -> Unit,
     onAcceptRequired: () -> Unit,

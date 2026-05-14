@@ -142,6 +142,7 @@ class WidgetRegistrationManager(
      * synchronously via the COM callback.
      */
     suspend fun refreshAllWidgets() {
+        @Suppress("TooGenericExceptionCaught") // Widget registration error boundary
         try {
             val data = dataProvider.fetchWidgetData()
 

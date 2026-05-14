@@ -77,6 +77,7 @@ import com.finance.desktop.viewmodel.CurrencyViewModel
  * @param modifier Optional [Modifier] for the root layout.
  */
 @Composable
+@Suppress("LongMethod") // Composable with conversion form layout
 fun CurrencyConversionScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<CurrencyViewModel>()
     val state by viewModel.conversionState.collectAsState()
@@ -435,6 +436,6 @@ private fun CurrencySelectorButton(
  * Look up the human-readable name for a currency code from the ViewModel's
  * companion metadata.
  */
-private fun findCurrencyName(viewModel: CurrencyViewModel, code: String): String {
+private fun findCurrencyName(@Suppress("UnusedParameter") viewModel: CurrencyViewModel, code: String): String {
     return CurrencyViewModel.currencyNames[code] ?: code
 }

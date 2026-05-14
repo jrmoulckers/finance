@@ -159,6 +159,7 @@ fun BudgetsScreen(modifier: Modifier = Modifier) {
 // =============================================================================
 
 @Composable
+@Suppress("LongMethod") // Budget item composable
 private fun BudgetCard(budget: BudgetItemUi) {
     val healthColor = when (budget.health) {
         BudgetHealth.OVER -> MaterialTheme.colorScheme.error

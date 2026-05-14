@@ -74,6 +74,7 @@ import com.finance.desktop.widgets.WidgetSize
  * for each card.
  */
 @Composable
+@Suppress("LongMethod") // Widget board grid composable
 fun WidgetBoardScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<WidgetBoardViewModel>()
     val state by viewModel.uiState.collectAsState()
@@ -218,6 +219,7 @@ fun WidgetBoardScreen(modifier: Modifier = Modifier) {
 // =============================================================================
 
 @Composable
+@Suppress("LongMethod") // Widget detail composable
 private fun WidgetBoardCard(
     item: WidgetBoardItem,
     onToggle: () -> Unit,

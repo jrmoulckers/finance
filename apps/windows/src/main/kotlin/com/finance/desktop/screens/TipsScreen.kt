@@ -74,6 +74,7 @@ import com.finance.desktop.viewmodel.TipsViewModel
  * - Keyboard-navigable via Tab/Shift+Tab
  */
 @Composable
+@Suppress("LongMethod") // Tips display composable
 fun TipsScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<TipsViewModel>()
     val state by viewModel.uiState.collectAsState()

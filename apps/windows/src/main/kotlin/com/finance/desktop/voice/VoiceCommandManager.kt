@@ -112,6 +112,7 @@ class VoiceCommandManager private constructor(
      * - Speech recognition is disabled by policy
      */
     fun isAvailable(): Boolean {
+        @Suppress("TooGenericExceptionCaught") // Voice recognition error boundary
         return try {
             provider.isAvailable()
         } catch (e: Exception) {
@@ -141,6 +142,7 @@ class VoiceCommandManager private constructor(
             )
         }
 
+        @Suppress("TooGenericExceptionCaught") // Voice recognition error boundary
         return try {
             state = VoiceRecognitionState.LISTENING
             logger.info("Voice recognition session started (timeout: ${timeoutSeconds}s)")
@@ -200,6 +202,7 @@ internal class PowerShellVoiceProvider : VoiceRecognitionProvider {
             append("} catch { Write-Output 'false' }")
         }
 
+        @Suppress("TooGenericExceptionCaught") // Voice recognition error boundary
         return try {
             val output = executePowerShell(script, timeoutSeconds = 5)
             output.trim().equals("true", ignoreCase = true)
@@ -225,6 +228,7 @@ internal class PowerShellVoiceProvider : VoiceRecognitionProvider {
             append("finally { \$rec.Dispose() }")
         }
 
+        @Suppress("TooGenericExceptionCaught") // Voice recognition error boundary
         return try {
             val output = executePowerShell(script, timeoutSeconds = timeoutSeconds + 5)
             val parts = output.trim().split("|")

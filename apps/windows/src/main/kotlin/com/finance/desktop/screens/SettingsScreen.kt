@@ -77,6 +77,7 @@ import com.finance.desktop.viewmodel.SettingsViewModel
  * Right-click context menus on dropdowns offer "Reset to default".
  */
 @Composable
+@Suppress("LongMethod") // Settings form composable
 fun SettingsScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<SettingsViewModel>()
     val state by viewModel.uiState.collectAsState()

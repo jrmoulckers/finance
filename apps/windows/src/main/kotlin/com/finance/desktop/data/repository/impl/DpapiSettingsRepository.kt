@@ -112,6 +112,7 @@ class DpapiSettingsRepository(
             return AppSettings()
         }
 
+        @Suppress("TooGenericExceptionCaught") // DPAPI settings access error boundary
         return try {
             val b64Ciphertext = Files.readString(file).trim()
             val ciphertext = Base64.getDecoder().decode(b64Ciphertext)

@@ -85,6 +85,7 @@ import com.finance.models.types.Currency
  * @param modifier Optional [Modifier] for the root layout.
  */
 @Composable
+@Suppress("LongMethod") // Composable with search and grid layout
 fun CurrencyPickerScreen(
     onCurrencySelected: ((Currency) -> Unit)? = null,
     selectedCurrency: Currency? = null,

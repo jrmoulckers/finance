@@ -158,6 +158,7 @@ fun GoalsScreen(modifier: Modifier = Modifier) {
 // =============================================================================
 
 @Composable
+@Suppress("LongMethod") // Goal detail composable
 private fun GoalCard(goal: GoalItemUi) {
     val progressColor = when {
         goal.progress >= 0.75f -> Color(0xFF2E7D32)

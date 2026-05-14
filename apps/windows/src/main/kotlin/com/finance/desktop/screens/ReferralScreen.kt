@@ -84,6 +84,7 @@ import com.finance.desktop.viewmodel.ReferralViewModel
  * High contrast colours adapt via [MaterialTheme.colorScheme].
  */
 @Composable
+@Suppress("LongMethod") // Referral screen composable
 fun ReferralScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<ReferralViewModel>()
     val state by viewModel.uiState.collectAsState()
@@ -249,6 +250,7 @@ private fun ReferralStatCard(
 // ─── Referral code card ──────────────────────────────────────────────────────
 
 @Composable
+@Suppress("LongMethod") // Referral details composable section
 private fun ReferralCodeCard(
     referralCode: String,
     referralLink: String,

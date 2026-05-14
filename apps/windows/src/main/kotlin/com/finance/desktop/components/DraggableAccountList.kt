@@ -40,7 +40,7 @@ fun DraggableAccountList(
     onReorder: (List<Account>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val orderedAccounts = remember(accounts) { mutableStateListOf(*accounts.toTypedArray()) }
+    val orderedAccounts = remember(accounts) { accounts.toMutableStateList() }
     var dragTargetIndex by remember { mutableStateOf<Int?>(null) }
     var focusedIndex by remember { mutableStateOf(0) }
 

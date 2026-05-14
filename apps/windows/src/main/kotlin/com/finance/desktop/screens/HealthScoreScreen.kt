@@ -83,6 +83,7 @@ import com.finance.desktop.viewmodel.HistoryPoint
  * with its score and improvement tip.
  */
 @Composable
+@Suppress("LongMethod") // Health score dashboard composable
 fun HealthScoreScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<HealthScoreViewModel>()
     val state by viewModel.uiState.collectAsState()
@@ -384,6 +385,7 @@ private fun ScoreHistoryCard(history: List<HistoryPoint>, modifier: Modifier = M
 }
 
 @Composable
+@Suppress("LongMethod") // Score breakdown composable section
 private fun DimensionCard(dimension: HealthDimension) {
     val scoreColor = scoreToColor(dimension.score)
     val animatedProgress by animateFloatAsState(

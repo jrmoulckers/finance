@@ -65,7 +65,7 @@ object PerformanceOptimizer {
         try {
             // Hint to JVM to perform a collection during startup
             // before UI is visible, reducing mid-interaction pauses.
-            @Suppress("ExplicitGarbageCollection")
+            @Suppress("ExplicitGarbageCollectionCall") // Intentional warmup GC before UI is visible
             System.gc()
             logger.fine("GC warmup complete")
         } catch (_: Exception) { /* non-critical */ }

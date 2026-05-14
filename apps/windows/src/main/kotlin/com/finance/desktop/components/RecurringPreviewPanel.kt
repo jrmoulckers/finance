@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("MatchingDeclarationName") // File contains RecurringPreviewItem + RecurringPreviewPanel composable
+
 package com.finance.desktop.components
 
 import androidx.compose.foundation.background

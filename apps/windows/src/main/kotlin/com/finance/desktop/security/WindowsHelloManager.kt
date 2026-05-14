@@ -54,6 +54,7 @@ class WindowsHelloManager private constructor(
      * not set up, the OS version is too old, or the check fails.
      */
     fun canAuthenticate(): Boolean {
+        @Suppress("TooGenericExceptionCaught") // Windows Hello native interop error boundary
         return try {
             provider.checkAvailability()
         } catch (e: Exception) {
@@ -82,6 +83,7 @@ class WindowsHelloManager private constructor(
             return false
         }
 
+        @Suppress("TooGenericExceptionCaught") // Windows Hello native interop error boundary
         return try {
             provider.requestVerification(reason)
         } catch (e: Exception) {
@@ -161,6 +163,7 @@ internal class PowerShellWindowsHelloProvider : WindowsHelloProvider {
             append("else { Write-Output 'false' }")
         }
 
+        @Suppress("TooGenericExceptionCaught") // Windows Hello native interop error boundary
         return try {
             val output = executePowerShell(script)
             output.trim().equals("true", ignoreCase = true)
@@ -188,6 +191,7 @@ internal class PowerShellWindowsHelloProvider : WindowsHelloProvider {
             append("else { Write-Output 'false' }")
         }
 
+        @Suppress("TooGenericExceptionCaught") // Windows Hello native interop error boundary
         return try {
             val output = executePowerShell(script)
             output.trim().equals("true", ignoreCase = true)

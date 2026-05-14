@@ -66,6 +66,7 @@ import com.finance.desktop.viewmodel.GdprConsentViewModel
  * @param systemTray The system tray integration for notifications.
  */
 @Composable
+@Suppress("CyclomaticComplexMethod") // Top-level navigation routing composable
 fun FinanceApp(
     shortcutHandler: ShortcutHandler,
     quickAddManager: QuickAddTransactionManager,

@@ -114,11 +114,14 @@ class SqlDelightAccountRepository(
         }
 
     private fun refreshCache() {
+        @Suppress("TooGenericExceptionCaught") // Database may not be initialized
         try {
             val rows = queries.selectAll().executeAsList()
             _cache.value = rows.map { it.toAccount() }
         } catch (e: Exception) {
             // Database may not be initialized yet; use empty list
+            java.util.logging.Logger.getLogger("SqlDelightAccountRepository")
+                .warning("Cache refresh failed: ${e.message}")
         }
     }
 }

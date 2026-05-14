@@ -67,6 +67,7 @@ import com.finance.desktop.viewmodel.PerformanceAlert
  * Narrator reads all metric values and alert descriptions.
  */
 @Composable
+@Suppress("LongMethod") // Diagnostics display composable
 fun DiagnosticsScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<DiagnosticsViewModel>()
     val state by viewModel.uiState.collectAsState()

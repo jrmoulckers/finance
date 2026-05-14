@@ -130,6 +130,7 @@ class SecureTokenStorage private constructor(
             return null
         }
 
+        @Suppress("TooGenericExceptionCaught") // Secure storage error boundary
         return try {
             val b64 = Files.readString(tokenFile).trim()
             val encrypted = Base64.getDecoder().decode(b64)
@@ -179,6 +180,7 @@ class SecureTokenStorage private constructor(
             stream
                 .filter { it.toString().endsWith(TOKEN_FILE_EXTENSION) }
                 .forEach { path ->
+                    @Suppress("TooGenericExceptionCaught") // Secure storage error boundary
                     try {
                         Files.deleteIfExists(path)
                         count++

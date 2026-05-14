@@ -96,6 +96,7 @@ object EntitlementEngine {
      * @param currentUsage Current usage count (for limited features).
      * @return [EntitlementResult.Granted] or [EntitlementResult.Gated].
      */
+    @Suppress("ReturnCount") // Feature gate evaluation logic
     fun checkAccess(
         tier: SubscriptionTier,
         feature: PremiumFeature,
