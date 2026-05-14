@@ -95,7 +95,6 @@ jobs:
           echo "duration=$(( SECONDS - TEST_START ))" >> "$GITHUB_OUTPUT"
 
       - name: Verify Paparazzi snapshots
-        if: github.event_name != 'pull_request'
         run: |
           ./gradlew :apps:android:verifyPaparazziDebug \
             --parallel --build-cache --stacktrace
