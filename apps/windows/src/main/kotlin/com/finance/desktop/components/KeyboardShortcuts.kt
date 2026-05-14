@@ -69,6 +69,7 @@ class ShortcutHandler {
      * Call this from `onPreviewKeyEvent` on the application [Window] so that
      * shortcuts fire before any child composable consumes the event.
      */
+    @Suppress("ReturnCount") // Keyboard shortcut dispatch logic
     fun onKeyEvent(event: KeyEvent): Boolean {
         if (event.type != KeyEventType.KeyDown) return false
         val match = shortcuts.firstOrNull { shortcut ->

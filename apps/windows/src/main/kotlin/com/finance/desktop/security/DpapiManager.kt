@@ -58,6 +58,7 @@ class DpapiManager private constructor(
      */
     fun encrypt(data: ByteArray): ByteArray {
         require(data.isNotEmpty()) { "Cannot encrypt empty data" }
+        @Suppress("TooGenericExceptionCaught") // DPAPI native call error boundary
         return try {
             provider.protect(data)
         } catch (e: Exception) {
@@ -75,6 +76,7 @@ class DpapiManager private constructor(
      */
     fun decrypt(data: ByteArray): ByteArray {
         require(data.isNotEmpty()) { "Cannot decrypt empty data" }
+        @Suppress("TooGenericExceptionCaught") // DPAPI native call error boundary
         return try {
             provider.unprotect(data)
         } catch (e: Exception) {

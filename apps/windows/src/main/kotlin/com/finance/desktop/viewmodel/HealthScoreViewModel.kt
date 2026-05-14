@@ -100,8 +100,10 @@ class HealthScoreViewModel(
         _uiState.value = _uiState.value.copy(errorMessage = null)
     }
 
+    @Suppress("LongMethod", "CyclomaticComplexMethod") // Score calculation with multiple weighted factors
     private fun computeHealthScore() {
         viewModelScope.launch {
+            @Suppress("TooGenericExceptionCaught") // Health score calculation error boundary
             try {
                 val currency = Currency.USD
                 val now = Clock.System.now()

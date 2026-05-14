@@ -137,6 +137,7 @@ class SettingsViewModel(
     fun resetToDefaults() {
         executeWithAuth("Confirm your identity to reset all settings") {
             viewModelScope.launch {
+                @Suppress("TooGenericExceptionCaught") // Settings operation error boundary
                 try {
                     settingsRepository.reset()
                     val defaults = settingsRepository.load()
@@ -161,6 +162,7 @@ class SettingsViewModel(
 
     private fun loadSettings() {
         viewModelScope.launch {
+            @Suppress("TooGenericExceptionCaught") // Settings operation error boundary
             try {
                 val settings = settingsRepository.load()
                 _uiState.value = settings.toUiState().copy(isLoading = false)
@@ -179,6 +181,7 @@ class SettingsViewModel(
      */
     private fun updateAndSave(transform: (SettingsUiState) -> SettingsUiState) {
         viewModelScope.launch {
+            @Suppress("TooGenericExceptionCaught") // Settings operation error boundary
             try {
                 val updated = transform(_uiState.value)
                 _uiState.value = updated.copy(

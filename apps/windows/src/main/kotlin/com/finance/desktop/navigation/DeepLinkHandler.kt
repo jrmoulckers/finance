@@ -26,6 +26,7 @@ object DeepLinkHandler {
 
     /** Parse a finance:// URI into a navigation action. */
     fun parse(rawUri: String): DeepLinkAction {
+        @Suppress("TooGenericExceptionCaught") // Deep link parsing must not crash the app
         return try {
             val uri = URI(rawUri)
             if (uri.scheme != "finance") return DeepLinkAction.Unknown(rawUri)

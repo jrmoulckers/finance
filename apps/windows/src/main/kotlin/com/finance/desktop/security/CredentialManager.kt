@@ -80,6 +80,7 @@ class CredentialManager(
      * @return [StoredCredentials] if authentication succeeds and credentials
      *   exist, or `null` if authentication fails or no credentials are stored.
      */
+    @Suppress("ReturnCount") // Credential validation with early returns
     fun retrieveCredentials(requireAuth: Boolean = true): StoredCredentials? {
         if (requireAuth && windowsHelloManager.canAuthenticate()) {
             val authenticated = windowsHelloManager.authenticate(

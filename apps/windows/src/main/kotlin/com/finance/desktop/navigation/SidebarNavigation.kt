@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("MatchingDeclarationName") // File contains Screen enum + SidebarNavigation composable
+
 package com.finance.desktop.navigation
 
 import androidx.compose.animation.AnimatedVisibility

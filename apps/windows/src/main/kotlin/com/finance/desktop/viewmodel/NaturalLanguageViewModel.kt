@@ -110,6 +110,7 @@ data class NaturalLanguageUiState(
  *
  * Transaction creation delegates to [TransactionRepository].
  */
+@Suppress("TooManyFunctions") // NLP ViewModel requires many parsing helper methods
 class NaturalLanguageViewModel(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
@@ -274,7 +275,7 @@ class NaturalLanguageViewModel(
         val parsed = _uiState.value.parsedTransaction ?: return
         val currentValue = when (field) {
             EditingField.AMOUNT -> parsed.amount?.let {
-                String.format("%.2f", it.amount / 100.0)
+                String.format(java.util.Locale.ROOT, "%.2f", it.amount / 100.0)
             } ?: ""
             EditingField.PAYEE -> parsed.payee ?: ""
             EditingField.CATEGORY -> parsed.category ?: ""
@@ -423,6 +424,7 @@ class NaturalLanguageViewModel(
             Regex("""(\d+(?:,\d{1,2})?)"""),
         )
 
+        @Suppress("LoopWithTooManyJumpStatements") // Amount parsing loop tries multiple regex patterns
         for (pattern in patterns) {
             val match = pattern.find(text) ?: continue
             val raw = match.groupValues[1]
@@ -440,6 +442,7 @@ class NaturalLanguageViewModel(
     }
 
     /** Parses the transaction type from keywords. */
+    @Suppress("UnusedParameter") // locale reserved for future locale-specific keyword priority
     private fun parseType(text: String, locale: Locale): ParsedField<TransactionType> {
         // English keywords
         val incomeKeywords = listOf("earned", "received", "income", "got paid", "salary", "refund")
@@ -490,6 +493,7 @@ class NaturalLanguageViewModel(
         return ParsedField(category, conf, match.value)
     }
 
+    @Suppress("ReturnCount") // Date parsing with multiple format attempts
     /** Parses date from relative keywords and locale-aware date patterns. */
     private fun parseDate(text: String, locale: Locale): ParsedField<LocalDate> {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -534,6 +538,7 @@ class NaturalLanguageViewModel(
 
         return ParsedField(null, FieldConfidence.NONE)
     }
+@Suppress("ReturnCount") // Suggestion generation with early exits
 
     private fun generateSuggestions(text: String): List<NlSuggestion> {
         val lastWord = text.split(" ").lastOrNull()?.lowercase() ?: return emptyList()
@@ -556,8 +561,8 @@ class NaturalLanguageViewModel(
         return suggestions.take(5)
     }
 
-    private fun formatCents(cents: Cents, currency: Currency): String {
+    private fun formatCents(cents: Cents, @Suppress("UnusedParameter") currency: Currency): String {
         val dollars = cents.amount / 100.0
-        return "$${String.format("%.2f", dollars)}"
+        return "$${String.format(java.util.Locale.ROOT, "%.2f", dollars)}"
     }
 }

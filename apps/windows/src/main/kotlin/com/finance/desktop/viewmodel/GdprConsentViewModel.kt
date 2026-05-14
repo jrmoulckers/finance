@@ -139,6 +139,7 @@ class GdprConsentViewModel(
     fun exportData(directory: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isExporting = true, error = null)
+            @Suppress("TooGenericExceptionCaught") // GDPR operation error boundary
             try {
                 val settings = settingsRepository.load()
                 val exportData = buildString {
@@ -204,6 +205,7 @@ class GdprConsentViewModel(
                 showDeleteConfirmation = false,
                 error = null,
             )
+            @Suppress("TooGenericExceptionCaught") // GDPR operation error boundary
             try {
                 authRepository.deleteAccount()
                     .onSuccess {
@@ -236,6 +238,7 @@ class GdprConsentViewModel(
     private fun checkConsent() {
         val consentFile = resolveConsentFile()
         if (consentFile.exists()) {
+            @Suppress("TooGenericExceptionCaught") // GDPR operation error boundary
             try {
                 val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
                 val consent = json.decodeFromString<GdprConsent>(consentFile.readText())
@@ -253,6 +256,7 @@ class GdprConsentViewModel(
     }
 
     private fun saveConsent(consent: GdprConsent) {
+        @Suppress("TooGenericExceptionCaught") // GDPR operation error boundary
         try {
             val json = kotlinx.serialization.json.Json { prettyPrint = true }
             val consentJson = json.encodeToString(GdprConsent.serializer(), consent)

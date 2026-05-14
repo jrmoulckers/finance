@@ -71,6 +71,7 @@ class DesktopSyncCoordinator(
         }
 
         syncJob = scope.launch {
+            @Suppress("TooGenericExceptionCaught") // Sync cycle error boundary
             try {
                 logger.info("Starting sync coordinator (interval: ${syncConfig.syncIntervalMs}ms)")
                 val credentials = session.toSyncCredentials()
@@ -106,7 +107,7 @@ class DesktopSyncCoordinator(
                     delay(syncConfig.syncIntervalMs)
                 }
             } catch (e: CancellationException) {
-                logger.info("Sync coordinator cancelled")
+                logger.info("Sync coordinator cancelled: ${e.message}")
             } catch (e: Exception) {
                 logger.log(Level.SEVERE, "Sync coordinator fatal error", e)
             }
@@ -129,6 +130,7 @@ class DesktopSyncCoordinator(
         syncJob?.cancel()
         syncJob = null
         scope.launch {
+            @Suppress("TooGenericExceptionCaught") // Sync disconnect must not crash
             try {
                 syncEngine.disconnect()
             } catch (e: Exception) {

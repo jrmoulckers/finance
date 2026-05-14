@@ -49,6 +49,7 @@ import kotlinx.coroutines.launch
  * error messages are announced, save/cancel buttons are labeled.
  */
 @Composable
+@Suppress("LongMethod") // Transaction form dialog composable
 fun QuickAddTransactionDialog(
     quickAddManager: QuickAddTransactionManager,
     systemTray: FinanceSystemTray,

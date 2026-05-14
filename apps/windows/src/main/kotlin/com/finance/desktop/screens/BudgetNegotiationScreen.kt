@@ -393,6 +393,7 @@ private fun ProposalListItem(
 // =============================================================================
 
 @Composable
+@Suppress("LongMethod") // Negotiation step composable
 private fun ProposalDetail(
     proposal: BudgetProposal?,
     commentDraft: String,

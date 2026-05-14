@@ -132,6 +132,7 @@ class FinanceSystemTray(
     fun dispose() {
         scope.cancel()
         trayIcon?.let { icon ->
+            @Suppress("TooGenericExceptionCaught") // System tray operation error boundary
             try {
                 SystemTray.getSystemTray().remove(icon)
             } catch (e: Exception) {
@@ -154,10 +155,10 @@ class FinanceSystemTray(
      */
     fun showDailySummary() {
         scope.launch {
+            @Suppress("TooGenericExceptionCaught") // Error boundary — must not crash
             try {
                 val today = currentDate()
                 val transactions = transactionRepository.observeAll(householdId).first()
-                val accounts = accountRepository.observeAll(householdId).first()
                 val budgets = budgetRepository.observeAll(householdId).first()
                 val currency = Currency.USD
 
@@ -235,6 +236,7 @@ class FinanceSystemTray(
         }
 
         val truncated = if (body.length > 256) body.take(255) + "…" else body
+        @Suppress("TooGenericExceptionCaught") // System tray operation error boundary
         try {
             icon.displayMessage(title, truncated, type)
         } catch (e: Exception) {

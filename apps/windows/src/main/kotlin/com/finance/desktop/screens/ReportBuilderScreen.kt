@@ -164,6 +164,7 @@ fun ReportBuilderScreen(modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+@Suppress("LongMethod", "CyclomaticComplexMethod") // Composable with many conditional UI branches
 private fun ReportConfigPanel(
     state: ReportBuilderUiState,
     onTemplateChange: (ReportTemplate) -> Unit,

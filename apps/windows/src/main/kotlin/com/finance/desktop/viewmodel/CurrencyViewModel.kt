@@ -203,6 +203,7 @@ class CurrencyViewModel(
 
     private fun loadCurrencies() {
         viewModelScope.launch {
+            @Suppress("TooGenericExceptionCaught") // Top-level error boundary for currency operations
             try {
                 val available = rateProvider.getAvailableCurrencies()
                 val displayList = available.map { currency ->
@@ -252,6 +253,7 @@ class CurrencyViewModel(
 
         viewModelScope.launch {
             _conversionState.value = state.copy(isLoading = true, error = null)
+            @Suppress("TooGenericExceptionCaught") // Top-level error boundary for currency operations
             try {
                 val decimals = state.fromCurrency.decimalPlaces
                 val divisor = pow10(decimals)

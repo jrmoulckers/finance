@@ -35,6 +35,7 @@ import com.finance.desktop.viewmodel.GdprConsentViewModel
  * - Live regions for status messages
  */
 @Composable
+@Suppress("LongMethod") // Settings screen composable
 fun PrivacySettingsScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<GdprConsentViewModel>()
     val state by viewModel.uiState.collectAsState()

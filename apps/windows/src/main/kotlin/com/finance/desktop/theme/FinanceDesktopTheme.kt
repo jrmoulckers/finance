@@ -25,20 +25,14 @@ import androidx.compose.ui.unit.sp
 // =============================================================================
 
 // region Blue
-private val Blue50 = Color(0xFFEFF6FF)
 private val Blue100 = Color(0xFFDBEAFE)
-private val Blue200 = Color(0xFFBFDBFE)
-private val Blue300 = Color(0xFF93C5FD)
 private val Blue400 = Color(0xFF60A5FA)
-private val Blue500 = Color(0xFF3B82F6)
 private val Blue600 = Color(0xFF2563EB)
-private val Blue700 = Color(0xFF1D4ED8)
 private val Blue800 = Color(0xFF1E40AF)
 private val Blue900 = Color(0xFF1E3A8A)
 // endregion
 
 // region Teal
-private val Teal50 = Color(0xFFF0FDFA)
 private val Teal100 = Color(0xFFCCFBF1)
 private val Teal400 = Color(0xFF2DD4BF)
 private val Teal600 = Color(0xFF0D9488)
@@ -47,9 +41,6 @@ private val Teal900 = Color(0xFF134E4A)
 // endregion
 
 // region Green
-private val Green500 = Color(0xFF22C55E)
-private val Green600 = Color(0xFF16A34A)
-private val Green700 = Color(0xFF15803D)
 // endregion
 
 // region Amber
@@ -62,7 +53,6 @@ private val Amber700 = Color(0xFFB45309)
 // region Red
 private val Red50 = Color(0xFFFEF2F2)
 private val Red400 = Color(0xFFF87171)
-private val Red500 = Color(0xFFEF4444)
 private val Red600 = Color(0xFFDC2626)
 private val Red700 = Color(0xFFB91C1C)
 private val Red900 = Color(0xFF7F1D1D)
@@ -75,7 +65,6 @@ private val Neutral100 = Color(0xFFF3F4F6)
 private val Neutral200 = Color(0xFFE5E7EB)
 private val Neutral300 = Color(0xFFD1D5DB)
 private val Neutral400 = Color(0xFF9CA3AF)
-private val Neutral500 = Color(0xFF6B7280)
 private val Neutral600 = Color(0xFF4B5563)
 private val Neutral700 = Color(0xFF374151)
 private val Neutral800 = Color(0xFF1F2937)

@@ -79,6 +79,7 @@ import com.finance.desktop.viewmodel.GamificationViewModel
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+@Suppress("LongMethod") // Gamification UI composable
 fun GamificationScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<GamificationViewModel>()
     val state by viewModel.uiState.collectAsState()

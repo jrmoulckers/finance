@@ -64,6 +64,7 @@ import com.finance.desktop.theme.FinanceDesktopTheme
  * @param onSkip Callback to bypass authentication (fallback).
  */
 @Composable
+@Suppress("LongMethod") // Lock screen composable with biometric prompt
 fun LockScreen(
     isAuthenticating: Boolean,
     isWindowsHelloAvailable: Boolean,

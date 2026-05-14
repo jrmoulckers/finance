@@ -4,7 +4,6 @@ package com.finance.desktop.data
 
 import java.io.File
 import java.nio.charset.Charset
-import java.util.logging.Logger
 
 enum class CsvEncoding(val charset: Charset, val displayName: String, val bomBytes: ByteArray?) {
     UTF_8(Charsets.UTF_8, "UTF-8", byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())),
@@ -15,12 +14,12 @@ enum class CsvEncoding(val charset: Charset, val displayName: String, val bomByt
 }
 
 object CsvEncodingDetector {
-    private val logger = Logger.getLogger(CsvEncodingDetector::class.java.name)
     fun detect(file: File): CsvEncoding {
         val header = ByteArray(minOf(file.length().toInt(), 8192))
         file.inputStream().use { it.read(header) }
         return detectFromBytes(header)
     }
+    @Suppress("ReturnCount") // BOM detection loop naturally has multiple exit points
     fun detectFromBytes(bytes: ByteArray): CsvEncoding {
         for (enc in CsvEncoding.entries) {
             val bom = enc.bomBytes ?: continue
@@ -44,6 +43,7 @@ object CsvEncodingDetector {
                 c == delimiter && !inQ -> { fields.add(cur.toString().trim()); cur.clear() }
                 else -> cur.append(c) }; i++ }
         fields.add(cur.toString().trim()); return fields }
+    @Suppress("ReturnCount") // UTF-8 validation requires early-return on invalid sequences
     private fun isValidUtf8(bytes: ByteArray): Boolean {
         var i = 0
         while (i < bytes.size) {

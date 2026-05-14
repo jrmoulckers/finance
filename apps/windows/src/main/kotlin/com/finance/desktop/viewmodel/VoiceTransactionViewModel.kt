@@ -149,6 +149,7 @@ class VoiceTransactionViewModel(
         val parsed = _uiState.value.parsedTransaction ?: return
 
         viewModelScope.launch {
+            @Suppress("TooGenericExceptionCaught") // Voice transaction error boundary
             try {
                 _uiState.value = _uiState.value.copy(phase = VoiceEntryPhase.PROCESSING)
 

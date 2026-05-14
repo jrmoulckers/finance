@@ -6,7 +6,6 @@ import com.finance.core.budget.BudgetHealth
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import java.util.logging.Logger
 
 /**
  * Renders [WidgetData] into Windows 11 Adaptive Card JSON payloads.
@@ -32,8 +31,6 @@ import java.util.logging.Logger
 class WidgetContentRenderer {
 
     companion object {
-        private val logger: Logger = Logger.getLogger(WidgetContentRenderer::class.java.name)
-
         /** Adaptive Card schema version supported by Windows 11 Widgets. */
         private const val SCHEMA_VERSION = "1.5"
 

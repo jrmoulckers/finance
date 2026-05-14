@@ -120,6 +120,7 @@ class WidgetDataProvider(
      * fails, ensuring the widget always has something to render.
      */
     suspend fun fetchWidgetData(): WidgetData {
+        @Suppress("TooGenericExceptionCaught") // Widget data provider error boundary
         return try {
             val hid = SyncId("d1")
             val currency = Currency.USD

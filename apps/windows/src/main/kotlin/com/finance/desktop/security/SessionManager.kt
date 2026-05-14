@@ -55,6 +55,7 @@ class SessionManager(
      * @param reason Human-readable reason for the Windows Hello prompt.
      * @return [StoredCredentials] if authentication succeeds, `null` otherwise.
      */
+    @Suppress("ReturnCount") // Session validation with early returns
     fun startSession(
         reason: String = "Finance needs to verify your identity",
     ): StoredCredentials? {

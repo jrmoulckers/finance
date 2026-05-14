@@ -43,6 +43,7 @@ import com.finance.desktop.viewmodel.LoginViewModel
  * - Keyboard navigation follows logical tab order
  */
 @Composable
+@Suppress("LongMethod") // Login form composable
 fun LoginScreen(
     onAuthenticated: () -> Unit,
     modifier: Modifier = Modifier,

@@ -9,7 +9,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
-import java.util.logging.Logger
 
 /**
  * Result of parsing a voice command into a structured transaction.
@@ -51,8 +50,6 @@ data class ParsedTransaction(
 class VoiceCommandParser {
 
     companion object {
-        private val logger: Logger = Logger.getLogger(VoiceCommandParser::class.java.name)
-
         /** Words that indicate an expense transaction. */
         private val EXPENSE_KEYWORDS = setOf(
             "spent", "paid", "bought", "purchased", "charged", "cost",
@@ -229,6 +226,7 @@ class VoiceCommandParser {
         }
     }
 
+    @Suppress("ReturnCount") // Pattern matching with multiple exit points
     private fun extractCategory(input: String, words: List<String>): String? {
         // Check "on <category>" pattern first
         ON_PATTERN.find(input)?.let { match ->
@@ -251,6 +249,7 @@ class VoiceCommandParser {
         return null
     }
 
+    @Suppress("ReturnCount") // Pattern matching with multiple exit points
     private fun extractDescription(input: String, category: String?): String? {
         // Try "for <description>" pattern
         FOR_PATTERN.find(input)?.let { match ->

@@ -43,6 +43,7 @@ class CertificatePinningManager private constructor(
     }
 
     /** Validates a certificate chain against stored pins. */
+    @Suppress("ReturnCount") // Certificate validation requires multiple checks
     fun validateCertificate(host: String, chain: Array<X509Certificate>): Boolean {
         if (emergencyBypassEnabled) {
             logger.warning("Emergency bypass active -- skipping pin validation for " + host)
@@ -74,6 +75,7 @@ private class PinningTrustManager(
 
     override fun getAcceptedIssuers() = systemTm.acceptedIssuers
     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = systemTm.checkClientTrusted(chain, authType)
+    @Suppress("ReturnCount") // Certificate validation requires multiple checks
     override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
         systemTm.checkServerTrusted(chain, authType)
         if (bypassEnabled) return

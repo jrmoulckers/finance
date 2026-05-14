@@ -105,6 +105,7 @@ import com.finance.models.TransactionType
  * quick-fix editing state. All interactive elements have contentDescription.
  */
 @Composable
+@Suppress("LongMethod") // Main NL screen composable
 fun NaturalLanguageScreen(modifier: Modifier = Modifier) {
     val viewModel = koinGet<NaturalLanguageViewModel>()
     val state by viewModel.uiState.collectAsState()
@@ -332,6 +333,7 @@ private fun MerchantSuggestionChips(
 // ─── Input field with suggestions ────────────────────────────────────────────
 
 @Composable
+@Suppress("UnusedParameter") // onDismissSuggestions kept for API consistency with caller
 private fun NlInputField(
     text: String,
     onTextChange: (String) -> Unit,
@@ -444,6 +446,7 @@ private fun NlInputField(
  *
  * Narrator reads the full preview, per-field confidence, and edit state.
  */
+@Suppress("LongMethod", "CyclomaticComplexMethod") // Composable rendering parsed transaction fields
 @Composable
 private fun ParsedPreviewCard(
     parsed: ParsedTransaction,
@@ -537,7 +540,7 @@ private fun ParsedPreviewCard(
                     icon = Icons.Filled.Payment,
                     label = "Amount",
                     value = parsed.amount?.let {
-                        "$${String.format("%.2f", it.amount / 100.0)}"
+                        "$${String.format(java.util.Locale.ROOT, "%.2f", it.amount / 100.0)}"
                     } ?: "—",
                     isPresent = parsed.amount != null,
                     fieldConfidence = parsed.amountConfidence,
@@ -674,6 +677,7 @@ private fun ParsedPreviewCard(
  *
  * Narrator reads field label, value, confidence level, and edit state.
  */
+@Suppress("LongMethod") // Composable UI layout
 @Composable
 private fun EditableParsedField(
     icon: ImageVector,

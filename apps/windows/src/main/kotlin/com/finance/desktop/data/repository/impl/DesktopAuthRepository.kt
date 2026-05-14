@@ -54,6 +54,7 @@ class DesktopAuthRepository(
     override val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
 
     override suspend fun signInWithEmail(email: String, password: String): Result<AuthSession> {
+        @Suppress("TooGenericExceptionCaught") // Auth error boundary — catch-all for security
         return try {
             val response = httpClient.post("$supabaseUrl/auth/v1/token?grant_type=password") {
                 header("apikey", supabaseAnonKey)
@@ -79,6 +80,7 @@ class DesktopAuthRepository(
     }
 
     override suspend fun signUpWithEmail(email: String, password: String): Result<AuthSession> {
+        @Suppress("TooGenericExceptionCaught") // Auth error boundary — catch-all for security
         return try {
             val response = httpClient.post("$supabaseUrl/auth/v1/signup") {
                 header("apikey", supabaseAnonKey)
@@ -104,6 +106,7 @@ class DesktopAuthRepository(
     }
 
     override suspend fun signOut() {
+        @Suppress("TooGenericExceptionCaught") // Auth error boundary — catch-all for security
         try {
             val session = _currentSession.value
             if (session != null) {
@@ -119,11 +122,13 @@ class DesktopAuthRepository(
         }
     }
 
+    @Suppress("ReturnCount") // Auth flow with multiple validation steps
     override suspend fun refreshToken(): Result<AuthSession> {
         val currentRefreshToken = _currentSession.value?.refreshToken
             ?: secureTokenStorage.loadToken(SecureTokenStorage.KEY_REFRESH_TOKEN)
             ?: return Result.failure(AuthException("No refresh token available"))
 
+        @Suppress("TooGenericExceptionCaught") // Auth error boundary — catch-all for security
         return try {
             val response = httpClient.post("$supabaseUrl/auth/v1/token?grant_type=refresh_token") {
                 header("apikey", supabaseAnonKey)
@@ -147,10 +152,12 @@ class DesktopAuthRepository(
         }
     }
 
+    @Suppress("ReturnCount") // Auth flow with multiple validation steps
     override suspend fun deleteAccount(): Result<Unit> {
         val session = _currentSession.value
             ?: return Result.failure(AuthException("Not authenticated"))
 
+        @Suppress("TooGenericExceptionCaught") // Auth error boundary — catch-all for security
         return try {
             val response = httpClient.delete("$supabaseUrl/auth/v1/user") {
                 header("apikey", supabaseAnonKey)
@@ -169,6 +176,7 @@ class DesktopAuthRepository(
         }
     }
 
+    @Suppress("ReturnCount") // Auth flow with multiple validation steps
     override suspend fun restoreSession(): Result<AuthSession> {
         val stored = tokenManager.retrieveTokens()
             ?: return Result.failure(AuthException("No stored session"))
@@ -183,6 +191,7 @@ class DesktopAuthRepository(
         return Result.success(stored)
     }
 
+    @Suppress("ThrowsCount") // Auth operations may throw distinct security exceptions
     private fun parseAuthResponse(body: String): AuthSession {
         val obj = json.parseToJsonElement(body).jsonObject
         val accessToken = obj["access_token"]?.jsonPrimitive?.content

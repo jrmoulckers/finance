@@ -123,6 +123,7 @@ object SecurityAudit {
         }
 
         // Check PowerShell availability
+        @Suppress("TooGenericExceptionCaught") // Security audit must not crash the app
         try {
             val process = ProcessBuilder("powershell.exe", "-NoProfile", "-Command", "echo ok")
                 .redirectErrorStream(true)
