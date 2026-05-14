@@ -61,49 +61,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Create issue on failure (summarize failures)
-        if: env.PAPARAZZI_STATUS == 'failure'
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          FAIL_DIR: apps/android/build/paparazzi/failures
-        run: |
-          echo "Preparing failure report..."
-          if [ -d "$FAIL_DIR" ] && [ "$(ls -A $FAIL_DIR)" ]; then
-            python - <<'PY'
-import os, json, sys, urllib.request
-repo=os.environ['GITHUB_REPOSITORY']
-run_id=os.environ.get('GITHUB_RUN_ID')
-fail_dir=os.environ['FAIL_DIR']
-files=[]
-for root,_,fnames in os.walk(fail_dir):
-    for f in fnames:
-        files.append(os.path.join(root,f))
-body_lines=[
-    f"Nightly Paparazzi verification failed on main (workflow run: {run_id}).",
-    "",
-    "Artifacts are uploaded to the workflow run under the `paparazzi-failures` artifact.",
-    "",
-    "Failing files:",
-]
-body_lines.extend([f"- {f}" for f in files])
-body='\n'.join(body_lines)
-post = json.dumps({"title": f"Nightly Paparazzi failures on main (run {run_id})", "body": body}).encode()
-req = urllib.request.Request(f"https://api.github.com/repos/{repo}/issues", data=post, headers={
-    'Authorization': f"token {os.environ['GITHUB_TOKEN']}",
-    'Accept': 'application/vnd.github+json'
-})
-try:
-    resp = urllib.request.urlopen(req)
-    print('Created issue, response code', resp.getcode())
-except Exception as e:
-    print('Failed to create issue:', e)
-PY
-          else
-            echo "No failure artifacts found to report."
-          fi
-
       - name: CI Summary
         if: always()
         run: |
