@@ -105,6 +105,7 @@ class MergeResolver(
      *    rejected local value.
      * 8. Return [ConflictResolution.Merged].
      */
+    @Suppress("CyclomaticComplexMethod", "ReturnCount")
     override fun resolveConflict(conflict: SyncConflict): ConflictResolution {
         // 1. Deletes cannot be field-merged.
         if (conflict.involvesDelete) {
@@ -129,6 +130,7 @@ class MergeResolver(
         val merged = mutableMapOf<String, String?>()
         var hasNonMergeableConflict = false
 
+        @Suppress("LoopWithTooManyJumpStatements")
         for (key in allKeys) {
             // Skip conflict-marker keys from previous merges.
             if (key.startsWith("__conflict_")) continue

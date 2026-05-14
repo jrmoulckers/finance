@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("MatchingDeclarationName")
+
 package com.finance.sync.auth
 
 import android.content.Context
@@ -93,6 +95,7 @@ actual open class TokenStorage actual constructor() {
             .apply()
     }
 
+    @Suppress("ReturnCount")
     actual open fun load(): StoredTokenData? {
         val accessToken = prefs.getString(KEY_ACCESS_TOKEN, null) ?: return null
         val refreshToken = prefs.getString(KEY_REFRESH_TOKEN, null) ?: return null

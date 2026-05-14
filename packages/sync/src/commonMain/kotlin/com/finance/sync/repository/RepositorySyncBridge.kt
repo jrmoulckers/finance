@@ -62,6 +62,7 @@ class RepositorySyncBridge(
     }
 
     suspend fun acknowledgeSyncedMutations(mutations: List<SyncMutation>) {
+        @Suppress("LoopWithTooManyJumpStatements")
         for (mutation in mutations) {
             val repo = repositories[mutation.tableName] ?: continue
             val recordId = if (mutation.recordId.isNotBlank()) {

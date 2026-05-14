@@ -28,6 +28,7 @@ object TestFixtures {
 
     // ── Account Factory ──────────────────────────────────────────────
 
+    @Suppress("LongParameterList")
     fun createAccount(
         id: SyncId = nextId(),
         householdId: SyncId = SyncId("household-1"),
@@ -56,6 +57,7 @@ object TestFixtures {
 
     // ── Transaction Factory ──────────────────────────────────────────
 
+    @Suppress("LongParameterList")
     fun createTransaction(
         id: SyncId = nextId(),
         householdId: SyncId = SyncId("household-1"),
@@ -128,6 +130,7 @@ object TestFixtures {
 
     // ── Budget Factory ───────────────────────────────────────────────
 
+    @Suppress("LongParameterList")
     fun createBudget(
         id: SyncId = nextId(),
         householdId: SyncId = SyncId("household-1"),

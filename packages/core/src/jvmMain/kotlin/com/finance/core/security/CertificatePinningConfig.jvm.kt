@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("MatchingDeclarationName")
+
 package com.finance.core.security
 
 /**
@@ -18,9 +20,10 @@ actual object CertificatePinningConfig {
         return if (invalid.isEmpty()) {
             Result.success(Unit)
         } else {
+            val invalidNames = invalid.joinToString { it.first }
             Result.failure(
                 IllegalStateException(
-                    "Certificate pins not configured: ${invalid.joinToString { it.first }}. " +
+                    "Certificate pins not configured: $invalidNames. " +
                         "Replace PLACEHOLDER values before release.",
                 ),
             )

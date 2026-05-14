@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 
+@Suppress("TooManyFunctions")
 class SqlDelightTransactionRepository(
     private val db: FinanceDatabase,
     private val context: CoroutineContext = Dispatchers.Default,
@@ -105,17 +106,17 @@ class SqlDelightTransactionRepository(
 
     @Suppress("LongParameterList")
     private fun mapRow(
-        id: String, household_id: String, owner_id: String, account_id: String,
-        category_id: String?, type: String, status: String, amount: Long,
+        id: String, householdId: String, ownerId: String, accountId: String,
+        categoryId: String?, type: String, status: String, amount: Long,
         currency: String, payee: String?, note: String?, date: String,
-        transfer_account_id: String?, transfer_transaction_id: String?,
-        is_recurring: Long, recurring_rule_id: String?, tags: String,
-        created_at: String, updated_at: String, deleted_at: String?,
-        sync_version: Long, is_synced: Long,
+        transferAccountId: String?, transferTransactionId: String?,
+        isRecurring: Long, recurringRuleId: String?, tags: String,
+        createdAt: String, updatedAt: String, deletedAt: String?,
+        syncVersion: Long, isSynced: Long,
     ): Transaction = EntityMappers.mapTransaction(
-        id, household_id, owner_id, account_id, category_id, type, status,
-        amount, currency, payee, note, date, transfer_account_id,
-        transfer_transaction_id, is_recurring, recurring_rule_id, tags,
-        created_at, updated_at, deleted_at, sync_version, is_synced,
+        id, householdId, ownerId, accountId, categoryId, type, status,
+        amount, currency, payee, note, date, transferAccountId,
+        transferTransactionId, isRecurring, recurringRuleId, tags,
+        createdAt, updatedAt, deletedAt, syncVersion, isSynced,
     )
 }

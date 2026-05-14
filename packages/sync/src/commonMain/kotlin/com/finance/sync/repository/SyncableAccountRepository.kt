@@ -24,6 +24,7 @@ class SyncableAccountRepository(
     override val tableName: String = "account"
     private val delegate = SqlDelightAccountRepository(db, context)
 
+    @Suppress("ReturnCount")
     override suspend fun applySyncChange(rowData: Map<String, String?>, isDelete: Boolean, syncVersion: Long) {
         val id = rowData["id"] ?: return
         if (isDelete) { delegate.softDelete(id); delegate.markSynced(id, syncVersion); return }

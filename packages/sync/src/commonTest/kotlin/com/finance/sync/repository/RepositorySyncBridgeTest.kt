@@ -60,7 +60,7 @@ class RepositorySyncBridgeTest {
             mutations.filter { it.tableName == tableName && it.recordId == recordId }
         override suspend fun dequeue(id: String) { mutations.removeAll { it.id == id } }
         override suspend fun acknowledge(mutationIds: List<String>) { mutations.removeAll { it.id in mutationIds } }
-        override suspend fun markFailed(mutationIds: List<String>) {}
+        override suspend fun markFailed(mutationIds: List<String>) { /* no-op in test */ }
         override suspend fun getDeadLetterMutations(maxRetries: Int) = emptyList<SyncMutation>()
         override suspend fun getRetryCount(mutationId: String) = 0
         override suspend fun pendingCount() = mutations.size

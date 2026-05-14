@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("TooGenericExceptionCaught")
+
 package com.finance.sync
 
 import com.finance.sync.conflict.ConflictResolution
@@ -158,6 +160,7 @@ interface SyncHealthListener {
 class DefaultSyncEngine(
     private val config: SyncConfig,
     private val provider: SyncProvider,
+    @Suppress("UnusedPrivateProperty")
     private val conflictResolver: ConflictResolver = ConflictStrategy.LAST_WRITE_WINS.resolver,
     private val mutationQueue: MutationQueue,
     private val deltaSyncManager: DeltaSyncManager,
@@ -410,6 +413,7 @@ class DefaultSyncEngine(
      * actual expiry). If they have truly expired, the pull/push will fail
      * and the engine's error handling will classify it as an [SyncError.AuthError].
      */
+    @Suppress("ReturnCount")
     private suspend fun refreshCredentialsIfNeeded() {
         val creds = credentials ?: return
         if (!creds.isExpiringSoon()) return

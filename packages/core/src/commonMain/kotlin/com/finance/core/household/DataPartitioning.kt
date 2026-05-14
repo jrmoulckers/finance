@@ -48,6 +48,7 @@ object DataPartitioning {
         return accountConfigs[accountId]?.scope ?: DataScope.PERSONAL
     }
 
+    @Suppress("ReturnCount")
     fun canModify(
         userId: SyncId,
         role: HouseholdRole,

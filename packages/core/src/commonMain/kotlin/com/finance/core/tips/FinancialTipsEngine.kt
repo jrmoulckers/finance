@@ -273,6 +273,7 @@ object FinancialTipsEngine {
 
     // ── Rule 7: Low savings rate ─────────────────────────────────────
 
+    @Suppress("ReturnCount")
     internal fun lowSavingsRateTip(
         transactions: List<Transaction>,
         referenceDate: LocalDate,

@@ -149,6 +149,7 @@ object ColumnDetector {
      *
      * @return Pair of (role, confidence) or `null` if no match.
      */
+    @Suppress("ReturnCount")
     private fun findRole(
         normalisedHeader: String,
         alreadyAssigned: Set<ColumnRole>,

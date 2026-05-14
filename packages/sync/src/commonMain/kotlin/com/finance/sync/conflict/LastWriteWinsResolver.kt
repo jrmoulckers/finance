@@ -62,6 +62,7 @@ class LastWriteWinsResolver : ConflictResolver {
      * 3. Compare `syncVersion`: higher version wins.
      * 4. On equal versions the server wins (tie-breaker — server is source of truth).
      */
+    @Suppress("ReturnCount")
     override fun resolveConflict(conflict: SyncConflict): ConflictResolution {
         // 1. Server DELETE always wins — honour the intent to remove.
         if (conflict.serverOperation == MutationOperation.DELETE) {

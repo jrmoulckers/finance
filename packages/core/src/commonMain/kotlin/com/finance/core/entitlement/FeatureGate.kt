@@ -90,6 +90,7 @@ object FeatureGate {
      * Get the count limit for a feature at a given tier.
      * Returns [UNLIMITED] for boolean features or tiers with no limit.
      */
+    @Suppress("CyclomaticComplexMethod")
     fun getLimit(feature: Feature, tier: Tier): Int {
         return when (feature) {
             Feature.ACCOUNTS -> when (tier) {

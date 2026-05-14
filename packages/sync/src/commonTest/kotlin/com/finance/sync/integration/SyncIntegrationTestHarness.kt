@@ -274,6 +274,7 @@ class SyncClient(
      *
      * @return true if a gap was detected (caller should trigger full resync).
      */
+    @Suppress("ReturnCount")
     suspend fun detectSequenceGap(): Boolean {
         return try {
             val changes = network.execute {

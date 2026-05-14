@@ -90,6 +90,7 @@ class SmartCategorizationEngine {
      * Returns a [CategorizationSuggestion] with the category and confidence,
      * or `null` if no strategy matches.
      */
+    @Suppress("ReturnCount")
     fun suggest(payee: String?, amount: Cents? = null): CategorizationSuggestion? {
         // 1. User corrections — highest confidence
         if (!payee.isNullOrBlank()) {

@@ -49,6 +49,7 @@ object ImportEngine {
      * @param columnMappings Optional user-supplied column mappings for generic CSV.
      * @return [ImportPreview] with parsed data and diagnostics.
      */
+    @Suppress("ReturnCount")
     fun importFile(
         content: String,
         defaultCurrency: Currency = Currency.USD,
@@ -147,6 +148,7 @@ object ImportEngine {
      * @param content Raw file content.
      * @return The detected [ImportSourceFormat].
      */
+    @Suppress("ReturnCount")
     fun detectFormat(content: String): ImportSourceFormat {
         if (content.isBlank()) return ImportSourceFormat.GENERIC_CSV
 

@@ -53,6 +53,7 @@ object NaturalLanguageParser {
     private val incomeKeywords = setOf("income", "salary", "paycheck", "received", "earned", "refund", "bonus", "freelance", "deposit")
     private val expenseKeywords = setOf("spent", "paid", "bought", "purchased", "charged", "cost")
 
+    @Suppress("ReturnCount")
     fun parse(input: String, referenceDate: LocalDate = currentDate()): ParseResult {
         if (input.isBlank()) return ParseResult.Failure("Input is empty")
         val normalised = input.trim()
@@ -66,6 +67,7 @@ object NaturalLanguageParser {
     }
 
     internal fun extractAmount(input: String): Cents? {
+        @Suppress("LoopWithTooManyJumpStatements")
         for (pattern in amountPatterns) {
             val match = pattern.find(input) ?: continue
             val amountStr = match.groupValues[1].ifEmpty { match.groupValues[0] }.replace(",", "").replace(Regex("[${'$'}€£¥]"), "").trim()
@@ -76,6 +78,7 @@ object NaturalLanguageParser {
         return null
     }
 
+    @Suppress("ReturnCount")
     internal fun extractDate(input: String, referenceDate: LocalDate): LocalDate? {
         val lower = input.lowercase()
         for ((keyword, offset) in relativeDateKeywords) { if (lower.contains(keyword)) return referenceDate.plus(offset, DateTimeUnit.DAY) }
@@ -91,6 +94,7 @@ object NaturalLanguageParser {
     }
 
     internal fun extractMerchant(input: String): String? {
+        @Suppress("LoopWithTooManyJumpStatements")
         for (prep in merchantPrepositions) {
             val pattern = Regex("""\b$prep\s+([A-Za-z][A-Za-z0-9\s'&-]{0,30})""", RegexOption.IGNORE_CASE)
             val match = pattern.find(input) ?: continue
@@ -108,6 +112,7 @@ object NaturalLanguageParser {
         return null
     }
 
+    @Suppress("ReturnCount")
     internal fun inferType(input: String): TransactionType {
         val lower = input.lowercase()
         if (incomeKeywords.any { lower.contains(it) }) return TransactionType.INCOME

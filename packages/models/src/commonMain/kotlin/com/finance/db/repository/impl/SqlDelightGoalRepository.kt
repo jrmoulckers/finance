@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 
+@Suppress("TooManyFunctions")
 class SqlDelightGoalRepository(
     private val db: FinanceDatabase,
     private val context: CoroutineContext = Dispatchers.Default,
@@ -90,14 +91,14 @@ class SqlDelightGoalRepository(
 
     @Suppress("LongParameterList")
     private fun mapRow(
-        id: String, household_id: String, owner_id: String, name: String,
-        target_amount: Long, current_amount: Long, currency: String,
-        target_date: String?, status: String, icon: String?, color: String?,
-        account_id: String?, created_at: String, updated_at: String,
-        deleted_at: String?, sync_version: Long, is_synced: Long,
+        id: String, householdId: String, ownerId: String, name: String,
+        targetAmount: Long, currentAmount: Long, currency: String,
+        targetDate: String?, status: String, icon: String?, color: String?,
+        accountId: String?, createdAt: String, updatedAt: String,
+        deletedAt: String?, syncVersion: Long, isSynced: Long,
     ): Goal = EntityMappers.mapGoal(
-        id, household_id, owner_id, name, target_amount, current_amount,
-        currency, target_date, status, icon, color, account_id,
-        created_at, updated_at, deleted_at, sync_version, is_synced,
+        id, householdId, ownerId, name, targetAmount, currentAmount,
+        currency, targetDate, status, icon, color, accountId,
+        createdAt, updatedAt, deletedAt, syncVersion, isSynced,
     )
 }

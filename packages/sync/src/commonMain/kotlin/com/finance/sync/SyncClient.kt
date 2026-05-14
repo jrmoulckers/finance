@@ -56,6 +56,7 @@ import kotlin.coroutines.EmptyCoroutineContext
  *   so that individual child failures do not cancel sibling coroutines.
  */
 class SyncClient(
+    @Suppress("UnusedPrivateProperty")
     private val config: SyncConfig,
     private val authManager: AuthManager,
     private val syncEngine: DefaultSyncEngine,

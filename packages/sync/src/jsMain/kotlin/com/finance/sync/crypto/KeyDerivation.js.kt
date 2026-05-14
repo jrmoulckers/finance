@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("MatchingDeclarationName")
+
 package com.finance.sync.crypto
 
 import com.finance.sync.auth.PlatformSHA256
@@ -118,7 +120,7 @@ actual class PlatformKeyDerivation actual constructor() {
             val block = u.copyOf()
 
             // U2 .. Uc: accumulate XOR
-            for (j in 2..iterations) {
+            for (_j in 2..iterations) {
                 u = hmacSha256WithPaddedKey(ipadKey, opadKey, u)
                 for (k in block.indices) {
                     block[k] = (block[k].toInt() xor u[k].toInt()).toByte()

@@ -317,6 +317,7 @@ class QueueProcessor private constructor(
         var totalRetryable = 0
         var totalDeadLettered = 0
 
+        @Suppress("LoopWithTooManyJumpStatements")
         while (true) {
             val pending = queue.peekBatch(batchSize)
             if (pending.isEmpty()) break
@@ -444,6 +445,7 @@ class QueueProcessor private constructor(
             var attempt = 0
             var pushed = false
 
+            @Suppress("LoopWithTooManyJumpStatements")
             while (attempt < maxRetries) {
                 val result = pushFn(listOf(mutation))
 

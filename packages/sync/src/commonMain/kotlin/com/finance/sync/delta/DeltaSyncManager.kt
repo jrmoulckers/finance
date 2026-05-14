@@ -327,6 +327,7 @@ class DeltaSyncManager(
      * Process changes for a single table, validating sequence continuity
      * and checksums.
      */
+    @Suppress("ReturnCount")
     private suspend fun processTableChanges(
         tableName: String,
         sortedChanges: List<SyncChange>,

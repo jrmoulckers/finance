@@ -77,6 +77,7 @@ class CsvExportSerializer : ExportSerializer {
             "current_balance", "is_archived", "sort_order",
             "icon", "color", "created_at", "updated_at", "deleted_at",
         )
+        @Suppress("SpreadOperator")
         sb.appendRow(*headers.toTypedArray())
         for (account in accounts) {
             sb.appendRow(
@@ -109,6 +110,7 @@ class CsvExportSerializer : ExportSerializer {
             "is_recurring", "recurring_rule_id", "tags",
             "created_at", "updated_at", "deleted_at",
         )
+        @Suppress("SpreadOperator")
         sb.appendRow(*headers.toTypedArray())
         for (txn in transactions) {
             sb.appendRow(
@@ -144,6 +146,7 @@ class CsvExportSerializer : ExportSerializer {
             "parent_id", "is_income", "is_system", "sort_order",
             "created_at", "updated_at", "deleted_at",
         )
+        @Suppress("SpreadOperator")
         sb.appendRow(*headers.toTypedArray())
         for (category in categories) {
             sb.appendRow(
@@ -173,6 +176,7 @@ class CsvExportSerializer : ExportSerializer {
             "start_date", "end_date", "is_rollover",
             "created_at", "updated_at", "deleted_at",
         )
+        @Suppress("SpreadOperator")
         sb.appendRow(*headers.toTypedArray())
         for (budget in budgets) {
             sb.appendRow(
@@ -203,6 +207,7 @@ class CsvExportSerializer : ExportSerializer {
             "target_date", "status", "icon", "color", "account_id",
             "created_at", "updated_at", "deleted_at",
         )
+        @Suppress("SpreadOperator")
         sb.appendRow(*headers.toTypedArray())
         for (goal in goals) {
             sb.appendRow(

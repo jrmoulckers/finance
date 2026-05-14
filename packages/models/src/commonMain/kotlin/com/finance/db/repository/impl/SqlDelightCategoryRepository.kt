@@ -84,13 +84,13 @@ class SqlDelightCategoryRepository(
 
     @Suppress("LongParameterList")
     private fun mapRow(
-        id: String, household_id: String, owner_id: String, name: String,
-        icon: String?, color: String?, parent_id: String?, is_income: Long,
-        is_system: Long, sort_order: Long, created_at: String, updated_at: String,
-        deleted_at: String?, sync_version: Long, is_synced: Long,
+        id: String, householdId: String, ownerId: String, name: String,
+        icon: String?, color: String?, parentId: String?, isIncome: Long,
+        isSystem: Long, sortOrder: Long, createdAt: String, updatedAt: String,
+        deletedAt: String?, syncVersion: Long, isSynced: Long,
     ): Category = EntityMappers.mapCategory(
-        id, household_id, owner_id, name, icon, color, parent_id,
-        is_income, is_system, sort_order, created_at, updated_at,
-        deleted_at, sync_version, is_synced,
+        id, householdId, ownerId, name, icon, color, parentId,
+        isIncome, isSystem, sortOrder, createdAt, updatedAt,
+        deletedAt, syncVersion, isSynced,
     )
 }

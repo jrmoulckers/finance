@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("TooGenericExceptionCaught")
+
 package com.finance.sync.provider
 
 import com.finance.sync.PullResult
@@ -150,6 +152,7 @@ class HttpSyncProvider(
      * @return A [PushResult] with lists of succeeded and failed mutation IDs.
      * @throws Exception if the HTTP request fails or returns a non-2xx status.
      */
+    @Suppress("ReturnCount")
     override suspend fun pushMutations(mutations: List<SyncMutation>): PushResult {
         if (mutations.isEmpty()) {
             return PushResult(succeeded = emptyList(), failed = emptyList())

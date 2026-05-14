@@ -82,6 +82,7 @@ object GenericCsvImportParser {
         data class Error(val error: ImportRowError) : RowParseResult()
     }
 
+    @Suppress("ReturnCount")
     private fun parseRow(
         fields: List<String>,
         roleIndex: Map<ColumnRole, Int>,
@@ -183,6 +184,7 @@ object GenericCsvImportParser {
      *
      * @return Parsed [LocalDate] or `null` if format is not recognised.
      */
+    @Suppress("ReturnCount")
     internal fun parseDate(input: String): LocalDate? {
         val trimmed = input.trim()
 
@@ -209,6 +211,7 @@ object GenericCsvImportParser {
     private val DATE_ISO = Regex("""(\d{4})-(\d{1,2})-(\d{1,2})""")
     private val DATE_SLASH = Regex("""(\d{1,4})/(\d{1,2})/(\d{2,4})""")
 
+    @Suppress("ReturnCount")
     private fun resolveSlashDate(a: Int, b: Int, c: Int): LocalDate? {
         // YYYY/MM/DD
         if (a > 31) return tryLocalDate(a, b, c)
@@ -242,6 +245,7 @@ object GenericCsvImportParser {
      *
      * @return Parsed [Cents] or `null` if the string cannot be parsed.
      */
+    @Suppress("ReturnCount")
     internal fun parseAmount(input: String): Cents? {
         var cleaned = input.trim()
         if (cleaned.isEmpty()) return null

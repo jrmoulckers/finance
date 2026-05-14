@@ -20,7 +20,7 @@ class DatabaseFactoryJsTest {
     private fun createTestKeyProvider(): EncryptionKeyProvider = object : EncryptionKeyProvider {
         override fun getOrCreateKey(): String = "test-key-not-real"
         override fun hasKey(): Boolean = true
-        override fun deleteKey() {}
+        override fun deleteKey() { /* no-op in test */ }
     }
 
     private fun createWorker(): Worker = Worker(

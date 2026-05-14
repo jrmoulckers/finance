@@ -86,13 +86,13 @@ class SqlDelightAccountRepository(
 
     @Suppress("LongParameterList")
     private fun mapRow(
-        id: String, household_id: String, owner_id: String, name: String,
-        type: String, currency: String, current_balance: Long, is_archived: Long,
-        sort_order: Long, icon: String?, color: String?, created_at: String,
-        updated_at: String, deleted_at: String?, sync_version: Long, is_synced: Long,
+        id: String, householdId: String, ownerId: String, name: String,
+        type: String, currency: String, currentBalance: Long, isArchived: Long,
+        sortOrder: Long, icon: String?, color: String?, createdAt: String,
+        updatedAt: String, deletedAt: String?, syncVersion: Long, isSynced: Long,
     ): Account = EntityMappers.mapAccount(
-        id, household_id, owner_id, name, type, currency, current_balance,
-        is_archived, sort_order, icon, color, created_at, updated_at,
-        deleted_at, sync_version, is_synced,
+        id, householdId, ownerId, name, type, currency, currentBalance,
+        isArchived, sortOrder, icon, color, createdAt, updatedAt,
+        deletedAt, syncVersion, isSynced,
     )
 }

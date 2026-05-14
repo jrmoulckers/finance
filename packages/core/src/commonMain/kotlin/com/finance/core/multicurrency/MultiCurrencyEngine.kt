@@ -44,6 +44,7 @@ object MultiCurrencyEngine {
             cache[cacheKey(from, to)] = CachedRate(rate, timestamp)
         }
 
+        @Suppress("ReturnCount")
         fun get(from: Currency, to: Currency, now: Instant = Clock.System.now()): Double? {
             if (from == to) return 1.0
             cache[cacheKey(from, to)]?.let { if (!isStale(it, now)) return it.rate }
@@ -63,6 +64,7 @@ object MultiCurrencyEngine {
         return MoneyOperations.multiply(amount, rate)
     }
 
+    @Suppress("ReturnCount")
     fun convertWithCache(amount: Cents, from: Currency, to: Currency, cache: ExchangeRateCache, now: Instant = Clock.System.now()): ConversionResult? {
         if (from == to) return ConversionResult(amount, amount, from, to, 1.0)
         val rate = cache.get(from, to, now) ?: return null
@@ -78,6 +80,7 @@ object MultiCurrencyEngine {
         return AggregationResult(total, targetCurrency, conversions)
     }
 
+    @Suppress("ReturnCount")
     fun currencyBreakdown(amounts: List<CurrencyAmount>, targetCurrency: Currency, cache: ExchangeRateCache, now: Instant = Clock.System.now()): Map<Currency, Double>? {
         val result = aggregate(amounts, targetCurrency, cache, now) ?: return null
         if (result.totalAmount.isZero()) return emptyMap()

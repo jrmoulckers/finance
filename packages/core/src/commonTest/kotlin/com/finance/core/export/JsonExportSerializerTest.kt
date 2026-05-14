@@ -76,6 +76,7 @@ class JsonExportSerializerTest {
         )
     }
 
+    @Suppress("UnusedPrivateMember")
     private fun emptyData(): ExportData = ExportData(
         accounts = emptyList(),
         transactions = emptyList(),

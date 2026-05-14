@@ -10,6 +10,7 @@ class SubscriptionManagerTest {
 
     private val now = Instant.parse("2024-06-15T12:00:00Z")
     private val oneMonthLater = now.plus(30L * 24 * 60 * 60, DateTimeUnit.SECOND)
+    @Suppress("UnusedPrivateProperty")
     private val oneYearLater = now.plus(365L * 24 * 60 * 60, DateTimeUnit.SECOND)
 
     // ═══════════════════════════════════════════════════════════════════

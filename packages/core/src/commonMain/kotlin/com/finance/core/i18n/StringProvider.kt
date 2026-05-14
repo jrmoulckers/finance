@@ -117,6 +117,7 @@ class StringProvider(
 
     // ── Resolution logic ─────────────────────────────────────────────
 
+    @Suppress("ReturnCount")
     private fun resolve(key: StringKey, locale: Locale): String {
         val bundleMap = _bundles.value
 

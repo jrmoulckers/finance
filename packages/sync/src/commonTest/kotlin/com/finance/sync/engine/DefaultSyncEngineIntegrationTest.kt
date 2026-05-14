@@ -41,6 +41,7 @@ import kotlin.test.assertTrue
  * data actually flows through the engine correctly.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("LargeClass")
 class DefaultSyncEngineIntegrationTest {
 
     private val config = SyncConfig(
@@ -822,6 +823,7 @@ class DefaultSyncEngineIntegrationTest {
             ),
         )
 
+        @Suppress("UnusedPrivateProperty")
         val startJob = async { engine.start(testCredentials) }
 
         // Advance past the first sync interval

@@ -270,6 +270,7 @@ internal class FakeHouseholdManager : HouseholdManager {
         return household
     }
 
+    @Suppress("ReturnCount")
     override suspend fun inviteMember(
         householdId: SyncId,
         email: String,

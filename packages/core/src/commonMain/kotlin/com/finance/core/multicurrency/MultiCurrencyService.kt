@@ -44,6 +44,7 @@ object MultiCurrencyService {
      * @param now Current timestamp for cache staleness check.
      * @return [ConversionAtEntryResult] or `null` if no rate is available.
      */
+    @Suppress("ReturnCount")
     fun convertAtEntry(
         amount: Cents,
         fromCurrency: Currency,

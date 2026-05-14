@@ -59,6 +59,7 @@ sealed class HealthStatus {
          * @param pendingMutations Number of unsynced local mutations.
          * @return The computed [HealthStatus].
          */
+        @Suppress("ReturnCount")
         fun evaluate(
             lastSyncTime: Instant?,
             currentTime: Instant,

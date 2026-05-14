@@ -202,6 +202,7 @@ object BudgetRecommendationEngine {
     /**
      * Suggest shifting funds from underused budgets to overused ones.
      */
+    @Suppress("ReturnCount")
     internal fun suggestRebalancing(
         budgets: List<Budget>,
         transactions: List<Transaction>,
@@ -256,6 +257,7 @@ object BudgetRecommendationEngine {
      *
      * Returns a recommendation if total budgeted spending exceeds 80% of income.
      */
+    @Suppress("ReturnCount", "UnusedParameter")
     internal fun recommend503020(
         budgets: List<Budget>,
         transactions: List<Transaction>,

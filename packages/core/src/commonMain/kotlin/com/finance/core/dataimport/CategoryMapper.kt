@@ -78,6 +78,7 @@ object CategoryMapper {
         val mappings = mutableListOf<CategoryMappingEntry>()
         val unmapped = mutableListOf<String>()
 
+        @Suppress("LoopWithTooManyJumpStatements")
         for (source in sourceCategories) {
             // 1. Check user overrides first
             val overrideId = userOverrides[source]
@@ -137,6 +138,7 @@ object CategoryMapper {
      *
      * @return Pair of (categoryId, confidence) or null if no match.
      */
+    @Suppress("ReturnCount")
     private fun findKeywordMatch(
         source: String,
         appCategories: List<AppCategory>,

@@ -32,6 +32,7 @@ import kotlinx.coroutines.sync.withLock
  * For production use, a persistent implementation backed by SQLite (via
  * SQLDelight) should be used.
  */
+@Suppress("TooManyFunctions")
 class InMemoryMutationQueue : MutationQueue {
 
     private val mutex = Mutex()

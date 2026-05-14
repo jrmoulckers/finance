@@ -107,6 +107,7 @@ object SubscriptionDetector {
 
     // ── Internal analysis ────────────────────────────────────────────
 
+    @Suppress("ReturnCount")
     internal fun analyseGroup(
         normalisedPayee: String,
         transactions: List<Transaction>,

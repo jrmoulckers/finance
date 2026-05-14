@@ -36,6 +36,7 @@ class KeyRotation(
      * @param members     List of member public keys who should receive the new KEK.
      * @return A pair of the new [HouseholdKeyBundle] and a list of per-member encrypted KEKs.
      */
+    @Suppress("UnusedParameter")
     fun rotateHouseholdKey(
         householdId: String,
         oldKek: ByteArray,

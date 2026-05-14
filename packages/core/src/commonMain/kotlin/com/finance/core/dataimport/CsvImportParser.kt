@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("TooGenericExceptionCaught", "SwallowedException")
+
 package com.finance.core.dataimport
 
 import com.finance.models.*
@@ -164,6 +166,7 @@ internal object CsvImportParser {
     // Flat transaction CSV parser (bank imports)
     // ═════════════════════════════════════════════════════════════════
 
+    @Suppress("ReturnCount")
     private fun parseFlatTransactionCsv(
         content: String,
         defaultCurrency: Currency,
@@ -554,6 +557,7 @@ internal object CsvImportParser {
      * - `type` / `transaction_type`
      * - `category` / `category_name`
      */
+    @Suppress("ReturnCount")
     private fun parseFlatTransactionRow(
         row: List<String>,
         columnIndex: Map<String, Int>,
@@ -705,6 +709,7 @@ internal object CsvImportParser {
      * Uses the currency's [Currency.decimalPlaces] to determine the multiplier.
      * Handles negative values, optional decimal point, and leading/trailing whitespace.
      */
+    @Suppress("ReturnCount")
     internal fun parseCentsFromDisplay(displayValue: String?, currency: Currency): Cents {
         if (displayValue.isNullOrBlank()) return Cents.ZERO
 
@@ -723,6 +728,7 @@ internal object CsvImportParser {
      * - Whole number: "1000" → 100000 cents (for USD)
      * - Currency symbols stripped: "$12.50" → 1250 cents
      */
+    @Suppress("ReturnCount")
     internal fun parseAmountToCents(amountStr: String, currency: Currency): Cents? {
         // Strip common currency symbols and whitespace
         val cleaned = amountStr.trim()

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("TooGenericExceptionCaught")
+
 package com.finance.core.export
 
 import com.finance.models.types.SyncId
@@ -60,6 +62,7 @@ object DataExportService {
      * @return [ExportOutcome.Success] with the export result, or [ExportOutcome.Failure]
      *         with error details.
      */
+    @Suppress("ReturnCount")
     fun export(
         data: ExportData,
         serializer: ExportSerializer,

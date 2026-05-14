@@ -36,7 +36,7 @@ private class StubSyncProvider : SyncProvider {
     /** Response to return from [pushMutations]. */
     var pushResponse: PushResult = PushResult(succeeded = emptyList(), failed = emptyList())
 
-    override suspend fun initialize(config: SyncConfig) {}
+    override suspend fun initialize(config: SyncConfig) { /* no-op in test */ }
     override suspend fun push(mutations: List<SyncMutation>): Result<Unit> = Result.success(Unit)
     override fun pull(): Flow<List<SyncChange>> = emptyFlow()
     override fun getStatus(): Flow<SyncStatus> = emptyFlow()

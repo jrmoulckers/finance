@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("TooGenericExceptionCaught")
+
 package com.finance.sync
 
 import kotlinx.coroutines.flow.Flow

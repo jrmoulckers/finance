@@ -92,6 +92,7 @@ object MintImportParser {
         data class Err(val error: ImportRowError) : RowResult()
     }
 
+    @Suppress("ReturnCount")
     private fun parseRow(
         fields: List<String>,
         colIndex: Map<String, Int>,

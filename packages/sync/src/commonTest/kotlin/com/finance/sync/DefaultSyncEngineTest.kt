@@ -293,6 +293,7 @@ class DefaultSyncEngineTest {
     fun stopCancelsRunningLoop() = runTest {
         val engine = createEngine()
 
+        @Suppress("UnusedPrivateProperty")
         val startJob = async { engine.start(testCredentials) }
         advanceTimeBy(100)
 
@@ -323,6 +324,7 @@ class DefaultSyncEngineTest {
     @Test
     fun syncFlowReturnsStatusUpdates() = runTest {
         val engine = createEngine()
+        @Suppress("UnusedPrivateProperty")
         val flow = engine.sync()
 
         // Initially idle

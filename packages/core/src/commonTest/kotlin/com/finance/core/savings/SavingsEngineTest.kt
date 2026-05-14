@@ -287,6 +287,7 @@ class SavingsEngineTest {
     @Test
     fun generateSuggestions_sortedByEstimatedSavings() {
         val catA = SyncId("cat-a")
+        @Suppress("UnusedPrivateProperty")
         val catB = SyncId("cat-b")
 
         // Create spending spike (big savings)

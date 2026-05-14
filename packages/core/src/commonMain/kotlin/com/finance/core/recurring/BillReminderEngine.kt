@@ -41,6 +41,7 @@ object BillReminderEngine {
     ): List<ScheduledNotification> {
         val notifications = mutableListOf<ScheduledNotification>()
 
+        @Suppress("LoopWithTooManyJumpStatements")
         for (rule in rules) {
             if (!rule.isConfirmed) continue
             val reminder = reminders[rule.id] ?: continue
@@ -189,6 +190,7 @@ object BillReminderEngine {
      * @return [BillAmountChange] if there's been a change, or `null` if
      *         history is too short (< 2 records) or amounts are unchanged.
      */
+    @Suppress("ReturnCount")
     fun detectAmountChange(
         ruleId: SyncId,
         merchant: String,

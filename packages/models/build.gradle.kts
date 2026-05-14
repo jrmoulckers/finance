@@ -19,12 +19,14 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
         }
+        @Suppress("UnusedPrivateProperty")
         val jvmMain by getting {
             dependencies {
                 implementation(libs.sqldelight.jvm.driver)
             }
         }
         if (project.extra["androidSdkAvailable"] as Boolean) {
+            @Suppress("UnusedPrivateProperty")
             val androidMain by getting {
                 dependencies {
                     implementation(libs.sqldelight.android.driver)
@@ -32,11 +34,13 @@ kotlin {
                 }
             }
         }
+        @Suppress("UnusedPrivateProperty")
         val iosMain by getting {
             dependencies {
                 implementation(libs.sqldelight.native.driver)
             }
         }
+        @Suppress("UnusedPrivateProperty")
         val jsMain by getting {
             dependencies {
                 implementation(libs.sqldelight.js.driver)

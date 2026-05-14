@@ -100,6 +100,7 @@ object LocaleCurrencyFormatter {
      * @param convention Locale convention for decimal/thousands separators.
      * @return Compact formatted string.
      */
+    @Suppress("UnusedParameter")
     fun formatCompact(
         amount: Cents,
         currency: Currency,

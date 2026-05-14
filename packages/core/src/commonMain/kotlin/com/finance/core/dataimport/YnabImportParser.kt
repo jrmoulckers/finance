@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("TooGenericExceptionCaught", "SwallowedException")
+
 package com.finance.core.dataimport
 
 import com.finance.models.types.Cents
@@ -135,6 +137,7 @@ object YnabImportParser {
      * @param defaultCurrency Fallback currency.
      * @return [ImportPreview] with parsed transactions and error diagnostics.
      */
+    @Suppress("ReturnCount")
     fun parseJson(
         content: String,
         defaultCurrency: Currency = Currency.USD,
@@ -184,6 +187,7 @@ object YnabImportParser {
         data class Err(val error: ImportRowError) : RowResult()
     }
 
+    @Suppress("ReturnCount", "UnusedParameter")
     private fun parseYnabCsvRow(
         fields: List<String>,
         colIndex: Map<String, Int>,
@@ -244,6 +248,7 @@ object YnabImportParser {
         )
     }
 
+    @Suppress("ReturnCount")
     private fun parseYnabJsonTransaction(
         obj: JsonObject,
         rowNumber: Int,

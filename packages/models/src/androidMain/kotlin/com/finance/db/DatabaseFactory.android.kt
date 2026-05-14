@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+@file:Suppress("MatchingDeclarationName")
+
 package com.finance.db
 
 import android.content.Context

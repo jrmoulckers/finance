@@ -81,14 +81,14 @@ class SqlDelightBudgetRepository(
 
     @Suppress("LongParameterList")
     private fun mapRow(
-        id: String, household_id: String, owner_id: String, category_id: String,
+        id: String, householdId: String, ownerId: String, categoryId: String,
         name: String, amount: Long, currency: String, period: String,
-        start_date: String, end_date: String?, is_rollover: Long,
-        created_at: String, updated_at: String, deleted_at: String?,
-        sync_version: Long, is_synced: Long,
+        startDate: String, endDate: String?, isRollover: Long,
+        createdAt: String, updatedAt: String, deletedAt: String?,
+        syncVersion: Long, isSynced: Long,
     ): Budget = EntityMappers.mapBudget(
-        id, household_id, owner_id, category_id, name, amount, currency,
-        period, start_date, end_date, is_rollover, created_at, updated_at,
-        deleted_at, sync_version, is_synced,
+        id, householdId, ownerId, categoryId, name, amount, currency,
+        period, startDate, endDate, isRollover, createdAt, updatedAt,
+        deletedAt, syncVersion, isSynced,
     )
 }

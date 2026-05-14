@@ -89,6 +89,7 @@ object BudgetCalculator {
     /**
      * Calculate daily spending rate to stay within budget.
      */
+    @Suppress("ReturnCount")
     fun dailyBudgetRate(budget: Budget, spent: Cents, daysRemaining: Int): Cents {
         if (daysRemaining <= 0) return Cents.ZERO
         val remaining = budget.amount - spent

@@ -176,6 +176,7 @@ object SavingsEngine {
     /**
      * If savings rate is below 20%, suggest increasing it.
      */
+    @Suppress("ReturnCount")
     internal fun detectIncomeAllocationOpportunity(
         transactions: List<Transaction>,
         referenceDate: LocalDate,
@@ -229,6 +230,7 @@ object SavingsEngine {
      * Estimate how much would be saved by rounding up every expense
      * transaction to the nearest dollar.
      */
+    @Suppress("ReturnCount")
     internal fun detectRoundUpSavings(
         transactions: List<Transaction>,
         referenceDate: LocalDate,

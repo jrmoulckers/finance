@@ -39,6 +39,7 @@ internal object CsvParser {
         val chars = content.toCharArray()
         var pos = 0
 
+        @Suppress("LoopWithTooManyJumpStatements")
         while (pos < chars.size) {
             // Skip blank lines
             if (chars[pos] == '\r' || chars[pos] == '\n') {
@@ -79,6 +80,7 @@ internal object CsvParser {
         val chars = content.toCharArray()
         var pos = 0
 
+        @Suppress("LoopWithTooManyJumpStatements")
         while (pos < chars.size) {
             // Skip blank lines
             if (chars[pos] == '\r' || chars[pos] == '\n') {
@@ -128,6 +130,7 @@ internal object CsvParser {
         val fields = mutableListOf<String>()
         var pos = startPos
 
+        @Suppress("LoopWithTooManyJumpStatements")
         while (pos < chars.size) {
             val (field, nextPos) = parseField(chars, pos)
             fields.add(field)

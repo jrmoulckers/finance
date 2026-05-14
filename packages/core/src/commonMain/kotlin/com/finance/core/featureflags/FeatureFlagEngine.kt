@@ -23,6 +23,7 @@ object FeatureFlagEngine {
      * @param context Attributes describing the current user/device/environment.
      * @return The resolved [FeatureFlagValue].
      */
+    @Suppress("ReturnCount")
     fun evaluate(flag: FeatureFlag, context: EvaluationContext): FeatureFlagValue {
         if (!flag.enabled) return flag.defaultValue
 
@@ -78,6 +79,7 @@ object FeatureFlagEngine {
         return rule.conditions.all { condition -> matchesCondition(condition, context) }
     }
 
+    @Suppress("ReturnCount")
     internal fun matchesCondition(condition: RuleCondition, context: EvaluationContext): Boolean {
         val attributeValue = context.getAttribute(condition.attribute) ?: return false
 

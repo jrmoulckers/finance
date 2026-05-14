@@ -93,6 +93,7 @@ data class AchievementProgress(
     /**
      * Progress fraction 0.0–1.0 for display. Returns 1.0 if unlocked.
      */
+    @Suppress("ReturnCount")
     fun progressFraction(definition: AchievementDefinition): Double {
         if (isUnlocked) return 1.0
         val target = definition.targetCount ?: 1
