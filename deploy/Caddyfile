@@ -7,9 +7,10 @@
 # Finance PWA static build with CDN-friendly cache headers.
 #
 # Route mapping:
-#   /rest/*          → PostgREST (API)
-#   /auth/*          → GoTrue (authentication)
-#   /functions/*     → Edge Functions (Deno)
+#   /rest/v1/*       → PostgREST (API)
+#   /auth/v1/*       → GoTrue (authentication)
+#   /functions/v1/*  → Edge Functions (Deno)
+#   /sync/*          → PowerSync sync engine
 #   /health          → Edge Functions health check
 #   /assets/*        → Immutable hashed static assets (1-year cache)
 #   /sw.js           → Service worker (no-cache, always revalidate)
@@ -55,8 +56,9 @@
 
 	# -------------------------------------------------------------------------
 	# PostgREST API
+	# Supabase clients use /rest/v1/* — strip the full prefix before proxying.
 	# -------------------------------------------------------------------------
-	handle_path /rest/* {
+	handle_path /rest/v1/* {
 		reverse_proxy rest:3000 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Real-IP {remote_host}
@@ -65,8 +67,9 @@
 
 	# -------------------------------------------------------------------------
 	# GoTrue Auth
+	# Supabase clients use /auth/v1/* — strip the full prefix before proxying.
 	# -------------------------------------------------------------------------
-	handle_path /auth/* {
+	handle_path /auth/v1/* {
 		reverse_proxy auth:9999 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Real-IP {remote_host}
@@ -85,8 +88,9 @@
 
 	# -------------------------------------------------------------------------
 	# Edge Functions
+	# Supabase clients use /functions/v1/* — strip the full prefix before proxying.
 	# -------------------------------------------------------------------------
-	handle_path /functions/* {
+	handle_path /functions/v1/* {
 		reverse_proxy edge-functions:9000 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Real-IP {remote_host}

@@ -32,7 +32,7 @@
 	# -------------------------------------------------------------------------
 	# PostgREST API
 	# -------------------------------------------------------------------------
-	handle_path /rest/* {
+	handle_path /rest/v1/* {
 		reverse_proxy rest:3000 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Real-IP {remote_host}
@@ -42,7 +42,7 @@
 	# -------------------------------------------------------------------------
 	# GoTrue Auth
 	# -------------------------------------------------------------------------
-	handle_path /auth/* {
+	handle_path /auth/v1/* {
 		reverse_proxy auth:9999 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Real-IP {remote_host}
@@ -62,7 +62,7 @@
 	# -------------------------------------------------------------------------
 	# Edge Functions
 	# -------------------------------------------------------------------------
-	handle_path /functions/* {
+	handle_path /functions/v1/* {
 		reverse_proxy edge-functions:9000 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Real-IP {remote_host}
