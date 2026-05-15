@@ -14,6 +14,7 @@
 import React from 'react';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useInsights } from '../hooks/useInsights';
+import { formatCurrency } from '../lib/currency';
 import type { InsightsData, MonthComparison, Recommendation } from '../hooks/useInsights';
 import './InsightsPage.css';
 
@@ -220,7 +221,7 @@ export const InsightsPage: React.FC = () => {
                 <div
                   key={day.date}
                   className="insights-daily-chart__bar-wrapper"
-                  title={`${day.date}: $${(day.amount / 100).toFixed(2)}`}
+                  title={`${day.date}: ${formatCurrency(day.amount)}`}
                 >
                   <div
                     className="insights-daily-chart__bar"

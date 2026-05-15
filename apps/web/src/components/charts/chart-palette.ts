@@ -6,6 +6,14 @@
  * @module components/charts/chart-palette
  */
 
+import { formatChartCurrency } from '../../lib/currency';
+
+/**
+ * Re-export the centralized chart currency formatter so that existing
+ * imports from this module continue to work without changes.
+ */
+export { formatChartCurrency };
+
 /**
  * Hardcoded hex fallbacks for the IBM CVD-safe chart palette.
  * Used when CSS custom properties are unavailable (tests, SSR, canvas export).
@@ -49,16 +57,6 @@ export function chartColorHex(index: number): string {
 
 export function patternId(index: number): string {
   return `chart-pattern-${index}`;
-}
-
-/** Formats major-unit chart values as compact currency labels. */
-export function formatChartCurrency(value: number, currency = 'USD', locale = 'en-US'): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 export function buildChartDescription(

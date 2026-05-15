@@ -2,16 +2,31 @@
 
 import React from 'react';
 
+import { formatCurrency, formatCurrencyLabel } from '../../lib/currency';
+
 export interface CurrencyDisplayProps {
+  /** Amount in integer cents (e.g., 12345 = $123.45). */
   amount: number;
+  /** ISO 4217 currency code (default: `"USD"`). */
   currency?: string;
+  /** BCP 47 locale tag (default: `"en-US"`). */
   locale?: string;
+  /** Apply positive/negative color classes. */
   colorize?: boolean;
+  /** Show explicit sign for non-zero amounts. */
   showSign?: boolean;
+  /** Additional CSS class names. */
   className?: string;
+  /** Override the accessible label. */
   'aria-label'?: string;
 }
 
+/**
+ * Renders a formatted currency amount from integer cents.
+ *
+ * Uses the centralized `formatCurrency` utility from `lib/currency`
+ * to ensure consistent formatting across the application.
+ */
 export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   amount,
   currency = 'USD',
@@ -21,24 +36,19 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   className = '',
   'aria-label': ariaLabel,
 }) => {
-  const amountInMajorUnits = amount / 100;
-  const formatter = new Intl.NumberFormat(locale, {
-    style: 'currency',
+  const formatted = formatCurrency(amount, {
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    locale,
     signDisplay: showSign ? 'exceptZero' : 'auto',
   });
 
-  const formatted = formatter.format(amountInMajorUnits);
   let colorClass = '';
   if (colorize) {
     if (amount > 0) colorClass = 'amount--positive';
     else if (amount < 0) colorClass = 'amount--negative';
   }
 
-  const label =
-    ariaLabel ?? (amount < 0 ? 'negative ' : '') + formatter.format(Math.abs(amountInMajorUnits));
+  const label = ariaLabel ?? formatCurrencyLabel(amount, { currency, locale });
 
   return (
     <span className={`currency-display ${colorClass} ${className}`.trim()} aria-label={label}>

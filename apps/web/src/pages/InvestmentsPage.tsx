@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useInvestments } from '../hooks';
+import { formatCurrency, formatGainLoss } from '../lib/currency';
 import type { Investment, InvestmentType } from '../kmp/bridge';
 
 /** Color palette for the allocation pie chart. */
@@ -81,12 +82,6 @@ function computeAllocation(
       percent: totalValue > 0 ? Math.round((value / totalValue) * 10000) / 100 : 0,
     }))
     .sort((a, b) => b.value - a.value);
-}
-
-/** Format a gain/loss amount with sign. */
-function formatGainLoss(amount: number): string {
-  const prefix = amount >= 0 ? '+' : '';
-  return `${prefix}${(amount / 100).toFixed(2)}`;
 }
 
 /** Investment portfolio page component. */
@@ -243,7 +238,11 @@ export const InvestmentsPage: React.FC = () => {
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value) => `$${(Number(value ?? 0) / 100).toFixed(2)}`}
+                          formatter={(value) =>
+                            formatCurrency(Math.round(Number(value ?? 0)), {
+                              currency: 'USD',
+                            })
+                          }
                         />
                       </PieChart>
                     </ResponsiveContainer>

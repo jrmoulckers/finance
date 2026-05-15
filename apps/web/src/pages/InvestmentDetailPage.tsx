@@ -11,6 +11,7 @@ import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useInvestments } from '../hooks';
+import { formatGainLoss } from '../lib/currency';
 import type { InvestmentType } from '../kmp/bridge';
 
 /** Human-readable labels for investment types. */
@@ -24,12 +25,6 @@ const TYPE_LABELS: Record<InvestmentType, string> = {
   COMMODITY: 'Commodity',
   OTHER: 'Other',
 };
-
-/** Format a gain/loss amount with sign. */
-function formatGainLoss(amount: number): string {
-  const prefix = amount >= 0 ? '+' : '';
-  return `${prefix}${(amount / 100).toFixed(2)}`;
-}
 
 /** Investment detail page component. */
 export const InvestmentDetailPage: React.FC = () => {
