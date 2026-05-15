@@ -1,0 +1,241 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * CsvImportWizard — Multi-step CSV import wizard styles.
+ *
+ * References: issue #1339
+ */
+
+.csv-import-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6, 24px);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--spacing-4, 16px);
+}
+
+.csv-import-wizard__header {
+  text-align: center;
+}
+
+.csv-import-wizard__title {
+  font-size: var(--font-size-xl, 1.25rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-primary, #111);
+  margin: 0 0 var(--spacing-2, 8px);
+}
+
+.csv-import-wizard__step-info {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #666);
+  margin: 0;
+}
+
+/* Step content area */
+.csv-import-wizard__content {
+  min-height: 200px;
+}
+
+/* File upload area */
+.csv-import-wizard__dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3, 12px);
+  padding: var(--spacing-8, 32px);
+  border: 2px dashed var(--semantic-border-default, #d1d5db);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--semantic-background-secondary, #f9fafb);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.csv-import-wizard__dropzone:hover,
+.csv-import-wizard__dropzone:focus-within {
+  border-color: var(--semantic-interactive-default, #2563eb);
+  background: var(--semantic-background-primary, #fff);
+}
+
+.csv-import-wizard__dropzone--active {
+  border-color: var(--semantic-interactive-default, #2563eb);
+  background: var(--semantic-background-primary, #fff);
+}
+
+.csv-import-wizard__dropzone-text {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #666);
+  text-align: center;
+}
+
+.csv-import-wizard__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+/* Column mapping */
+.csv-import-wizard__mapping {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 12px);
+}
+
+.csv-import-wizard__mapping-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+}
+
+.csv-import-wizard__mapping-label {
+  flex: 0 0 120px;
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--semantic-text-primary, #111);
+}
+
+.csv-import-wizard__mapping-select {
+  flex: 1;
+  padding: var(--spacing-2, 8px);
+  border: 1px solid var(--semantic-border-default, #d1d5db);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-family: inherit;
+  background: var(--semantic-background-primary, #fff);
+  color: var(--semantic-text-primary, #111);
+}
+
+/* Preview table */
+.csv-import-wizard__preview {
+  overflow-x: auto;
+}
+
+.csv-import-wizard__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.csv-import-wizard__table th,
+.csv-import-wizard__table td {
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  text-align: left;
+  border-bottom: 1px solid var(--semantic-border-default, #e5e7eb);
+}
+
+.csv-import-wizard__table th {
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-primary, #111);
+  background: var(--semantic-background-secondary, #f9fafb);
+}
+
+.csv-import-wizard__table tr--error {
+  background: rgba(220, 38, 38, 0.05);
+}
+
+/* Actions */
+.csv-import-wizard__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3, 12px);
+}
+
+.csv-import-wizard__btn {
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  border: 1px solid var(--semantic-border-default, #d1d5db);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+  cursor: pointer;
+  font-family: inherit;
+  background: var(--semantic-background-primary, #fff);
+  color: var(--semantic-text-primary, #111);
+  transition: background-color 0.15s ease;
+}
+
+.csv-import-wizard__btn:hover {
+  background: var(--semantic-background-secondary, #f3f4f6);
+}
+
+.csv-import-wizard__btn:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+.csv-import-wizard__btn--primary {
+  background: var(--semantic-interactive-default, #2563eb);
+  color: var(--color-white, #fff);
+  border-color: var(--semantic-interactive-default, #2563eb);
+}
+
+.csv-import-wizard__btn--primary:hover {
+  background: var(--semantic-interactive-hover, #1d4ed8);
+}
+
+.csv-import-wizard__btn--primary:disabled {
+  background: var(--semantic-interactive-disabled, #9ca3af);
+  border-color: var(--semantic-interactive-disabled, #9ca3af);
+  cursor: not-allowed;
+}
+
+/* Confirmation summary */
+.csv-import-wizard__summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+  padding: var(--spacing-4, 16px);
+  background: var(--semantic-background-secondary, #f9fafb);
+  border-radius: var(--radius-md, 8px);
+}
+
+.csv-import-wizard__summary-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.csv-import-wizard__summary-label {
+  color: var(--semantic-text-secondary, #666);
+}
+
+.csv-import-wizard__summary-value {
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-primary, #111);
+}
+
+.csv-import-wizard__warning {
+  padding: var(--spacing-3, 12px);
+  background: rgba(217, 119, 6, 0.1);
+  border: 1px solid var(--semantic-status-warning, #d97706);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-primary, #111);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .csv-import-wizard__dropzone,
+  .csv-import-wizard__btn {
+    transition: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .csv-import-wizard__mapping-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .csv-import-wizard__mapping-label {
+    flex: none;
+  }
+
+  .csv-import-wizard__actions {
+    flex-direction: column;
+  }
+}

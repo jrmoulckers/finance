@@ -23,6 +23,8 @@ export type { LoadingSpinnerProps } from './LoadingSpinner';
 export { SyncStatusBar } from './SyncStatusBar';
 export { SyncStatusPanel } from './SyncStatusPanel';
 export { UpdateBanner } from './UpdateBanner';
+export { SkipLink } from './SkipLink';
+export type { SkipLinkProps } from './SkipLink';
 
 // Animations
 export {

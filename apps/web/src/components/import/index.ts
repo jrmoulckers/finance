@@ -18,3 +18,11 @@ export type { ImportProgressProps } from './ImportProgress';
 
 export { ImportComplete } from './ImportComplete';
 export type { ImportCompleteProps } from './ImportComplete';
+
+export { CsvImportWizard } from './CsvImportWizard';
+export type {
+  CsvImportWizardProps,
+  ImportData,
+  WizardStep,
+  ColumnMapping,
+} from './CsvImportWizard';

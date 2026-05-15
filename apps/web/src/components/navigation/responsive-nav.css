@@ -1,0 +1,223 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * ResponsiveNav — Responsive navigation styles.
+ *
+ * Adapts navigation layout based on viewport:
+ *   - Mobile: bottom tab bar with icons
+ *   - Tablet: collapsible sidebar
+ *   - Desktop: full sidebar with labels
+ *
+ * References: issue #1336
+ */
+
+/* ---------------------------------------------------------------------------
+   Shared styles
+   --------------------------------------------------------------------------- */
+
+.responsive-nav {
+  display: flex;
+  background: var(--semantic-background-elevated, #fff);
+  border-color: var(--semantic-border-default, #e5e7eb);
+  z-index: 100;
+}
+
+.responsive-nav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+
+.responsive-nav__item {
+  display: flex;
+}
+
+.responsive-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  color: var(--semantic-text-secondary, #666);
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: var(--font-size-sm, 0.875rem);
+  font-family: inherit;
+  border-radius: var(--radius-md, 8px);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.responsive-nav__link:hover,
+.responsive-nav__link:focus-visible {
+  background: var(--semantic-background-secondary, #f3f4f6);
+  color: var(--semantic-text-primary, #111);
+}
+
+.responsive-nav__link:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: -2px;
+}
+
+.responsive-nav__link[aria-current='page'] {
+  color: var(--semantic-interactive-default, #2563eb);
+  font-weight: var(--font-weight-semibold, 600);
+  background: var(--semantic-background-secondary, #f3f4f6);
+}
+
+.responsive-nav__icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.responsive-nav__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Toggle button for tablet collapsible sidebar */
+.responsive-nav__toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2, 8px);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--semantic-text-secondary, #666);
+  border-radius: var(--radius-md, 8px);
+  font-family: inherit;
+}
+
+.responsive-nav__toggle:hover,
+.responsive-nav__toggle:focus-visible {
+  background: var(--semantic-background-secondary, #f3f4f6);
+  color: var(--semantic-text-primary, #111);
+}
+
+.responsive-nav__toggle:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: -2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile: bottom tab bar
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  .responsive-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top: 1px solid var(--semantic-border-default, #e5e7eb);
+    padding: var(--spacing-1, 4px) 0;
+    justify-content: center;
+  }
+
+  .responsive-nav__list {
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+  }
+
+  .responsive-nav__link {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-1, 4px);
+    padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+    font-size: var(--font-size-xs, 0.75rem);
+  }
+
+  .responsive-nav__toggle {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Tablet: collapsible sidebar
+   --------------------------------------------------------------------------- */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .responsive-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    flex-direction: column;
+    width: 64px;
+    border-right: 1px solid var(--semantic-border-default, #e5e7eb);
+    padding: var(--spacing-2, 8px);
+    overflow: hidden;
+    transition: width 0.2s ease;
+  }
+
+  .responsive-nav[data-expanded='true'] {
+    width: 240px;
+  }
+
+  .responsive-nav__list {
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .responsive-nav__label {
+    display: none;
+  }
+
+  .responsive-nav[data-expanded='true'] .responsive-nav__label {
+    display: inline;
+  }
+
+  .responsive-nav__toggle {
+    display: flex;
+    align-self: flex-end;
+    margin-bottom: var(--spacing-2, 8px);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Desktop: full sidebar with labels
+   --------------------------------------------------------------------------- */
+
+@media (min-width: 1024px) {
+  .responsive-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    flex-direction: column;
+    width: 240px;
+    border-right: 1px solid var(--semantic-border-default, #e5e7eb);
+    padding: var(--spacing-3, 12px);
+  }
+
+  .responsive-nav__list {
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .responsive-nav__toggle {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .responsive-nav {
+    transition: none;
+  }
+
+  .responsive-nav__link {
+    transition: none;
+  }
+}

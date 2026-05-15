@@ -1,0 +1,81 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * FormField — Accessible form field wrapper component.
+ *
+ * Provides consistent label association, required field indicators,
+ * validation error display with aria-describedby, and aria-required.
+ *
+ * @example
+ * ```tsx
+ * <FormField
+ *   label="Account Name"
+ *   htmlFor="account-name"
+ *   required
+ *   error={errors.name}
+ * >
+ *   <input id="account-name" type="text" />
+ * </FormField>
+ * ```
+ *
+ * References: issue #1335
+ */
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+}
+
+.form-field__label {
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--semantic-text-primary, #111);
+  line-height: var(--line-height-tight, 1.25);
+}
+
+.form-field__label--required::after {
+  content: ' *';
+  color: var(--semantic-status-negative, #dc2626);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.form-field__hint {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--semantic-text-secondary, #666);
+  margin: 0;
+}
+
+.form-field__error {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--semantic-status-negative, #dc2626);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1, 4px);
+}
+
+.form-field__error::before {
+  content: '⚠';
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+/* Error state styling for child inputs */
+.form-field--error input,
+.form-field--error select,
+.form-field--error textarea {
+  border-color: var(--semantic-border-error, #dc2626);
+}
+
+.form-field--error input:focus,
+.form-field--error select:focus,
+.form-field--error textarea:focus {
+  outline-color: var(--semantic-border-error, #dc2626);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-field__error {
+    animation: none;
+  }
+}

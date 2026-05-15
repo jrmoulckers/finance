@@ -79,3 +79,28 @@ export type {
   DatePreset,
   SavedReport,
 } from './useReportBuilder';
+export {
+  useFormValidation,
+  required,
+  numericRange,
+  maxLength,
+  minLength,
+  dateRange,
+  pattern,
+} from './useFormValidation';
+export type {
+  UseFormValidationResult,
+  ValidationRules,
+  FieldErrors,
+  SyncValidator,
+  AsyncValidator,
+  Validator,
+} from './useFormValidation';
+export { useBreakpoint } from './useBreakpoint';
+export type { UseBreakpointResult, Breakpoint } from './useBreakpoint';
+export { useDeepLink, matchRoute } from './useDeepLink';
+export type { UseDeepLinkResult, RouteParams, RoutePattern } from './useDeepLink';
+export { useVirtualList } from './useVirtualList';
+export type { UseVirtualListOptions, UseVirtualListResult, VirtualItem } from './useVirtualList';
+export { useDebouncedSearch } from './useDebouncedSearch';
+export type { UseDebouncedSearchResult, UseDebouncedSearchOptions } from './useDebouncedSearch';

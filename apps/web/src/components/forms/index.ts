@@ -20,3 +20,5 @@ export { BulkEditToolbar } from './BulkEditToolbar';
 export type { BulkEditToolbarProps } from './BulkEditToolbar';
 export { NaturalLanguageInput } from './NaturalLanguageInput';
 export type { NaturalLanguageInputProps } from './NaturalLanguageInput';
+export { FormField } from './FormField';
+export type { FormFieldProps } from './FormField';

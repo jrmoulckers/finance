@@ -1,0 +1,127 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * themes.css — Theme-specific CSS custom property overrides.
+ *
+ * This file provides theme layers for light, dark, and OLED dark modes.
+ * Base tokens are imported from design-tokens.css (packages/design-tokens).
+ * These overrides use the [data-theme] attribute set by useTheme.
+ *
+ * References: issue #1338
+ */
+
+/* ---------------------------------------------------------------------------
+   Light theme (default — tokens from design-tokens already apply to :root)
+   --------------------------------------------------------------------------- */
+
+:root,
+[data-theme='light'] {
+  --theme-surface: var(--semantic-background-primary, #ffffff);
+  --theme-surface-elevated: var(--semantic-background-elevated, #f9fafb);
+  --theme-text: var(--semantic-text-primary, #111827);
+  --theme-text-muted: var(--semantic-text-secondary, #6b7280);
+  --theme-border: var(--semantic-border-default, #e5e7eb);
+  --theme-accent: var(--semantic-interactive-default, #2563eb);
+  --theme-accent-hover: var(--semantic-interactive-hover, #1d4ed8);
+  --theme-positive: var(--semantic-status-positive, #16a34a);
+  --theme-negative: var(--semantic-status-negative, #dc2626);
+  --theme-warning: var(--semantic-status-warning, #d97706);
+
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------------------
+   Dark theme
+   --------------------------------------------------------------------------- */
+
+[data-theme='dark'] {
+  --theme-surface: var(--semantic-background-primary, #111827);
+  --theme-surface-elevated: var(--semantic-background-elevated, #1f2937);
+  --theme-text: var(--semantic-text-primary, #f9fafb);
+  --theme-text-muted: var(--semantic-text-secondary, #9ca3af);
+  --theme-border: var(--semantic-border-default, #374151);
+  --theme-accent: var(--semantic-interactive-default, #3b82f6);
+  --theme-accent-hover: var(--semantic-interactive-hover, #60a5fa);
+  --theme-positive: var(--semantic-status-positive, #22c55e);
+  --theme-negative: var(--semantic-status-negative, #ef4444);
+  --theme-warning: var(--semantic-status-warning, #f59e0b);
+
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------------------
+   OLED dark theme — true black backgrounds for battery savings
+   --------------------------------------------------------------------------- */
+
+[data-theme='dark-oled'] {
+  --theme-surface: #000000;
+  --theme-surface-elevated: #0a0a0a;
+  --theme-text: #f9fafb;
+  --theme-text-muted: #a1a1aa;
+  --theme-border: #27272a;
+  --theme-accent: var(--semantic-interactive-default, #3b82f6);
+  --theme-accent-hover: var(--semantic-interactive-hover, #60a5fa);
+  --theme-positive: #22c55e;
+  --theme-negative: #ef4444;
+  --theme-warning: #f59e0b;
+
+  --semantic-background-primary: #000000;
+  --semantic-background-secondary: #0a0a0a;
+  --semantic-background-elevated: #18181b;
+  --semantic-text-primary: #f9fafb;
+  --semantic-text-secondary: #a1a1aa;
+  --semantic-border-default: #27272a;
+
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------------------
+   System preference: auto dark when OS prefers dark
+   (tokens.css handles base, this extends with theme aliases)
+   --------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']):not([data-theme='dark-oled']):not([data-theme='dark']) {
+    --theme-surface: var(--semantic-background-primary);
+    --theme-surface-elevated: var(--semantic-background-elevated);
+    --theme-text: var(--semantic-text-primary);
+    --theme-text-muted: var(--semantic-text-secondary);
+    --theme-border: var(--semantic-border-default);
+    --theme-accent: var(--semantic-interactive-default);
+    --theme-accent-hover: var(--semantic-interactive-hover);
+    --theme-positive: var(--semantic-status-positive);
+    --theme-negative: var(--semantic-status-negative);
+    --theme-warning: var(--semantic-status-warning);
+
+    color-scheme: dark;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   High contrast mode
+   --------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  :root {
+    --theme-border: var(--semantic-text-primary);
+  }
+
+  [data-theme='dark'],
+  [data-theme='dark-oled'] {
+    --theme-border: #e5e7eb;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
