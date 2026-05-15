@@ -17,7 +17,7 @@
 #   /manifest.json   → PWA manifest (short cache, revalidate)
 #   /*               → SPA index.html fallback
 #
-# Issues: #268, #897
+# Issues: #268, #897, #1307
 # =============================================================================
 
 {$DOMAIN} {
@@ -48,7 +48,7 @@
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)"
 
 		# Content Security Policy — strict, no inline scripts, no eval
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'"
 
 		# Remove server identification
 		-Server
@@ -60,7 +60,6 @@
 	# -------------------------------------------------------------------------
 	handle_path /rest/v1/* {
 		reverse_proxy rest:3000 {
-			header_up X-Forwarded-Proto {scheme}
 			header_up X-Real-IP {remote_host}
 		}
 	}
@@ -71,7 +70,6 @@
 	# -------------------------------------------------------------------------
 	handle_path /auth/v1/* {
 		reverse_proxy auth:9999 {
-			header_up X-Forwarded-Proto {scheme}
 			header_up X-Real-IP {remote_host}
 		}
 	}
@@ -81,7 +79,6 @@
 	# -------------------------------------------------------------------------
 	handle_path /sync/* {
 		reverse_proxy powersync:8080 {
-			header_up X-Forwarded-Proto {scheme}
 			header_up X-Real-IP {remote_host}
 		}
 	}
@@ -92,7 +89,6 @@
 	# -------------------------------------------------------------------------
 	handle_path /functions/v1/* {
 		reverse_proxy edge-functions:9000 {
-			header_up X-Forwarded-Proto {scheme}
 			header_up X-Real-IP {remote_host}
 		}
 	}
