@@ -17,7 +17,10 @@
 #   80   — HTTP  (redirects to HTTPS)
 #   443  — HTTPS (automatic Let's Encrypt via Caddy)
 #
-# Issues: #268, #897
+# Security: PostgreSQL is NOT exposed to the host. All services connect via
+# the Docker 'finance-internal' bridge network. See #1306.
+#
+# Issues: #268, #897, #1306, #1316
 # =============================================================================
 
 services:
@@ -27,8 +30,9 @@ services:
   db:
     image: supabase/postgres:15.8.1.060
     restart: unless-stopped
-    ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+    # No host port exposure — all services connect via Docker 'finance-internal'
+    # network. Exposing PostgreSQL to the host bypasses Caddy TLS, Edge Function
+    # auth, and all RLS policies. See #1306.
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
@@ -82,7 +86,7 @@ services:
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
-      PGRST_DB_SCHEMAS: public,auth,storage
+      PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
       PGRST_DB_USE_LEGACY_GUCS: 'false'
@@ -287,11 +291,21 @@ services:
   # The entrypoint generates it from env vars using the mounted template.
   #
   # Ports: 8080 (API) — internal only, routed through Caddy at /sync/*
+  #
+  # TODO(#1306): PowerSync currently connects as supabase_admin (superuser).
+  # Create a dedicated 'powersync_replication' PostgreSQL role with only:
+  #   - REPLICATION privilege (for logical replication)
+  #   - SELECT on all sync-enabled tables (for initial snapshot)
+  #   - USAGE on the public schema
+  # Then update PS_PG_URI below to use that role instead of supabase_admin.
+  # Migration: services/api/supabase/migrations/YYYYMMDDHHMMSS_powersync_role.sql
   powersync:
     image: journeyapps/powersync-service:latest
     restart: unless-stopped
     environment:
       # These env vars are used by the startup script to generate powersync.yaml
+      # TODO(#1306): Replace supabase_admin with a dedicated powersync_replication
+      # role once the migration is created (see comment block above).
       PS_PG_URI: postgres://supabase_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
       PS_PG_SLOT: ${POWERSYNC_SLOT_NAME:-powersync}
       PS_PG_PUBLICATION: ${POWERSYNC_PUBLICATION:-powersync}
@@ -308,7 +322,7 @@ services:
             '  connections:',
             '    - type: postgresql',
             '      uri: ' + process.env.PS_PG_URI,
-            '      sslmode: disable',
+            '      sslmode: disable',  // Acceptable: traffic stays on Docker bridge network (finance-internal). For production deployments outside Docker, upgrade to sslmode: require or verify-full.
             '      slot_name: ' + process.env.PS_PG_SLOT,
             '      publication_name: ' + process.env.PS_PG_PUBLICATION,
             '',
