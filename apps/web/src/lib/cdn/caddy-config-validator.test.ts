@@ -63,9 +63,9 @@ describe('parseCaddyDirectives', () => {
 
   it('detects reverse_proxy in API routes', () => {
     const directives = parseCaddyDirectives(caddyfileContent);
-    const restRoute = directives.find((d) => d.route === '/rest/*');
-    const authRoute = directives.find((d) => d.route === '/auth/*');
-    const functionsRoute = directives.find((d) => d.route === '/functions/*');
+    const restRoute = directives.find((d) => d.route === '/rest/v1/*');
+    const authRoute = directives.find((d) => d.route === '/auth/v1/*');
+    const functionsRoute = directives.find((d) => d.route === '/functions/v1/*');
 
     expect(restRoute?.hasReverseProxy).toBe(true);
     expect(authRoute?.hasReverseProxy).toBe(true);
