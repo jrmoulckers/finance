@@ -96,7 +96,14 @@ services:
     volumes:
       - /etc/passwd:/etc/passwd:ro
     healthcheck:
-      disable: true
+      # PostgREST admin server exposes /ready (readiness) and /live (liveness).
+      # Port 3001 is set by PGRST_ADMIN_SERVER_PORT above.
+      test:
+        ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:3001/ready || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     depends_on:
       db:
         condition: service_healthy
@@ -252,15 +259,20 @@ services:
     volumes:
       - ${EDGE_FUNCTIONS_PATH:-../services/api/supabase/functions}:/home/deno/functions:ro
     healthcheck:
-      # edge-runtime image is minimal — no curl/wget; verify process is alive
-      test: ['CMD-SHELL', 'test -f /proc/1/status']
+      # edge-runtime main service responds on / with {"status":"ok"}.
+      # The image ships with Deno which includes fetch — use it for HTTP check.
+      test:
+        [
+          'CMD-SHELL',
+          'deno eval "const r = await fetch(\"http://localhost:9000/\"); Deno.exit(r.ok ? 0 : 1);" || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 20s
     depends_on:
       rest:
-        condition: service_started
+        condition: service_healthy
     command: start --main-service /home/deno/functions/main
     deploy:
       resources:
@@ -344,16 +356,17 @@ services:
     volumes:
       - ${POWERSYNC_SYNC_RULES_PATH:-../services/api/powersync}:/sync-rules:ro
     healthcheck:
-      # PowerSync image has no curl/wget — use node for HTTP connectivity check
+      # PowerSync exposes diagnostics on its HTTP port.
+      # Verify HTTP 200 — not just "any status code".
       test:
         [
           'CMD-SHELL',
-          'node -e "require(\"http\").get(\"http://localhost:8080/\",r=>{process.exit(r.statusCode?0:1)}).on(\"error\",()=>process.exit(1))"',
+          'node -e "require(\"http\").get(\"http://localhost:8080/\",r=>{process.exit(r.statusCode===200?0:1)}).on(\"error\",()=>process.exit(1))"',
         ]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 45s
     depends_on:
       db:
         condition: service_healthy
@@ -432,22 +445,27 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     healthcheck:
-      # Caddy redirects HTTP→HTTPS; wget follows redirect and TLS fails for localhost.
-      # Just verify the caddy binary is responsive.
-      test: ['CMD-SHELL', 'caddy version']
+      # Caddy admin API runs on localhost:2019 by default (internal only).
+      # A successful response from /config/ confirms Caddy loaded its config
+      # and is actively serving. Falls back to wget if available.
+      test:
+        [
+          'CMD-SHELL',
+          'wget --no-verbose --tries=1 --spider http://localhost:2019/config/ || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 10s
     depends_on:
       rest:
-        condition: service_started
+        condition: service_healthy
       auth:
-        condition: service_started
+        condition: service_healthy
       edge-functions:
-        condition: service_started
+        condition: service_healthy
       powersync:
-        condition: service_started
+        condition: service_healthy
     deploy:
       resources:
         limits:

@@ -455,17 +455,45 @@ docker stop backup-test
 
 ### Health Checks
 
-All services have built-in health checks. Docker automatically restarts
-unhealthy containers (via `restart: unless-stopped`).
+All services have Docker-native health checks that enable orchestration
+dependency ordering (`depends_on: condition: service_healthy`) and automatic
+restart of unhealthy containers.
 
 ```bash
-# Check service health
+# Check service health (shows "healthy" / "unhealthy" / "starting" per service)
 docker compose ps
-
-# Service-specific health
-curl -sf https://your-domain.com/health            # Edge Functions
-curl -sf https://your-domain.com/auth/v1/health     # GoTrue Auth
 ```
+
+#### Health Check Reference
+
+| Service              | Probe Type   | Endpoint / Command                         | Interval | Start Period |
+| -------------------- | ------------ | ------------------------------------------ | -------- | ------------ |
+| **db** (PostgreSQL)  | CLI          | `pg_isready -U supabase_admin`             | 10s      | 30s          |
+| **rest** (PostgREST) | HTTP (admin) | `GET http://localhost:3001/ready`          | 10s      | 10s          |
+| **auth** (GoTrue)    | HTTP         | `GET http://localhost:9999/health`         | 15s      | 15s          |
+| **meta** (PG Meta)   | HTTP (node)  | `GET http://localhost:8080/health`         | 15s      | 10s          |
+| **edge-functions**   | HTTP (deno)  | `GET http://localhost:9000/`               | 15s      | 20s          |
+| **powersync**        | HTTP (node)  | `GET http://localhost:8080/`               | 15s      | 45s          |
+| **mongo**            | CLI          | `mongosh --eval "db.adminCommand('ping')"` | 15s      | 20s          |
+| **caddy**            | HTTP (admin) | `GET http://localhost:2019/config/`        | 15s      | 10s          |
+
+PostgREST admin server also exposes `/live` (liveness) on port 3001.
+
+#### External Endpoints (via Caddy reverse proxy)
+
+```bash
+# Composite health — checks database + auth service via Edge Function
+curl -sf https://your-domain.com/health
+
+# Individual services
+curl -sf https://your-domain.com/auth/v1/health     # GoTrue Auth
+curl -sf https://your-domain.com/rest/               # PostgREST API
+curl -sf https://your-domain.com/sync/               # PowerSync
+```
+
+The `/health` endpoint returns `200 {"status":"healthy"}` when all services are
+operational, or `503 {"status":"degraded"}` with per-service status when any
+service is impaired.
 
 ### External Uptime Monitoring
 
