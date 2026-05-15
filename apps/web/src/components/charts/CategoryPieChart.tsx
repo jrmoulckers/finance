@@ -69,19 +69,19 @@ export const CategoryPieChart: FC<CategoryPieChartProps> = ({
           `${d.data.name}: ${formatChartCurrency(d.data.value, currency)} (${((d.data.value / total) * 100).toFixed(1)}%)`,
       )
       .attr('fill', (_d, i) => CHART_COLORS[i % CHART_COLORS.length])
-      .attr('stroke', 'var(--color-background-primary, #FFFFFF)')
+      .attr('stroke', 'var(--semantic-background-primary, #FFFFFF)')
       .attr('stroke-width', 2)
       .style('cursor', 'pointer')
       .style('outline', 'none');
     slices
       .on('focus', function () {
         d3.select(this)
-          .attr('stroke', 'var(--color-border-focus, #3B82F6)')
+          .attr('stroke', 'var(--semantic-border-focus, #3B82F6)')
           .attr('stroke-width', 3);
       })
       .on('blur', function () {
         d3.select(this)
-          .attr('stroke', 'var(--color-background-primary, #FFFFFF)')
+          .attr('stroke', 'var(--semantic-background-primary, #FFFFFF)')
           .attr('stroke-width', 2);
       });
     if (reducedMotion) {
@@ -106,7 +106,7 @@ export const CategoryPieChart: FC<CategoryPieChartProps> = ({
       .attr('transform', (d) => `translate(${labelArc.centroid(d)})`)
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
-      .attr('fill', 'var(--color-text-primary, #111827)')
+      .attr('fill', 'var(--semantic-text-primary, #111827)')
       .attr('font-size', '11px')
       .attr('font-weight', '500')
       .attr('aria-hidden', 'true')

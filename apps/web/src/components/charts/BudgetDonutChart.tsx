@@ -96,7 +96,7 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
               style={{
                 fontSize: '1.25rem',
                 fontWeight: 600,
-                fill: 'var(--color-text-primary, #111827)',
+                fill: 'var(--semantic-text-primary, #111827)',
               }}
             />
           </Pie>
@@ -106,8 +106,8 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
               String(name),
             ]}
             contentStyle={{
-              background: 'var(--color-background-elevated, #FFFFFF)',
-              border: '1px solid var(--color-border-default, #E5E7EB)',
+              background: 'var(--semantic-background-elevated, #FFFFFF)',
+              border: '1px solid var(--semantic-border-default, #E5E7EB)',
               borderRadius: '0.375rem',
             }}
           />

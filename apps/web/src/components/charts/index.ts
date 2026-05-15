@@ -8,4 +8,10 @@ export { BudgetDonutChart } from './BudgetDonutChart';
 export type { BudgetDonutChartProps, BudgetSlice } from './BudgetDonutChart';
 export { CategoryPieChart } from './CategoryPieChart';
 export type { CategoryPieChartProps, CategorySlice } from './CategoryPieChart';
-export { CHART_COLORS, chartColor, formatChartCurrency } from './chart-palette';
+export {
+  CHART_COLORS,
+  CHART_COLORS_HEX,
+  chartColor,
+  chartColorHex,
+  formatChartCurrency,
+} from './chart-palette';

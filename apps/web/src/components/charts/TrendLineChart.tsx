@@ -95,21 +95,21 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
           aria-labelledby={`${chartId}-title`}
           aria-describedby={`${chartId}-desc`}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-default, #E5E7EB)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--semantic-border-default, #E5E7EB)" />
           <XAxis
             dataKey="label"
-            tick={{ fill: 'var(--color-text-secondary, #6B7280)', fontSize: 12 }}
+            tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
           />
           <YAxis
             tickFormatter={(v: number) => formatChartCurrency(v, currency)}
-            tick={{ fill: 'var(--color-text-secondary, #6B7280)', fontSize: 12 }}
+            tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
             width={80}
           />
           <Tooltip
             formatter={(value) => formatChartCurrency(Number(value ?? 0), currency)}
             contentStyle={{
-              background: 'var(--color-background-elevated, #FFFFFF)',
-              border: '1px solid var(--color-border-default, #E5E7EB)',
+              background: 'var(--semantic-background-elevated, #FFFFFF)',
+              border: '1px solid var(--semantic-border-default, #E5E7EB)',
               borderRadius: '0.375rem',
             }}
           />

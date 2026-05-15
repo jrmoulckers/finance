@@ -6,7 +6,11 @@
  * @module components/charts/chart-palette
  */
 
-export const CHART_COLORS = [
+/**
+ * Hardcoded hex fallbacks for the IBM CVD-safe chart palette.
+ * Used when CSS custom properties are unavailable (tests, SSR, canvas export).
+ */
+export const CHART_COLORS_HEX = [
   '#648FFF', // blue
   '#FE6100', // orange
   '#785EF0', // purple
@@ -15,16 +19,39 @@ export const CHART_COLORS = [
   '#009E73', // teal
 ] as const;
 
+/**
+ * Chart colors routed through CSS custom properties from the design token system.
+ * Each entry references a `--color-chart-N` variable with a hex fallback so charts
+ * adapt when the token values change (e.g. future theme overrides or high-contrast
+ * palettes). The order is intentionally interleaved warm/cool for maximum visual
+ * contrast between adjacent series.
+ */
+export const CHART_COLORS = [
+  'var(--color-chart-1, #648FFF)', // blue
+  'var(--color-chart-4, #FE6100)', // orange
+  'var(--color-chart-2, #785EF0)', // purple
+  'var(--color-chart-5, #FFB000)', // gold
+  'var(--color-chart-3, #DC267F)', // magenta
+  'var(--color-chart-6, #009E73)', // teal
+] as const;
+
 export const CHART_COLOR_LABELS = ['Blue', 'Orange', 'Purple', 'Gold', 'Magenta', 'Teal'] as const;
 
+/** Returns the chart color CSS custom property reference at the given index (wraps). */
 export function chartColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length];
+}
+
+/** Returns the raw hex fallback at the given index (for non-DOM contexts). */
+export function chartColorHex(index: number): string {
+  return CHART_COLORS_HEX[index % CHART_COLORS_HEX.length];
 }
 
 export function patternId(index: number): string {
   return `chart-pattern-${index}`;
 }
 
+/** Formats major-unit chart values as compact currency labels. */
 export function formatChartCurrency(value: number, currency = 'USD', locale = 'en-US'): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',

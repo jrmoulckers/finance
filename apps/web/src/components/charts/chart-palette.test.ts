@@ -3,15 +3,17 @@
 import { describe, it, expect } from 'vitest';
 import {
   CHART_COLORS,
+  CHART_COLORS_HEX,
   CHART_COLOR_LABELS,
   chartColor,
+  chartColorHex,
   patternId,
   formatChartCurrency,
   buildChartDescription,
 } from './chart-palette';
 
 // ---------------------------------------------------------------------------
-// CHART_COLORS
+// CHART_COLORS (CSS custom property references)
 // ---------------------------------------------------------------------------
 
 describe('CHART_COLORS', () => {
@@ -19,9 +21,9 @@ describe('CHART_COLORS', () => {
     expect(CHART_COLORS.length).toBeGreaterThanOrEqual(6);
   });
 
-  it('contains valid hex colour strings', () => {
+  it('contains CSS custom property references with hex fallbacks', () => {
     for (const color of CHART_COLORS) {
-      expect(color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(color).toMatch(/^var\(--color-chart-\d+,\s*#[0-9A-Fa-f]{6}\)$/);
     }
   });
 
@@ -36,11 +38,36 @@ describe('CHART_COLORS', () => {
 });
 
 // ---------------------------------------------------------------------------
+// CHART_COLORS_HEX (raw hex fallbacks)
+// ---------------------------------------------------------------------------
+
+describe('CHART_COLORS_HEX', () => {
+  it('has at least 6 hex colour entries', () => {
+    expect(CHART_COLORS_HEX.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('contains valid hex colour strings', () => {
+    for (const color of CHART_COLORS_HEX) {
+      expect(color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    }
+  });
+
+  it('has the same length as CHART_COLORS', () => {
+    expect(CHART_COLORS_HEX.length).toBe(CHART_COLORS.length);
+  });
+
+  it('contains no duplicate colours', () => {
+    const unique = new Set(CHART_COLORS_HEX);
+    expect(unique.size).toBe(CHART_COLORS_HEX.length);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // chartColor
 // ---------------------------------------------------------------------------
 
 describe('chartColor', () => {
-  it('returns the colour at the given index', () => {
+  it('returns the CSS custom property reference at the given index', () => {
     expect(chartColor(0)).toBe(CHART_COLORS[0]);
     expect(chartColor(2)).toBe(CHART_COLORS[2]);
   });
@@ -48,6 +75,22 @@ describe('chartColor', () => {
   it('wraps around when index exceeds array length', () => {
     expect(chartColor(CHART_COLORS.length)).toBe(CHART_COLORS[0]);
     expect(chartColor(CHART_COLORS.length + 1)).toBe(CHART_COLORS[1]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// chartColorHex
+// ---------------------------------------------------------------------------
+
+describe('chartColorHex', () => {
+  it('returns the raw hex fallback at the given index', () => {
+    expect(chartColorHex(0)).toBe(CHART_COLORS_HEX[0]);
+    expect(chartColorHex(2)).toBe(CHART_COLORS_HEX[2]);
+  });
+
+  it('wraps around when index exceeds array length', () => {
+    expect(chartColorHex(CHART_COLORS_HEX.length)).toBe(CHART_COLORS_HEX[0]);
+    expect(chartColorHex(CHART_COLORS_HEX.length + 1)).toBe(CHART_COLORS_HEX[1]);
   });
 });
 
