@@ -53,6 +53,8 @@ export {
   WelcomeScreen,
 } from './EntityEmptyStates';
 export type { EntityEmptyStateProps, WelcomeScreenProps } from './EntityEmptyStates';
+export { BrowserWarning } from './BrowserWarning';
+export type { BrowserWarningProps } from './BrowserWarning';
 
 // Animations
 export {

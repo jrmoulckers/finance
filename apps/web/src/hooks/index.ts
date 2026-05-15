@@ -104,3 +104,5 @@ export { useVirtualList } from './useVirtualList';
 export type { UseVirtualListOptions, UseVirtualListResult, VirtualItem } from './useVirtualList';
 export { useDebouncedSearch } from './useDebouncedSearch';
 export type { UseDebouncedSearchResult, UseDebouncedSearchOptions } from './useDebouncedSearch';
+export { useBrowserSupport } from './useBrowserSupport';
+export type { UseBrowserSupportResult } from './useBrowserSupport';
