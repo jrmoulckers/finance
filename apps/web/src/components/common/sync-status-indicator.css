@@ -1,0 +1,78 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * SyncStatusIndicator component styles
+ *
+ * Replaces inline styles with theme-aware CSS classes.
+ * Uses design-token CSS custom properties throughout.
+ * ------------------------------------------------------------------- */
+
+.sync-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2, 0.5rem);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary);
+}
+
+/* Status dot */
+.sync-status-indicator__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sync-status-indicator__dot--syncing {
+  animation: pulse-sync 1.5s ease-in-out infinite;
+}
+
+/* Pending count badge */
+.sync-status-indicator__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--spacing-1, 0.25rem);
+  border-radius: var(--border-radius-full, 999px);
+  background-color: var(--semantic-status-warning);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+/* Conflict warning */
+.sync-status-indicator__conflict {
+  color: var(--semantic-status-warning);
+}
+
+/* Detailed info (last sync time) */
+.sync-status-indicator__detail {
+  margin-left: var(--spacing-2, 0.5rem);
+  opacity: 0.7;
+}
+
+/* -------------------------------------------------------------------
+ * Animations
+ * ------------------------------------------------------------------- */
+
+@keyframes pulse-sync {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-status-indicator__dot--syncing {
+    animation: none;
+  }
+}

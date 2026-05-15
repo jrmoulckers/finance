@@ -1,0 +1,229 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * ConsentDialog component styles
+ *
+ * Replaces inline styles with theme-aware CSS classes.
+ * Uses design-token CSS custom properties throughout.
+ * ------------------------------------------------------------------- */
+
+/* Overlay */
+.consent-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: var(--spacing-4, 1rem);
+}
+
+/* Dialog panel */
+.consent-dialog {
+  background-color: var(--semantic-surface-primary, var(--semantic-background-primary));
+  border-radius: var(--border-radius-lg, 0.75rem);
+  max-width: 32rem;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--spacing-6, 1.5rem);
+  box-shadow: var(--shadow-xl, 0 25px 50px -12px rgba(0, 0, 0, 0.25));
+}
+
+/* Header */
+.consent-dialog__header {
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.consent-dialog__title {
+  font-size: var(--type-scale-headline-font-size, 1.25rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-primary);
+  margin-bottom: var(--spacing-2, 0.5rem);
+}
+
+.consent-dialog__description {
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  color: var(--semantic-text-secondary);
+  line-height: 1.5;
+}
+
+/* Quick action buttons */
+.consent-dialog__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 0.75rem);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.consent-button--primary {
+  width: 100%;
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  border-radius: var(--border-radius-md, 0.5rem);
+  border: none;
+  background-color: var(--semantic-interactive-default);
+  color: white;
+  font-weight: var(--font-weight-medium, 500);
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  cursor: pointer;
+}
+
+.consent-button--primary:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.consent-button--secondary {
+  width: 100%;
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  border-radius: var(--border-radius-md, 0.5rem);
+  border: 1px solid var(--semantic-border-default);
+  background-color: transparent;
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-medium, 500);
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  cursor: pointer;
+}
+
+.consent-button--secondary:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.consent-button--link {
+  width: 100%;
+  padding: var(--spacing-2, 0.5rem);
+  border: none;
+  background-color: transparent;
+  color: var(--semantic-interactive-default);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.consent-button--link:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* Detail preferences */
+.consent-dialog__preferences {
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.consent-dialog__fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.consent-dialog__legend {
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-primary);
+  margin-bottom: var(--spacing-3, 0.75rem);
+}
+
+.consent-dialog__category {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3, 0.75rem);
+  padding: var(--spacing-3, 0.75rem);
+  border-bottom: 1px solid var(--semantic-border-default);
+}
+
+.consent-dialog__category--disabled {
+  opacity: 0.7;
+}
+
+.consent-dialog__category-checkbox {
+  margin-top: 2px;
+}
+
+.consent-dialog__category-label {
+  font-weight: var(--font-weight-medium, 500);
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  color: var(--semantic-text-primary);
+}
+
+.consent-dialog__category-required {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-tertiary, var(--semantic-text-disabled));
+}
+
+.consent-dialog__category-description {
+  margin: var(--spacing-1, 0.25rem) 0 0;
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary);
+}
+
+/* Preference save/back buttons */
+.consent-dialog__preference-actions {
+  display: flex;
+  gap: var(--spacing-3, 0.75rem);
+  margin-top: var(--spacing-4, 1rem);
+}
+
+.consent-dialog__save-btn {
+  flex: 1;
+  padding: var(--spacing-3, 0.75rem);
+  border-radius: var(--border-radius-md, 0.5rem);
+  border: none;
+  background-color: var(--semantic-interactive-default);
+  color: white;
+  font-weight: var(--font-weight-medium, 500);
+  cursor: pointer;
+}
+
+.consent-dialog__save-btn:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.consent-dialog__back-btn {
+  padding: var(--spacing-3, 0.75rem);
+  border-radius: var(--border-radius-md, 0.5rem);
+  border: 1px solid var(--semantic-border-default);
+  background-color: transparent;
+  color: var(--semantic-text-secondary);
+  cursor: pointer;
+}
+
+.consent-dialog__back-btn:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* Footer */
+.consent-dialog__footer {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-tertiary, var(--semantic-text-disabled));
+  text-align: center;
+  margin-top: var(--spacing-2, 0.5rem);
+}
+
+.consent-dialog__footer-link {
+  color: var(--semantic-interactive-default);
+  text-decoration: underline;
+}
+
+.consent-dialog__footer-link:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .consent-button--secondary,
+  .consent-dialog__back-btn {
+    border-width: 2px;
+  }
+
+  .consent-dialog__category {
+    border-bottom-width: 2px;
+  }
+}

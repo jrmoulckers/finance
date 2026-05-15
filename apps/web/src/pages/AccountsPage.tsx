@@ -6,6 +6,7 @@ import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../com
 import { AccountForm } from '../components/forms';
 import { useAccounts } from '../hooks';
 import type { AccountType } from '../kmp/bridge';
+import '../styles/pages.css';
 
 const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   CHECKING: 'Checking',
@@ -42,27 +43,13 @@ export const AccountsPage: React.FC = () => {
   );
 
   const netWorth = accounts.reduce((sum, account) => sum + account.currentBalance.amount, 0);
-  const headingStyle = {
-    fontSize: 'var(--type-scale-headline-font-size)',
-    fontWeight: 'var(--type-scale-headline-font-weight)',
-    margin: 0,
-  } as const;
   const handleCloseForm = () => {
     setIsFormOpen(false);
   };
 
   const pageHeader = (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 'var(--spacing-3)',
-        flexWrap: 'wrap',
-        marginBottom: 'var(--spacing-4)',
-      }}
-    >
-      <h2 style={headingStyle}>Accounts</h2>
+    <div className="page-header">
+      <h2 className="page-heading">Accounts</h2>
       <button
         type="button"
         className="add-button"
@@ -92,16 +79,8 @@ export const AccountsPage: React.FC = () => {
   if (loading) {
     return (
       <>
-        <h2
-          style={{
-            fontSize: 'var(--type-scale-headline-font-size)',
-            fontWeight: 'var(--type-scale-headline-font-weight)',
-            marginBottom: 'var(--spacing-2)',
-          }}
-        >
-          Accounts
-        </h2>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
+        <h2 className="page-heading">Accounts</h2>
+        <div className="page-loading">
           <LoadingSpinner label="Loading accounts" />
         </div>
       </>
@@ -111,15 +90,7 @@ export const AccountsPage: React.FC = () => {
   if (error) {
     return (
       <>
-        <h2
-          style={{
-            fontSize: 'var(--type-scale-headline-font-size)',
-            fontWeight: 'var(--type-scale-headline-font-weight)',
-            marginBottom: 'var(--spacing-2)',
-          }}
-        >
-          Accounts
-        </h2>
+        <h2 className="page-heading">Accounts</h2>
         <ErrorBanner message={error} onRetry={refresh} />
       </>
     );
@@ -141,10 +112,7 @@ export const AccountsPage: React.FC = () => {
   return (
     <>
       {pageHeader}
-      <p
-        style={{ marginBottom: 'var(--spacing-6)', color: 'var(--semantic-text-secondary)' }}
-        aria-live="polite"
-      >
+      <p className="page-summary" aria-live="polite">
         Net worth: <CurrencyDisplay amount={netWorth} colorize />
       </p>
       {accountGroups.map((group) => {
@@ -165,13 +133,7 @@ export const AccountsPage: React.FC = () => {
                   <li key={account.id} role="listitem">
                     <Link
                       to={`/accounts/${account.id}`}
-                      className="list-item"
-                      style={{
-                        display: 'flex',
-                        width: '100%',
-                        textDecoration: 'none',
-                        color: 'inherit',
-                      }}
+                      className="list-item page-list-link"
                       aria-label={account.name}
                     >
                       <div className="list-item__content">

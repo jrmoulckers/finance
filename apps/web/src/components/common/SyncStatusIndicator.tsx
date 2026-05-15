@@ -17,6 +17,7 @@
 import React from 'react';
 import { usePowerSyncStatus } from '../../hooks/usePowerSyncStatus';
 import type { PowerSyncConnectionStatus } from '../../db/sync/powersync-client';
+import './sync-status-indicator.css';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,11 +32,11 @@ const STATUS_LABELS: Record<PowerSyncConnectionStatus, string> = {
 };
 
 const STATUS_COLORS: Record<PowerSyncConnectionStatus, string> = {
-  disconnected: 'var(--semantic-status-negative, #dc2626)',
-  connecting: 'var(--semantic-status-warning, #f59e0b)',
-  connected: 'var(--semantic-status-positive, #16a34a)',
-  syncing: 'var(--semantic-status-info, #2563eb)',
-  error: 'var(--semantic-status-negative, #dc2626)',
+  disconnected: 'var(--semantic-status-negative)',
+  connecting: 'var(--semantic-status-warning)',
+  connected: 'var(--semantic-status-positive)',
+  syncing: 'var(--semantic-status-info)',
+  error: 'var(--semantic-status-negative)',
 };
 
 function formatLastSync(timestamp: string | null): string {
@@ -80,6 +81,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
   const statusLabel = STATUS_LABELS[status.connectionStatus];
   const statusColor = STATUS_COLORS[status.connectionStatus];
   const hasConflicts = conflicts.length > 0;
+  const isSyncing = status.connectionStatus === 'syncing';
 
   return (
     <div
@@ -87,28 +89,12 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
       role="status"
       aria-live="polite"
       aria-label={`Sync status: ${statusLabel}`}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 'var(--spacing-2, 0.5rem)',
-        fontSize: 'var(--type-scale-caption-font-size, 0.75rem)',
-        color: 'var(--semantic-text-secondary, #6b7280)',
-      }}
     >
       {/* Status dot */}
       <span
         aria-hidden="true"
-        style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: statusColor,
-          flexShrink: 0,
-          animation:
-            status.connectionStatus === 'syncing'
-              ? 'pulse-sync 1.5s ease-in-out infinite'
-              : undefined,
-        }}
+        className={`sync-status-indicator__dot${isSyncing ? ' sync-status-indicator__dot--syncing' : ''}`}
+        style={{ backgroundColor: statusColor }}
       />
 
       {/* Status text */}
@@ -118,19 +104,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
       {pendingCount > 0 && (
         <span
           aria-label={`${pendingCount} pending changes`}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: '20px',
-            height: '20px',
-            padding: '0 var(--spacing-1, 0.25rem)',
-            borderRadius: 'var(--border-radius-full, 999px)',
-            backgroundColor: 'var(--semantic-status-warning, #f59e0b)',
-            color: 'white',
-            fontSize: '0.65rem',
-            fontWeight: 'var(--font-weight-semibold, 600)',
-          }}
+          className="sync-status-indicator__badge"
         >
           {pendingCount}
         </span>
@@ -140,9 +114,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
       {hasConflicts && (
         <span
           aria-label={`${conflicts.length} sync conflict${conflicts.length > 1 ? 's' : ''}`}
-          style={{
-            color: 'var(--semantic-status-warning, #f59e0b)',
-          }}
+          className="sync-status-indicator__conflict"
         >
           ⚠
         </span>
@@ -150,14 +122,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
 
       {/* Detailed info */}
       {detailed && (
-        <span
-          style={{
-            marginLeft: 'var(--spacing-2, 0.5rem)',
-            opacity: 0.7,
-          }}
-        >
-          {formatLastSync(status.lastSyncTime)}
-        </span>
+        <span className="sync-status-indicator__detail">{formatLastSync(status.lastSyncTime)}</span>
       )}
     </div>
   );

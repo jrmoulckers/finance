@@ -4,6 +4,7 @@ import { Component, createRef, type ErrorInfo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { captureError } from '../../lib/monitoring';
 import '../../styles/auth.css';
+import './error-boundary.css';
 
 /** Props for the application error boundary. */
 export interface ErrorBoundaryProps {
@@ -21,55 +22,6 @@ const INITIAL_STATE: ErrorBoundaryState = {
   hasError: false,
   error: null,
 };
-
-const cardContentStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 'var(--spacing-5)',
-} as const;
-
-const fallbackMessageStyle = {
-  margin: 0,
-  color: 'var(--semantic-text-primary)',
-  textAlign: 'center',
-} as const;
-
-const detailsStyle = {
-  margin: 0,
-  padding: 'var(--spacing-3)',
-  borderRadius: 'var(--border-radius-md)',
-  background: 'var(--color-red-50, #fef2f2)',
-  color: 'var(--semantic-status-negative)',
-  fontSize: 'var(--type-scale-caption-font-size, 0.875rem)',
-  wordBreak: 'break-word',
-} as const;
-
-const actionsStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 'var(--spacing-3)',
-} as const;
-
-const secondaryActionStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  minHeight: '44px',
-  padding: 'var(--spacing-2) var(--spacing-4)',
-  border: '1px solid var(--semantic-border-default, #d1d5db)',
-  borderRadius: 'var(--border-radius-md)',
-  background: 'transparent',
-  color: 'var(--semantic-text-primary)',
-  textDecoration: 'none',
-  fontWeight: 'var(--font-weight-medium)',
-} as const;
-
-const sectionTitleStyle = {
-  margin: 0,
-  fontSize: 'var(--type-scale-title-font-size, 1.125rem)',
-  color: 'var(--semantic-text-primary)',
-  textAlign: 'center',
-} as const;
 
 /**
  * Catch rendering errors anywhere in the application tree and present
@@ -124,7 +76,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return (
       <main className="auth-page">
         <section className="auth-card" aria-labelledby="error-boundary-title">
-          <div style={cardContentStyle}>
+          <div className="error-boundary__content">
             <header className="auth-brand">
               <h1
                 ref={this.headingRef}
@@ -140,25 +92,28 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               </p>
             </header>
 
-            <div role="alert" aria-live="assertive" style={cardContentStyle}>
+            <div role="alert" aria-live="assertive" className="error-boundary__content">
               {this.props.fallback ?? (
-                <p style={fallbackMessageStyle}>
+                <p className="error-boundary__message">
                   An unexpected error interrupted the Finance experience.
                 </p>
               )}
               {import.meta.env.DEV && this.state.error?.message ? (
-                <p style={detailsStyle}>{this.state.error.message}</p>
+                <p className="error-boundary__details">{this.state.error.message}</p>
               ) : null}
             </div>
 
-            <section aria-labelledby="error-boundary-actions-title" style={actionsStyle}>
-              <h2 id="error-boundary-actions-title" style={sectionTitleStyle}>
+            <section
+              aria-labelledby="error-boundary-actions-title"
+              className="error-boundary__actions"
+            >
+              <h2 id="error-boundary-actions-title" className="error-boundary__actions-title">
                 What you can do next
               </h2>
               <button type="button" className="auth-submit" onClick={this.handleRetry}>
                 Try Again
               </button>
-              <Link to="/dashboard" className="auth-footer__link" style={secondaryActionStyle}>
+              <Link to="/dashboard" className="auth-footer__link error-boundary__secondary-action">
                 Return to Dashboard
               </Link>
             </section>

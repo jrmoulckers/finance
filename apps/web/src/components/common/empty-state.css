@@ -1,0 +1,36 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * EmptyState component styles
+ *
+ * Replaces inline styles with theme-aware CSS classes.
+ * Uses design-token CSS custom properties throughout.
+ * ------------------------------------------------------------------- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-10) var(--spacing-4);
+  gap: var(--spacing-4);
+}
+
+.empty-state__icon {
+  width: 64px;
+  height: 64px;
+  color: var(--semantic-text-disabled);
+}
+
+.empty-state__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.empty-state__description {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-secondary);
+  max-width: 360px;
+}

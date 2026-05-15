@@ -1,0 +1,114 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * Shared page-level layout styles
+ *
+ * Replaces inline styles used across page components with
+ * reusable, theme-aware CSS classes.
+ * ------------------------------------------------------------------- */
+
+/* Page header with title + action button */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-4);
+}
+
+/* Standard page heading */
+.page-heading {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  margin: 0;
+}
+
+/* Centered loading container */
+.page-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-8) 0;
+}
+
+/* Full-height centered loading (e.g. database init) */
+.page-loading--fullscreen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-6);
+}
+
+/* Padded wrapper for error states */
+.page-error-wrapper {
+  padding: var(--spacing-6);
+}
+
+/* Net worth / summary text */
+.page-summary {
+  margin-bottom: var(--spacing-6);
+  color: var(--semantic-text-secondary);
+}
+
+/* Back link */
+.page-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  color: var(--semantic-text-secondary);
+  text-decoration: none;
+}
+
+.page-back-link:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.page-back-link--spaced {
+  margin-bottom: var(--spacing-3);
+}
+
+/* Action button group */
+.page-actions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+/* Empty state info text */
+.page-empty-text {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+}
+
+/* Section heading */
+.page-section-heading {
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-2);
+}
+
+/* List item link (inside card lists) */
+.page-list-link {
+  display: flex;
+  width: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Card spacer */
+.page-card--spaced {
+  margin-bottom: var(--spacing-6);
+}
+
+/* Grid layout for detail cards */
+.page-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-4);
+}
+
+/* Status text with top spacing */
+.page-status-text {
+  margin-top: var(--spacing-4);
+  color: var(--semantic-text-secondary);
+}

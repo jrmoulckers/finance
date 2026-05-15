@@ -1,0 +1,47 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * LoadingSpinner component styles
+ *
+ * Replaces inline styles with theme-aware CSS classes.
+ * Uses design-token CSS custom properties throughout.
+ * ------------------------------------------------------------------- */
+
+.loading-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner__svg {
+  animation: spinner-rotate 1s linear infinite;
+}
+
+.loading-spinner__sr-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner__svg {
+    animation: none;
+  }
+}

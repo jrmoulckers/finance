@@ -1,0 +1,80 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * PrivacySettings component styles
+ *
+ * Replaces inline styles with theme-aware CSS classes.
+ * Uses design-token CSS custom properties throughout.
+ * ------------------------------------------------------------------- */
+
+.privacy-settings__info {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin-bottom: var(--spacing-4);
+  padding: 0 var(--spacing-2);
+}
+
+.privacy-settings__category-description {
+  margin: var(--spacing-1) 0 0;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.privacy-settings__group-spacer {
+  margin-top: var(--spacing-4);
+}
+
+.privacy-settings__danger-title {
+  color: var(--semantic-status-negative);
+}
+
+.privacy-settings__danger-info {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin-bottom: var(--spacing-3);
+  padding: 0 var(--spacing-2);
+}
+
+/* Delete confirmation alert */
+.privacy-settings__delete-confirm {
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-md);
+  border: 2px solid var(--semantic-status-negative);
+  background-color: var(--color-red-50, #fef2f2);
+}
+
+.privacy-settings__delete-confirm-title {
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-status-negative);
+  margin-bottom: var(--spacing-3);
+}
+
+.privacy-settings__delete-confirm-list {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin-bottom: var(--spacing-4);
+  padding-left: var(--spacing-4);
+}
+
+.privacy-settings__delete-actions {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
+.privacy-settings__delete-actions > * {
+  flex: 1;
+}
+
+/* -------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .privacy-settings__delete-confirm {
+    background-color: rgba(239, 68, 68, 0.12);
+  }
+}
+
+[data-theme='dark'] .privacy-settings__delete-confirm {
+  background-color: rgba(239, 68, 68, 0.12);
+}

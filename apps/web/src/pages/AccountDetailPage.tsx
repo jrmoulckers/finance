@@ -7,6 +7,7 @@ import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../
 import { AccountForm } from '../components/forms';
 import { useAccounts, useTransactions } from '../hooks';
 import type { Account } from '../kmp/bridge';
+import '../styles/pages.css';
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   CHECKING: 'Checking',
@@ -17,12 +18,6 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   LOAN: 'Loan',
   OTHER: 'Other',
 };
-
-const headingStyle = {
-  fontSize: 'var(--type-scale-headline-font-size)',
-  fontWeight: 'var(--type-scale-headline-font-weight)',
-  margin: 0,
-} as const;
 
 /** Detail view for a single account route. */
 export const AccountDetailPage: React.FC = () => {
@@ -50,7 +45,7 @@ export const AccountDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
+      <div className="page-loading">
         <LoadingSpinner label="Loading account" />
       </div>
     );
@@ -63,23 +58,10 @@ export const AccountDetailPage: React.FC = () => {
   if (account === null) {
     return (
       <div>
-        <Link
-          to="/accounts"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-1)',
-            color: 'var(--semantic-text-secondary)',
-            textDecoration: 'none',
-          }}
-          aria-label="Back to accounts"
-        >
+        <Link to="/accounts" className="page-back-link" aria-label="Back to accounts">
           ← Back to Accounts
         </Link>
-        <p
-          role="status"
-          style={{ marginTop: 'var(--spacing-4)', color: 'var(--semantic-text-secondary)' }}
-        >
+        <p role="status" className="page-status-text">
           Account not found.
         </p>
       </div>
@@ -90,31 +72,15 @@ export const AccountDetailPage: React.FC = () => {
     <>
       <Link
         to="/accounts"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 'var(--spacing-1)',
-          color: 'var(--semantic-text-secondary)',
-          textDecoration: 'none',
-          marginBottom: 'var(--spacing-3)',
-        }}
+        className="page-back-link page-back-link--spaced"
         aria-label="Back to accounts"
       >
         ← Back to Accounts
       </Link>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 'var(--spacing-3)',
-          flexWrap: 'wrap',
-          marginBottom: 'var(--spacing-4)',
-        }}
-      >
-        <h2 style={headingStyle}>{account.name}</h2>
-        <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
+      <div className="page-header">
+        <h2 className="page-heading">{account.name}</h2>
+        <div className="page-actions">
           <button
             type="button"
             className="form-button form-button--secondary"
@@ -134,12 +100,8 @@ export const AccountDetailPage: React.FC = () => {
         </div>
       </div>
 
-      <article
-        className="card"
-        aria-label="Account details"
-        style={{ marginBottom: 'var(--spacing-6)' }}
-      >
-        <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-4)' }}>
+      <article className="card page-card--spaced" aria-label="Account details">
+        <dl className="page-detail-grid">
           <div>
             <dt className="card__title">Balance</dt>
             <dd className="card__value">
@@ -168,30 +130,16 @@ export const AccountDetailPage: React.FC = () => {
       </article>
 
       <section aria-label="Recent transactions">
-        <h3
-          style={{
-            fontWeight: 'var(--font-weight-semibold)',
-            marginBottom: 'var(--spacing-2)',
-          }}
-        >
-          Recent Transactions
-        </h3>
+        <h3 className="page-section-heading">Recent Transactions</h3>
         {recentTransactionsLoading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-4) 0' }}>
+          <div className="page-loading">
             <LoadingSpinner label="Loading recent transactions" />
           </div>
         ) : recentTransactionsError ? (
           <ErrorBanner message={recentTransactionsError} onRetry={refreshRecentTransactions} />
         ) : recentTransactions.length === 0 ? (
           <div className="card">
-            <p
-              style={{
-                margin: 0,
-                color: 'var(--semantic-text-secondary)',
-              }}
-            >
-              No recent transactions for this account.
-            </p>
+            <p className="page-empty-text">No recent transactions for this account.</p>
           </div>
         ) : (
           <div className="card">
@@ -210,13 +158,7 @@ export const AccountDetailPage: React.FC = () => {
                   <li key={transaction.id} role="listitem">
                     <Link
                       to={`/transactions/${transaction.id}`}
-                      className="list-item"
-                      style={{
-                        display: 'flex',
-                        width: '100%',
-                        textDecoration: 'none',
-                        color: 'inherit',
-                      }}
+                      className="list-item page-list-link"
                       aria-label={`View details for ${label}`}
                     >
                       <div className="list-item__content">

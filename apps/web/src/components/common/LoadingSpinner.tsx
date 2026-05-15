@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
+import './loading-spinner.css';
+
 export interface LoadingSpinnerProps {
   size?: number;
   label?: string;
@@ -16,7 +18,6 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     role="status"
     aria-label={label}
     aria-live="polite"
-    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
   >
     <svg
       width={size}
@@ -24,7 +25,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
-      style={{ animation: 'spinner-rotate 1s linear infinite' }}
+      className="loading-spinner__svg"
     >
       <circle
         cx="12"
@@ -42,19 +43,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         fill="none"
       />
     </svg>
-    <span
-      style={{
-        position: 'absolute',
-        width: '1px',
-        height: '1px',
-        overflow: 'hidden',
-        clip: 'rect(0,0,0,0)',
-        whiteSpace: 'nowrap',
-        border: 0,
-      }}
-    >
-      {label}
-    </span>
+    <span className="loading-spinner__sr-label">{label}</span>
   </div>
 );
 export default LoadingSpinner;

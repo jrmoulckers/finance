@@ -8,6 +8,7 @@ import { getAllTransactions } from '../db/repositories/transactions';
 import { getAllBudgets } from '../db/repositories/budgets';
 import { getAllGoals } from '../db/repositories/goals';
 import { getAllCategories } from '../db/repositories/categories';
+import './data-export.css';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -209,14 +210,7 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
 
   return (
     <div className={`data-export ${className}`.trim()}>
-      <p
-        id="data-export-description"
-        style={{
-          fontSize: 'var(--type-scale-body-font-size)',
-          color: 'var(--semantic-text-secondary)',
-          marginBottom: 'var(--spacing-4)',
-        }}
-      >
+      <p id="data-export-description" className="data-export__description">
         {isDatabaseUnavailable
           ? 'Database is not available. Please wait for it to initialize.'
           : 'Download your financial data for backup or use in other applications.'}
@@ -226,32 +220,15 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
       <div
         role="group"
         aria-labelledby="data-export-description"
-        style={{
-          display: 'flex',
-          gap: 'var(--spacing-3)',
-          flexWrap: 'wrap',
-        }}
+        className="data-export__button-group"
       >
         <button
           ref={jsonBtnRef}
           type="button"
+          className="data-export__button"
           disabled={isExporting || isDatabaseUnavailable}
           onClick={() => handleExport('json')}
           aria-describedby="data-export-description"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-2)',
-            padding: 'var(--spacing-2) var(--spacing-4)',
-            border: '1px solid var(--semantic-interactive-default)',
-            borderRadius: 'var(--border-radius-md)',
-            background: 'none',
-            color: 'var(--semantic-interactive-default)',
-            cursor: isExporting || isDatabaseUnavailable ? 'not-allowed' : 'pointer',
-            opacity: isExporting || isDatabaseUnavailable ? 0.6 : 1,
-            fontSize: 'var(--type-scale-body-font-size)',
-            fontWeight: 'var(--font-weight-medium)',
-          }}
         >
           {isExporting && lastFormat === 'json' ? (
             <>
@@ -269,23 +246,10 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
         <button
           ref={csvBtnRef}
           type="button"
+          className="data-export__button"
           disabled={isExporting || isDatabaseUnavailable}
           onClick={() => handleExport('csv')}
           aria-describedby="data-export-description"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-2)',
-            padding: 'var(--spacing-2) var(--spacing-4)',
-            border: '1px solid var(--semantic-interactive-default)',
-            borderRadius: 'var(--border-radius-md)',
-            background: 'none',
-            color: 'var(--semantic-interactive-default)',
-            cursor: isExporting || isDatabaseUnavailable ? 'not-allowed' : 'pointer',
-            opacity: isExporting || isDatabaseUnavailable ? 0.6 : 1,
-            fontSize: 'var(--type-scale-body-font-size)',
-            fontWeight: 'var(--font-weight-medium)',
-          }}
         >
           {isExporting && lastFormat === 'csv' ? (
             <>
@@ -303,29 +267,11 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
 
       {/* Progress bar — shown during export */}
       {isExporting && (
-        <div
-          style={{ marginTop: 'var(--spacing-4)' }}
-          role="status"
-          aria-label="Export in progress"
-        >
+        <div className="data-export__progress" role="status" aria-label="Export in progress">
           <div className="progress-bar">
-            <div
-              className="progress-bar__fill"
-              style={{
-                width: '100%',
-                animation: 'export-progress 0.8s ease-in-out infinite alternate',
-              }}
-            />
+            <div className="progress-bar__fill data-export__progress-fill" />
           </div>
-          <p
-            style={{
-              fontSize: 'var(--type-scale-caption-font-size)',
-              color: 'var(--semantic-text-secondary)',
-              marginTop: 'var(--spacing-2)',
-            }}
-          >
-            Preparing your data for download…
-          </p>
+          <p className="data-export__progress-text">Preparing your data for download…</p>
         </div>
       )}
 
@@ -334,19 +280,10 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
         <div
           role="status"
           aria-live="polite"
-          style={{
-            marginTop: 'var(--spacing-4)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-2)',
-            padding: 'var(--spacing-3) var(--spacing-4)',
-            background: 'var(--color-green-50, #f0fdf4)',
-            border: '1px solid var(--semantic-status-positive)',
-            borderRadius: 'var(--border-radius-md)',
-          }}
+          className="data-export__feedback data-export__feedback--success"
         >
           <CheckIcon />
-          <p style={{ margin: 0, color: 'var(--semantic-status-positive)' }}>
+          <p className="data-export__feedback-message--success">
             Export complete — your file has been downloaded.
           </p>
         </div>
@@ -354,59 +291,19 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
 
       {/* Error message — ARIA alert */}
       {status === 'error' && (
-        <div
-          role="alert"
-          style={{
-            marginTop: 'var(--spacing-4)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--spacing-3)',
-            padding: 'var(--spacing-3) var(--spacing-4)',
-            background: 'var(--color-red-50, #fef2f2)',
-            border: '1px solid var(--semantic-status-negative)',
-            borderRadius: 'var(--border-radius-md)',
-          }}
-        >
+        <div role="alert" className="data-export__feedback data-export__feedback--error">
           <ErrorIcon />
-          <p style={{ flex: 1, color: 'var(--semantic-status-negative)', margin: 0 }}>
-            {errorMessage}
-          </p>
+          <p className="data-export__feedback-message--error">{errorMessage}</p>
           <button
             type="button"
             onClick={handleDismissError}
             aria-label="Dismiss error"
-            style={{
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              color: 'var(--semantic-status-negative)',
-              fontSize: '1.25rem',
-              lineHeight: 1,
-              padding: 'var(--spacing-1)',
-            }}
+            className="data-export__feedback-dismiss"
           >
             &times;
           </button>
         </div>
       )}
-
-      {/* Inline keyframe for indeterminate progress animation */}
-      <style>{`
-        @keyframes export-progress {
-          0%   { width: 30%; }
-          100% { width: 100%; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .data-export .progress-bar__fill {
-            animation: none !important;
-            width: 100% !important;
-          }
-        }
-        .data-export button:focus-visible {
-          outline: 2px solid var(--semantic-border-focus);
-          outline-offset: 2px;
-        }
-      `}</style>
     </div>
   );
 };
@@ -422,12 +319,7 @@ const DownloadIcon: React.FC = () => (
     viewBox="0 0 24 24"
     fill="none"
     aria-hidden="true"
-    style={{
-      stroke: 'currentColor',
-      strokeWidth: 2,
-      strokeLinecap: 'round' as const,
-      strokeLinejoin: 'round' as const,
-    }}
+    className="data-export__icon"
   >
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
     <polyline points="7 10 12 15 17 10" />
@@ -442,7 +334,7 @@ const SpinnerIcon: React.FC = () => (
     viewBox="0 0 24 24"
     fill="none"
     aria-hidden="true"
-    style={{ animation: 'spinner-rotate 1s linear infinite' }}
+    className="data-export__spinner-icon"
   >
     <circle
       cx="12"
@@ -470,13 +362,8 @@ const CheckIcon: React.FC = () => (
     viewBox="0 0 24 24"
     fill="none"
     aria-hidden="true"
-    style={{
-      flexShrink: 0,
-      stroke: 'var(--semantic-status-positive)',
-      strokeWidth: 2,
-      strokeLinecap: 'round' as const,
-      strokeLinejoin: 'round' as const,
-    }}
+    className="data-export__icon data-export__icon--shrink"
+    style={{ stroke: 'var(--semantic-status-positive)' }}
   >
     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
     <polyline points="22 4 12 14.01 9 11.01" />
@@ -490,13 +377,8 @@ const ErrorIcon: React.FC = () => (
     viewBox="0 0 24 24"
     fill="none"
     aria-hidden="true"
-    style={{
-      flexShrink: 0,
-      stroke: 'var(--semantic-status-negative)',
-      strokeWidth: 2,
-      strokeLinecap: 'round' as const,
-      strokeLinejoin: 'round' as const,
-    }}
+    className="data-export__icon data-export__icon--shrink"
+    style={{ stroke: 'var(--semantic-status-negative)' }}
   >
     <circle cx="12" cy="12" r="10" />
     <line x1="12" y1="8" x2="12" y2="12" />

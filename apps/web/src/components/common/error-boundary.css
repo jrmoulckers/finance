@@ -1,0 +1,86 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * ErrorBoundary component styles
+ *
+ * Replaces inline style objects with theme-aware CSS classes.
+ * Uses design-token CSS custom properties throughout.
+ * ------------------------------------------------------------------- */
+
+.error-boundary__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.error-boundary__message {
+  margin: 0;
+  color: var(--semantic-text-primary);
+  text-align: center;
+}
+
+.error-boundary__details {
+  margin: 0;
+  padding: var(--spacing-3);
+  border-radius: var(--border-radius-md);
+  background: var(--color-red-50, #fef2f2);
+  color: var(--semantic-status-negative);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  word-break: break-word;
+}
+
+.error-boundary__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.error-boundary__actions-title {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size, 1.125rem);
+  color: var(--semantic-text-primary);
+  text-align: center;
+}
+
+.error-boundary__secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--semantic-border-default, #d1d5db);
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--semantic-text-primary);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+}
+
+.error-boundary__secondary-action:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .error-boundary__details {
+    background: rgba(239, 68, 68, 0.12);
+  }
+}
+
+[data-theme='dark'] .error-boundary__details {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* -------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .error-boundary__secondary-action {
+    border-width: 2px;
+  }
+}

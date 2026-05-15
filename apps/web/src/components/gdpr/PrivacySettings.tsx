@@ -24,6 +24,7 @@ import {
   clearConsentData,
   type ConsentCategory,
 } from '../../lib/consent-storage';
+import './privacy-settings.css';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -104,14 +105,7 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
       <div className="settings-group">
         <h3 className="settings-group__title">Privacy & Data</h3>
 
-        <p
-          style={{
-            fontSize: 'var(--type-scale-caption-font-size)',
-            color: 'var(--semantic-text-secondary)',
-            marginBottom: 'var(--spacing-4)',
-            padding: '0 var(--spacing-2)',
-          }}
-        >
+        <p className="privacy-settings__info">
           Manage how your data is used. Privacy policy version: {CURRENT_POLICY_VERSION}.
           {consent.timestamp && (
             <> Last updated: {new Date(consent.timestamp).toLocaleDateString()}.</>
@@ -122,13 +116,7 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
         <div className="settings-item settings-item--static">
           <div>
             <span className="settings-item__label">{CONSENT_LABELS.essential}</span>
-            <p
-              style={{
-                margin: 'var(--spacing-1) 0 0',
-                fontSize: 'var(--type-scale-caption-font-size)',
-                color: 'var(--semantic-text-secondary)',
-              }}
-            >
+            <p className="privacy-settings__category-description">
               {CONSENT_DESCRIPTIONS.essential}
             </p>
           </div>
@@ -148,13 +136,7 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
               <label htmlFor={`privacy-${category}`} className="settings-item__label">
                 {CONSENT_LABELS[category]}
               </label>
-              <p
-                style={{
-                  margin: 'var(--spacing-1) 0 0',
-                  fontSize: 'var(--type-scale-caption-font-size)',
-                  color: 'var(--semantic-text-secondary)',
-                }}
-              >
+              <p className="privacy-settings__category-description">
                 {CONSENT_DESCRIPTIONS[category]}
               </p>
             </div>
@@ -171,7 +153,7 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
       </div>
 
       {/* Data Portability */}
-      <div className="settings-group" style={{ marginTop: 'var(--spacing-4)' }}>
+      <div className="settings-group privacy-settings__group-spacer">
         <h3 className="settings-group__title">Data Portability</h3>
 
         <button
@@ -202,62 +184,33 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
       </div>
 
       {/* Account Deletion */}
-      <div className="settings-group" style={{ marginTop: 'var(--spacing-4)' }}>
-        <h3 className="settings-group__title" style={{ color: 'var(--semantic-status-negative)' }}>
+      <div className="settings-group privacy-settings__group-spacer">
+        <h3 className="settings-group__title privacy-settings__danger-title">
           Account & Data Deletion
         </h3>
 
-        <p
-          style={{
-            fontSize: 'var(--type-scale-caption-font-size)',
-            color: 'var(--semantic-text-secondary)',
-            marginBottom: 'var(--spacing-3)',
-            padding: '0 var(--spacing-2)',
-          }}
-        >
+        <p className="privacy-settings__danger-info">
           Permanently delete your account and all associated data. This action cannot be undone. We
           recommend exporting your data first.
         </p>
 
         {deleteConfirmation ? (
-          <div
-            role="alert"
-            style={{
-              padding: 'var(--spacing-4)',
-              borderRadius: 'var(--border-radius-md)',
-              border: '2px solid var(--semantic-status-negative)',
-              backgroundColor: 'var(--color-red-50, #fef2f2)',
-            }}
-          >
-            <p
-              style={{
-                fontWeight: 'var(--font-weight-semibold)',
-                color: 'var(--semantic-status-negative)',
-                marginBottom: 'var(--spacing-3)',
-              }}
-            >
+          <div role="alert" className="privacy-settings__delete-confirm">
+            <p className="privacy-settings__delete-confirm-title">
               Are you absolutely sure? This will permanently delete:
             </p>
-            <ul
-              style={{
-                fontSize: 'var(--type-scale-caption-font-size)',
-                color: 'var(--semantic-text-secondary)',
-                marginBottom: 'var(--spacing-4)',
-                paddingLeft: 'var(--spacing-4)',
-              }}
-            >
+            <ul className="privacy-settings__delete-confirm-list">
               <li>All accounts, transactions, budgets, and goals</li>
               <li>Your household membership and shared data</li>
               <li>All consent records and preferences</li>
               <li>Your user account on our servers</li>
             </ul>
-            <div style={{ display: 'flex', gap: 'var(--spacing-3)' }}>
+            <div className="privacy-settings__delete-actions">
               <button
                 type="button"
                 className="settings-item settings-item--button settings-item--destructive"
                 onClick={handleDeleteRequest}
                 aria-label="Confirm account deletion"
-                style={{ flex: 1 }}
               >
                 <span className="settings-item__label">Yes, Delete Everything</span>
               </button>
@@ -266,7 +219,6 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
                 className="settings-item settings-item--button"
                 onClick={() => setDeleteConfirmation(false)}
                 aria-label="Cancel account deletion"
-                style={{ flex: 1 }}
               >
                 <span className="settings-item__label">Cancel</span>
               </button>

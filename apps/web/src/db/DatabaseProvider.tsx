@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { ErrorBanner, LoadingSpinner } from '../components/common';
 import { seedDatabase } from './seed';
 import { initDatabase, type SqliteDb } from './sqlite-wasm';
+import '../styles/pages.css';
 
 /** React context that stores the shared SQLite-WASM database instance. */
 export const DatabaseContext = createContext<SqliteDb | null>(null);
@@ -116,17 +117,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
   if (isLoading) {
     return (
-      <div
-        role="status"
-        aria-live="polite"
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 'var(--spacing-6)',
-        }}
-      >
+      <div role="status" aria-live="polite" className="page-loading--fullscreen">
         <LoadingSpinner label="Initializing database" />
       </div>
     );
@@ -134,7 +125,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
   if (error || !db) {
     return (
-      <div style={{ padding: 'var(--spacing-6)' }}>
+      <div className="page-error-wrapper">
         <ErrorBanner
           message={error ?? 'The database is unavailable.'}
           onRetry={retryInitialization}
