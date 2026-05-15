@@ -14,8 +14,12 @@
  *     window duration, key prefix).
  *   - The identifier is either a user ID (for authenticated endpoints)
  *     or a client IP (for public/pre-auth endpoints).
- *   - On failure (DB down, RPC error), the limiter **fails open** so
- *     legitimate requests are never blocked by infrastructure issues.
+ *   - On failure (DB down, RPC error), the limiter's behaviour depends
+ *     on `failMode` (#1311):
+ *       - `'open'`   (default) — request is allowed through.
+ *       - `'closed'` — an in-memory fallback counter is checked; if
+ *         that also exceeds the limit the request is denied (429).
+ *     Auth-sensitive endpoints default to `failMode: 'closed'`.
  *
  * Security:
  *   NEVER log or return the rate-limit key — it may contain user IDs
@@ -28,6 +32,22 @@ import { getCorsHeaders } from './cors.ts';
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * Failure behaviour when the database-backed rate-limit check is
+ * unavailable (e.g. DB connection lost, RPC error).
+ *
+ * - `'open'`   — Allow the request through (default, backward-compatible).
+ * - `'closed'` — Deny the request with 429. A lightweight in-memory
+ *                fallback counter is consulted first so that legitimate
+ *                traffic is not immediately blocked; only when the
+ *                in-memory limit is also exceeded does the request fail.
+ *
+ * **Guideline:** Use `'closed'` on security-sensitive endpoints
+ * (authentication, account deletion) where an attacker could
+ * intentionally degrade the DB to bypass rate limits (#1311).
+ */
+export type RateLimitFailMode = 'open' | 'closed';
+
 /** Configuration for a single rate-limited endpoint. */
 export interface RateLimitConfig {
   /** Maximum requests allowed in the window. */
@@ -36,6 +56,15 @@ export interface RateLimitConfig {
   windowSeconds: number;
   /** Key prefix for namespacing (typically the function name). */
   keyPrefix: string;
+  /**
+   * Behaviour when the DB rate-limit check fails.
+   *
+   * - `'open'`   — Allow through (default for backward compatibility).
+   * - `'closed'` — Deny with 429 if in-memory fallback also exceeded.
+   *
+   * @default 'open'
+   */
+  failMode?: RateLimitFailMode;
 }
 
 /** Result of a rate limit check. */
@@ -64,17 +93,123 @@ export interface RpcClient {
 }
 
 // ---------------------------------------------------------------------------
+// In-memory fallback counter (#1311)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lightweight, per-key in-memory rate-limit counter that activates when
+ * the database RPC is unavailable.
+ *
+ * Each entry has a short TTL (default 60 s) to prevent unbounded memory
+ * growth. The counter is intentionally conservative — it uses the same
+ * `maxRequests` ceiling so legitimate users are rarely affected, but an
+ * attacker who causes DB failures cannot send unlimited requests.
+ *
+ * This map lives for the lifetime of the Deno Deploy isolate. Because
+ * Edge Functions scale horizontally, the effective per-IP limit during a
+ * DB outage is `maxRequests × number_of_isolates` — still much better
+ * than no limit at all.
+ */
+interface FallbackEntry {
+  count: number;
+  expiresAt: number; // Date.now()-based epoch millis
+}
+
+/** Default TTL for fallback entries: 60 seconds. */
+const FALLBACK_TTL_MS = 60_000;
+
+/**
+ * Global in-memory fallback store, keyed by the full rate-limit key
+ * (`prefix:identifier`). Periodically pruned on access.
+ */
+const fallbackStore = new Map<string, FallbackEntry>();
+
+/**
+ * Maximum number of entries before a forced full prune.
+ *
+ * Edge Functions on Deno Deploy have limited memory; this cap prevents
+ * a flood of unique IPs from exhausting the isolate's heap.
+ */
+const FALLBACK_MAX_ENTRIES = 10_000;
+
+/**
+ * Prune expired entries from the fallback store.
+ *
+ * Called lazily before every fallback check. A full prune is forced
+ * when the store exceeds {@link FALLBACK_MAX_ENTRIES}.
+ */
+function pruneFallbackStore(): void {
+  const now = Date.now();
+  if (fallbackStore.size <= FALLBACK_MAX_ENTRIES) {
+    // Quick-path: only prune when the store is moderately sized by
+    // relying on per-key expiry checks in checkFallback.
+    return;
+  }
+  for (const [key, entry] of fallbackStore) {
+    if (entry.expiresAt <= now) {
+      fallbackStore.delete(key);
+    }
+  }
+}
+
+/**
+ * Check the in-memory fallback counter for a given key.
+ *
+ * Increments the counter and returns whether the request is within
+ * the allowed limit. Expired entries are lazily recycled.
+ *
+ * @param key         The full rate-limit key (`prefix:identifier`).
+ * @param maxRequests Maximum allowed requests within the TTL window.
+ * @returns `true` if the request is allowed, `false` if rate-limited.
+ */
+function checkFallback(key: string, maxRequests: number): boolean {
+  pruneFallbackStore();
+
+  const now = Date.now();
+  const existing = fallbackStore.get(key);
+
+  if (!existing || existing.expiresAt <= now) {
+    // First request or expired window — start fresh.
+    fallbackStore.set(key, { count: 1, expiresAt: now + FALLBACK_TTL_MS });
+    return true;
+  }
+
+  existing.count += 1;
+  return existing.count <= maxRequests;
+}
+
+// ---------------------------------------------------------------------------
 // Pre-defined rate limit configurations per Edge Function
 // ---------------------------------------------------------------------------
 
 export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   'health-check': { maxRequests: 60, windowSeconds: 60, keyPrefix: 'health-check' },
-  'auth-webhook': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'auth-webhook' },
-  'passkey-register': { maxRequests: 10, windowSeconds: 60, keyPrefix: 'passkey-register' },
-  'passkey-authenticate': { maxRequests: 20, windowSeconds: 60, keyPrefix: 'passkey-authenticate' },
+  'auth-webhook': {
+    maxRequests: 30,
+    windowSeconds: 60,
+    keyPrefix: 'auth-webhook',
+    failMode: 'closed',
+  },
+  'passkey-register': {
+    maxRequests: 10,
+    windowSeconds: 60,
+    keyPrefix: 'passkey-register',
+    failMode: 'closed',
+  },
+  'passkey-authenticate': {
+    maxRequests: 20,
+    windowSeconds: 60,
+    keyPrefix: 'passkey-authenticate',
+    failMode: 'closed',
+  },
   'household-invite': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'household-invite' },
   'data-export': { maxRequests: 10, windowSeconds: 3600, keyPrefix: 'data-export' },
-  'account-deletion': { maxRequests: 3, windowSeconds: 3600, keyPrefix: 'account-deletion' },
+  'account-deletion': {
+    maxRequests: 3,
+    windowSeconds: 3600,
+    keyPrefix: 'account-deletion',
+    failMode: 'closed',
+  },
   'sync-health-report': { maxRequests: 60, windowSeconds: 3600, keyPrefix: 'sync-health-report' },
   'process-recurring': { maxRequests: 10, windowSeconds: 60, keyPrefix: 'process-recurring' },
   'manage-webhooks': { maxRequests: 30, windowSeconds: 60, keyPrefix: 'manage-webhooks' },
@@ -106,9 +241,15 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
  * UPSERT (INSERT ... ON CONFLICT DO UPDATE). The counter resets
  * automatically when the window expires.
  *
- * **Fail-open**: if the RPC call fails for any reason (DB down, network
- * error, missing function), the request is **allowed** so legitimate
- * traffic is never blocked by rate-limiting infrastructure issues.
+ * **Failure behaviour** (configurable via `config.failMode`, #1311):
+ *   - `'open'`   (default) — if the RPC call fails, the request is
+ *     **allowed** so legitimate traffic is never blocked.
+ *   - `'closed'` — if the RPC call fails, an **in-memory fallback
+ *     counter** is consulted. The request is denied (429) only when the
+ *     fallback limit is also exceeded, preventing both false positives
+ *     for legitimate users and unlimited bypass for attackers.
+ *
+ * Infrastructure failures are always logged as warnings (#1311).
  *
  * @param supabase  A Supabase client (service_role) or compatible mock.
  * @param identifier  The rate-limit subject — user ID or client IP.
@@ -121,6 +262,7 @@ export async function checkRateLimit(
   config: RateLimitConfig,
 ): Promise<RateLimitResult> {
   const key = `${config.keyPrefix}:${identifier}`;
+  const failMode = config.failMode ?? 'open';
 
   try {
     const { data, error } = await supabase.rpc('check_rate_limit', {
@@ -130,8 +272,18 @@ export async function checkRateLimit(
     });
 
     if (error || !data) {
-      // Fail open: allow request if rate-limit check itself fails
-      return { allowed: true, remaining: 0, resetAt: new Date() };
+      // Log infrastructure failure as a warning (#1311)
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          message: 'Rate-limit DB check failed',
+          keyPrefix: config.keyPrefix,
+          failMode,
+          errorMessage: error?.message ?? 'RPC returned null data',
+        }),
+      );
+
+      return handleDbFailure(key, config, failMode);
     }
 
     const result = data as {
@@ -152,10 +304,53 @@ export async function checkRateLimit(
       resetAt,
       retryAfterSeconds,
     };
-  } catch {
-    // Fail open: infrastructure failure must not block requests
+  } catch (err: unknown) {
+    // Log infrastructure failure as a warning (#1311)
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        message: 'Rate-limit DB check threw exception',
+        keyPrefix: config.keyPrefix,
+        failMode,
+        errorMessage: err instanceof Error ? err.message : 'unknown',
+      }),
+    );
+
+    return handleDbFailure(key, config, failMode);
+  }
+}
+
+/**
+ * Handle a DB-level rate-limit failure according to the configured
+ * fail mode (#1311).
+ *
+ * - `'open'`   — Allow unconditionally (legacy behaviour).
+ * - `'closed'` — Consult the in-memory fallback counter; deny if the
+ *                per-key limit is exceeded.
+ */
+function handleDbFailure(
+  key: string,
+  config: RateLimitConfig,
+  failMode: RateLimitFailMode,
+): RateLimitResult {
+  if (failMode === 'closed') {
+    const fallbackAllowed = checkFallback(key, config.maxRequests);
+    if (!fallbackAllowed) {
+      const resetAt = new Date(Date.now() + FALLBACK_TTL_MS);
+      const retryAfterSeconds = Math.ceil(FALLBACK_TTL_MS / 1000);
+      return {
+        allowed: false,
+        remaining: 0,
+        resetAt,
+        retryAfterSeconds,
+      };
+    }
+    // Fallback allows — report remaining as unknown (0) but let through.
     return { allowed: true, remaining: 0, resetAt: new Date() };
   }
+
+  // Fail open: allow request unconditionally
+  return { allowed: true, remaining: 0, resetAt: new Date() };
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +467,7 @@ export async function checkRateLimitEnhanced(
   blockSeconds: number = 300,
 ): Promise<RateLimitResult & { blocked?: boolean; blockReason?: string }> {
   const key = `${config.keyPrefix}:${identifier}`;
+  const failMode = config.failMode ?? 'open';
   try {
     const { data, error } = await supabase.rpc('check_rate_limit_enhanced', {
       p_key: key,
@@ -280,7 +476,19 @@ export async function checkRateLimitEnhanced(
       p_burst_limit: burstLimit ?? null,
       p_block_seconds: blockSeconds,
     });
-    if (error || !data) return checkRateLimit(supabase, identifier, config);
+    if (error || !data) {
+      // Log and fall back to standard check which handles failMode (#1311)
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          message: 'Enhanced rate-limit DB check failed, falling back',
+          keyPrefix: config.keyPrefix,
+          failMode,
+          errorMessage: error?.message ?? 'RPC returned null data',
+        }),
+      );
+      return checkRateLimit(supabase, identifier, config);
+    }
     const r = data as {
       allowed: boolean;
       remaining: number;
@@ -300,7 +508,16 @@ export async function checkRateLimitEnhanced(
       blocked: r.blocked,
       blockReason: r.block_reason ?? undefined,
     };
-  } catch {
+  } catch (err: unknown) {
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        message: 'Enhanced rate-limit DB check threw exception, falling back',
+        keyPrefix: config.keyPrefix,
+        failMode,
+        errorMessage: err instanceof Error ? err.message : 'unknown',
+      }),
+    );
     return checkRateLimit(supabase, identifier, config);
   }
 }

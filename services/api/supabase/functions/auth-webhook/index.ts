@@ -108,27 +108,23 @@ serve(async (req: Request): Promise<Response> => {
     });
   }
 
-  // Rate limiting (IP-based, #614) — fail open if DB unavailable
-  try {
-    const rateLimitClient = createAdminClient();
-    const clientIp = getClientIp(req) ?? 'unknown';
-    const rateLimitResult = await checkRateLimit(
-      rateLimitClient,
-      clientIp,
-      RATE_LIMITS['auth-webhook'],
-    );
-    if (!rateLimitResult.allowed) {
-      logger.warn('Rate limit exceeded', { httpStatus: 429 });
-      return new Response(JSON.stringify({ error: 'Too many requests' }), {
-        status: 429,
-        headers: {
-          'Content-Type': 'application/json',
-          'Retry-After': String(rateLimitResult.retryAfterSeconds ?? 0),
-        },
-      });
-    }
-  } catch {
-    // Rate limiting failure must not block webhook processing
+  // Rate limiting (IP-based, #614) — fail closed for auth endpoints (#1311)
+  const rateLimitClient = createAdminClient();
+  const clientIp = getClientIp(req) ?? 'unknown';
+  const rateLimitResult = await checkRateLimit(
+    rateLimitClient,
+    clientIp,
+    RATE_LIMITS['auth-webhook'],
+  );
+  if (!rateLimitResult.allowed) {
+    logger.warn('Rate limit exceeded', { httpStatus: 429 });
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': String(rateLimitResult.retryAfterSeconds ?? 0),
+      },
+    });
   }
 
   try {
