@@ -9,6 +9,7 @@ import com.finance.models.util.DateTimeUtil.endOfMonth
 import com.finance.models.util.DateTimeUtil.startOfMonth
 import com.finance.models.util.DateTimeUtil.startOfWeek
 import kotlinx.datetime.*
+import kotlinx.serialization.Serializable
 
 /**
  * Calculates budget utilization, remaining amounts, and period boundaries.
@@ -101,6 +102,7 @@ object BudgetCalculator {
 /**
  * A date range representing a budget period.
  */
+@Serializable
 data class DatePeriod(
     val start: LocalDate,
     val end: LocalDate,

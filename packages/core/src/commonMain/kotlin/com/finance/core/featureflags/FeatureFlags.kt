@@ -15,6 +15,11 @@ object FeatureFlags {
     /** Enable budget rollover (carry unused cents into next period). */
     val BUDGET_ROLLOVER = FeatureFlagKey("budgets.rollover.enabled")
 
+    // ── Recurring transaction flags ──────────────────────────────────
+
+    /** Enable the recurring transaction execution pipeline. */
+    val RECURRING_TRANSACTIONS = FeatureFlagKey("recurring.transactions.enabled")
+
     // ── Export flags ─────────────────────────────────────────────────
 
     /** Enable CSV export format alongside JSON. */

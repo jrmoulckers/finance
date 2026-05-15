@@ -141,6 +141,7 @@ object TestFixtures {
         currency: Currency = Currency.USD,
         period: BudgetPeriod = BudgetPeriod.MONTHLY,
         startDate: LocalDate = LocalDate(2024, 6, 1),
+        isRollover: Boolean = false,
         createdAt: Instant = fixedInstant,
         updatedAt: Instant = fixedInstant,
     ): Budget = Budget(
@@ -153,6 +154,7 @@ object TestFixtures {
         currency = currency,
         period = period,
         startDate = startDate,
+        isRollover = isRollover,
         createdAt = createdAt,
         updatedAt = updatedAt,
     )
