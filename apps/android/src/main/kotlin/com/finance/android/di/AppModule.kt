@@ -104,9 +104,19 @@ val appModule = module {
 
     // ── Settings dependencies ───────────────────────────────────────
 
-    /** [SharedPreferences] used by [SettingsViewModel] for local persistence. */
+    /**
+     * [android.content.SharedPreferences] used by [SettingsViewModel] for local persistence.
+     *
+     * Backed by [androidx.security.crypto.EncryptedSharedPreferences] to protect
+     * PII (user name, email) at rest. On first launch after the migration,
+     * [EncryptedPrefsProvider] transparently copies entries from the legacy
+     * plain-text file and clears it (#1314).
+     */
     single<android.content.SharedPreferences> {
-        androidContext().getSharedPreferences("finance_settings", android.content.Context.MODE_PRIVATE)
+        com.finance.android.security.EncryptedPrefsProvider.get(
+            androidContext(),
+            "finance_settings",
+        )
     }
 
     /** Biometric availability check — delegates to [androidx.biometric.BiometricManager]. */

@@ -6,6 +6,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.finance.android.security.EncryptedPrefsProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -122,11 +123,16 @@ data class OnboardingUiState(
  *
  * Manages navigation between steps, data collection, skip logic, and
  * persistence of the `isOnboardingComplete` flag via
- * [android.content.SharedPreferences].
+ * [EncryptedPrefsProvider]-backed [android.content.SharedPreferences].
+ *
+ * PII (account name, starting balance) is encrypted at rest using
+ * [androidx.security.crypto.EncryptedSharedPreferences]. On first launch
+ * after the migration, legacy plain-text preferences are automatically
+ * migrated and cleared (#1314).
  */
 class OnboardingViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs = EncryptedPrefsProvider.get(application, PREFS_NAME)
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
@@ -292,10 +298,12 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
         /**
          * Check whether the user has already completed (or skipped) onboarding.
          * Called from [OnboardingNavigation] to decide the start destination.
+         *
+         * Uses [EncryptedPrefsProvider] which handles migration from the
+         * legacy plain-text preferences file automatically.
          */
         fun isOnboardingComplete(context: Context): Boolean {
-            return context
-                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return EncryptedPrefsProvider.get(context, PREFS_NAME)
                 .getBoolean(KEY_ONBOARDING_COMPLETE, false)
         }
     }

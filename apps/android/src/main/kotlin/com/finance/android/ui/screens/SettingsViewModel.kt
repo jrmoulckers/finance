@@ -120,6 +120,13 @@ data class SettingsUiState(
 // Preferences keys
 // ---------------------------------------------------------------------------
 
+/**
+ * Preference keys for the settings screen.
+ *
+ * The logical file name is `"finance_settings"` — [EncryptedPrefsProvider]
+ * stores the actual data in `"finance_settings_encrypted"` and handles
+ * migration from the legacy plain-text file (#1314).
+ */
 private object PrefKeys {
     const val FILE_NAME = "finance_settings"
     const val DEFAULT_CURRENCY = "default_currency"
@@ -140,9 +147,10 @@ private object PrefKeys {
 /**
  * Manages the settings screen state and persists user preferences.
  *
- * Uses [SharedPreferences] for local persistence. A future iteration will
- * migrate to Multiplatform Settings (or Jetpack DataStore) once the shared
- * KMP module exposes a settings API.
+ * Uses [EncryptedSharedPreferences][androidx.security.crypto.EncryptedSharedPreferences]
+ * for local persistence, protecting PII (user name, email) at rest.
+ * A future iteration will migrate to Multiplatform Settings (or Jetpack
+ * DataStore) once the shared KMP module exposes a settings API.
  *
  * @param prefs Local preferences store for settings persistence.
  * @param biometricChecker Abstraction to query biometric hardware availability.
