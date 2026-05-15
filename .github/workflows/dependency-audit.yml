@@ -11,7 +11,7 @@
 #   - License compliance: no GPL-3.0/AGPL-3.0 transitive deps
 #   - SARIF upload: results appear in GitHub Security tab
 #
-# Issue: #1010
+# Issue: #1010, #1315
 # =============================================================================
 
 name: Dependency Audit
@@ -75,9 +75,8 @@ jobs:
     name: npm Audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Non-blocking on PRs: audit findings are informational for feature branches.
-    # Blocking on main/schedule pushes ensures vulnerabilities are tracked.
-    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    # Blocking on all triggers: high/critical vulnerabilities must be resolved
+    # before merging to main. This is a supply-chain security gate (#1315).
 
     steps:
       - name: Checkout
@@ -89,8 +88,20 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Verify lockfile integrity
+        run: |
+          echo "### 🔒 Lockfile Integrity" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ ! -f package-lock.json ]; then
+            echo "::error::package-lock.json is missing — lockfile is required for reproducible builds"
+            echo "❌ **package-lock.json is missing.**" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          # npm ci validates the lockfile against package.json and fails on mismatch
+          npm ci
+          echo "✅ Lockfile is present and consistent with package.json." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run npm audit
         id: npm-audit
@@ -98,12 +109,8 @@ jobs:
           echo "### 📦 npm Audit Results" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          # On PRs, only fail on critical severity; on main/schedule, use configured threshold
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            EFFECTIVE_SEVERITY="critical"
-          else
-            EFFECTIVE_SEVERITY="${AUDIT_SEVERITY}"
-          fi
+          # Use high as threshold on all triggers — PRs and main pushes alike (#1315)
+          EFFECTIVE_SEVERITY="${AUDIT_SEVERITY}"
 
           # Run audit and capture output (npm audit exits non-zero on findings)
           set +e
@@ -244,6 +251,38 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-konan-
 
+      - name: Verify Gradle version pinning
+        run: |
+          echo "### 📌 Gradle Version Pinning" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          # Ensure gradle/libs.versions.toml uses exact versions, not ranges
+          # Ranges like 1.+, [1.0,2.0), latest.release are supply-chain risks (#1315)
+          RANGE_ISSUES=0
+          while IFS= read -r line; do
+            # Skip comments, blank lines, section headers, and non-version keys
+            if echo "$line" | grep -qE '^\s*(#|$|\[)'; then continue; fi
+            # Only check lines with version assignments (key = "value")
+            if echo "$line" | grep -qE '=\s*"'; then
+              VERSION=$(echo "$line" | sed -n 's/.*=\s*"\([^"]*\)".*/\1/p')
+              if [ -z "$VERSION" ]; then continue; fi
+              # Flag dynamic/range versions
+              if echo "$VERSION" | grep -qE '(\+|\[|\]|\(|\)|latest|SNAPSHOT|RELEASE)'; then
+                echo "::error::Dynamic version found in libs.versions.toml: $line"
+                echo "❌ Dynamic version: \`$line\`" >> "$GITHUB_STEP_SUMMARY"
+                RANGE_ISSUES=$((RANGE_ISSUES + 1))
+              fi
+            fi
+          done < gradle/libs.versions.toml
+
+          if [ $RANGE_ISSUES -eq 0 ]; then
+            echo "✅ All Gradle versions are pinned (no dynamic ranges)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "❌ **$RANGE_ISSUES dynamic version(s) found.** Pin to exact versions for reproducible builds." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
       - name: Verify Gradle dependency checksums
         run: |
           echo "### 🔒 Gradle Dependency Verification" >> "$GITHUB_STEP_SUMMARY"
@@ -383,8 +422,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # Non-blocking on PRs: audit results are informational for feature branches
-    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    # Blocking on all triggers: supply-chain gate must pass before merge (#1315)
 
     steps:
       - name: Aggregate results
@@ -400,17 +438,9 @@ jobs:
           echo "**Severity threshold:** \`${{ env.AUDIT_SEVERITY || 'high' }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "**Trigger:** \`${{ github.event_name }}\`" >> "$GITHUB_STEP_SUMMARY"
 
-          # On PRs, audit failures are informational (non-blocking)
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            if [ "${{ needs.npm-audit.result }}" = "failure" ]; then
-              echo "::warning::npm audit found vulnerabilities — informational on PRs, run 'npm audit fix' to resolve"
-            fi
-            exit 0
-          fi
-
-          # On main/schedule, fail if npm audit or license check failed
+          # Fail if npm audit or license check failed — blocking on all triggers (#1315)
           if [ "${{ needs.npm-audit.result }}" = "failure" ]; then
-            echo "::error::Dependency audit failed — npm vulnerabilities found"
+            echo "::error::Dependency audit failed — npm vulnerabilities at or above high severity"
             exit 1
           fi
 
