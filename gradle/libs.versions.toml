@@ -17,12 +17,13 @@ compose-multiplatform = "1.7.3"
 netty = "4.1.133.Final"
 
 # Security: forced transitive dependency versions
+commons-lang3 = "3.18.0"
 commons-compress = "1.27.1"
 commons-io = "2.18.0"
 httpcomponents-httpclient = "4.5.14"
 protobuf-java = "4.29.3"
 jdom2 = "2.0.6.1"
-bouncy-castle = "1.80"
+bouncy-castle = "1.84"
 jose4j = "0.9.6"
 
 # Android / Compose
