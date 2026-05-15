@@ -158,4 +158,35 @@ object TestFixtures {
         createdAt = createdAt,
         updatedAt = updatedAt,
     )
+
+    // ── Goal Factory ─────────────────────────────────────────────────
+
+    @Suppress("LongParameterList")
+    fun createGoal(
+        id: SyncId = nextId(),
+        householdId: SyncId = SyncId("household-1"),
+        ownerId: SyncId = SyncId("owner-1"),
+        name: String = "Test Goal",
+        targetAmount: Cents = Cents(100000), // $1,000.00
+        currentAmount: Cents = Cents.ZERO,
+        currency: Currency = Currency.USD,
+        targetDate: LocalDate? = null,
+        status: GoalStatus = GoalStatus.ACTIVE,
+        accountId: SyncId? = null,
+        createdAt: Instant = fixedInstant,
+        updatedAt: Instant = fixedInstant,
+    ): Goal = Goal(
+        id = id,
+        householdId = householdId,
+        ownerId = ownerId,
+        name = name,
+        targetAmount = targetAmount,
+        currentAmount = currentAmount,
+        currency = currency,
+        targetDate = targetDate,
+        status = status,
+        accountId = accountId,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
 }
