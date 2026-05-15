@@ -22,6 +22,8 @@ import kotlin.test.*
  */
 class CentsArithmeticEdgeCaseTest {
 
+    private fun maxCents(a: Cents, b: Cents): Cents = if (a > b) a else b
+
     // ═══════════════════════════════════════════════════════════════════
     // Overflow protection — addition
     // ═══════════════════════════════════════════════════════════════════
@@ -532,7 +534,7 @@ class CentsArithmeticEdgeCaseTest {
         val baseBudget = Cents(50000)  // $500.00
         val spent = Cents(35000)       // $350.00
         val unused = baseBudget - spent // $150.00
-        val nextPeriodBudget = baseBudget + maxOf(unused, Cents.ZERO)
+        val nextPeriodBudget = baseBudget + maxCents(unused, Cents.ZERO)
         assertEquals(Cents(65000), nextPeriodBudget) // $650.00
     }
 
@@ -541,7 +543,7 @@ class CentsArithmeticEdgeCaseTest {
         val baseBudget = Cents(50000)  // $500.00
         val spent = Cents(60000)       // $600.00 (over budget)
         val unused = baseBudget - spent // -$100.00
-        val nextPeriodBudget = baseBudget + maxOf(unused, Cents.ZERO)
+        val nextPeriodBudget = baseBudget + maxCents(unused, Cents.ZERO)
         assertEquals(Cents(50000), nextPeriodBudget) // Still $500.00, no negative carry
     }
 
@@ -550,7 +552,7 @@ class CentsArithmeticEdgeCaseTest {
         val baseBudget = Cents(50000)
         val spent = Cents(50000) // Exactly at budget
         val unused = baseBudget - spent
-        val nextPeriodBudget = baseBudget + maxOf(unused, Cents.ZERO)
+        val nextPeriodBudget = baseBudget + maxCents(unused, Cents.ZERO)
         assertEquals(Cents(50000), nextPeriodBudget)
     }
 
@@ -559,7 +561,7 @@ class CentsArithmeticEdgeCaseTest {
         val baseBudget = Cents(50000)
         val spent = Cents.ZERO
         val unused = baseBudget - spent
-        val nextPeriodBudget = baseBudget + maxOf(unused, Cents.ZERO)
+        val nextPeriodBudget = baseBudget + maxCents(unused, Cents.ZERO)
         assertEquals(Cents(100000), nextPeriodBudget) // $1000 = double
     }
 
@@ -568,7 +570,7 @@ class CentsArithmeticEdgeCaseTest {
         val baseBudget = Cents(50000)
         val spent = Cents(49999)
         val unused = baseBudget - spent
-        val nextPeriodBudget = baseBudget + maxOf(unused, Cents.ZERO)
+        val nextPeriodBudget = baseBudget + maxCents(unused, Cents.ZERO)
         assertEquals(Cents(50001), nextPeriodBudget)
     }
 
@@ -579,11 +581,11 @@ class CentsArithmeticEdgeCaseTest {
 
         // Period 1: spend $400
         val unused1 = accumulated - Cents(40000) // $100 unused
-        accumulated = baseBudget + maxOf(unused1, Cents.ZERO) // $600
+        accumulated = baseBudget + maxCents(unused1, Cents.ZERO) // $600
 
         // Period 2: spend $300
         val unused2 = accumulated - Cents(30000) // $300 unused
-        accumulated = baseBudget + maxOf(unused2, Cents.ZERO) // $800
+        accumulated = baseBudget + maxCents(unused2, Cents.ZERO) // $800
 
         assertEquals(Cents(80000), accumulated)
     }
