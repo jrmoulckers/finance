@@ -1,0 +1,156 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * Toast notification styles
+ *
+ * Uses design-token CSS custom properties throughout.
+ * Animation classes reference @keyframes in styles/animations.css.
+ * ------------------------------------------------------------------- */
+
+/* --- Container: fixed stack in bottom-right corner ------------------- */
+
+.toast-container {
+  position: fixed;
+  bottom: var(--spacing-4, 16px);
+  right: var(--spacing-4, 16px);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--spacing-2, 8px);
+  max-width: 400px;
+  width: 100%;
+  pointer-events: none;
+}
+
+/* --- Individual toast ------------------------------------------------ */
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3, 12px);
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  border-radius: var(--border-radius-md, 8px);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.15));
+  pointer-events: auto;
+  animation: slideInRight var(--duration-normal, 250ms) var(--easing-decelerate, ease-out) both;
+}
+
+.toast__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.toast__message {
+  flex: 1;
+  margin: 0;
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  line-height: var(--type-scale-body-line-height, 1.5);
+  color: var(--semantic-text-primary);
+}
+
+.toast__dismiss {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--border-radius-sm, 4px);
+  background: none;
+  color: var(--semantic-text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-lg, 1.125rem);
+  line-height: 1;
+}
+
+.toast__dismiss:hover {
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+}
+
+.toast__dismiss:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* --- Type-specific colours ------------------------------------------- */
+
+.toast--success {
+  border-left: 4px solid var(--semantic-status-positive);
+}
+
+.toast--success .toast__icon {
+  color: var(--semantic-status-positive);
+}
+
+.toast--error {
+  border-left: 4px solid var(--semantic-status-negative);
+}
+
+.toast--error .toast__icon {
+  color: var(--semantic-status-negative);
+}
+
+.toast--warning {
+  border-left: 4px solid var(--semantic-status-warning);
+}
+
+.toast--warning .toast__icon {
+  color: var(--semantic-status-warning);
+}
+
+.toast--info {
+  border-left: 4px solid var(--semantic-status-info);
+}
+
+.toast--info .toast__icon {
+  color: var(--semantic-status-info);
+}
+
+/* --- Reduced motion -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+/* --- Responsive: mobile - full width --------------------------------- */
+
+@media (max-width: 480px) {
+  .toast-container {
+    left: var(--spacing-2, 8px);
+    right: var(--spacing-2, 8px);
+    bottom: var(--spacing-2, 8px);
+    max-width: none;
+  }
+}
+
+/* --- High contrast --------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .toast {
+    border-width: 2px;
+  }
+
+  .toast--success {
+    border-left-width: 4px;
+  }
+
+  .toast--error {
+    border-left-width: 4px;
+  }
+
+  .toast--warning {
+    border-left-width: 4px;
+  }
+
+  .toast--info {
+    border-left-width: 4px;
+  }
+}

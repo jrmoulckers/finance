@@ -1,0 +1,87 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* -------------------------------------------------------------------
+ * PageLoader component styles
+ *
+ * Wraps loading, error, empty, and loaded states with consistent
+ * layout. Uses design-token CSS custom properties throughout.
+ * ------------------------------------------------------------------- */
+
+.page-loader {
+  min-height: 200px;
+}
+
+.page-loader__loading {
+  padding: var(--spacing-4, 16px);
+}
+
+.page-loader__error {
+  padding: var(--spacing-4, 16px);
+}
+
+.page-loader__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+/* --- Default skeleton fallback --------------------------------------- */
+
+.page-loader__default-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 12px);
+}
+
+.page-loader__skeleton-line {
+  height: 16px;
+  border-radius: var(--border-radius-sm, 4px);
+  background: linear-gradient(
+    90deg,
+    var(--semantic-background-secondary) 25%,
+    var(--semantic-background-elevated) 50%,
+    var(--semantic-background-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer var(--skeleton-animation-duration, var(--animation-loading-duration, 1.5s))
+    var(--skeleton-animation-easing, ease-in-out) infinite;
+}
+
+.page-loader__skeleton-line--wide {
+  width: 80%;
+}
+
+.page-loader__skeleton-line--medium {
+  width: 55%;
+}
+
+.page-loader__skeleton-line--narrow {
+  width: 30%;
+}
+
+.page-loader__skeleton-block {
+  height: 120px;
+  width: 100%;
+  border-radius: var(--border-radius-md, 8px);
+  background: linear-gradient(
+    90deg,
+    var(--semantic-background-secondary) 25%,
+    var(--semantic-background-elevated) 50%,
+    var(--semantic-background-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer var(--skeleton-animation-duration, var(--animation-loading-duration, 1.5s))
+    var(--skeleton-animation-easing, ease-in-out) infinite;
+}
+
+/* --- Reduced motion -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .page-loader__skeleton-line,
+  .page-loader__skeleton-block {
+    animation: none;
+    background: var(--semantic-background-secondary);
+    background-size: auto;
+  }
+}
