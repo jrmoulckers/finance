@@ -45,6 +45,29 @@
   padding: var(--spacing-6);
 }
 
+.page-error-wrapper--centered {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Database error diagnostics */
+.db-error-details {
+  margin-top: var(--spacing-3);
+  padding: var(--spacing-3);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #666);
+}
+
+.db-error-details__summary {
+  cursor: pointer;
+}
+
+.db-error-details__code {
+  margin-top: var(--spacing-2);
+  font-family: monospace;
+  word-break: break-word;
+}
+
 /* Net worth / summary text */
 .page-summary {
   margin-bottom: var(--spacing-6);

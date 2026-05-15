@@ -3,7 +3,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from 'storybook/test';
 import type { Goal } from '../../kmp/bridge';
-import { DatabaseContext } from '../../db/DatabaseProvider';
+import { DatabaseContext, type DatabaseContextValue } from '../../db/DatabaseProvider';
 import type { SqliteDb } from '../../db/sqlite-wasm';
 import { GoalForm } from './GoalForm';
 
@@ -18,6 +18,17 @@ const mockDb: SqliteDb = {
   selectAll: fn().mockReturnValue([]),
   selectOne: fn().mockReturnValue({ id: 'hh-1' }),
   close: fn().mockResolvedValue(undefined),
+};
+
+const mockDbContext: DatabaseContextValue = {
+  db: mockDb,
+  diagnostics: {
+    backend: 'indexeddb',
+    opfsAvailable: false,
+    didFallback: false,
+    quotaBytes: null,
+    usageBytes: null,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -78,7 +89,7 @@ const meta: Meta<typeof GoalForm> = {
   },
   decorators: [
     (Story) => (
-      <DatabaseContext.Provider value={mockDb}>
+      <DatabaseContext.Provider value={mockDbContext}>
         <div style={{ width: '100%', minWidth: 360, maxWidth: 480 }}>
           <Story />
         </div>

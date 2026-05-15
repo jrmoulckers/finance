@@ -3,19 +3,57 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { ErrorBanner, LoadingSpinner } from '../components/common';
 import { seedDatabase } from './seed';
-import { initDatabase, type SqliteDb } from './sqlite-wasm';
+import {
+  initDatabaseWithDiagnostics,
+  getUserFriendlyStorageMessage,
+  StorageError,
+  type SqliteDb,
+  type StorageDiagnostics,
+  type StorageErrorCode,
+} from './sqlite-wasm';
 import '../styles/pages.css';
 
+/** Context value providing the database instance and diagnostics. */
+export interface DatabaseContextValue {
+  /** The initialised SQLite-WASM database instance. */
+  db: SqliteDb;
+  /** Storage diagnostics from initialisation. */
+  diagnostics: StorageDiagnostics;
+}
+
 /** React context that stores the shared SQLite-WASM database instance. */
-export const DatabaseContext = createContext<SqliteDb | null>(null);
+export const DatabaseContext = createContext<DatabaseContextValue | null>(null);
 DatabaseContext.displayName = 'DatabaseContext';
 
 interface DatabaseProviderProps {
   children: ReactNode;
 }
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Failed to initialize the local database.';
+/** Structured error state for the provider UI. */
+interface InitError {
+  /** Machine-readable error code. */
+  code: StorageErrorCode;
+  /** User-friendly error message. */
+  message: string;
+  /** Technical detail for diagnostics (not shown to users by default). */
+  detail: string | null;
+}
+
+function toInitError(error: unknown): InitError {
+  if (error instanceof StorageError) {
+    return {
+      code: error.code,
+      message: error.message,
+      detail: error.cause instanceof Error ? error.cause.message : null,
+    };
+  }
+  const message =
+    error instanceof Error ? error.message : 'Failed to initialize the local database.';
+  return {
+    code: 'UNKNOWN',
+    message,
+    detail: null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -44,6 +82,14 @@ const E2E_STUB_DB: SqliteDb = {
   close: async () => {},
 };
 
+const E2E_STUB_DIAGNOSTICS: StorageDiagnostics = {
+  backend: 'indexeddb',
+  opfsAvailable: false,
+  didFallback: false,
+  quotaBytes: null,
+  usageBytes: null,
+};
+
 /** Initialize SQLite-WASM and provide the database instance to descendants. */
 export function DatabaseProvider({ children }: DatabaseProviderProps) {
   // Skip real DB init in E2E tests — WASM binaries aren't in the static
@@ -52,9 +98,11 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     () => typeof window !== 'undefined' && window.__PLAYWRIGHT_E2E__ === true,
   );
 
-  const [db, setDb] = useState<SqliteDb | null>(isE2E ? E2E_STUB_DB : null);
+  const [ctxValue, setCtxValue] = useState<DatabaseContextValue | null>(
+    isE2E ? { db: E2E_STUB_DB, diagnostics: E2E_STUB_DIAGNOSTICS } : null,
+  );
   const [isLoading, setIsLoading] = useState(!isE2E);
-  const [error, setError] = useState<string | null>(null);
+  const [initError, setInitError] = useState<InitError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
   const retryInitialization = useCallback(() => {
@@ -70,11 +118,13 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
     const initializeDatabase = async () => {
       setIsLoading(true);
-      setError(null);
-      setDb(null);
+      setInitError(null);
+      setCtxValue(null);
 
       try {
-        initializedDb = await initDatabase();
+        const result = await initDatabaseWithDiagnostics();
+        initializedDb = result.db;
+
         await seedDatabase(initializedDb);
 
         if (isDisposed) {
@@ -83,7 +133,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
           return;
         }
 
-        setDb(initializedDb);
+        setCtxValue({ db: initializedDb, diagnostics: result.diagnostics });
       } catch (initializationError) {
         if (initializedDb) {
           try {
@@ -95,7 +145,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
         }
 
         if (!isDisposed) {
-          setError(getErrorMessage(initializationError));
+          setInitError(toInitError(initializationError));
         }
       } finally {
         if (!isDisposed) {
@@ -123,18 +173,25 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     );
   }
 
-  if (error || !db) {
+  if (initError || !ctxValue) {
+    const errorCode = initError?.code ?? 'UNKNOWN';
+    const errorMessage = initError?.message ?? getUserFriendlyStorageMessage('UNKNOWN');
+
     return (
-      <div className="page-error-wrapper">
-        <ErrorBanner
-          message={error ?? 'The database is unavailable.'}
-          onRetry={retryInitialization}
-        />
+      <div className="page-error-wrapper page-error-wrapper--centered" role="alert">
+        <ErrorBanner message={errorMessage} onRetry={retryInitialization} />
+        {initError?.detail && (
+          <details className="db-error-details">
+            <summary className="db-error-details__summary">Technical details</summary>
+            <p className="db-error-details__code">Error code: {errorCode}</p>
+            <p className="db-error-details__code">{initError.detail}</p>
+          </details>
+        )}
       </div>
     );
   }
 
-  return <DatabaseContext.Provider value={db}>{children}</DatabaseContext.Provider>;
+  return <DatabaseContext.Provider value={ctxValue}>{children}</DatabaseContext.Provider>;
 }
 
 /** Access the shared SQLite-WASM database instance from React context. */
@@ -144,5 +201,11 @@ export function useDatabase(): SqliteDb {
     throw new Error('useDatabase must be used within a DatabaseProvider');
   }
 
-  return context;
+  return context.db;
+}
+
+/** Access storage diagnostics from the initialization. */
+export function useStorageDiagnostics(): StorageDiagnostics | null {
+  const context = useContext(DatabaseContext);
+  return context?.diagnostics ?? null;
 }

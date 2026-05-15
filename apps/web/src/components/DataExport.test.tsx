@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DataExport } from './DataExport';
 import type { SqliteDb } from '../db/sqlite-wasm';
-import { DatabaseContext } from '../db/DatabaseProvider';
+import { DatabaseContext, type DatabaseContextValue } from '../db/DatabaseProvider';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -120,8 +120,20 @@ afterEach(() => {
 describe('DataExport', () => {
   // Helper to create test wrapper with database context
   const createTestWrapper = (db: SqliteDb | null) => {
+    const contextValue: DatabaseContextValue | null = db
+      ? {
+          db,
+          diagnostics: {
+            backend: 'indexeddb',
+            opfsAvailable: false,
+            didFallback: false,
+            quotaBytes: null,
+            usageBytes: null,
+          },
+        }
+      : null;
     const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-      <DatabaseContext.Provider value={db}>{children}</DatabaseContext.Provider>
+      <DatabaseContext.Provider value={contextValue}>{children}</DatabaseContext.Provider>
     );
     return TestWrapper;
   };

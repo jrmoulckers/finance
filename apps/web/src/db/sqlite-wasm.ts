@@ -22,7 +22,70 @@
 /** Supported SQLite VFS backends. */
 export type StorageBackend = 'opfs' | 'indexeddb';
 
-/** A single row returned by a query ΓÇö column-name ΓåÆ value. */
+/** Error codes for storage initialization failures. */
+export type StorageErrorCode =
+  | 'WASM_LOAD_FAILED'
+  | 'OPFS_UNAVAILABLE'
+  | 'OPFS_INIT_FAILED'
+  | 'INDEXEDDB_FAILED'
+  | 'QUOTA_EXCEEDED'
+  | 'MIGRATION_FAILED'
+  | 'UNKNOWN';
+
+/**
+ * Structured error for storage initialization failures.
+ *
+ * Provides an error code for programmatic handling and a user-friendly
+ * message suitable for display in the UI.
+ */
+export class StorageError extends Error {
+  /** Machine-readable error code for programmatic handling. */
+  readonly code: StorageErrorCode;
+  /** The storage backend that was being used when the error occurred. */
+  readonly backend: StorageBackend | null;
+  /** Whether a fallback to another backend was attempted. */
+  readonly fallbackAttempted: boolean;
+
+  constructor(
+    code: StorageErrorCode,
+    message: string,
+    options?: {
+      cause?: unknown;
+      backend?: StorageBackend | null;
+      fallbackAttempted?: boolean;
+    },
+  ) {
+    super(message, { cause: options?.cause });
+    this.name = 'StorageError';
+    this.code = code;
+    this.backend = options?.backend ?? null;
+    this.fallbackAttempted = options?.fallbackAttempted ?? false;
+  }
+}
+
+/** Diagnostic information about the storage initialization. */
+export interface StorageDiagnostics {
+  /** Which backend is active. */
+  backend: StorageBackend;
+  /** Whether OPFS was available during detection. */
+  opfsAvailable: boolean;
+  /** Whether a fallback from OPFS to IndexedDB occurred. */
+  didFallback: boolean;
+  /** Estimated storage quota in bytes, if available. */
+  quotaBytes: number | null;
+  /** Estimated storage usage in bytes, if available. */
+  usageBytes: number | null;
+}
+
+/** Result of a successful database initialization. */
+export interface StorageInitResult {
+  /** The initialized database instance. */
+  db: SqliteDb;
+  /** Diagnostic information about the initialization. */
+  diagnostics: StorageDiagnostics;
+}
+
+/** A single row returned by a query — column-name → value. */
 export type Row = Record<string, unknown>;
 
 /** Typed query-result wrapper. */
@@ -313,9 +376,93 @@ export async function detectBackend(): Promise<StorageBackend> {
       return 'opfs';
     }
   } catch {
-    // OPFS not usable ΓÇö fall through
+    // OPFS not usable — fall through
   }
   return 'indexeddb';
+}
+
+/**
+ * Query the browser's storage quota estimate.
+ *
+ * Returns `{ quota, usage }` in bytes, or `null` values when the
+ * StorageManager API is unavailable.
+ */
+export async function getStorageEstimate(): Promise<{
+  quotaBytes: number | null;
+  usageBytes: number | null;
+}> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.storage?.estimate) {
+      const estimate = await navigator.storage.estimate();
+      return {
+        quotaBytes: estimate.quota ?? null,
+        usageBytes: estimate.usage ?? null,
+      };
+    }
+  } catch {
+    // StorageManager not available
+  }
+  return { quotaBytes: null, usageBytes: null };
+}
+
+/**
+ * Returns a user-friendly message for a given storage error code.
+ */
+export function getUserFriendlyStorageMessage(code: StorageErrorCode): string {
+  switch (code) {
+    case 'WASM_LOAD_FAILED':
+      return 'Failed to load the database engine. Please check your network connection and reload the page.';
+    case 'OPFS_UNAVAILABLE':
+      return 'Your browser does not support the required storage features. The app will use a fallback storage method.';
+    case 'OPFS_INIT_FAILED':
+      return 'Failed to initialize persistent storage. Falling back to alternative storage.';
+    case 'INDEXEDDB_FAILED':
+      return 'Browser storage is unavailable. Please check that your browser allows site data and that storage is not full.';
+    case 'QUOTA_EXCEEDED':
+      return 'Storage space is full. Please free up space by clearing unused site data in your browser settings.';
+    case 'MIGRATION_FAILED':
+      return 'Failed to update the database schema. Please try clearing site data and reloading.';
+    case 'UNKNOWN':
+    default:
+      return 'An unexpected error occurred while setting up local storage. Please reload the page.';
+  }
+}
+
+/** Classify an unknown error into a StorageErrorCode. */
+function classifyError(err: unknown): StorageErrorCode {
+  if (err instanceof StorageError) {
+    return err.code;
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  const name = err instanceof Error ? err.name : '';
+
+  if (name === 'QuotaExceededError' || message.includes('quota')) {
+    return 'QUOTA_EXCEEDED';
+  }
+  if (
+    message.includes('OPFS') ||
+    message.includes('createSyncAccessHandle') ||
+    message.includes('OriginPrivateFileSystem')
+  ) {
+    return 'OPFS_INIT_FAILED';
+  }
+  if (
+    message.includes('IndexedDB') ||
+    message.includes('indexedDB') ||
+    name === 'InvalidStateError'
+  ) {
+    return 'INDEXEDDB_FAILED';
+  }
+  if (
+    message.includes('WebAssembly') ||
+    message.includes('wasm') ||
+    message.includes('WASM') ||
+    message.includes('CompileError') ||
+    message.includes('instantiate')
+  ) {
+    return 'WASM_LOAD_FAILED';
+  }
+  return 'UNKNOWN';
 }
 
 // ---------------------------------------------------------------------------
@@ -329,59 +476,202 @@ export async function detectBackend(): Promise<StorageBackend> {
  * 2. Loads the wa-sqlite or sql.js WASM module.
  * 3. Opens or creates the database file.
  * 4. Runs any pending migrations.
- * 5. Returns a thin wrapper implementing {@link SqliteDb}.
+ * 5. Returns the database wrapper and diagnostic information.
+ *
+ * If OPFS initialization fails at runtime (even after detection succeeds),
+ * the function automatically falls back to IndexedDB before giving up.
+ *
+ * Throws {@link StorageError} with a machine-readable `code` on failure.
  *
  * Usage:
  * ```ts
- * const db = await initDatabase();
- * const accounts = query<Account>(db, 'SELECT * FROM account WHERE deleted_at IS NULL');
+ * const { db, diagnostics } = await initDatabaseWithDiagnostics();
  * ```
  */
-export async function initDatabase(): Promise<SqliteDb> {
-  const backend = await detectBackend();
+export async function initDatabaseWithDiagnostics(): Promise<StorageInitResult> {
+  const detectedBackend = await detectBackend();
+  const opfsAvailable = detectedBackend === 'opfs';
+  let didFallback = false;
 
-  // Dynamic import ΓÇö keeps wa-sqlite out of the main bundle
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let sqlite3: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let db: any;
+  let activeBackend: StorageBackend = detectedBackend;
 
-  if (backend === 'opfs') {
+  // --- Phase 1: Try the detected backend ---
+  if (detectedBackend === 'opfs') {
+    try {
+      ({ sqlite3, db } = await initOpfsBackend());
+    } catch {
+      // OPFS detected but failed at runtime — try IndexedDB fallback
+      didFallback = true;
+      activeBackend = 'indexeddb';
+      try {
+        ({ sqlite3, db } = await initIndexedDbBackend());
+      } catch (idbError) {
+        const code = classifyError(idbError);
+        throw new StorageError(code, getUserFriendlyStorageMessage(code), {
+          cause: idbError,
+          backend: 'indexeddb',
+          fallbackAttempted: true,
+        });
+      }
+    }
+  } else {
+    try {
+      ({ sqlite3, db } = await initIndexedDbBackend());
+    } catch (idbError) {
+      const code = classifyError(idbError);
+      throw new StorageError(code, getUserFriendlyStorageMessage(code), {
+        cause: idbError,
+        backend: 'indexeddb',
+        fallbackAttempted: false,
+      });
+    }
+  }
+
+  // --- Phase 2: Configure pragmas ---
+  try {
+    execRaw(sqlite3, db, 'PRAGMA journal_mode = WAL;', activeBackend);
+    execRaw(sqlite3, db, 'PRAGMA foreign_keys = ON;', activeBackend);
+  } catch (pragmaError) {
+    throw new StorageError('UNKNOWN', 'Failed to configure the database engine.', {
+      cause: pragmaError,
+      backend: activeBackend,
+      fallbackAttempted: didFallback,
+    });
+  }
+
+  // --- Phase 3: Run migrations ---
+  try {
+    await runMigrations(sqlite3, db, activeBackend);
+  } catch (migrationError) {
+    const code = migrationError instanceof StorageError ? migrationError.code : 'MIGRATION_FAILED';
+    throw new StorageError(code, getUserFriendlyStorageMessage('MIGRATION_FAILED'), {
+      cause: migrationError,
+      backend: activeBackend,
+      fallbackAttempted: didFallback,
+    });
+  }
+
+  // --- Phase 4: Persist IndexedDB if needed ---
+  if (activeBackend === 'indexeddb') {
+    try {
+      await persistToIndexedDB(DB_NAME, exportDatabase(sqlite3, db, activeBackend));
+    } catch (persistError) {
+      const code = classifyError(persistError);
+      throw new StorageError(code, getUserFriendlyStorageMessage(code), {
+        cause: persistError,
+        backend: 'indexeddb',
+        fallbackAttempted: didFallback,
+      });
+    }
+  }
+
+  // --- Phase 5: Gather diagnostics ---
+  const storageEstimate = await getStorageEstimate();
+
+  const wrapper = createDbWrapper(sqlite3, db, activeBackend);
+  return {
+    db: wrapper,
+    diagnostics: {
+      backend: activeBackend,
+      opfsAvailable,
+      didFallback,
+      quotaBytes: storageEstimate.quotaBytes,
+      usageBytes: storageEstimate.usageBytes,
+    },
+  };
+}
+
+/**
+ * Initialises the Finance SQLite database (legacy convenience wrapper).
+ *
+ * Returns only the {@link SqliteDb} instance.  Use
+ * {@link initDatabaseWithDiagnostics} when you need storage diagnostics.
+ */
+export async function initDatabase(): Promise<SqliteDb> {
+  const { db } = await initDatabaseWithDiagnostics();
+  return db;
+}
+
+// ---------------------------------------------------------------------------
+// Backend-specific initializers
+// ---------------------------------------------------------------------------
+
+/** Initialise wa-sqlite with OPFS VFS. */
+async function initOpfsBackend(): Promise<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sqlite3: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any;
+}> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let wasmModule: any;
+  try {
     const { default: SQLiteESMFactory } = await import(
       /* webpackChunkName: "wa-sqlite" */ 'wa-sqlite'
     );
+    wasmModule = await SQLiteESMFactory();
+  } catch (err) {
+    throw new StorageError('WASM_LOAD_FAILED', getUserFriendlyStorageMessage('WASM_LOAD_FAILED'), {
+      cause: err,
+      backend: 'opfs',
+    });
+  }
+
+  try {
     const { OriginPrivateFileSystemVFS } = await import(
       /* webpackChunkName: "wa-sqlite-vfs" */ 'wa-sqlite/src/examples/OriginPrivateFileSystemVFS.js'
     );
+    const vfs = await OriginPrivateFileSystemVFS.create(DB_NAME, wasmModule);
+    wasmModule.vfs_register(vfs, /* makeDefault */ true);
+    const dbHandle = await wasmModule.open_v2(DB_NAME);
+    return { sqlite3: wasmModule, db: dbHandle };
+  } catch (err) {
+    const code = classifyError(err);
+    throw new StorageError(
+      code === 'UNKNOWN' ? 'OPFS_INIT_FAILED' : code,
+      getUserFriendlyStorageMessage('OPFS_INIT_FAILED'),
+      { cause: err, backend: 'opfs' },
+    );
+  }
+}
 
-    const module = await SQLiteESMFactory();
-    sqlite3 = module;
-
-    const vfs = await OriginPrivateFileSystemVFS.create(DB_NAME, module);
-    module.vfs_register(vfs, /* makeDefault */ true);
-    db = await module.open_v2(DB_NAME);
-  } else {
+/** Initialise sql.js with IndexedDB persistence. */
+async function initIndexedDbBackend(): Promise<{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sqlite3: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any;
+}> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let SQL: any;
+  try {
     const initSqlJs = (await import(/* webpackChunkName: "sql-js" */ 'sql.js')).default;
-
-    const SQL = await initSqlJs({
+    SQL = await initSqlJs({
       locateFile: (file: string) => `/assets/sql-wasm/${file}`,
     });
+  } catch (err) {
+    throw new StorageError('WASM_LOAD_FAILED', getUserFriendlyStorageMessage('WASM_LOAD_FAILED'), {
+      cause: err,
+      backend: 'indexeddb',
+    });
+  }
 
+  try {
     const savedBuffer = await loadFromIndexedDB(DB_NAME);
-    db = savedBuffer ? new SQL.Database(new Uint8Array(savedBuffer)) : new SQL.Database();
-    sqlite3 = SQL;
+    const db = savedBuffer ? new SQL.Database(new Uint8Array(savedBuffer)) : new SQL.Database();
+    return { sqlite3: SQL, db };
+  } catch (err) {
+    const code = classifyError(err);
+    throw new StorageError(
+      code === 'UNKNOWN' ? 'INDEXEDDB_FAILED' : code,
+      getUserFriendlyStorageMessage(code === 'UNKNOWN' ? 'INDEXEDDB_FAILED' : code),
+      { cause: err, backend: 'indexeddb' },
+    );
   }
-
-  execRaw(sqlite3, db, 'PRAGMA journal_mode = WAL;', backend);
-  execRaw(sqlite3, db, 'PRAGMA foreign_keys = ON;', backend);
-
-  await runMigrations(sqlite3, db, backend);
-
-  if (backend === 'indexeddb') {
-    await persistToIndexedDB(DB_NAME, exportDatabase(sqlite3, db, backend));
-  }
-
-  return createDbWrapper(sqlite3, db, backend);
 }
 
 // ---------------------------------------------------------------------------
