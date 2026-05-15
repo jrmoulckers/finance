@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. No tests. Depends on
+// notification_log table and SMTP configuration. Exclude from alpha
+// deployment; revisit when notification system is built end-to-end. (#1390)
+
 /**
  * Send Notification Edge Function (#685)
  *

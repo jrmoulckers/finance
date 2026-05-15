@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. No tests. Depends on
+// family_plan_subscriptions table and payment provider integration that do
+// not exist yet. Exclude from alpha deployment. (#1390)
+
 /**
  * Family Plan Subscription Management Edge Function (#sprint-6)
  *

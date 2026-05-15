@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. Has tests but depends
+// on Plaid/MX provider integration (PLAID_CLIENT_ID, PLAID_SECRET, etc.)
+// that is not configured. Post-alpha feature. Exclude from alpha
+// deployment. (#1390)
+
 /**
  * Bank Connection API Edge Function (#265)
  *

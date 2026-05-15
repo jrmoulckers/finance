@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. No tests. Analytics
+// queries depend on RPC functions that may not exist yet. Exclude from
+// alpha deployment; revisit when household analytics UI is built. (#1390)
+
 /**
  * Household Analytics Edge Function (#1052)
  *

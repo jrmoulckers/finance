@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. No tests. Depends on
+// webhook_endpoints table. Webhook system is not wired end-to-end. Exclude
+// from alpha deployment. (#1390)
+
 /**
  * Manage Webhooks Edge Function (#683)
  *

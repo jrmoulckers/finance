@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. Has tests but no UI
+// integration. Bill detection is a post-alpha feature. Exclude from alpha
+// deployment. (#1390)
+
 /**
  * Bill Detection Engine Edge Function (#sprint-10)
  *

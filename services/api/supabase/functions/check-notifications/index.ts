@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. No tests. Depends on
+// notifications table, cron-based detection RPCs (detect_budget_threshold_notifications,
+// detect_goal_milestone_notifications, detect_unusual_spending) that may not
+// exist yet. Exclude from alpha deployment. (#1390)
+
 /**
  * Check Notifications Edge Function (#1051)
  *

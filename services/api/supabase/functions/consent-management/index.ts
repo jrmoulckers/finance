@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. Has tests. GDPR
+// consent management is important but needs UI integration before
+// deployment. Keep for near-term post-alpha work. (#1390)
+
 /**
  * Consent Management Edge Function (#1100 — GDPR Critical)
  *

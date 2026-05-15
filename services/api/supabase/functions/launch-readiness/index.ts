@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Internal admin tool for launch readiness
+// checks. Has tests. Not wired to any client UI. Useful for pre-launch
+// validation but not part of the alpha user surface. (#1390)
+
 /**
  * Launch Readiness Dashboard Edge Function (#894)
  *
