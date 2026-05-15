@@ -2,10 +2,17 @@
 
 **Status:** Active
 **Date:** 2026-03-16
+**Updated:** 2026-03-17 — GDPR breach notification, alpha VPS scenario, key rotation (#1318)
 **Related:** [Monitoring Architecture](monitoring.md) · [Alerting Rules](alerting-rules.md) · [Performance Baselines](performance-baselines.md) · [Security Audit](security-audit-v1.md)
-**Tickets:** #413
+**Tickets:** #413, #1318
 
 ---
+
+> **Alpha-phase note:** This project is currently in single-developer alpha. The escalation
+> matrix, on-call rotation, and Slack channels described below are aspirational — they
+> document the target process for team growth. During alpha, the sole developer is the
+> Incident Commander, first responder, and communicator. Sections marked with **🔶 Alpha**
+> include streamlined procedures for this phase.
 
 ## Table of Contents
 
@@ -21,8 +28,16 @@
   - [4.2 Auth Failure — Users Can't Sign In](#42-auth-failure--users-cant-sign-in)
   - [4.3 Data Corruption](#43-data-corruption)
   - [4.4 Security Breach](#44-security-breach)
+  - [4.5 VPS Compromised (Alpha)](#45-vps-compromised-alpha)
 - [5. Monitoring & Alerting Checklist](#5-monitoring--alerting-checklist)
 - [6. Post-Incident Process](#6-post-incident-process)
+- [7. GDPR Breach Notification](#7-gdpr-breach-notification)
+  - [7.1 Article 33 — Supervisory Authority (72 hours)](#71-article-33--supervisory-authority-72-hours)
+  - [7.2 Article 34 — Communication to Data Subjects](#72-article-34--communication-to-data-subjects)
+  - [7.3 Breach Notification Decision Flowchart](#73-breach-notification-decision-flowchart)
+- [8. Key Rotation Procedures](#8-key-rotation-procedures)
+- [9. Evidence Collection](#9-evidence-collection)
+- [10. Communication Templates](#10-communication-templates)
 
 ---
 
@@ -36,6 +51,11 @@ Every incident is classified into one of four severity levels. The severity driv
 | **P1**   | High     | 1 hour            | Partial outage, sync failures > 10% of users, data corruption, connection pool exhaustion                     |
 | **P2**   | Medium   | 4 hours           | Performance degradation, non-critical Edge Function failure, elevated client errors, TLS certificate warnings |
 | **P3**   | Low      | Next business day | UI bugs, cosmetic issues, storage approaching limits, dependency vulnerabilities                              |
+
+> **🔶 Alpha response times:** During single-developer alpha, P0 response is best-effort
+> within 1 hour (no 24/7 pager). P1–P3 response times remain as listed. If a P0 occurs
+> outside working hours, the 72-hour GDPR clock (if applicable) starts at the moment of
+> _awareness_, not the moment the event occurred — document when you first became aware.
 
 ### Severity Classification Flowchart
 
@@ -62,6 +82,11 @@ See [Alerting Rules](alerting-rules.md) for the full set of P0–P3 alert defini
 ---
 
 ## 2. Escalation Matrix
+
+> **🔶 Alpha:** During single-developer alpha, you are all roles in one. Skip to the
+> [Alpha Escalation Contacts](#25-alpha-escalation-contacts) subsection for a streamlined
+> contact list. The team-oriented matrix below documents the target process for when the
+> team grows.
 
 ### 2.1 On-Call Responsibility
 
@@ -98,6 +123,20 @@ For any P0 or P1 incident lasting more than 30 minutes, designate an **Incident 
 - Coordinates responders — assigns investigation tasks
 - Decides on rollback — approves destructive recovery actions
 - Tracks timeline — logs events in the incident channel for post-mortem
+
+### 2.5 Alpha Escalation Contacts
+
+During alpha, keep this single-page reference handy. Update placeholder values before going live.
+
+| Contact / Resource              | Details                                                                                                        |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Developer (you)**             | Phone, email — you are IC, responder, and communicator                                                         |
+| **Supabase support**            | Dashboard → Support, or [supabase.com/support](https://supabase.com/support)                                   |
+| **PowerSync support**           | [powersync.com/contact](https://www.powersync.com/contact)                                                     |
+| **VPS provider support**        | Provider dashboard → Support ticket (note: response times vary)                                                |
+| **Domain registrar**            | Registrar dashboard → DNS / TLS support                                                                        |
+| **GDPR supervisory authority**  | Identify your lead authority _before_ an incident — see [§7.1](#71-article-33--supervisory-authority-72-hours) |
+| **Legal counsel (if retained)** | `TODO: add contact` — engage for any P0 breach with data exposure                                              |
 
 ---
 
@@ -536,6 +575,7 @@ Step 5: Assess data exposure
 
 Step 6: Notify affected users
   → If personal data was exposed, notify affected users within 72 hours (GDPR Article 33)
+  → See §7 for full GDPR notification procedures and §10 for templates
   → Use in-app notification + email
   → Document what was exposed, what is encrypted, and what actions users should take
 ```
@@ -549,6 +589,122 @@ Step 6: Notify affected users
   - N-1 (if applicable): CORS configuration in Edge Functions
 - Update incident report with full timeline and root cause
 - File regulatory notifications if required (GDPR: 72 hours to supervisory authority)
+
+### 4.5 VPS Compromised (Alpha)
+
+**🔶 Alpha-specific playbook.** In the alpha deployment, backend services run on a single VPS. A compromised VPS is a P0 — assume full data exposure until proven otherwise.
+
+**Symptoms:** Unexpected processes, unauthorized SSH keys, modified files, unusual outbound traffic, alerts from host-based monitoring, provider abuse notification.
+
+**Severity:** P0 — always.
+
+#### Phase 1: Isolate (first 15 minutes)
+
+```
+Step 1: Revoke network access
+  → VPS provider dashboard → Firewall / Security Groups
+  → Block ALL inbound traffic except your own IP for SSH
+  → Block ALL outbound traffic (prevents data exfiltration)
+  → If provider supports it: disconnect the VPS from the network entirely
+
+Step 2: Do NOT shut down the VPS yet
+  → A running system preserves volatile evidence (running processes,
+    network connections, memory) that is lost on shutdown
+  → Only shut down if active exfiltration is ongoing and you cannot
+    block it via firewall
+
+Step 3: Document the moment of awareness
+  → Write down the exact UTC time you became aware of the compromise
+  → This starts the GDPR 72-hour clock (see §7.1)
+```
+
+#### Phase 2: Investigate (next 1–2 hours)
+
+```
+Step 1: Capture evidence (see §9 for details)
+  → SSH into the isolated VPS from your whitelisted IP
+  → Snapshot running processes: ps auxf > /evidence/ps-$(date +%s).txt
+  → Snapshot network connections: ss -tulnp > /evidence/ss-$(date +%s).txt
+  → Snapshot auth logs: cp /var/log/auth.log /evidence/
+  → Snapshot application logs: cp relevant service logs to /evidence/
+  → Take a full disk snapshot via the VPS provider dashboard
+
+Step 2: Identify the attack vector
+  → Check authorized_keys for unauthorized SSH keys
+  → Check crontabs for malicious entries: crontab -l; ls /etc/cron.*
+  → Check for modified binaries: dpkg --verify (Debian/Ubuntu)
+  → Review auth.log for successful logins from unknown IPs
+  → Check Docker containers for unauthorized images
+
+Step 3: Assess data exposure
+  → Was the database directly accessible from the VPS?
+  → Were .env files with secrets readable?
+  → Were backup files present on disk?
+  → Was TLS terminated on this VPS (private keys exposed)?
+  → Check export_audit_log for unauthorized data exports (see §9)
+```
+
+#### Phase 3: Rotate All Credentials (next 30 minutes)
+
+Follow the full key rotation procedure in [§8](#8-key-rotation-procedures). At minimum:
+
+```
+Step 1: Rotate from external dashboards (NOT from the compromised VPS)
+  → JWT_SECRET: Supabase dashboard → Settings → API → Rotate
+  → POSTGRES_PASSWORD: Supabase dashboard → Settings → Database
+  → SERVICE_ROLE_KEY: Regenerated when JWT_SECRET rotates
+  → ANON_KEY: Regenerated when JWT_SECRET rotates
+
+Step 2: Rotate application-level secrets
+  → BACKUP_ENCRYPTION_KEY: Generate new key on a trusted machine
+  → Any API keys stored in .env on the VPS (Sentry, etc.)
+
+Step 3: Rotate VPS access
+  → Generate new SSH keypair on a trusted machine
+  → If rebuilding: provision a fresh VPS (see Step 4)
+  → If reusing: remove all authorized_keys and add only the new key
+
+Step 4: Provision a clean replacement VPS
+  → Do NOT reuse the compromised VPS for production
+  → Provision a new VPS from your infrastructure-as-code or clean image
+  → Deploy application from Git (verified clean source)
+  → Apply new secrets from Step 1–2
+  → Verify deployment with health checks
+```
+
+#### Phase 4: Notify (within 72 hours of awareness)
+
+```
+Step 1: Classify the breach for GDPR (see §7)
+  → Was personal data accessed? (financial data = high risk)
+  → Was data encrypted at rest? (reduces but does not eliminate risk)
+  → How many users are affected?
+
+Step 2: If personal data was exposed → Supervisory authority (§7.1)
+  → File notification within 72 hours of awareness
+  → Use the template in §10.1
+
+Step 3: If high risk to individuals → Notify users (§7.2)
+  → Use the template in §10.2
+  → Include: what happened, what data, what you did, what they should do
+
+Step 4: Document everything
+  → Create incident report using the template in §6.2
+  → Preserve all evidence collected in Phase 2
+  → Store the incident report in docs/architecture/incidents/
+```
+
+#### Post-Recovery Checklist
+
+- [ ] Compromised VPS is decommissioned (not just stopped — destroyed)
+- [ ] New VPS is provisioned from clean image
+- [ ] All secrets rotated (JWT, DB password, service keys, backup key, SSH)
+- [ ] Application deployed from verified Git source
+- [ ] Health checks passing on new VPS
+- [ ] GDPR notification filed (if applicable)
+- [ ] Users notified (if high-risk breach)
+- [ ] Incident report completed with root cause analysis
+- [ ] Prevention measures identified (e.g., MFA on VPS, hardened SSH)
 
 ---
 
@@ -694,7 +850,370 @@ Focus on **systems and processes**, not individuals. The goal is to make the sys
 | P1       | Status page update                 | Status page                                | During incident if > 1 hour |
 | P2–P3    | No external communication          | Internal only                              | N/A                         |
 
-For security incidents involving personal data exposure, GDPR Article 33 requires notification to the supervisory authority within **72 hours**. User notification (Article 34) is required when the breach poses a high risk to individuals' rights and freedoms — see [§4.4 Security Breach](#44-security-breach) for details.
+For security incidents involving personal data exposure, GDPR Article 33 requires notification to the supervisory authority within **72 hours**. User notification (Article 34) is required when the breach poses a high risk to individuals' rights and freedoms — see [§7 GDPR Breach Notification](#7-gdpr-breach-notification) for full procedures and templates.
+
+---
+
+## 7. GDPR Breach Notification
+
+This section covers the mandatory breach notification obligations under GDPR. These apply whenever a personal data breach occurs — regardless of team size or alpha/beta/production status.
+
+> **Key definition:** A "personal data breach" is any security incident leading to the
+> accidental or unlawful destruction, loss, alteration, unauthorized disclosure of, or
+> access to, personal data. Financial transaction data, email addresses, and account
+> names all qualify as personal data.
+
+### 7.1 Article 33 — Supervisory Authority (72 hours)
+
+**When:** You must notify your lead supervisory authority within **72 hours** of _becoming aware_ of a personal data breach, unless the breach is unlikely to result in a risk to individuals' rights and freedoms.
+
+**Who:** The supervisory authority in the EU/EEA country where your main establishment is located, or where the affected data subjects reside. Identify your lead authority _before_ an incident occurs.
+
+> **🔶 Alpha action item:** Register your lead supervisory authority contact details in
+> the [Alpha Escalation Contacts](#25-alpha-escalation-contacts) table now — do not wait
+> for a breach to figure out who to call.
+
+**What to include** (minimum required by Article 33(3)):
+
+1. **Nature of the breach** — categories and approximate number of data subjects and records affected
+2. **DPO / contact point** — name and contact details of the data protection officer or contact point (during alpha: the sole developer)
+3. **Likely consequences** — description of the likely consequences of the breach
+4. **Measures taken** — description of measures taken or proposed to address the breach, including mitigation
+
+**How:** Most EU/EEA supervisory authorities accept online submissions. Common portals:
+
+| Authority (example)           | Portal                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Ireland DPC                   | [dataprotection.ie](https://www.dataprotection.ie/en/organisations/know-your-obligations/breach-notification) |
+| France CNIL                   | [cnil.fr](https://www.cnil.fr/en/notifying-cnil-personal-data-breach)                                         |
+| Germany (federal BfDI)        | [bfdi.bund.de](https://www.bfdi.bund.de)                                                                      |
+| Netherlands AP                | [autoriteitpersoonsgegevens.nl](https://www.autoriteitpersoonsgegevens.nl)                                    |
+| UK ICO (post-Brexit, UK GDPR) | [ico.org.uk](https://ico.org.uk/for-organisations/report-a-breach/)                                           |
+
+**If you can't complete the notification in 72 hours:** Submit what you have and provide the remaining information in phases. Document why the delay occurred.
+
+**Record-keeping (Article 33(5)):** Document _every_ breach — even those you decide not to report — including the facts, effects, and remedial action. Store in `docs/architecture/incidents/`.
+
+### 7.2 Article 34 — Communication to Data Subjects
+
+**When:** You must communicate the breach to affected data subjects "without undue delay" when the breach is **likely to result in a high risk** to their rights and freedoms.
+
+**High risk indicators for a financial app:**
+
+- Unencrypted financial transaction data was exposed
+- Account balances, payee names, or spending patterns were accessed
+- Authentication credentials were compromised
+- Data could enable identity theft or financial fraud
+
+**Exceptions** (notification to data subjects is NOT required if):
+
+1. You applied encryption or pseudonymization that renders data unintelligible to unauthorized parties (e.g., envelope encryption with DEK/KEK — verify KEK was not exposed)
+2. You took subsequent measures that ensure the high risk is no longer likely to materialize
+3. It would involve disproportionate effort — in which case, make a public communication instead
+
+**What to include** (Article 34(2), in clear and plain language):
+
+1. Nature of the breach (what happened)
+2. Contact point for more information
+3. Likely consequences
+4. Measures taken and recommended actions for the individual
+
+> See [§10.2](#102-user-breach-notification-email) for a ready-to-use email template.
+
+### 7.3 Breach Notification Decision Flowchart
+
+```
+Personal data breach detected
+  ↓
+Was personal data actually accessed/exposed?
+  NO  → Document internally (Article 33(5)). No notification required. STOP.
+  YES ↓
+Is the breach unlikely to result in risk to individuals?
+  YES → Document internally. No supervisory authority notification. STOP.
+  NO  ↓
+┌─────────────────────────────────────────────────────┐
+│ NOTIFY SUPERVISORY AUTHORITY within 72 hours (§7.1) │
+└─────────────────────────────────────────────────────┘
+  ↓
+Is the breach likely to result in HIGH risk to individuals?
+  NO  → Supervisory authority notification is sufficient. STOP.
+  YES ↓
+Was data rendered unintelligible (encryption with unexposed keys)?
+  YES → User notification NOT required (exception 1). STOP.
+  NO  ↓
+┌──────────────────────────────────────────────────┐
+│ NOTIFY AFFECTED USERS without undue delay (§7.2) │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## 8. Key Rotation Procedures
+
+This section documents the step-by-step procedure for rotating each secret. Perform all rotations from a **trusted machine** — never from a compromised system.
+
+> **🔶 Alpha:** During alpha with a single VPS, rotating secrets means brief downtime.
+> Schedule rotations during low-traffic windows (if routine) or accept downtime during
+> incident response (if emergency).
+
+### 8.1 JWT_SECRET
+
+**Impact:** Rotating the JWT secret invalidates _all_ existing user sessions. Every user must re-authenticate.
+
+```bash
+# 1. Rotate via Supabase dashboard
+#    Settings → API → JWT Settings → Generate new JWT secret
+
+# 2. The ANON_KEY and SERVICE_ROLE_KEY are derived from the JWT secret.
+#    After rotation, copy the new values from:
+#    Settings → API → Project API keys
+
+# 3. Update all systems that reference these keys:
+#    - VPS environment variables (.env or secrets manager)
+#    - PowerSync connection settings (uses SERVICE_ROLE_KEY)
+#    - Client apps (ANON_KEY is embedded — redeploy clients)
+#    - Edge Functions that reference the service role key
+
+# 4. Restart all services that cache the old keys
+
+# 5. Verify:
+curl -H "apikey: <NEW_ANON_KEY>" \
+  https://<project>.supabase.co/rest/v1/ \
+  -I
+# Expected: 200 OK
+```
+
+### 8.2 POSTGRES_PASSWORD
+
+**Impact:** All direct database connections will fail until updated. Supabase internal services (Auth, Edge Functions) reconnect automatically after dashboard rotation.
+
+```bash
+# 1. Rotate via Supabase dashboard
+#    Settings → Database → Database password → Reset
+
+# 2. Update any direct connection strings:
+#    - VPS application .env (if connecting directly to PG)
+#    - Migration tooling (supabase CLI uses project link, not direct password)
+#    - Monitoring tools that query the database
+
+# 3. Verify:
+#    Supabase dashboard → Database → Run a test query in SQL editor
+```
+
+### 8.3 SERVICE_ROLE_KEY
+
+The `SERVICE_ROLE_KEY` is derived from `JWT_SECRET`. Rotating the JWT secret (§8.1) automatically generates a new service role key. After JWT rotation:
+
+```bash
+# 1. Copy the new SERVICE_ROLE_KEY from Supabase dashboard
+#    Settings → API → Project API keys → service_role
+
+# 2. Update all locations that use it:
+#    - PowerSync dashboard → Supabase connection → Service role key
+#    - VPS environment variables
+#    - Any admin scripts that bypass RLS
+
+# 3. Verify PowerSync can connect:
+#    PowerSync dashboard → Status → Connection health
+```
+
+### 8.4 BACKUP_ENCRYPTION_KEY
+
+**Impact:** Old backups encrypted with the previous key remain readable only with that key. Store the old key securely for disaster recovery.
+
+```bash
+# 1. Generate a new key on a trusted machine
+#    (Do NOT run this on a compromised system)
+#    Use your password manager or a secure key generation method
+
+# 2. Store the OLD key in a secure, offline location
+#    Label it with the date range it was active
+#    You need this to restore old backups
+
+# 3. Update the backup encryption key in your backup system:
+#    - VPS environment variable
+#    - Backup cron job / script configuration
+
+# 4. Run a test backup with the new key and verify you can restore it
+
+# 5. Verify old backups are still restorable with the old key
+```
+
+### 8.5 Rotation Checklist (Emergency)
+
+Use this checklist during a P0 security incident. Check off each item as you go.
+
+- [ ] JWT_SECRET rotated (Supabase dashboard)
+- [ ] New ANON_KEY and SERVICE_ROLE_KEY copied
+- [ ] POSTGRES_PASSWORD rotated (Supabase dashboard)
+- [ ] BACKUP_ENCRYPTION_KEY rotated (trusted machine)
+- [ ] VPS .env updated with all new values
+- [ ] PowerSync connection updated with new SERVICE_ROLE_KEY
+- [ ] SSH keys rotated (if VPS compromised)
+- [ ] All services restarted
+- [ ] Health checks passing
+- [ ] Sentry DSN / external API keys rotated (if exposed)
+- [ ] Old BACKUP_ENCRYPTION_KEY archived securely
+
+---
+
+## 9. Evidence Collection
+
+Preserve evidence before rotating secrets or rebuilding infrastructure. This evidence is required for root cause analysis, GDPR breach documentation, and potential law enforcement engagement.
+
+### 9.1 What to Collect
+
+| Source                    | How to Export                                                               | Retention             |
+| ------------------------- | --------------------------------------------------------------------------- | --------------------- |
+| **Supabase Auth logs**    | Dashboard → Auth → Logs → Export (or API)                                   | 90 days minimum       |
+| **Edge Function logs**    | Dashboard → Functions → Select function → Logs → Export                     | 90 days minimum       |
+| **`export_audit_log`**    | SQL: `SELECT * FROM export_audit_log WHERE created_at > '<incident_start>'` | Permanent             |
+| **`sync_health_logs`**    | SQL: `SELECT * FROM sync_health_logs WHERE created_at > '<incident_start>'` | 90 days minimum       |
+| **PostgreSQL query logs** | Supabase dashboard → Logs → Postgres                                        | 7 days (default)      |
+| **VPS system logs**       | `/var/log/auth.log`, `/var/log/syslog`, application logs                    | Until incident closed |
+| **VPS process snapshot**  | `ps auxf`, `ss -tulnp`, `netstat -tlnp`                                     | Snapshot at discovery |
+| **VPS disk snapshot**     | Provider dashboard → Snapshots → Create                                     | Until incident closed |
+| **Git history**           | `git log --since="<date>"` — verify no unauthorized commits                 | Permanent             |
+
+### 9.2 Evidence Handling Rules
+
+1. **Collect before you remediate.** Rotating secrets or rebuilding servers destroys volatile evidence.
+2. **Do NOT modify logs.** Copy them — never edit, truncate, or delete originals.
+3. **Timestamp everything.** Use UTC throughout. Record when each piece of evidence was collected.
+4. **Store securely.** Evidence may contain personal data — encrypt at rest and restrict access.
+5. **Chain of custody.** Record who collected each artifact and when. During alpha, this is just you — document it anyway for regulatory credibility.
+
+### 9.3 Key Queries for Breach Investigation
+
+```sql
+-- Unauthorized data exports in the last 7 days
+SELECT user_id, export_type, created_at, ip_address
+FROM export_audit_log
+WHERE created_at > now() - interval '7 days'
+ORDER BY created_at DESC;
+
+-- Sync failures correlated with the incident window
+SELECT device_id, user_id, sync_status, error_message, created_at
+FROM sync_health_logs
+WHERE created_at BETWEEN '<start_time>' AND '<end_time>'
+  AND sync_status = 'failure'
+ORDER BY created_at;
+
+-- Recent auth events (check for unusual patterns)
+-- Run via Supabase dashboard → Auth → Logs, or via the Auth Admin API
+```
+
+---
+
+## 10. Communication Templates
+
+Ready-to-use templates for breach notification. Customize the bracketed placeholders before sending.
+
+### 10.1 Supervisory Authority Notification (Article 33)
+
+> Submit via your supervisory authority's online portal (see [§7.1](#71-article-33--supervisory-authority-72-hours)).
+> Most portals have structured forms — use this as a reference for what to include.
+
+```
+PERSONAL DATA BREACH NOTIFICATION
+
+1. CONTROLLER DETAILS
+   Name: [Your legal name / business name]
+   Contact: [Email and phone]
+   DPO / Contact point: [Same as above during alpha]
+
+2. BREACH DETAILS
+   Date/time of breach: [UTC timestamp or best estimate]
+   Date/time of awareness: [When you first became aware]
+   Nature of breach:
+     [ ] Confidentiality (unauthorized access/disclosure)
+     [ ] Integrity (unauthorized alteration)
+     [ ] Availability (loss or destruction)
+   Description: [Brief factual description — e.g., "Unauthorized access to
+   VPS hosting the application backend. Attacker may have accessed the
+   database containing user financial records."]
+
+3. DATA AND INDIVIDUALS AFFECTED
+   Categories of data: [e.g., email addresses, financial transaction data,
+   account names, spending categories]
+   Approximate number of data subjects: [number]
+   Approximate number of records: [number]
+
+4. LIKELY CONSEQUENCES
+   [e.g., "Potential exposure of personal financial data including
+   transaction history and account balances. Risk of financial profiling.
+   Note: payee names and account names are encrypted at the application
+   layer using envelope encryption (AES-256-GCM). The encryption keys
+   were / were not compromised."]
+
+5. MEASURES TAKEN
+   [e.g., "Immediately isolated the compromised server. Rotated all
+   authentication secrets (JWT, database password, service keys).
+   Provisioned a clean replacement server. Investigating root cause.
+   Affected users will be notified via email within [timeframe]."]
+
+6. DELAYED NOTIFICATION (if applicable)
+   Reason for delay beyond 72 hours: [explanation]
+```
+
+### 10.2 User Breach Notification Email (Article 34)
+
+```
+Subject: Important Security Notice — [App Name]
+
+Dear [User],
+
+We are writing to inform you of a security incident that may affect
+your personal data.
+
+WHAT HAPPENED
+On [date], we detected unauthorized access to our backend server.
+We immediately isolated the server and began an investigation.
+
+WHAT DATA WAS INVOLVED
+The following categories of your data may have been accessed:
+- Email address
+- Financial transaction history (amounts, dates, categories)
+- [Account names / payee names — if encryption keys were NOT compromised,
+  note: "These fields were encrypted and the encryption keys were not
+  accessed."]
+
+WHAT WE ARE DOING
+- We immediately revoked all access and rotated all security credentials
+- We provisioned a new, clean server environment
+- We are conducting a thorough investigation into the root cause
+- We have notified the relevant data protection authority
+
+WHAT YOU CAN DO
+- Your session has been invalidated — you will need to sign in again
+- Review your transaction history in the app for any unfamiliar entries
+- If you reused your password elsewhere, consider changing those passwords
+- Monitor your financial accounts for unusual activity
+
+CONTACT US
+If you have questions or concerns, contact us at [email].
+
+We take the security of your financial data extremely seriously and
+sincerely apologize for this incident.
+
+[Your name]
+[Date]
+```
+
+### 10.3 Internal Incident Log Entry (Quick Reference)
+
+Use this format for real-time logging during an active incident:
+
+```
+INCIDENT LOG — [Date] — [Codename or brief title]
+Severity: P[0-3]
+Awareness time: [UTC]
+GDPR 72h deadline: [UTC — awareness time + 72 hours]
+
+[HH:MM UTC] — [Action taken or observation]
+[HH:MM UTC] — [Action taken or observation]
+...
+```
 
 ---
 
@@ -704,6 +1223,7 @@ For security incidents involving personal data exposure, GDPR Article 33 require
 - [Alerting Rules](alerting-rules.md) — full P0–P3 alert definitions with runbook links
 - [Performance Baselines](performance-baselines.md) — target latencies for sync, startup, and queries
 - [Security Audit](security-audit-v1.md) — known vulnerabilities and risk areas
+- [Security Architecture](security-architecture.md) — encryption model, key management, auth flow
 - [Privacy Audit](privacy-audit-v1.md) — data classification and GDPR compliance
 - [Backend README](../../services/api/README.md) — database schema, RLS model, local development
 - [Workflow Cheatsheet](../guides/workflow-cheatsheet.md) — common development workflows
