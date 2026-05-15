@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Tests for `_shared/cors.ts` (#533).
+ * Tests for `_shared/cors.ts` (#533, #1325).
  *
  * Validates origin-validated CORS header generation and
  * preflight request handling.
@@ -30,6 +30,7 @@ function getCorsHeadersForTest(request: Request, allowedOrigins: string[]): Reco
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, accept',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
   };
 }
 
@@ -112,6 +113,40 @@ Deno.test('getCorsHeaders — includes required CORS headers', () => {
   assertEquals(headers['Access-Control-Max-Age'], '86400');
 });
 
+Deno.test('getCorsHeaders — includes Vary: Origin header', () => {
+  const allowedOrigins = ['https://app.finance.example.com'];
+  const req = createMockRequest({
+    headers: { Origin: 'https://app.finance.example.com' },
+  });
+
+  const headers = getCorsHeadersForTest(req, allowedOrigins);
+
+  assertEquals(headers['Vary'], 'Origin');
+});
+
+Deno.test('getCorsHeaders — Vary: Origin present even for disallowed origins', () => {
+  const allowedOrigins = ['https://app.finance.example.com'];
+  const req = createMockRequest({
+    headers: { Origin: 'https://evil.example.com' },
+  });
+
+  const headers = getCorsHeadersForTest(req, allowedOrigins);
+
+  assertEquals(headers['Vary'], 'Origin');
+});
+
+Deno.test('getCorsHeaders — does not include Access-Control-Allow-Credentials', () => {
+  const allowedOrigins = ['https://app.finance.example.com'];
+  const req = createMockRequest({
+    headers: { Origin: 'https://app.finance.example.com' },
+  });
+
+  const headers = getCorsHeadersForTest(req, allowedOrigins);
+
+  // Credentials header is intentionally omitted — we use Bearer tokens, not cookies
+  assertEquals(headers['Access-Control-Allow-Credentials'], undefined);
+});
+
 Deno.test('getCorsHeaders — Allow-Methods includes all HTTP verbs', () => {
   const allowedOrigins = ['https://app.finance.example.com'];
   const req = createMockRequest({
@@ -169,4 +204,13 @@ Deno.test('handleCorsPreflightRequest — rejects disallowed origin in preflight
   const response = handleCorsPreflightForTest(req, allowedOrigins);
 
   assertEquals(response.headers.get('Access-Control-Allow-Origin'), '');
+});
+
+Deno.test('handleCorsPreflightRequest — includes Vary: Origin in preflight', () => {
+  const allowedOrigins = ['https://app.finance.example.com'];
+  const req = createCorsPreflightRequest('https://app.finance.example.com');
+
+  const response = handleCorsPreflightForTest(req, allowedOrigins);
+
+  assertEquals(response.headers.get('Vary'), 'Origin');
 });

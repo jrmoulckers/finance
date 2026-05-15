@@ -90,6 +90,12 @@ export function assertCorsHeaders(response: Response): void {
     true,
     'Response should include Access-Control-Allow-Origin header',
   );
+  const vary = response.headers.get('Vary');
+  assertEquals(
+    vary !== null && vary.includes('Origin'),
+    true,
+    'Response should include Vary: Origin header for correct CDN/proxy caching',
+  );
 }
 
 /**

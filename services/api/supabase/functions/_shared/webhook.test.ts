@@ -92,6 +92,7 @@ const testCorsHeaders: Record<string, string> = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, accept',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Max-Age': '86400',
+  Vary: 'Origin',
 };
 
 function jsonRes(data: Record<string, unknown>, status = 200): Response {
