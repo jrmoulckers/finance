@@ -3,6 +3,7 @@
 package com.finance.models.types
 
 import kotlin.jvm.JvmInline
+import kotlin.math.roundToLong
 import kotlinx.serialization.Serializable
 
 /**
@@ -65,7 +66,7 @@ value class Cents(val amount: Long) {
             require(cents >= Long.MIN_VALUE.toDouble() && cents <= Long.MAX_VALUE.toDouble()) {
                 "Dollar amount $dollars exceeds representable range in cents"
             }
-            return Cents(cents.toLong())
+            return Cents(cents.roundToLong())
         }
     }
 }
