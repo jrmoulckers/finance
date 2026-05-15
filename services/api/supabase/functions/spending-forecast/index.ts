@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. Has tests but depends
+// on get_spending_forecast() and get_spending_summary() RPCs that may not
+// exist yet. Post-alpha feature. Exclude from alpha deployment. (#1390)
+
 /**
  * Spending Forecast Edge Function (#328)
  *

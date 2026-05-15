@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. Has tests but report
+// generation (PDF/CSV export) is a post-alpha feature. Exclude from alpha
+// deployment. (#1390)
+
 /**
  * Report Generation Edge Function (#sprint-8)
  *

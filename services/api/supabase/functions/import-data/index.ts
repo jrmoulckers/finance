@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. No tests. CSV import
+// pipeline is feature-complete in code but has no UI integration. Exclude
+// from alpha deployment; revisit when import UI is built. (#1390)
+
 /**
  * Data Import Pipeline Edge Function (#sprint-11)
  *

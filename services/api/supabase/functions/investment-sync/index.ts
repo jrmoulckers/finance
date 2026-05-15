@@ -1,5 +1,10 @@
 ﻿// SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. No tests. Provider
+// integration stubs (Plaid Investments, Yodlee) are unimplemented. Exclude
+// from alpha deployment; revisit post-launch when investment tracking is
+// prioritized. (#1390)
+
 /**
  * Investment Data Sync Edge Function (#sprint-backend-1)
  *

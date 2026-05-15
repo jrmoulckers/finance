@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Internal admin tool, not wired to any client
+// UI. Has tests. Useful for ops but not part of the alpha user-facing
+// surface. Consider deploying for internal use only. (#1390)
+
 /**
  * Admin Dashboard Edge Function (#684)
  *

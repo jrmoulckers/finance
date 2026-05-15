@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. No tests. Webhook
+// signature verification is stubbed (Plaid JWT, MX HMAC). Depends on
+// bank-connection being active. Exclude from alpha deployment. (#1390)
+
 /**
  * Bank Webhook Handler Edge Function (#265)
  *

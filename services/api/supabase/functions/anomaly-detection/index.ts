@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): SPECULATIVE — Not wired to any client. Has tests but no UI
+// integration. Post-alpha feature for unusual transaction detection. Exclude
+// from alpha deployment. (#1390)
+
 /**
  * Anomaly Detection Edge Function (#323)
  *

@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// TODO(alpha): STUB — All platform verification functions return
+// { valid: false }. Not wired to any client. No tests. Exclude from
+// alpha deployment; implement when device attestation is prioritized. (#1390)
+
 /**
  * Edge Function: verify-device-attestation (#331)
  *
