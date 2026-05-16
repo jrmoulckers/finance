@@ -39,6 +39,12 @@ jobs:
 
       - name: Build web app
         id: web-build
+        env:
+          # Disable demo auth mode in E2E builds so the normal auth flow
+          # (tryRestoreSession → refresh endpoint) runs.  E2E fixtures mock
+          # these endpoints — no real Supabase connection is needed.
+          VITE_SUPABASE_URL: https://e2e-test.supabase.co
+          VITE_SUPABASE_ANON_KEY: e2e-test-anon-key
         run: |
           BUILD_START=$SECONDS
           npm run build -w apps/web
