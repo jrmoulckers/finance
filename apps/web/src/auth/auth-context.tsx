@@ -243,7 +243,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
 
       try {
         if (demoModeActive) {
-          const result = demoLogin(email, password);
+          const result = await demoLogin(email, password);
           setAccessToken(result.accessToken);
           setUser({
             id: result.user.id,
@@ -389,7 +389,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
 
       try {
         if (demoModeActive) {
-          demoSignup(email, password);
+          await demoSignup(email, password);
           return;
         }
 

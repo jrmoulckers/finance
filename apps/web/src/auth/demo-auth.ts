@@ -10,8 +10,7 @@
  *
  * SECURITY:
  *   - This module is for LOCAL DEVELOPMENT ONLY.
- *   - Passwords are stored as plain text in localStorage — acceptable for
- *     demo purposes, never for production.
+ *   - Passwords are hashed with SHA-256 before localStorage storage.
  *   - The generated JWT is a structurally valid but unsigned token.
  */
 
@@ -21,7 +20,8 @@
 
 interface DemoUser {
   email: string;
-  password: string;
+  /** SHA-256 hex digest of the password. */
+  passwordHash: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -32,6 +32,19 @@ const STORAGE_KEY = 'finance_demo_users';
 
 /** Token lifetime in seconds (1 hour). */
 const TOKEN_LIFETIME_SECONDS = 3600;
+
+// ---------------------------------------------------------------------------
+// Hashing Helper
+// ---------------------------------------------------------------------------
+
+/** Hash a password string using SHA-256 via the Web Crypto API. */
+async function hashPassword(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 // ---------------------------------------------------------------------------
 // Storage Helpers
@@ -100,7 +113,7 @@ export function isDemoMode(supabaseUrl: string): boolean {
  *
  * @throws {Error} If the email is already registered.
  */
-export function demoSignup(email: string, password: string): void {
+export async function demoSignup(email: string, password: string): Promise<void> {
   const users = loadUsers();
   const normalizedEmail = email.toLowerCase().trim();
 
@@ -108,7 +121,8 @@ export function demoSignup(email: string, password: string): void {
     throw new Error('An account with this email already exists.');
   }
 
-  users.push({ email: normalizedEmail, password });
+  const passwordHash = await hashPassword(password);
+  users.push({ email: normalizedEmail, passwordHash });
   saveUsers(users);
 }
 
@@ -117,13 +131,14 @@ export function demoSignup(email: string, password: string): void {
  *
  * @throws {Error} If credentials are invalid.
  */
-export function demoLogin(
+export async function demoLogin(
   email: string,
   password: string,
-): { accessToken: string; user: { id: string; email: string } } {
+): Promise<{ accessToken: string; user: { id: string; email: string } }> {
   const users = loadUsers();
   const normalizedEmail = email.toLowerCase().trim();
-  const found = users.find((u) => u.email === normalizedEmail && u.password === password);
+  const passwordHash = await hashPassword(password);
+  const found = users.find((u) => u.email === normalizedEmail && u.passwordHash === passwordHash);
 
   if (!found) {
     throw new Error('Invalid email or password.');
