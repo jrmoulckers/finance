@@ -390,6 +390,14 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       try {
         if (demoModeActive) {
           await demoSignup(email, password);
+          // Auto-login after demo signup
+          const result = await demoLogin(email, password);
+          setAccessToken(result.accessToken);
+          setUser({
+            id: result.user.id,
+            email: result.user.email,
+            hasPasskey: false,
+          });
           return;
         }
 
@@ -406,6 +414,29 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           };
           throw new Error(body.error ?? 'Signup failed');
         }
+
+        // Auto-login: use the same credentials to establish a session
+        const loginResponse = await fetch(config.loginEndpoint, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (loginResponse.ok) {
+          const data = (await loginResponse.json()) as {
+            access_token: string;
+            user: { id: string; email: string; has_passkey?: boolean };
+          };
+          setAccessToken(data.access_token);
+          setUser({
+            id: data.user.id,
+            email: data.user.email,
+            hasPasskey: data.user.has_passkey ?? false,
+          });
+        }
+        // If auto-login fails, the signup still succeeded — caller can
+        // decide to redirect to login or show a message.
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An unexpected error occurred';
         setError(message);
@@ -414,7 +445,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         setIsLoading(false);
       }
     },
-    [config.signupEndpoint, demoModeActive],
+    [config.loginEndpoint, config.signupEndpoint, demoModeActive],
   );
 
   const loginWithOAuth = useCallback(

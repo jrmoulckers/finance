@@ -112,8 +112,11 @@ describe('SignupPage', () => {
     expect(authState.signupWithEmail).toHaveBeenCalledWith('alex@example.com', 'password123');
   });
 
-  it('shows success message after successful signup', async () => {
-    authState.signupWithEmail.mockResolvedValue(undefined);
+  it('redirects to /dashboard when isAuthenticated becomes true after signup', async () => {
+    authState.signupWithEmail.mockImplementation(() => {
+      authState.isAuthenticated = true;
+      return Promise.resolve();
+    });
     renderSignupPage();
     fillValidForm();
 
@@ -121,33 +124,8 @@ describe('SignupPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('Account created! Please sign in.')).toBeInTheDocument();
-    });
-  });
-
-  it('redirects to /login after 2 seconds on successful signup', async () => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    authState.signupWithEmail.mockResolvedValue(undefined);
-    renderSignupPage();
-    fillValidForm();
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    });
-
-    // Success message is visible; redirect has not fired yet.
-    expect(screen.getByText('Account created! Please sign in.')).toBeInTheDocument();
-    expect(navigateMock).not.toHaveBeenCalled();
-
-    // Advance the 2-second redirect timer.
-    act(() => {
-      vi.advanceTimersByTime(2000);
-    });
-
-    expect(navigateMock).toHaveBeenCalledWith('/login');
-
-    vi.useRealTimers();
+    // The component re-renders with isAuthenticated = true and navigates.
+    expect(navigateMock).toHaveBeenCalledWith('/dashboard');
   });
 
   it('shows error banner when signup fails', async () => {

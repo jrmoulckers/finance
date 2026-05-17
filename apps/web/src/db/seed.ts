@@ -492,7 +492,11 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
 
     execute(db, 'COMMIT');
   } catch (error) {
-    execute(db, 'ROLLBACK');
+    try {
+      execute(db, 'ROLLBACK');
+    } catch {
+      // ROLLBACK may fail if SQLite already auto-rolled back the transaction.
+    }
     throw error;
   }
 }

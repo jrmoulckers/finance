@@ -6,11 +6,11 @@
  * This page is rendered outside of `AppLayout` and reuses the shared
  * auth-card layout from `auth.css`.
  *
- * On successful registration the user sees a confirmation message and is
- * automatically redirected to `/login` after two seconds.
+ * On successful registration the user is automatically logged in and
+ * redirected to the dashboard.
  */
 
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
@@ -21,9 +21,6 @@ import '../styles/auth.css';
 
 /** Minimum password length enforced by client-side validation. */
 const MIN_PASSWORD_LENGTH = 8;
-
-/** Duration (ms) before auto-redirecting to /login after successful signup. */
-const REDIRECT_DELAY_MS = 2000;
 
 interface SignupFieldErrors {
   email?: string;
@@ -44,7 +41,13 @@ interface SubmitMessage {
  */
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signupWithEmail, error: authError, isLoading, isDemoMode: demoMode } = useAuth();
+  const {
+    signupWithEmail,
+    error: authError,
+    isLoading,
+    isDemoMode: demoMode,
+    isAuthenticated,
+  } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,17 +65,12 @@ export const SignupPage: React.FC = () => {
   const passwordErrorId = `${uid}-password-error`;
   const confirmPasswordErrorId = `${uid}-confirm-password-error`;
 
-  /** Ref to the pending redirect timer so it can be cancelled on unmount. */
-  const redirectTimerRef = useRef<number | null>(null);
-
-  // Cancel any pending redirect when the component unmounts.
+  // Redirect to dashboard once the user is authenticated (auto-login after signup)
   useEffect(() => {
-    return () => {
-      if (redirectTimerRef.current !== null) {
-        window.clearTimeout(redirectTimerRef.current);
-      }
-    };
-  }, []);
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
 
   const confirmPasswordError = useMemo(() => {
     if (fieldErrors.confirmPassword) {
@@ -143,16 +141,8 @@ export const SignupPage: React.FC = () => {
 
       try {
         await signupWithEmail(email.trim(), password);
-
-        setSubmitMessage({
-          type: 'info',
-          text: 'Account created! Please sign in.',
-        });
-
-        // Redirect to login after a short delay so the user can read the message.
-        redirectTimerRef.current = window.setTimeout(() => {
-          navigate('/login');
-        }, REDIRECT_DELAY_MS);
+        // Auto-login is handled by signupWithEmail — the useEffect above
+        // will redirect to /dashboard once isAuthenticated becomes true.
       } catch (err) {
         setSubmitMessage({
           type: 'error',

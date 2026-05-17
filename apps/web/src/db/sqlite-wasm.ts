@@ -821,7 +821,11 @@ async function runMigrations(
 
       execRaw(driver, db, 'COMMIT;', backend);
     } catch (err) {
-      execRaw(driver, db, 'ROLLBACK;', backend);
+      try {
+        execRaw(driver, db, 'ROLLBACK;', backend);
+      } catch {
+        // ROLLBACK may fail if SQLite already auto-rolled back the transaction.
+      }
       throw new Error(
         `Migration v${migration.version} (${migration.label}) failed: ${err instanceof Error ? err.message : String(err)}`,
         { cause: err },

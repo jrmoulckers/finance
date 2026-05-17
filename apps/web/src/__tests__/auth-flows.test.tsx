@@ -286,8 +286,11 @@ describe('Signup flow (#1331)', () => {
     expect(authState.signupWithEmail).toHaveBeenCalledWith('new@example.com', 'password123');
   });
 
-  it('shows success message after successful signup', async () => {
-    authState.signupWithEmail.mockResolvedValue(undefined);
+  it('redirects to /dashboard when isAuthenticated becomes true after signup', async () => {
+    authState.signupWithEmail.mockImplementation(() => {
+      authState.isAuthenticated = true;
+      return Promise.resolve();
+    });
     renderSignupPage();
 
     fireEvent.change(screen.getByLabelText('Email'), {
@@ -304,9 +307,7 @@ describe('Signup flow (#1331)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('Account created! Please sign in.')).toBeInTheDocument();
-    });
+    expect(navigateMock).toHaveBeenCalledWith('/dashboard');
   });
 
   it('shows error banner when signup fails', async () => {

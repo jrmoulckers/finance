@@ -7,29 +7,36 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 
 /**
- * Vite plugin that copies sql.js WASM binary to the public assets directory.
+ * Vite plugin that copies sql.js WASM binaries to the public assets directory.
  *
  * sql.js uses `locateFile` to fetch its WASM binary at runtime via a network
  * request. The binary must be served as a static asset at the path specified
- * in `initIndexedDbBackend()` (`/assets/sql-wasm/sql-wasm.wasm`).
+ * in `initIndexedDbBackend()` (`/assets/sql-wasm/<file>`).
+ *
+ * The browser build of sql.js (used by Vite's pre-bundler) requests
+ * `sql-wasm-browser.wasm`, while the generic build requests `sql-wasm.wasm`.
+ * We copy both to handle either resolution path.
  */
 function copySqlJsWasm(): Plugin {
-  const srcPath = resolve(__dirname, '../../node_modules/sql.js/dist/sql-wasm.wasm');
+  const srcDir = resolve(__dirname, '../../node_modules/sql.js/dist');
   const destDir = resolve(__dirname, 'public/assets/sql-wasm');
-  const destPath = resolve(destDir, 'sql-wasm.wasm');
+  const wasmFiles = ['sql-wasm.wasm', 'sql-wasm-browser.wasm'];
 
   return {
     name: 'copy-sql-js-wasm',
     buildStart() {
-      if (!existsSync(srcPath)) {
-        this.warn('sql.js WASM binary not found — IndexedDB fallback will fail at runtime.');
-        return;
-      }
       if (!existsSync(destDir)) {
         mkdirSync(destDir, { recursive: true });
       }
-      if (!existsSync(destPath)) {
-        copyFileSync(srcPath, destPath);
+      for (const file of wasmFiles) {
+        const src = resolve(srcDir, file);
+        const dest = resolve(destDir, file);
+        if (existsSync(src) && !existsSync(dest)) {
+          copyFileSync(src, dest);
+        }
+      }
+      if (!wasmFiles.some((f) => existsSync(resolve(srcDir, f)))) {
+        this.warn('sql.js WASM binaries not found — IndexedDB fallback will fail at runtime.');
       }
     },
   };
@@ -107,7 +114,7 @@ export default defineConfig({
       // Strict CSP - no inline scripts, no eval
       'Content-Security-Policy': [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'",
+        "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self'",
@@ -119,6 +126,8 @@ export default defineConfig({
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
+      // Allow service worker registered from /src/sw/ to control the entire app
+      'Service-Worker-Allowed': '/',
     },
   },
 });
