@@ -30,6 +30,9 @@ interface DemoUser {
 
 const STORAGE_KEY = 'finance_demo_users';
 
+/** Key for persisting the active demo session email across page refreshes. */
+const DEMO_SESSION_KEY = 'finance_demo_session';
+
 /** Token lifetime in seconds (1 hour). */
 const TOKEN_LIFETIME_SECONDS = 3600;
 
@@ -95,6 +98,49 @@ function generateDemoToken(email: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Session Persistence Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Persist the active demo user's email in localStorage.
+ *
+ * SECURITY NOTE: This is acceptable because demo mode tokens are fake
+ * (unsigned, local-only). Production mode NEVER stores tokens or session
+ * identifiers in localStorage — it relies on HttpOnly cookies.
+ */
+export function persistDemoSession(email: string): void {
+  try {
+    localStorage.setItem(DEMO_SESSION_KEY, email.toLowerCase().trim());
+  } catch {
+    // Storage quota exceeded or private browsing — session won't persist
+  }
+}
+
+/**
+ * Retrieve the stored demo session email, if any.
+ *
+ * @returns The email of the previously logged-in demo user, or `null`.
+ */
+export function restoreDemoSession(): string | null {
+  try {
+    return localStorage.getItem(DEMO_SESSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clear the persisted demo session (used on logout).
+ */
+export function clearDemoSession(): void {
+  try {
+    localStorage.removeItem(DEMO_SESSION_KEY);
+  } catch {
+    // Ignore — nothing to clean up
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -156,6 +202,9 @@ export async function demoLogin(
 
   const token = generateDemoToken(userByEmail.email);
   const sub = `demo-${userByEmail.email.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
+  // Persist the session so it survives page refresh (#1506)
+  persistDemoSession(userByEmail.email);
 
   return {
     accessToken: token,
