@@ -16,6 +16,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { useCategories, useDashboardData, useTransactions } from '../hooks';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SpendingBarChart, type SpendingCategory } from '../components/charts/SpendingBarChart';
@@ -222,12 +223,20 @@ beforeEach(() => {
 
 describe('DashboardPage rendering with data (#1334)', () => {
   it('renders without crashing', () => {
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
   });
 
   it('displays financial summary cards', () => {
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(screen.getByText('Spent This Month')).toBeInTheDocument();
@@ -235,14 +244,22 @@ describe('DashboardPage rendering with data (#1334)', () => {
   });
 
   it('displays budget health percentage', () => {
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     // 234050/350000 ≈ 67% used
     expect(screen.getByText('67% used')).toBeInTheDocument();
   });
 
   it('shows budget progress bar with aria attributes', () => {
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     const progressBar = screen.getByRole('progressbar');
     expect(progressBar).toBeInTheDocument();
@@ -252,7 +269,11 @@ describe('DashboardPage rendering with data (#1334)', () => {
   });
 
   it('displays recent transactions', () => {
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('Recent Transactions')).toBeInTheDocument();
     expect(screen.getByText('Grocery Store')).toBeInTheDocument();
@@ -260,7 +281,11 @@ describe('DashboardPage rendering with data (#1334)', () => {
   });
 
   it('uses semantic list for recent transactions', () => {
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('list')).toBeInTheDocument();
     const items = screen.getAllByRole('listitem');
@@ -274,17 +299,29 @@ describe('DashboardPage rendering with data (#1334)', () => {
 
 describe('Dashboard accessible landmarks (#1334)', () => {
   it('has Financial summary region', () => {
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole('region', { name: /financial summary/i })).toBeInTheDocument();
   });
 
   it('has Recent transactions region', () => {
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole('region', { name: /recent transactions/i })).toBeInTheDocument();
   });
 
   it('summary card values use aria-live for updates', () => {
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     const liveRegions = document.querySelectorAll('[aria-live="polite"]');
     expect(liveRegions.length).toBeGreaterThanOrEqual(1);
@@ -304,7 +341,11 @@ describe('DashboardPage loading state (#1334)', () => {
       refresh: vi.fn(),
     });
 
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
@@ -317,7 +358,11 @@ describe('DashboardPage loading state (#1334)', () => {
       refresh: vi.fn(),
     });
 
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.queryByText('Net Worth')).not.toBeInTheDocument();
   });
@@ -344,7 +389,11 @@ describe('DashboardPage empty state (#1334)', () => {
       refresh: vi.fn(),
     });
 
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('No dashboard data yet')).toBeInTheDocument();
   });
@@ -357,7 +406,11 @@ describe('DashboardPage empty state (#1334)', () => {
       refresh: vi.fn(),
     });
 
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('No dashboard data yet')).toBeInTheDocument();
   });
@@ -376,7 +429,11 @@ describe('DashboardPage error state (#1334)', () => {
       refresh: vi.fn(),
     });
 
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('Database read failed')).toBeInTheDocument();
   });
@@ -392,7 +449,11 @@ describe('DashboardPage error state (#1334)', () => {
       deleteCategory: vi.fn(),
     });
 
-    render(<DashboardPage />);
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('Category load failed')).toBeInTheDocument();
   });

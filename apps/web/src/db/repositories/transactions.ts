@@ -122,8 +122,26 @@ function buildTransactionQuery(additionalClauses: string[] = [], filters: Transa
 
   if (filters.searchTerm?.trim()) {
     const pattern = createLikePattern(filters.searchTerm);
-    clauses.push(`(COALESCE(payee, '') LIKE ? OR COALESCE(note, '') LIKE ?)`);
-    params.push(pattern, pattern);
+    const searchConditions = [
+      `COALESCE(payee, '') LIKE ?`,
+      `COALESCE(note, '') LIKE ?`,
+      `COALESCE(tags, '') LIKE ?`,
+      `status LIKE ?`,
+      `COALESCE((SELECT name FROM category WHERE category.id = "transaction".category_id AND category.deleted_at IS NULL), '') LIKE ?`,
+      `COALESCE((SELECT name FROM account WHERE account.id = "transaction".account_id AND account.deleted_at IS NULL), '') LIKE ?`,
+    ];
+    const searchParams: unknown[] = [pattern, pattern, pattern, pattern, pattern, pattern];
+
+    // If the search term looks numeric, also match the amount (in cents)
+    const numericSearch = filters.searchTerm.trim().replace(/[$,]/g, '');
+    if (/^\d+(\.\d+)?$/.test(numericSearch)) {
+      const amountCents = Math.round(parseFloat(numericSearch) * 100);
+      searchConditions.push(`amount = ?`);
+      searchParams.push(amountCents);
+    }
+
+    clauses.push(`(${searchConditions.join(' OR ')})`);
+    params.push(...searchParams);
   }
 
   if (filters.type) {

@@ -82,8 +82,8 @@ test.describe('Transactions page', () => {
     await expect(amountInput).toBeVisible();
     await expect(amountInput).toHaveAttribute('aria-required', 'true');
 
-    // Description input (required)
-    const descriptionInput = page.getByLabel(/description/i);
+    // Description input (required) — now labeled "Payee"
+    const descriptionInput = page.getByLabel(/payee/i);
     await expect(descriptionInput).toBeVisible();
     await expect(descriptionInput).toHaveAttribute('aria-required', 'true');
 

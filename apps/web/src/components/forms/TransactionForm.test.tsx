@@ -107,11 +107,13 @@ describe('TransactionForm', () => {
 
     expect(screen.getByRole('dialog', { name: 'New Transaction' })).toBeInTheDocument();
     expect(screen.getByLabelText('Amount')).toBeInTheDocument();
-    expect(screen.getByLabelText('Description')).toBeInTheDocument();
+    expect(screen.getByLabelText('Payee')).toBeInTheDocument();
     expect(screen.getByLabelText('Category')).toBeInTheDocument();
     expect(screen.getByLabelText('Account')).toBeInTheDocument();
     expect(screen.getByLabelText('Date')).toHaveValue('2025-06-15');
     expect(screen.getByLabelText('Notes')).toBeInTheDocument();
+    expect(screen.getByLabelText('Status')).toBeInTheDocument();
+    expect(screen.getByLabelText('Tags')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Expense' })).toBeChecked();
     expect(screen.getByRole('button', { name: 'Add Transaction' })).toBeInTheDocument();
   });
@@ -128,7 +130,6 @@ describe('TransactionForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
 
     expect(screen.getByText('Amount must be greater than zero.')).toBeInTheDocument();
-    expect(screen.getByText('Description is required.')).toBeInTheDocument();
     expect(screen.getByText('Please select an account.')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -136,13 +137,20 @@ describe('TransactionForm', () => {
   it('calls onSubmit with transformed transaction data on valid submission', async () => {
     const { onSubmit } = renderTransactionForm();
 
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '12.34' } });
-    fireEvent.change(screen.getByLabelText('Description'), { target: { value: ' Coffee Shop ' } });
+    // Amount: type digits via keydown to get $12.34 (1234 cents)
+    const amountInput = screen.getByLabelText('Amount');
+    fireEvent.keyDown(amountInput, { key: '1' });
+    fireEvent.keyDown(amountInput, { key: '2' });
+    fireEvent.keyDown(amountInput, { key: '3' });
+    fireEvent.keyDown(amountInput, { key: '4' });
+
+    fireEvent.change(screen.getByLabelText('Payee'), { target: { value: ' Coffee Shop ' } });
     fireEvent.click(screen.getByRole('radio', { name: 'Income' }));
     fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'category-food' } });
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2025-06-10' } });
     fireEvent.change(screen.getByLabelText('Notes'), { target: { value: ' Morning treat ' } });
+    fireEvent.change(screen.getByLabelText('Tags'), { target: { value: 'coffee, morning' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
     });
@@ -151,12 +159,14 @@ describe('TransactionForm', () => {
       householdId: 'household-1',
       accountId: 'account-1',
       type: 'INCOME',
+      status: 'PENDING',
       amount: { amount: 1234 },
       currency: { code: 'USD', decimalPlaces: 2 },
       payee: 'Coffee Shop',
       date: '2025-06-10',
       categoryId: 'category-food',
       note: 'Morning treat',
+      tags: ['coffee', 'morning'],
     });
   });
 

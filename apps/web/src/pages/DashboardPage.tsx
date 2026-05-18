@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { CategoryPieChart, SpendingBarChart, TrendLineChart } from '../components/charts';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useCategories, useDashboardData, useTransactions } from '../hooks';
@@ -255,26 +256,32 @@ export const DashboardPage: React.FC = () => {
                 <ul className="list-group" role="list">
                   {data.recentTransactions.map((transaction) => (
                     <li key={transaction.id} className="list-item" role="listitem">
-                      <div className="list-item__content">
-                        <p className="list-item__primary">
-                          {transaction.payee ??
-                            transaction.note ??
-                            (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction')}
-                        </p>
-                        <p className="list-item__secondary">
-                          {transaction.categoryId !== null
-                            ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
-                            : 'Uncategorized'}
-                        </p>
-                      </div>
-                      <div className="list-item__trailing">
-                        <CurrencyDisplay
-                          amount={getTransactionDisplayAmount(transaction)}
-                          currency={transaction.currency.code}
-                          colorize
-                          showSign
-                        />
-                      </div>
+                      <Link
+                        to={`/transactions/${transaction.id}`}
+                        className="list-item__link"
+                        aria-label={`View transaction: ${transaction.payee ?? transaction.note ?? 'Transaction'}`}
+                      >
+                        <div className="list-item__content">
+                          <p className="list-item__primary">
+                            {transaction.payee ??
+                              transaction.note ??
+                              (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction')}
+                          </p>
+                          <p className="list-item__secondary">
+                            {transaction.categoryId !== null
+                              ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
+                              : 'Uncategorized'}
+                          </p>
+                        </div>
+                        <div className="list-item__trailing">
+                          <CurrencyDisplay
+                            amount={getTransactionDisplayAmount(transaction)}
+                            currency={transaction.currency.code}
+                            colorize
+                            showSign
+                          />
+                        </div>
+                      </Link>
                     </li>
                   ))}
                 </ul>

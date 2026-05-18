@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export { useAccounts } from './useAccounts';
+export { useAmountInput, formatCentsDisplay } from './useAmountInput';
+export type { UseAmountInputResult } from './useAmountInput';
 export { useBudgets } from './useBudgets';
 export { useCategories } from './useCategories';
 export { useDashboardData } from './useDashboardData';
