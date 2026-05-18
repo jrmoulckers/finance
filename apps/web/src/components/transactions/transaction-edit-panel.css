@@ -1,0 +1,200 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for TransactionEditPanel slide-over drawer.
+ * Desktop: right-side slide-over panel.
+ * Mobile: full-screen modal.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Overlay container
+ * ------------------------------------------------------------------------- */
+
+.edit-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------------------
+ * Backdrop
+ * ------------------------------------------------------------------------- */
+
+.edit-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: -1;
+  animation: edit-panel-backdrop-enter var(--duration-normal, 200ms) ease-out;
+}
+
+@keyframes edit-panel-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Panel (desktop: slide from right)
+ * ------------------------------------------------------------------------- */
+
+.edit-panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  background: var(--semantic-background-primary);
+  border-left: 1px solid var(--semantic-border-default);
+  box-shadow: var(--shadow-lg, -4px 0 25px rgba(0, 0, 0, 0.1));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: edit-panel-slide-in var(--duration-normal, 200ms) var(--easing-out, ease-out);
+}
+
+@keyframes edit-panel-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Panel header
+ * ------------------------------------------------------------------------- */
+
+.edit-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4) var(--spacing-5);
+  border-bottom: 1px solid var(--semantic-border-default);
+  flex-shrink: 0;
+}
+
+.edit-panel__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.edit-panel__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.edit-panel__close:hover {
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+}
+
+.edit-panel__close:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Panel body (scrollable form area)
+ * ------------------------------------------------------------------------- */
+
+.edit-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-5);
+}
+
+/* ---------------------------------------------------------------------------
+ * Panel footer (save/cancel actions)
+ * ------------------------------------------------------------------------- */
+
+.edit-panel__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-5);
+  border-top: 1px solid var(--semantic-border-default);
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Mobile: full screen
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  .edit-panel {
+    max-width: 100%;
+    border-left: none;
+    animation: edit-panel-slide-up var(--duration-normal, 200ms) var(--easing-out, ease-out);
+  }
+
+  @keyframes edit-panel-slide-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .edit-panel-backdrop {
+    background: rgba(0, 0, 0, 0.6);
+  }
+}
+
+[data-theme='dark'] .edit-panel-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .edit-panel,
+  .edit-panel-backdrop {
+    animation: none;
+  }
+
+  .edit-panel__close {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .edit-panel {
+    border-left-width: 2px;
+  }
+
+  .edit-panel__header,
+  .edit-panel__footer {
+    border-width: 2px;
+  }
+}

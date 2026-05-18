@@ -204,6 +204,14 @@ export const AppRoutes: FC = () => (
       }
     />
     <Route
+      path="/transactions/:id/edit"
+      element={
+        <AuthenticatedRoute>
+          <Navigate to="/transactions" replace />
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
       path="/budgets"
       element={
         <AuthenticatedRoute>

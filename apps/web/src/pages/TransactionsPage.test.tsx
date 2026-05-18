@@ -28,6 +28,29 @@ vi.mock('../components/forms', () => ({
     ) : null,
 }));
 
+// Mock the transactions sub-components to avoid complex internal dependencies.
+vi.mock('../components/transactions', () => ({
+  TransactionFilters: () => <div data-testid="transaction-filters">Filters</div>,
+  TransactionSort: () => <div data-testid="transaction-sort">Sort</div>,
+  TransactionEditPanel: ({ transaction }: { transaction: { payee: string } | null }) =>
+    transaction ? (
+      <div role="dialog" aria-label="Edit panel">
+        Edit: {transaction.payee}
+      </div>
+    ) : null,
+  EMPTY_FILTERS: {
+    startDate: '',
+    endDate: '',
+    categoryIds: [],
+    accountIds: [],
+    amountMin: '',
+    amountMax: '',
+    types: [],
+    statuses: [],
+  },
+  DEFAULT_SORT: { field: 'date', direction: 'desc' },
+}));
+
 const mockedUseTransactions = vi.mocked(useTransactions);
 const mockedUseCategories = vi.mocked(useCategories);
 const mockedUseAccounts = vi.mocked(useAccounts);
@@ -207,15 +230,14 @@ describe('TransactionsPage', () => {
     expect(screen.getByRole('searchbox', { name: /search transactions/i })).toBeInTheDocument();
   });
 
-  it('displays category filter chips', () => {
+  it('displays filter and sort controls', () => {
     render(
       <MemoryRouter>
         <TransactionsPage />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Food' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Income' })).toBeInTheDocument();
+    expect(screen.getByTestId('transaction-filters')).toBeInTheDocument();
+    expect(screen.getByTestId('transaction-sort')).toBeInTheDocument();
   });
 
   it('displays transaction descriptions', () => {
@@ -252,7 +274,7 @@ describe('TransactionsPage', () => {
     expect(screen.getAllByRole('button', { name: /^delete /i })).toHaveLength(3);
   });
 
-  it('clicking edit opens the form', () => {
+  it('clicking edit opens the edit panel', () => {
     render(
       <MemoryRouter>
         <TransactionsPage />
@@ -261,7 +283,7 @@ describe('TransactionsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /edit grocery store/i }));
 
-    expect(screen.getByRole('dialog', { name: /transaction form/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /edit panel/i })).toBeInTheDocument();
   });
 
   it('clicking delete opens ConfirmDialog', () => {

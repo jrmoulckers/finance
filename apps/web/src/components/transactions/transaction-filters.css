@@ -1,0 +1,353 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for TransactionFilters and TransactionSort components.
+ * Uses design tokens for consistent theming.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Filter panel toggle
+ * ------------------------------------------------------------------------- */
+
+.transaction-filters-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.transaction-filters-toggle:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.transaction-filters-toggle:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.transaction-filters-toggle__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 var(--spacing-1);
+  border-radius: 999px;
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ---------------------------------------------------------------------------
+ * Filter panel (collapsible)
+ * ------------------------------------------------------------------------- */
+
+.transaction-filters-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  margin-top: var(--spacing-3);
+  animation: filters-panel-enter var(--duration-normal, 200ms) var(--easing-out, ease-out);
+}
+
+@keyframes filters-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.transaction-filters-panel__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.transaction-filters-panel__label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.transaction-filters-panel__row {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+}
+
+.transaction-filters-panel__input {
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  font-family: inherit;
+}
+
+.transaction-filters-panel__input:focus {
+  outline: none;
+  border-color: var(--semantic-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.transaction-filters-panel__actions {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-2);
+}
+
+.transaction-filters-panel__clear {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: none;
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--semantic-status-negative);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.transaction-filters-panel__clear:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.transaction-filters-panel__clear:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Type toggle buttons
+ * ------------------------------------------------------------------------- */
+
+.transaction-type-toggles {
+  display: flex;
+  gap: var(--spacing-1);
+  flex-wrap: wrap;
+}
+
+.transaction-type-toggle {
+  padding: var(--spacing-1) var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast, 100ms) ease,
+    border-color var(--duration-fast, 100ms) ease;
+}
+
+.transaction-type-toggle:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.transaction-type-toggle:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.transaction-type-toggle--active {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  border-color: var(--semantic-interactive-default);
+}
+
+.transaction-type-toggle--active:hover {
+  background: var(--semantic-interactive-hover);
+  border-color: var(--semantic-interactive-hover);
+}
+
+/* ---------------------------------------------------------------------------
+ * Active filter chips
+ * ------------------------------------------------------------------------- */
+
+.transaction-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-3);
+}
+
+.transaction-active-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: 999px;
+  background: var(--semantic-background-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-primary);
+}
+
+.transaction-active-filter-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.transaction-active-filter-chip__remove:hover {
+  background: var(--semantic-status-negative);
+  color: var(--semantic-text-inverse);
+}
+
+.transaction-active-filter-chip__remove:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Sort controls
+ * ------------------------------------------------------------------------- */
+
+.transaction-sort {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.transaction-sort__select {
+  padding: var(--spacing-2) var(--spacing-3);
+  padding-right: 2rem;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  font-family: inherit;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+}
+
+.transaction-sort__select:focus {
+  outline: none;
+  border-color: var(--semantic-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.transaction-sort__direction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color var(--duration-fast, 100ms) ease;
+}
+
+.transaction-sort__direction:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.transaction-sort__direction:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Controls bar (filter + sort row)
+ * ------------------------------------------------------------------------- */
+
+.transaction-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-4);
+}
+
+.transaction-controls-bar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+/* ---------------------------------------------------------------------------
+ * Responsive
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .transaction-filters-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .transaction-controls-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .transaction-controls-bar__left {
+    justify-content: space-between;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .transaction-filters-panel {
+    animation: none;
+  }
+
+  .transaction-filters-toggle,
+  .transaction-type-toggle,
+  .transaction-sort__direction {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .transaction-filters-panel__input,
+  .transaction-sort__select,
+  .transaction-filters-toggle,
+  .transaction-sort__direction {
+    border-width: 2px;
+  }
+}

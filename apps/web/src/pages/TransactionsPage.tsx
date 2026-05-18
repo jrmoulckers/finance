@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
   ConfirmDialog,
@@ -11,13 +11,64 @@ import {
   LoadingSpinner,
 } from '../components/common';
 import { TransactionForm } from '../components/forms';
+import {
+  TransactionFilters,
+  TransactionSort,
+  TransactionEditPanel,
+  DEFAULT_SORT,
+} from '../components/transactions';
+import type { AdvancedFilters } from '../components/transactions';
+import type { SortConfig, SortField } from '../components/transactions';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import { useTransactions } from '../hooks/useTransactions';
 import type { Transaction } from '../kmp/bridge';
 
-const ALL_CATEGORIES_FILTER = '__all__';
+// ---------------------------------------------------------------------------
+// URL param helpers for filter/sort persistence
+// ---------------------------------------------------------------------------
+
+function filtersFromParams(params: URLSearchParams): AdvancedFilters {
+  return {
+    startDate: params.get('startDate') ?? '',
+    endDate: params.get('endDate') ?? '',
+    categoryIds: params.get('categoryIds') ? params.get('categoryIds')!.split(',') : [],
+    accountIds: params.get('accountIds') ? params.get('accountIds')!.split(',') : [],
+    amountMin: params.get('amountMin') ?? '',
+    amountMax: params.get('amountMax') ?? '',
+    types: params.get('types') ? (params.get('types')!.split(',') as AdvancedFilters['types']) : [],
+    statuses: params.get('statuses')
+      ? (params.get('statuses')!.split(',') as AdvancedFilters['statuses'])
+      : [],
+  };
+}
+
+function filtersToParams(filters: AdvancedFilters): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (filters.startDate) result.startDate = filters.startDate;
+  if (filters.endDate) result.endDate = filters.endDate;
+  if (filters.categoryIds.length > 0) result.categoryIds = filters.categoryIds.join(',');
+  if (filters.accountIds.length > 0) result.accountIds = filters.accountIds.join(',');
+  if (filters.amountMin) result.amountMin = filters.amountMin;
+  if (filters.amountMax) result.amountMax = filters.amountMax;
+  if (filters.types.length > 0) result.types = filters.types.join(',');
+  if (filters.statuses.length > 0) result.statuses = filters.statuses.join(',');
+  return result;
+}
+
+function sortFromParams(params: URLSearchParams): SortConfig {
+  const field = params.get('sortField') as SortField | null;
+  const direction = params.get('sortDir') as 'asc' | 'desc' | null;
+  return {
+    field: field ?? DEFAULT_SORT.field,
+    direction: direction ?? DEFAULT_SORT.direction,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// CSV export helpers
+// ---------------------------------------------------------------------------
 
 /** Escape a value for safe CSV inclusion. */
 function escapeCsvValue(value: string): string {
@@ -63,11 +114,14 @@ function exportTransactionsCsv(
   }, 100);
 }
 
+// ---------------------------------------------------------------------------
+// Transaction display helpers
+// ---------------------------------------------------------------------------
+
 function getTransactionDisplayAmount(transaction: Transaction): number {
   if (transaction.type === 'EXPENSE') {
     return -Math.abs(transaction.amount.amount);
   }
-
   return transaction.amount.amount;
 }
 
@@ -79,31 +133,127 @@ function getTransactionLabel(transaction: Transaction): string {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Sort logic
+// ---------------------------------------------------------------------------
+
+function sortTransactions(
+  transactions: Transaction[],
+  sort: SortConfig,
+  categoryNames: Map<string, string>,
+): Transaction[] {
+  const sorted = [...transactions].sort((a, b) => {
+    let comparison = 0;
+
+    switch (sort.field) {
+      case 'date':
+        comparison = a.date.localeCompare(b.date);
+        break;
+      case 'amount':
+        comparison = Math.abs(a.amount.amount) - Math.abs(b.amount.amount);
+        break;
+      case 'payee':
+        comparison = (a.payee ?? '').localeCompare(b.payee ?? '');
+        break;
+      case 'category': {
+        const catA = a.categoryId ? (categoryNames.get(a.categoryId) ?? '') : '';
+        const catB = b.categoryId ? (categoryNames.get(b.categoryId) ?? '') : '';
+        comparison = catA.localeCompare(catB);
+        break;
+      }
+    }
+
+    if (sort.direction === 'desc') comparison = -comparison;
+
+    // Secondary sort: always by date descending for non-date primary sorts
+    if (comparison === 0 && sort.field !== 'date') {
+      comparison = b.date.localeCompare(a.date);
+    }
+
+    return comparison;
+  });
+
+  return sorted;
+}
+
+// ---------------------------------------------------------------------------
+// Local filtering (advanced filters applied on top of hook results)
+// ---------------------------------------------------------------------------
+
+function applyAdvancedFilters(
+  transactions: Transaction[],
+  filters: AdvancedFilters,
+): Transaction[] {
+  let result = transactions;
+
+  if (filters.categoryIds.length > 0) {
+    result = result.filter(
+      (t) => t.categoryId !== null && filters.categoryIds.includes(t.categoryId),
+    );
+  }
+
+  if (filters.accountIds.length > 0) {
+    result = result.filter((t) => filters.accountIds.includes(t.accountId));
+  }
+
+  if (filters.amountMin) {
+    const minCents = Math.round(parseFloat(filters.amountMin) * 100);
+    result = result.filter((t) => Math.abs(t.amount.amount) >= minCents);
+  }
+
+  if (filters.amountMax) {
+    const maxCents = Math.round(parseFloat(filters.amountMax) * 100);
+    result = result.filter((t) => Math.abs(t.amount.amount) <= maxCents);
+  }
+
+  if (filters.types.length > 0) {
+    result = result.filter((t) => filters.types.includes(t.type));
+  }
+
+  if (filters.statuses.length > 0) {
+    result = result.filter((t) => filters.statuses.includes(t.status));
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Page Component
+// ---------------------------------------------------------------------------
+
 export const TransactionsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_CATEGORIES_FILTER);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editPanelTransaction, setEditPanelTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const filters = useMemo(
+  // Get filters/sort from URL params
+  const advancedFilters = useMemo(() => filtersFromParams(searchParams), [searchParams]);
+  const sortConfig = useMemo(() => sortFromParams(searchParams), [searchParams]);
+
+  // Build hook filters from URL params + search query
+  const hookFilters = useMemo(
     () => ({
       searchTerm: query.trim() || undefined,
-      categoryId: selectedCategoryId === ALL_CATEGORIES_FILTER ? undefined : selectedCategoryId,
+      startDate: advancedFilters.startDate || undefined,
+      endDate: advancedFilters.endDate || undefined,
     }),
-    [query, selectedCategoryId],
+    [query, advancedFilters.startDate, advancedFilters.endDate],
   );
 
   const {
-    transactions,
+    transactions: rawTransactions,
     loading,
     error,
     refresh: refreshTransactions,
     createTransaction,
     updateTransaction,
     deleteTransaction,
-  } = useTransactions(filters);
+  } = useTransactions(hookFilters);
   const {
     categories,
     loading: categoriesLoading,
@@ -125,14 +275,74 @@ export const TransactionsPage: React.FC = () => {
     refreshAccounts();
   };
 
+  const categoryNames = useMemo(
+    () => new Map(categories.map((category) => [category.id, category.name])),
+    [categories],
+  );
+  const accountNames = useMemo(
+    () => new Map(accounts.map((account) => [account.id, account.name])),
+    [accounts],
+  );
+
+  // Apply advanced local filters, then sort
+  const transactions = useMemo(() => {
+    const filtered = applyAdvancedFilters(rawTransactions, advancedFilters);
+    return sortTransactions(filtered, sortConfig, categoryNames);
+  }, [rawTransactions, advancedFilters, sortConfig, categoryNames]);
+
+  // Group by date for display
+  const groupedTransactions = useMemo(() => {
+    const groups = new Map<string, Transaction[]>();
+
+    for (const transaction of transactions) {
+      const existingTransactions = groups.get(transaction.date);
+      if (existingTransactions) {
+        existingTransactions.push(transaction);
+      } else {
+        groups.set(transaction.date, [transaction]);
+      }
+    }
+
+    return Array.from(groups, ([date, datedTransactions]) => ({
+      date,
+      label: new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+      }),
+      transactions: datedTransactions,
+    }));
+  }, [transactions]);
+
+  // Filter/Sort handlers
+  const handleFiltersChange = useCallback(
+    (newFilters: AdvancedFilters) => {
+      const params = { ...filtersToParams(newFilters) };
+      if (sortConfig.field !== DEFAULT_SORT.field) params.sortField = sortConfig.field;
+      if (sortConfig.direction !== DEFAULT_SORT.direction) params.sortDir = sortConfig.direction;
+      setSearchParams(params, { replace: true });
+    },
+    [sortConfig, setSearchParams],
+  );
+
+  const handleSortChange = useCallback(
+    (newSort: SortConfig) => {
+      const params = { ...filtersToParams(advancedFilters) };
+      if (newSort.field !== DEFAULT_SORT.field) params.sortField = newSort.field;
+      if (newSort.direction !== DEFAULT_SORT.direction) params.sortDir = newSort.direction;
+      setSearchParams(params, { replace: true });
+    },
+    [advancedFilters, setSearchParams],
+  );
+
+  // Form handlers
   const handleOpenCreateForm = useCallback(() => {
     setEditingTransaction(null);
     setIsFormOpen(true);
   }, []);
 
   const handleEditTransaction = useCallback((transaction: Transaction) => {
-    setEditingTransaction(transaction);
-    setIsFormOpen(true);
+    setEditPanelTransaction(transaction);
   }, []);
 
   const handleFormCancel = useCallback(() => {
@@ -166,6 +376,22 @@ export const TransactionsPage: React.FC = () => {
     ],
   );
 
+  const handleEditPanelSave = useCallback(
+    async (id: string, data: CreateTransactionInput): Promise<void> => {
+      const result = updateTransaction(id, data);
+      if (result === null) {
+        throw new Error('Failed to update transaction. Please try again.');
+      }
+      setEditPanelTransaction(null);
+      refreshTransactions();
+    },
+    [updateTransaction, refreshTransactions],
+  );
+
+  const handleEditPanelClose = useCallback(() => {
+    setEditPanelTransaction(null);
+  }, []);
+
   const handleDeleteConfirm = useCallback(() => {
     if (deletingTransaction === null) {
       return;
@@ -178,47 +404,16 @@ export const TransactionsPage: React.FC = () => {
     }
   }, [deleteTransaction, deletingTransaction, refreshTransactions]);
 
-  const categoryFilters = useMemo(
-    () => [
-      { id: ALL_CATEGORIES_FILTER, name: 'All' },
-      ...categories.map((category) => ({ id: category.id, name: category.name })),
-    ],
-    [categories],
-  );
-
-  const categoryNames = useMemo(
-    () => new Map(categories.map((category) => [category.id, category.name])),
-    [categories],
-  );
-  const accountNames = useMemo(
-    () => new Map(accounts.map((account) => [account.id, account.name])),
-    [accounts],
-  );
-
-  const groupedTransactions = useMemo(() => {
-    const groups = new Map<string, Transaction[]>();
-
-    for (const transaction of transactions) {
-      const existingTransactions = groups.get(transaction.date);
-      if (existingTransactions) {
-        existingTransactions.push(transaction);
-      } else {
-        groups.set(transaction.date, [transaction]);
-      }
-    }
-
-    return Array.from(groups, ([date, datedTransactions]) => ({
-      date,
-      label: new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'short',
-        day: 'numeric',
-      }),
-      transactions: datedTransactions,
-    }));
-  }, [transactions]);
-
-  const hasActiveFilters = filters.searchTerm !== undefined || filters.categoryId !== undefined;
+  const hasActiveFilters =
+    query.trim() !== '' ||
+    advancedFilters.startDate !== '' ||
+    advancedFilters.endDate !== '' ||
+    advancedFilters.categoryIds.length > 0 ||
+    advancedFilters.accountIds.length > 0 ||
+    advancedFilters.amountMin !== '' ||
+    advancedFilters.amountMax !== '' ||
+    advancedFilters.types.length > 0 ||
+    advancedFilters.statuses.length > 0;
 
   return (
     <>
@@ -259,6 +454,7 @@ export const TransactionsPage: React.FC = () => {
           <span aria-hidden="true">+</span> Add Transaction
         </button>
       </div>
+
       <div className="search-bar" role="search">
         <input
           type="search"
@@ -269,24 +465,22 @@ export const TransactionsPage: React.FC = () => {
           aria-label="Search transactions"
         />
       </div>
-      <div
-        className="filter-chips"
-        role="group"
-        aria-label="Category filter"
-        style={{ marginBottom: 'var(--spacing-4)' }}
-      >
-        {categoryFilters.map((category) => (
-          <button
-            key={category.id}
-            type="button"
-            className={`filter-chip${selectedCategoryId === category.id ? ' filter-chip--active' : ''}`}
-            onClick={() => setSelectedCategoryId(category.id)}
-            aria-pressed={selectedCategoryId === category.id}
-          >
-            {category.name}
-          </button>
-        ))}
+
+      {/* Filter/Sort controls */}
+      <div className="transaction-controls-bar">
+        <div className="transaction-controls-bar__left">
+          <TransactionFilters
+            filters={advancedFilters}
+            onChange={handleFiltersChange}
+            isOpen={filtersOpen}
+            onToggle={() => setFiltersOpen((o) => !o)}
+            categories={categories}
+            accounts={accounts}
+          />
+        </div>
+        <TransactionSort sort={sortConfig} onChange={handleSortChange} />
       </div>
+
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
           <LoadingSpinner label="Loading transactions" />
@@ -298,7 +492,7 @@ export const TransactionsPage: React.FC = () => {
           title={hasActiveFilters ? 'No transactions found' : 'No transactions yet'}
           description={
             hasActiveFilters
-              ? 'Try adjusting your search or category filters.'
+              ? 'Try adjusting your search or filters.'
               : 'Transactions you add will appear here.'
           }
         />
@@ -369,6 +563,7 @@ export const TransactionsPage: React.FC = () => {
           ))}
         </div>
       )}
+
       <TransactionForm
         isOpen={isFormOpen}
         accounts={accounts}
@@ -377,6 +572,15 @@ export const TransactionsPage: React.FC = () => {
         onSubmit={handleTransactionSubmit}
         onCancel={handleFormCancel}
       />
+
+      <TransactionEditPanel
+        transaction={editPanelTransaction}
+        accounts={accounts}
+        categories={categories}
+        onSave={handleEditPanelSave}
+        onClose={handleEditPanelClose}
+      />
+
       <ConfirmDialog
         isOpen={deletingTransaction !== null}
         title="Delete Transaction"

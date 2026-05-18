@@ -36,17 +36,16 @@ test.describe('Transactions page', () => {
     await expect(searchInput).toHaveAttribute('placeholder', /search/i);
   });
 
-  test('shows filter chips including "All"', async ({ authenticatedPage: page }) => {
+  test('shows filter controls with toggle button', async ({ authenticatedPage: page }) => {
     await page.goto('/transactions');
 
-    // Category filter group
-    const filterGroup = page.getByRole('group', { name: /category filter/i });
-    await expect(filterGroup).toBeVisible();
+    // Advanced filter toggle button should be visible
+    const filterToggle = page.getByRole('button', { name: /filters/i });
+    await expect(filterToggle).toBeVisible();
 
-    // The "All" filter chip should be present and pressed by default
-    const allChip = filterGroup.getByRole('button', { name: 'All' });
-    await expect(allChip).toBeVisible();
-    await expect(allChip).toHaveAttribute('aria-pressed', 'true');
+    // Sort controls should be visible
+    const sortSelect = page.getByLabel(/sort field/i);
+    await expect(sortSelect).toBeVisible();
   });
 
   test('shows the Add Transaction button', async ({ authenticatedPage: page }) => {
