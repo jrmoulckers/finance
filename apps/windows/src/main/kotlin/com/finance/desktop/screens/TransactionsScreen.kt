@@ -56,6 +56,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.finance.core.currency.CurrencyFormatter
+import com.finance.desktop.components.filter.FilterBar
+import com.finance.desktop.components.tags.TagChip
+import com.finance.desktop.components.tags.TagList
+import com.finance.desktop.components.tags.TagSize
 import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.TransactionsViewModel
@@ -83,6 +87,10 @@ private enum class SortDirection { ASC, DESC }
  * Features:
  * - Search bar for filtering by payee (delegated to ViewModel)
  * - Type filter chips (All / Expenses / Income / Transfers)
+ * - Advanced filter bar with date range, categories, accounts, amount, status
+ * - Sort controls with field and direction selection
+ * - Active filter chips with remove buttons
+ * - Tag chips on transaction rows
  * - Sortable columns (click header to sort ascending/descending)
  * - Right-click context menus on each row
  * - Mouse-friendly row spacing and hover-ready layout
@@ -113,7 +121,8 @@ fun TransactionsScreen(modifier: Modifier = Modifier) {
         return
     }
 
-    // Apply local sorting on top of ViewModel-filtered data
+    // Transactions are already sorted by the ViewModel's advanced sort;
+    // local column sorting provides secondary table-header UX
     val sortedTransactions by remember(state.transactions, sortColumn, sortDirection) {
         derivedStateOf {
             state.transactions.sortedWith(
@@ -147,12 +156,25 @@ fun TransactionsScreen(modifier: Modifier = Modifier) {
 
         Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
 
-        // Search + filters bar
+        // Search + type filter bar
         SearchAndFilterBar(
             searchQuery = state.filter.searchQuery,
             onSearchChange = { viewModel.updateSearch(it) },
             typeFilter = state.filter.type,
             onTypeFilterChange = { viewModel.setTypeFilter(it) },
+        )
+
+        Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
+
+        // Advanced filter bar with sort controls
+        FilterBar(
+            filter = state.advancedFilter,
+            sortConfig = state.sortConfig,
+            availableCategories = state.availableCategories,
+            availableAccounts = state.availableAccounts,
+            onFilterChange = { viewModel.updateAdvancedFilter(it) },
+            onSortChange = { viewModel.updateSort(it) },
+            onClearAll = { viewModel.clearFilters() },
         )
 
         Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
@@ -469,25 +491,38 @@ private fun TransactionTableRow(txn: Transaction) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            // Payee (with type icon)
-            Row(
+            // Payee (with type icon) and tags
+            Column(
                 modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    imageVector = typeIcon,
-                    contentDescription = null,
-                    tint = amountColor,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(FinanceDesktopTheme.spacing.sm))
-                Text(
-                    text = payee,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = typeIcon,
+                        contentDescription = null,
+                        tint = amountColor,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(FinanceDesktopTheme.spacing.sm))
+                    Text(
+                        text = payee,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                // Show up to 2 tag chips in the list view
+                if (txn.tags.isNotEmpty()) {
+                    Spacer(Modifier.height(2.dp))
+                    TagList(
+                        tags = txn.tags,
+                        size = TagSize.SMALL,
+                        maxVisible = 2,
+                    )
+                }
             }
 
             // Amount
