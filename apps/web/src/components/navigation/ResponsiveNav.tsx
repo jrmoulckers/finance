@@ -15,6 +15,7 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -75,8 +76,12 @@ export const ResponsiveNav: React.FC<ResponsiveNavProps> = ({
   }, []);
 
   const handleNavClick = useCallback(
-    (href: string) => {
-      onNavigate(href);
+    (href: string, e: React.MouseEvent) => {
+      // Only call onNavigate for simple clicks (no modifier keys).
+      // Link component handles native behavior for CTRL+Click, middle-click, etc.
+      if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.button) {
+        onNavigate(href);
+      }
     },
     [onNavigate],
   );
@@ -130,20 +135,23 @@ export const ResponsiveNav: React.FC<ResponsiveNavProps> = ({
 
       <ul className="responsive-nav__list" role="list">
         {items.map((item) => {
-          const isActive = activePath === item.href;
+          const isActive =
+            item.href === '/'
+              ? activePath === '/'
+              : activePath === item.href || activePath.startsWith(item.href + '/');
           return (
             <li key={item.id} className="responsive-nav__item" role="listitem">
-              <button
-                type="button"
+              <Link
+                to={item.href}
                 className="responsive-nav__link"
                 aria-current={isActive ? 'page' : undefined}
-                onClick={() => handleNavClick(item.href)}
+                onClick={(e) => handleNavClick(item.href, e)}
               >
                 <span className="responsive-nav__icon" aria-hidden="true">
                   {item.icon}
                 </span>
                 <span className="responsive-nav__label">{item.label}</span>
-              </button>
+              </Link>
             </li>
           );
         })}

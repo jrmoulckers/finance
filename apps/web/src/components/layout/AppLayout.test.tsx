@@ -15,6 +15,18 @@ vi.mock('../../hooks', () => ({
   useKeyboardShortcuts: vi.fn(),
 }));
 
+vi.mock('../../hooks/useEscapeBack', () => ({
+  useEscapeBack: vi.fn(),
+}));
+
+vi.mock('../../hooks/useSyncStatus', () => ({
+  useSyncStatus: () => ({ conflictCount: 0 }),
+}));
+
+vi.mock('../common/ConflictResolutionDialog', () => ({
+  ConflictResolutionDialog: () => null,
+}));
+
 vi.mock('../common', () => ({
   KeyboardShortcutsModal: ({ isOpen }: { isOpen: boolean; onClose: () => void }) =>
     isOpen ? <div data-testid="keyboard-shortcuts-modal">Shortcuts Modal</div> : null,

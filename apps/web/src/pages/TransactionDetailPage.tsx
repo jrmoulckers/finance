@@ -5,9 +5,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { TransactionForm } from '../components/forms';
+import { Breadcrumb } from '../components/navigation';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts, useCategories, useTransactions } from '../hooks';
 import type { Transaction } from '../kmp/bridge';
+import '../components/navigation/breadcrumb.css';
 
 const TYPE_LABELS: Record<string, string> = {
   EXPENSE: 'Expense',
@@ -136,20 +138,7 @@ export const TransactionDetailPage: React.FC = () => {
 
   return (
     <>
-      <Link
-        to="/transactions"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 'var(--spacing-1)',
-          color: 'var(--semantic-text-secondary)',
-          textDecoration: 'none',
-          marginBottom: 'var(--spacing-3)',
-        }}
-        aria-label="Back to transactions"
-      >
-        ← Back to Transactions
-      </Link>
+      <Breadcrumb segments={[{ label: 'Transactions', href: '/transactions' }, { label }]} />
 
       <div
         style={{

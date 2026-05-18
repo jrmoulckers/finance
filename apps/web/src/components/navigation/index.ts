@@ -8,3 +8,6 @@
 
 export { ResponsiveNav } from './ResponsiveNav';
 export type { ResponsiveNavProps, NavItem } from './ResponsiveNav';
+export { ScrollToTop } from './ScrollToTop';
+export { Breadcrumb } from './Breadcrumb';
+export type { BreadcrumbProps, BreadcrumbSegment } from './Breadcrumb';

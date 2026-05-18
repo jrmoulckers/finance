@@ -5,8 +5,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { AccountForm } from '../components/forms';
+import { Breadcrumb } from '../components/navigation';
 import { useAccounts, useTransactions } from '../hooks';
 import type { Account } from '../kmp/bridge';
+import '../components/navigation/breadcrumb.css';
 import '../styles/pages.css';
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
@@ -70,13 +72,7 @@ export const AccountDetailPage: React.FC = () => {
 
   return (
     <>
-      <Link
-        to="/accounts"
-        className="page-back-link page-back-link--spaced"
-        aria-label="Back to accounts"
-      >
-        ← Back to Accounts
-      </Link>
+      <Breadcrumb segments={[{ label: 'Accounts', href: '/accounts' }, { label: account.name }]} />
 
       <div className="page-header">
         <h2 className="page-heading">{account.name}</h2>

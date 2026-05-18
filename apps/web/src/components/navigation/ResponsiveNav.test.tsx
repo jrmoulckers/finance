@@ -6,6 +6,26 @@ import { describe, expect, it, vi } from 'vitest';
 import { ResponsiveNav, type NavItem } from './ResponsiveNav';
 
 // ---------------------------------------------------------------------------
+// Mock react-router-dom Link to render a plain <a> in tests
+// ---------------------------------------------------------------------------
+
+vi.mock('react-router-dom', () => ({
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
+// ---------------------------------------------------------------------------
 // Mock useBreakpoint
 // ---------------------------------------------------------------------------
 
@@ -66,10 +86,10 @@ describe('ResponsiveNav', () => {
 
     render(<ResponsiveNav items={testItems} activePath="/accounts" onNavigate={vi.fn()} />);
 
-    const activeLink = screen.getByText('Accounts').closest('button');
+    const activeLink = screen.getByText('Accounts').closest('a');
     expect(activeLink).toHaveAttribute('aria-current', 'page');
 
-    const inactiveLink = screen.getByText('Dashboard').closest('button');
+    const inactiveLink = screen.getByText('Dashboard').closest('a');
     expect(inactiveLink).not.toHaveAttribute('aria-current');
   });
 

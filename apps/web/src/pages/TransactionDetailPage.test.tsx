@@ -329,9 +329,10 @@ describe('TransactionDetailPage', () => {
   it('has back to transactions link', () => {
     renderWithRoute();
 
-    const backLink = screen.getByRole('link', { name: /back to transactions/i });
-    expect(backLink).toBeInTheDocument();
-    expect(backLink).toHaveAttribute('href', '/transactions');
+    const breadcrumbNav = screen.getByRole('navigation', { name: /breadcrumb/i });
+    const transactionsLink = within(breadcrumbNav).getByRole('link', { name: 'Transactions' });
+    expect(transactionsLink).toBeInTheDocument();
+    expect(transactionsLink).toHaveAttribute('href', '/transactions');
   });
 
   // ---------------------------------------------------------------------------
