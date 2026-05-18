@@ -91,12 +91,21 @@ describe('transactions repository', () => {
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
         expect.stringContaining('LIKE ?'),
-        expect.arrayContaining(['%coffee%', '%coffee%']),
+        expect.arrayContaining([
+          '%coffee%',
+          '%coffee%',
+          '%coffee%',
+          '%coffee%',
+          '%coffee%',
+          '%coffee%',
+        ]),
       );
       const sql = mockQuery.mock.calls[0][1];
       // Should use COALESCE for nullable fields
       expect(sql).toContain('COALESCE(payee,');
       expect(sql).toContain('COALESCE(note,');
+      expect(sql).toContain('COALESCE(tags,');
+      expect(sql).toContain('status LIKE');
       // Should not interpolate search term
       expect(sql).not.toContain("LIKE '%coffee%'");
     });
@@ -147,7 +156,16 @@ describe('transactions repository', () => {
       getAllTransactions(mockDb, filters);
 
       const params = mockQuery.mock.calls[0][2] as unknown[];
-      expect(params).toEqual(['%grocery%', '%grocery%', 'EXPENSE', 5]);
+      expect(params).toEqual([
+        '%grocery%',
+        '%grocery%',
+        '%grocery%',
+        '%grocery%',
+        '%grocery%',
+        '%grocery%',
+        'EXPENSE',
+        5,
+      ]);
     });
 
     it('should preserve monetary amounts as integers', () => {
@@ -512,7 +530,8 @@ describe('transactions repository', () => {
 
       // Should wrap in % but not escape internal wildcards (basic LIKE)
       const params = mockQuery.mock.calls[0][2] as unknown[];
-      expect(params).toEqual(['%100%%', '%100%%']);
+      // 6 LIKE patterns (numeric check doesn't match "100%" due to trailing %)
+      expect(params).toEqual(['%100%%', '%100%%', '%100%%', '%100%%', '%100%%', '%100%%']);
     });
 
     it('should trim search term whitespace', () => {
@@ -525,7 +544,14 @@ describe('transactions repository', () => {
       getAllTransactions(mockDb, filters);
 
       const params = mockQuery.mock.calls[0][2] as unknown[];
-      expect(params).toEqual(['%coffee%', '%coffee%']);
+      expect(params).toEqual([
+        '%coffee%',
+        '%coffee%',
+        '%coffee%',
+        '%coffee%',
+        '%coffee%',
+        '%coffee%',
+      ]);
     });
 
     it('should not add LIKE clause for empty search term', () => {

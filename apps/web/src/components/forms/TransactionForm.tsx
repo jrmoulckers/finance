@@ -33,7 +33,14 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
 import { useAutoCategory } from '../../hooks/useAutoCategory';
-import type { Account, Category, Transaction, TransactionType } from '../../kmp/bridge';
+import { useAmountInput } from '../../hooks/useAmountInput';
+import type {
+  Account,
+  Category,
+  Transaction,
+  TransactionStatus,
+  TransactionType,
+} from '../../kmp/bridge';
 import type { CategorySuggestion } from '../../lib/categorization';
 import { transactionSchema } from '../../lib/validation';
 
@@ -48,6 +55,13 @@ const TRANSACTION_TYPES: readonly { value: TransactionType; label: string }[] = 
   { value: 'EXPENSE', label: 'Expense' },
   { value: 'INCOME', label: 'Income' },
   { value: 'TRANSFER', label: 'Transfer' },
+] as const;
+
+/** Transaction status options for the dropdown. */
+const TRANSACTION_STATUSES: readonly { value: TransactionStatus; label: string }[] = [
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'CLEARED', label: 'Cleared' },
+  { value: 'RECONCILED', label: 'Reconciled' },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -83,12 +97,17 @@ function todayISO(): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Convert a stored transaction amount into a decimal string for the amount input. */
-function formatAmountForInput(transaction: Transaction): string {
-  const divisor = Math.pow(10, transaction.currency.decimalPlaces);
-  return (Math.abs(transaction.amount.amount) / divisor).toFixed(
-    transaction.currency.decimalPlaces,
-  );
+/** Convert stored tags array to a comma-separated string for the input. */
+function tagsToString(tags: readonly string[]): string {
+  return tags.join(', ');
+}
+
+/** Parse a comma-separated tags string into an array of trimmed non-empty strings. */
+function parseTags(input: string): string[] {
+  return input
+    .split(/[,\n]/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -102,7 +121,7 @@ interface FormErrors {
 }
 
 function validate(
-  amountStr: string,
+  amountCents: number,
   description: string,
   accountId: string,
   type: TransactionType,
@@ -111,7 +130,7 @@ function validate(
   const errors: FormErrors = {};
   const result = transactionSchema.safeParse({
     description: description.trim(),
-    amount: parseFloat(amountStr),
+    amount: amountCents / 100,
     type,
     accountId,
     date,
@@ -131,6 +150,11 @@ function validate(
         errors.accountId = 'Please select an account.';
       }
     }
+  }
+
+  // Extra check: cents must be > 0
+  if (amountCents <= 0 && !errors.amount) {
+    errors.amount = 'Amount must be greater than zero.';
   }
 
   return errors;
@@ -160,13 +184,15 @@ export function TransactionForm({
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   // -- state ---------------------------------------------------------------
-  const [amount, setAmount] = useState('');
+  const amountInput = useAmountInput({ currencySymbol: '$', decimalPlaces: 2 });
   const [description, setDescription] = useState('');
   const [transactionType, setTransactionType] = useState<TransactionType>('EXPENSE');
+  const [status, setStatus] = useState<TransactionStatus>('PENDING');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState(todayISO);
   const [notes, setNotes] = useState('');
+  const [tagsInput, setTagsInput] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -194,13 +220,19 @@ export function TransactionForm({
       return;
     }
 
-    setAmount(initialData ? formatAmountForInput(initialData) : '');
+    if (initialData) {
+      amountInput.setCents(Math.abs(initialData.amount.amount));
+    } else {
+      amountInput.reset(0);
+    }
     setDescription(initialData?.payee ?? '');
     setTransactionType(initialData?.type ?? 'EXPENSE');
+    setStatus(initialData?.status ?? 'PENDING');
     setCategoryId(initialData?.categoryId ?? '');
     setAccountId(initialData?.accountId ?? '');
     setDate(initialData?.date ?? todayISO());
     setNotes(initialData?.note ?? '');
+    setTagsInput(initialData ? tagsToString(initialData.tags) : '');
     setErrors({});
     setSubmitting(false);
     setSubmitError(null);
@@ -214,10 +246,10 @@ export function TransactionForm({
       return;
     }
 
-    const amountCents = parseFloat(amount) ? Math.round(parseFloat(amount) * 100) : undefined;
+    const amountCents = amountInput.cents > 0 ? amountInput.cents : undefined;
     const result = autoSuggest(description, amountCents);
     setSuggestion(result);
-  }, [description, amount, isOpen, autoSuggest]);
+  }, [description, amountInput.cents, isOpen, autoSuggest]);
 
   // -- handlers ------------------------------------------------------------
 
@@ -254,7 +286,13 @@ export function TransactionForm({
     async (e: FormEvent) => {
       e.preventDefault();
 
-      const fieldErrors = validate(amount, description, accountId, transactionType, date);
+      const fieldErrors = validate(
+        amountInput.cents,
+        description,
+        accountId,
+        transactionType,
+        date,
+      );
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
@@ -268,18 +306,18 @@ export function TransactionForm({
         return;
       }
 
-      const amountCents = Math.round(parseFloat(amount) * 100);
-
       const input: CreateTransactionInput = {
         householdId: selectedAccount.householdId,
         accountId,
         type: transactionType,
-        amount: { amount: amountCents },
+        status,
+        amount: { amount: amountInput.cents },
         currency: selectedAccount.currency,
         payee: description.trim(),
         date,
         categoryId: categoryId || null,
         note: notes.trim() || null,
+        tags: parseTags(tagsInput),
       };
 
       // Learn from user's category choice if it differs from the suggestion.
@@ -293,13 +331,15 @@ export function TransactionForm({
       try {
         await onSubmit(input);
         // Reset form on success
-        setAmount('');
+        amountInput.reset(0);
         setDescription('');
         setTransactionType('EXPENSE');
+        setStatus('PENDING');
         setCategoryId('');
         setAccountId('');
         setDate(todayISO());
         setNotes('');
+        setTagsInput('');
         setErrors({});
         setSuggestion(null);
       } catch (err) {
@@ -309,14 +349,16 @@ export function TransactionForm({
       }
     },
     [
-      amount,
+      amountInput,
       description,
       accountId,
       accounts,
       transactionType,
+      status,
       date,
       categoryId,
       notes,
+      tagsInput,
       onSubmit,
       submitFailureMessage,
       suggestion,
@@ -360,7 +402,7 @@ export function TransactionForm({
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="form-fields">
-            {/* Amount */}
+            {/* Amount (Venmo-style cents-first) */}
             <div className="form-group">
               <label htmlFor="txn-amount" className="form-group__label form-group__label--required">
                 Amount
@@ -369,13 +411,12 @@ export function TransactionForm({
                 ref={firstInputRef}
                 id="txn-amount"
                 className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
-                type="number"
-                step="0.01"
-                min="0.01"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
+                type="text"
+                inputMode="numeric"
+                value={amountInput.displayValue}
+                onKeyDown={amountInput.handleKeyDown}
+                onChange={amountInput.handleChange}
+                placeholder="$0.00"
                 aria-invalid={hasAmountError}
                 aria-describedby={hasAmountError ? 'txn-amount-error' : undefined}
                 aria-required="true"
@@ -388,13 +429,13 @@ export function TransactionForm({
               )}
             </div>
 
-            {/* Description (payee) */}
+            {/* Payee */}
             <div className="form-group">
               <label
                 htmlFor="txn-description"
                 className="form-group__label form-group__label--required"
               >
-                Description
+                Payee
               </label>
               <input
                 id="txn-description"
@@ -432,6 +473,25 @@ export function TransactionForm({
                 ))}
               </div>
             </fieldset>
+
+            {/* Status */}
+            <div className="form-group">
+              <label htmlFor="txn-status" className="form-group__label">
+                Status
+              </label>
+              <select
+                id="txn-status"
+                className="form-select"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as TransactionStatus)}
+              >
+                {TRANSACTION_STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* Category */}
             <div className="form-group">
@@ -526,6 +586,35 @@ export function TransactionForm({
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
               />
+            </div>
+
+            {/* Tags */}
+            <div className="form-group">
+              <label htmlFor="txn-tags" className="form-group__label">
+                Tags
+              </label>
+              <input
+                id="txn-tags"
+                className="form-input"
+                type="text"
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                placeholder="Enter tags separated by commas"
+                autoComplete="off"
+                aria-describedby="txn-tags-hint"
+              />
+              <span id="txn-tags-hint" className="form-hint">
+                Separate multiple tags with commas
+              </span>
+              {parseTags(tagsInput).length > 0 && (
+                <div className="form-tags" role="list" aria-label="Selected tags">
+                  {parseTags(tagsInput).map((tag) => (
+                    <span key={tag} className="form-tag-chip" role="listitem">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

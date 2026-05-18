@@ -586,3 +586,41 @@
     border-width: 2px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Hint text — displays below an input as helpful context
+ * --------------------------------------------------------------------------- */
+
+.form-hint {
+  display: block;
+  margin-top: var(--spacing-1, 0.25rem);
+  font-size: var(--font-size-sm, 0.75rem);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tag chips — displays parsed tags as pills
+ * --------------------------------------------------------------------------- */
+
+.form-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2, 0.5rem);
+  margin-top: var(--spacing-2, 0.5rem);
+}
+
+.form-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1, 0.25rem) var(--spacing-2, 0.5rem);
+  font-size: var(--font-size-sm, 0.75rem);
+  background-color: var(--semantic-surface-secondary, #e5e7eb);
+  color: var(--semantic-text-primary, #111827);
+  border-radius: var(--radius-full, 9999px);
+  line-height: 1.4;
+}
+
+[data-theme='dark'] .form-tag-chip {
+  background-color: var(--semantic-surface-secondary, #374151);
+  color: var(--semantic-text-primary, #f3f4f6);
+}
