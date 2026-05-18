@@ -15,12 +15,13 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { calculatePasswordStrength } from '../lib/password-strength';
 import { signupSchema } from '../lib/validation';
 
 import '../styles/auth.css';
 
 /** Minimum password length enforced by client-side validation. */
-const MIN_PASSWORD_LENGTH = 8;
+const MIN_PASSWORD_LENGTH = 12;
 
 interface SignupFieldErrors {
   email?: string;
@@ -240,6 +241,7 @@ export const SignupPage: React.FC = () => {
             <p id={passwordHintId} className="auth-field__hint">
               Must be at least {MIN_PASSWORD_LENGTH} characters
             </p>
+            {password.length > 0 && <PasswordStrengthMeter password={password} />}
             {fieldErrors.password && (
               <p id={passwordErrorId} className="auth-field__error" role="alert">
                 {fieldErrors.password}
@@ -299,6 +301,45 @@ export const SignupPage: React.FC = () => {
         </p>
       </div>
     </main>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Password Strength Meter Sub-Component
+// ---------------------------------------------------------------------------
+
+interface PasswordStrengthMeterProps {
+  password: string;
+}
+
+/** Visual password strength indicator with colored bar and feedback. */
+const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({ password }) => {
+  const strength = calculatePasswordStrength(password);
+  const widthPercent = ((strength.score + 1) / 5) * 100;
+
+  return (
+    <div className="auth-password-strength" aria-live="polite">
+      <div
+        className="auth-password-strength__bar"
+        role="progressbar"
+        aria-valuenow={strength.score}
+        aria-valuemin={0}
+        aria-valuemax={4}
+        aria-label={`Password strength: ${strength.label}`}
+      >
+        <div
+          className="auth-password-strength__fill"
+          style={{
+            width: `${widthPercent}%`,
+            backgroundColor: strength.color,
+          }}
+        />
+      </div>
+      <span className="auth-password-strength__label">{strength.label}</span>
+      {strength.feedback && (
+        <span className="auth-password-strength__feedback">{strength.feedback}</span>
+      )}
+    </div>
   );
 };
 

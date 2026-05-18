@@ -277,3 +277,51 @@
     color: var(--color-amber-300, #fcd34d);
   }
 }
+
+/* ─── Forgot password link in error banner ───────────────────────────────── */
+
+.auth-error__forgot {
+  margin-top: var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+/* ─── Password strength meter ────────────────────────────────────────────── */
+
+.auth-password-strength {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-1);
+}
+
+.auth-password-strength__bar {
+  height: 4px;
+  background: var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-sm, 2px);
+  overflow: hidden;
+}
+
+.auth-password-strength__fill {
+  height: 100%;
+  border-radius: var(--border-radius-sm, 2px);
+  transition:
+    width var(--duration-fast, 100ms) ease,
+    background-color var(--duration-fast, 100ms) ease;
+}
+
+.auth-password-strength__label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-secondary);
+}
+
+.auth-password-strength__feedback {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-password-strength__fill {
+    transition: none;
+  }
+}

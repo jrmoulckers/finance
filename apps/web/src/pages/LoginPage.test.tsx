@@ -15,6 +15,7 @@ const authState = vi.hoisted(() => ({
   error: null as string | null,
   user: null,
   webAuthnSupported: true,
+  isDemoMode: false,
 }));
 
 vi.mock('../auth/auth-context', () => ({

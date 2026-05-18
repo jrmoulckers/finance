@@ -76,7 +76,7 @@ export const LoginPage: React.FC = () => {
         }
 
         if (issue.path[0] === 'password') {
-          nextFieldErrors.password = 'Password must be at least 8 characters.';
+          nextFieldErrors.password = 'Password is required.';
         }
       }
     }
@@ -142,6 +142,13 @@ export const LoginPage: React.FC = () => {
             tabIndex={-1}
           >
             {error}
+            {!isDemoMode && (
+              <p className="auth-error__forgot">
+                <Link to="/forgot-password" className="auth-footer__link">
+                  Forgot password?
+                </Link>
+              </p>
+            )}
           </div>
         )}
 

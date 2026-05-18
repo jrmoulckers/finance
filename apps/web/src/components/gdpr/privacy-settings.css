@@ -3,8 +3,8 @@
 /* -------------------------------------------------------------------
  * PrivacySettings component styles
  *
- * Replaces inline styles with theme-aware CSS classes.
- * Uses design-token CSS custom properties throughout.
+ * Uses design-token CSS custom properties to align with the site-wide
+ * card styling pattern (consistent border-radius, shadow, padding).
  * ------------------------------------------------------------------- */
 
 .privacy-settings__info {
@@ -35,12 +35,13 @@
   padding: 0 var(--spacing-2);
 }
 
-/* Delete confirmation alert */
+/* Delete confirmation alert — aligned with card styling */
 .privacy-settings__delete-confirm {
   padding: var(--spacing-4);
-  border-radius: var(--border-radius-md);
+  border-radius: var(--card-border-radius, var(--border-radius-md));
   border: 2px solid var(--semantic-status-negative);
   background-color: var(--color-red-50, #fef2f2);
+  box-shadow: var(--card-shadow, none);
 }
 
 .privacy-settings__delete-confirm-title {

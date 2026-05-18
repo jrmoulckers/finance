@@ -46,7 +46,13 @@ import {
   setAccessToken,
 } from './token-storage';
 
-import { demoLogin, demoRefreshToken, demoSignup, isDemoMode } from './demo-auth';
+import {
+  demoDeleteAccount,
+  demoLogin,
+  demoRefreshToken,
+  demoSignup,
+  isDemoMode,
+} from './demo-auth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +80,8 @@ export interface AuthActions {
   registerNewPasskey: () => Promise<void>;
   /** Sign out and clear all tokens. */
   logout: () => Promise<void>;
+  /** Permanently delete the account and all local data. */
+  deleteAccount: () => Promise<void>;
   /** Manually trigger a token refresh. */
   refresh: () => Promise<void>;
   /** Create a new account with email and password. */
@@ -358,6 +366,33 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     }
   }, [config, demoModeActive]);
 
+  const deleteAccount = useCallback(async (): Promise<void> => {
+    setError(null);
+
+    try {
+      if (demoModeActive) {
+        // Remove user from demo user store
+        if (user?.email) {
+          demoDeleteAccount(user.email);
+        }
+      } else {
+        // TODO(#1443): In production, call a backend endpoint to request
+        // server-side account deletion (e.g. POST /api/auth/delete-account).
+        // For now, we clear local state only.
+        await revokeRefreshToken(config.logoutEndpoint);
+      }
+    } catch {
+      // Best-effort — clear local state regardless
+    } finally {
+      // Clear all local data
+      clearTokens();
+      localStorage.clear();
+      sessionStorage.clear();
+      setUser(null);
+      config.onUnauthenticated?.();
+    }
+  }, [config, demoModeActive, user?.email]);
+
   const refresh = useCallback(async (): Promise<void> => {
     if (demoModeActive) {
       // In demo mode, generate a fresh token if we have a user
@@ -491,6 +526,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       loginWithOAuth,
       registerNewPasskey,
       logout,
+      deleteAccount,
       refresh,
       signupWithEmail,
     }),
@@ -506,6 +542,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       loginWithOAuth,
       registerNewPasskey,
       logout,
+      deleteAccount,
       refresh,
       signupWithEmail,
     ],

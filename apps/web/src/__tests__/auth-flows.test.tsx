@@ -35,6 +35,7 @@ const authState = vi.hoisted(() => ({
   error: null as string | null,
   user: null as { id: string; email: string; hasPasskey: boolean } | null,
   webAuthnSupported: true,
+  isDemoMode: false,
 }));
 
 const navigateMock = vi.hoisted(() => vi.fn());
@@ -255,10 +256,10 @@ describe('Signup flow (#1331)', () => {
       target: { value: 'new@example.com' },
     });
     fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'password123' },
+      target: { value: 'strongpass1234' },
     });
     fireEvent.change(screen.getByLabelText('Confirm Password'), {
-      target: { value: 'different123' },
+      target: { value: 'different12345' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
 
@@ -273,17 +274,17 @@ describe('Signup flow (#1331)', () => {
       target: { value: 'new@example.com' },
     });
     fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'password123' },
+      target: { value: 'strongpass1234' },
     });
     fireEvent.change(screen.getByLabelText('Confirm Password'), {
-      target: { value: 'password123' },
+      target: { value: 'strongpass1234' },
     });
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
     });
 
-    expect(authState.signupWithEmail).toHaveBeenCalledWith('new@example.com', 'password123');
+    expect(authState.signupWithEmail).toHaveBeenCalledWith('new@example.com', 'strongpass1234');
   });
 
   it('redirects to /dashboard when isAuthenticated becomes true after signup', async () => {
@@ -297,10 +298,10 @@ describe('Signup flow (#1331)', () => {
       target: { value: 'new@example.com' },
     });
     fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'password123' },
+      target: { value: 'strongpass1234' },
     });
     fireEvent.change(screen.getByLabelText('Confirm Password'), {
-      target: { value: 'password123' },
+      target: { value: 'strongpass1234' },
     });
 
     await act(async () => {
@@ -318,10 +319,10 @@ describe('Signup flow (#1331)', () => {
       target: { value: 'existing@example.com' },
     });
     fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'password123' },
+      target: { value: 'strongpass1234' },
     });
     fireEvent.change(screen.getByLabelText('Confirm Password'), {
-      target: { value: 'password123' },
+      target: { value: 'strongpass1234' },
     });
 
     await act(async () => {

@@ -49,8 +49,16 @@ export const SettingsPage: React.FC = () => {
     () => localStorage.getItem(MONITORING_CONSENT_STORAGE_KEY) === 'true',
   );
 
-  const { isAuthenticated, isLoading, logout, user, registerNewPasskey, webAuthnSupported } =
-    useAuth();
+  const {
+    isAuthenticated,
+    isLoading,
+    logout,
+    deleteAccount,
+    user,
+    registerNewPasskey,
+    webAuthnSupported,
+    isDemoMode: demoModeActive,
+  } = useAuth();
   const { isOffline } = useOfflineStatus();
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState<string | null>(null);
@@ -232,21 +240,25 @@ export const SettingsPage: React.FC = () => {
             <span className="settings-item__label">Biometric Lock</span>
             <span className="settings-item__value settings-item__value--muted">Coming soon</span>
           </button>
-          <button
-            type="button"
-            className="settings-item settings-item--button"
-            onClick={() => {
-              void handlePasskeyRegistration();
-            }}
-            disabled={!isAuthenticated || isPasskeyLoading}
-            aria-label={user?.hasPasskey ? 'Passkeys — registered' : 'Passkeys — set up a passkey'}
-          >
-            <span className="settings-item__label">Passkeys</span>
-            <span className="settings-item__value">
-              {isPasskeyLoading ? 'Registering…' : user?.hasPasskey ? '✓ Registered' : 'Set up'}
-            </span>
-          </button>
-          {passkeyMessage && (
+          {!demoModeActive && (
+            <button
+              type="button"
+              className="settings-item settings-item--button"
+              onClick={() => {
+                void handlePasskeyRegistration();
+              }}
+              disabled={!isAuthenticated || isPasskeyLoading}
+              aria-label={
+                user?.hasPasskey ? 'Passkeys — registered' : 'Passkeys — set up a passkey'
+              }
+            >
+              <span className="settings-item__label">Passkeys</span>
+              <span className="settings-item__value">
+                {isPasskeyLoading ? 'Registering…' : user?.hasPasskey ? '✓ Registered' : 'Set up'}
+              </span>
+            </button>
+          )}
+          {!demoModeActive && passkeyMessage && (
             <div className="settings-item settings-item--static" role="status" aria-live="polite">
               <span className="settings-item__value">{passkeyMessage}</span>
             </div>
@@ -301,7 +313,7 @@ export const SettingsPage: React.FC = () => {
         }}
         onDeleteAccount={async () => {
           if (!isAuthenticated) return;
-          await logout();
+          await deleteAccount();
         }}
       />
     </>

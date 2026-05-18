@@ -129,7 +129,11 @@ export async function demoSignup(email: string, password: string): Promise<void>
 /**
  * Authenticate a demo user and return a fake JWT + user info.
  *
- * @throws {Error} If credentials are invalid.
+ * In demo mode we provide specific error messages to help users understand
+ * what went wrong. This is safe because demo mode is local-only — no
+ * account enumeration risk exists.
+ *
+ * @throws {Error} If credentials are invalid (with a specific message).
  */
 export async function demoLogin(
   email: string,
@@ -137,19 +141,25 @@ export async function demoLogin(
 ): Promise<{ accessToken: string; user: { id: string; email: string } }> {
   const users = loadUsers();
   const normalizedEmail = email.toLowerCase().trim();
-  const passwordHash = await hashPassword(password);
-  const found = users.find((u) => u.email === normalizedEmail && u.passwordHash === passwordHash);
 
-  if (!found) {
-    throw new Error('Invalid email or password.');
+  // Check if the email exists first — specific error for demo UX
+  const userByEmail = users.find((u) => u.email === normalizedEmail);
+  if (!userByEmail) {
+    throw new Error('No account found for that email.');
   }
 
-  const token = generateDemoToken(found.email);
-  const sub = `demo-${found.email.replace(/[^a-zA-Z0-9]/g, '-')}`;
+  // Check password — specific error for demo UX
+  const passwordHash = await hashPassword(password);
+  if (userByEmail.passwordHash !== passwordHash) {
+    throw new Error('Incorrect password.');
+  }
+
+  const token = generateDemoToken(userByEmail.email);
+  const sub = `demo-${userByEmail.email.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
   return {
     accessToken: token,
-    user: { id: sub, email: found.email },
+    user: { id: sub, email: userByEmail.email },
   };
 }
 
@@ -161,4 +171,25 @@ export async function demoLogin(
 export function demoRefreshToken(email: string | null): string | null {
   if (!email) return null;
   return generateDemoToken(email);
+}
+
+/**
+ * Delete a demo user account from localStorage.
+ *
+ * Removes the user entry from the stored demo users list.
+ *
+ * @param email The email of the account to delete.
+ * @returns `true` if the user was found and removed, `false` otherwise.
+ */
+export function demoDeleteAccount(email: string): boolean {
+  const users = loadUsers();
+  const normalizedEmail = email.toLowerCase().trim();
+  const filtered = users.filter((u) => u.email !== normalizedEmail);
+
+  if (filtered.length === users.length) {
+    return false; // User not found
+  }
+
+  saveUsers(filtered);
+  return true;
 }

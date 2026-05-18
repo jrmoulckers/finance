@@ -142,16 +142,16 @@ describe('loginSchema', () => {
     expect(loginSchema.safeParse({ ...validLogin, email: 'invalid' }).success).toBe(false);
   });
 
-  it('rejects a short password', () => {
-    expect(loginSchema.safeParse({ ...validLogin, password: 'short' }).success).toBe(false);
+  it('rejects an empty password', () => {
+    expect(loginSchema.safeParse({ ...validLogin, password: '' }).success).toBe(false);
   });
 });
 
 describe('signupSchema', () => {
   const validSignup = {
     email: 'user@example.com',
-    password: 'password123',
-    confirmPassword: 'password123',
+    password: 'strongpass1234',
+    confirmPassword: 'strongpass1234',
   };
 
   it('accepts valid signup data', () => {
@@ -159,7 +159,7 @@ describe('signupSchema', () => {
   });
 
   it('rejects mismatched passwords', () => {
-    const result = signupSchema.safeParse({ ...validSignup, confirmPassword: 'password456' });
+    const result = signupSchema.safeParse({ ...validSignup, confirmPassword: 'password456789' });
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -169,5 +169,23 @@ describe('signupSchema', () => {
 
   it('rejects an invalid email', () => {
     expect(signupSchema.safeParse({ ...validSignup, email: 'invalid' }).success).toBe(false);
+  });
+
+  it('rejects a password shorter than 12 characters', () => {
+    expect(
+      signupSchema.safeParse({ ...validSignup, password: 'short', confirmPassword: 'short' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('rejects a password longer than 128 characters', () => {
+    const longPassword = 'a'.repeat(129);
+    expect(
+      signupSchema.safeParse({
+        ...validSignup,
+        password: longPassword,
+        confirmPassword: longPassword,
+      }).success,
+    ).toBe(false);
   });
 });

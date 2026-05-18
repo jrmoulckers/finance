@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const logoutMock = vi.fn<() => Promise<void>>();
+const deleteAccountMock = vi.fn<() => Promise<void>>();
 const offlineStatusMock = {
   isOffline: false,
   isOnline: true,
@@ -20,11 +21,13 @@ vi.mock('../auth/auth-context', () => ({
     },
     error: null,
     webAuthnSupported: true,
+    isDemoMode: false,
     loginWithEmail: vi.fn(),
     loginWithPasskey: vi.fn(),
     loginWithOAuth: vi.fn(),
     registerNewPasskey: vi.fn(),
     logout: logoutMock,
+    deleteAccount: deleteAccountMock,
     refresh: vi.fn(),
     signupWithEmail: vi.fn(),
   }),
@@ -59,8 +62,10 @@ describe('SettingsPage', () => {
   beforeEach(() => {
     localStorage.clear();
     logoutMock.mockReset();
+    deleteAccountMock.mockReset();
     setThemeMock.mockReset();
     logoutMock.mockResolvedValue(undefined);
+    deleteAccountMock.mockResolvedValue(undefined);
     offlineStatusMock.isOffline = false;
     offlineStatusMock.isOnline = true;
 

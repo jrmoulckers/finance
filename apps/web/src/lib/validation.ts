@@ -33,11 +33,18 @@ export const goalSchema = z.object({
 
 export const loginSchema = z.object({
   email: z.string().email('Valid email required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(1, 'Password is required'),
 });
 
-export const signupSchema = loginSchema
-  .extend({
+export const passwordSchema = z
+  .string()
+  .min(12, 'Password must be at least 12 characters')
+  .max(128, 'Password must be at most 128 characters');
+
+export const signupSchema = z
+  .object({
+    email: z.string().email('Valid email required'),
+    password: passwordSchema,
     confirmPassword: z.string(),
   })
   .refine((d) => d.password === d.confirmPassword, {
