@@ -1,14 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CategoryPieChart, SpendingBarChart, TrendLineChart } from '../components/charts';
+import {
+  CategoryPieChart,
+  SpendingBarChart,
+  SpendingTrendChart,
+  type TimePeriod,
+  type ViewType,
+} from '../components/charts';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useCategories, useDashboardData, useTransactions } from '../hooks';
 import type { DashboardData } from '../hooks/useDashboardData';
 import type { Transaction } from '../kmp/bridge';
 
-const CHART_LOOKBACK_DAYS = 30;
+const PERIOD_DAYS: Record<Exclude<TimePeriod, 'custom'>, number> = {
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+  '1y': 365,
+};
 
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
@@ -96,6 +107,21 @@ function buildCategoryData(transactions: Transaction[], categoryNames: Map<strin
   );
 }
 
+/**
+ * Compute average daily spending and period-over-period comparison.
+ */
+function computeSpendingStats(
+  currentTransactions: Transaction[],
+  days: number,
+): { averageDaily: number; totalSpending: number } {
+  const totalSpending = currentTransactions.reduce(
+    (sum, t) => sum + Math.abs(t.amount.amount) / 100,
+    0,
+  );
+  const averageDaily = days > 0 ? totalSpending / days : 0;
+  return { averageDaily, totalSpending };
+}
+
 export const DashboardPage: React.FC = () => {
   const { data, loading, error, refresh } = useDashboardData();
   const {
@@ -104,7 +130,14 @@ export const DashboardPage: React.FC = () => {
     error: categoriesError,
     refresh: refreshCategories,
   } = useCategories();
-  const chartDateRange = useMemo(() => getLastNDaysBounds(CHART_LOOKBACK_DAYS), []);
+
+  // Spending trend chart state
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('30d');
+  const [viewType, setViewType] = useState<ViewType>('line');
+
+  const activeDays = PERIOD_DAYS[selectedPeriod === 'custom' ? '30d' : selectedPeriod];
+
+  const chartDateRange = useMemo(() => getLastNDaysBounds(activeDays), [activeDays]);
   const chartFilters = useMemo(
     () => ({
       type: 'EXPENSE' as const,
@@ -120,22 +153,69 @@ export const DashboardPage: React.FC = () => {
     refresh: refreshChartTransactions,
   } = useTransactions(chartFilters);
 
+  // Previous period transactions for comparison
+  const prevDateRange = useMemo(() => {
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - activeDays);
+    const startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - (activeDays - 1));
+    return {
+      startDate: formatLocalDate(startDate),
+      endDate: formatLocalDate(endDate),
+    };
+  }, [activeDays]);
+
+  const prevFilters = useMemo(
+    () => ({
+      type: 'EXPENSE' as const,
+      startDate: prevDateRange.startDate,
+      endDate: prevDateRange.endDate,
+    }),
+    [prevDateRange],
+  );
+  const { transactions: prevTransactions } = useTransactions(prevFilters);
+
   const categoryNames = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories],
   );
   const chartCurrency =
     chartTransactions[0]?.currency.code ?? data?.recentTransactions[0]?.currency.code ?? 'USD';
+
   const { trendData, barData, categoryData, hasChartData } = useMemo(() => {
     const transformedCategoryData = buildCategoryData(chartTransactions, categoryNames);
 
     return {
-      trendData: buildTrendData(chartTransactions, CHART_LOOKBACK_DAYS),
+      trendData: buildTrendData(chartTransactions, activeDays),
       barData: transformedCategoryData.map(({ name, value }) => ({ name, amount: value })),
       categoryData: transformedCategoryData,
       hasChartData: transformedCategoryData.length > 0,
     };
-  }, [chartTransactions, categoryNames]);
+  }, [chartTransactions, categoryNames, activeDays]);
+
+  const { averageDaily, totalSpending } = useMemo(
+    () => computeSpendingStats(chartTransactions, activeDays),
+    [chartTransactions, activeDays],
+  );
+
+  const comparison = useMemo(() => {
+    if (prevTransactions.length === 0 && totalSpending === 0) return null;
+    const prevTotal = prevTransactions.reduce((sum, t) => sum + Math.abs(t.amount.amount) / 100, 0);
+    if (prevTotal === 0) return null;
+    const percentChange = ((totalSpending - prevTotal) / prevTotal) * 100;
+    return {
+      percentChange,
+      absoluteChange: totalSpending - prevTotal,
+    };
+  }, [prevTransactions, totalSpending]);
+
+  const handlePeriodChange = useCallback((period: TimePeriod) => {
+    setSelectedPeriod(period);
+  }, []);
+
+  const handleViewTypeChange = useCallback((type: ViewType) => {
+    setViewType(type);
+  }, []);
 
   const isLoading = loading || categoriesLoading || chartTransactionsLoading;
   const resolvedError = error ?? categoriesError ?? chartTransactionsError;
@@ -219,11 +299,16 @@ export const DashboardPage: React.FC = () => {
           {hasChartData ? (
             <section className="page-section dashboard-charts" aria-label="Financial charts">
               <div className="chart-container" aria-label="Spending trend chart">
-                <TrendLineChart
+                <SpendingTrendChart
                   data={trendData}
-                  series={[{ dataKey: 'spending', name: 'Spending' }]}
                   currency={chartCurrency}
                   title="Spending Trend"
+                  selectedPeriod={selectedPeriod}
+                  onPeriodChange={handlePeriodChange}
+                  viewType={viewType}
+                  onViewTypeChange={handleViewTypeChange}
+                  averageDailySpending={averageDaily}
+                  comparison={comparison}
                 />
               </div>
               <div className="chart-container" aria-label="Category spending bar chart">

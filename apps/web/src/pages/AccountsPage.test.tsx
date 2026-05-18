@@ -132,4 +132,61 @@ describe('AccountsPage', () => {
     );
     expect(screen.getByText(/net worth/i)).toBeInTheDocument();
   });
+
+  it('shows multi-currency indicator when accounts have different currencies', () => {
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        {
+          id: 'account-usd',
+          householdId: 'household-1',
+          name: 'USD Checking',
+          type: 'CHECKING',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: 150000 },
+          isArchived: false,
+          sortOrder: 1,
+          icon: null,
+          color: null,
+          ...syncMetadata,
+        },
+        {
+          id: 'account-eur',
+          householdId: 'household-1',
+          name: 'EUR Savings',
+          type: 'CHECKING',
+          currency: { code: 'EUR', decimalPlaces: 2 },
+          currentBalance: { amount: 120000 },
+          isArchived: false,
+          sortOrder: 2,
+          icon: null,
+          color: null,
+          ...syncMetadata,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <AccountsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0);
+  });
+
+  it('does not show multi-currency indicator when all accounts use the same currency', () => {
+    render(
+      <MemoryRouter>
+        <AccountsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText(/multiple currencies/i)).not.toBeInTheDocument();
+  });
 });

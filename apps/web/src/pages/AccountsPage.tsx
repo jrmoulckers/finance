@@ -6,6 +6,12 @@ import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../com
 import { AccountForm } from '../components/forms';
 import { useAccounts } from '../hooks';
 import type { AccountType } from '../kmp/bridge';
+import {
+  detectMixedCurrencies,
+  formatCurrencyGroup,
+  getSingleCurrency,
+  groupByCurrency,
+} from '../lib/currency-utils';
 import '../styles/pages.css';
 
 const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
@@ -28,6 +34,47 @@ const ACCOUNT_TYPE_ORDER: AccountType[] = [
   'OTHER',
 ];
 
+/**
+ * Renders a multi-currency total display.
+ * If all accounts share the same currency, shows a single CurrencyDisplay.
+ * If mixed, shows per-currency breakdown with a "(multiple currencies)" indicator.
+ */
+const MultiCurrencyTotal: React.FC<{
+  accounts: ReadonlyArray<{ currentBalance: { amount: number }; currency: { code: string } }>;
+  colorize?: boolean;
+}> = ({ accounts, colorize = false }) => {
+  const currencyItems = accounts.map((acc) => ({
+    currency: acc.currency.code,
+  }));
+
+  const isMixed = detectMixedCurrencies(currencyItems);
+
+  if (!isMixed) {
+    const singleCurrency = getSingleCurrency(currencyItems);
+    const total = accounts.reduce((sum, acc) => sum + acc.currentBalance.amount, 0);
+    return (
+      <CurrencyDisplay amount={total} currency={singleCurrency ?? 'USD'} colorize={colorize} />
+    );
+  }
+
+  const amounts = accounts.map((acc) => ({
+    amount: acc.currentBalance.amount,
+    currency: acc.currency.code,
+  }));
+  const groups = groupByCurrency(amounts);
+  const formatted = formatCurrencyGroup(groups);
+
+  return (
+    <span className="multi-currency-total" aria-label={`Total: ${formatted}`}>
+      <span className="multi-currency-total__amounts">{formatted}</span>
+      <span className="multi-currency-total__indicator" aria-hidden="true">
+        {' '}
+        (multiple currencies)
+      </span>
+    </span>
+  );
+};
+
 export const AccountsPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { accounts, loading, error, refresh, createAccount } = useAccounts();
@@ -42,7 +89,6 @@ export const AccountsPage: React.FC = () => {
     [accounts],
   );
 
-  const netWorth = accounts.reduce((sum, account) => sum + account.currentBalance.amount, 0);
   const handleCloseForm = () => {
     setIsFormOpen(false);
   };
@@ -113,52 +159,45 @@ export const AccountsPage: React.FC = () => {
     <>
       {pageHeader}
       <p className="page-summary" aria-live="polite">
-        Net worth: <CurrencyDisplay amount={netWorth} colorize />
+        Net worth: <MultiCurrencyTotal accounts={accounts} colorize />
       </p>
-      {accountGroups.map((group) => {
-        const groupTotal = group.accounts.reduce(
-          (sum, account) => sum + account.currentBalance.amount,
-          0,
-        );
-
-        return (
-          <section key={group.type} className="page-section" aria-label={group.label}>
-            <div className="page-section__header">
-              <h3 className="page-section__title">{group.label}</h3>
-              <CurrencyDisplay amount={groupTotal} colorize />
-            </div>
-            <div className="card">
-              <ul className="list-group" role="list">
-                {group.accounts.map((account) => (
-                  <li key={account.id} role="listitem">
-                    <Link
-                      to={`/accounts/${account.id}`}
-                      className="list-item page-list-link"
-                      aria-label={account.name}
-                    >
-                      <div className="list-item__content">
-                        <p className="list-item__primary">{account.name}</p>
-                        <p className="list-item__secondary">
-                          {account.isArchived
-                            ? `${account.currency.code} · Archived`
-                            : account.currency.code}
-                        </p>
-                      </div>
-                      <div className="list-item__trailing">
-                        <CurrencyDisplay
-                          amount={account.currentBalance.amount}
-                          currency={account.currency.code}
-                          colorize
-                        />
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        );
-      })}
+      {accountGroups.map((group) => (
+        <section key={group.type} className="page-section" aria-label={group.label}>
+          <div className="page-section__header">
+            <h3 className="page-section__title">{group.label}</h3>
+            <MultiCurrencyTotal accounts={group.accounts} colorize />
+          </div>
+          <div className="card">
+            <ul className="list-group" role="list">
+              {group.accounts.map((account) => (
+                <li key={account.id} role="listitem">
+                  <Link
+                    to={`/accounts/${account.id}`}
+                    className="list-item page-list-link"
+                    aria-label={account.name}
+                  >
+                    <div className="list-item__content">
+                      <p className="list-item__primary">{account.name}</p>
+                      <p className="list-item__secondary">
+                        {account.isArchived
+                          ? `${account.currency.code} · Archived`
+                          : account.currency.code}
+                      </p>
+                    </div>
+                    <div className="list-item__trailing">
+                      <CurrencyDisplay
+                        amount={account.currentBalance.amount}
+                        currency={account.currency.code}
+                        colorize
+                      />
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      ))}
       {accountForm}
     </>
   );

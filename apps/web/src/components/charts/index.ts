@@ -2,6 +2,14 @@
 
 export { SpendingBarChart } from './SpendingBarChart';
 export type { SpendingBarChartProps, SpendingCategory } from './SpendingBarChart';
+export { SpendingTrendChart } from './SpendingTrendChart';
+export type {
+  SpendingTrendChartProps,
+  SpendingTrendDataPoint,
+  TimePeriod,
+  ViewType,
+  PeriodComparison,
+} from './SpendingTrendChart';
 export { TrendLineChart } from './TrendLineChart';
 export type { TrendLineChartProps, TrendDataPoint, TrendSeries } from './TrendLineChart';
 export { BudgetDonutChart } from './BudgetDonutChart';
