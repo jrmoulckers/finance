@@ -1,0 +1,254 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Tag component styles.
+ *
+ * Provides chip/pill styling for tags with color-coded backgrounds,
+ * overflow handling, and accessible interactive states.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Tag chip base
+ * ------------------------------------------------------------------------- */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  border-radius: var(--border-radius-full, 9999px);
+  border: 1px solid;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  max-width: 180px;
+  transition: opacity var(--duration-fast, 100ms) ease;
+}
+
+.tag--sm {
+  padding: var(--spacing-half, 2px) var(--spacing-2, 8px);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+}
+
+.tag--md {
+  padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
+  font-size: var(--type-scale-body-sm-font-size, 0.8125rem);
+}
+
+.tag__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag__separator {
+  opacity: 0.6;
+  margin: 0 var(--spacing-half, 2px);
+}
+
+.tag__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin-left: var(--spacing-half, 2px);
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: opacity var(--duration-fast, 100ms) ease;
+}
+
+.tag__remove:hover,
+.tag__remove:focus-visible {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.tag__remove:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 1px;
+}
+
+.tag--clickable {
+  cursor: pointer;
+}
+
+.tag--clickable:hover {
+  opacity: 0.85;
+}
+
+.tag--clickable:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tag list
+ * ------------------------------------------------------------------------- */
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tag-list__overflow {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-half, 2px) var(--spacing-2, 8px);
+  border-radius: var(--border-radius-full, 9999px);
+  border: 1px solid var(--semantic-border-default);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  font-weight: 500;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tag-list__overflow:hover {
+  background: var(--semantic-background-elevated, var(--semantic-background-secondary));
+  color: var(--semantic-text-primary);
+}
+
+.tag-list__overflow:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tag input
+ * ------------------------------------------------------------------------- */
+
+.tag-input {
+  position: relative;
+  width: 100%;
+}
+
+.tag-input__control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md, 6px);
+  background: var(--semantic-background-primary);
+  min-height: 40px;
+  cursor: text;
+  transition: border-color var(--duration-fast, 100ms) ease;
+}
+
+.tag-input__control:focus-within {
+  border-color: var(--semantic-border-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--semantic-border-focus) 25%, transparent);
+}
+
+.tag-input__text {
+  flex: 1 1 80px;
+  min-width: 80px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  color: var(--semantic-text-primary);
+  padding: var(--spacing-half, 2px) 0;
+}
+
+.tag-input__text::placeholder {
+  color: var(--semantic-text-disabled);
+}
+
+.tag-input__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  margin-top: var(--spacing-1);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md, 6px);
+  background: var(--semantic-background-primary);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1));
+  max-height: 200px;
+  overflow-y: auto;
+  list-style: none;
+  margin-block: var(--spacing-1) 0;
+  padding: var(--spacing-1);
+}
+
+.tag-input__option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--border-radius-sm, 4px);
+  cursor: pointer;
+  font-size: var(--type-scale-body-sm-font-size, 0.8125rem);
+  color: var(--semantic-text-primary);
+}
+
+.tag-input__option:hover,
+.tag-input__option--active {
+  background: var(--semantic-background-secondary);
+}
+
+.tag-input__option--create {
+  color: var(--semantic-interactive-default);
+  font-style: italic;
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode overrides for tag remove button
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .tag__remove:hover,
+  html:not([data-theme='light']) .tag__remove:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
+[data-theme='dark'] .tag__remove:hover,
+[data-theme='dark'] .tag__remove:focus-visible {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .tag,
+  .tag__remove,
+  .tag-input__control {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .tag {
+    border-width: 2px;
+  }
+
+  .tag-input__control {
+    border-width: 2px;
+  }
+
+  .tag-input__control:focus-within {
+    box-shadow: 0 0 0 3px var(--semantic-border-focus);
+  }
+}

@@ -277,7 +277,10 @@ describe('TransactionDetailPage', () => {
   it('displays tags when present', () => {
     renderWithRoute();
 
-    expect(screen.getByText('food, essentials')).toBeInTheDocument();
+    const tagList = screen.getByRole('list', { name: 'Tags' });
+    expect(tagList).toBeInTheDocument();
+    expect(tagList.textContent).toContain('food');
+    expect(tagList.textContent).toContain('essentials');
   });
 
   it('has an accessible article for transaction details', () => {

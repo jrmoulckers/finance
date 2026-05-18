@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { TransactionForm } from '../components/forms';
 import { Breadcrumb } from '../components/navigation';
+import { TagList } from '../components/tags';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts, useCategories, useTransactions } from '../hooks';
 import type { Transaction } from '../kmp/bridge';
@@ -225,7 +226,9 @@ export const TransactionDetailPage: React.FC = () => {
           {transaction.tags.length > 0 && (
             <div style={{ gridColumn: '1 / -1' }}>
               <dt className="card__title">Tags</dt>
-              <dd>{transaction.tags.join(', ')}</dd>
+              <dd>
+                <TagList tags={transaction.tags} size="md" maxVisible={5} />
+              </dd>
             </div>
           )}
         </dl>
