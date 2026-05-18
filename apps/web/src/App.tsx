@@ -14,16 +14,31 @@ const PAGE_TITLES: Record<string, string> = {
   '/transactions': 'Transactions',
   '/budgets': 'Budgets',
   '/goals': 'Goals',
+  '/insights': 'Insights',
+  '/household': 'Household',
+  '/investments': 'Investments',
+  '/bills': 'Bills',
+  '/report-builder': 'Report Builder',
+  '/achievements': 'Achievements',
+  '/watchlists': 'Watchlists',
   '/settings': 'Settings',
 };
 
 /** Routes that are wrapped in AppLayout (authenticated main app pages). */
 const AUTHENTICATED_ROUTES = new Set([
+  '/',
   '/dashboard',
   '/accounts',
   '/transactions',
   '/budgets',
   '/goals',
+  '/insights',
+  '/household',
+  '/investments',
+  '/bills',
+  '/report-builder',
+  '/achievements',
+  '/watchlists',
   '/settings',
 ]);
 

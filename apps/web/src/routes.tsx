@@ -29,6 +29,8 @@ const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
 const Watchlists = lazy(() => import('./pages/WatchlistsPage'));
+const Household = lazy(() => import('./pages/HouseholdPage'));
+const ReportBuilder = lazy(() => import('./pages/ReportBuilderPage'));
 const Investments = lazy(() => import('./pages/InvestmentsPage'));
 const InvestmentDetail = lazy(() => import('./pages/InvestmentDetailPage'));
 const Bills = lazy(() => import('./pages/BillsPage'));
@@ -86,6 +88,24 @@ const RootRedirect: FC = () => {
 };
 
 /**
+ * Redirects authenticated users away from public-only routes (login, signup).
+ * If the user is already logged in, they are sent to the dashboard.
+ */
+const RedirectIfAuthenticated: FC<{ children: ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+/**
  * Application route definitions.
  *
  * Route structure mirrors the mobile app tabs:
@@ -99,17 +119,21 @@ export const AppRoutes: FC = () => (
     <Route
       path="/login"
       element={
-        <RouteBoundary name="Login">
-          <Login />
-        </RouteBoundary>
+        <RedirectIfAuthenticated>
+          <RouteBoundary name="Login">
+            <Login />
+          </RouteBoundary>
+        </RedirectIfAuthenticated>
       }
     />
     <Route
       path="/signup"
       element={
-        <RouteBoundary name="Sign Up">
-          <Signup />
-        </RouteBoundary>
+        <RedirectIfAuthenticated>
+          <RouteBoundary name="Sign Up">
+            <Signup />
+          </RouteBoundary>
+        </RedirectIfAuthenticated>
       }
     />
 
@@ -219,6 +243,26 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Insights">
             <Insights />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/household"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Household">
+            <Household />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/report-builder"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Report Builder">
+            <ReportBuilder />
           </RouteBoundary>
         </AuthenticatedRoute>
       }

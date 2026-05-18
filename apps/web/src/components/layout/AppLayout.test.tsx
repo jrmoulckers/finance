@@ -11,6 +11,16 @@ vi.mock('../../accessibility/CognitiveAccessibilityProvider', () => ({
   SIMPLIFIED_NAV_PATHS: new Set(['/', '/dashboard', '/transactions', '/budgets', '/settings']),
 }));
 
+vi.mock('../../auth/auth-context', () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    isLoading: false,
+    user: { id: 'test-user', email: 'test@example.com', hasPasskey: false },
+    error: null,
+    logout: vi.fn(),
+  }),
+}));
+
 vi.mock('../../hooks', () => ({
   useKeyboardShortcuts: vi.fn(),
 }));

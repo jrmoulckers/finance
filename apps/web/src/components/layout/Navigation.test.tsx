@@ -11,25 +11,35 @@ vi.mock('../../accessibility/CognitiveAccessibilityProvider', () => ({
   SIMPLIFIED_NAV_PATHS: new Set(['/', '/dashboard', '/transactions', '/budgets', '/settings']),
 }));
 
+vi.mock('../../auth/auth-context', () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    isLoading: false,
+    user: { id: 'test-user', email: 'test@example.com', hasPasskey: false },
+    error: null,
+    logout: vi.fn(),
+  }),
+}));
+
 import { BottomNavigation, SidebarNavigation, NAV_ITEMS } from './Navigation';
 
 describe('BottomNavigation', () => {
   const defaultProps = {
-    activePath: '/',
+    activePath: '/dashboard',
     onNavigate: vi.fn(),
   };
 
-  it('renders 7 navigation items', () => {
+  it('renders 5 navigation items for mobile', () => {
     render(<BottomNavigation {...defaultProps} />);
 
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(7);
+    expect(buttons).toHaveLength(5);
   });
 
-  it('renders all expected nav item labels', () => {
+  it('renders the first 5 expected nav item labels', () => {
     render(<BottomNavigation {...defaultProps} />);
 
-    for (const item of NAV_ITEMS) {
+    for (const item of NAV_ITEMS.slice(0, 5)) {
       expect(screen.getByRole('button', { name: item.label })).toBeInTheDocument();
     }
   });
@@ -71,7 +81,7 @@ describe('BottomNavigation', () => {
 
 describe('SidebarNavigation', () => {
   const defaultProps = {
-    activePath: '/',
+    activePath: '/dashboard',
     onNavigate: vi.fn(),
   };
 
@@ -169,8 +179,20 @@ describe('SidebarNavigation', () => {
   it('renders nav items in a list', () => {
     render(<SidebarNavigation {...defaultProps} />);
 
-    const list = screen.getByRole('list');
-    const listItems = within(list).getAllByRole('listitem');
+    const lists = screen.getAllByRole('list');
+    const listItems = within(lists[0]).getAllByRole('listitem');
     expect(listItems).toHaveLength(NAV_ITEMS.length);
+  });
+
+  it('renders a Sign Out button', () => {
+    render(<SidebarNavigation {...defaultProps} />);
+
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('renders a More toggle button', () => {
+    render(<SidebarNavigation {...defaultProps} />);
+
+    expect(screen.getByRole('button', { name: /More/ })).toBeInTheDocument();
   });
 });
