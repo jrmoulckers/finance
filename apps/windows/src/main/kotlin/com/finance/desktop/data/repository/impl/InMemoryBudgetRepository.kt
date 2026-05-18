@@ -13,6 +13,7 @@ class InMemoryBudgetRepository : BudgetRepository {
     override fun observeAll(householdId: SyncId) = store.map { it.filter { b -> b.deletedAt == null } }
     override fun observeActive(householdId: SyncId) = observeAll(householdId)
     override suspend fun insert(entity: Budget) { store.update { it + entity } }
+    override suspend fun update(entity: Budget) { val now = Clock.System.now(); store.update { l -> l.map { if (it.id == entity.id) entity.copy(updatedAt = now) else it } } }
     override suspend fun delete(id: SyncId) { val now = Clock.System.now(); store.update { l -> l.map { if (it.id == id) it.copy(deletedAt = now) else it } } }
 }
 

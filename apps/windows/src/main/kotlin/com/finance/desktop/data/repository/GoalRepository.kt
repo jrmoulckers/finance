@@ -11,4 +11,7 @@ interface GoalRepository {
     fun observeAll(householdId: SyncId): Flow<List<Goal>>
     fun observeActive(householdId: SyncId): Flow<List<Goal>>
     suspend fun updateProgress(id: SyncId, currentAmount: Cents)
+    suspend fun insert(entity: Goal)
+    suspend fun update(entity: Goal)
+    suspend fun delete(id: SyncId)
 }

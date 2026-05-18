@@ -10,5 +10,6 @@ interface BudgetRepository {
     fun observeAll(householdId: SyncId): Flow<List<Budget>>
     fun observeActive(householdId: SyncId): Flow<List<Budget>>
     suspend fun insert(entity: Budget)
+    suspend fun update(entity: Budget)
     suspend fun delete(id: SyncId)
 }

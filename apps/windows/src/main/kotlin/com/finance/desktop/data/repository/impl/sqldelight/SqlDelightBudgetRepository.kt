@@ -61,6 +61,25 @@ class SqlDelightBudgetRepository(
         refreshCache()
     }
 
+    override suspend fun update(entity: Budget) = withContext(Dispatchers.IO) {
+        val now = Clock.System.now()
+        queries.update(
+            category_id = entity.categoryId.value,
+            name = entity.name,
+            amount = entity.amount.amount,
+            currency = entity.currency.code,
+            period = entity.period.name,
+            start_date = entity.startDate.toString(),
+            end_date = entity.endDate?.toString(),
+            is_rollover = if (entity.isRollover) 1L else 0L,
+            updated_at = now.toString(),
+            sync_version = entity.syncVersion + 1,
+            is_synced = 0L,
+            id = entity.id.value,
+        )
+        refreshCache()
+    }
+
     override suspend fun delete(id: SyncId) = withContext(Dispatchers.IO) {
         val now = Clock.System.now()
         queries.softDelete(
