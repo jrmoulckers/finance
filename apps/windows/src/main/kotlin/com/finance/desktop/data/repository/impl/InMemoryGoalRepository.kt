@@ -15,6 +15,9 @@ class InMemoryGoalRepository : GoalRepository {
     override suspend fun updateProgress(id: SyncId, currentAmount: Cents) {
         val now = Clock.System.now(); store.update { l -> l.map { if (it.id == id) it.copy(currentAmount = currentAmount, updatedAt = now) else it } }
     }
+    override suspend fun insert(entity: Goal) { store.update { it + entity } }
+    override suspend fun update(entity: Goal) { val now = Clock.System.now(); store.update { l -> l.map { if (it.id == entity.id) entity.copy(updatedAt = now) else it } } }
+    override suspend fun delete(id: SyncId) { val now = Clock.System.now(); store.update { l -> l.map { if (it.id == id) it.copy(deletedAt = now) else it } } }
 }
 
 private fun createSampleGoals(): List<Goal> {

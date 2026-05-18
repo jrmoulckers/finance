@@ -10,26 +10,42 @@ import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -48,6 +64,7 @@ import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.viewmodel.BudgetItemUi
 import com.finance.desktop.viewmodel.BudgetsViewModel
+import com.finance.models.BudgetPeriod
 
 // =============================================================================
 // Budgets Screen — Grid of Budget Cards (KMP shared logic)
@@ -65,6 +82,7 @@ import com.finance.desktop.viewmodel.BudgetsViewModel
  * - Animated progress ring with utilization percentage
  * - Spent / limit amounts and remaining balance
  * - Color-coded health indicator (green/amber/red)
+ * - Edit (pencil) and Delete (trash) icon buttons
  *
  * Right-click context menus provide Edit and Delete actions.
  * Narrator reads category, amounts, and health status.
@@ -86,6 +104,47 @@ fun BudgetsScreen(modifier: Modifier = Modifier) {
             )
         }
         return
+    }
+
+    // ── Edit Dialog ──
+    if (state.editingBudgetId != null) {
+        BudgetEditDialog(
+            name = state.editName,
+            amount = state.editAmount,
+            period = state.editPeriod,
+            onNameChange = { viewModel.updateEditName(it) },
+            onAmountChange = { viewModel.updateEditAmount(it) },
+            onPeriodChange = { viewModel.updateEditPeriod(it) },
+            onSave = { viewModel.saveEdit() },
+            onDismiss = { viewModel.cancelEdit() },
+        )
+    }
+
+    // ── Delete Confirmation Dialog ──
+    if (state.deletingBudgetId != null) {
+        val budgetName = state.budgets.find { it.id == state.deletingBudgetId }?.name ?: "this budget"
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelDelete() },
+            title = { Text("Delete Budget") },
+            text = {
+                Text(
+                    "Are you sure you want to delete \"$budgetName\"? This action cannot be undone.",
+                    modifier = Modifier.semantics {
+                        contentDescription = "Confirm deletion of budget $budgetName"
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.executeDelete() }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.cancelDelete() }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 
     Column(
@@ -147,11 +206,99 @@ fun BudgetsScreen(modifier: Modifier = Modifier) {
                 verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.lg),
             ) {
                 items(state.budgets, key = { it.id }) { budget ->
-                    BudgetCard(budget)
+                    BudgetCard(
+                        budget = budget,
+                        onEdit = { viewModel.startEdit(budget.id) },
+                        onDelete = { viewModel.confirmDelete(budget.id) },
+                    )
                 }
             }
         }
     }
+}
+
+// =============================================================================
+// Budget Edit Dialog
+// =============================================================================
+
+/**
+ * Dialog for editing a budget's name, amount, and period.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BudgetEditDialog(
+    name: String,
+    amount: String,
+    period: BudgetPeriod,
+    onNameChange: (String) -> Unit,
+    onAmountChange: (String) -> Unit,
+    onPeriodChange: (BudgetPeriod) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var periodExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Budget") },
+        text = {
+            Column(
+                modifier = Modifier.semantics {
+                    contentDescription = "Edit budget form"
+                },
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = onNameChange,
+                    label = { Text("Budget Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = onAmountChange,
+                    label = { Text("Amount ($)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                ExposedDropdownMenuBox(
+                    expanded = periodExpanded,
+                    onExpandedChange = { periodExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = period.name.lowercase().replaceFirstChar { it.uppercase() },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Period") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = periodExpanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = periodExpanded,
+                        onDismissRequest = { periodExpanded = false },
+                    ) {
+                        BudgetPeriod.entries.forEach { p ->
+                            DropdownMenuItem(
+                                text = { Text(p.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                                onClick = {
+                                    onPeriodChange(p)
+                                    periodExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onSave) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 // =============================================================================
@@ -160,7 +307,11 @@ fun BudgetsScreen(modifier: Modifier = Modifier) {
 
 @Composable
 @Suppress("LongMethod") // Budget item composable
-private fun BudgetCard(budget: BudgetItemUi) {
+private fun BudgetCard(
+    budget: BudgetItemUi,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val healthColor = when (budget.health) {
         BudgetHealth.OVER -> MaterialTheme.colorScheme.error
         BudgetHealth.WARNING -> Color(0xFFFF9800)
@@ -181,10 +332,10 @@ private fun BudgetCard(budget: BudgetItemUi) {
     ContextMenuArea(
         items = {
             listOf(
-                ContextMenuItem("Edit Budget") { /* edit */ },
+                ContextMenuItem("Edit Budget") { onEdit() },
                 ContextMenuItem("View Transactions") { /* view transactions for category */ },
                 ContextMenuItem("Reset Budget") { /* reset */ },
-                ContextMenuItem("Delete Budget") { /* delete */ },
+                ContextMenuItem("Delete Budget") { onDelete() },
             )
         },
     ) {
@@ -207,6 +358,39 @@ private fun BudgetCard(budget: BudgetItemUi) {
                 modifier = Modifier.padding(FinanceDesktopTheme.spacing.xxl),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                // Action buttons row: Edit + Delete
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Edit budget ${budget.name}"
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = "Edit",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Delete budget ${budget.name}"
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+
                 // Category name + period
                 Text(
                     text = budget.name,

@@ -33,6 +33,11 @@ data class GoalItemUi(
 data class GoalsUiState(
     val isLoading: Boolean = true,
     val goals: List<GoalItemUi> = emptyList(),
+    val editingGoalId: String? = null,
+    val deletingGoalId: String? = null,
+    val editName: String = "",
+    val editTargetAmount: String = "",
+    val editCurrentAmount: String = "",
 )
 
 /**
@@ -41,6 +46,8 @@ data class GoalsUiState(
  * Loads savings goals from the KMP shared [GoalRepository] and maps
  * them to display-ready [GoalItemUi] instances. Progress is computed
  * by the KMP [Goal.progress] property — no duplicate logic here.
+ *
+ * Supports edit and delete operations with confirmation dialogs.
  */
 class GoalsViewModel(
     private val goalRepository: GoalRepository,
@@ -51,6 +58,9 @@ class GoalsViewModel(
 
     private val hid = SyncId("d1")
 
+    /** Cached raw goals for edit operations. */
+    private var rawGoals: List<Goal> = emptyList()
+
     init {
         loadGoals()
     }
@@ -58,6 +68,7 @@ class GoalsViewModel(
     private fun loadGoals() {
         viewModelScope.launch {
             val goals = goalRepository.observeAll(hid).first()
+            rawGoals = goals
             val currency = Currency.USD
 
             val items = goals.map { goal ->
@@ -76,10 +87,83 @@ class GoalsViewModel(
                 )
             }
 
-            _uiState.value = GoalsUiState(
+            _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 goals = items,
             )
+        }
+    }
+
+    /**
+     * Opens the edit dialog for a goal, pre-filling the current values.
+     */
+    fun startEdit(goalId: String) {
+        val goal = rawGoals.find { it.id.value == goalId } ?: return
+        _uiState.value = _uiState.value.copy(
+            editingGoalId = goalId,
+            editName = goal.name,
+            editTargetAmount = (goal.targetAmount.amount / 100.0).toString(),
+            editCurrentAmount = (goal.currentAmount.amount / 100.0).toString(),
+        )
+    }
+
+    /** Cancels the edit dialog. */
+    fun cancelEdit() {
+        _uiState.value = _uiState.value.copy(editingGoalId = null)
+    }
+
+    /** Updates the edit form name field. */
+    fun updateEditName(name: String) {
+        _uiState.value = _uiState.value.copy(editName = name)
+    }
+
+    /** Updates the edit form target amount field. */
+    fun updateEditTargetAmount(amount: String) {
+        _uiState.value = _uiState.value.copy(editTargetAmount = amount)
+    }
+
+    /** Updates the edit form current amount field. */
+    fun updateEditCurrentAmount(amount: String) {
+        _uiState.value = _uiState.value.copy(editCurrentAmount = amount)
+    }
+
+    /** Saves the edited goal to the repository. */
+    fun saveEdit() {
+        val editingId = _uiState.value.editingGoalId ?: return
+        val goal = rawGoals.find { it.id.value == editingId } ?: return
+        val targetCents = ((_uiState.value.editTargetAmount.toDoubleOrNull() ?: 0.0) * 100).toLong()
+        val currentCents = ((_uiState.value.editCurrentAmount.toDoubleOrNull() ?: 0.0) * 100).toLong()
+
+        viewModelScope.launch {
+            goalRepository.update(
+                goal.copy(
+                    name = _uiState.value.editName,
+                    targetAmount = com.finance.models.types.Cents(targetCents),
+                    currentAmount = com.finance.models.types.Cents(currentCents),
+                ),
+            )
+            _uiState.value = _uiState.value.copy(editingGoalId = null)
+            loadGoals()
+        }
+    }
+
+    /** Shows the delete confirmation dialog for a goal. */
+    fun confirmDelete(goalId: String) {
+        _uiState.value = _uiState.value.copy(deletingGoalId = goalId)
+    }
+
+    /** Cancels the delete confirmation. */
+    fun cancelDelete() {
+        _uiState.value = _uiState.value.copy(deletingGoalId = null)
+    }
+
+    /** Deletes the goal from the repository after confirmation. */
+    fun executeDelete() {
+        val deletingId = _uiState.value.deletingGoalId ?: return
+        viewModelScope.launch {
+            goalRepository.delete(SyncId(deletingId))
+            _uiState.value = _uiState.value.copy(deletingGoalId = null)
+            loadGoals()
         }
     }
 }

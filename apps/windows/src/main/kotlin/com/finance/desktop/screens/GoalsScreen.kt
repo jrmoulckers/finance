@@ -21,15 +21,21 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,6 +70,7 @@ import com.finance.desktop.viewmodel.GoalsViewModel
  * - Animated horizontal progress bar
  * - Current / target amounts
  * - Deadline info (if set)
+ * - Edit (pencil) and Delete (trash) icon buttons
  *
  * Right-click context menus provide Edit, Contribute, and Delete actions.
  * Narrator reads goal name, progress percentage, amounts, and deadline.
@@ -85,6 +92,47 @@ fun GoalsScreen(modifier: Modifier = Modifier) {
             )
         }
         return
+    }
+
+    // ── Edit Dialog ──
+    if (state.editingGoalId != null) {
+        GoalEditDialog(
+            name = state.editName,
+            targetAmount = state.editTargetAmount,
+            currentAmount = state.editCurrentAmount,
+            onNameChange = { viewModel.updateEditName(it) },
+            onTargetAmountChange = { viewModel.updateEditTargetAmount(it) },
+            onCurrentAmountChange = { viewModel.updateEditCurrentAmount(it) },
+            onSave = { viewModel.saveEdit() },
+            onDismiss = { viewModel.cancelEdit() },
+        )
+    }
+
+    // ── Delete Confirmation Dialog ──
+    if (state.deletingGoalId != null) {
+        val goalName = state.goals.find { it.id == state.deletingGoalId }?.name ?: "this goal"
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelDelete() },
+            title = { Text("Delete Goal") },
+            text = {
+                Text(
+                    "Are you sure you want to delete \"$goalName\"? This action cannot be undone.",
+                    modifier = Modifier.semantics {
+                        contentDescription = "Confirm deletion of goal $goalName"
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.executeDelete() }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.cancelDelete() }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 
     Column(
@@ -146,11 +194,76 @@ fun GoalsScreen(modifier: Modifier = Modifier) {
                 verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.lg),
             ) {
                 items(state.goals, key = { it.id }) { goal ->
-                    GoalCard(goal)
+                    GoalCard(
+                        goal = goal,
+                        onEdit = { viewModel.startEdit(goal.id) },
+                        onDelete = { viewModel.confirmDelete(goal.id) },
+                    )
                 }
             }
         }
     }
+}
+
+// =============================================================================
+// Goal Edit Dialog
+// =============================================================================
+
+/**
+ * Dialog for editing a goal's name, target amount, and current amount.
+ */
+@Composable
+private fun GoalEditDialog(
+    name: String,
+    targetAmount: String,
+    currentAmount: String,
+    onNameChange: (String) -> Unit,
+    onTargetAmountChange: (String) -> Unit,
+    onCurrentAmountChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Goal") },
+        text = {
+            Column(
+                modifier = Modifier.semantics {
+                    contentDescription = "Edit goal form"
+                },
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = onNameChange,
+                    label = { Text("Goal Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = targetAmount,
+                    onValueChange = onTargetAmountChange,
+                    label = { Text("Target Amount ($)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = currentAmount,
+                    onValueChange = onCurrentAmountChange,
+                    label = { Text("Current Amount ($)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onSave) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 // =============================================================================
@@ -159,7 +272,11 @@ fun GoalsScreen(modifier: Modifier = Modifier) {
 
 @Composable
 @Suppress("LongMethod") // Goal detail composable
-private fun GoalCard(goal: GoalItemUi) {
+private fun GoalCard(
+    goal: GoalItemUi,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val progressColor = when {
         goal.progress >= 0.75f -> Color(0xFF2E7D32)
         goal.progress >= 0.40f -> MaterialTheme.colorScheme.primary
@@ -177,9 +294,9 @@ private fun GoalCard(goal: GoalItemUi) {
         items = {
             listOf(
                 ContextMenuItem("Add Contribution") { /* contribute */ },
-                ContextMenuItem("Edit Goal") { /* edit */ },
+                ContextMenuItem("Edit Goal") { onEdit() },
                 ContextMenuItem("View History") { /* history */ },
-                ContextMenuItem("Delete Goal") { /* delete */ },
+                ContextMenuItem("Delete Goal") { onDelete() },
             )
         },
     ) {
@@ -201,13 +318,16 @@ private fun GoalCard(goal: GoalItemUi) {
             Column(
                 modifier = Modifier.padding(FinanceDesktopTheme.spacing.xxl),
             ) {
-                // Header row: icon + name + percentage
+                // Header row: icon + name + percentage + action buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f),
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                             contentDescription = null,
@@ -229,6 +349,33 @@ private fun GoalCard(goal: GoalItemUi) {
                         fontWeight = FontWeight.Bold,
                         color = progressColor,
                     )
+                    Spacer(Modifier.width(8.dp))
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Edit goal ${goal.name}"
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = "Edit",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Delete goal ${goal.name}"
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))

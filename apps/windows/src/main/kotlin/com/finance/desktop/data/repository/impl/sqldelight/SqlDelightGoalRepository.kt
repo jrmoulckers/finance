@@ -55,6 +55,58 @@ class SqlDelightGoalRepository(
             refreshCache()
         }
 
+    override suspend fun insert(entity: Goal) = withContext(Dispatchers.IO) {
+        queries.insert(
+            id = entity.id.value,
+            household_id = entity.householdId.value,
+            owner_id = entity.ownerId.value,
+            name = entity.name,
+            target_amount = entity.targetAmount.amount,
+            current_amount = entity.currentAmount.amount,
+            currency = entity.currency.code,
+            target_date = entity.targetDate?.toString(),
+            status = entity.status.name,
+            icon = entity.icon,
+            color = entity.color,
+            account_id = entity.accountId?.value,
+            created_at = entity.createdAt.toString(),
+            updated_at = entity.updatedAt.toString(),
+            sync_version = entity.syncVersion,
+            is_synced = if (entity.isSynced) 1L else 0L,
+        )
+        refreshCache()
+    }
+
+    override suspend fun update(entity: Goal) = withContext(Dispatchers.IO) {
+        val now = Clock.System.now()
+        queries.update(
+            name = entity.name,
+            target_amount = entity.targetAmount.amount,
+            current_amount = entity.currentAmount.amount,
+            currency = entity.currency.code,
+            target_date = entity.targetDate?.toString(),
+            status = entity.status.name,
+            icon = entity.icon,
+            color = entity.color,
+            account_id = entity.accountId?.value,
+            updated_at = now.toString(),
+            sync_version = entity.syncVersion + 1,
+            is_synced = 0L,
+            id = entity.id.value,
+        )
+        refreshCache()
+    }
+
+    override suspend fun delete(id: SyncId) = withContext(Dispatchers.IO) {
+        val now = Clock.System.now()
+        queries.softDelete(
+            deleted_at = now.toString(),
+            updated_at = now.toString(),
+            id = id.value,
+        )
+        refreshCache()
+    }
+
     private fun refreshCache() {
         try {
             val rows = queries.selectAll().executeAsList()
