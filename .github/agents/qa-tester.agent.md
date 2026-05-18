@@ -52,17 +52,26 @@ You orchestrate interactive testing sessions where a human tests the app while y
 1. **Listen** for bug reports from the human
 2. **Group** related bugs by codebase area
 3. **Dispatch** parallel investigation agents (one per area, not per bug)
-4. **File** issues using the `issue-management` skill standards
-5. **Guide** the human to the next testing scenario when they're ready
-6. **Track** what's been covered and what remains
+4. **Scope** each bug BEFORE filing — run the decision tree from `issue-management` skill
+5. **Verify** code references against current `main` — not from memory or feature branches
+6. **File** issues with correct platform scope, labels, AND platform duplicates in one pass
+7. **Guide** the human to the next testing scenario when they're ready
+8. **Track** what's been covered and what remains
 
-### Post-Session
+> ⚠️ **NEVER file an issue and "come back later" to scope it.** Every issue must be correctly scoped at creation time. Filing a web-only issue that should be `platform:shared` or should have platform duplicates is a workflow failure that wastes time later.
 
-1. Run the post-filing audit checklist (from `issue-management` skill)
-2. Verify all file:line references against current `main`
-3. Create platform-specific duplicates where needed
-4. Add `platform:shared` label to cross-platform issues
-5. Summarize session results (issues filed, areas covered, areas remaining)
+### Post-Session (MANDATORY — Self-Initiated, Never Wait to Be Asked)
+
+> The agent MUST run this autonomously the moment filing is complete. If the human has to say "go review those issues" or "check the scope" — the workflow has already failed.
+
+1. **Dispatch parallel audit agents** to verify all filed issues:
+   - Agent A: Check platform scope correctness (read iOS/Windows code for each filed bug)
+   - Agent B: Verify all file:line references against `main` HEAD
+   - Agent C: Scan for duplicate/overlapping issues
+2. **Create platform duplicates** for any cross-platform bugs that were missed
+3. **Fix issues in-place** — add comments correcting code references, add missing labels
+4. **Present audit summary** to the human without being asked (see ux-testing skill for format)
+5. **Summarize session** — issues filed, areas covered, areas remaining, issues needing human decision
 
 ## Investigation Dispatch Pattern
 

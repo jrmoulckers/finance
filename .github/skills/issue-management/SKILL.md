@@ -90,6 +90,51 @@ When you discover a bug, ask these questions IN ORDER:
 - Gesture/interaction patterns (swipe vs hover vs long-press vs right-click)
 - Design language adaptation (Material, Cupertino, Fluent, Web standards)
 
+## Pre-Filing Validation (MANDATORY — Run Before Every `gh issue create`)
+
+> ⚠️ **No issue leaves the agent's hands without passing this gate.** This prevents the entire class of "agent filed 30 issues, human had to tell it to go back and fix the scope" failures.
+
+Before calling `gh issue create`, the agent MUST confirm:
+
+### 1. Platform Scope is Correct and Complete
+
+- [ ] Decision tree was run (all 5 questions answered)
+- [ ] If the fix is in shared code → label is `platform:shared`, NOT a single platform
+- [ ] If platform duplicates are needed → they are prepared and will be filed in the SAME batch
+- [ ] Platform implementations were ACTUALLY CHECKED (read the code, don't guess)
+
+### 2. Code References are Verified
+
+- [ ] Every `file:line` was confirmed against `main` HEAD (not from memory, not from investigation branch)
+- [ ] If code has shifted since investigation → references updated before filing
+
+### 3. Issue is Not a Duplicate
+
+- [ ] Searched existing issues (`gh issue list --search "keywords"`) for similar reports
+- [ ] If similar exists → decide: duplicate? related? or genuinely different?
+- [ ] If duplicate → add comment to existing issue instead of filing new one
+
+### 4. Quality Bar Met
+
+- [ ] Has all required sections (Problem, Root Cause, Fix, Files, Cross-Platform)
+- [ ] Root cause is technical and specific (not "needs improvement")
+- [ ] Fix is actionable (an engineer can implement it without asking clarifying questions)
+- [ ] Labels are complete (platform + type + priority minimum)
+
+### Batch Filing: Scope First, File Second
+
+When filing many issues from a single session, the agent MUST:
+
+1. **Complete ALL investigations first** (dispatched in parallel)
+2. **Run the decision tree for ALL issues** before filing ANY
+3. **Prepare platform duplicates** as part of the same pass
+4. **File in one batch** — root issues first, then platform duplicates with cross-references
+5. **NEVER file half-scoped issues** with intent to "come back and audit later"
+
+The audit step that follows is a SAFETY NET for honest mistakes, not a planned second pass.
+
+---
+
 ## Issue Body Quality Standards
 
 ### Required Sections for Bug Reports
@@ -240,21 +285,70 @@ function fileIssue(title, labels, body) {
 - Check with: `gh auth status`
 - Switch with: `gh auth switch --user <username>`
 
-## Post-Session Audit Checklist
+## Post-Session Audit (MANDATORY — Agent Self-Initiates Immediately)
 
-After filing issues from a testing/discovery session, run this audit:
+> ⚠️ **CRITICAL**: This audit is NON-OPTIONAL and SELF-INITIATED. The agent runs this the moment it finishes filing issues. If the human has to ask "did you check those?" or "review the scope" — the workflow has already failed. The point of this gate is to catch mistakes BEFORE the human notices them.
+
+### Why This Exists
+
+In practice, batch-filing sessions produce issues that:
+
+- Were scoped to one platform but the same bug exists on others (requires duplicates)
+- Cite file:line numbers that shifted since the investigation ran (needs correction)
+- Are true duplicates of each other (different symptoms, same root fix)
+- Miss the `platform:shared` label when the fix is in shared code
+- Lack cross-references between related issues
+
+The audit catches all of these proactively.
+
+### Audit Steps (Execute Immediately After Filing)
+
+#### 1. Platform Scope — Verify Every Issue
+
+For each issue filed in this session:
+
+- [ ] Read the issue's platform label
+- [ ] Check actual platform implementations (don't assume — read the code):
+  - Does iOS have UI for this feature? (`apps/ios/Sources/`)
+  - Does Windows have UI for this feature? (`apps/windows/src/`)
+  - Is the fix in shared code? (`packages/`)
+- [ ] If platform label is wrong → fix it with `gh issue edit --remove-label X --add-label Y`
+- [ ] If duplicates are needed → file them NOW, cross-referencing siblings
+
+#### 2. Code References — Verify Against `main` HEAD
+
+- [ ] Every `file:line` citation checked with `git show main:<path>`
+- [ ] Lines that have shifted → add a comment with corrected reference
+- [ ] Files that were renamed/moved → update issue body or add correction comment
+
+#### 3. Duplicate Detection — Check for Overlaps
+
+- [ ] Two issues with the same root file and same change → mark one as duplicate
+- [ ] Multiple issues that would be fixed by a single PR → note in comments
+
+#### 4. Cross-Reference Completeness
+
+- [ ] All platform siblings reference each other (`Related: #N`)
+- [ ] Parent/root issues linked from all child platform issues
+- [ ] Enhancement dependencies noted (`Blocked by: #N`)
+
+#### 5. Label Completeness
 
 - [ ] Every issue has at least one platform label
-- [ ] Issues in shared code have `platform:shared`
-- [ ] CSS/web-runtime issues are `platform:web` only (not over-scoped)
-- [ ] Cross-platform bugs have separate issues where implementation differs
-- [ ] No accidental true duplicates (same fix, same platform)
-- [ ] All issues have Root Cause section with file:line references
-- [ ] File:line references verified against current `main` branch
-- [ ] Related issues cross-referenced (`Related: #N` or `Refs #N`)
-- [ ] Platform duplicates reference parent issue
-- [ ] Enhancement issues include implementation notes and cross-platform design patterns
-- [ ] Priority labels reflect actual severity (P0 = broken, P3 = polish)
+- [ ] Every issue has a type label (bug, feature, enhancement, task)
+- [ ] Every issue has a priority label (priority:critical/high/medium/low)
+
+### Output (Present to Human Without Being Asked)
+
+```
+## Audit Complete
+- Total issues reviewed: N
+- Label corrections: M
+- Platform duplicates created: K
+- Code reference corrections: P
+- True duplicates found: Q
+- Issues needing human decision: R (list with brief reason)
+```
 
 ## Gated Operations
 
