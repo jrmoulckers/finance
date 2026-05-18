@@ -19,6 +19,50 @@ import type { Transaction } from '../kmp/bridge';
 
 const ALL_CATEGORIES_FILTER = '__all__';
 
+/** Escape a value for safe CSV inclusion. */
+function escapeCsvValue(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+/** Export transactions to CSV and trigger a browser download. */
+function exportTransactionsCsv(
+  transactions: Transaction[],
+  categoryNames: Map<string, string>,
+  accountNames: Map<string, string>,
+): void {
+  const headers = ['date', 'payee', 'amount', 'category', 'account', 'notes'];
+  const rows = transactions.map((t) => {
+    const amount = (t.type === 'EXPENSE' ? -Math.abs(t.amount.amount) : t.amount.amount) / 100;
+    return [
+      escapeCsvValue(t.date),
+      escapeCsvValue(t.payee ?? ''),
+      amount.toFixed(2),
+      escapeCsvValue(
+        t.categoryId ? (categoryNames.get(t.categoryId) ?? 'Uncategorized') : 'Uncategorized',
+      ),
+      escapeCsvValue(accountNames.get(t.accountId) ?? 'Unknown'),
+      escapeCsvValue(t.note ?? ''),
+    ].join(',');
+  });
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    document.body.removeChild(anchor);
+  }, 100);
+}
+
 function getTransactionDisplayAmount(transaction: Transaction): number {
   if (transaction.type === 'EXPENSE') {
     return -Math.abs(transaction.amount.amount);
@@ -195,6 +239,16 @@ export const TransactionsPage: React.FC = () => {
           style={{ marginRight: 'var(--spacing-2)' }}
         >
           <span aria-hidden="true">📥</span> Import CSV
+        </button>
+        <button
+          type="button"
+          className="add-button"
+          onClick={() => exportTransactionsCsv(transactions, categoryNames, accountNames)}
+          aria-label="Export transactions as CSV"
+          disabled={transactions.length === 0}
+          style={{ marginRight: 'var(--spacing-2)' }}
+        >
+          <span aria-hidden="true">📤</span> Export CSV
         </button>
         <button
           type="button"

@@ -124,8 +124,14 @@ export function useInvestments(): UseInvestmentsResult {
       const result = getAllInvestments(db);
       setInvestments(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load investments.');
-      setInvestments([]);
+      // If the table doesn't exist yet, treat it as empty (not an error).
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('no such table')) {
+        setInvestments([]);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load investments.');
+        setInvestments([]);
+      }
     } finally {
       setLoading(false);
     }

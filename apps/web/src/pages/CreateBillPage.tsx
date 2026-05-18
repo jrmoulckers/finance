@@ -8,9 +8,23 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDatabase } from '../db/DatabaseProvider';
+import { queryOne, type Row } from '../db/sqlite-wasm';
 import { useBills } from '../hooks';
 import type { BillFrequency } from '../kmp/bridge';
 import type { CreateBillInput } from '../db/repositories/bills';
+
+/** Resolve the first available household ID from the local database. */
+function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): string | null {
+  const row = queryOne<Row>(
+    db,
+    'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
+  );
+  if (row && typeof row.id === 'string') {
+    return row.id;
+  }
+  return null;
+}
 
 /** Form validation error shape. */
 interface FormErrors {
@@ -52,6 +66,7 @@ function validate(fields: {
 /** Create bill page component. */
 export const CreateBillPage: React.FC = () => {
   const navigate = useNavigate();
+  const db = useDatabase();
   const { createBill } = useBills();
 
   const nameRef = useRef<HTMLInputElement>(null);
@@ -90,8 +105,15 @@ export const CreateBillPage: React.FC = () => {
       setSubmitting(true);
 
       try {
+        const householdId = getFirstHouseholdId(db);
+        if (!householdId) {
+          setSubmitError('No household found. Please create a household before adding bills.');
+          setSubmitting(false);
+          return;
+        }
+
         const input: CreateBillInput = {
-          householdId: crypto.randomUUID(), // TODO: derive from auth context
+          householdId,
           name: name.trim(),
           payee: payee.trim(),
           amount: { amount: Math.round(parseFloat(amount) * 100) },
