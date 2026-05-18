@@ -312,43 +312,19 @@ export const BudgetsPage: React.FC = () => {
                         <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
                           <button
                             type="button"
+                            className="icon-button"
                             onClick={() => handleEditBudget(budget)}
                             aria-label={`Edit ${budget.name}`}
                             title="Edit budget"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '2.25rem',
-                              height: '2.25rem',
-                              border: '1px solid var(--semantic-border-default)',
-                              borderRadius: 'var(--border-radius-md)',
-                              backgroundColor:
-                                'var(--semantic-surface-primary, var(--card-background))',
-                              color: 'var(--semantic-text-primary)',
-                              cursor: 'pointer',
-                            }}
                           >
                             <span aria-hidden="true">✏️</span>
                           </button>
                           <button
                             type="button"
+                            className="icon-button icon-button--delete"
                             onClick={() => handleDeleteBudget(budget)}
                             aria-label={`Delete ${budget.name}`}
                             title="Delete budget"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '2.25rem',
-                              height: '2.25rem',
-                              border: '1px solid var(--semantic-border-default)',
-                              borderRadius: 'var(--border-radius-md)',
-                              backgroundColor:
-                                'var(--semantic-surface-primary, var(--card-background))',
-                              color: 'var(--semantic-status-negative)',
-                              cursor: 'pointer',
-                            }}
                           >
                             <span aria-hidden="true">🗑️</span>
                           </button>

@@ -248,7 +248,7 @@ export const GoalsPage: React.FC = () => {
                           </button>
                           <button
                             type="button"
-                            className="icon-button"
+                            className="icon-button icon-button--delete"
                             onClick={() => handleRequestDelete(goal)}
                             aria-label={`Delete ${goal.name}`}
                           >

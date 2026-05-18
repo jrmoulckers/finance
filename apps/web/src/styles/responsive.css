@@ -328,6 +328,12 @@
 .list-group {
   display: flex;
   flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.list-group li {
+  list-style: none;
 }
 .list-group__header {
   font-size: var(--type-scale-label-font-size);
@@ -340,7 +346,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-3);
-  padding: var(--spacing-3) 0;
+  padding: var(--spacing-3) var(--spacing-4, 16px);
   border-bottom: 1px solid var(--semantic-border-default);
 }
 .list-item:last-child {
@@ -378,6 +384,9 @@
   border-radius: var(--input-border-radius);
   background: var(--input-background);
   color: var(--input-text);
+  font-size: inherit;
+  line-height: 1.5;
+  height: auto;
 }
 .search-bar__input:focus {
   outline: none;
@@ -469,10 +478,20 @@
   color: var(--semantic-text-secondary);
   border-radius: var(--border-radius-md);
   cursor: pointer;
+  transition:
+    color var(--duration-fast, 100ms) ease,
+    background-color var(--duration-fast, 100ms) ease,
+    transform var(--duration-fast, 100ms) ease;
 }
 .icon-button:hover {
   background: var(--semantic-background-secondary);
   color: var(--semantic-text-primary);
+  transform: scale(1.1);
+}
+.icon-button--delete:hover,
+.icon-button--danger:hover {
+  background: var(--color-red-50, #fef2f2);
+  color: var(--semantic-status-negative);
 }
 .icon-button:focus-visible {
   outline: 2px solid var(--semantic-border-focus);
@@ -746,17 +765,24 @@
   height: 32px;
   font-size: 1rem;
   color: var(--semantic-text-secondary);
+  border: none;
+  background: none;
+  border-radius: var(--border-radius-sm, 4px);
+  cursor: pointer;
   transition:
     color var(--duration-fast, 100ms) ease,
-    background-color var(--duration-fast, 100ms) ease;
+    background-color var(--duration-fast, 100ms) ease,
+    transform var(--duration-fast, 100ms) ease;
 }
 .transaction-item__action:hover,
 .transaction-item__action:focus-visible {
   background: var(--semantic-background-secondary);
   color: var(--semantic-text-primary);
+  transform: scale(1.1);
 }
 .transaction-item__action--delete:hover,
 .transaction-item__action--delete:focus-visible {
+  background: var(--color-red-50, #fef2f2);
   color: var(--semantic-status-negative);
 }
 /* ─── End Transactions page ──────────────────────────────────────────────── */
@@ -819,9 +845,15 @@
   .add-button,
   .transaction-item__actions,
   .transaction-item__action,
+  .icon-button,
   .progress-bar__fill,
   .progress-ring__fill {
     transition: none;
+  }
+
+  .transaction-item__action:hover,
+  .icon-button:hover {
+    transform: none;
   }
 }
 @media (prefers-contrast: more) {
