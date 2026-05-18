@@ -21,7 +21,7 @@
     "d3": "^7.9.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-router-dom": "^7.15.0",
+    "react-router-dom": "^7.15.1",
     "recharts": "^3.8.1",
     "sql.js": "^1.14.1",
     "wa-sqlite": "^1.0.0",
