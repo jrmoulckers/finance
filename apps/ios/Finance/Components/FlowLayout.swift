@@ -2,16 +2,17 @@
 
 // FlowLayout.swift
 // Finance
+// References: #1487
 //
-// A simple flow layout that wraps child views horizontally. Used for
-// displaying tag chips that wrap to the next line. Refs #1485
+// A custom layout that wraps its children into multiple rows,
+// used for displaying tags that flow naturally.
 
 import SwiftUI
 
-/// A layout that arranges views in a horizontal flow, wrapping to
-/// the next line when the available width is exceeded.
+/// A layout that arranges its children in rows, wrapping to the next row when
+/// the available width is exceeded.
 struct FlowLayout: Layout {
-    var spacing: CGFloat = 8
+    var spacing: CGFloat = 6
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
         let maxWidth = proposal.width ?? .infinity
@@ -19,7 +20,6 @@ struct FlowLayout: Layout {
         var currentY: CGFloat = 0
         var lineHeight: CGFloat = 0
         var totalHeight: CGFloat = 0
-        var totalWidth: CGFloat = 0
 
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
@@ -28,31 +28,40 @@ struct FlowLayout: Layout {
                 currentY += lineHeight + spacing
                 lineHeight = 0
             }
-            currentX += size.width + spacing
             lineHeight = max(lineHeight, size.height)
-            totalWidth = max(totalWidth, currentX - spacing)
-            totalHeight = currentY + lineHeight
+            currentX += size.width + spacing
         }
+        totalHeight = currentY + lineHeight
 
-        return CGSize(width: totalWidth, height: totalHeight)
+        return CGSize(width: maxWidth, height: totalHeight)
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
-        let maxWidth = proposal.width ?? bounds.width
+    func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
         var currentX: CGFloat = bounds.minX
         var currentY: CGFloat = bounds.minY
         var lineHeight: CGFloat = 0
 
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
-            if currentX + size.width > bounds.minX + maxWidth, currentX > bounds.minX {
+            if currentX + size.width > bounds.maxX, currentX > bounds.minX {
                 currentX = bounds.minX
                 currentY += lineHeight + spacing
                 lineHeight = 0
             }
             subview.place(at: CGPoint(x: currentX, y: currentY), proposal: .unspecified)
-            currentX += size.width + spacing
             lineHeight = max(lineHeight, size.height)
+            currentX += size.width + spacing
         }
     }
+}
+
+// MARK: - Preview
+
+#Preview {
+    FlowLayout(spacing: 8) {
+        ForEach(["groceries", "travel:flights", "subscriptions", "work:expenses", "dining", "entertainment"], id: \.self) { name in
+            TagView(tag: Tag(name: name))
+        }
+    }
+    .padding()
 }

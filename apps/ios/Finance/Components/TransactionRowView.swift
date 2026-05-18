@@ -22,11 +22,24 @@ struct TransactionRowView: View, Equatable {
                     if transaction.status == .pending { Text(transaction.status.displayName).font(.caption2).foregroundStyle(.orange).padding(.horizontal, 6).padding(.vertical, 2).background(.orange.opacity(0.1), in: Capsule()) }
                 }
                 HStack(spacing: 4) { Text(transaction.category); Text("·"); Text(transaction.accountName) }.font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                // Show up to 2 tags inline
+                if !transaction.tags.isEmpty {
+                    TagsRow(tags: transaction.tags, maxVisible: 2)
+                }
             }
             Spacer()
             CurrencyLabel(amountInMinorUnits: transaction.amountMinorUnits, currencyCode: transaction.currencyCode, font: .callout.bold()).contentTransition(.numericText())
         }.padding(.vertical, 2).accessibilityElement(children: .combine)
-        .accessibilityLabel([transaction.payee, transaction.category, transaction.accountName].joined(separator: ", "))
+        .accessibilityLabel(accessibilityLabelText)
         .accessibilityHint(String(localized: "Tap to view details. Swipe for more actions."))
+    }
+
+    private var accessibilityLabelText: String {
+        var label = [transaction.payee, transaction.category, transaction.accountName].joined(separator: ", ")
+        if !transaction.tags.isEmpty {
+            let tagNames = transaction.tags.map(\.displayName).joined(separator: ", ")
+            label += ", " + String(localized: "Tags: \(tagNames)")
+        }
+        return label
     }
 }

@@ -70,6 +70,7 @@ final class TransactionsViewModel {
     var errorMessage: String?
     var showingFilterSheet = false
     var filter = TransactionFilter()
+    var sort = TransactionSort()
     var debouncedSearchText = ""
     var recentSearches: [String] { get { Self.loadRecentSearches() } set { Self.saveRecentSearches(newValue) } }
     private var debounceTask: Task<Void, Never>?
@@ -102,9 +103,26 @@ final class TransactionsViewModel {
     private(set) var groupedTransactions: [DateGroup] = []
 
     /// Recomputes `filteredTransactions` and `groupedTransactions` from
-    /// the current `transactions`, search text, and filter state.
+    /// the current `transactions`, search text, filter, and sort state.
     private func recomputeFilteredGroups() {
-        filteredTransactions = transactions.filter { matchesSearch($0) && matchesFilter($0) }
+        var result = transactions.filter { matchesSearch($0) && matchesFilter($0) }
+        // Apply sort
+        result.sort { lhs, rhs in
+            let ascending: Bool = sort.direction == .ascending
+            switch sort.field {
+            case .date:
+                return ascending ? lhs.date < rhs.date : lhs.date > rhs.date
+            case .amount:
+                return ascending ? lhs.amountMinorUnits < rhs.amountMinorUnits : lhs.amountMinorUnits > rhs.amountMinorUnits
+            case .payee:
+                let cmp = lhs.payee.localizedCaseInsensitiveCompare(rhs.payee)
+                return ascending ? cmp == .orderedAscending : cmp == .orderedDescending
+            case .category:
+                let cmp = lhs.category.localizedCaseInsensitiveCompare(rhs.category)
+                return ascending ? cmp == .orderedAscending : cmp == .orderedDescending
+            }
+        }
+        filteredTransactions = result
         let cal = Calendar.current
         let grouped = Dictionary(grouping: filteredTransactions) { cal.startOfDay(for: $0.date) }
         groupedTransactions = grouped.sorted { $0.key > $1.key }
@@ -177,6 +195,15 @@ final class TransactionsViewModel {
     func confirmDelete(id: String) { pendingDeleteId = id; showingDeleteConfirmation = true }
     func removeFilter(_ label: FilterLabel) { switch label.kind { case .dateRange: filter.dateRangeEnabled = false; case .amountRange: filter.amountRangeEnabled = false; case .category(let n): filter.selectedCategories.remove(n); case .account: filter.selectedAccount = nil; case .type(let t): filter.selectedTypes.remove(t); case .status(let s): filter.selectedStatuses.remove(s) }; recomputeFilteredGroups(); AccessibilityNotification.Announcement(String(localized: "\(activeFilterCount) filters active")).post() }
     func clearAllFilters() { filter = TransactionFilter(); recomputeFilteredGroups(); AccessibilityNotification.Announcement(String(localized: "All filters cleared")).post() }
+    func applyFiltersAndSort() { recomputeFilteredGroups() }
+    func filterByTag(_ tag: Tag) { /* Add tag name to search for quick filtering */ searchText = tag.name }
+
+    /// All unique tags across loaded transactions.
+    var availableTags: [Tag] {
+        let allTags = transactions.flatMap(\.tags)
+        var seen = Set<String>()
+        return allTags.filter { seen.insert($0.name).inserted }
+    }
 
     // MARK: - Filtering
 

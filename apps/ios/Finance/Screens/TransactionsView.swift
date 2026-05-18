@@ -44,6 +44,30 @@ struct TransactionsView: View {
             .navigationTitle(String(localized: "Transactions"))
             .searchable(text: $viewModel.searchText, prompt: String(localized: "Search by payee, category, or account"))
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        viewModel.showingFilterSheet = true
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .overlay(alignment: .topTrailing) {
+                                if viewModel.activeFilterCount > 0 {
+                                    Text("\(viewModel.activeFilterCount)")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 16, height: 16)
+                                        .background(.red, in: Circle())
+                                        .offset(x: 6, y: -6)
+                                }
+                            }
+                    }
+                    .accessibilityLabel(String(localized: "Filter transactions"))
+                    .accessibilityHint(String(localized: "Opens filter and sort options"))
+                    .accessibilityValue(
+                        viewModel.activeFilterCount > 0
+                            ? String(localized: "\(viewModel.activeFilterCount) active filters")
+                            : String(localized: "No active filters")
+                    )
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
@@ -76,6 +100,17 @@ struct TransactionsView: View {
                 Task { await viewModel.loadTransactions() }
             }) {
                 NlpInputView()
+            }
+            .sheet(isPresented: $viewModel.showingFilterSheet) {
+                TransactionFilterSheet(
+                    filter: $viewModel.filter,
+                    sort: $viewModel.sort,
+                    availableCategories: viewModel.availableCategories,
+                    availableAccounts: viewModel.availableAccounts,
+                    onApply: { viewModel.applyFiltersAndSort() },
+                    onClear: { viewModel.clearAllFilters() }
+                )
+                .presentationDetents([.medium, .large])
             }
             .sheet(item: $viewModel.editingTransaction, onDismiss: {
                 Task { await viewModel.loadTransactions() }
@@ -111,45 +146,56 @@ struct TransactionsView: View {
     }
 
     private var transactionsList: some View {
-        List {
-            ForEach(viewModel.groupedTransactions) { group in
-                Section {
-                    ForEach(group.transactions) { transaction in
-                        transactionRow(transaction)
-                            .contentShape(Rectangle())
-                            .onTapGesture { viewModel.editingTransaction = transaction }
-                            .onAppear {
-                                // Trigger pagination when approaching the
-                                // end of the loaded list (within 5 items).
-                                if viewModel.hasMorePages,
-                                   viewModel.shouldLoadMore(for: transaction) {
-                                    Task { await viewModel.loadMore() }
+        VStack(spacing: 0) {
+            // Active filter chips
+            if !viewModel.activeFilterLabels.isEmpty {
+                FilterChipsBar(
+                    labels: viewModel.activeFilterLabels,
+                    onRemove: { viewModel.removeFilter($0) },
+                    onClearAll: { viewModel.clearAllFilters() }
+                )
+            }
+
+            List {
+                ForEach(viewModel.groupedTransactions) { group in
+                    Section {
+                        ForEach(group.transactions) { transaction in
+                            transactionRow(transaction)
+                                .contentShape(Rectangle())
+                                .onTapGesture { viewModel.editingTransaction = transaction }
+                                .onAppear {
+                                    // Trigger pagination when approaching the
+                                    // end of the loaded list (within 5 items).
+                                    if viewModel.hasMorePages,
+                                       viewModel.shouldLoadMore(for: transaction) {
+                                        Task { await viewModel.loadMore() }
+                                    }
                                 }
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    viewModel.confirmDelete(id: transaction.id)
-                                } label: {
-                                    Label(String(localized: "Delete"), systemImage: "trash")
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        viewModel.confirmDelete(id: transaction.id)
+                                    } label: {
+                                        Label(String(localized: "Delete"), systemImage: "trash")
+                                    }
+                                    .accessibilityLabel(String(localized: "Delete transaction"))
                                 }
-                                .accessibilityLabel(String(localized: "Delete transaction"))
-                            }
-                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                Button {
-                                    viewModel.editingTransaction = transaction
-                                } label: {
-                                    Label(String(localized: "Edit"), systemImage: "pencil")
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    Button {
+                                        viewModel.editingTransaction = transaction
+                                    } label: {
+                                        Label(String(localized: "Edit"), systemImage: "pencil")
+                                    }
+                                    .tint(.blue)
+                                    .accessibilityLabel(String(localized: "Edit transaction"))
                                 }
-                                .tint(.blue)
-                                .accessibilityLabel(String(localized: "Edit transaction"))
-                            }
+                        }
+                    } header: {
+                        Text(group.date, style: .date)
                     }
-                } header: {
-                    Text(group.date, style: .date)
                 }
             }
+            .listStyle(.insetGrouped)
         }
-        .listStyle(.insetGrouped)
     }
 
     private func transactionRow(_ transaction: TransactionItem) -> some View {
@@ -174,14 +220,32 @@ struct TransactionsView: View {
                     Text(transaction.accountName)
                 }
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+
+                // Tags row (show up to 2 tag chips)
+                if !transaction.tags.isEmpty {
+                    TagsRow(
+                        tags: transaction.tags,
+                        maxVisible: 2,
+                        onTagTap: { tag in viewModel.filterByTag(tag) }
+                    )
+                }
             }
             Spacer()
             CurrencyLabel(amountInMinorUnits: transaction.amountMinorUnits, currencyCode: transaction.currencyCode, font: .callout.bold())
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(transaction.payee), \(transaction.category), \(transaction.accountName)")
+        .accessibilityLabel(transactionAccessibilityLabel(transaction))
         .accessibilityHint(String(localized: "Tap to edit. Swipe for more actions."))
+    }
+
+    private func transactionAccessibilityLabel(_ transaction: TransactionItem) -> String {
+        var label = "\(transaction.payee), \(transaction.category), \(transaction.accountName)"
+        if !transaction.tags.isEmpty {
+            let tagNames = transaction.tags.map(\.displayName).joined(separator: ", ")
+            label += ", " + String(localized: "Tags: \(tagNames)")
+        }
+        return label
     }
 }
 

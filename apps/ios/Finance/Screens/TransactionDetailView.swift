@@ -28,7 +28,7 @@ struct TransactionDetailView: View {
     }
 
     var body: some View {
-        List { headerSection; detailsSection; notesSection; receiptSection; actionsSection }
+        List { headerSection; detailsSection; tagsSection; notesSection; receiptSection; actionsSection }
         .listStyle(.insetGrouped).navigationTitle(String(localized: "Transaction Details")).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .primaryAction) { Button { showingEditSheet = true } label: { Text(String(localized: "Edit")) }.accessibilityLabel(String(localized: "Edit transaction")).accessibilityHint(String(localized: "Opens a form to edit this transaction")) } }
         .confirmationDialog(String(localized: "Delete Transaction"), isPresented: $showingDeleteConfirmation, titleVisibility: .visible) { Button(String(localized: "Delete"), role: .destructive) { Task { await performDelete() } }; Button(String(localized: "Cancel"), role: .cancel) {} } message: { Text(String(localized: "Are you sure you want to delete this transaction? This action cannot be undone.")) }
@@ -107,6 +107,24 @@ struct TransactionDetailView: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(String(localized: "Recurring transaction"))
+            }
+        }
+    }
+
+    // MARK: - Tags Section
+
+    @ViewBuilder
+    private var tagsSection: some View {
+        if !transaction.tags.isEmpty {
+            Section(String(localized: "Tags")) {
+                FlowLayout(spacing: 6) {
+                    ForEach(transaction.tags) { tag in
+                        TagView(tag: tag)
+                    }
+                }
+                .padding(.vertical, 4)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(String(localized: "Tags"))
             }
         }
     }
@@ -282,7 +300,8 @@ struct TransactionDetailView: View {
             status: transaction.status,
             notes: editedNotes,
             isRecurring: transaction.isRecurring,
-            receiptData: transaction.receiptData
+            receiptData: transaction.receiptData,
+            tags: transaction.tags
         )
         Self.logger.info("Saving updated notes for transaction \(transaction.id, privacy: .private)")
         do {

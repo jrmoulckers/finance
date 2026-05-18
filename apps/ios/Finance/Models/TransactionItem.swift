@@ -75,6 +75,7 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
     let tags: [String]
     let isRecurring: Bool
     let receiptData: Data?
+    let tags: [Tag]
 
     /// Convenience: `true` when the transaction type is `.expense`.
     var isExpense: Bool { type == .expense }
@@ -92,7 +93,8 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
         notes: String = "",
         tags: [String] = [],
         isRecurring: Bool = false,
-        receiptData: Data? = nil
+        receiptData: Data? = nil,
+        tags: [Tag] = []
     ) {
         self.id = id
         self.payee = payee
@@ -107,5 +109,6 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
         self.tags = tags
         self.isRecurring = isRecurring
         self.receiptData = receiptData
+        self.tags = tags
     }
 }
