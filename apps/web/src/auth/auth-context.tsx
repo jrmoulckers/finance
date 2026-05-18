@@ -47,11 +47,13 @@ import {
 } from './token-storage';
 
 import {
+  clearDemoSession,
   demoDeleteAccount,
   demoLogin,
   demoRefreshToken,
   demoSignup,
   isDemoMode,
+  restoreDemoSession,
 } from './demo-auth';
 
 // ---------------------------------------------------------------------------
@@ -168,20 +170,45 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
 
   useEffect(() => {
     if (demoModeActive) {
-      // In demo mode, use a no-op refresh endpoint and skip WebAuthn
+      // In demo mode, skip WebAuthn and use localStorage-based session
+      // persistence instead of the HttpOnly cookie refresh flow.
       initTokenManager({
         refreshEndpoint: '',
         onSessionExpired: () => {
           setUser(null);
           clearTokens();
+          clearDemoSession();
           config.onUnauthenticated?.();
         },
       });
+
+      // Attempt to restore demo session from localStorage (#1506)
+      const savedEmail = restoreDemoSession();
+      if (savedEmail) {
+        const token = demoRefreshToken(savedEmail);
+        if (token) {
+          setAccessToken(token);
+          const payload = parseTokenPayload(token);
+          if (payload) {
+            setUser({
+              id: payload.sub ?? '',
+              email: payload.email ?? '',
+              hasPasskey: false,
+            });
+          }
+        }
+      }
+
       setIsLoading(false);
       return;
     }
 
     // Initialise token manager
+    // NOTE: In production (Supabase configured), the backend sets an HttpOnly
+    // refresh cookie on login. `tryRestoreSession` calls `executeRefresh()`
+    // which posts to the refresh endpoint with credentials: 'include', allowing
+    // the browser to send the cookie. This correctly restores the session on
+    // page refresh without storing tokens in localStorage.
     initTokenManager({
       refreshEndpoint: config.refreshEndpoint,
       onSessionExpired: () => {
@@ -362,6 +389,9 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     } finally {
       clearTokens();
       setUser(null);
+      if (demoModeActive) {
+        clearDemoSession();
+      }
       config.onUnauthenticated?.();
     }
   }, [config, demoModeActive]);
@@ -433,6 +463,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
             email: result.user.email,
             hasPasskey: false,
           });
+          // demoLogin already calls persistDemoSession
           return;
         }
 
