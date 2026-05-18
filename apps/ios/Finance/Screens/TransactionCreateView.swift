@@ -130,12 +130,39 @@ struct TransactionCreateView: View {
             Section(String(localized: "Amount")) {
                 HStack {
                     Text(currencySymbol).font(.title2).foregroundStyle(.secondary)
-                    TextField(String(localized: "0.00"), text: $viewModel.amountText)
-                        .font(.title2).keyboardType(.decimalPad)
-                        .accessibilityIdentifier("transaction_amount_field")
+                    Text(viewModel.formattedAmount)
+                        .font(.title2.monospacedDigit())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .accessibilityIdentifier("transaction_amount_display")
                         .accessibilityLabel(String(localized: "Transaction amount"))
-                        .accessibilityHint(String(localized: "Enter the amount in dollars"))
+                        .accessibilityValue(String(localized: "\(currencySymbol)\(viewModel.formattedAmount)"))
                 }
+                // Venmo-style digit pad (#1486)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
+                    ForEach(["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"], id: \.self) { key in
+                        if key.isEmpty {
+                            Color.clear.frame(height: 44)
+                        } else {
+                            Button {
+                                if key == "⌫" {
+                                    viewModel.removeLastAmountDigit()
+                                } else {
+                                    viewModel.appendAmountDigit(key.first!)
+                                }
+                            } label: {
+                                Text(key)
+                                    .font(.title3.weight(.medium))
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                                    .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 8))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(key == "⌫" ? String(localized: "Delete") : key)
+                            .accessibilityHint(key == "⌫" ? String(localized: "Removes the last digit") : String(localized: "Adds digit \(key) to the amount"))
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
             }
             Section(String(localized: "Payee")) {
                 TextField(String(localized: "Who was this payment to?"), text: $viewModel.payee)
@@ -159,6 +186,43 @@ struct TransactionCreateView: View {
                     }
                 }
                 .accessibilityLabel(String(localized: "Category"))
+            }
+            Section(String(localized: "Status")) {
+                Picker(String(localized: "Status"), selection: $viewModel.selectedStatus) {
+                    Text(TransactionStatusUI.pending.displayName).tag(TransactionStatusUI.pending)
+                    Text(TransactionStatusUI.cleared.displayName).tag(TransactionStatusUI.cleared)
+                    Text(TransactionStatusUI.reconciled.displayName).tag(TransactionStatusUI.reconciled)
+                }
+                .accessibilityLabel(String(localized: "Transaction status"))
+                .accessibilityHint(String(localized: "Select the clearance status of this transaction"))
+            }
+            Section(String(localized: "Tags")) {
+                // Existing tags as removable capsules
+                if !viewModel.tags.isEmpty {
+                    FlowLayout(spacing: 8) {
+                        ForEach(Array(viewModel.tags.enumerated()), id: \.offset) { index, tag in
+                            TagChipView(text: tag) {
+                                viewModel.removeTag(at: index)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                HStack {
+                    TextField(String(localized: "Add a tag..."), text: $viewModel.currentTagText)
+                        .onSubmit { viewModel.addTag() }
+                        .accessibilityLabel(String(localized: "Tag input"))
+                        .accessibilityHint(String(localized: "Type a tag name and press return to add it"))
+                    Button {
+                        viewModel.addTag()
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(.blue)
+                    }
+                    .disabled(viewModel.currentTagText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityLabel(String(localized: "Add tag"))
+                    .accessibilityHint(String(localized: "Adds the entered text as a tag"))
+                }
             }
             Section(String(localized: "Date")) {
                 DatePicker(String(localized: "Date"), selection: $viewModel.date, displayedComponents: .date)
@@ -192,7 +256,13 @@ struct TransactionCreateView: View {
                    let category = viewModel.categories.first(where: { $0.id == categoryId }) {
                     LabeledContent(String(localized: "Category")) { Text(category.name) }
                 }
+                LabeledContent(String(localized: "Status")) { Text(viewModel.selectedStatus.displayName) }
                 LabeledContent(String(localized: "Date")) { Text(viewModel.date, style: .date) }
+                if !viewModel.tags.isEmpty {
+                    LabeledContent(String(localized: "Tags")) {
+                        Text(viewModel.tags.joined(separator: ", ")).foregroundStyle(.secondary)
+                    }
+                }
                 if !viewModel.note.isEmpty {
                     LabeledContent(String(localized: "Note")) { Text(viewModel.note).foregroundStyle(.secondary) }
                 }

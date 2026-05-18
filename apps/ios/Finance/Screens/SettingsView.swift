@@ -317,6 +317,14 @@ struct SettingsView: View {
             }
             .accessibilityLabel(String(localized: "App version \(viewModel.appVersion), build \(viewModel.buildNumber)"))
 
+            Button {
+                viewModel.showingFeedback = true
+            } label: {
+                Label(String(localized: "Send Feedback"), systemImage: "envelope")
+            }
+            .accessibilityLabel(String(localized: "Send Feedback"))
+            .accessibilityHint(String(localized: "Opens a form to report bugs or suggest improvements"))
+
             NavigationLink {
                 AboutView()
             } label: {
@@ -332,6 +340,9 @@ struct SettingsView: View {
             }
             .accessibilityLabel(String(localized: "Acknowledgments"))
             .accessibilityHint(String(localized: "Opens the open source acknowledgments"))
+        }
+        .sheet(isPresented: $viewModel.showingFeedback) {
+            FeedbackView()
         }
     }
 }

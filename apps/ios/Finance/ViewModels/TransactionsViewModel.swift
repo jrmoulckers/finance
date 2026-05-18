@@ -180,7 +180,33 @@ final class TransactionsViewModel {
 
     // MARK: - Filtering
 
-    private func matchesSearch(_ t: TransactionItem) -> Bool { guard !debouncedSearchText.isEmpty else { return true }; return t.payee.localizedCaseInsensitiveContains(debouncedSearchText) || t.category.localizedCaseInsensitiveContains(debouncedSearchText) || t.accountName.localizedCaseInsensitiveContains(debouncedSearchText) }
+    private func matchesSearch(_ t: TransactionItem) -> Bool {
+        guard !debouncedSearchText.isEmpty else { return true }
+        let query = debouncedSearchText
+        // #1483: Match against all relevant fields
+        if t.payee.localizedCaseInsensitiveContains(query) { return true }
+        if t.category.localizedCaseInsensitiveContains(query) { return true }
+        if t.accountName.localizedCaseInsensitiveContains(query) { return true }
+        if t.status.displayName.localizedCaseInsensitiveContains(query) { return true }
+        if t.type.displayName.localizedCaseInsensitiveContains(query) { return true }
+        // Match tags
+        if t.tags.contains(where: { $0.localizedCaseInsensitiveContains(query) }) { return true }
+        // Match formatted amount (e.g. "12.50")
+        let amountStr = String(format: "%.2f", Double(abs(t.amountMinorUnits)) / 100.0)
+        if amountStr.contains(query) { return true }
+        // Match date (short format)
+        if Self.searchDateFormatter.string(from: t.date).localizedCaseInsensitiveContains(query) { return true }
+        // Match notes
+        if !t.notes.isEmpty, t.notes.localizedCaseInsensitiveContains(query) { return true }
+        return false
+    }
+
+    /// Date formatter used for search matching against transaction dates.
+    private static nonisolated(unsafe) let searchDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        return f
+    }()
     private func matchesFilter(_ t: TransactionItem) -> Bool {
         if filter.dateRangeEnabled { let start = Calendar.current.startOfDay(for: filter.startDate); let end = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: filter.endDate)) ?? filter.endDate; guard t.date >= start && t.date < end else { return false } }
         if filter.amountRangeEnabled { let absAmt = abs(Double(t.amountMinorUnits)) / 100.0; if let min = filter.minAmount, absAmt < min { return false }; if let max = filter.maxAmount, absAmt > max { return false } }

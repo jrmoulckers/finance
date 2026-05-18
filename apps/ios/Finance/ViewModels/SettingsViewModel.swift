@@ -122,6 +122,9 @@ final class SettingsViewModel {
     var showingBiometricError = false
     var errorMessage: String?
 
+    /// Controls visibility of the feedback sheet.
+    var showingFeedback = false
+
     /// Whether a general error alert should be presented.
     var showError: Bool { errorMessage != nil }
 

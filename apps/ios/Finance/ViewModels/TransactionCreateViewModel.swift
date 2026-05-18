@@ -48,6 +48,13 @@ final class TransactionCreateViewModel {
     var isSaving = false
     var showingValidationError = false
     var validationMessage = ""
+    var selectedStatus: TransactionStatusUI = .pending
+    var tags: [String] = []
+    var currentTagText = ""
+
+    /// Venmo-style amount: stores raw digit input (no decimals).
+    /// e.g. user types "1", "2", "3" → amountCents = 123 → displays "$1.23"
+    var amountCents: Int = 0
 
     /// Category auto-suggested by the KMP CategorizationEngine based on payee.
     var suggestedCategoryId: String?
@@ -66,12 +73,50 @@ final class TransactionCreateViewModel {
     var canAdvance: Bool {
         switch currentStep {
         case .type: true
-        case .details: !amountText.isEmpty && selectedAccountId != nil && !payee.isEmpty
+        case .details: amountCents > 0 && selectedAccountId != nil && !payee.isEmpty
         case .review: true
         }
     }
 
-    var amountMinorUnits: Int64 { Int64((Double(amountText) ?? 0) * 100) }
+    var amountMinorUnits: Int64 { Int64(amountCents) }
+
+    /// Formatted display string for the Venmo-style amount input.
+    var formattedAmount: String {
+        let dollars = amountCents / 100
+        let cents = amountCents % 100
+        return String(format: "%d.%02d", dollars, cents)
+    }
+
+    /// Appends a digit to the amount (Venmo-style cents-first input).
+    func appendAmountDigit(_ digit: Character) {
+        guard digit.isNumber else { return }
+        let newCents = amountCents * 10 + (Int(String(digit)) ?? 0)
+        // Cap at $999,999.99
+        guard newCents <= 99_999_999 else { return }
+        amountCents = newCents
+    }
+
+    /// Removes the last digit from the amount (backspace).
+    func removeLastAmountDigit() {
+        amountCents = amountCents / 10
+    }
+
+    /// Adds the current tag text as a tag.
+    func addTag() {
+        let trimmed = currentTagText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !tags.contains(trimmed) else {
+            currentTagText = ""
+            return
+        }
+        tags.append(trimmed)
+        currentTagText = ""
+    }
+
+    /// Removes a tag at the specified index.
+    func removeTag(at index: Int) {
+        guard tags.indices.contains(index) else { return }
+        tags.remove(at: index)
+    }
 
     /// Navigation title for the form.
     var navigationTitle: String {
@@ -99,10 +144,12 @@ final class TransactionCreateViewModel {
         if let transaction {
             // Pre-fill fields from the existing transaction
             transactionType = transaction.type
-            amountText = Self.formatAmountForEditing(abs(transaction.amountMinorUnits))
+            amountCents = Int(abs(transaction.amountMinorUnits))
             payee = transaction.payee
             date = transaction.date
             currencyCode = transaction.currencyCode
+            selectedStatus = transaction.status
+            tags = transaction.tags
             // Category and account IDs are resolved after loadData()
         }
     }
@@ -161,7 +208,8 @@ final class TransactionCreateViewModel {
             currencyCode: currencyCode,
             date: date,
             type: transactionType,
-            status: editingTransaction?.status ?? .pending
+            status: selectedStatus,
+            tags: tags
         )
 
         do {
@@ -186,7 +234,7 @@ final class TransactionCreateViewModel {
 
     private func validate() -> Bool {
         // Basic client-side validation
-        if amountText.isEmpty || (Double(amountText) ?? 0) <= 0 {
+        if amountCents <= 0 {
             validationMessage = String(localized: "Please enter a valid amount.")
             showingValidationError = true
             return false
@@ -217,7 +265,7 @@ final class TransactionCreateViewModel {
             date: Calendar.current.dateComponents([.year, .month, .day], from: date),
             transferAccountId: nil,
             isRecurring: false,
-            tags: [],
+            tags: tags,
             createdAt: .now,
             updatedAt: .now,
             deletedAt: nil,
@@ -240,10 +288,4 @@ final class TransactionCreateViewModel {
     }
 
     // MARK: - Helpers
-
-    /// Formats minor units to a decimal string for editing (e.g., 2550 → "25.50").
-    private static func formatAmountForEditing(_ minorUnits: Int64) -> String {
-        let value = Double(minorUnits) / 100.0
-        return String(format: "%.2f", value)
-    }
 }
