@@ -7,6 +7,7 @@ import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
 import { ErrorBoundary } from './components/common';
+import { ScrollToTop } from './components/navigation/ScrollToTop';
 import { DatabaseProvider } from './db/DatabaseProvider';
 import { initMonitoring } from './lib/monitoring';
 import './theme/tokens.css';
@@ -113,6 +114,7 @@ createRoot(rootElement).render(
     <ErrorBoundary>
       <AuthProvider config={authConfig}>
         <BrowserRouter>
+          <ScrollToTop />
           <DatabaseGate>
             <App />
           </DatabaseGate>

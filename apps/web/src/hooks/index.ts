@@ -115,3 +115,4 @@ export type {
 } from './useMilestones';
 export { useUndo } from './useUndo';
 export type { UseUndoResult, UseUndoOptions, UndoableAction, UndoExecuteInput } from './useUndo';
+export { useEscapeBack } from './useEscapeBack';

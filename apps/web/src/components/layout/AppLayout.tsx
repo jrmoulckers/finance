@@ -6,6 +6,7 @@ import { KeyboardShortcutsModal, UpdateBanner, SyncStatusBar } from '../common';
 import { OfflineBanner } from '../OfflineBanner';
 import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
 import { useKeyboardShortcuts } from '../../hooks';
+import { useEscapeBack } from '../../hooks/useEscapeBack';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
@@ -27,6 +28,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const { showHelp, setShowHelp } = useKeyboardShortcuts();
   const { conflictCount } = useSyncStatus();
   const [showConflicts, setShowConflicts] = useState(false);
+
+  // Navigate back on Escape key for detail pages (#1523)
+  useEscapeBack();
 
   const openKeyboardShortcuts = useCallback(() => {
     setShowHelp(true);
