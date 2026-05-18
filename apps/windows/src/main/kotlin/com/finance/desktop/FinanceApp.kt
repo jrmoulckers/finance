@@ -15,11 +15,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.finance.desktop.components.KeyboardShortcut
+import com.finance.desktop.components.KeyboardShortcutEffect
 import com.finance.desktop.components.ShortcutHandler
 import com.finance.desktop.di.koinGet
 import com.finance.desktop.navigation.Screen
@@ -30,14 +36,17 @@ import com.finance.desktop.screens.BudgetsScreen
 import com.finance.desktop.screens.CurrencyConversionScreen
 import com.finance.desktop.screens.DashboardScreen
 import com.finance.desktop.screens.DiagnosticsScreen
+import com.finance.desktop.screens.FeedbackDialog
 import com.finance.desktop.screens.GamificationScreen
 import com.finance.desktop.screens.GoalsScreen
 import com.finance.desktop.screens.HealthScoreScreen
+import com.finance.desktop.screens.KeyboardShortcutsHelpDialog
 import com.finance.desktop.screens.LockScreen
 import com.finance.desktop.screens.ReportBuilderScreen
 import com.finance.desktop.screens.QuickAddTransactionDialog
 import com.finance.desktop.screens.SettingsScreen
 import com.finance.desktop.screens.TipsScreen
+import com.finance.desktop.screens.TransactionFormDialog
 import com.finance.desktop.screens.TransactionsScreen
 import com.finance.desktop.screens.UpgradeScreen
 import com.finance.desktop.screens.VoiceTransactionOverlay
@@ -98,6 +107,49 @@ fun FinanceApp(
     val sessionAuthenticated by authRepository.isAuthenticated.collectAsState()
     val gdprViewModel = koinGet<GdprConsentViewModel>()
     val gdprState by gdprViewModel.uiState.collectAsState()
+
+    // Dialog state for global shortcuts
+    var showNewTransactionDialog by remember { mutableStateOf(false) }
+    var showFeedbackDialog by remember { mutableStateOf(false) }
+    var showShortcutsHelp by remember { mutableStateOf(false) }
+
+    // Register global keyboard shortcuts for actions
+    KeyboardShortcutEffect(shortcutHandler) {
+        listOf(
+            // Ctrl+Shift+N: New transaction
+            KeyboardShortcut(
+                key = Key.N,
+                ctrl = true,
+                shift = true,
+                description = "New transaction",
+            ) { showNewTransactionDialog = true },
+            // F1: Show keyboard shortcuts help
+            KeyboardShortcut(
+                key = Key.F1,
+                ctrl = false,
+                description = "Show keyboard shortcuts",
+            ) { showShortcutsHelp = true },
+            // Ctrl+Shift+F: Open feedback dialog
+            KeyboardShortcut(
+                key = Key.F,
+                ctrl = true,
+                shift = true,
+                description = "Report bug / send feedback",
+            ) { showFeedbackDialog = true },
+            // Escape: Close dialogs
+            KeyboardShortcut(
+                key = Key.Escape,
+                ctrl = false,
+                description = "Close dialog",
+            ) {
+                when {
+                    showNewTransactionDialog -> showNewTransactionDialog = false
+                    showFeedbackDialog -> showFeedbackDialog = false
+                    showShortcutsHelp -> showShortcutsHelp = false
+                }
+            },
+        )
+    }
 
     FinanceDesktopTheme {
         Surface(
@@ -183,6 +235,37 @@ fun FinanceApp(
                         systemTray = systemTray,
                     )
                 }
+            }
+
+            // ── Global dialogs (rendered above everything) ──
+
+            // New transaction form dialog (Ctrl+Shift+N)
+            if (showNewTransactionDialog) {
+                TransactionFormDialog(
+                    onDismiss = { showNewTransactionDialog = false },
+                    onSave = { formState ->
+                        // TODO: Wire save through TransactionsViewModel/repository
+                        showNewTransactionDialog = false
+                    },
+                )
+            }
+
+            // Feedback dialog (Ctrl+Shift+F)
+            if (showFeedbackDialog) {
+                FeedbackDialog(
+                    onDismiss = { showFeedbackDialog = false },
+                    onSubmit = { submission ->
+                        // TODO: Persist feedback locally via repository
+                        showFeedbackDialog = false
+                    },
+                )
+            }
+
+            // Keyboard shortcuts help (F1)
+            if (showShortcutsHelp) {
+                KeyboardShortcutsHelpDialog(
+                    onDismiss = { showShortcutsHelp = false },
+                )
             }
         }
     }

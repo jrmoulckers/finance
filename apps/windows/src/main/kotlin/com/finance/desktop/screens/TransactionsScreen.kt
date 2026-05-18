@@ -245,9 +245,9 @@ private fun SearchAndFilterBar(
             modifier = Modifier
                 .weight(1f)
                 .semantics {
-                    contentDescription = "Search transactions by payee or category"
+                    contentDescription = "Search transactions by payee, category, tags, account, status, amount, or date"
                 },
-            placeholder = { Text("Search payees, categories\u2026") },
+            placeholder = { Text("Search payees, categories, tags, amounts\u2026") },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
