@@ -15,6 +15,7 @@ import kotlin.test.*
  * calculation, month-end edge cases, leap year handling, end date
  * boundaries, recurring rule linking, and bill reminder scheduling.
  */
+@Suppress("LargeClass") // Test suite intentionally groups all recurring-bill scenarios for discoverability
 class RecurringBillDueDateTest {
 
     @BeforeTest

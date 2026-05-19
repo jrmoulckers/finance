@@ -31,6 +31,7 @@ class SyncConflictResolutionTest {
 
     // ── Helper ──────────────────────────────────────────────────
 
+    @Suppress("LongParameterList") // Test helper — many defaults make call-sites concise
     private fun conflict(
         tableName: String = "transactions",
         recordId: String = "rec-1",
