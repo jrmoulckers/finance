@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// Multiple public declarations: ShortcutHelpEntry data class + KeyboardShortcutsHelpDialog composable
+@file:Suppress("MatchingDeclarationName")
+
 package com.finance.desktop.screens
 
 import androidx.compose.foundation.layout.Arrangement

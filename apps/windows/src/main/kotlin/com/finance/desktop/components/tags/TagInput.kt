@@ -98,22 +98,10 @@ fun TagInput(
             },
     ) {
         // Selected tags as chips
-        if (selectedTags.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
-                verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xs),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                selectedTags.forEach { tag ->
-                    TagChip(
-                        tag = tag,
-                        size = TagSize.MEDIUM,
-                        onRemove = { onTagRemoved(tag) },
-                    )
-                }
-            }
-            Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
-        }
+        SelectedTagChips(
+            selectedTags = selectedTags,
+            onTagRemoved = onTagRemoved,
+        )
 
         // Input field
         OutlinedTextField(
@@ -136,48 +124,95 @@ fun TagInput(
         )
 
         // Autocomplete dropdown
-        if (isFocused && (suggestions.isNotEmpty() || showCreateNew)) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 200.dp),
-                shape = MaterialTheme.shapes.small,
-                tonalElevation = 4.dp,
-                shadowElevation = 4.dp,
-            ) {
-                LazyColumn(
-                    modifier = Modifier.padding(vertical = FinanceDesktopTheme.spacing.xs),
-                ) {
-                    // Existing tag suggestions
-                    items(suggestions) { suggestion ->
-                        SuggestionItem(
-                            text = suggestion,
-                            onClick = {
-                                onTagAdded(suggestion)
-                                inputText = ""
-                            },
+        TagSuggestionsDropdown(
+            visible = isFocused && (suggestions.isNotEmpty() || showCreateNew),
+            suggestions = suggestions,
+            showCreateNew = showCreateNew,
+            inputText = inputText,
+            onSuggestionSelected = { suggestion ->
+                onTagAdded(suggestion)
+                inputText = ""
+            },
+            onCreateNew = {
+                onTagAdded(inputText.trim())
+                inputText = ""
+            },
+        )
+    }
+}
+
+/**
+ * Displays selected tag chips in a flow layout.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SelectedTagChips(
+    selectedTags: List<String>,
+    onTagRemoved: (String) -> Unit,
+) {
+    if (selectedTags.isNotEmpty()) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xs),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            selectedTags.forEach { tag ->
+                TagChip(
+                    tag = tag,
+                    size = TagSize.MEDIUM,
+                    onRemove = { onTagRemoved(tag) },
+                )
+            }
+        }
+        Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
+    }
+}
+
+/**
+ * Autocomplete suggestions dropdown for tag input.
+ */
+@Composable
+private fun TagSuggestionsDropdown(
+    visible: Boolean,
+    suggestions: List<String>,
+    showCreateNew: Boolean,
+    inputText: String,
+    onSuggestionSelected: (String) -> Unit,
+    onCreateNew: () -> Unit,
+) {
+    if (!visible) return
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 200.dp),
+        shape = MaterialTheme.shapes.small,
+        tonalElevation = 4.dp,
+        shadowElevation = 4.dp,
+    ) {
+        LazyColumn(
+            modifier = Modifier.padding(vertical = FinanceDesktopTheme.spacing.xs),
+        ) {
+            items(suggestions) { suggestion ->
+                SuggestionItem(
+                    text = suggestion,
+                    onClick = { onSuggestionSelected(suggestion) },
+                )
+            }
+
+            if (showCreateNew) {
+                item {
+                    if (suggestions.isNotEmpty()) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(
+                                vertical = FinanceDesktopTheme.spacing.xs,
+                            ),
                         )
                     }
-
-                    // Create new option
-                    if (showCreateNew) {
-                        item {
-                            if (suggestions.isNotEmpty()) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(
-                                        vertical = FinanceDesktopTheme.spacing.xs,
-                                    ),
-                                )
-                            }
-                            CreateNewItem(
-                                tagName = inputText.trim(),
-                                onClick = {
-                                    onTagAdded(inputText.trim())
-                                    inputText = ""
-                                },
-                            )
-                        }
-                    }
+                    CreateNewItem(
+                        tagName = inputText.trim(),
+                        onClick = onCreateNew,
+                    )
                 }
             }
         }

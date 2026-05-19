@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// Multiple public declarations: TagSize enum + TagChip composable
+@file:Suppress("MatchingDeclarationName")
+
 package com.finance.desktop.components.tags
 
 import androidx.compose.foundation.background

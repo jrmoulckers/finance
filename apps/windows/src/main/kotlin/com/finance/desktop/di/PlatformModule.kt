@@ -45,7 +45,7 @@ val platformModule = module {
     single { VoiceCommandParser() }
 
     // ── System tray integration ──
-    single { FinanceSystemTray(get(), get(), get()) }
+    single { FinanceSystemTray(get(), get()) }
     single { QuickAddTransactionManager(get()) }
 
     // -- Enhanced notifications and deep links --

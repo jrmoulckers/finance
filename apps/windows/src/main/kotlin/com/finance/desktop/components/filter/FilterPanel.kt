@@ -33,7 +33,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
-import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -269,16 +268,10 @@ private fun ActiveFilterChips(
     ) {
         // Type filter chip
         if (filter.type != null) {
-            InputChip(
-                selected = true,
-                onClick = { onFilterChange(filter.copy(type = null)) },
-                label = { Text("Type: ${filter.type.name.lowercase().replaceFirstChar { it.uppercase() }}") },
-                trailingIcon = {
-                    Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp))
-                },
-                modifier = Modifier.semantics {
-                    contentDescription = "Remove type filter"
-                },
+            RemovableFilterChip(
+                label = "Type: ${filter.type.name.lowercase().replaceFirstChar { it.uppercase() }}",
+                accessibilityLabel = "Remove type filter",
+                onRemove = { onFilterChange(filter.copy(type = null)) },
             )
         }
 
@@ -290,50 +283,28 @@ private fun ActiveFilterChips(
                 append(" – ")
                 if (filter.dateEnd != null) append(filter.dateEnd)
             }
-            InputChip(
-                selected = true,
-                onClick = { onFilterChange(filter.copy(dateStart = null, dateEnd = null)) },
-                label = { Text(dateLabel) },
-                trailingIcon = {
-                    Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp))
-                },
-                modifier = Modifier.semantics {
-                    contentDescription = "Remove date range filter"
-                },
+            RemovableFilterChip(
+                label = dateLabel,
+                accessibilityLabel = "Remove date range filter",
+                onRemove = { onFilterChange(filter.copy(dateStart = null, dateEnd = null)) },
             )
         }
 
         // Category chips
         filter.categories.forEach { category ->
-            InputChip(
-                selected = true,
-                onClick = {
-                    onFilterChange(filter.copy(categories = filter.categories - category))
-                },
-                label = { Text(category) },
-                trailingIcon = {
-                    Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp))
-                },
-                modifier = Modifier.semantics {
-                    contentDescription = "Remove category filter: $category"
-                },
+            RemovableFilterChip(
+                label = category,
+                accessibilityLabel = "Remove category filter: $category",
+                onRemove = { onFilterChange(filter.copy(categories = filter.categories - category)) },
             )
         }
 
         // Account chips
         filter.accounts.forEach { account ->
-            InputChip(
-                selected = true,
-                onClick = {
-                    onFilterChange(filter.copy(accounts = filter.accounts - account))
-                },
-                label = { Text(account) },
-                trailingIcon = {
-                    Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp))
-                },
-                modifier = Modifier.semantics {
-                    contentDescription = "Remove account filter: $account"
-                },
+            RemovableFilterChip(
+                label = account,
+                accessibilityLabel = "Remove account filter: $account",
+                onRemove = { onFilterChange(filter.copy(accounts = filter.accounts - account)) },
             )
         }
 
@@ -345,31 +316,19 @@ private fun ActiveFilterChips(
                 append(" – ")
                 if (filter.amountMax != null) append("$${filter.amountMax}")
             }
-            InputChip(
-                selected = true,
-                onClick = { onFilterChange(filter.copy(amountMin = null, amountMax = null)) },
-                label = { Text(amountLabel) },
-                trailingIcon = {
-                    Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp))
-                },
-                modifier = Modifier.semantics {
-                    contentDescription = "Remove amount range filter"
-                },
+            RemovableFilterChip(
+                label = amountLabel,
+                accessibilityLabel = "Remove amount range filter",
+                onRemove = { onFilterChange(filter.copy(amountMin = null, amountMax = null)) },
             )
         }
 
         // Status chip
         if (filter.status != null) {
-            InputChip(
-                selected = true,
-                onClick = { onFilterChange(filter.copy(status = null)) },
-                label = { Text("Status: ${filter.status.label}") },
-                trailingIcon = {
-                    Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp))
-                },
-                modifier = Modifier.semantics {
-                    contentDescription = "Remove status filter"
-                },
+            RemovableFilterChip(
+                label = "Status: ${filter.status.label}",
+                accessibilityLabel = "Remove status filter",
+                onRemove = { onFilterChange(filter.copy(status = null)) },
             )
         }
 
@@ -394,6 +353,28 @@ private fun ActiveFilterChips(
 }
 
 /**
+ * A removable filter chip with a close icon.
+ */
+@Composable
+private fun RemovableFilterChip(
+    label: String,
+    accessibilityLabel: String,
+    onRemove: () -> Unit,
+) {
+    InputChip(
+        selected = true,
+        onClick = onRemove,
+        label = { Text(label) },
+        trailingIcon = {
+            Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+        },
+        modifier = Modifier.semantics {
+            contentDescription = accessibilityLabel
+        },
+    )
+}
+
+/**
  * Expandable filter panel content with all filter controls.
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -410,218 +391,245 @@ private fun FilterPanelContent(
             .semantics { contentDescription = "Advanced filter panel" },
         verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.lg),
     ) {
-        // Row 1: Date range
-        Text(
-            text = "Date Range",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
+        DateRangeFilterSection(filter = filter, onFilterChange = onFilterChange)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        TypeFilterSection(filter = filter, onFilterChange = onFilterChange)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        MultiSelectFilterSection(
+            title = "Categories",
+            items = availableCategories,
+            selectedItems = filter.categories,
+            emptyMessage = "No categories available",
+            chipLabel = "Category",
+            onSelectionChange = { onFilterChange(filter.copy(categories = it)) },
         )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.md),
-        ) {
-            OutlinedTextField(
-                value = filter.dateStart?.toString() ?: "",
-                onValueChange = { value ->
-                    val date = try {
-                        LocalDate.parse(value)
-                    } catch (_: Exception) {
-                        null
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        MultiSelectFilterSection(
+            title = "Accounts",
+            items = availableAccounts,
+            selectedItems = filter.accounts,
+            emptyMessage = "No accounts available",
+            chipLabel = "Account",
+            onSelectionChange = { onFilterChange(filter.copy(accounts = it)) },
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        AmountRangeFilterSection(filter = filter, onFilterChange = onFilterChange)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        StatusFilterSection(filter = filter, onFilterChange = onFilterChange)
+    }
+}
+
+/**
+ * Date range filter with start and end date text fields.
+ */
+@Composable
+private fun DateRangeFilterSection(
+    filter: AdvancedFilter,
+    onFilterChange: (AdvancedFilter) -> Unit,
+) {
+    Text(
+        text = "Date Range",
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Medium,
+    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.md),
+    ) {
+        OutlinedTextField(
+            value = filter.dateStart?.toString() ?: "",
+            onValueChange = { value ->
+                val date = try {
+                    LocalDate.parse(value)
+                } catch (_: Exception) {
+                    null
+                }
+                onFilterChange(filter.copy(dateStart = date))
+            },
+            modifier = Modifier
+                .weight(1f)
+                .semantics { contentDescription = "Start date, format: YYYY-MM-DD" },
+            label = { Text("From") },
+            placeholder = { Text("YYYY-MM-DD") },
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = filter.dateEnd?.toString() ?: "",
+            onValueChange = { value ->
+                val date = try {
+                    LocalDate.parse(value)
+                } catch (_: Exception) {
+                    null
+                }
+                onFilterChange(filter.copy(dateEnd = date))
+            },
+            modifier = Modifier
+                .weight(1f)
+                .semantics { contentDescription = "End date, format: YYYY-MM-DD" },
+            label = { Text("To") },
+            placeholder = { Text("YYYY-MM-DD") },
+            singleLine = true,
+        )
+    }
+}
+
+/**
+ * Transaction type filter chip row.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TypeFilterSection(
+    filter: AdvancedFilter,
+    onFilterChange: (AdvancedFilter) -> Unit,
+) {
+    Text(
+        text = "Transaction Type",
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Medium,
+    )
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
+    ) {
+        TransactionType.entries.forEach { type ->
+            FilterChip(
+                selected = filter.type == type,
+                onClick = {
+                    onFilterChange(
+                        filter.copy(type = if (filter.type == type) null else type),
+                    )
+                },
+                label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                modifier = Modifier.semantics {
+                    contentDescription = "Type filter: ${type.name.lowercase()}"
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Reusable multi-select filter chip section for categories and accounts.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MultiSelectFilterSection(
+    title: String,
+    items: List<String>,
+    selectedItems: Set<String>,
+    emptyMessage: String,
+    chipLabel: String,
+    onSelectionChange: (Set<String>) -> Unit,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Medium,
+    )
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xs),
+    ) {
+        items.forEach { item ->
+            FilterChip(
+                selected = item in selectedItems,
+                onClick = {
+                    val updated = if (item in selectedItems) {
+                        selectedItems - item
+                    } else {
+                        selectedItems + item
                     }
-                    onFilterChange(filter.copy(dateStart = date))
+                    onSelectionChange(updated)
                 },
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { contentDescription = "Start date, format: YYYY-MM-DD" },
-                label = { Text("From") },
-                placeholder = { Text("YYYY-MM-DD") },
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = filter.dateEnd?.toString() ?: "",
-                onValueChange = { value ->
-                    val date = try {
-                        LocalDate.parse(value)
-                    } catch (_: Exception) {
-                        null
-                    }
-                    onFilterChange(filter.copy(dateEnd = date))
+                label = { Text(item) },
+                modifier = Modifier.semantics {
+                    contentDescription = "$chipLabel: $item"
                 },
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { contentDescription = "End date, format: YYYY-MM-DD" },
-                label = { Text("To") },
-                placeholder = { Text("YYYY-MM-DD") },
-                singleLine = true,
             )
         }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-        // Row 2: Type filter
-        Text(
-            text = "Transaction Type",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
-        ) {
-            TransactionType.entries.forEach { type ->
-                FilterChip(
-                    selected = filter.type == type,
-                    onClick = {
-                        onFilterChange(
-                            filter.copy(type = if (filter.type == type) null else type),
-                        )
-                    },
-                    label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }) },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Type filter: ${type.name.lowercase()}"
-                    },
-                )
-            }
-        }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-        // Row 3: Categories (multi-select)
-        Text(
-            text = "Categories",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
-            verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xs),
-        ) {
-            availableCategories.forEach { category ->
-                FilterChip(
-                    selected = category in filter.categories,
-                    onClick = {
-                        val updated = if (category in filter.categories) {
-                            filter.categories - category
-                        } else {
-                            filter.categories + category
-                        }
-                        onFilterChange(filter.copy(categories = updated))
-                    },
-                    label = { Text(category) },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Category: $category"
-                    },
-                )
-            }
-            if (availableCategories.isEmpty()) {
-                Text(
-                    text = "No categories available",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-        // Row 4: Accounts (multi-select)
-        Text(
-            text = "Accounts",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
-            verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xs),
-        ) {
-            availableAccounts.forEach { account ->
-                FilterChip(
-                    selected = account in filter.accounts,
-                    onClick = {
-                        val updated = if (account in filter.accounts) {
-                            filter.accounts - account
-                        } else {
-                            filter.accounts + account
-                        }
-                        onFilterChange(filter.copy(accounts = updated))
-                    },
-                    label = { Text(account) },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Account: $account"
-                    },
-                )
-            }
-            if (availableAccounts.isEmpty()) {
-                Text(
-                    text = "No accounts available",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-        // Row 5: Amount range
-        Text(
-            text = "Amount Range",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.md),
-        ) {
-            OutlinedTextField(
-                value = filter.amountMin?.toString() ?: "",
-                onValueChange = { value ->
-                    val amount = value.toDoubleOrNull()
-                    onFilterChange(filter.copy(amountMin = amount))
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { contentDescription = "Minimum amount" },
-                label = { Text("Min") },
-                placeholder = { Text("0.00") },
-                singleLine = true,
-            )
-            OutlinedTextField(
-                value = filter.amountMax?.toString() ?: "",
-                onValueChange = { value ->
-                    val amount = value.toDoubleOrNull()
-                    onFilterChange(filter.copy(amountMax = amount))
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { contentDescription = "Maximum amount" },
-                label = { Text("Max") },
-                placeholder = { Text("1000.00") },
-                singleLine = true,
+        if (items.isEmpty()) {
+            Text(
+                text = emptyMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-        // Row 6: Status
-        Text(
-            text = "Status",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
+/**
+ * Amount range filter with min and max text fields.
+ */
+@Composable
+private fun AmountRangeFilterSection(
+    filter: AdvancedFilter,
+    onFilterChange: (AdvancedFilter) -> Unit,
+) {
+    Text(
+        text = "Amount Range",
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Medium,
+    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.md),
+    ) {
+        OutlinedTextField(
+            value = filter.amountMin?.toString() ?: "",
+            onValueChange = { value ->
+                val amount = value.toDoubleOrNull()
+                onFilterChange(filter.copy(amountMin = amount))
+            },
+            modifier = Modifier
+                .weight(1f)
+                .semantics { contentDescription = "Minimum amount" },
+            label = { Text("Min") },
+            placeholder = { Text("0.00") },
+            singleLine = true,
         )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
-        ) {
-            TransactionStatus.entries.forEach { status ->
-                FilterChip(
-                    selected = filter.status == status,
-                    onClick = {
-                        onFilterChange(
-                            filter.copy(status = if (filter.status == status) null else status),
-                        )
-                    },
-                    label = { Text(status.label) },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Status filter: ${status.label}"
-                    },
-                )
-            }
+        OutlinedTextField(
+            value = filter.amountMax?.toString() ?: "",
+            onValueChange = { value ->
+                val amount = value.toDoubleOrNull()
+                onFilterChange(filter.copy(amountMax = amount))
+            },
+            modifier = Modifier
+                .weight(1f)
+                .semantics { contentDescription = "Maximum amount" },
+            label = { Text("Max") },
+            placeholder = { Text("1000.00") },
+            singleLine = true,
+        )
+    }
+}
+
+/**
+ * Transaction status filter chip row.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StatusFilterSection(
+    filter: AdvancedFilter,
+    onFilterChange: (AdvancedFilter) -> Unit,
+) {
+    Text(
+        text = "Status",
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Medium,
+    )
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
+    ) {
+        TransactionStatus.entries.forEach { status ->
+            FilterChip(
+                selected = filter.status == status,
+                onClick = {
+                    onFilterChange(
+                        filter.copy(status = if (filter.status == status) null else status),
+                    )
+                },
+                label = { Text(status.label) },
+                modifier = Modifier.semantics {
+                    contentDescription = "Status filter: ${status.label}"
+                },
+            )
         }
     }
 }

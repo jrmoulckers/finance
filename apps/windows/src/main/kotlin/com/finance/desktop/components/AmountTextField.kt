@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// Multiple public declarations: CurrencyAmountVisualTransformation class + AmountTextField composable
+@file:Suppress("MatchingDeclarationName")
+
 package com.finance.desktop.components
 
 import androidx.compose.foundation.text.KeyboardOptions

@@ -265,13 +265,9 @@ class TransactionsViewModel(
      */
     private fun matchesAmount(query: String, txn: Transaction): Boolean {
         val cents = txn.amount.amount
-        // Match raw cents string
-        if (cents.toString().contains(query)) return true
-        // Match formatted dollar value (e.g., "12.34")
         val dollars = cents.toDouble() / 100.0
         val formatted = "%.2f".format(dollars)
-        if (formatted.contains(query)) return true
-        return false
+        return cents.toString().contains(query) || formatted.contains(query)
     }
 }
 

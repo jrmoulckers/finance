@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+// Multiple public declarations: TransactionFormState data class + TransactionFormDialog composable
+@file:Suppress("MatchingDeclarationName")
+
 package com.finance.desktop.screens
 
 import androidx.compose.foundation.layout.Arrangement
@@ -88,7 +91,6 @@ data class TransactionFormState(
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-@Suppress("LongMethod") // Transaction form dialog with multiple fields
 fun TransactionFormDialog(
     initialState: TransactionFormState = TransactionFormState(),
     isEdit: Boolean = false,
@@ -117,62 +119,10 @@ fun TransactionFormDialog(
                     },
             ) {
                 // ── Type toggle ──
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
-                ) {
-                    FilterChip(
-                        selected = formState.type == TransactionType.EXPENSE,
-                        onClick = { formState = formState.copy(type = TransactionType.EXPENSE) },
-                        label = { Text("Expense") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.TrendingDown,
-                                contentDescription = null,
-                                tint = if (formState.type == TransactionType.EXPENSE)
-                                    MaterialTheme.colorScheme.error else Color.Unspecified,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Expense type" +
-                                if (formState.type == TransactionType.EXPENSE) ", selected" else ""
-                        },
-                    )
-                    FilterChip(
-                        selected = formState.type == TransactionType.INCOME,
-                        onClick = { formState = formState.copy(type = TransactionType.INCOME) },
-                        label = { Text("Income") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.TrendingUp,
-                                contentDescription = null,
-                                tint = if (formState.type == TransactionType.INCOME)
-                                    Color(0xFF2E7D32) else Color.Unspecified,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Income type" +
-                                if (formState.type == TransactionType.INCOME) ", selected" else ""
-                        },
-                    )
-                    FilterChip(
-                        selected = formState.type == TransactionType.TRANSFER,
-                        onClick = { formState = formState.copy(type = TransactionType.TRANSFER) },
-                        label = { Text("Transfer") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Filled.SwapHoriz,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        },
-                        modifier = Modifier.semantics {
-                            contentDescription = "Transfer type" +
-                                if (formState.type == TransactionType.TRANSFER) ", selected" else ""
-                        },
-                    )
-                }
+                TransactionTypeToggle(
+                    selectedType = formState.type,
+                    onTypeSelected = { formState = formState.copy(type = it) },
+                )
 
                 Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
 
@@ -201,130 +151,33 @@ fun TransactionFormDialog(
                 Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
 
                 // ── Status dropdown ──
-                ExposedDropdownMenuBox(
+                TransactionStatusDropdown(
+                    status = formState.status,
                     expanded = statusExpanded,
                     onExpandedChange = { statusExpanded = it },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Transaction status: ${formState.status.name.lowercase()}"
+                    onStatusSelected = {
+                        formState = formState.copy(status = it)
+                        statusExpanded = false
                     },
-                ) {
-                    OutlinedTextField(
-                        value = formState.status.name.lowercase()
-                            .replaceFirstChar { it.uppercase() },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Status") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusExpanded)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = statusExpanded,
-                        onDismissRequest = { statusExpanded = false },
-                    ) {
-                        listOf(
-                            TransactionStatus.PENDING,
-                            TransactionStatus.CLEARED,
-                            TransactionStatus.RECONCILED,
-                        ).forEach { status ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(status.name.lowercase().replaceFirstChar { it.uppercase() })
-                                },
-                                onClick = {
-                                    formState = formState.copy(status = status)
-                                    statusExpanded = false
-                                },
-                                modifier = Modifier.semantics {
-                                    contentDescription = "Set status to ${status.name.lowercase()}"
-                                },
-                            )
-                        }
-                    }
-                }
+                )
 
                 Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
 
                 // ── Tags chip input ──
-                OutlinedTextField(
-                    value = tagInput,
-                    onValueChange = { newVal ->
-                        // Add tag on comma
-                        if (newVal.endsWith(",")) {
-                            val tag = newVal.dropLast(1).trim()
-                            if (tag.isNotEmpty() && tag !in formState.tags) {
-                                formState = formState.copy(tags = formState.tags + tag)
-                            }
-                            tagInput = ""
-                        } else {
-                            tagInput = newVal
+                TransactionTagInput(
+                    tags = formState.tags,
+                    tagInput = tagInput,
+                    onTagInputChange = { tagInput = it },
+                    onTagAdded = { tag ->
+                        if (tag !in formState.tags) {
+                            formState = formState.copy(tags = formState.tags + tag)
                         }
+                        tagInput = ""
                     },
-                    label = { Text("Tags") },
-                    placeholder = { Text("Type tag, press Enter or comma to add") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onPreviewKeyEvent { event ->
-                            if (event.key == Key.Enter && tagInput.trim().isNotEmpty()) {
-                                val tag = tagInput.trim()
-                                if (tag !in formState.tags) {
-                                    formState = formState.copy(tags = formState.tags + tag)
-                                }
-                                tagInput = ""
-                                true
-                            } else {
-                                false
-                            }
-                        }
-                        .semantics {
-                            contentDescription = "Tags input. " +
-                                "Type a tag and press Enter or comma to add. " +
-                                "Current tags: ${formState.tags.joinToString(", ").ifEmpty { "none" }}"
-                        },
+                    onTagRemoved = { tag ->
+                        formState = formState.copy(tags = formState.tags - tag)
+                    },
                 )
-
-                // Display tag chips
-                if (formState.tags.isNotEmpty()) {
-                    Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xs),
-                        verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xs),
-                    ) {
-                        formState.tags.forEach { tag ->
-                            AssistChip(
-                                onClick = { /* no-op, use trailing icon to remove */ },
-                                label = { Text(tag) },
-                                trailingIcon = {
-                                    IconButton(
-                                        onClick = {
-                                            formState = formState.copy(
-                                                tags = formState.tags - tag,
-                                            )
-                                        },
-                                        modifier = Modifier
-                                            .size(18.dp)
-                                            .semantics {
-                                                contentDescription = "Remove tag $tag"
-                                            },
-                                    ) {
-                                        Icon(
-                                            Icons.Filled.Close,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp),
-                                        )
-                                    }
-                                },
-                                modifier = Modifier.semantics {
-                                    contentDescription = "Tag: $tag"
-                                },
-                            )
-                        }
-                    }
-                }
 
                 Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
 
@@ -363,4 +216,200 @@ fun TransactionFormDialog(
                     "New transaction dialog. Fill in details and create."
             },
     )
+}
+
+/**
+ * Transaction type toggle (Expense / Income / Transfer).
+ */
+@Composable
+private fun TransactionTypeToggle(
+    selectedType: TransactionType,
+    onTypeSelected: (TransactionType) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.sm),
+    ) {
+        FilterChip(
+            selected = selectedType == TransactionType.EXPENSE,
+            onClick = { onTypeSelected(TransactionType.EXPENSE) },
+            label = { Text("Expense") },
+            leadingIcon = {
+                Icon(
+                    Icons.AutoMirrored.Filled.TrendingDown,
+                    contentDescription = null,
+                    tint = if (selectedType == TransactionType.EXPENSE)
+                        MaterialTheme.colorScheme.error else Color.Unspecified,
+                    modifier = Modifier.size(16.dp),
+                )
+            },
+            modifier = Modifier.semantics {
+                contentDescription = "Expense type" +
+                    if (selectedType == TransactionType.EXPENSE) ", selected" else ""
+            },
+        )
+        FilterChip(
+            selected = selectedType == TransactionType.INCOME,
+            onClick = { onTypeSelected(TransactionType.INCOME) },
+            label = { Text("Income") },
+            leadingIcon = {
+                Icon(
+                    Icons.AutoMirrored.Filled.TrendingUp,
+                    contentDescription = null,
+                    tint = if (selectedType == TransactionType.INCOME)
+                        Color(0xFF2E7D32) else Color.Unspecified,
+                    modifier = Modifier.size(16.dp),
+                )
+            },
+            modifier = Modifier.semantics {
+                contentDescription = "Income type" +
+                    if (selectedType == TransactionType.INCOME) ", selected" else ""
+            },
+        )
+        FilterChip(
+            selected = selectedType == TransactionType.TRANSFER,
+            onClick = { onTypeSelected(TransactionType.TRANSFER) },
+            label = { Text("Transfer") },
+            leadingIcon = {
+                Icon(
+                    Icons.Filled.SwapHoriz,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            },
+            modifier = Modifier.semantics {
+                contentDescription = "Transfer type" +
+                    if (selectedType == TransactionType.TRANSFER) ", selected" else ""
+            },
+        )
+    }
+}
+
+/**
+ * Transaction status dropdown selector.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransactionStatusDropdown(
+    status: TransactionStatus,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onStatusSelected: (TransactionStatus) -> Unit,
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        modifier = Modifier.semantics {
+            contentDescription = "Transaction status: ${status.name.lowercase()}"
+        },
+    ) {
+        OutlinedTextField(
+            value = status.name.lowercase().replaceFirstChar { it.uppercase() },
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Status") },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+        ) {
+            listOf(
+                TransactionStatus.PENDING,
+                TransactionStatus.CLEARED,
+                TransactionStatus.RECONCILED,
+            ).forEach { s ->
+                DropdownMenuItem(
+                    text = {
+                        Text(s.name.lowercase().replaceFirstChar { it.uppercase() })
+                    },
+                    onClick = { onStatusSelected(s) },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Set status to ${s.name.lowercase()}"
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Tag input field with chip display for the transaction form.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TransactionTagInput(
+    tags: List<String>,
+    tagInput: String,
+    onTagInputChange: (String) -> Unit,
+    onTagAdded: (String) -> Unit,
+    onTagRemoved: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = tagInput,
+        onValueChange = { newVal ->
+            if (newVal.endsWith(",")) {
+                val tag = newVal.dropLast(1).trim()
+                if (tag.isNotEmpty()) onTagAdded(tag)
+            } else {
+                onTagInputChange(newVal)
+            }
+        },
+        label = { Text("Tags") },
+        placeholder = { Text("Type tag, press Enter or comma to add") },
+        singleLine = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .onPreviewKeyEvent { event ->
+                if (event.key == Key.Enter && tagInput.trim().isNotEmpty()) {
+                    onTagAdded(tagInput.trim())
+                    true
+                } else {
+                    false
+                }
+            }
+            .semantics {
+                contentDescription = "Tags input. " +
+                    "Type a tag and press Enter or comma to add. " +
+                    "Current tags: ${tags.joinToString(", ").ifEmpty { "none" }}"
+            },
+    )
+
+    if (tags.isNotEmpty()) {
+        Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xs),
+            verticalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xs),
+        ) {
+            tags.forEach { tag ->
+                AssistChip(
+                    onClick = { /* no-op, use trailing icon to remove */ },
+                    label = { Text(tag) },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = { onTagRemoved(tag) },
+                            modifier = Modifier
+                                .size(18.dp)
+                                .semantics {
+                                    contentDescription = "Remove tag $tag"
+                                },
+                        ) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Tag: $tag"
+                    },
+                )
+            }
+        }
+    }
 }

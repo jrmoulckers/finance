@@ -5,7 +5,6 @@ package com.finance.desktop.tray
 import com.finance.core.budget.BudgetCalculator
 import com.finance.core.budget.BudgetHealth
 import com.finance.core.currency.CurrencyFormatter
-import com.finance.desktop.data.repository.AccountRepository
 import com.finance.desktop.data.repository.BudgetRepository
 import com.finance.desktop.data.repository.TransactionRepository
 import com.finance.models.TransactionType
@@ -29,7 +28,6 @@ import java.awt.SystemTray
 import java.awt.Toolkit
 import java.awt.TrayIcon
 import java.awt.TrayIcon.MessageType
-import java.awt.event.ActionEvent
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -64,7 +62,6 @@ interface TrayActionHandler {
  * Internal AWT operations are dispatched to the EDT automatically.
  */
 class FinanceSystemTray(
-    private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val budgetRepository: BudgetRepository,
 ) {

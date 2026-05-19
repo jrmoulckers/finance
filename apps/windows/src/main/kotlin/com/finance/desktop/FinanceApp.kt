@@ -58,6 +58,7 @@ import com.finance.desktop.screens.auth.LoginScreen
 import com.finance.desktop.screens.gdpr.GdprConsentDialog
 import com.finance.desktop.data.repository.AuthRepository
 import com.finance.desktop.viewmodel.AuthViewModel
+import com.finance.desktop.viewmodel.AuthUiState
 import com.finance.desktop.viewmodel.GdprConsentViewModel
 
 /**
@@ -114,42 +115,19 @@ fun FinanceApp(
     var showShortcutsHelp by remember { mutableStateOf(false) }
 
     // Register global keyboard shortcuts for actions
-    KeyboardShortcutEffect(shortcutHandler) {
-        listOf(
-            // Ctrl+Shift+N: New transaction
-            KeyboardShortcut(
-                key = Key.N,
-                ctrl = true,
-                shift = true,
-                description = "New transaction",
-            ) { showNewTransactionDialog = true },
-            // F1: Show keyboard shortcuts help
-            KeyboardShortcut(
-                key = Key.F1,
-                ctrl = false,
-                description = "Show keyboard shortcuts",
-            ) { showShortcutsHelp = true },
-            // Ctrl+Shift+F: Open feedback dialog
-            KeyboardShortcut(
-                key = Key.F,
-                ctrl = true,
-                shift = true,
-                description = "Report bug / send feedback",
-            ) { showFeedbackDialog = true },
-            // Escape: Close dialogs
-            KeyboardShortcut(
-                key = Key.Escape,
-                ctrl = false,
-                description = "Close dialog",
-            ) {
-                when {
-                    showNewTransactionDialog -> showNewTransactionDialog = false
-                    showFeedbackDialog -> showFeedbackDialog = false
-                    showShortcutsHelp -> showShortcutsHelp = false
-                }
-            },
-        )
-    }
+    GlobalShortcutEffects(
+        shortcutHandler = shortcutHandler,
+        onNewTransaction = { showNewTransactionDialog = true },
+        onShortcutsHelp = { showShortcutsHelp = true },
+        onFeedback = { showFeedbackDialog = true },
+        onEscape = {
+            when {
+                showNewTransactionDialog -> showNewTransactionDialog = false
+                showFeedbackDialog -> showFeedbackDialog = false
+                showShortcutsHelp -> showShortcutsHelp = false
+            }
+        },
+    )
 
     FinanceDesktopTheme {
         Surface(
@@ -182,92 +160,172 @@ fun FinanceApp(
             val isFullyAuthenticated = authState.isAuthenticated || sessionAuthenticated
 
             if (!isFullyAuthenticated && authState.requiresAuth) {
-                // ── Layer 2: Auth gate — only shown when NOT authenticated ──
-                if (authState.isWindowsHelloAvailable) {
-                    // Windows Hello lock screen
-                    LockScreen(
-                        isAuthenticating = authState.isAuthenticating,
-                        isWindowsHelloAvailable = authState.isWindowsHelloAvailable,
-                        authError = authState.authError,
-                        onAuthenticate = { authViewModel.authenticate() },
-                        onSkip = { authViewModel.skipAuth() },
-                    )
-                } else {
-                    // Email/password login
-                    LoginScreen(
-                        onAuthenticated = { authViewModel.skipAuth() },
-                    )
-                }
+                AuthGateContent(authState = authState, authViewModel = authViewModel)
             } else {
-                // ── Layer 3: Main app — authenticated ──
-                Box(modifier = Modifier.fillMaxSize()) {
-                    SidebarNavigation(shortcutHandler = shortcutHandler) { screen ->
-                        when (screen) {
-                            Screen.Dashboard -> DashboardScreen()
-                            Screen.Accounts -> AccountsScreen()
-                            Screen.Transactions -> TransactionsScreen()
-                            Screen.Budgets -> BudgetsScreen()
-                            Screen.Goals -> GoalsScreen()
-                            Screen.Widgets -> WidgetBoardScreen()
-                            Screen.Upgrade -> UpgradeScreen()
-                            Screen.Tips -> TipsScreen()
-                            Screen.Investments -> {} // placeholder
-                            Screen.Household -> {} // placeholder
-                            Screen.Achievements -> GamificationScreen()
-                            Screen.Diagnostics -> DiagnosticsScreen()
-                            Screen.HealthScore -> HealthScoreScreen()
-                            Screen.Reports -> ReportBuilderScreen()
-                            Screen.QuickAdd -> {} // handled by dialog
-                            Screen.Import -> {} // placeholder
-                            Screen.Referral -> {} // placeholder
-                            Screen.Negotiate -> BudgetNegotiationScreen()
-                            Screen.Currency -> CurrencyConversionScreen()
-                            Screen.Settings -> SettingsScreen()
-                        }
-                    }
-
-                    // Voice transaction overlay — rendered on top of all content
-                    VoiceTransactionOverlay()
-
-                    // Quick-add transaction dialog — triggered from system tray
-                    QuickAddTransactionDialog(
-                        quickAddManager = quickAddManager,
-                        systemTray = systemTray,
-                    )
-                }
+                MainAppContent(
+                    shortcutHandler = shortcutHandler,
+                    quickAddManager = quickAddManager,
+                    systemTray = systemTray,
+                )
             }
 
             // ── Global dialogs (rendered above everything) ──
+            GlobalDialogs(
+                showNewTransactionDialog = showNewTransactionDialog,
+                showFeedbackDialog = showFeedbackDialog,
+                showShortcutsHelp = showShortcutsHelp,
+                onDismissNewTransaction = { showNewTransactionDialog = false },
+                onDismissFeedback = { showFeedbackDialog = false },
+                onDismissShortcutsHelp = { showShortcutsHelp = false },
+            )
+        }
+    }
+}
 
-            // New transaction form dialog (Ctrl+Shift+N)
-            if (showNewTransactionDialog) {
-                TransactionFormDialog(
-                    onDismiss = { showNewTransactionDialog = false },
-                    onSave = { formState ->
-                        // TODO: Wire save through TransactionsViewModel/repository
-                        showNewTransactionDialog = false
-                    },
-                )
-            }
+/**
+ * Registers global keyboard shortcuts for the application.
+ */
+@Composable
+private fun GlobalShortcutEffects(
+    shortcutHandler: ShortcutHandler,
+    onNewTransaction: () -> Unit,
+    onShortcutsHelp: () -> Unit,
+    onFeedback: () -> Unit,
+    onEscape: () -> Unit,
+) {
+    KeyboardShortcutEffect(shortcutHandler) {
+        listOf(
+            KeyboardShortcut(
+                key = Key.N,
+                ctrl = true,
+                shift = true,
+                description = "New transaction",
+            ) { onNewTransaction() },
+            KeyboardShortcut(
+                key = Key.F1,
+                ctrl = false,
+                description = "Show keyboard shortcuts",
+            ) { onShortcutsHelp() },
+            KeyboardShortcut(
+                key = Key.F,
+                ctrl = true,
+                shift = true,
+                description = "Report bug / send feedback",
+            ) { onFeedback() },
+            KeyboardShortcut(
+                key = Key.Escape,
+                ctrl = false,
+                description = "Close dialog",
+            ) { onEscape() },
+        )
+    }
+}
 
-            // Feedback dialog (Ctrl+Shift+F)
-            if (showFeedbackDialog) {
-                FeedbackDialog(
-                    onDismiss = { showFeedbackDialog = false },
-                    onSubmit = { submission ->
-                        // TODO: Persist feedback locally via repository
-                        showFeedbackDialog = false
-                    },
-                )
-            }
+/**
+ * Authentication gate content — shown when user is NOT authenticated.
+ */
+@Composable
+private fun AuthGateContent(
+    authState: AuthUiState,
+    authViewModel: AuthViewModel,
+) {
+    if (authState.isWindowsHelloAvailable) {
+        LockScreen(
+            isAuthenticating = authState.isAuthenticating,
+            isWindowsHelloAvailable = authState.isWindowsHelloAvailable,
+            authError = authState.authError,
+            onAuthenticate = { authViewModel.authenticate() },
+            onSkip = { authViewModel.skipAuth() },
+        )
+    } else {
+        LoginScreen(
+            onAuthenticated = { authViewModel.skipAuth() },
+        )
+    }
+}
 
-            // Keyboard shortcuts help (F1)
-            if (showShortcutsHelp) {
-                KeyboardShortcutsHelpDialog(
-                    onDismiss = { showShortcutsHelp = false },
-                )
+/**
+ * Main app content — shown when user IS authenticated.
+ */
+@Composable
+private fun MainAppContent(
+    shortcutHandler: ShortcutHandler,
+    quickAddManager: QuickAddTransactionManager,
+    systemTray: FinanceSystemTray,
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        SidebarNavigation(shortcutHandler = shortcutHandler) { screen ->
+            when (screen) {
+                Screen.Dashboard -> DashboardScreen()
+                Screen.Accounts -> AccountsScreen()
+                Screen.Transactions -> TransactionsScreen()
+                Screen.Budgets -> BudgetsScreen()
+                Screen.Goals -> GoalsScreen()
+                Screen.Widgets -> WidgetBoardScreen()
+                Screen.Upgrade -> UpgradeScreen()
+                Screen.Tips -> TipsScreen()
+                Screen.Investments -> {} // placeholder
+                Screen.Household -> {} // placeholder
+                Screen.Achievements -> GamificationScreen()
+                Screen.Diagnostics -> DiagnosticsScreen()
+                Screen.HealthScore -> HealthScoreScreen()
+                Screen.Reports -> ReportBuilderScreen()
+                Screen.QuickAdd -> {} // handled by dialog
+                Screen.Import -> {} // placeholder
+                Screen.Referral -> {} // placeholder
+                Screen.Negotiate -> BudgetNegotiationScreen()
+                Screen.Currency -> CurrencyConversionScreen()
+                Screen.Settings -> SettingsScreen()
             }
         }
+
+        // Voice transaction overlay — rendered on top of all content
+        VoiceTransactionOverlay()
+
+        // Quick-add transaction dialog — triggered from system tray
+        QuickAddTransactionDialog(
+            quickAddManager = quickAddManager,
+            systemTray = systemTray,
+        )
+    }
+}
+
+/**
+ * Global dialogs rendered above all other content.
+ */
+@Composable
+private fun GlobalDialogs(
+    showNewTransactionDialog: Boolean,
+    showFeedbackDialog: Boolean,
+    showShortcutsHelp: Boolean,
+    onDismissNewTransaction: () -> Unit,
+    onDismissFeedback: () -> Unit,
+    onDismissShortcutsHelp: () -> Unit,
+) {
+    if (showNewTransactionDialog) {
+        TransactionFormDialog(
+            onDismiss = onDismissNewTransaction,
+            onSave = { formState ->
+                // See #1556 — wire save through TransactionsViewModel/repository
+                onDismissNewTransaction()
+            },
+        )
+    }
+
+    if (showFeedbackDialog) {
+        FeedbackDialog(
+            onDismiss = onDismissFeedback,
+            onSubmit = { submission ->
+                // See #1556 — persist feedback locally via repository
+                onDismissFeedback()
+            },
+        )
+    }
+
+    if (showShortcutsHelp) {
+        KeyboardShortcutsHelpDialog(
+            onDismiss = onDismissShortcutsHelp,
+        )
     }
 }
 
