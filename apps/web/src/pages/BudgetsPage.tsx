@@ -2,6 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BudgetAnalytics } from '../components/budgets';
 import {
   ConfirmDialog,
   CurrencyDisplay,
@@ -122,6 +123,23 @@ export const BudgetsPage: React.FC = () => {
   const totalSpent = budgets.reduce((sum, budget) => sum + budget.spentAmount.amount, 0);
   const totalRemaining = budgets.reduce((sum, budget) => sum + budget.remainingAmount.amount, 0);
 
+  // Budget analytics data
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const daysElapsed = now.getDate();
+
+  const currentCategorySpending = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const budget of budgets) {
+      const category = categoriesById.get(budget.categoryId);
+      const name = category?.name ?? budget.name;
+      map.set(name, (map.get(name) ?? 0) + budget.spentAmount.amount);
+    }
+    return map;
+  }, [budgets, categoriesById]);
+
   return (
     <>
       <div
@@ -215,6 +233,16 @@ export const BudgetsPage: React.FC = () => {
               </div>
             </div>
           </section>
+          <BudgetAnalytics
+            totalIncome={totalBudgeted}
+            totalSpent={totalSpent}
+            totalBudget={totalBudgeted}
+            daysElapsed={daysElapsed}
+            totalDays={daysInMonth}
+            previousPeriodSpent={null}
+            currentCategorySpending={currentCategorySpending}
+            previousCategorySpending={new Map()}
+          />
           <section aria-label="Budget categories">
             <div className="card-grid card-grid--2">
               {budgets.map((budget) => {

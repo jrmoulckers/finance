@@ -179,10 +179,11 @@ describe('BudgetsPage', () => {
         <BudgetsPage />
       </MemoryRouter>,
     );
-    expect(screen.getByText('Food')).toBeInTheDocument();
-    expect(screen.getByText('Housing')).toBeInTheDocument();
-    expect(screen.getByText('Transport')).toBeInTheDocument();
-    expect(screen.getByText('Entertainment')).toBeInTheDocument();
+    // Category names appear in both the analytics trends and budget cards
+    expect(screen.getAllByText('Food').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Housing').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Transport').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Entertainment').length).toBeGreaterThanOrEqual(1);
   });
 
   it('has accessible progress indicators', () => {
@@ -192,6 +193,7 @@ describe('BudgetsPage', () => {
       </MemoryRouter>,
     );
     const progressBars = screen.getAllByRole('progressbar');
-    expect(progressBars.length).toBe(4);
+    // 4 budget ring charts + 1 trajectory bar + 4 category trend bars = 9
+    expect(progressBars.length).toBe(9);
   });
 });

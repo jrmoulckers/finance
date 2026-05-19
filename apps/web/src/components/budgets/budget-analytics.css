@@ -1,0 +1,269 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Budget analytics dashboard styles.
+ *
+ * Uses CSS custom properties from the design-tokens package.
+ * Mobile-first with responsive breakpoints.
+ *
+ * References: issue #1517
+ */
+
+/* ---------------------------------------------------------------------------
+ * Analytics grid container
+ * ------------------------------------------------------------------------- */
+
+.budget-analytics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--layout-card-gap, var(--spacing-4));
+  margin-bottom: var(--spacing-6);
+}
+
+@media (min-width: 640px) {
+  .budget-analytics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Analytics card (shared base)
+ * ------------------------------------------------------------------------- */
+
+.analytics-card {
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--card-border-radius, var(--border-radius-md));
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+  padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.analytics-card__title {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-secondary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.analytics-card__value {
+  font-size: var(--type-scale-headline-font-size, 1.5rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.analytics-card__detail {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Category trends card spans full width
+ * ------------------------------------------------------------------------- */
+
+.analytics-card--wide {
+  grid-column: 1 / -1;
+}
+
+/* ---------------------------------------------------------------------------
+ * Health indicator
+ * ------------------------------------------------------------------------- */
+
+.health-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.health-indicator__icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.health-indicator--on-track .health-indicator__icon {
+  background-color: var(--semantic-status-positive);
+}
+
+.health-indicator--on-track .health-indicator__label {
+  color: var(--semantic-status-positive);
+}
+
+.health-indicator--at-risk .health-indicator__icon {
+  background-color: var(--semantic-status-warning);
+}
+
+.health-indicator--at-risk .health-indicator__label {
+  color: var(--semantic-status-warning);
+}
+
+.health-indicator--over-budget .health-indicator__icon {
+  background-color: var(--semantic-status-negative);
+}
+
+.health-indicator--over-budget .health-indicator__label {
+  color: var(--semantic-status-negative);
+}
+
+/* ---------------------------------------------------------------------------
+ * Progress bar
+ * ------------------------------------------------------------------------- */
+
+.trajectory-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-sm, 4px);
+  overflow: hidden;
+  position: relative;
+}
+
+.trajectory-bar__fill {
+  height: 100%;
+  border-radius: var(--border-radius-sm, 4px);
+  transition: width 300ms ease;
+}
+
+.trajectory-bar__fill--on-track {
+  background-color: var(--semantic-status-positive);
+}
+
+.trajectory-bar__fill--at-risk {
+  background-color: var(--semantic-status-warning);
+}
+
+.trajectory-bar__fill--over-budget {
+  background-color: var(--semantic-status-negative);
+}
+
+/* ---------------------------------------------------------------------------
+ * Period comparison arrow
+ * ------------------------------------------------------------------------- */
+
+.comparison-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-weight: var(--font-weight-semibold);
+}
+
+.comparison-arrow--down {
+  color: var(--semantic-status-positive);
+}
+
+.comparison-arrow--up {
+  color: var(--semantic-status-negative);
+}
+
+.comparison-arrow--flat {
+  color: var(--semantic-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Category trend bars
+ * ------------------------------------------------------------------------- */
+
+.category-trends__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.category-trends__item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.category-trends__name {
+  flex: 0 0 100px;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-trends__bar-container {
+  flex: 1;
+  height: 16px;
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-sm, 4px);
+  overflow: hidden;
+}
+
+.category-trends__bar {
+  height: 100%;
+  background: var(--semantic-interactive-default);
+  border-radius: var(--border-radius-sm, 4px);
+  transition: width 300ms ease;
+  min-width: 2px;
+}
+
+.category-trends__change {
+  flex: 0 0 60px;
+  font-size: var(--type-scale-caption-font-size);
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------------------
+ * Empty state
+ * ------------------------------------------------------------------------- */
+
+.analytics-empty {
+  text-align: center;
+  padding: var(--spacing-4) var(--spacing-2);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .analytics-card {
+    background: var(--semantic-background-secondary);
+  }
+}
+
+[data-theme='dark'] .analytics-card {
+  background: var(--semantic-background-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .trajectory-bar__fill,
+  .category-trends__bar {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .analytics-card {
+    border-width: 2px;
+  }
+
+  .health-indicator__icon {
+    outline: 1px solid currentColor;
+  }
+}
