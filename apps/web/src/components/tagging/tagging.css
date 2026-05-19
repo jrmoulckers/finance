@@ -1,0 +1,518 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the auto-tagging components (RuleManager and TagSuggestions).
+ *
+ * Uses CSS custom properties from the design-tokens package for consistent
+ * theming. Provides layout, chip styles, tooltip, responsive overrides,
+ * dark mode, reduced motion, and high-contrast adaptations.
+ *
+ * References: issue #1473
+ */
+
+/* ---------------------------------------------------------------------------
+ * Rule Manager
+ * ------------------------------------------------------------------------- */
+
+.tagging-manager {
+  padding: var(--spacing-4);
+}
+
+.tagging-manager__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-4);
+}
+
+.tagging-manager__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.tagging-manager__add-btn {
+  padding: var(--spacing-2) var(--spacing-4);
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+  border: none;
+  border-radius: var(--border-radius-md, 6px);
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 150ms ease;
+}
+
+.tagging-manager__add-btn:hover {
+  background: var(--semantic-interactive-hover, var(--semantic-interactive-default));
+}
+
+.tagging-manager__add-btn:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.tagging-manager__error {
+  padding: var(--spacing-3);
+  background: var(--semantic-background-error, #fef2f2);
+  color: var(--semantic-text-error, #991b1b);
+  border-radius: var(--border-radius-md, 6px);
+  margin-bottom: var(--spacing-4);
+}
+
+.tagging-manager__empty {
+  color: var(--semantic-text-secondary);
+  text-align: center;
+  padding: var(--spacing-8);
+}
+
+.tagging-manager__loading {
+  color: var(--semantic-text-secondary);
+  text-align: center;
+  padding: var(--spacing-8);
+}
+
+/* ---------------------------------------------------------------------------
+ * Rule List
+ * ------------------------------------------------------------------------- */
+
+.tagging-rules-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.tagging-rule-item {
+  background: var(--semantic-background-elevated, var(--semantic-background-secondary));
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md, 6px);
+  padding: var(--spacing-4);
+}
+
+.tagging-rule-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-2);
+}
+
+.tagging-rule-item__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  cursor: pointer;
+}
+
+.tagging-rule-item__toggle input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--semantic-interactive-default);
+}
+
+.tagging-rule-item__name {
+  font-weight: 600;
+  color: var(--semantic-text-primary);
+}
+
+.tagging-rule-item__meta {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary);
+}
+
+.tagging-rule-item__conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1);
+  margin-bottom: var(--spacing-2);
+}
+
+.tagging-rule-item__condition-chip {
+  display: inline-block;
+  padding: var(--spacing-1) var(--spacing-2);
+  background: var(--semantic-background-secondary, #f3f4f6);
+  border-radius: var(--border-radius-sm, 4px);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary);
+}
+
+.tagging-rule-item__actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1);
+  margin-bottom: var(--spacing-3);
+}
+
+.tagging-rule-item__action-chip {
+  display: inline-block;
+  padding: var(--spacing-1) var(--spacing-2);
+  background: var(--color-blue-50, #eff6ff);
+  border-radius: var(--border-radius-sm, 4px);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--color-blue-700, #1d4ed8);
+}
+
+.tagging-rule-item__buttons {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+}
+
+.tagging-rule-item__buttons button {
+  padding: var(--spacing-1) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm, 4px);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  cursor: pointer;
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+}
+
+.tagging-rule-item__buttons button:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.tagging-rule-item__buttons button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 1px;
+}
+
+.tagging-rule-item__delete-btn {
+  color: var(--semantic-text-error, #dc2626) !important;
+  border-color: var(--semantic-border-error, #fca5a5) !important;
+}
+
+.tagging-rule-item__confirm-text {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-error, #dc2626);
+  font-weight: 600;
+}
+
+.tagging-rule-item__confirm-yes {
+  color: var(--semantic-text-inverse) !important;
+  background: var(--semantic-text-error, #dc2626) !important;
+  border-color: var(--semantic-text-error, #dc2626) !important;
+}
+
+.tagging-rule-item__test-result {
+  margin-top: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--color-green-50, #f0fdf4);
+  border-radius: var(--border-radius-sm, 4px);
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--color-green-700, #15803d);
+}
+
+/* ---------------------------------------------------------------------------
+ * Rule Form
+ * ------------------------------------------------------------------------- */
+
+.tagging-form__section {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md, 6px);
+  padding: var(--spacing-4);
+  margin: 0;
+}
+
+.tagging-form__legend {
+  font-weight: 600;
+  color: var(--semantic-text-primary);
+  padding: 0 var(--spacing-2);
+}
+
+.tagging-form__condition-row,
+.tagging-form__action-row {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+  margin-bottom: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.tagging-form__condition-row .form-group__select,
+.tagging-form__condition-row .form-group__input,
+.tagging-form__action-row .form-group__select,
+.tagging-form__action-row .form-group__input {
+  flex: 1;
+  min-width: 120px;
+}
+
+.tagging-form__remove-btn {
+  padding: var(--spacing-1) var(--spacing-2);
+  background: none;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm, 4px);
+  color: var(--semantic-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tagging-form__remove-btn:hover {
+  color: var(--semantic-text-error, #dc2626);
+  border-color: var(--semantic-border-error, #fca5a5);
+}
+
+.tagging-form__remove-btn:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 1px;
+}
+
+.tagging-form__add-row-btn {
+  padding: var(--spacing-2) var(--spacing-3);
+  background: none;
+  border: 1px dashed var(--semantic-border-default);
+  border-radius: var(--border-radius-sm, 4px);
+  color: var(--semantic-interactive-default);
+  cursor: pointer;
+  width: 100%;
+  margin-top: var(--spacing-2);
+}
+
+.tagging-form__add-row-btn:hover {
+  background: var(--semantic-background-secondary);
+}
+
+.tagging-form__add-row-btn:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tag Suggestions
+ * ------------------------------------------------------------------------- */
+
+.tag-suggestions {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-3);
+}
+
+.tag-suggestions__label {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary);
+  padding-top: var(--spacing-1);
+  flex-shrink: 0;
+}
+
+.tag-suggestions__loading {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary);
+  font-style: italic;
+}
+
+.tag-suggestions__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1);
+}
+
+.tag-suggestion-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.tag-suggestion-chip__accept {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  background: var(--semantic-background-secondary, #f3f4f6);
+  border: 1px dashed var(--semantic-border-default);
+  border-radius: var(--border-radius-full, 999px);
+  cursor: pointer;
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-secondary);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.tag-suggestion-chip__accept:hover {
+  background: var(--color-blue-50, #eff6ff);
+  border-color: var(--color-blue-300, #93c5fd);
+  color: var(--color-blue-700, #1d4ed8);
+}
+
+.tag-suggestion-chip__accept:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 1px;
+}
+
+.tag-suggestion-chip__name {
+  font-weight: 500;
+}
+
+.tag-suggestion-chip__confidence {
+  opacity: 0.7;
+}
+
+.tag-suggestion-chip__why {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: var(--semantic-background-secondary, #f3f4f6);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--semantic-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tag-suggestion-chip__why:hover {
+  background: var(--semantic-background-elevated);
+}
+
+.tag-suggestion-chip__why:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 1px;
+}
+
+.tag-suggestion-chip__dismiss {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--semantic-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tag-suggestion-chip__dismiss:hover {
+  color: var(--semantic-text-error, #dc2626);
+}
+
+.tag-suggestion-chip__dismiss:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 1px;
+}
+
+.tag-suggestion-chip__tooltip {
+  position: absolute;
+  top: calc(100% + var(--spacing-1));
+  left: 0;
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--semantic-background-elevated, var(--semantic-background-primary));
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md, 6px);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1));
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  color: var(--semantic-text-primary);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* ---------------------------------------------------------------------------
+ * Responsive
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .tagging-manager__header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-2);
+  }
+
+  .tagging-rule-item__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-1);
+  }
+
+  .tagging-form__condition-row,
+  .tagging-form__action-row {
+    flex-direction: column;
+  }
+
+  .tagging-form__condition-row .form-group__select,
+  .tagging-form__condition-row .form-group__input,
+  .tagging-form__action-row .form-group__select,
+  .tagging-form__action-row .form-group__input {
+    min-width: 100%;
+  }
+
+  .tag-suggestions {
+    flex-direction: column;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  .tagging-rule-item__action-chip {
+    background: var(--color-blue-900, #1e3a5f);
+    color: var(--color-blue-200, #bfdbfe);
+  }
+
+  .tagging-rule-item__test-result {
+    background: var(--color-green-900, #14532d);
+    color: var(--color-green-200, #bbf7d0);
+  }
+
+  .tag-suggestion-chip__accept:hover {
+    background: var(--color-blue-900, #1e3a5f);
+    color: var(--color-blue-200, #bfdbfe);
+  }
+}
+
+[data-theme='dark'] .tagging-rule-item__action-chip {
+  background: var(--color-blue-900, #1e3a5f);
+  color: var(--color-blue-200, #bfdbfe);
+}
+
+[data-theme='dark'] .tagging-rule-item__test-result {
+  background: var(--color-green-900, #14532d);
+  color: var(--color-green-200, #bbf7d0);
+}
+
+[data-theme='dark'] .tag-suggestion-chip__accept:hover {
+  background: var(--color-blue-900, #1e3a5f);
+  color: var(--color-blue-200, #bfdbfe);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .tagging-manager__add-btn,
+  .tag-suggestion-chip__accept {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .tagging-rule-item {
+    border-width: 2px;
+  }
+
+  .tag-suggestion-chip__accept {
+    border-width: 2px;
+  }
+
+  .tagging-form__section {
+    border-width: 2px;
+  }
+
+  .tagging-rule-item__buttons button {
+    border-width: 2px;
+  }
+}

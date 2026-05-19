@@ -122,3 +122,7 @@ export type {
 export { useUndo } from './useUndo';
 export type { UseUndoResult, UseUndoOptions, UndoableAction, UndoExecuteInput } from './useUndo';
 export { useEscapeBack } from './useEscapeBack';
+export { useTaggingRules } from './useTaggingRules';
+export type { UseTaggingRulesResult } from './useTaggingRules';
+export { useTagSuggestions } from './useTagSuggestions';
+export type { UseTagSuggestionsResult } from './useTagSuggestions';
