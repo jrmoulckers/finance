@@ -15,8 +15,7 @@ import com.finance.core.security.DeviceAttestor
  * The integrity token is sent to the backend for server-side verification.
  * The client NEVER evaluates the token directly.
  */
-class PlayIntegrityAttestor(
-) : DeviceAttestor {
+class PlayIntegrityAttestor : DeviceAttestor {
     override val isSupported: Boolean = true
 
     /**

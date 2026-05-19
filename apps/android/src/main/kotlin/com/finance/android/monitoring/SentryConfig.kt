@@ -132,61 +132,9 @@ class SentryCrashReporter(
     // Privacy Scrubbing
     // ========================================================================
 
-    /**
-     * Keys that must be stripped from error context and breadcrumb data.
-     *
-     * This list mirrors the web implementation in
-     * `apps/web/src/lib/monitoring.ts` for consistency across platforms.
-     */
-    companion object {
-        private val SENSITIVE_KEYS = setOf(
-            "email", "name", "displayName", "display_name",
-            "userName", "user_name", "payee", "note", "notes",
-            "memo", "description", "token", "accessToken", "access_token",
-            "refreshToken", "refresh_token", "password", "secret", "key",
-            "apiKey", "api_key", "dsn", "connectionString", "connection_string",
-            "authorization", "cookie", "accountName", "account_name",
-            "accountNumber", "account_number", "routingNumber", "routing_number",
-        )
-
-        private val FINANCIAL_VALUE_KEYS = setOf(
-            "amount", "amount_cents", "amountCents", "balance",
-            "currentBalance", "current_balance", "targetAmount", "target_amount",
-            "currentAmount", "current_amount", "budgetAmount", "budget_amount",
-            "startingBalance", "starting_balance", "total", "subtotal", "price",
-        )
-
-        /** Regex matching currency amounts like $1,234.56 or €100.00 */
-        private val CURRENCY_PATTERN = Regex(
-            """[$€£¥₹]\s?\d[\d,]*\.?\d{0,2}|\d[\d,]*\.?\d{0,2}\s?[$€£¥₹]|\b\d{1,3}(,\d{3})*\.\d{2}\b"""
-        )
-
-        /** Regex matching sequences of 4+ digits (potential account numbers). */
-        private val ACCOUNT_NUMBER_PATTERN = Regex("""\b\d{4,}\b""")
-
-        private const val REDACTED = "[REDACTED]"
-        private const val REDACTED_AMOUNT = "[REDACTED_AMOUNT]"
-        private const val REDACTED_NUMBER = "[REDACTED_NUMBER]"
-    }
-
-    /**
-     * Scrub sensitive data from a context map.
-     *
-     * @param context Original key-value pairs from error context.
-     * @return New map with sensitive keys and values redacted.
-     */
-
-    /**
-     * Scrub sensitive patterns from a string value.
-     */
-    private fun scrubString(value: String): String {
-        var scrubbed = value
-        scrubbed = CURRENCY_PATTERN.replace(scrubbed, REDACTED_AMOUNT)
-        scrubbed = ACCOUNT_NUMBER_PATTERN.replace(scrubbed, REDACTED_NUMBER)
-        return scrubbed
-    }
-
-    // TODO(#1296): Uncomment when Sentry dependency is added.
+    // TODO(#1296): Uncomment companion object (SENSITIVE_KEYS, FINANCIAL_VALUE_KEYS,
+    //  CURRENCY_PATTERN, ACCOUNT_NUMBER_PATTERN, redaction constants) and scrub functions
+    //  when Sentry dependency is added. Key list mirrors `apps/web/src/lib/monitoring.ts`.
     //
     // /**
     //  * Scrub financial data from a Sentry event.
