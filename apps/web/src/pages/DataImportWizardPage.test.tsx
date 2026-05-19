@@ -17,15 +17,22 @@ function mockResult(overrides: Partial<UseDataImportWizardResult> = {}): UseData
   return {
     step: 'upload',
     detectedFormat: 'unknown',
+    detectedFormatLabel: 'Unknown format',
     csvColumns: [],
     csvRows: [],
     columnMappings: [],
     previewRows: [],
+    unmappedFields: [],
+    duplicateComparisons: [],
+    duplicateActions: {},
     progress: null,
     result: null,
     error: null,
     uploadFile: vi.fn(),
     setColumnMapping: vi.fn(),
+    updatePreviewField: vi.fn(),
+    setDuplicateAction: vi.fn(),
+    mapUnmappedToNotes: vi.fn(),
     goToPreview: vi.fn(),
     startImport: vi.fn(),
     goBack: vi.fn(),
@@ -63,34 +70,65 @@ describe('DataImportWizardPage', () => {
     expect(screen.getByText('Preview')).toBeInTheDocument();
   });
 
-  it('shows mapping step with columns and format badge', () => {
+  it('lists supported bank formats in upload hint', () => {
+    mockedHook.mockReturnValue(mockResult());
+
+    render(<DataImportWizardPage />);
+    expect(screen.getByText(/Chase, Amex, Wells Fargo, Citi/)).toBeInTheDocument();
+  });
+
+  it('shows mapping step with columns and detected format label', () => {
     mockedHook.mockReturnValue(
       mockResult({
         step: 'mapping',
-        detectedFormat: 'mint',
+        detectedFormat: 'chase',
+        detectedFormatLabel: 'Chase credit card format',
         csvColumns: [
-          { index: 0, name: 'Date', sampleValues: ['01/15/2025'] },
+          { index: 0, name: 'Transaction Date', sampleValues: ['01/15/2025'] },
           { index: 1, name: 'Description', sampleValues: ['Store'] },
-          { index: 2, name: 'Amount', sampleValues: ['45.00'] },
+          { index: 2, name: 'Amount', sampleValues: ['-45.00'] },
         ],
-        csvRows: [['01/15/2025', 'Store', '45.00']],
+        csvRows: [['01/15/2025', 'Store', '-45.00']],
         columnMappings: [
-          { columnIndex: 0, columnName: 'Date', mappedField: 'date' },
+          { columnIndex: 0, columnName: 'Transaction Date', mappedField: 'date' },
           { columnIndex: 1, columnName: 'Description', mappedField: 'payee' },
           { columnIndex: 2, columnName: 'Amount', mappedField: 'amount' },
         ],
+        unmappedFields: [],
       }),
     );
 
     render(<DataImportWizardPage />);
     expect(screen.getByRole('heading', { name: 'Map Columns' })).toBeInTheDocument();
-    expect(screen.getByText('Mint Export')).toBeInTheDocument();
-    expect(
-      screen.getByText('1 rows found. Assign each CSV column to a transaction field.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Detected: Chase credit card format')).toBeInTheDocument();
   });
 
-  it('shows preview step with stats', () => {
+  it('shows unmapped fields warning when fields are skipped', () => {
+    mockedHook.mockReturnValue(
+      mockResult({
+        step: 'mapping',
+        detectedFormat: 'chase',
+        detectedFormatLabel: 'Chase credit card format',
+        csvColumns: [
+          { index: 0, name: 'Transaction Date', sampleValues: ['01/15/2025'] },
+          { index: 1, name: 'Post Date', sampleValues: ['01/16/2025'] },
+        ],
+        csvRows: [['01/15/2025', '01/16/2025']],
+        columnMappings: [
+          { columnIndex: 0, columnName: 'Transaction Date', mappedField: 'date' },
+          { columnIndex: 1, columnName: 'Post Date', mappedField: 'skip' },
+        ],
+        unmappedFields: [{ columnIndex: 1, columnName: 'Post Date', sampleValue: '01/16/2025' }],
+      }),
+    );
+
+    render(<DataImportWizardPage />);
+    expect(screen.getByText(/These fields will not be imported/)).toBeInTheDocument();
+    expect(screen.getAllByText('Post Date').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('button', { name: /map.*notes/i })).toBeInTheDocument();
+  });
+
+  it('shows preview step with card-based layout and stats', () => {
     mockedHook.mockReturnValue(
       mockResult({
         step: 'preview',
@@ -98,27 +136,102 @@ describe('DataImportWizardPage', () => {
           {
             rowIndex: 0,
             values: { date: '01/15/2025', payee: 'Store', amount: '45.00' },
-            parsed: { date: '01/15/2025', payee: 'Store', amountCents: 4500, category: null },
+            parsed: {
+              date: '01/15/2025',
+              payee: 'Store',
+              amountCents: 4500,
+              category: null,
+              account: null,
+              note: null,
+            },
             isDuplicate: false,
             hasError: false,
             errorMessage: null,
+            fieldErrors: {},
           },
           {
             rowIndex: 1,
             values: { date: '01/16/2025', payee: 'Gas', amount: '30.50' },
-            parsed: { date: '01/16/2025', payee: 'Gas', amountCents: 3050, category: null },
-            isDuplicate: true,
+            parsed: {
+              date: '01/16/2025',
+              payee: 'Gas',
+              amountCents: 3050,
+              category: null,
+              account: null,
+              note: null,
+            },
+            isDuplicate: false,
             hasError: false,
             errorMessage: null,
+            fieldErrors: {},
           },
         ],
       }),
     );
 
     render(<DataImportWizardPage />);
-    expect(screen.getByText('Preview (2 rows)')).toBeInTheDocument();
-    expect(screen.getByText(/1 valid/)).toBeInTheDocument();
-    expect(screen.getByText(/1 duplicates/)).toBeInTheDocument();
+    expect(screen.getByText('Preview (2 transactions)')).toBeInTheDocument();
+    expect(screen.getByText(/2 valid/)).toBeInTheDocument();
+  });
+
+  it('shows duplicate comparison cards for duplicate rows', () => {
+    mockedHook.mockReturnValue(
+      mockResult({
+        step: 'preview',
+        previewRows: [
+          {
+            rowIndex: 0,
+            values: { date: '01/15/2025', payee: 'Store', amount: '45.00' },
+            parsed: {
+              date: '01/15/2025',
+              payee: 'Store',
+              amountCents: 4500,
+              category: null,
+              account: null,
+              note: null,
+            },
+            isDuplicate: true,
+            hasError: false,
+            errorMessage: null,
+            fieldErrors: {},
+          },
+        ],
+        duplicateComparisons: [
+          {
+            rowIndex: 0,
+            importRow: {
+              rowIndex: 0,
+              values: {},
+              parsed: {
+                date: '01/15/2025',
+                payee: 'Store',
+                amountCents: 4500,
+                category: null,
+                account: null,
+                note: null,
+              },
+              isDuplicate: true,
+              hasError: false,
+              errorMessage: null,
+              fieldErrors: {},
+            },
+            existingTransaction: {
+              date: '01/15/2025',
+              payee: 'Store',
+              amount: '$45.00',
+              category: 'Uncategorized',
+            },
+            differences: [],
+          },
+        ],
+      }),
+    );
+
+    render(<DataImportWizardPage />);
+    expect(screen.getByText('Duplicate Review (1)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import Anyway' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Replace' })).toBeInTheDocument();
   });
 
   it('shows importing progress', () => {

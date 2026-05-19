@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
@@ -230,6 +230,8 @@ export const TransactionsPage: React.FC = () => {
   const [editPanelTransaction, setEditPanelTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement>(null);
 
   // Get filters/sort from URL params
   const advancedFilters = useMemo(() => filtersFromParams(searchParams), [searchParams]);
@@ -339,7 +341,26 @@ export const TransactionsPage: React.FC = () => {
   const handleOpenCreateForm = useCallback(() => {
     setEditingTransaction(null);
     setIsFormOpen(true);
+    setAddMenuOpen(false);
   }, []);
+
+  /** Navigate to the import wizard from the Add Transaction dropdown. */
+  const handleImportFromFile = useCallback(() => {
+    setAddMenuOpen(false);
+    navigate('/import/wizard');
+  }, [navigate]);
+
+  /** Close the add menu when clicking outside. */
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setAddMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [addMenuOpen]);
 
   const handleEditTransaction = useCallback((transaction: Transaction) => {
     setEditPanelTransaction(transaction);
@@ -429,15 +450,6 @@ export const TransactionsPage: React.FC = () => {
         <button
           type="button"
           className="add-button"
-          onClick={() => navigate('/import')}
-          aria-label="Import transactions from CSV"
-          style={{ marginRight: 'var(--spacing-2)' }}
-        >
-          <span aria-hidden="true">📥</span> Import CSV
-        </button>
-        <button
-          type="button"
-          className="add-button"
           onClick={() => exportTransactionsCsv(transactions, categoryNames, accountNames)}
           aria-label="Export transactions as CSV"
           disabled={transactions.length === 0}
@@ -445,14 +457,42 @@ export const TransactionsPage: React.FC = () => {
         >
           <span aria-hidden="true">📤</span> Export CSV
         </button>
-        <button
-          type="button"
-          className="add-button"
-          onClick={handleOpenCreateForm}
-          aria-label="Add new transaction"
-        >
-          <span aria-hidden="true">+</span> Add Transaction
-        </button>
+        <div className="add-transaction-menu" ref={addMenuRef}>
+          <button
+            type="button"
+            className="add-button"
+            onClick={() => setAddMenuOpen((prev) => !prev)}
+            aria-label="Add transaction"
+            aria-expanded={addMenuOpen}
+            aria-haspopup="true"
+          >
+            <span aria-hidden="true">+</span> Add Transaction
+          </button>
+          {addMenuOpen && (
+            <div
+              className="add-transaction-dropdown"
+              role="menu"
+              aria-label="Add transaction options"
+            >
+              <button
+                type="button"
+                className="add-transaction-dropdown__item"
+                role="menuitem"
+                onClick={handleOpenCreateForm}
+              >
+                <span aria-hidden="true">✏️</span> Manual Entry
+              </button>
+              <button
+                type="button"
+                className="add-transaction-dropdown__item"
+                role="menuitem"
+                onClick={handleImportFromFile}
+              >
+                <span aria-hidden="true">📥</span> Import from File
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="search-bar" role="search">

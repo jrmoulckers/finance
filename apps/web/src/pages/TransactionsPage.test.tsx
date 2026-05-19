@@ -221,6 +221,24 @@ describe('TransactionsPage', () => {
     expect(screen.getByText('Transactions')).toBeInTheDocument();
   });
 
+  it('displays Add Transaction dropdown with Manual Entry and Import options', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    const addButton = screen.getByRole('button', { name: /add transaction/i });
+    expect(addButton).toBeInTheDocument();
+    expect(addButton).toHaveAttribute('aria-haspopup', 'true');
+    expect(addButton).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(addButton);
+    expect(addButton).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('menuitem', { name: /manual entry/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /import from file/i })).toBeInTheDocument();
+  });
+
   it('displays the search input', () => {
     render(
       <MemoryRouter>

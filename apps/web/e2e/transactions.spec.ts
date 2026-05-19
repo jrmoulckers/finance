@@ -55,10 +55,24 @@ test.describe('Transactions page', () => {
     await expect(addButton).toBeVisible();
   });
 
-  test('clicking Add Transaction opens form dialog', async ({ authenticatedPage: page }) => {
+  test('clicking Add Transaction opens dropdown menu', async ({ authenticatedPage: page }) => {
+    await page.goto('/transactions');
+
+    const addButton = page.getByRole('button', { name: /add.*transaction/i });
+    await addButton.click();
+
+    // Dropdown menu should appear with Manual Entry and Import options
+    const manualEntry = page.getByRole('menuitem', { name: /manual entry/i });
+    await expect(manualEntry).toBeVisible();
+    const importFile = page.getByRole('menuitem', { name: /import from file/i });
+    await expect(importFile).toBeVisible();
+  });
+
+  test('clicking Manual Entry opens form dialog', async ({ authenticatedPage: page }) => {
     await page.goto('/transactions');
 
     await page.getByRole('button', { name: /add.*transaction/i }).click();
+    await page.getByRole('menuitem', { name: /manual entry/i }).click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -72,6 +86,7 @@ test.describe('Transactions page', () => {
   }) => {
     await page.goto('/transactions');
     await page.getByRole('button', { name: /add.*transaction/i }).click();
+    await page.getByRole('menuitem', { name: /manual entry/i }).click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -115,9 +130,9 @@ test.describe('Transactions page', () => {
     const notesInput = page.getByLabel(/notes/i);
     await expect(notesInput).toBeVisible();
 
-    // Submit and cancel buttons
-    await expect(page.getByRole('button', { name: /add transaction/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible();
+    // Submit and cancel buttons (scoped to dialog to avoid matching the dropdown trigger)
+    await expect(dialog.getByRole('button', { name: /add transaction/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /cancel/i })).toBeVisible();
   });
 
   test('shows transaction list or empty state', async ({ authenticatedPage: page }) => {

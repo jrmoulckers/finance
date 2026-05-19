@@ -22,7 +22,15 @@ import { useCallback, useMemo, useState } from 'react';
 
 export type ImportWizardStep = 'upload' | 'mapping' | 'preview' | 'importing' | 'complete';
 
-export type DetectedFormat = 'mint' | 'ynab' | 'generic' | 'unknown';
+export type DetectedFormat =
+  | 'mint'
+  | 'ynab'
+  | 'chase'
+  | 'amex'
+  | 'wellsfargo'
+  | 'citi'
+  | 'generic'
+  | 'unknown';
 
 export interface CsvColumn {
   readonly index: number;
@@ -54,11 +62,37 @@ export interface ImportPreviewRow {
     payee: string | null;
     amountCents: number | null;
     category: string | null;
+    account: string | null;
+    note: string | null;
   };
   readonly isDuplicate: boolean;
   readonly hasError: boolean;
   readonly errorMessage: string | null;
+  readonly fieldErrors: Record<string, string>;
 }
+
+/** Describes a field that was present in CSV but not mapped to any transaction field. */
+export interface UnmappedField {
+  readonly columnIndex: number;
+  readonly columnName: string;
+  readonly sampleValue: string;
+}
+
+/** Duplicate comparison data for side-by-side review. */
+export interface DuplicateComparison {
+  readonly rowIndex: number;
+  readonly importRow: ImportPreviewRow;
+  readonly existingTransaction: {
+    date: string;
+    payee: string;
+    amount: string;
+    category: string;
+  };
+  readonly differences: string[];
+}
+
+/** Resolution action for a duplicate row. */
+export type DuplicateAction = 'skip' | 'import' | 'replace';
 
 export interface ImportProgress {
   readonly current: number;
@@ -80,6 +114,8 @@ export interface UseDataImportWizardResult {
   step: ImportWizardStep;
   /** The detected file format. */
   detectedFormat: DetectedFormat;
+  /** Human-readable label for the detected format. */
+  detectedFormatLabel: string;
   /** Raw CSV data after parsing. */
   csvColumns: CsvColumn[];
   /** Raw CSV rows. */
@@ -88,6 +124,12 @@ export interface UseDataImportWizardResult {
   columnMappings: ColumnMapping[];
   /** Preview rows with parsed data and duplicate detection. */
   previewRows: ImportPreviewRow[];
+  /** Fields present in CSV but not mapped to any transaction field. */
+  unmappedFields: UnmappedField[];
+  /** Duplicate comparison data for side-by-side review. */
+  duplicateComparisons: DuplicateComparison[];
+  /** Resolution actions for duplicate rows (rowIndex -> action). */
+  duplicateActions: Record<number, DuplicateAction>;
   /** Import progress (during import step). */
   progress: ImportProgress | null;
   /** Final import result. */
@@ -98,6 +140,12 @@ export interface UseDataImportWizardResult {
   uploadFile: (file: File) => Promise<void>;
   /** Update a column mapping. */
   setColumnMapping: (columnIndex: number, field: TransactionField) => void;
+  /** Update a parsed field value for inline correction. */
+  updatePreviewField: (rowIndex: number, field: string, value: string) => void;
+  /** Set the resolution action for a duplicate row. */
+  setDuplicateAction: (rowIndex: number, action: DuplicateAction) => void;
+  /** Map all unmapped fields to Notes. */
+  mapUnmappedToNotes: () => void;
   /** Move to the preview step. */
   goToPreview: () => void;
   /** Start the import process. */
@@ -164,14 +212,72 @@ const MINT_HEADERS = [
 ];
 const YNAB_HEADERS = ['Date', 'Payee', 'Category', 'Memo', 'Outflow', 'Inflow'];
 
+/** American Express: Date, Description, Amount, Extended Details, etc. */
+const AMEX_HEADERS = ['Date', 'Description', 'Amount', 'Extended Details'];
+
+/** Chase: Transaction Date, Post Date, Description, Category, Type, Amount */
+const CHASE_HEADERS = [
+  'Transaction Date',
+  'Post Date',
+  'Description',
+  'Category',
+  'Type',
+  'Amount',
+];
+
+/** Wells Fargo: simple 3-column Date, Amount, Description */
+const WELLS_FARGO_HEADERS = ['Date', 'Amount', 'Description'];
+
+/** Citi: Status, Date, Description, Debit, Credit */
+const CITI_HEADERS = ['Status', 'Date', 'Description', 'Debit', 'Credit'];
+
+/** Human-readable labels for detected formats. */
+export const FORMAT_DISPLAY_LABELS: Record<DetectedFormat, string> = {
+  mint: 'Mint export',
+  ynab: 'YNAB export',
+  chase: 'Chase credit card format',
+  amex: 'American Express format',
+  wellsfargo: 'Wells Fargo format',
+  citi: 'Citi card format',
+  generic: 'Generic CSV',
+  unknown: 'Unknown format',
+};
+
 export function detectFormat(headers: string[]): DetectedFormat {
   const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
+
+  // Check for Chase format first (has distinctive "Transaction Date" + "Post Date")
+  const chaseMatch = CHASE_HEADERS.filter((ch) =>
+    normalizedHeaders.includes(ch.toLowerCase()),
+  ).length;
+  if (chaseMatch >= 4) return 'chase';
+
+  // Check for Citi format (distinctive "Status", "Debit", "Credit" columns)
+  const citiMatch = CITI_HEADERS.filter((ch) =>
+    normalizedHeaders.includes(ch.toLowerCase()),
+  ).length;
+  if (citiMatch >= 4) return 'citi';
+
+  // Check for Wells Fargo (simple 3-column: Date, Amount, Description) — check before Amex
+  // since WF's columns are a subset of Amex columns
+  if (
+    normalizedHeaders.length <= 4 &&
+    WELLS_FARGO_HEADERS.every((wh) => normalizedHeaders.includes(wh.toLowerCase()))
+  ) {
+    return 'wellsfargo';
+  }
 
   // Check for Mint format
   const mintMatch = MINT_HEADERS.filter((mh) =>
     normalizedHeaders.includes(mh.toLowerCase()),
   ).length;
   if (mintMatch >= 4) return 'mint';
+
+  // Check for American Express (has "Extended Details")
+  const amexMatch = AMEX_HEADERS.filter((ah) =>
+    normalizedHeaders.includes(ah.toLowerCase()),
+  ).length;
+  if (amexMatch >= 3) return 'amex';
 
   // Check for YNAB format
   const ynabMatch = YNAB_HEADERS.filter((yh) =>
@@ -225,6 +331,50 @@ function autoMapColumns(headers: string[], format: DetectedFormat): ColumnMappin
     });
   }
 
+  if (format === 'chase') {
+    return mappings.map((m) => {
+      const lower = m.columnName.toLowerCase();
+      if (lower === 'transaction date') return { ...m, mappedField: 'date' as TransactionField };
+      if (lower === 'description') return { ...m, mappedField: 'payee' as TransactionField };
+      if (lower === 'amount') return { ...m, mappedField: 'amount' as TransactionField };
+      if (lower === 'category') return { ...m, mappedField: 'category' as TransactionField };
+      if (lower === 'type') return { ...m, mappedField: 'type' as TransactionField };
+      return m;
+    });
+  }
+
+  if (format === 'amex') {
+    return mappings.map((m) => {
+      const lower = m.columnName.toLowerCase();
+      if (lower === 'date') return { ...m, mappedField: 'date' as TransactionField };
+      if (lower === 'description') return { ...m, mappedField: 'payee' as TransactionField };
+      if (lower === 'amount') return { ...m, mappedField: 'amount' as TransactionField };
+      if (lower === 'extended details') return { ...m, mappedField: 'note' as TransactionField };
+      return m;
+    });
+  }
+
+  if (format === 'wellsfargo') {
+    return mappings.map((m) => {
+      const lower = m.columnName.toLowerCase();
+      if (lower === 'date') return { ...m, mappedField: 'date' as TransactionField };
+      if (lower === 'amount') return { ...m, mappedField: 'amount' as TransactionField };
+      if (lower === 'description') return { ...m, mappedField: 'payee' as TransactionField };
+      return m;
+    });
+  }
+
+  if (format === 'citi') {
+    return mappings.map((m) => {
+      const lower = m.columnName.toLowerCase();
+      if (lower === 'date') return { ...m, mappedField: 'date' as TransactionField };
+      if (lower === 'description') return { ...m, mappedField: 'payee' as TransactionField };
+      if (lower === 'debit' || lower === 'credit')
+        return { ...m, mappedField: 'amount' as TransactionField };
+      return m;
+    });
+  }
+
   // Generic auto-detection
   return mappings.map((m) => {
     const lower = m.columnName.toLowerCase();
@@ -263,9 +413,25 @@ export function useDataImportWizard(): UseDataImportWizardResult {
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fieldOverrides, setFieldOverrides] = useState<Record<string, Record<string, string>>>({});
+  const [duplicateActions, setDuplicateActions] = useState<Record<number, DuplicateAction>>({});
 
   // Simulated existing transaction hashes for duplicate detection
   const existingHashes = useMemo(() => new Set<string>(), []);
+
+  /** Human-readable label for the detected format. */
+  const detectedFormatLabel = FORMAT_DISPLAY_LABELS[detectedFormat];
+
+  /** Fields present in CSV but not mapped to any transaction field. */
+  const unmappedFields = useMemo((): UnmappedField[] => {
+    return columnMappings
+      .filter((m) => m.mappedField === 'skip')
+      .map((m) => ({
+        columnIndex: m.columnIndex,
+        columnName: m.columnName,
+        sampleValue: csvRows[0]?.[m.columnIndex] ?? '',
+      }));
+  }, [columnMappings, csvRows]);
 
   const previewRows = useMemo((): ImportPreviewRow[] => {
     if (csvRows.length === 0 || columnMappings.length === 0) return [];
@@ -274,8 +440,11 @@ export function useDataImportWizard(): UseDataImportWizardResult {
     const payeeCol = columnMappings.find((m) => m.mappedField === 'payee');
     const amountCol = columnMappings.find((m) => m.mappedField === 'amount');
     const categoryCol = columnMappings.find((m) => m.mappedField === 'category');
+    const accountCol = columnMappings.find((m) => m.mappedField === 'account');
+    const noteCol = columnMappings.find((m) => m.mappedField === 'note');
 
     return csvRows.slice(0, 50).map((row, rowIndex) => {
+      const overrides = fieldOverrides[String(rowIndex)] ?? {};
       const values: Record<string, string> = {};
       for (const mapping of columnMappings) {
         if (mapping.mappedField !== 'skip') {
@@ -283,14 +452,19 @@ export function useDataImportWizard(): UseDataImportWizardResult {
         }
       }
 
-      const dateStr = dateCol ? (row[dateCol.columnIndex] ?? null) : null;
-      const payeeStr = payeeCol ? (row[payeeCol.columnIndex] ?? null) : null;
-      const amountStr = amountCol ? (row[amountCol.columnIndex] ?? null) : null;
-      const categoryStr = categoryCol ? (row[categoryCol.columnIndex] ?? null) : null;
+      const dateStr = overrides.date ?? (dateCol ? (row[dateCol.columnIndex] ?? null) : null);
+      const payeeStr = overrides.payee ?? (payeeCol ? (row[payeeCol.columnIndex] ?? null) : null);
+      const amountStr =
+        overrides.amount ?? (amountCol ? (row[amountCol.columnIndex] ?? null) : null);
+      const categoryStr =
+        overrides.category ?? (categoryCol ? (row[categoryCol.columnIndex] ?? null) : null);
+      const accountStr =
+        overrides.account ?? (accountCol ? (row[accountCol.columnIndex] ?? null) : null);
+      const noteStr = overrides.note ?? (noteCol ? (row[noteCol.columnIndex] ?? null) : null);
 
       let amountCents: number | null = null;
+      const fieldErrors: Record<string, string> = {};
       let hasError = false;
-      let errorMessage: string | null = null;
 
       if (amountStr) {
         const cleaned = amountStr.replace(/[$,]/g, '');
@@ -299,19 +473,21 @@ export function useDataImportWizard(): UseDataImportWizardResult {
           amountCents = Math.round(parsed * 100);
         } else {
           hasError = true;
-          errorMessage = `Invalid amount: "${amountStr}"`;
+          fieldErrors.amount = `Invalid amount: "${amountStr}"`;
         }
       }
 
       if (!dateStr) {
         hasError = true;
-        errorMessage = errorMessage ?? 'Missing date';
+        fieldErrors.date = 'Missing date';
       }
 
       const isDuplicate = checkDuplicate(
         { date: dateStr ?? '', payee: payeeStr ?? '', amount: amountStr ?? '' },
         existingHashes,
       );
+
+      const errorMessage = Object.values(fieldErrors).join('; ') || null;
 
       return {
         rowIndex,
@@ -321,13 +497,34 @@ export function useDataImportWizard(): UseDataImportWizardResult {
           payee: payeeStr,
           amountCents,
           category: categoryStr,
+          account: accountStr,
+          note: noteStr,
         },
         isDuplicate,
         hasError,
         errorMessage,
+        fieldErrors,
       };
     });
-  }, [csvRows, columnMappings, existingHashes]);
+  }, [csvRows, columnMappings, existingHashes, fieldOverrides]);
+
+  /** Duplicate comparisons for side-by-side review. */
+  const duplicateComparisons = useMemo((): DuplicateComparison[] => {
+    return previewRows
+      .filter((r) => r.isDuplicate)
+      .map((row) => ({
+        rowIndex: row.rowIndex,
+        importRow: row,
+        existingTransaction: {
+          date: row.parsed.date ?? '',
+          payee: row.parsed.payee ?? '',
+          amount:
+            row.parsed.amountCents != null ? `$${(row.parsed.amountCents / 100).toFixed(2)}` : '—',
+          category: row.parsed.category ?? 'Uncategorized',
+        },
+        differences: [],
+      }));
+  }, [previewRows]);
 
   const uploadFile = useCallback(async (file: File) => {
     setError(null);
@@ -363,6 +560,29 @@ export function useDataImportWizard(): UseDataImportWizardResult {
   const setColumnMapping = useCallback((columnIndex: number, field: TransactionField) => {
     setColumnMappings((prev) =>
       prev.map((m) => (m.columnIndex === columnIndex ? { ...m, mappedField: field } : m)),
+    );
+  }, []);
+
+  /** Update a parsed field value for inline correction in the preview step. */
+  const updatePreviewField = useCallback((rowIndex: number, field: string, value: string) => {
+    setFieldOverrides((prev) => ({
+      ...prev,
+      [String(rowIndex)]: {
+        ...(prev[String(rowIndex)] ?? {}),
+        [field]: value,
+      },
+    }));
+  }, []);
+
+  /** Set the resolution action for a duplicate row. */
+  const setDuplicateAction = useCallback((rowIndex: number, action: DuplicateAction) => {
+    setDuplicateActions((prev) => ({ ...prev, [rowIndex]: action }));
+  }, []);
+
+  /** Map all unmapped (skipped) fields to Notes. */
+  const mapUnmappedToNotes = useCallback(() => {
+    setColumnMappings((prev) =>
+      prev.map((m) => (m.mappedField === 'skip' ? { ...m, mappedField: 'note' } : m)),
     );
   }, []);
 
@@ -430,20 +650,29 @@ export function useDataImportWizard(): UseDataImportWizardResult {
     setProgress(null);
     setResult(null);
     setError(null);
+    setFieldOverrides({});
+    setDuplicateActions({});
   }, []);
 
   return {
     step,
     detectedFormat,
+    detectedFormatLabel,
     csvColumns,
     csvRows,
     columnMappings,
     previewRows,
+    unmappedFields,
+    duplicateComparisons,
+    duplicateActions,
     progress,
     result,
     error,
     uploadFile,
     setColumnMapping,
+    updatePreviewField,
+    setDuplicateAction,
+    mapUnmappedToNotes,
     goToPreview,
     startImport,
     goBack,

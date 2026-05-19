@@ -70,6 +70,26 @@ describe('detectFormat', () => {
     expect(detectFormat(headers)).toBe('generic');
   });
 
+  it('detects Chase credit card format', () => {
+    const headers = ['Transaction Date', 'Post Date', 'Description', 'Category', 'Type', 'Amount'];
+    expect(detectFormat(headers)).toBe('chase');
+  });
+
+  it('detects American Express format', () => {
+    const headers = ['Date', 'Description', 'Amount', 'Extended Details', 'Appears On'];
+    expect(detectFormat(headers)).toBe('amex');
+  });
+
+  it('detects Wells Fargo format', () => {
+    const headers = ['Date', 'Amount', 'Description'];
+    expect(detectFormat(headers)).toBe('wellsfargo');
+  });
+
+  it('detects Citi card format', () => {
+    const headers = ['Status', 'Date', 'Description', 'Debit', 'Credit'];
+    expect(detectFormat(headers)).toBe('citi');
+  });
+
   it('returns unknown for unrecognized format', () => {
     const headers = ['foo', 'bar', 'baz'];
     expect(detectFormat(headers)).toBe('unknown');

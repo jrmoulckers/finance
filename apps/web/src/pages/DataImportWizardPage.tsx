@@ -3,17 +3,24 @@
 /**
  * Data Import Wizard page.
  *
- * CSV upload with column mapping, Mint/YNAB format auto-detection,
- * preview table, duplicate detection, and progress indicator.
+ * CSV upload with column mapping, bank-specific format auto-detection
+ * (Mint, YNAB, Chase, Amex, Wells Fargo, Citi), mapped preview with
+ * inline error correction, unmapped field warnings, card-based duplicate
+ * comparison, and progress indicator.
  *
- * References: issue #1076
+ * References: issues #1076, #1468, #1469
  */
 
 import { useCallback, useRef, useState } from 'react';
 import type { DragEvent, ChangeEvent } from 'react';
 
 import { useDataImportWizard } from '../hooks/useDataImportWizard';
-import type { TransactionField } from '../hooks/useDataImportWizard';
+import type {
+  TransactionField,
+  ImportPreviewRow,
+  DuplicateComparison,
+  DuplicateAction,
+} from '../hooks/useDataImportWizard';
 
 import './DataImportWizardPage.css';
 
@@ -32,13 +39,6 @@ const FIELD_OPTIONS: readonly { value: TransactionField; label: string }[] = [
   { value: 'type', label: 'Type' },
 ];
 
-const FORMAT_LABELS: Record<string, string> = {
-  mint: 'Mint Export',
-  ynab: 'YNAB Export',
-  generic: 'Generic CSV',
-  unknown: 'Unknown Format',
-};
-
 const STEP_LABELS: Record<string, string> = {
   upload: 'Upload File',
   mapping: 'Map Columns',
@@ -48,22 +48,305 @@ const STEP_LABELS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// Inline Editable Field
+// ---------------------------------------------------------------------------
+
+interface InlineEditFieldProps {
+  readonly value: string;
+  readonly fieldName: string;
+  readonly hasError: boolean;
+  readonly errorMessage?: string;
+  readonly onSave: (value: string) => void;
+}
+
+/** Editable field that toggles between display and input on click. */
+function InlineEditField({
+  value,
+  fieldName,
+  hasError,
+  errorMessage,
+  onSave,
+}: InlineEditFieldProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleStartEdit = useCallback(() => {
+    setDraft(value);
+    setEditing(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [value]);
+
+  const handleCommit = useCallback(() => {
+    setEditing(false);
+    onSave(draft);
+  }, [draft, onSave]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') handleCommit();
+      if (e.key === 'Escape') {
+        setEditing(false);
+        setDraft(value);
+      }
+    },
+    [handleCommit, value],
+  );
+
+  if (editing) {
+    const inputType = fieldName === 'date' ? 'date' : fieldName === 'amount' ? 'number' : 'text';
+    return (
+      <input
+        ref={inputRef}
+        type={inputType}
+        className="import-inline-input"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={handleCommit}
+        onKeyDown={handleKeyDown}
+        aria-label={`Edit ${fieldName}`}
+        step={fieldName === 'amount' ? '0.01' : undefined}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={`import-inline-display${hasError ? ' import-inline-display--error' : ''}`}
+      onClick={handleStartEdit}
+      aria-label={`${value || '—'}, click to edit ${fieldName}${hasError ? `, error: ${errorMessage ?? 'validation error'}` : ''}`}
+      title={hasError ? errorMessage : `Click to edit ${fieldName}`}
+    >
+      {hasError && (
+        <span className="import-inline-error-icon" aria-hidden="true">
+          ⚠
+        </span>
+      )}
+      {value || '—'}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Duplicate Comparison Card
+// ---------------------------------------------------------------------------
+
+interface DuplicateComparisonCardProps {
+  readonly comparison: DuplicateComparison;
+  readonly action: DuplicateAction;
+  readonly onAction: (rowIndex: number, action: DuplicateAction) => void;
+}
+
+/** Side-by-side comparison card for duplicate transactions. */
+function DuplicateComparisonCard({ comparison, action, onAction }: DuplicateComparisonCardProps) {
+  const { rowIndex, importRow, existingTransaction } = comparison;
+
+  return (
+    <article
+      className="import-duplicate-card"
+      aria-label={`Duplicate comparison for row ${rowIndex + 1}`}
+    >
+      <div className="import-duplicate-card__header">
+        <span className="import-duplicate-card__badge" aria-hidden="true">
+          ⚠ Potential Duplicate
+        </span>
+        <span className="import-duplicate-card__row">Row {rowIndex + 1}</span>
+      </div>
+
+      <div className="import-duplicate-card__compare">
+        <div className="import-duplicate-card__side">
+          <h4 className="import-duplicate-card__side-title">Existing</h4>
+          <dl className="import-duplicate-card__fields">
+            <div className="import-duplicate-card__field">
+              <dt>Date</dt>
+              <dd>{existingTransaction.date}</dd>
+            </div>
+            <div className="import-duplicate-card__field">
+              <dt>Payee</dt>
+              <dd>{existingTransaction.payee}</dd>
+            </div>
+            <div className="import-duplicate-card__field">
+              <dt>Amount</dt>
+              <dd>{existingTransaction.amount}</dd>
+            </div>
+            <div className="import-duplicate-card__field">
+              <dt>Category</dt>
+              <dd>{existingTransaction.category}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div className="import-duplicate-card__divider" aria-hidden="true">
+          ↔
+        </div>
+
+        <div className="import-duplicate-card__side">
+          <h4 className="import-duplicate-card__side-title">Import</h4>
+          <dl className="import-duplicate-card__fields">
+            <div className="import-duplicate-card__field">
+              <dt>Date</dt>
+              <dd>{importRow.parsed.date ?? '—'}</dd>
+            </div>
+            <div className="import-duplicate-card__field">
+              <dt>Payee</dt>
+              <dd>{importRow.parsed.payee ?? '—'}</dd>
+            </div>
+            <div className="import-duplicate-card__field">
+              <dt>Amount</dt>
+              <dd>
+                {importRow.parsed.amountCents != null
+                  ? `$${(importRow.parsed.amountCents / 100).toFixed(2)}`
+                  : '—'}
+              </dd>
+            </div>
+            <div className="import-duplicate-card__field">
+              <dt>Category</dt>
+              <dd>{importRow.parsed.category ?? 'Uncategorized'}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <div className="import-duplicate-card__actions" role="group" aria-label="Duplicate actions">
+        <button
+          type="button"
+          className={`import-button import-button--small${action === 'skip' ? ' import-button--active' : ''}`}
+          onClick={() => onAction(rowIndex, 'skip')}
+          aria-pressed={action === 'skip'}
+        >
+          Skip
+        </button>
+        <button
+          type="button"
+          className={`import-button import-button--small${action === 'import' ? ' import-button--active' : ''}`}
+          onClick={() => onAction(rowIndex, 'import')}
+          aria-pressed={action === 'import'}
+        >
+          Import Anyway
+        </button>
+        <button
+          type="button"
+          className={`import-button import-button--small${action === 'replace' ? ' import-button--active' : ''}`}
+          onClick={() => onAction(rowIndex, 'replace')}
+          aria-pressed={action === 'replace'}
+        >
+          Replace
+        </button>
+      </div>
+    </article>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Preview Transaction Row (app-style card rendering)
+// ---------------------------------------------------------------------------
+
+interface PreviewTransactionRowProps {
+  readonly row: ImportPreviewRow;
+  readonly onFieldEdit: (rowIndex: number, field: string, value: string) => void;
+}
+
+/** Renders a preview row as an app-style transaction card with inline editing. */
+function PreviewTransactionRow({ row, onFieldEdit }: PreviewTransactionRowProps) {
+  const handleSave = useCallback(
+    (field: string) => (value: string) => {
+      onFieldEdit(row.rowIndex, field, value);
+    },
+    [row.rowIndex, onFieldEdit],
+  );
+
+  return (
+    <article
+      className={`import-preview-card${row.hasError ? ' import-preview-card--error' : ''}${row.isDuplicate ? ' import-preview-card--duplicate' : ''}`}
+      aria-label={`Transaction row ${row.rowIndex + 1}: ${row.parsed.payee ?? 'Unknown'}`}
+    >
+      <div className="import-preview-card__row-num">{row.rowIndex + 1}</div>
+      <div className="import-preview-card__content">
+        <div className="import-preview-card__main">
+          <div className="import-preview-card__field">
+            <span className="import-preview-card__label">Date</span>
+            <InlineEditField
+              value={row.parsed.date ?? ''}
+              fieldName="date"
+              hasError={'date' in row.fieldErrors}
+              errorMessage={row.fieldErrors.date}
+              onSave={handleSave('date')}
+            />
+          </div>
+          <div className="import-preview-card__field">
+            <span className="import-preview-card__label">Payee</span>
+            <InlineEditField
+              value={row.parsed.payee ?? ''}
+              fieldName="payee"
+              hasError={'payee' in row.fieldErrors}
+              errorMessage={row.fieldErrors.payee}
+              onSave={handleSave('payee')}
+            />
+          </div>
+          <div className="import-preview-card__field">
+            <span className="import-preview-card__label">Amount</span>
+            <InlineEditField
+              value={
+                row.parsed.amountCents != null ? (row.parsed.amountCents / 100).toFixed(2) : ''
+              }
+              fieldName="amount"
+              hasError={'amount' in row.fieldErrors}
+              errorMessage={row.fieldErrors.amount}
+              onSave={handleSave('amount')}
+            />
+          </div>
+        </div>
+        <div className="import-preview-card__secondary">
+          <span className="import-preview-card__category">
+            {row.parsed.category ?? 'Uncategorized'}
+          </span>
+          {row.parsed.account && (
+            <span className="import-preview-card__account">{row.parsed.account}</span>
+          )}
+        </div>
+      </div>
+      <div className="import-preview-card__status">
+        {row.isDuplicate ? (
+          <span className="import-status import-status--duplicate">Duplicate</span>
+        ) : row.hasError ? (
+          <span
+            className="import-status import-status--error"
+            title={row.errorMessage ?? undefined}
+          >
+            Error
+          </span>
+        ) : (
+          <span className="import-status import-status--valid">Valid</span>
+        )}
+      </div>
+    </article>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export function DataImportWizardPage() {
   const {
     step,
-    detectedFormat,
+    detectedFormatLabel,
     csvColumns,
     csvRows,
     columnMappings,
     previewRows,
+    unmappedFields,
+    duplicateComparisons,
+    duplicateActions,
     progress,
     result,
     error,
     uploadFile,
     setColumnMapping,
+    updatePreviewField,
+    setDuplicateAction,
+    mapUnmappedToNotes,
     goToPreview,
     startImport,
     goBack,
@@ -127,6 +410,12 @@ export function DataImportWizardPage() {
   const steps = ['upload', 'mapping', 'preview', 'importing', 'complete'];
   const currentStepIndex = steps.indexOf(step);
 
+  // -- Computed preview stats -----------------------------------------------
+
+  const validCount = previewRows.filter((r) => !r.hasError && !r.isDuplicate).length;
+  const duplicateCount = previewRows.filter((r) => r.isDuplicate).length;
+  const errorCount = previewRows.filter((r) => r.hasError).length;
+
   return (
     <div className="import-wizard" aria-labelledby="import-wizard-title">
       <h2 id="import-wizard-title" className="import-wizard__title">
@@ -164,7 +453,8 @@ export function DataImportWizardPage() {
             Upload CSV File
           </h2>
           <p className="import-card__description">
-            Drag and drop a CSV file, or click to browse. Supports Mint, YNAB, and custom formats.
+            Drag and drop a CSV file, or click to browse. Supports Mint, YNAB, Chase, American
+            Express, Wells Fargo, Citi, and custom formats.
           </p>
 
           <div
@@ -191,7 +481,8 @@ export function DataImportWizardPage() {
               {dragActive ? 'Drop your file here' : 'Click or drag CSV file here'}
             </span>
             <span className="import-dropzone__hint">
-              Supported: .csv files from Mint, YNAB, or custom exports
+              Supported: .csv files from Mint, YNAB, Chase, Amex, Wells Fargo, Citi, or custom
+              exports
             </span>
           </div>
 
@@ -216,9 +507,9 @@ export function DataImportWizardPage() {
             </h2>
             <span
               className="import-format-badge"
-              aria-label={`Detected format: ${FORMAT_LABELS[detectedFormat]}`}
+              aria-label={`Detected format: ${detectedFormatLabel}`}
             >
-              {FORMAT_LABELS[detectedFormat]}
+              Detected: {detectedFormatLabel}
             </span>
           </div>
           <p className="import-card__description">
@@ -271,6 +562,29 @@ export function DataImportWizardPage() {
             </table>
           </div>
 
+          {/* Unmapped fields warning */}
+          {unmappedFields.length > 0 && (
+            <div className="import-unmapped-warning" role="status">
+              <span className="import-unmapped-warning__icon" aria-hidden="true">
+                ℹ️
+              </span>
+              <div className="import-unmapped-warning__content">
+                <p className="import-unmapped-warning__text">
+                  These fields will not be imported:{' '}
+                  <strong>{unmappedFields.map((f) => f.columnName).join(', ')}</strong>
+                </p>
+                <button
+                  type="button"
+                  className="import-button import-button--small import-button--secondary"
+                  onClick={mapUnmappedToNotes}
+                  aria-label="Map all unmapped fields to Notes"
+                >
+                  Map to Notes
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="import-actions">
             <button className="import-button import-button--secondary" onClick={goBack}>
               Back
@@ -282,82 +596,59 @@ export function DataImportWizardPage() {
         </section>
       )}
 
-      {/* Preview Step */}
+      {/* Preview Step — card-based with inline editing */}
       {step === 'preview' && (
         <section className="import-card" aria-labelledby="preview-title">
           <h2 id="preview-title" className="import-card__title">
-            Preview ({previewRows.length} rows)
+            Preview ({previewRows.length} transactions)
           </h2>
 
           <div className="import-preview-stats" role="status">
-            <span className="import-stat import-stat--success">
-              ✓ {previewRows.filter((r) => !r.hasError && !r.isDuplicate).length} valid
-            </span>
-            <span className="import-stat import-stat--warning">
-              ⚠ {previewRows.filter((r) => r.isDuplicate).length} duplicates
-            </span>
-            <span className="import-stat import-stat--error">
-              ✗ {previewRows.filter((r) => r.hasError).length} errors
-            </span>
+            <span className="import-stat import-stat--success">✓ {validCount} valid</span>
+            <span className="import-stat import-stat--warning">⚠ {duplicateCount} duplicates</span>
+            <span className="import-stat import-stat--error">✗ {errorCount} errors</span>
           </div>
 
-          <div
-            className="import-preview-table-wrapper"
-            role="region"
-            aria-label="Import preview"
-            tabIndex={0}
-          >
-            <table className="import-preview-table" aria-label="Transaction preview">
-              <thead>
-                <tr>
-                  <th scope="col">#</th>
-                  <th scope="col">Date</th>
-                  <th scope="col">Payee</th>
-                  <th scope="col">Amount</th>
-                  <th scope="col">Category</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {previewRows.slice(0, 20).map((row) => (
-                  <tr
-                    key={row.rowIndex}
-                    className={
-                      row.isDuplicate
-                        ? 'import-row--duplicate'
-                        : row.hasError
-                          ? 'import-row--error'
-                          : ''
-                    }
-                  >
-                    <td>{row.rowIndex + 1}</td>
-                    <td>{row.parsed.date ?? '—'}</td>
-                    <td>{row.parsed.payee ?? '—'}</td>
-                    <td>
-                      {row.parsed.amountCents != null
-                        ? `$${(row.parsed.amountCents / 100).toFixed(2)}`
-                        : '—'}
-                    </td>
-                    <td>{row.parsed.category ?? '—'}</td>
-                    <td>
-                      {row.isDuplicate ? (
-                        <span className="import-status import-status--duplicate">Duplicate</span>
-                      ) : row.hasError ? (
-                        <span
-                          className="import-status import-status--error"
-                          title={row.errorMessage ?? undefined}
-                        >
-                          Error
-                        </span>
-                      ) : (
-                        <span className="import-status import-status--valid">Valid</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {errorCount > 0 && (
+            <p className="import-card__description">
+              Click on highlighted fields to edit values inline and fix validation errors.
+            </p>
+          )}
+
+          {/* Transaction preview cards */}
+          <div className="import-preview-cards" role="list" aria-label="Transaction preview">
+            {previewRows
+              .filter((r) => !r.isDuplicate)
+              .slice(0, 20)
+              .map((row) => (
+                <div key={row.rowIndex} role="listitem">
+                  <PreviewTransactionRow row={row} onFieldEdit={updatePreviewField} />
+                </div>
+              ))}
           </div>
+
+          {/* Duplicate comparison cards */}
+          {duplicateComparisons.length > 0 && (
+            <div className="import-duplicate-section">
+              <h3 className="import-duplicate-section__title">
+                Duplicate Review ({duplicateComparisons.length})
+              </h3>
+              <p className="import-card__description">
+                These transactions appear to already exist. Choose an action for each.
+              </p>
+              <div className="import-duplicate-list" role="list" aria-label="Duplicate comparisons">
+                {duplicateComparisons.map((comp) => (
+                  <div key={comp.rowIndex} role="listitem">
+                    <DuplicateComparisonCard
+                      comparison={comp}
+                      action={duplicateActions[comp.rowIndex] ?? 'skip'}
+                      onAction={setDuplicateAction}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="import-actions">
             <button className="import-button import-button--secondary" onClick={goBack}>
