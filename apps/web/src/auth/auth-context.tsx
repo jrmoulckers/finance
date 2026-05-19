@@ -56,6 +56,12 @@ import {
   restoreDemoSession,
 } from './demo-auth';
 
+import {
+  incrementLoginCount,
+  setHasRegisteredPasskey,
+  shouldShowPasskeyPrompt,
+} from '../lib/passkey-preferences';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -107,6 +113,10 @@ export interface AuthContextValue extends AuthActions {
   webAuthnSupported: boolean;
   /** Whether the app is running in demo mode (no backend configured). */
   isDemoMode: boolean;
+  /** Whether the passkey setup prompt should be shown. */
+  showPasskeyPrompt: boolean;
+  /** Dismiss the passkey setup prompt. */
+  dismissPasskeyPrompt: () => void;
 }
 
 /** Configuration for the AuthProvider. */
@@ -160,9 +170,15 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [webAuthnSupported] = useState(() => isWebAuthnSupported());
+  const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
 
   const demoModeActive = isDemoMode(config.supabaseUrl);
   const isAuthenticated = user !== null && hasValidToken();
+
+  /** Dismiss the passkey prompt (hides it without changing preferences). */
+  const dismissPasskeyPrompt = useCallback(() => {
+    setShowPasskeyPrompt(false);
+  }, []);
 
   // -----------------------------------------------------------------------
   // Initialisation
@@ -271,6 +287,17 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
   // Auth Actions
   // -----------------------------------------------------------------------
 
+  /**
+   * Check whether the passkey setup prompt should appear after login/signup.
+   * Increments the login counter and evaluates the prompt state.
+   */
+  function triggerPasskeyPromptCheck(): void {
+    incrementLoginCount();
+    if (webAuthnSupported && shouldShowPasskeyPrompt()) {
+      setShowPasskeyPrompt(true);
+    }
+  }
+
   const loginWithEmail = useCallback(
     async (email: string, password: string): Promise<void> => {
       setError(null);
@@ -285,6 +312,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
             email: result.user.email,
             hasPasskey: false,
           });
+          triggerPasskeyPromptCheck();
           return;
         }
 
@@ -313,6 +341,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           email: data.user.email,
           hasPasskey: data.user.has_passkey ?? false,
         });
+        triggerPasskeyPromptCheck();
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An unexpected error occurred';
         setError(message);
@@ -368,8 +397,10 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
 
       await registerPasskey(token);
 
-      // Update user state to reflect passkey registration
+      // Update user state and localStorage to reflect passkey registration
       setUser((prev) => (prev ? { ...prev, hasPasskey: true } : null));
+      setHasRegisteredPasskey();
+      setShowPasskeyPrompt(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Passkey registration failed';
       setError(message);
@@ -464,6 +495,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
             hasPasskey: false,
           });
           // demoLogin already calls persistDemoSession
+          triggerPasskeyPromptCheck();
           return;
         }
 
@@ -500,6 +532,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
             email: data.user.email,
             hasPasskey: data.user.has_passkey ?? false,
           });
+          triggerPasskeyPromptCheck();
         }
         // If auto-login fails, the signup still succeeded — caller can
         // decide to redirect to login or show a message.
@@ -552,6 +585,8 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       error,
       webAuthnSupported,
       isDemoMode: demoModeActive,
+      showPasskeyPrompt,
+      dismissPasskeyPrompt,
       loginWithEmail,
       loginWithPasskey,
       loginWithOAuth,
@@ -568,6 +603,8 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       error,
       webAuthnSupported,
       demoModeActive,
+      showPasskeyPrompt,
+      dismissPasskeyPrompt,
       loginWithEmail,
       loginWithPasskey,
       loginWithOAuth,

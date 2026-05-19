@@ -4,7 +4,9 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
+import { PasskeySetupPrompt } from '../components/auth/PasskeySetupPrompt';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { hasRegisteredPasskey } from '../lib/passkey-preferences';
 import { loginSchema } from '../lib/validation';
 
 import '../components/forms/forms.css';
@@ -29,12 +31,17 @@ export const LoginPage: React.FC = () => {
     error,
     webAuthnSupported,
     isDemoMode,
+    showPasskeyPrompt,
+    dismissPasskeyPrompt,
   } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /** Whether the user has a passkey registered (drives layout priority). */
+  const passkeyPrimary = webAuthnSupported && hasRegisteredPasskey();
 
   const uid = useId();
   const emailId = `${uid}-email`;
@@ -152,6 +159,32 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
+        {/* ── Passkey-first layout: biometric primary when passkey exists ── */}
+        {passkeyPrimary && (
+          <div className="auth-actions" style={{ marginBottom: 'var(--spacing-4)' }}>
+            <button
+              type="button"
+              className="auth-submit"
+              onClick={handlePasskeyLogin}
+              disabled={isBusy}
+              aria-busy={isBusy}
+            >
+              {isBusy ? (
+                <>
+                  <LoadingSpinner size={20} label="Signing in" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                '🔐 Sign in with biometrics'
+              )}
+            </button>
+
+            <div className="auth-divider" aria-hidden="true">
+              <span className="auth-divider__text">or sign in with email</span>
+            </div>
+          </div>
+        )}
+
         <form className="auth-form" onSubmit={handleEmailLogin} aria-label="Sign in" noValidate>
           <div className="form-fields">
             <div className="form-group">
@@ -218,8 +251,17 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <div className="auth-actions">
-            <button type="submit" className="auth-submit" disabled={isBusy} aria-busy={isBusy}>
-              {isBusy ? (
+            <button
+              type="submit"
+              className={
+                passkeyPrimary
+                  ? 'form-button form-button--secondary auth-passkey-button'
+                  : 'auth-submit'
+              }
+              disabled={isBusy}
+              aria-busy={isBusy}
+            >
+              {isBusy && !passkeyPrimary ? (
                 <>
                   <LoadingSpinner size={20} label="Signing in" />
                   <span>Signing in...</span>
@@ -229,7 +271,8 @@ export const LoginPage: React.FC = () => {
               )}
             </button>
 
-            {webAuthnSupported ? (
+            {/* Show passkey as secondary when no passkey registered yet */}
+            {webAuthnSupported && !passkeyPrimary ? (
               <>
                 <div className="auth-divider" aria-hidden="true">
                   <span className="auth-divider__text">or</span>
@@ -331,6 +374,9 @@ export const LoginPage: React.FC = () => {
           </Link>
         </p>
       </section>
+
+      {/* Passkey setup prompt modal */}
+      <PasskeySetupPrompt isOpen={showPasskeyPrompt} onClose={dismissPasskeyPrompt} />
     </main>
   );
 };
