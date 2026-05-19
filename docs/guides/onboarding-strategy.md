@@ -5,7 +5,7 @@
 > **Purpose:** Per-platform onboarding design covering shared logic, native patterns, skip/resume behavior, and analytics
 > **Related Issues:** #81
 > **Related Features:** ONB-001 (Welcome Flow), ONB-002 (Guided First Budget), TIER-001 (Expertise Tiers)
-> **Related Docs:** [UX Principles](../design/ux-principles.md), [Information Architecture](../design/information-architecture.md), [Personas](../design/personas.md)
+> **Related Docs:** [UX Principles](../design/ux-principles.md), [Information Architecture](../design/information-architecture.md), [Personas](../design/personas.md), [Trust & Manual Entry](./trust-and-manual-entry.md)
 
 ---
 
