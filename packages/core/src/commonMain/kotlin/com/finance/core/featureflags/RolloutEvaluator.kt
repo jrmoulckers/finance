@@ -25,11 +25,11 @@ object RolloutEvaluator {
         require(rolloutPercentage in 0..100) {
             "rolloutPercentage must be 0-100, was $rolloutPercentage"
         }
-        if (rolloutPercentage == 0) return false
-        if (rolloutPercentage == 100) return true
-
-        val bucket = computeBucket(userId, flagKey)
-        return bucket < rolloutPercentage
+        return when (rolloutPercentage) {
+            0 -> false
+            100 -> true
+            else -> computeBucket(userId, flagKey) < rolloutPercentage
+        }
     }
 
     /**

@@ -120,7 +120,7 @@ actual class PlatformKeyDerivation actual constructor() {
             val block = u.copyOf()
 
             // U2 .. Uc: accumulate XOR
-            for (_j in 2..iterations) {
+            repeat(iterations - 1) {
                 u = hmacSha256WithPaddedKey(ipadKey, opadKey, u)
                 for (k in block.indices) {
                     block[k] = (block[k].toInt() xor u[k].toInt()).toByte()

@@ -102,14 +102,15 @@ class FeatureFlagSyncManager(
             return (cached.value as? FeatureFlagValue.BooleanValue)?.value ?: default
         }
 
-        val flag = provider.getFlag(key) ?: return default
-        val result = evaluateWithRollout(flag, context, default)
-        val flagValue = FeatureFlagValue.BooleanValue(result)
-
-        // Cache the evaluation.
-        _cache.value = _cache.value + (key to CachedFlagResult(key, flagValue, clock.now()))
-
-        return result
+        val flag = provider.getFlag(key)
+        return if (flag != null) {
+            evaluateWithRollout(flag, context, default).also { result ->
+                val flagValue = FeatureFlagValue.BooleanValue(result)
+                _cache.value = _cache.value + (key to CachedFlagResult(key, flagValue, clock.now()))
+            }
+        } else {
+            default
+        }
     }
 
     /**
@@ -119,16 +120,12 @@ class FeatureFlagSyncManager(
      * @param context Evaluation context.
      * @return The resolved value, or `null` if the flag is unknown.
      */
-    fun evaluate(key: FeatureFlagKey, context: EvaluationContext): FeatureFlagValue? {
-        val cached = _cache.value[key]
-        if (cached != null) return cached.value
-
-        val flag = provider.getFlag(key) ?: return null
-        val value = FeatureFlagEngine.evaluate(flag, context)
-
-        _cache.value = _cache.value + (key to CachedFlagResult(key, value, clock.now()))
-        return value
-    }
+    fun evaluate(key: FeatureFlagKey, context: EvaluationContext): FeatureFlagValue? =
+        _cache.value[key]?.value ?: provider.getFlag(key)?.let { flag ->
+            val value = FeatureFlagEngine.evaluate(flag, context)
+            _cache.value = _cache.value + (key to CachedFlagResult(key, value, clock.now()))
+            value
+        }
 
     /**
      * Observe a boolean flag reactively. Emits a new value whenever the
@@ -167,24 +164,25 @@ class FeatureFlagSyncManager(
      * If the flag is disabled, returns [default]. Otherwise evaluates targeting rules,
      * then checks rollout percentage if present.
      */
-    private fun evaluateWithRollout(flag: FeatureFlag, context: EvaluationContext, default: Boolean): Boolean {
-        if (!flag.enabled) return default
-
-        // Standard targeting-rule evaluation.
-        val baseResult = FeatureFlagEngine.evaluateBoolean(flag, context, default)
-
-        // If the flag didn't match any rule and returned the default, skip rollout.
-        if (!baseResult) return false
-
-        // Check for rollout percentage in context attributes.
-        val rolloutAttr = context.getAttribute("rolloutPercentage")
-        val userId = context.getAttribute("userId")
-
-        if (rolloutAttr != null && userId != null) {
-            val percentage = rolloutAttr.toIntOrNull() ?: return baseResult
-            return RolloutEvaluator.isInRollout(userId, flag.key.value, percentage)
+    private fun evaluateWithRollout(
+        flag: FeatureFlag,
+        context: EvaluationContext,
+        default: Boolean,
+    ): Boolean = when {
+        !flag.enabled -> default
+        else -> {
+            val baseResult = FeatureFlagEngine.evaluateBoolean(flag, context, default)
+            if (!baseResult) {
+                false
+            } else {
+                val percentage = context.getAttribute("rolloutPercentage")?.toIntOrNull()
+                val userId = context.getAttribute("userId")
+                if (percentage != null && userId != null) {
+                    RolloutEvaluator.isInRollout(userId, flag.key.value, percentage)
+                } else {
+                    baseResult
+                }
+            }
         }
-
-        return baseResult
     }
 }

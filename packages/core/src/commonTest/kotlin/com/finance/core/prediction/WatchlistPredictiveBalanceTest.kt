@@ -17,6 +17,7 @@ import kotlin.test.*
  *
  * Covers issue #1376.
  */
+@Suppress("LargeClass") // Test suite intentionally groups all predictive-balance scenarios for discoverability
 class WatchlistPredictiveBalanceTest {
 
     @BeforeTest

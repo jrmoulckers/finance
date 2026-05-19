@@ -103,7 +103,7 @@ object BudgetRolloverCalculator {
      */
     fun calculateEffectiveBudget(
         budget: Budget,
-        currentPeriodTransactions: List<Transaction>,
+        @Suppress("unused") currentPeriodTransactions: List<Transaction>,
         previousPeriodTransactions: List<Transaction>,
         referenceDate: LocalDate,
     ): EffectiveBudget {
