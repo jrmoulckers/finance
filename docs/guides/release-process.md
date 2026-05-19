@@ -367,6 +367,18 @@ Before triggering any platform release, every item below must be verified. A sin
 - [ ] Sentry `beforeSend` scrubbing rules verified (see [monitoring architecture](../architecture/monitoring.md#52-scrubbing-implementation))
 - [ ] Data collection inventory up to date — every metric collected is documented with purpose and legal basis
 
+### Privacy Labels (App Store Declarations)
+
+- [ ] **Privacy label parity verified** — actual data collection matches store declarations per [App Store Privacy Labels](../compliance/app-store-privacy-labels.md)
+- [ ] **Material change check** — review PRs included in this release for [material change triggers](../compliance/app-store-privacy-labels.md#material-change-triggers): new data collection, new third-party SDKs, changes to data sharing, purpose, retention, or encryption
+- [ ] **Platform-specific checklist completed** — run the verification checklist for the releasing platform:
+  - Apple: [Apple Verification Checklist](../compliance/app-store-privacy-labels.md#apple-verification-checklist)
+  - Google: [Google Play Verification Checklist](../compliance/app-store-privacy-labels.md#google-play-verification-checklist)
+  - Microsoft: [Microsoft Verification Checklist](../compliance/app-store-privacy-labels.md#microsoft-verification-checklist)
+  - Web: [Web Verification Checklist](../compliance/app-store-privacy-labels.md#web-verification-checklist)
+- [ ] **Third-party SDK audit** — confirm no undisclosed SDKs are bundled in the release build (inspect dependency tree and linked frameworks)
+- [ ] **Store declarations up to date** — if any material change was detected, store privacy forms have been updated before this submission
+
 ### Monitoring & Alerting
 
 - [ ] Error tracking configured for the releasing platform (Sentry integration, consent-gated)

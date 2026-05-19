@@ -72,6 +72,13 @@ All accessibility audit items must pass on every platform before release.
   - [ ] Analytics (if any) use privacy-preserving, first-party tooling — no user-level tracking without consent
 - [ ] **Terms of service published** — available from app store listings and in-app settings.
 - [ ] **Children's privacy** — app is not directed at children under 13; age gate or content rating configured appropriately for each app store.
+- [ ] **App store privacy labels verified** — actual data collection matches every store's privacy declarations. Complete the full parity check per [App Store Privacy Labels](../compliance/app-store-privacy-labels.md).
+  - [ ] Apple App Privacy nutrition labels match actual collection behavior ([Apple Verification Checklist](../compliance/app-store-privacy-labels.md#apple-verification-checklist))
+  - [ ] Google Play Data Safety form matches actual collection behavior ([Google Play Verification Checklist](../compliance/app-store-privacy-labels.md#google-play-verification-checklist))
+  - [ ] Microsoft Store privacy declarations match actual collection behavior ([Microsoft Verification Checklist](../compliance/app-store-privacy-labels.md#microsoft-verification-checklist))
+  - [ ] Web privacy disclosures match actual collection behavior ([Web Verification Checklist](../compliance/app-store-privacy-labels.md#web-verification-checklist))
+  - [ ] No discrepancies in the [Discrepancy Log](../compliance/app-store-privacy-labels.md#discrepancy-log) are unresolved
+  - [ ] [Material change triggers](../compliance/app-store-privacy-labels.md#material-change-triggers) process is documented and understood by the release team
 
 ---
 
