@@ -3,16 +3,17 @@
 # =============================================================================
 #
 # Runs on schedule to report on CI pipeline health:
-#   - Workflow run success/failure rates
+#   - Workflow run success/failure rates (excluding cancelled/skipped runs)
 #   - Average build duration trends
 #   - Cache hit ratios
 #   - Flaky test detection
 #   - Week-over-week trend comparison
 #   - Automated alerting for degraded pipelines
+#   - Auto-resolution of recovered pipelines
 #
 # Also runs as a reusable summary step for individual workflows.
 #
-# Issues: #860, #1016
+# Issues: #860, #1016, #1447, #1448, #1449
 # =============================================================================
 
 name: CI Health Monitor
@@ -73,6 +74,7 @@ jobs:
 
             const degraded = [];
             const allMetrics = [];
+            let allRecovered = [];
 
             for (const wf of workflows) {
               try {
@@ -105,14 +107,25 @@ jobs:
                 const completed = runs.workflow_runs.filter(r => r.status === 'completed');
                 const success = completed.filter(r => r.conclusion === 'success').length;
                 const failure = completed.filter(r => r.conclusion === 'failure').length;
-                const skipped = completed.filter(r => r.conclusion === 'skipped').length;
-                const total = completed.length;
-                const rate = total > 0 ? ((success / total) * 100).toFixed(1) : 'N/A';
+                const cancelled = completed.filter(r => r.conclusion === 'cancelled').length;
+                const skipped = completed.filter(r => r.conclusion === 'skipped' || r.conclusion === 'cancelled').length;
 
-                // Previous period rate for trend
+                // Exclude cancelled/skipped runs from success rate — they are not real failures
+                // (e.g., superseded by a newer push, manually cancelled, or path-filtered out)
+                const actionable = completed.filter(r =>
+                  r.conclusion !== 'cancelled' && r.conclusion !== 'skipped'
+                );
+                const actionableTotal = actionable.length;
+                const total = completed.length;
+                const rate = actionableTotal > 0 ? ((success / actionableTotal) * 100).toFixed(1) : 'N/A';
+
+                // Previous period rate for trend (also excluding cancelled/skipped)
                 const prevCompleted = prevRuns.workflow_runs.filter(r => r.status === 'completed');
-                const prevSuccess = prevCompleted.filter(r => r.conclusion === 'success').length;
-                const prevTotal = prevCompleted.length;
+                const prevActionable = prevCompleted.filter(r =>
+                  r.conclusion !== 'cancelled' && r.conclusion !== 'skipped'
+                );
+                const prevSuccess = prevActionable.filter(r => r.conclusion === 'success').length;
+                const prevTotal = prevActionable.length;
                 const prevRate = prevTotal > 0 ? ((prevSuccess / prevTotal) * 100) : null;
 
                 // Calculate average duration
@@ -146,13 +159,22 @@ jobs:
 
                 report += `| ${rateEmoji} ${wf.replace('.yml', '')} | ${total} | ${success} | ${failure} | ${skipped} | ${rate}% | ${avgDuration} | ${trend} |\n`;
 
-                // Track degraded pipelines
-                if (rate !== 'N/A' && parseFloat(rate) < 80) {
+                // Track degraded pipelines (require minimum 5 actionable runs to avoid noisy alerts)
+                const MIN_RUNS_FOR_ALERT = 5;
+                if (rate !== 'N/A' && parseFloat(rate) < 80 && actionableTotal >= MIN_RUNS_FOR_ALERT) {
                   degraded.push({
                     name: wf.replace('.yml', ''),
                     rate: parseFloat(rate),
                     failures: failure,
-                    total,
+                    total: actionableTotal,
+                  });
+                }
+
+                // Track recovered pipelines (was degraded, now healthy) for auto-resolution
+                if (rate !== 'N/A' && parseFloat(rate) >= 80) {
+                  allRecovered.push({
+                    name: wf.replace('.yml', ''),
+                    rate: parseFloat(rate),
                   });
                 }
 
@@ -160,9 +182,10 @@ jobs:
                   name: wf.replace('.yml', ''),
                   rate: rate === 'N/A' ? null : parseFloat(rate),
                   avgMinutes,
-                  total,
+                  total: actionableTotal,
                   failure,
                   success,
+                  cancelled,
                 });
               } catch (e) {
                 report += `| ⚪ ${wf.replace('.yml', '')} | — | — | — | — | Error | — | — |\n`;
@@ -229,6 +252,7 @@ jobs:
             report += `- 🟡 **80-95%** — Needs attention (check flaky tests or infra issues)\n`;
             report += `- 🔴 **<80%** — Critical (investigate immediately)\n`;
             report += `- 📈 Improving / 📉 Degrading (compared to previous ${days}-day period)\n`;
+            report += `\n> **Note:** Cancelled and skipped runs are excluded from success rate calculations to avoid false-positive alerts from superseded or path-filtered runs.\n`;
 
             // Recommendations
             if (degraded.length > 0) {
@@ -244,6 +268,7 @@ jobs:
             // Export degraded list for issue creation
             core.setOutput('degraded', JSON.stringify(degraded));
             core.setOutput('degraded_count', degraded.length);
+            core.setOutput('recovered', JSON.stringify(allRecovered));
 
       - name: Create issues for degraded pipelines
         if: >-
@@ -301,6 +326,62 @@ jobs:
               });
 
               core.info(`Created issue for degraded pipeline: ${d.name}`);
+            }
+
+      - name: Auto-resolve recovered pipelines
+        if: >-
+          (github.event.inputs.create_issues == 'true' || github.event_name == 'schedule')
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const recovered = JSON.parse('${{ steps.metrics.outputs.recovered }}');
+            if (!recovered || recovered.length === 0) {
+              core.info('No recovered pipelines to process.');
+              return;
+            }
+
+            // Find open health alert issues
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'comp:ci-cd',
+              per_page: 100,
+            });
+
+            for (const r of recovered) {
+              const alertIssue = openIssues.find(i =>
+                i.title.includes(r.name) && i.title.includes('degraded')
+              );
+
+              if (!alertIssue) continue;
+
+              // Comment with recovery status
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: alertIssue.number,
+                body: [
+                  `## ✅ Pipeline Recovered`,
+                  ``,
+                  `The **${r.name}** pipeline has recovered to **${r.rate}%** success rate (above the 80% threshold).`,
+                  ``,
+                  `This issue was auto-closed by the CI Health Monitor. If the degradation recurs, a new issue will be created.`,
+                  ``,
+                  `*Auto-resolved by CI Health Monitor workflow.*`,
+                ].join('\n'),
+              });
+
+              // Close the issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: alertIssue.number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+
+              core.info(`Auto-closed recovered pipeline issue #${alertIssue.number}: ${r.name}`);
             }
 
       - name: Health check summary
