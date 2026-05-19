@@ -16,10 +16,20 @@ const authState = vi.hoisted(() => ({
   user: null,
   webAuthnSupported: true,
   isDemoMode: false,
+  showPasskeyPrompt: false,
+  dismissPasskeyPrompt: vi.fn(),
 }));
 
 vi.mock('../auth/auth-context', () => ({
   useAuth: () => authState,
+}));
+
+vi.mock('../components/auth/PasskeySetupPrompt', () => ({
+  PasskeySetupPrompt: () => null,
+}));
+
+vi.mock('../lib/passkey-preferences', () => ({
+  hasRegisteredPasskey: () => false,
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -44,6 +54,8 @@ describe('LoginPage', () => {
     authState.error = null;
     authState.user = null;
     authState.webAuthnSupported = true;
+    authState.showPasskeyPrompt = false;
+    authState.dismissPasskeyPrompt.mockReset();
     navigateMock.mockReset();
   });
 
