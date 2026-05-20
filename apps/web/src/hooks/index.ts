@@ -122,6 +122,14 @@ export type {
 export { useUndo } from './useUndo';
 export type { UseUndoResult, UseUndoOptions, UndoableAction, UndoExecuteInput } from './useUndo';
 export { useEscapeBack } from './useEscapeBack';
+export { useScenarioModeler } from './useScenarioModeler';
+export type { UseScenarioModelerResult } from './useScenarioModeler';
+export { useRetirementPlanner } from './useRetirementPlanner';
+export type { UseRetirementPlannerResult } from './useRetirementPlanner';
+export { useLinkedGoals } from './useLinkedGoals';
+export type { UseLinkedGoalsResult } from './useLinkedGoals';
+export { useSweepRules } from './useSweepRules';
+export type { UseSweepRulesResult } from './useSweepRules';
 export { useTaggingRules } from './useTaggingRules';
 export type { UseTaggingRulesResult } from './useTaggingRules';
 export { useTagSuggestions } from './useTagSuggestions';
