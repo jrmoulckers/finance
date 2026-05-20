@@ -176,3 +176,20 @@ export { useNetWorth } from './useNetWorth';
 export type { UseNetWorthResult } from './useNetWorth';
 export { useSubscriptions } from './useSubscriptions';
 export type { UseSubscriptionsResult } from './useSubscriptions';
+export { useBankConnections } from './useBankConnections';
+export type {
+  UseBankConnectionsResult,
+  BankConnectionHealth,
+  HealthHistoryEvent,
+  AggregatorProvider,
+  ConnectionHealthStatus,
+  ErrorCategory,
+} from './useBankConnections';
+export { useConnectorPermissions } from './useConnectorPermissions';
+export type {
+  UseConnectorPermissionsResult,
+  ConnectorPermission,
+  ConnectorAccessEntry,
+  PermissionLevel,
+  TokenStatus,
+} from './useConnectorPermissions';

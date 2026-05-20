@@ -192,12 +192,52 @@ bucket_definitions:
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
 
       # Import job status (for progress tracking)
+      # CHANGED (#1575): Added source_type, duplicate_strategy for provenance tracking
       - >
         SELECT id, household_id, owner_id, account_id, file_name,
                format, status, total_rows, imported_rows,
-               duplicate_rows, error_rows, started_at, completed_at,
+               duplicate_rows, error_rows, source_type,
+               duplicate_strategy, started_at, completed_at,
                created_at, updated_at, deleted_at
         FROM import_jobs
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Bank connection health status (#1577)
+      # SECURITY: error_detail may reference provider error codes — no PII.
+      - >
+        SELECT id, bank_connection_id, household_id,
+               status, error_category, error_detail,
+               last_successful_sync, staleness_minutes,
+               resolved_at, resolution_action, created_at
+        FROM bank_connection_health
+        WHERE household_id = bucket.household_id
+
+      # Connector permissions — third-party access control (#1583)
+      # SECURITY: token_status synced for display; no token values.
+      - >
+        SELECT id, bank_connection_id, household_id, owner_id,
+               permission_level, granted_scopes, scope_descriptions,
+               is_revoked, revoked_at, token_status, token_expires_at,
+               created_at, updated_at, deleted_at
+        FROM connector_permissions
+        WHERE household_id = bucket.household_id AND deleted_at IS NULL
+
+      # Connector access audit log (#1583)
+      # Read-only on clients. NEVER contains raw financial data.
+      - >
+        SELECT id, bank_connection_id, household_id,
+               access_type, provider_name, status,
+               record_count, duration_ms, created_at
+        FROM connector_access_log
+        WHERE household_id = bucket.household_id
+
+      # Open banking connections (#1586)
+      # SECURITY: encrypted_refresh_token deliberately excluded.
+      - >
+        SELECT id, bank_connection_id, household_id, owner_id,
+               consent_id, consent_status, consent_expires_at,
+               regulation, created_at, updated_at, deleted_at
+        FROM open_banking_connections
         WHERE household_id = bucket.household_id AND deleted_at IS NULL
 
   # ---------------------------------------------------------------------------
@@ -278,3 +318,13 @@ bucket_definitions:
                created_at, updated_at, deleted_at
         FROM price_history
         WHERE deleted_at IS NULL
+
+      # Aggregator provider registry (global, read-only on clients) (#1575)
+      # Reference data for provider selection and health display.
+      - >
+        SELECT id, name, display_name, provider_type, status,
+               health_score, priority, is_enabled, supported_regions,
+               capabilities, last_health_check, incident_count,
+               created_at, updated_at, deleted_at
+        FROM aggregator_providers
+        WHERE deleted_at IS NULL AND is_enabled = true

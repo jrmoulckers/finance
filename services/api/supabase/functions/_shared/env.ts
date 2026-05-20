@@ -69,6 +69,8 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
     { name: 'ALLOWED_ORIGINS', type: 'csv' },
     { name: 'BANK_ENCRYPTION_KEY', type: 'string' },
   ],
+  'aggregator-health': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
+  'connector-permissions': [{ name: 'ALLOWED_ORIGINS', type: 'csv' }],
   'bank-webhook': [
     { name: 'PLAID_WEBHOOK_SECRET', type: 'string' },
     { name: 'MX_WEBHOOK_SECRET', type: 'string' },

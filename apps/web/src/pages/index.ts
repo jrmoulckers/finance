@@ -29,3 +29,4 @@ export { HouseholdPage } from './HouseholdPage';
 export { CashFlowPage } from './CashFlowPage';
 export { NetWorthPage } from './NetWorthPage';
 export { SubscriptionsPage } from './SubscriptionsPage';
+export { BankConnectionsPage } from './BankConnectionsPage';

@@ -1,0 +1,499 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Bank connectivity component styles.
+ * References: #1575, #1577, #1583
+ */
+
+/* =========================================================================
+   Connection Health Card
+   ========================================================================= */
+
+.connection-health-card {
+  background: var(--semantic-background-secondary, #f8f9fa);
+  border: 1px solid var(--semantic-border-primary, #dee2e6);
+  border-radius: var(--radius-3, 12px);
+  padding: var(--spacing-4, 16px);
+  margin-bottom: var(--spacing-3, 12px);
+}
+
+.connection-health-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-3, 12px);
+}
+
+.connection-health-card__name {
+  font-size: var(--font-size-md, 1rem);
+  font-weight: 600;
+  margin: 0;
+  color: var(--semantic-text-primary, #111);
+}
+
+.connection-health-card__provider {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #6c757d);
+  text-transform: capitalize;
+}
+
+/* Health badges */
+.health-badge {
+  display: inline-block;
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.health-badge--healthy {
+  background: var(--semantic-success-bg, #d4edda);
+  color: var(--semantic-success-text, #155724);
+}
+
+.health-badge--stale {
+  background: var(--semantic-warning-bg, #fff3cd);
+  color: var(--semantic-warning-text, #856404);
+}
+
+.health-badge--warning {
+  background: var(--semantic-warning-bg, #fff3cd);
+  color: var(--semantic-warning-text, #856404);
+}
+
+.health-badge--error {
+  background: var(--semantic-error-bg, #f8d7da);
+  color: var(--semantic-error-text, #721c24);
+}
+
+.health-badge--unknown {
+  background: var(--semantic-neutral-bg, #e2e3e5);
+  color: var(--semantic-neutral-text, #383d41);
+}
+
+.connection-health-card__details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--spacing-2, 8px);
+  margin-bottom: var(--spacing-3, 12px);
+}
+
+.connection-health-card__detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+}
+
+.connection-health-card__label {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--semantic-text-secondary, #6c757d);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.connection-health-card__value {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-primary, #111);
+}
+
+.connection-health-card__value--error {
+  color: var(--semantic-error-text, #721c24);
+}
+
+.connection-health-card__actions {
+  display: flex;
+  gap: var(--spacing-2, 8px);
+  justify-content: flex-end;
+}
+
+.connection-health-card__action {
+  padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
+  border: 1px solid var(--semantic-border-primary, #dee2e6);
+  border-radius: var(--radius-2, 8px);
+  background: transparent;
+  color: var(--semantic-text-primary, #111);
+  font-size: var(--font-size-sm, 0.875rem);
+  cursor: pointer;
+}
+
+.connection-health-card__action:hover {
+  background: var(--semantic-background-hover, #e9ecef);
+}
+
+.connection-health-card__action--primary {
+  background: var(--semantic-primary, #0d6efd);
+  color: white;
+  border-color: var(--semantic-primary, #0d6efd);
+}
+
+.connection-health-card__action--primary:hover {
+  background: var(--semantic-primary-hover, #0b5ed7);
+}
+
+/* =========================================================================
+   Safety Center
+   ========================================================================= */
+
+.safety-center {
+  max-width: 800px;
+}
+
+.safety-center__summary {
+  background: var(--semantic-background-secondary, #f8f9fa);
+  border: 1px solid var(--semantic-border-primary, #dee2e6);
+  border-radius: var(--radius-3, 12px);
+  padding: var(--spacing-4, 16px);
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.safety-center__title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  font-size: var(--font-size-lg, 1.25rem);
+  margin: 0 0 var(--spacing-2, 8px);
+}
+
+.safety-center__subtitle {
+  color: var(--semantic-text-secondary, #6c757d);
+  margin: 0 0 var(--spacing-2, 8px);
+}
+
+.safety-center__note {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-success-text, #155724);
+  background: var(--semantic-success-bg, #d4edda);
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border-radius: var(--radius-2, 8px);
+  margin: 0;
+}
+
+.safety-center__section {
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.safety-center__section-title {
+  font-size: var(--font-size-md, 1rem);
+  font-weight: 600;
+  margin: 0 0 var(--spacing-3, 12px);
+}
+
+.safety-center__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.safety-center__item {
+  border: 1px solid var(--semantic-border-primary, #dee2e6);
+  border-radius: var(--radius-2, 8px);
+  padding: var(--spacing-3, 12px);
+  margin-bottom: var(--spacing-2, 8px);
+}
+
+.safety-center__item--revoked {
+  opacity: 0.6;
+}
+
+.safety-center__item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-2, 8px);
+}
+
+.safety-center__item-name {
+  font-weight: 600;
+  color: var(--semantic-text-primary, #111);
+}
+
+.safety-center__item-provider {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #6c757d);
+}
+
+.safety-center__item-details {
+  display: flex;
+  gap: var(--spacing-3, 12px);
+  flex-wrap: wrap;
+}
+
+.safety-center__permission-badge {
+  font-size: var(--font-size-sm, 0.875rem);
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  border-radius: var(--radius-full, 9999px);
+  background: var(--semantic-success-bg, #d4edda);
+  color: var(--semantic-success-text, #155724);
+}
+
+.safety-center__token-status {
+  font-size: var(--font-size-xs, 0.75rem);
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+}
+
+.safety-center__token-status--active {
+  color: var(--semantic-success-text, #155724);
+}
+
+.safety-center__token-status--expired,
+.safety-center__token-status--revoked {
+  color: var(--semantic-error-text, #721c24);
+}
+
+.safety-center__scopes {
+  margin-top: var(--spacing-2, 8px);
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.safety-center__scopes ul {
+  padding-left: var(--spacing-4, 16px);
+  margin: var(--spacing-1, 4px) 0 0;
+}
+
+.safety-center__toggle {
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border: 1px solid var(--semantic-border-primary, #dee2e6);
+  border-radius: var(--radius-2, 8px);
+  background: transparent;
+  cursor: pointer;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-primary, #111);
+}
+
+.safety-center__toggle:hover {
+  background: var(--semantic-background-hover, #e9ecef);
+}
+
+.safety-center__log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm, 0.875rem);
+  margin-top: var(--spacing-3, 12px);
+}
+
+.safety-center__log-table th,
+.safety-center__log-table td {
+  padding: var(--spacing-2, 8px);
+  text-align: left;
+  border-bottom: 1px solid var(--semantic-border-primary, #dee2e6);
+}
+
+.safety-center__log-table th {
+  font-weight: 600;
+  color: var(--semantic-text-secondary, #6c757d);
+  font-size: var(--font-size-xs, 0.75rem);
+  text-transform: uppercase;
+}
+
+.safety-center__status--success {
+  color: var(--semantic-success-text, #155724);
+}
+
+.safety-center__status--failure {
+  color: var(--semantic-error-text, #721c24);
+}
+
+.safety-center__status--partial {
+  color: var(--semantic-warning-text, #856404);
+}
+
+.safety-center__empty {
+  color: var(--semantic-text-secondary, #6c757d);
+  font-style: italic;
+}
+
+.safety-center__error {
+  color: var(--semantic-error-text, #721c24);
+}
+
+/* =========================================================================
+   Provider Status List
+   ========================================================================= */
+
+.provider-status-list__title {
+  font-size: var(--font-size-lg, 1.25rem);
+  font-weight: 600;
+  margin: 0 0 var(--spacing-3, 12px);
+}
+
+.provider-status-list__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--spacing-3, 12px);
+}
+
+.provider-status-list__item {
+  border: 1px solid var(--semantic-border-primary, #dee2e6);
+  border-radius: var(--radius-2, 8px);
+  padding: var(--spacing-3, 12px);
+}
+
+.provider-status-list__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-2, 8px);
+}
+
+.provider-status-list__name {
+  font-weight: 600;
+  font-size: var(--font-size-md, 1rem);
+}
+
+.provider-status-list__badge {
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.provider-status-list__badge--active {
+  background: var(--semantic-success-bg, #d4edda);
+  color: var(--semantic-success-text, #155724);
+}
+
+.provider-status-list__badge--degraded {
+  background: var(--semantic-warning-bg, #fff3cd);
+  color: var(--semantic-warning-text, #856404);
+}
+
+.provider-status-list__badge--down {
+  background: var(--semantic-error-bg, #f8d7da);
+  color: var(--semantic-error-text, #721c24);
+}
+
+.provider-status-list__badge--maintenance {
+  background: var(--semantic-neutral-bg, #e2e3e5);
+  color: var(--semantic-neutral-text, #383d41);
+}
+
+.provider-status-list__health {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  margin-bottom: var(--spacing-2, 8px);
+}
+
+.provider-status-list__health-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--semantic-background-tertiary, #e9ecef);
+  border-radius: var(--radius-full, 9999px);
+  overflow: hidden;
+}
+
+.provider-status-list__health-fill {
+  height: 100%;
+  background: var(--semantic-success, #28a745);
+  border-radius: var(--radius-full, 9999px);
+  transition: width 0.3s ease;
+}
+
+.provider-status-list__health-value {
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+
+.provider-status-list__meta {
+  display: flex;
+  gap: var(--spacing-3, 12px);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #6c757d);
+}
+
+.provider-status-list__regions {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #6c757d);
+  margin-top: var(--spacing-1, 4px);
+}
+
+.provider-status-list__label {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--semantic-text-secondary, #6c757d);
+  text-transform: uppercase;
+}
+
+/* =========================================================================
+   Dark mode
+   ========================================================================= */
+
+@media (prefers-color-scheme: dark) {
+  .connection-health-card {
+    background: var(--semantic-background-secondary, #1e1e1e);
+    border-color: var(--semantic-border-primary, #333);
+  }
+
+  .safety-center__summary {
+    background: var(--semantic-background-secondary, #1e1e1e);
+    border-color: var(--semantic-border-primary, #333);
+  }
+
+  .provider-status-list__item {
+    border-color: var(--semantic-border-primary, #333);
+  }
+}
+
+[data-theme='dark'] .connection-health-card,
+[data-theme='dark'] .safety-center__summary,
+[data-theme='dark'] .provider-status-list__item {
+  background: var(--semantic-background-secondary, #1e1e1e);
+  border-color: var(--semantic-border-primary, #333);
+}
+
+/* =========================================================================
+   Reduced motion
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .provider-status-list__health-fill {
+    transition: none;
+  }
+}
+
+/* =========================================================================
+   High contrast
+   ========================================================================= */
+
+@media (prefers-contrast: more) {
+  .connection-health-card,
+  .safety-center__item,
+  .provider-status-list__item {
+    border-width: 2px;
+  }
+
+  .health-badge,
+  .provider-status-list__badge {
+    border: 1px solid currentColor;
+  }
+}
+
+/* =========================================================================
+   Mobile responsive
+   ========================================================================= */
+
+@media (max-width: 480px) {
+  .connection-health-card__details {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .safety-center__item-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-1, 4px);
+  }
+
+  .safety-center__item-details {
+    flex-direction: column;
+  }
+
+  .safety-center__log-table {
+    font-size: var(--font-size-xs, 0.75rem);
+  }
+}
