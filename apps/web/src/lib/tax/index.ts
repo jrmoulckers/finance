@@ -11,3 +11,8 @@ export * from './types';
 export * from './federal-brackets';
 export * from './self-employment-tax';
 export * from './quarterly-estimates';
+export * from './tax-loss-harvesting';
+export * from './capital-gains';
+export * from './contribution-tracker';
+export * from './deduction-tagger';
+export * from './mileage-log';
