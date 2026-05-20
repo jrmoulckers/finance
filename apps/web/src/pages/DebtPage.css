@@ -1,0 +1,519 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Styles for the Debt Management page and sub-components.
+ *
+ * Uses design tokens from theme/tokens.css.
+ * Mobile-first with responsive breakpoints.
+ *
+ * References: issues #1662, #1685, #1690, #1681, #1761, #1569
+ */
+
+/* ---------------------------------------------------------------------------
+ * Page layout
+ * ------------------------------------------------------------------------ */
+
+.debt-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-4, 1rem);
+}
+
+.debt-page__header {
+  margin-bottom: var(--spacing-6, 1.5rem);
+}
+
+.debt-page__header h1 {
+  font-size: var(--font-size-2xl, 1.5rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-text-primary, #111);
+  margin: 0 0 var(--spacing-2, 0.5rem);
+}
+
+.debt-page__subtitle {
+  color: var(--semantic-text-secondary, #666);
+  font-size: var(--font-size-sm, 0.875rem);
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tab navigation
+ * ------------------------------------------------------------------------ */
+
+.debt-page__tab-list {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--spacing-6, 1.5rem);
+  border-bottom: 1px solid var(--semantic-border, #e5e7eb);
+  gap: var(--spacing-1, 0.25rem);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.debt-page__tab {
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--semantic-text-secondary, #666);
+  white-space: nowrap;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.debt-page__tab:hover {
+  color: var(--semantic-text-primary, #111);
+}
+
+.debt-page__tab--active {
+  color: var(--semantic-primary, #2563eb);
+  border-bottom-color: var(--semantic-primary, #2563eb);
+}
+
+.debt-page__panel {
+  min-height: 300px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Debt list (Payoff Planner)
+ * ------------------------------------------------------------------------ */
+
+.debt-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--spacing-4, 1rem);
+}
+
+.debt-list__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  margin-bottom: var(--spacing-2, 0.5rem);
+  background: var(--semantic-background-primary, #fff);
+}
+
+.debt-list__name {
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.debt-list__details {
+  display: flex;
+  gap: var(--spacing-4, 1rem);
+  align-items: center;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #666);
+}
+
+.debt-list__rate {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+ * Strategy comparison cards
+ * ------------------------------------------------------------------------ */
+
+.strategy-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-4, 1rem);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.strategy-card {
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-lg, 0.75rem);
+  padding: var(--spacing-4, 1rem);
+  background: var(--semantic-background-primary, #fff);
+}
+
+.strategy-card--recommended {
+  border-color: var(--semantic-primary, #2563eb);
+  box-shadow: 0 0 0 1px var(--semantic-primary, #2563eb);
+}
+
+.strategy-card h3 {
+  font-size: var(--font-size-lg, 1.125rem);
+  margin: 0 0 var(--spacing-3, 0.75rem);
+}
+
+.strategy-card__badge {
+  display: inline-block;
+  margin-left: var(--spacing-2, 0.5rem);
+  padding: var(--spacing-1, 0.25rem) var(--spacing-2, 0.5rem);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--semantic-primary, #2563eb);
+  background: var(--semantic-primary-bg, #dbeafe);
+  border-radius: var(--radius-full, 9999px);
+}
+
+.strategy-card__stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-2, 0.5rem) var(--spacing-4, 1rem);
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.strategy-card__stats dt {
+  color: var(--semantic-text-secondary, #666);
+}
+
+.strategy-savings {
+  text-align: center;
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--semantic-positive, #059669);
+  padding: var(--spacing-3, 0.75rem);
+  background: var(--semantic-positive-bg, #d1fae5);
+  border-radius: var(--radius-md, 0.5rem);
+}
+
+/* ---------------------------------------------------------------------------
+ * BNPL Dashboard
+ * ------------------------------------------------------------------------ */
+
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2, 0.5rem);
+  padding: var(--spacing-2, 0.5rem) var(--spacing-4, 1rem);
+  border-radius: var(--radius-full, 9999px);
+  font-weight: var(--font-weight-bold, 700);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.risk-badge--low {
+  color: var(--semantic-positive, #059669);
+  background: var(--semantic-positive-bg, #d1fae5);
+}
+
+.risk-badge--moderate {
+  color: var(--semantic-warning, #d97706);
+  background: var(--semantic-warning-bg, #fef3c7);
+}
+
+.risk-badge--high {
+  color: var(--semantic-negative, #dc2626);
+  background: var(--semantic-negative-bg, #fee2e2);
+}
+
+.risk-badge--critical {
+  color: #fff;
+  background: var(--semantic-negative, #dc2626);
+}
+
+.risk-badge__score {
+  font-size: var(--font-size-xl, 1.25rem);
+}
+
+.bnpl-alerts {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--spacing-4, 1rem);
+}
+
+.bnpl-alert {
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  border-radius: var(--radius-md, 0.5rem);
+  margin-bottom: var(--spacing-2, 0.5rem);
+}
+
+.bnpl-alert--warning {
+  background: var(--semantic-warning-bg, #fef3c7);
+  border-left: 3px solid var(--semantic-warning, #d97706);
+}
+
+.bnpl-alert--critical {
+  background: var(--semantic-negative-bg, #fee2e2);
+  border-left: 3px solid var(--semantic-negative, #dc2626);
+}
+
+.bnpl-alert--info {
+  background: var(--semantic-info-bg, #dbeafe);
+  border-left: 3px solid var(--semantic-info, #2563eb);
+}
+
+.bnpl-summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-2, 0.5rem) var(--spacing-4, 1rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.bnpl-list {
+  list-style: none;
+  padding: 0;
+}
+
+.bnpl-list__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  margin-bottom: var(--spacing-2, 0.5rem);
+}
+
+.bnpl-list__merchant {
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.bnpl-list__details {
+  display: flex;
+  gap: var(--spacing-4, 1rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #666);
+}
+
+/* ---------------------------------------------------------------------------
+ * Student Loan Optimizer
+ * ------------------------------------------------------------------------ */
+
+.recommendation-banner {
+  padding: var(--spacing-4, 1rem);
+  background: var(--semantic-primary-bg, #dbeafe);
+  border-radius: var(--radius-lg, 0.75rem);
+  margin-bottom: var(--spacing-4, 1rem);
+  text-align: center;
+}
+
+.recommendation-banner h2 {
+  color: var(--semantic-primary, #2563eb);
+  margin: 0 0 var(--spacing-2, 0.5rem);
+}
+
+.plan-comparison {
+  overflow-x: auto;
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.plan-comparison__header {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--spacing-2, 0.5rem);
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  font-weight: var(--font-weight-bold, 700);
+  font-size: var(--font-size-xs, 0.75rem);
+  text-transform: uppercase;
+  color: var(--semantic-text-secondary, #666);
+  border-bottom: 2px solid var(--semantic-border, #e5e7eb);
+}
+
+.plan-comparison__row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--spacing-2, 0.5rem);
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  border-bottom: 1px solid var(--semantic-border, #e5e7eb);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-comparison__row--recommended {
+  background: var(--semantic-primary-bg, #dbeafe);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.tax-warning {
+  color: var(--semantic-warning, #d97706);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+/* PSLF progress bar */
+.pslf-tracker {
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.pslf-progress {
+  height: 12px;
+  background: var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-full, 9999px);
+  overflow: hidden;
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.pslf-progress__bar {
+  height: 100%;
+  background: var(--semantic-primary, #2563eb);
+  border-radius: var(--radius-full, 9999px);
+  transition: width 0.3s ease;
+}
+
+.pslf-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-2, 0.5rem) var(--spacing-4, 1rem);
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+/* ---------------------------------------------------------------------------
+ * Credit Card Dashboard
+ * ------------------------------------------------------------------------ */
+
+.balance-summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-2, 0.5rem) var(--spacing-4, 1rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  padding: var(--spacing-4, 1rem);
+  background: var(--semantic-background-secondary, #f9fafb);
+  border-radius: var(--radius-lg, 0.75rem);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.payment-alerts {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--spacing-4, 1rem);
+}
+
+.payment-alert {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  border-radius: var(--radius-md, 0.5rem);
+  margin-bottom: var(--spacing-2, 0.5rem);
+}
+
+.payment-alert--overdue {
+  background: var(--semantic-negative-bg, #fee2e2);
+  border-left: 3px solid var(--semantic-negative, #dc2626);
+}
+
+.payment-alert--due_today {
+  background: var(--semantic-warning-bg, #fef3c7);
+  border-left: 3px solid var(--semantic-warning, #d97706);
+}
+
+.payment-alert--due_soon {
+  background: var(--semantic-info-bg, #dbeafe);
+  border-left: 3px solid var(--semantic-info, #2563eb);
+}
+
+.reservation-list {
+  list-style: none;
+  padding: 0;
+}
+
+.reservation-list__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  margin-bottom: var(--spacing-2, 0.5rem);
+}
+
+.reservation-list__card {
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.reservation-list__details {
+  display: flex;
+  gap: var(--spacing-4, 1rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--semantic-text-secondary, #666);
+}
+
+.reservation-list__type {
+  font-style: italic;
+}
+
+/* ---------------------------------------------------------------------------
+ * Responsive
+ * ------------------------------------------------------------------------ */
+
+@media (max-width: 480px) {
+  .strategy-comparison {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-comparison__header,
+  .plan-comparison__row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .plan-comparison__header span:nth-child(n + 4),
+  .plan-comparison__row span:nth-child(n + 4) {
+    display: none;
+  }
+
+  .debt-list__item,
+  .bnpl-list__item,
+  .reservation-list__item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-2, 0.5rem);
+  }
+
+  .debt-list__details,
+  .bnpl-list__details,
+  .reservation-list__details {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Dark mode
+ * ------------------------------------------------------------------------ */
+
+@media (prefers-color-scheme: dark) {
+  .strategy-card,
+  .debt-list__item,
+  .bnpl-list__item,
+  .reservation-list__item {
+    background: var(--semantic-background-primary, #1f2937);
+    border-color: var(--semantic-border, #374151);
+  }
+}
+
+[data-theme='dark'] .strategy-card,
+[data-theme='dark'] .debt-list__item,
+[data-theme='dark'] .bnpl-list__item,
+[data-theme='dark'] .reservation-list__item {
+  background: var(--semantic-background-primary, #1f2937);
+  border-color: var(--semantic-border, #374151);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .pslf-progress__bar {
+    transition: none;
+  }
+
+  .debt-page__tab {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------ */
+
+@media (prefers-contrast: more) {
+  .debt-list__item,
+  .bnpl-list__item,
+  .reservation-list__item,
+  .strategy-card {
+    border-width: 2px;
+  }
+
+  .bnpl-alert,
+  .payment-alert {
+    border-left-width: 4px;
+  }
+}
