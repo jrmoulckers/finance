@@ -1,0 +1,501 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Shared styles for Cash Flow, Net Worth, and Subscriptions analytics pages.
+ *
+ * Uses design token CSS custom properties for all visual values.
+ * References: issues #1587, #1578, #1593
+ */
+
+/* ---------------------------------------------------------------------------
+ * Layout
+ * ------------------------------------------------------------------------- */
+
+.analytics-page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.analytics-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-6);
+}
+
+.analytics-page__title {
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.analytics-page__actions {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+}
+
+.analytics-page__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-8) 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Period selector (tab-like buttons)
+ * ------------------------------------------------------------------------- */
+
+.analytics-period-selector {
+  display: flex;
+  gap: var(--spacing-1);
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-1);
+}
+
+.analytics-period-selector__btn {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: none;
+  border-radius: var(--border-radius-sm);
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.analytics-period-selector__btn:hover {
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-primary);
+}
+
+.analytics-period-selector__btn--active {
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------------------------------------------------------------------------
+ * Sections
+ * ------------------------------------------------------------------------- */
+
+.analytics-section {
+  margin-bottom: var(--spacing-6);
+}
+
+.analytics-section__title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  color: var(--semantic-text-primary);
+  margin-bottom: var(--spacing-4);
+}
+
+/* ---------------------------------------------------------------------------
+ * Metrics grid
+ * ------------------------------------------------------------------------- */
+
+.analytics-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.analytics-metric-card {
+  padding: var(--spacing-4);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.analytics-metric-card__label {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0 0 var(--spacing-1) 0;
+}
+
+.analytics-metric-card__value {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  margin: 0;
+}
+
+.analytics-metric-card__value--positive {
+  color: var(--semantic-status-positive);
+}
+
+.analytics-metric-card__value--negative {
+  color: var(--semantic-status-negative);
+}
+
+.analytics-metric-card__change {
+  font-size: var(--type-scale-caption-font-size);
+  margin: var(--spacing-1) 0 0 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Bar chart (CSS-only fallback)
+ * ------------------------------------------------------------------------- */
+
+.analytics-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-2);
+  height: 200px;
+  padding: var(--spacing-2) 0;
+}
+
+.analytics-bar-chart__group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
+}
+
+.analytics-bar-chart__bars {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  width: 100%;
+  justify-content: center;
+  flex: 1;
+}
+
+.analytics-bar-chart__bar {
+  width: 50%;
+  max-width: 20px;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.3s ease;
+  min-height: 2px;
+}
+
+.analytics-bar-chart__bar--income {
+  background: var(--semantic-status-positive);
+}
+
+.analytics-bar-chart__bar--expense {
+  background: var(--semantic-status-negative);
+}
+
+.analytics-bar-chart__label {
+  font-size: 10px;
+  color: var(--semantic-text-secondary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+ * Net income trend (simple line-style)
+ * ------------------------------------------------------------------------- */
+
+.analytics-trend-line {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-1);
+  height: 120px;
+  padding: var(--spacing-2) 0;
+}
+
+.analytics-trend-line__point {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.analytics-trend-line__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--semantic-interactive-default);
+}
+
+.analytics-trend-line__dot--positive {
+  background: var(--semantic-status-positive);
+}
+
+.analytics-trend-line__dot--negative {
+  background: var(--semantic-status-negative);
+}
+
+/* ---------------------------------------------------------------------------
+ * Asset class / category breakdown
+ * ------------------------------------------------------------------------- */
+
+.analytics-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.analytics-breakdown__item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.analytics-breakdown__bar-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.analytics-breakdown__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-1);
+}
+
+.analytics-breakdown__name {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+.analytics-breakdown__amount {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.analytics-breakdown__track {
+  height: 8px;
+  background: var(--semantic-background-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.analytics-breakdown__fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.analytics-breakdown__percent {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------------------
+ * Milestones
+ * ------------------------------------------------------------------------- */
+
+.analytics-milestones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+.analytics-milestone {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.analytics-milestone--reached {
+  border-color: var(--semantic-status-positive);
+  background: var(--semantic-background-elevated);
+}
+
+.analytics-milestone__icon {
+  font-size: 1.25rem;
+}
+
+.analytics-milestone__label {
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.analytics-milestone--pending .analytics-milestone__label {
+  color: var(--semantic-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Subscription list
+ * ------------------------------------------------------------------------- */
+
+.analytics-subscription-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.analytics-subscription-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  transition: border-color 0.15s;
+}
+
+.analytics-subscription-card--flagged {
+  border-left: 3px solid var(--semantic-status-warning);
+}
+
+.analytics-subscription-card--cancelled {
+  opacity: 0.5;
+  border-left: 3px solid var(--semantic-text-secondary);
+}
+
+.analytics-subscription-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.analytics-subscription-card__name {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  margin: 0 0 var(--spacing-1) 0;
+}
+
+.analytics-subscription-card__meta {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin: 0;
+}
+
+.analytics-subscription-card__cost {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.analytics-subscription-card__monthly {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  display: block;
+}
+
+.analytics-subscription-card__annual {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  display: block;
+}
+
+.analytics-subscription-card__actions {
+  flex-shrink: 0;
+}
+
+.analytics-status-btn {
+  padding: var(--spacing-1) var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.analytics-status-btn:hover {
+  border-color: var(--semantic-interactive-default);
+  color: var(--semantic-interactive-default);
+}
+
+.analytics-status-btn--flagged {
+  color: var(--semantic-status-warning);
+  border-color: var(--semantic-status-warning);
+}
+
+.analytics-status-btn--cancelled {
+  color: var(--semantic-text-secondary);
+  text-decoration: line-through;
+}
+
+/* Export button */
+.analytics-export-btn {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.analytics-export-btn:hover {
+  background: var(--semantic-background-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .analytics-bar-chart__bar,
+  .analytics-breakdown__fill,
+  .analytics-subscription-card,
+  .analytics-period-selector__btn {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * High contrast
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  .analytics-metric-card,
+  .analytics-subscription-card,
+  .analytics-milestone {
+    border-width: 2px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Mobile
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .analytics-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .analytics-page__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .analytics-bar-chart {
+    height: 140px;
+    overflow-x: auto;
+  }
+
+  .analytics-subscription-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .analytics-subscription-card__cost {
+    text-align: left;
+  }
+}

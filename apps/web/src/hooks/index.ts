@@ -170,3 +170,9 @@ export type {
   SetSharedBudgetInput,
   SetSharedGoalInput,
 } from './useHousehold';
+export { useCashFlow } from './useCashFlow';
+export type { UseCashFlowResult } from './useCashFlow';
+export { useNetWorth } from './useNetWorth';
+export type { UseNetWorthResult } from './useNetWorth';
+export { useSubscriptions } from './useSubscriptions';
+export type { UseSubscriptionsResult } from './useSubscriptions';

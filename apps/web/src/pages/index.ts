@@ -26,3 +26,6 @@ export { CreateBillPage } from './CreateBillPage';
 export { ReportBuilderPage } from './ReportBuilderPage';
 export { PlanningPage } from './PlanningPage';
 export { HouseholdPage } from './HouseholdPage';
+export { CashFlowPage } from './CashFlowPage';
+export { NetWorthPage } from './NetWorthPage';
+export { SubscriptionsPage } from './SubscriptionsPage';

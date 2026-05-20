@@ -40,6 +40,9 @@ const CreateBill = lazy(() => import('./pages/CreateBillPage'));
 const Planning = lazy(() => import('./pages/PlanningPage'));
 const PrivacyDashboard = lazy(() => import('./pages/PrivacyDashboardPage'));
 const Onboarding = lazy(() => import('./pages/OnboardingPage'));
+const CashFlow = lazy(() => import('./pages/CashFlowPage'));
+const NetWorth = lazy(() => import('./pages/NetWorthPage'));
+const Subscriptions = lazy(() => import('./pages/SubscriptionsPage'));
 
 /**
  * Loading fallback shown while a lazy route chunk is being fetched.
@@ -384,6 +387,37 @@ export const AppRoutes: FC = () => (
         </AuthenticatedRoute>
       }
     />
+    <Route
+      path="/cash-flow"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Cash Flow">
+            <CashFlow />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/net-worth"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Net Worth">
+            <NetWorth />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/subscriptions"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Subscriptions">
+            <Subscriptions />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+
     <Route
       path="/import/wizard"
       element={
