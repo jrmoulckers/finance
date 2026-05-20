@@ -6,8 +6,11 @@ import {
   formatCurrencyForScreenReader,
   formatPercentForScreenReader,
   getBudgetStatusIndicator,
+  getChartTextAlternative,
   getGoalStatusIndicator,
+  getPieChartTextAlternative,
   getStatusIndicator,
+  getTableDescription,
 } from './a11y';
 
 describe('formatCurrencyForScreenReader', () => {
@@ -94,5 +97,66 @@ describe('getBudgetStatusIndicator', () => {
 
   it('returns on track for ≤75%', () => {
     expect(getBudgetStatusIndicator(50).tone).toBe('positive');
+  });
+});
+
+describe('getChartTextAlternative', () => {
+  it('handles empty data', () => {
+    expect(getChartTextAlternative('Spending', [])).toBe('Spending chart with no data.');
+  });
+
+  it('generates summary for single data point', () => {
+    const result = getChartTextAlternative('Trend', [{ label: 'Jan', value: 100 }], 'dollars');
+    expect(result).toContain('1 data point');
+    expect(result).toContain('Highest: Jan at 100 dollars');
+  });
+
+  it('generates summary with high and low', () => {
+    const data = [
+      { label: 'Jan', value: 100 },
+      { label: 'Feb', value: 300 },
+      { label: 'Mar', value: 50 },
+    ];
+    const result = getChartTextAlternative('Spending', data, 'dollars');
+    expect(result).toContain('3 data points');
+    expect(result).toContain('Highest: Feb at 300 dollars');
+    expect(result).toContain('Lowest: Mar at 50 dollars');
+  });
+});
+
+describe('getPieChartTextAlternative', () => {
+  it('handles empty data', () => {
+    expect(getPieChartTextAlternative('Category', [])).toBe('Category chart with no data.');
+  });
+
+  it('generates segment percentages', () => {
+    const data = [
+      { label: 'Food', value: 300 },
+      { label: 'Rent', value: 700 },
+    ];
+    const result = getPieChartTextAlternative('Share', data);
+    expect(result).toContain('Food: 30%');
+    expect(result).toContain('Rent: 70%');
+  });
+
+  it('handles all-zero data', () => {
+    const data = [{ label: 'None', value: 0 }];
+    expect(getPieChartTextAlternative('Empty', data)).toBe('Empty chart with no data.');
+  });
+});
+
+describe('getTableDescription', () => {
+  it('formats singular', () => {
+    expect(getTableDescription('transaction', 1)).toBe('1 transaction');
+  });
+
+  it('formats plural', () => {
+    expect(getTableDescription('account', 5)).toBe('5 accounts');
+  });
+
+  it('appends context', () => {
+    expect(getTableDescription('transaction', 3, 'sorted by date')).toBe(
+      '3 transactions, sorted by date',
+    );
   });
 });

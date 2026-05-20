@@ -1,0 +1,338 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/**
+ * Dynamic Font Scaling & High Contrast — WCAG 2.2 AA
+ *
+ * Ensures the Finance PWA remains usable at 200% browser font scaling
+ * (WCAG 2.2 SC 1.4.4 — Resize Text) and respects the
+ * `prefers-contrast: more` media query (SC 1.4.11 — Non-text Contrast).
+ *
+ * Key techniques:
+ *   1. All font sizes use rem units (relative to root font size)
+ *   2. Layout uses flex/grid with min-content sizing — no fixed-height
+ *      containers that clip text at large sizes
+ *   3. Touch targets maintain 44×44px minimum at all scales
+ *   4. High-contrast mode strengthens borders and removes decorative shadows
+ *   5. Financial values reflow into stacked layout at constrained widths
+ *
+ * References: issues #1680, #1684
+ */
+
+/* -------------------------------------------------------------------
+ * 1. Root font-size foundation
+ *
+ * The browser default (16px) is inherited. We never set a fixed px
+ * font-size on :root or html, ensuring user browser settings scale
+ * all rem-based values proportionally.
+ * ------------------------------------------------------------------- */
+
+html {
+  /* Ensure text scales with browser zoom / font-size settings */
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* -------------------------------------------------------------------
+ * 2. Scalable typography — rem-based overrides
+ *
+ * Components that previously used px values are normalized to rem.
+ * These serve as safety-net overrides for any components that may
+ * have hardcoded px font sizes.
+ * ------------------------------------------------------------------- */
+
+.page-heading {
+  font-size: clamp(1.25rem, 2vw + 0.5rem, 2rem);
+  line-height: 1.3;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.card__title {
+  font-size: clamp(0.6875rem, 1vw + 0.25rem, 0.875rem);
+  line-height: 1.4;
+}
+
+.card__value {
+  font-size: clamp(1.125rem, 1.5vw + 0.5rem, 1.75rem);
+  line-height: 1.3;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.list-item__primary {
+  font-size: clamp(0.875rem, 1vw + 0.25rem, 1.125rem);
+  line-height: 1.4;
+}
+
+.list-item__secondary {
+  font-size: clamp(0.75rem, 0.8vw + 0.25rem, 0.875rem);
+  line-height: 1.4;
+}
+
+.nav-item__label {
+  font-size: clamp(0.625rem, 0.7vw + 0.25rem, 0.8125rem);
+  line-height: 1.3;
+}
+
+/* Currency display — ensure financial values never get clipped */
+.currency-display {
+  display: inline-block;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+/* -------------------------------------------------------------------
+ * 3. Reflow layouts at 200% font scaling
+ *
+ * At large text sizes, card grids switch to single-column layout
+ * and financial summaries stack vertically to prevent clipping.
+ *
+ * The 200% breakpoint is calculated as: when the effective font
+ * size exceeds ~32px (16px * 200%), containers under ~600px wide
+ * can't fit 3-column grids. We use container queries where
+ * supported, falling back to a min-width media query.
+ * ------------------------------------------------------------------- */
+
+/* Card grids: allow single-column reflow */
+.card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+}
+
+/* Ensure cards don't have fixed min-height that clips at large text */
+.card-grid > .card {
+  min-height: auto;
+}
+
+/* Page header: stack on narrow / large-text scenarios */
+.page-header {
+  flex-wrap: wrap;
+  gap: var(--spacing-3, 0.75rem);
+}
+
+/* Section headers with totals: allow stacking */
+.page-section__header {
+  flex-wrap: wrap;
+  gap: var(--spacing-2, 0.5rem);
+}
+
+/* List items: allow content to wrap */
+.list-item {
+  flex-wrap: wrap;
+  min-height: 2.75rem; /* 44px in rem for touch target */
+}
+
+.list-item__trailing {
+  flex-basis: auto;
+  min-width: 0;
+}
+
+/* Multi-currency total: allow wrapping */
+.multi-currency-total {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-1, 0.25rem);
+  align-items: baseline;
+}
+
+/* Summary text: ensure long currency values wrap */
+.page-summary {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.5;
+}
+
+/* Progress bars: scale height with font size */
+.progress-bar {
+  height: clamp(0.5rem, 0.6vw + 0.25rem, 0.75rem);
+  border-radius: 9999px;
+}
+
+/* Filter chips: allow wrapping instead of horizontal scroll */
+.filter-chips {
+  flex-wrap: wrap;
+}
+
+/* Search bar: stack on small/large-text viewports */
+@media (max-width: 30rem) {
+  .search-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* -------------------------------------------------------------------
+ * 4. Touch targets at all font scales
+ *
+ * WCAG 2.5.8 requires minimum 44×44px. With rem units, the min-size
+ * scales with the user's font preference which is acceptable — the
+ * physical target grows larger, not smaller.
+ * ------------------------------------------------------------------- */
+
+button,
+a,
+[role='button'],
+[role='link'],
+[role='tab'],
+[role='menuitem'],
+summary {
+  min-height: max(2.75rem, 44px);
+  min-width: max(2.75rem, 44px);
+}
+
+input,
+select,
+textarea {
+  min-height: max(2.75rem, 44px);
+  font-size: max(1rem, 16px); /* Prevent iOS zoom on focus */
+}
+
+/* Icon buttons: ensure adequate size at all scales */
+.icon-button {
+  min-width: max(2.75rem, 44px);
+  min-height: max(2.75rem, 44px);
+}
+
+/* -------------------------------------------------------------------
+ * 5. High Contrast Mode — prefers-contrast: more
+ *
+ * WCAG 2.2 SC 1.4.11 (Non-text Contrast) requires 3:1 contrast
+ * for UI components. This section enhances borders, removes
+ * decorative shadows, and increases visual separation.
+ * ------------------------------------------------------------------- */
+
+@media (prefers-contrast: more) {
+  /* Strengthen card and container borders */
+  .card {
+    border-width: 2px;
+    border-color: var(--semantic-border-default, #111827);
+    box-shadow: none;
+  }
+
+  /* Strengthen list item separators */
+  .list-item {
+    border-bottom-width: 2px;
+  }
+
+  /* Strengthen progress bar track and fill contrast */
+  .progress-bar {
+    border: 2px solid var(--semantic-border-default, #111827);
+  }
+
+  .progress-bar__fill {
+    border-right: 2px solid var(--semantic-border-default, #111827);
+  }
+
+  /* Navigation items: stronger active indicator */
+  .nav-item[aria-current='page']::before,
+  .nav-item--active::before {
+    height: 4px;
+    background: var(--semantic-text-primary, #111827);
+  }
+
+  .sidebar-nav__item[aria-current='page'],
+  .sidebar-nav__item--active {
+    border: 2px solid var(--semantic-border-default, #111827);
+  }
+
+  /* Buttons: visible borders */
+  .add-button {
+    border-width: 2px;
+  }
+
+  /* Filter chips: stronger borders */
+  .filter-chip {
+    border-width: 2px;
+  }
+
+  .filter-chip--active {
+    border-width: 2px;
+    outline: 2px solid var(--semantic-text-primary, #111827);
+    outline-offset: 1px;
+  }
+
+  /* Toast notifications: heavier borders */
+  .toast {
+    border-width: 2px;
+    box-shadow: none;
+  }
+
+  /* Sync status bar: stronger border */
+  .sync-status-bar {
+    border-bottom-width: 2px;
+  }
+
+  /* Search inputs: heavier borders */
+  .search-bar__input {
+    border-width: 2px;
+  }
+
+  /* Form inputs: heavier borders */
+  .form-group__input,
+  .form-group__select,
+  .form-group__textarea {
+    border-width: 2px;
+  }
+
+  /* Remove decorative shadows throughout */
+  *,
+  *::before,
+  *::after {
+    text-shadow: none !important;
+  }
+
+  /* Ensure text on colored backgrounds has sufficient contrast */
+  .amount--positive {
+    color: var(--color-green-800, #166534);
+  }
+
+  .amount--negative {
+    color: var(--color-red-800, #991b1b);
+  }
+
+  /* Badge contrast */
+  .icon-button__badge {
+    border: 2px solid var(--semantic-text-primary, #111827);
+  }
+}
+
+/* -------------------------------------------------------------------
+ * 6. Forced-colors / Windows High Contrast mode
+ *
+ * When the OS-level forced-colors mode is active, defer entirely
+ * to the system palette. Remove backgrounds and shadows that
+ * could interfere with legibility.
+ * ------------------------------------------------------------------- */
+
+@media (forced-colors: active) {
+  .card {
+    border: 1px solid ButtonText;
+    background: Canvas;
+    forced-color-adjust: auto;
+  }
+
+  .progress-bar {
+    border: 1px solid ButtonText;
+  }
+
+  .progress-bar__fill {
+    background: Highlight;
+  }
+
+  .add-button {
+    border: 1px solid ButtonText;
+  }
+
+  .nav-item[aria-current='page']::before,
+  .nav-item--active::before {
+    background: Highlight;
+  }
+
+  .toast {
+    border: 1px solid ButtonText;
+  }
+
+  .sync-status-bar {
+    border-bottom: 1px solid ButtonText;
+  }
+}

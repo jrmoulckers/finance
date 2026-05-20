@@ -170,3 +170,112 @@ export function getBudgetStatusIndicator(percentUsed: number): {
   }
   return { icon: '●', label: 'On track', tone: 'positive' };
 }
+
+// ---------------------------------------------------------------------------
+// Chart text alternatives for screen readers
+// ---------------------------------------------------------------------------
+
+export interface ChartDataPoint {
+  label: string;
+  value: number;
+}
+
+/**
+ * Generate a text alternative for a bar or line chart.
+ *
+ * Produces a screen-reader-friendly summary of chart data, including
+ * the chart title, data point count, and high/low values. This enables
+ * blind users to understand chart trends without seeing the visual.
+ *
+ * @param title - Chart title (e.g., "Spending Trend").
+ * @param data - Array of labelled data points.
+ * @param unit - Unit label (e.g., "dollars", "percent").
+ *
+ * @example
+ * ```ts
+ * getChartTextAlternative('Spending Trend', [
+ *   { label: 'Jan', value: 500 },
+ *   { label: 'Feb', value: 300 },
+ * ], 'dollars');
+ * // "Spending Trend chart with 2 data points. Highest: Jan at 500 dollars. Lowest: Feb at 300 dollars."
+ * ```
+ */
+export function getChartTextAlternative(title: string, data: ChartDataPoint[], unit = ''): string {
+  if (data.length === 0) {
+    return `${title} chart with no data.`;
+  }
+
+  const unitSuffix = unit ? ` ${unit}` : '';
+  let highest = data[0];
+  let lowest = data[0];
+
+  for (const point of data) {
+    if (point.value > highest.value) highest = point;
+    if (point.value < lowest.value) lowest = point;
+  }
+
+  const parts = [
+    `${title} chart with ${data.length} data point${data.length !== 1 ? 's' : ''}.`,
+    `Highest: ${highest.label} at ${highest.value}${unitSuffix}.`,
+  ];
+
+  if (data.length > 1 && lowest !== highest) {
+    parts.push(`Lowest: ${lowest.label} at ${lowest.value}${unitSuffix}.`);
+  }
+
+  return parts.join(' ');
+}
+
+/**
+ * Generate a text alternative for a pie or donut chart.
+ *
+ * Lists each segment with its percentage of the total, enabling
+ * screen reader users to understand the distribution.
+ *
+ * @param title - Chart title (e.g., "Category Share").
+ * @param data - Array of named segments with values.
+ *
+ * @example
+ * ```ts
+ * getPieChartTextAlternative('Category Share', [
+ *   { label: 'Food', value: 300 },
+ *   { label: 'Rent', value: 700 },
+ * ]);
+ * // "Category Share chart. Food: 30%. Rent: 70%."
+ * ```
+ */
+export function getPieChartTextAlternative(title: string, data: ChartDataPoint[]): string {
+  if (data.length === 0) {
+    return `${title} chart with no data.`;
+  }
+
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  if (total === 0) {
+    return `${title} chart with no data.`;
+  }
+
+  const segments = data
+    .map((d) => {
+      const pct = Math.round((d.value / total) * 100);
+      return `${d.label}: ${pct}%`;
+    })
+    .join('. ');
+
+  return `${title} chart. ${segments}.`;
+}
+
+/**
+ * Generate an accessible description for a financial data table.
+ *
+ * Provides a summary of table contents for screen readers,
+ * including row count and key metrics.
+ *
+ * @param entityName - The entity type (e.g., "transaction", "account").
+ * @param count - Number of rows.
+ * @param context - Additional context (e.g., "sorted by date").
+ */
+export function getTableDescription(entityName: string, count: number, context?: string): string {
+  const plural = count !== 1 ? 's' : '';
+  const base = `${count} ${entityName}${plural}`;
+  return context ? `${base}, ${context}` : base;
+}

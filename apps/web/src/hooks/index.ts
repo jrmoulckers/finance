@@ -130,3 +130,8 @@ export { useExchangeRates } from './useExchangeRates';
 export type { UseExchangeRatesResult } from './useExchangeRates';
 export { useMerchants } from './useMerchants';
 export type { UseMerchantsResult } from './useMerchants';
+export { useAnnouncer } from './useAnnouncer';
+export type { UseAnnouncerResult, UseAnnouncerOptions } from './useAnnouncer';
+export { useRouteAnnouncer } from './useRouteAnnouncer';
+export { useFontScale } from './useFontScale';
+export type { UseFontScaleResult } from './useFontScale';

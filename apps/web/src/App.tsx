@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout } from './components/layout';
 import { ConsentDialog } from './components/gdpr';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
+import { useRouteAnnouncer } from './hooks/useRouteAnnouncer';
 import { AppRoutes } from './routes';
 
 /** Map path segments to human-readable page titles. */
@@ -61,6 +62,9 @@ export const App: FC = () => {
   const activePath = location.pathname === '/' ? '/' : location.pathname;
   const pageTitle = PAGE_TITLES[activePath] ?? 'Finance';
   const isStandalonePage = !AUTHENTICATED_ROUTES.has(activePath);
+
+  // Announce route transitions to screen readers (#1684)
+  useRouteAnnouncer();
 
   return isStandalonePage ? (
     <PrivacyModeProvider>

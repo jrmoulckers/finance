@@ -16,6 +16,7 @@ import './styles/responsive.css';
 import './styles/responsive-layout.css';
 import './styles/accessibility.css';
 import './styles/reduced-motion.css';
+import './styles/font-scaling.css';
 import './styles/error-boundaries.css';
 
 const rootElement = document.getElementById('root');
