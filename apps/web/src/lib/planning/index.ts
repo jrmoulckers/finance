@@ -71,3 +71,35 @@ export {
   createThresholdRule,
   createFixedAmountRule,
 } from './sweep-engine';
+
+// Life event planning engines
+export type {
+  HomePurchaseParams,
+  HomePurchaseResult,
+  EducationFundParams,
+  EducationFundResult,
+  EducationProjectionPoint,
+  AllocationSuggestion,
+  HsaCoverageType,
+  HsaPlanParams,
+  HsaPlanResult,
+  HsaProjectionPoint,
+  JobLossRunwayParams,
+  JobLossRunwayResult,
+  RunwayProjectionPoint,
+  RunwayRecommendation,
+  LifeEventType,
+  LifeEvent,
+  LifeEventMilestone,
+  LifeEventAnalysis,
+  MultiEventAnalysis,
+} from './life-events';
+export {
+  analyzeHomePurchase,
+  analyzeEducationFund,
+  analyzeHsaPlan,
+  analyzeJobLossRunway,
+  analyzeEvent,
+  analyzeMultipleEvents,
+  createLifeEvent,
+} from './life-events';
