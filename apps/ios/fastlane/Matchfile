@@ -1,0 +1,44 @@
+# frozen_string_literal: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Matchfile — Fastlane Match configuration for certificate management
+#
+# Match stores signing certificates and provisioning profiles in a private
+# git repository, enabling the entire team (and CI) to share them securely.
+#
+# Setup:
+#   1. Create a private git repo for certificates (e.g. github.com/yourorg/ios-certificates)
+#   2. Replace the placeholder values below
+#   3. Run: fastlane match development
+#   4. Run: fastlane match appstore
+#
+# See apps/ios/Signing/README.md for the full setup guide.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# URL of the private git repo that stores certificates and profiles
+git_url("YOUR_MATCH_GIT_URL") # e.g. "https://github.com/yourorg/ios-certificates.git"
+
+# Storage mode — "git" is the default; "google_cloud" and "s3" are also supported
+storage_mode("git")
+
+# Certificate types to manage
+type("appstore") # default type; overridden per-lane in Fastfile
+
+# App identifier(s) — must match Appfile
+app_identifier(["YOUR_APP_BUNDLE_ID"]) # e.g. ["com.yourorg.finance"]
+
+# Apple Developer Portal username (email)
+# username("YOUR_APPLE_ID_EMAIL") # e.g. "dev@yourorg.com"
+
+# Team ID (10-character alphanumeric from Apple Developer Portal)
+team_id("YOUR_APPLE_TEAM_ID") # e.g. "A1B2C3D4E5"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CI Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
+# In CI, match should NEVER create new certificates — only use existing ones
+# The `readonly` flag is set per-lane in Fastfile based on `is_ci`
+
+# The MATCH_PASSWORD environment variable must be set to decrypt the repo
+# See .env.default for the full list of required env vars
