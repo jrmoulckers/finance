@@ -81,6 +81,12 @@ obj/
 *.keystore
 secrets/
 .secrets/
+keystore.properties
+fastlane/play-store-service-account.json
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
 
 # === Build artifacts ===
 coverage/

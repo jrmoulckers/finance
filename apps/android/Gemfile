@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "fastlane", "~> 2.225"
+
+# Fastlane plugins (add as needed)
+# gem "fastlane-plugin-firebase_app_distribution"

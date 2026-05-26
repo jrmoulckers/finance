@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Fastlane Appfile — Android
+# See: https://docs.fastlane.tools/advanced/Appfile/
+#
+# TODO(human): Replace YOUR_PACKAGE_NAME with the real application ID
+# (e.g., "com.finance.android") once the Play Console listing is created.
+
+package_name("YOUR_PACKAGE_NAME")
+
+# Path to the Google Play service-account JSON key.
+# In CI this is written from the GOOGLE_PLAY_SERVICE_ACCOUNT_JSON secret.
+# Locally, place the file at this path or override via SUPPLY_JSON_KEY env var.
+json_key_file("fastlane/play-store-service-account.json")

@@ -1,10 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.paparazzi)
+}
+
+// ── Keystore properties ──────────────────────────────────────────
+// Load signing credentials from keystore.properties (local dev) or fall
+// back to gradle.properties / environment variables (CI).
+// Copy keystore.properties.template → keystore.properties and fill in values.
+val keystorePropertiesFile = rootProject.file("apps/android/keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -38,16 +51,21 @@ android {
     }
 
     // ── Release signing ─────────────────────────────────────────────
-    // Credentials are read from gradle.properties or environment variables.
-    // See docs/android/play-store-submission.md for setup instructions.
+    // Credentials are read from keystore.properties (local), gradle.properties,
+    // or environment variables (CI). See keystore.properties.template for setup.
     signingConfigs {
         create("release") {
-            val keystoreFile = project.findProperty("FINANCE_KEYSTORE_FILE") as String?
-            if (keystoreFile != null) {
-                storeFile = file(keystoreFile)
-                storePassword = project.findProperty("FINANCE_KEYSTORE_PASSWORD") as String?
-                keyAlias = project.findProperty("FINANCE_KEY_ALIAS") as String?
-                keyPassword = project.findProperty("FINANCE_KEY_PASSWORD") as String?
+            // Prefer keystore.properties, fall back to gradle.properties / env vars
+            val ksFile = keystoreProperties.getProperty("STORE_FILE")
+                ?: project.findProperty("FINANCE_KEYSTORE_FILE") as String?
+            if (ksFile != null) {
+                storeFile = file(ksFile)
+                storePassword = keystoreProperties.getProperty("STORE_PASSWORD")
+                    ?: project.findProperty("FINANCE_KEYSTORE_PASSWORD") as String?
+                keyAlias = keystoreProperties.getProperty("KEY_ALIAS")
+                    ?: project.findProperty("FINANCE_KEY_ALIAS") as String?
+                keyPassword = keystoreProperties.getProperty("KEY_PASSWORD")
+                    ?: project.findProperty("FINANCE_KEY_PASSWORD") as String?
             }
         }
     }
@@ -64,8 +82,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            val keystoreFile = project.findProperty("FINANCE_KEYSTORE_FILE") as String?
-            if (keystoreFile != null) {
+            val ksFile = keystoreProperties.getProperty("STORE_FILE")
+                ?: project.findProperty("FINANCE_KEYSTORE_FILE") as String?
+            if (ksFile != null) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }

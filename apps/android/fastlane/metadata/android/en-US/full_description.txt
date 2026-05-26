@@ -1,0 +1,13 @@
+Finance is a privacy-first financial tracking app for personal, family, and partnered finances. Track spending, manage budgets, set savings goals, and stay on top of your financial health — all while keeping your data private and secure.
+
+Features:
+• Multi-account tracking with real-time balances
+• Budget management with category breakdowns
+• Savings goals with progress tracking
+• Recurring transaction support
+• Offline-first — works without internet
+• End-to-end encryption for your financial data
+• Cross-platform sync (iOS, Android, Web, Windows)
+• Accessibility built-in (TalkBack, dynamic type, high contrast)
+
+Your financial data stays on your device by default. Sync is optional and fully encrypted.

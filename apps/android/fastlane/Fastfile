@@ -1,0 +1,104 @@
+# SPDX-License-Identifier: BUSL-1.1
+#
+# Fastlane Fastfile — Android
+# See: https://docs.fastlane.tools/actions/
+#
+# Usage:
+#   bundle exec fastlane build_alpha          # Build signed release APK/AAB
+#   bundle exec fastlane upload_internal      # Upload AAB to Play Store internal track
+#
+# Prerequisites:
+#   - keystore.properties filled in (or CI env vars set)
+#   - Google Play service account JSON at fastlane/play-store-service-account.json
+#   - App listing created in Google Play Console
+
+default_platform(:android)
+
+platform :android do
+  # ── Build Alpha ──────────────────────────────────────────────────
+  # Assembles a signed release build (APK + AAB) using Gradle.
+  # Signing credentials come from:
+  #   - keystore.properties (local dev)
+  #   - Environment variables / gradle.properties (CI)
+  desc "Build signed release APK and AAB for alpha distribution"
+  lane :build_alpha do
+    gradle(
+      task: "clean",
+      project_dir: "."
+    )
+
+    # Build AAB for Play Store upload
+    gradle(
+      task: "bundle",
+      build_type: "Release",
+      project_dir: ".",
+      print_command: true,
+      flags: "--parallel --build-cache --stacktrace"
+    )
+
+    # Build APK for direct testing / sideloading
+    gradle(
+      task: "assemble",
+      build_type: "Release",
+      project_dir: ".",
+      print_command: true,
+      flags: "--parallel --build-cache --stacktrace"
+    )
+
+    UI.success("✅ Release APK and AAB built successfully")
+
+    # Print artifact locations
+    aab_path = lane_context[SharedValues::GRADLE_AAB_OUTPUT_PATH]
+    apk_path = lane_context[SharedValues::GRADLE_APK_OUTPUT_PATH]
+    UI.message("AAB: #{aab_path}") if aab_path
+    UI.message("APK: #{apk_path}") if apk_path
+  end
+
+  # ── Upload to Internal Testing ──────────────────────────────────
+  # Uploads the AAB to Google Play's internal testing track.
+  # Requires a service account JSON with release-manager permissions.
+  desc "Upload AAB to Google Play internal testing track"
+  lane :upload_internal do
+    # Build first if no AAB exists
+    aab_path = Dir.glob("build/outputs/bundle/release/*.aab").first
+    build_alpha unless aab_path
+
+    aab_path = Dir.glob("build/outputs/bundle/release/*.aab").first
+    UI.user_error!("No AAB found — build failed?") unless aab_path
+
+    upload_to_play_store(
+      track: "internal",
+      aab: aab_path,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      release_status: "draft"
+    )
+
+    UI.success("✅ AAB uploaded to internal testing track (draft)")
+  end
+
+  # ── Upload to Alpha Track ──────────────────────────────────────
+  # Promotes a build to the alpha (closed testing) track.
+  desc "Upload AAB to Google Play alpha (closed testing) track"
+  lane :upload_alpha do
+    aab_path = Dir.glob("build/outputs/bundle/release/*.aab").first
+    build_alpha unless aab_path
+
+    aab_path = Dir.glob("build/outputs/bundle/release/*.aab").first
+    UI.user_error!("No AAB found — build failed?") unless aab_path
+
+    upload_to_play_store(
+      track: "alpha",
+      aab: aab_path,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      release_status: "draft"
+    )
+
+    UI.success("✅ AAB uploaded to alpha track (draft)")
+  end
+end
