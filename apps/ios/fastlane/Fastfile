@@ -1,30 +1,147 @@
+# frozen_string_literal: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fastfile — iOS build, sign, and deploy lanes for the Finance app
+#
+# Lanes:
+#   build           — Simulator build for local development
+#   test            — Run unit + UI tests
+#   build_alpha     — Signed alpha build for internal testing (TestFlight)
+#   upload_testflight — Upload a signed IPA to TestFlight
+#   screenshots     — Capture App Store screenshots
+#   deliver_appstore — Submit a release build to App Store review
+#   upload_metadata  — Push metadata only (no binary)
+#
+# Prerequisites:
+#   1. Enroll in Apple Developer Program
+#   2. Configure Matchfile and run `fastlane match`
+#   3. Set required environment variables (see .env.default)
+#   4. See apps/ios/Signing/README.md for full setup guide
+# ─────────────────────────────────────────────────────────────────────────────
+
 default_platform(:ios)
 
+# ── Constants ────────────────────────────────────────────────────────────────
+SCHEME         = "FinanceApp"
+UI_TEST_SCHEME = "FinanceUITests"
+DEVICE         = "iPhone 16"
+MIN_COVERAGE   = 60 # percent — adjust as coverage grows
+
 platform :ios do
-  desc "Build for testing"
+  # ── Setup ────────────────────────────────────────────────────────────────
+
+  before_all do
+    setup_ci if ENV["CI"]
+  end
+
+  # ── Development ──────────────────────────────────────────────────────────
+
+  desc "Build for testing (simulator, no signing)"
   lane :build do
-    build_app(scheme: "Finance", skip_archive: true, destination: "generic/platform=iOS Simulator")
+    build_app(
+      scheme: SCHEME,
+      skip_archive: true,
+      destination: "generic/platform=iOS Simulator",
+      xcargs: "CODE_SIGNING_ALLOWED=NO"
+    )
   end
 
-  desc "Run tests"
+  desc "Run unit and UI tests"
   lane :test do
-    run_tests(scheme: "Finance", device: "iPhone 16")
+    run_tests(
+      scheme: SCHEME,
+      device: DEVICE,
+      code_coverage: true,
+      result_bundle: true,
+      output_directory: ".build/test_output"
+    )
   end
 
-  desc "Capture screenshots for App Store"
+  # ── Alpha / Internal Testing ─────────────────────────────────────────────
+
+  desc "Build a signed alpha for internal distribution via TestFlight"
+  lane :build_alpha do
+    # Sync signing certificates and provisioning profiles via match
+    sync_code_signing(type: "appstore", readonly: is_ci)
+
+    # Increment build number using timestamp for uniqueness
+    increment_build_number(
+      build_number: Time.now.strftime("%Y%m%d%H%M")
+    )
+
+    # Build and archive
+    build_app(
+      scheme: SCHEME,
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: {
+          ENV.fetch("APP_BUNDLE_ID", "YOUR_APP_BUNDLE_ID") =>
+            "match AppStore #{ENV.fetch('APP_BUNDLE_ID', 'YOUR_APP_BUNDLE_ID')}"
+        }
+      },
+      output_directory: ".build/alpha",
+      output_name: "Finance-Alpha.ipa",
+      include_bitcode: false,
+      include_symbols: true
+    )
+
+    UI.success("✅ Alpha build complete: .build/alpha/Finance-Alpha.ipa")
+  end
+
+  desc "Upload the latest alpha build to TestFlight"
+  lane :upload_testflight do
+    # Use App Store Connect API key for authentication (no interactive login)
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APP_STORE_CONNECT_API_KEY_ID", "YOUR_KEY_ID"),
+      issuer_id: ENV.fetch("APP_STORE_CONNECT_API_ISSUER_ID", "YOUR_ISSUER_ID"),
+      key_content: ENV.fetch("APP_STORE_CONNECT_API_KEY", ""),
+      is_key_content_base64: true,
+      in_house: false
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: ".build/alpha/Finance-Alpha.ipa",
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+      changelog: changelog_from_git_commits(
+        commits_count: 10,
+        pretty: "- %s"
+      )
+    )
+  end
+
+  # ── Screenshots ──────────────────────────────────────────────────────────
+
+  desc "Capture App Store screenshots"
   lane :screenshots do
-    capture_screenshots(scheme: "FinanceUITests")
+    capture_screenshots(
+      scheme: UI_TEST_SCHEME,
+      devices: [
+        "iPhone 16 Pro Max",
+        "iPhone SE (3rd generation)",
+        "iPad Pro (12.9-inch) (6th generation)"
+      ],
+      languages: ["en-US"],
+      clear_previous_screenshots: true,
+      output_directory: ".build/screenshots"
+    )
   end
 
-  desc "Deploy to TestFlight"
-  lane :deploy_testflight do
-    build_app(scheme: "Finance", export_method: "app-store")
-    upload_to_testflight(skip_waiting_for_build_processing: true)
-  end
+  # ── App Store Release ────────────────────────────────────────────────────
 
-  desc "Submit to App Store for review"
+  desc "Submit to App Store for review (requires human approval gate)"
   lane :deliver_appstore do
-    build_app(scheme: "Finance", export_method: "app-store")
+    sync_code_signing(type: "appstore", readonly: true)
+
+    build_app(
+      scheme: SCHEME,
+      export_method: "app-store",
+      include_bitcode: false,
+      include_symbols: true,
+      output_directory: ".build/release"
+    )
+
     deliver(
       metadata_path: "./fastlane/metadata",
       submit_for_review: false,
@@ -47,5 +164,15 @@ platform :ios do
       skip_screenshots: true,
       force: true
     )
+  end
+
+  # ── Helpers ──────────────────────────────────────────────────────────────
+
+  after_all do |lane|
+    UI.success("✅ Lane :#{lane} completed successfully")
+  end
+
+  error do |lane, exception|
+    UI.error("❌ Lane :#{lane} failed: #{exception.message}")
   end
 end

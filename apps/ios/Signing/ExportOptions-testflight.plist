@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  ExportOptions-testflight.plist
+  Export options for TestFlight / App Store distribution.
+
+  Replace YOUR_APPLE_TEAM_ID and YOUR_APP_BUNDLE_ID before use.
+  See apps/ios/Signing/README.md for setup instructions.
+-->
+<dict>
+  <key>method</key>
+  <string>app-store</string>
+
+  <key>teamID</key>
+  <string>YOUR_APPLE_TEAM_ID</string>
+
+  <key>signingStyle</key>
+  <string>manual</string>
+
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>YOUR_APP_BUNDLE_ID</key>
+    <string>match AppStore YOUR_APP_BUNDLE_ID</string>
+  </dict>
+
+  <key>uploadBitcode</key>
+  <false/>
+
+  <key>uploadSymbols</key>
+  <true/>
+
+  <key>compileBitcode</key>
+  <false/>
+
+  <key>destination</key>
+  <string>export</string>
+
+  <key>stripSwiftSymbols</key>
+  <true/>
+</dict>
+</plist>
