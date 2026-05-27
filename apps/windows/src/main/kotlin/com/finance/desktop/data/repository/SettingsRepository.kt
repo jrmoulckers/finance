@@ -33,6 +33,8 @@ data class AppSettings(
     // ── Data & Sync ──
     val defaultCurrency: String = "USD",
     val cloudSyncEnabled: Boolean = true,
+    val moodTagsEnabled: Boolean = false,
+    val moodTagsSyncEnabled: Boolean = false,
 )
 
 /**

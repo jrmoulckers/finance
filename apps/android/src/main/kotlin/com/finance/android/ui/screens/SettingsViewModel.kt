@@ -107,6 +107,10 @@ data class SettingsUiState(
     val hapticFeedbackEnabled: Boolean = false,
     val hapticFeedbackAvailable: Boolean = false,
 
+    // Experimental
+    val moodTagsEnabled: Boolean = false,
+    val moodTagsSyncEnabled: Boolean = false,
+
     // About
     val appVersion: String = "1.0.0",
 
@@ -144,6 +148,8 @@ private object PrefKeys {
     const val SIMPLIFIED_VIEW = "simplified_view"
     const val HIGH_CONTRAST = "high_contrast"
     const val HAPTIC_FEEDBACK = HAPTIC_FEEDBACK_PREF_KEY
+    const val MOOD_TAGS_ENABLED = "experimental.moodTags.enabled"
+    const val MOOD_TAGS_SYNC_ENABLED = "experimental.moodTags.syncEnabled"
     const val USER_NAME = "user_name"
     const val USER_EMAIL = "user_email"
 }
@@ -221,6 +227,8 @@ class SettingsViewModel(
                 highContrastEnabled = prefs.getBoolean(PrefKeys.HIGH_CONTRAST, false),
                 hapticFeedbackAvailable = hapticsAvailable,
                 hapticFeedbackEnabled = prefs.getBoolean(PrefKeys.HAPTIC_FEEDBACK, hapticsAvailable),
+                moodTagsEnabled = prefs.getBoolean(PrefKeys.MOOD_TAGS_ENABLED, false),
+                moodTagsSyncEnabled = prefs.getBoolean(PrefKeys.MOOD_TAGS_SYNC_ENABLED, false),
             )
         }
     }
@@ -294,6 +302,36 @@ class SettingsViewModel(
         }
         updatePref { putBoolean(PrefKeys.HAPTIC_FEEDBACK, enabled) }
         _uiState.update { it.copy(hapticFeedbackEnabled = enabled) }
+    }
+
+    fun setMoodTagsEnabled(enabled: Boolean) {
+        updatePref {
+            putBoolean(PrefKeys.MOOD_TAGS_ENABLED, enabled)
+            if (!enabled) putBoolean(PrefKeys.MOOD_TAGS_SYNC_ENABLED, false)
+        }
+        _uiState.update {
+            it.copy(
+                moodTagsEnabled = enabled,
+                moodTagsSyncEnabled = if (enabled) it.moodTagsSyncEnabled else false,
+            )
+        }
+    }
+
+    fun setMoodTagsSyncEnabled(enabled: Boolean) {
+        updatePref { putBoolean(PrefKeys.MOOD_TAGS_SYNC_ENABLED, enabled) }
+        _uiState.update { it.copy(moodTagsSyncEnabled = enabled) }
+    }
+
+    fun eraseAllMoodData() {
+        viewModelScope.launch {
+            val rows = withContext(Dispatchers.IO) { transactionRepository.eraseAllMoodTags() }
+            updatePref {
+                putBoolean(PrefKeys.MOOD_TAGS_ENABLED, false)
+                putBoolean(PrefKeys.MOOD_TAGS_SYNC_ENABLED, false)
+            }
+            _uiState.update { it.copy(moodTagsEnabled = false, moodTagsSyncEnabled = false) }
+            _events.emit(SettingsEvent.ShowToast("Mood data erased from $rows transactions"))
+        }
     }
 
     // -- Sign out --------------------------------------------------------------

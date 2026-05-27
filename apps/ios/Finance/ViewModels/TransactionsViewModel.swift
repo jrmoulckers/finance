@@ -217,7 +217,7 @@ final class TransactionsViewModel {
         if t.status.displayName.localizedCaseInsensitiveContains(query) { return true }
         if t.type.displayName.localizedCaseInsensitiveContains(query) { return true }
         // Match tags
-        if t.tags.contains(where: { $0.localizedCaseInsensitiveContains(query) }) { return true }
+        if t.tagNames.contains(where: { $0.localizedCaseInsensitiveContains(query) }) { return true }
         // Match formatted amount (e.g. "12.50")
         let amountStr = String(format: "%.2f", Double(abs(t.amountMinorUnits)) / 100.0)
         if amountStr.contains(query) { return true }

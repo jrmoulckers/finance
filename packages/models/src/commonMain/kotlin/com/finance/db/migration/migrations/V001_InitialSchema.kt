@@ -122,6 +122,7 @@ val V001_InitialSchema = Migration(
             is_recurring INTEGER NOT NULL DEFAULT 0,
             recurring_rule_id TEXT,
             tags TEXT NOT NULL DEFAULT '[]',
+            mood_tag TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             deleted_at TEXT,

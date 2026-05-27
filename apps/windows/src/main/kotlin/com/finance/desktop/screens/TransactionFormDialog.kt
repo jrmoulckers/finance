@@ -73,6 +73,7 @@ data class TransactionFormState(
     val type: TransactionType = TransactionType.EXPENSE,
     val status: TransactionStatus = TransactionStatus.PENDING,
     val tags: List<String> = emptyList(),
+    val moodTag: String? = null,
     val note: String = "",
     val isBnplLiability: Boolean = tags.contains(BNPL_TAG),
     val bnplInstallmentCount: String = tags.firstOrNull { it.startsWith(BNPL_INSTALLMENTS_PREFIX) }
@@ -100,6 +101,7 @@ fun TransactionFormDialog(
     initialState: TransactionFormState = TransactionFormState(),
     isEdit: Boolean = false,
     onDismiss: () -> Unit,
+    moodTagsEnabled: Boolean = false,
     onSave: (TransactionFormState) -> Unit,
 ) {
     var formState by remember { mutableStateOf(initialState) }
@@ -203,6 +205,16 @@ fun TransactionFormDialog(
                 )
 
                 Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
+
+                if (moodTagsEnabled) {
+                    MoodTagPicker(
+                        selectedMoodTag = formState.moodTag,
+                        onMoodTagSelected = { tag ->
+                            formState = formState.copy(moodTag = if (formState.moodTag == tag) null else tag)
+                        },
+                    )
+                    Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
+                }
 
                 // ── Note field ──
                 OutlinedTextField(
@@ -313,6 +325,30 @@ private fun TransactionTypeToggle(
                     if (selectedType == TransactionType.TRANSFER) ", selected" else ""
             },
         )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MoodTagPicker(selectedMoodTag: String?, onMoodTagSelected: (String?) -> Unit) {
+    val tags = listOf("😊", "😐", "😟", "😡", "🤩", "😴")
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(FinanceDesktopTheme.spacing.xs)) {
+        tags.forEach { tag ->
+            FilterChip(
+                selected = selectedMoodTag == tag,
+                onClick = { onMoodTagSelected(tag) },
+                label = { Text(tag) },
+                modifier = Modifier.semantics { contentDescription = "Mood tag $tag" },
+            )
+        }
+        if (selectedMoodTag != null) {
+            FilterChip(
+                selected = false,
+                onClick = { onMoodTagSelected(null) },
+                label = { Text("Remove") },
+                modifier = Modifier.semantics { contentDescription = "Remove mood tag" },
+            )
+        }
     }
 }
 

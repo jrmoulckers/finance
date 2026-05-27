@@ -13,12 +13,13 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RepositorySyncBridgeTest {
 
     data class TestEntity(val id: String, val name: String, val householdId: String = "hh-001",
-        val isSynced: Boolean = false, val syncVersion: Long = 0)
+        val isSynced: Boolean = false, val syncVersion: Long = 0, val moodTag: String? = null)
 
     class FakeSyncableRepository(override val tableName: String = "test_entity") : SyncableRepository<TestEntity> {
         val entities = mutableMapOf<String, TestEntity>()
@@ -41,9 +42,13 @@ class RepositorySyncBridgeTest {
             if (isDelete) entities.remove(id)
             else entities[id] = TestEntity(id, rowData["name"] ?: "", isSynced = true, syncVersion = syncVersion)
         }
-        override suspend fun toRowData(entity: TestEntity): Map<String, String?> = mapOf(
-            "id" to entity.id, "name" to entity.name, "household_id" to entity.householdId,
-            "sync_version" to entity.syncVersion.toString())
+        override suspend fun toRowData(entity: TestEntity): Map<String, String?> = buildMap {
+            put("id", entity.id)
+            put("name", entity.name)
+            put("household_id", entity.householdId)
+            put("sync_version", entity.syncVersion.toString())
+            if (entity.moodTag != null) put("mood_tag", entity.moodTag)
+        }
         override fun observeUnsyncedCount(): Flow<Int> = flowOf(entities.values.count { !it.isSynced })
     }
 
@@ -119,6 +124,23 @@ class RepositorySyncBridgeTest {
             Clock.System.now(), recordId = "e1")))
         assertTrue("e1" in repo.syncedIds)
         assertEquals(5L, repo.entities["e1"]?.syncVersion)
+    }
+
+    @Test fun collectUnsyncedMutations_stripsMoodTagByDefault() = runTest {
+        val repo = FakeSyncableRepository(tableName = "transactions")
+        repo.entities["t1"] = TestEntity("t1", "Txn", isSynced = false, moodTag = "😊")
+        val queue = FakeMutationQueue()
+        RepositorySyncBridge(mapOf("transactions" to repo), queue).collectUnsyncedMutations()
+        assertFalse("mood_tag" in queue.mutations.single().rowData)
+    }
+
+    @Test fun collectUnsyncedMutations_keepsMoodTagWhenSyncEnabled() = runTest {
+        val repo = FakeSyncableRepository(tableName = "transactions")
+        repo.entities["t1"] = TestEntity("t1", "Txn", isSynced = false, moodTag = "😊")
+        val queue = FakeMutationQueue()
+        RepositorySyncBridge(mapOf("transactions" to repo), queue, moodTagSyncEnabled = { true })
+            .collectUnsyncedMutations()
+        assertEquals("😊", queue.mutations.single().rowData["mood_tag"])
     }
 
     @Test fun multipleRepositories_collectionSpansAll() = runTest {

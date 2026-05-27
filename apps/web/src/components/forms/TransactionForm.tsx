@@ -45,6 +45,12 @@ import type {
 import { BNPL_CUSTOM_FIELD_KEYS } from '../../lib/bnpl-liability';
 import type { CategorySuggestion } from '../../lib/categorization';
 import type { MerchantMatchResult } from '../../lib/merchants';
+import {
+  MOOD_TAGS,
+  MOOD_TAGS_CHANGED_EVENT,
+  isMoodTagsEnabled,
+  normalizeMoodTag,
+} from '../../lib/mood-tags';
 import { transactionSchema } from '../../lib/validation';
 import { CounterpartyInput } from '../transactions/CounterpartyInput';
 
@@ -197,6 +203,8 @@ export function TransactionForm({
   const [date, setDate] = useState(todayISO);
   const [notes, setNotes] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [moodTag, setMoodTag] = useState<string | null>(null);
+  const [moodTagsEnabled, setMoodTagsEnabled] = useState(() => isMoodTagsEnabled());
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -238,6 +246,16 @@ export function TransactionForm({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    const refreshMoodPreference = () => setMoodTagsEnabled(isMoodTagsEnabled());
+    window.addEventListener(MOOD_TAGS_CHANGED_EVENT, refreshMoodPreference);
+    window.addEventListener('storage', refreshMoodPreference);
+    return () => {
+      window.removeEventListener(MOOD_TAGS_CHANGED_EVENT, refreshMoodPreference);
+      window.removeEventListener('storage', refreshMoodPreference);
+    };
+  }, []);
+
   // -- initialize on open --------------------------------------------------
   useEffect(() => {
     if (!isOpen) {
@@ -257,6 +275,7 @@ export function TransactionForm({
     setDate(initialData?.date ?? todayISO());
     setNotes(initialData?.note ?? '');
     setTagsInput(initialData ? tagsToString(initialData.tags) : '');
+    setMoodTag(normalizeMoodTag(initialData?.moodTag));
     setCounterpartyName(initialData?.counterpartyName ?? '');
     setMerchantMatch(null);
     setIsBnplLiability(
@@ -414,6 +433,7 @@ export function TransactionForm({
         categoryId: categoryId || null,
         note: notes.trim() || null,
         tags: parseTags(tagsInput),
+        ...(moodTagsEnabled ? { moodTag } : {}),
         merchantCity: merchantCity.trim() || null,
         merchantState: merchantState.trim() || null,
         merchantZip: merchantZip.trim() || null,
@@ -450,6 +470,7 @@ export function TransactionForm({
         setDate(todayISO());
         setNotes('');
         setTagsInput('');
+        setMoodTag(null);
         setCounterpartyName('');
         setMerchantMatch(null);
         setIsBnplLiability(false);
@@ -482,6 +503,8 @@ export function TransactionForm({
       categoryId,
       notes,
       tagsInput,
+      moodTag,
+      moodTagsEnabled,
       merchantCity,
       merchantState,
       merchantZip,
@@ -792,6 +815,38 @@ export function TransactionForm({
                 </div>
               )}
             </div>
+
+            {moodTagsEnabled && (
+              <fieldset className="form-radio-group" aria-label="Mood tag">
+                <legend className="form-radio-group__legend">Mood tag</legend>
+                <div
+                  className="form-radio-group__options"
+                  role="group"
+                  aria-label="Optional mood tag"
+                >
+                  {MOOD_TAGS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className="form-button form-button--secondary"
+                      aria-pressed={moodTag === emoji}
+                      onClick={() => setMoodTag(moodTag === emoji ? null : emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  {moodTag && (
+                    <button
+                      type="button"
+                      className="form-button form-button--secondary"
+                      onClick={() => setMoodTag(null)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </fieldset>
+            )}
 
             {/* Additional Details — expandable section */}
             <fieldset className="form-group" style={{ border: 'none', padding: 0, margin: 0 }}>

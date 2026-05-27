@@ -183,6 +183,18 @@ class TransactionTest {
     }
 
     @Test
+    fun defaultMoodTagIsNull() {
+        val txn = expense()
+        assertNull(txn.moodTag)
+    }
+
+    @Test
+    fun moodTagCanBeSet() {
+        val txn = expense().copy(moodTag = "😊")
+        assertEquals("😊", txn.moodTag)
+    }
+
+    @Test
     fun defaultIsRecurringIsFalse() {
         val txn = expense()
         assertFalse(txn.isRecurring)

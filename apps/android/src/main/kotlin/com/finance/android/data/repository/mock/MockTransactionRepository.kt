@@ -95,6 +95,17 @@ class MockTransactionRepository : TransactionRepository {
         }
     }
 
+    override suspend fun eraseAllMoodTags(): Int {
+        val taggedCount = _transactions.value.count { it.moodTag != null }
+        val now = Clock.System.now()
+        _transactions.update { list ->
+            list.map { transaction ->
+                if (transaction.moodTag != null) transaction.copy(moodTag = null, updatedAt = now, isSynced = false) else transaction
+            }
+        }
+        return taggedCount
+    }
+
     override suspend fun getUnsynced(householdId: SyncId): List<Transaction> =
         _transactions.value.filter { it.householdId == householdId && !it.isSynced }
 

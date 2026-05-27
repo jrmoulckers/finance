@@ -15,6 +15,12 @@ class InMemoryTransactionRepository : TransactionRepository {
     override fun observeByAccount(accountId: SyncId) = store.map { it.filter { t -> t.accountId == accountId && t.deletedAt == null } }
     override fun observeByDateRange(householdId: SyncId, start: LocalDate, end: LocalDate) = store.map { it.filter { t -> t.date >= start && t.date <= end && t.deletedAt == null } }
     override suspend fun insert(entity: Transaction) { store.update { it + entity } }
+    override suspend fun eraseAllMoodTags(): Int {
+        val taggedCount = store.value.count { it.moodTag != null }
+        store.update { current -> current.map { txn -> if (txn.moodTag != null) txn.copy(moodTag = null) else txn } }
+        return taggedCount
+    }
+
     override suspend fun delete(id: SyncId) { val now = Clock.System.now(); store.update { l -> l.map { if (it.id == id) it.copy(deletedAt = now) else it } } }
 }
 

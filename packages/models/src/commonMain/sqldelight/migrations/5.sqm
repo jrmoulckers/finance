@@ -1,0 +1,3 @@
+-- Migration v5 → v6: Add optional mood tag to transactions
+
+ALTER TABLE "transaction" ADD COLUMN mood_tag TEXT;

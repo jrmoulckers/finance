@@ -5,6 +5,8 @@ import React, { useCallback, useState } from 'react';
 import { useAuth } from '../auth/auth-context';
 import { CurrencyDisplay } from '../components/common/CurrencyDisplay';
 import { DataExport } from '../components/DataExport';
+import { useDatabase } from '../db/DatabaseProvider';
+import { eraseAllMoodTags } from '../db/repositories/transactions';
 import { CrashReportingSettings, PrivacySettings } from '../components/gdpr';
 import { SettingInfoWidget } from '../components/settings';
 import { CurrencyRatesSettings } from '../components/settings/CurrencyRatesSettings';
@@ -20,6 +22,12 @@ import {
 import type { CurrencyDisplayMode, NegativeFormat } from '../lib/display-settings';
 import { useMoneyDisplay } from '../lib/display-settings';
 import { initMonitoring } from '../lib/monitoring';
+import {
+  MOOD_TAGS_CHANGED_EVENT,
+  MOOD_TAGS_ENABLED_KEY,
+  MOOD_TAGS_SYNC_ENABLED_KEY,
+  setMoodTagPreference,
+} from '../lib/mood-tags';
 
 const APP_VERSION = '0.1.0';
 const CURRENCY_STORAGE_KEY = 'finance-currency';
@@ -72,6 +80,14 @@ const CURRENCY_DISPLAY_OPTIONS: Array<{ value: CurrencyDisplayMode; label: strin
   { value: 'name', label: 'Name (US Dollar)' },
 ];
 
+function useSettingsDatabase() {
+  try {
+    return useDatabase();
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Settings page for managing local web-app preferences and account actions.
  */
@@ -91,6 +107,12 @@ export const SettingsPage: React.FC = () => {
   const [bnplStackingThreshold, setBnplStackingThreshold] = useState(() =>
     String(loadBnplStackingThresholdCents() / 100),
   );
+  const [moodTagsEnabled, setMoodTagsEnabled] = useState(
+    () => localStorage.getItem(MOOD_TAGS_ENABLED_KEY) === 'true',
+  );
+  const [moodTagsSyncEnabled, setMoodTagsSyncEnabled] = useState(
+    () => localStorage.getItem(MOOD_TAGS_SYNC_ENABLED_KEY) === 'true',
+  );
 
   const {
     isAuthenticated,
@@ -104,6 +126,7 @@ export const SettingsPage: React.FC = () => {
   } = useAuth();
   const { isOffline } = useOfflineStatus();
   const displaySettings = useMoneyDisplay();
+  const db = useSettingsDatabase();
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [passkeyMessage, setPasskeyMessage] = useState<string | null>(null);
 
@@ -142,6 +165,32 @@ export const SettingsPage: React.FC = () => {
       initMonitoring();
     }
   }, []);
+
+  const handleMoodTagsEnabledChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const enabled = event.target.checked;
+    setMoodTagPreference(MOOD_TAGS_ENABLED_KEY, enabled);
+    setMoodTagsEnabled(enabled);
+    if (!enabled) {
+      setMoodTagPreference(MOOD_TAGS_SYNC_ENABLED_KEY, false);
+      setMoodTagsSyncEnabled(false);
+    }
+  }, []);
+
+  const handleMoodTagsSyncChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const enabled = event.target.checked;
+    setMoodTagPreference(MOOD_TAGS_SYNC_ENABLED_KEY, enabled);
+    setMoodTagsSyncEnabled(enabled);
+  }, []);
+
+  const handleEraseMoodData = useCallback(() => {
+    if (!window.confirm('Erase all mood data?')) return;
+    if (db) eraseAllMoodTags(db);
+    setMoodTagPreference(MOOD_TAGS_ENABLED_KEY, false);
+    setMoodTagPreference(MOOD_TAGS_SYNC_ENABLED_KEY, false);
+    setMoodTagsEnabled(false);
+    setMoodTagsSyncEnabled(false);
+    window.dispatchEvent(new Event(MOOD_TAGS_CHANGED_EVENT));
+  }, [db]);
 
   const handleMonitoringToggle = useCallback((enabled: boolean) => {
     localStorage.setItem(MONITORING_CONSENT_STORAGE_KEY, String(enabled));
@@ -318,6 +367,48 @@ export const SettingsPage: React.FC = () => {
               />
             </div>
           </SettingInfoWidget>
+        </div>
+      </section>
+      <section aria-label="Experimental" className="page-section">
+        <div className="settings-group">
+          <h3 className="settings-group__title">Experimental</h3>
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-mood-tags">
+              Allow mood tags on transactions
+            </label>
+            <input
+              type="checkbox"
+              id="settings-mood-tags"
+              checked={moodTagsEnabled}
+              onChange={handleMoodTagsEnabledChange}
+              aria-label="Allow mood tags on transactions"
+              className="settings-item__checkbox"
+            />
+          </div>
+          {moodTagsEnabled && (
+            <div className="settings-item settings-item--static">
+              <label className="settings-item__label" htmlFor="settings-mood-tags-sync">
+                Sync mood tags across my devices
+              </label>
+              <input
+                type="checkbox"
+                id="settings-mood-tags-sync"
+                checked={moodTagsSyncEnabled}
+                onChange={handleMoodTagsSyncChange}
+                aria-label="Sync mood tags across my devices"
+                className="settings-item__checkbox"
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            className="settings-item settings-item--button"
+            onClick={handleEraseMoodData}
+            aria-label="Erase all mood data"
+          >
+            <span className="settings-item__label">Erase all mood data</span>
+            <span className="settings-item__value">⌫</span>
+          </button>
         </div>
       </section>
       <section aria-label="Display" className="page-section">

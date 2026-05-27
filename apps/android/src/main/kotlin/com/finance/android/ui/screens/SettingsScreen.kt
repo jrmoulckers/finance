@@ -118,6 +118,9 @@ fun SettingsScreen(
     onSetSimplifiedView: (Boolean) -> Unit,
     onSetHighContrast: (Boolean) -> Unit,
     onSetHapticFeedback: (Boolean) -> Unit,
+    onSetMoodTagsEnabled: (Boolean) -> Unit,
+    onSetMoodTagsSyncEnabled: (Boolean) -> Unit,
+    onEraseMoodData: () -> Unit,
     onExportClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onExportFormat: (ExportFormat) -> Unit,
@@ -125,6 +128,7 @@ fun SettingsScreen(
     onDeleteTextChanged: (String) -> Unit,
     onConfirmDelete: () -> Unit,
     onDismissDeleteDialog: () -> Unit,
+    showExperimentalSection: Boolean = true,
     onPrivacyPolicyClick: () -> Unit = {},
     onTermsClick: () -> Unit = {},
     onLicensesClick: () -> Unit = {},
@@ -158,6 +162,17 @@ fun SettingsScreen(
             onNotificationsChanged = onSetNotifications,
             onBillRemindersChanged = onSetBillReminders,
         )
+
+        // ── Experimental ────────────────────────────────────────────────
+        if (showExperimentalSection) {
+            ExperimentalSection(
+                moodTagsEnabled = state.moodTagsEnabled,
+                moodTagsSyncEnabled = state.moodTagsSyncEnabled,
+                onMoodTagsEnabledChanged = onSetMoodTagsEnabled,
+                onMoodTagsSyncChanged = onSetMoodTagsSyncEnabled,
+                onEraseMoodData = onEraseMoodData,
+            )
+        }
 
         // ── Security ─────────────────────────────────────────────────────
         SecuritySection(
@@ -472,6 +487,58 @@ private fun CurrencyDropdown(
                 )
             }
         }
+    }
+}
+
+// ── Experimental ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun ExperimentalSection(
+    moodTagsEnabled: Boolean,
+    moodTagsSyncEnabled: Boolean,
+    onMoodTagsEnabledChanged: (Boolean) -> Unit,
+    onMoodTagsSyncChanged: (Boolean) -> Unit,
+    onEraseMoodData: () -> Unit,
+) {
+    var showEraseDialog by remember { mutableStateOf(false) }
+    SectionHeader("Experimental")
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            SettingsToggleRow(
+                label = "Allow mood tags on transactions",
+                description = "Add an optional emoji to saved transactions",
+                checked = moodTagsEnabled,
+                onCheckedChange = onMoodTagsEnabledChanged,
+            )
+            if (moodTagsEnabled) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                SettingsToggleRow(
+                    label = "Sync mood tags across my devices",
+                    description = "Keep emoji tags local unless this is on",
+                    checked = moodTagsSyncEnabled,
+                    onCheckedChange = onMoodTagsSyncChanged,
+                )
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            OutlinedButton(
+                onClick = { showEraseDialog = true },
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Erase all mood data" },
+            ) { Text("Erase all mood data") }
+        }
+    }
+    if (showEraseDialog) {
+        AlertDialog(
+            onDismissRequest = { showEraseDialog = false },
+            title = { Text("Erase all mood data?") },
+            text = { Text("This removes mood tags from your transactions on this device.") },
+            confirmButton = {
+                Button(onClick = { showEraseDialog = false; onEraseMoodData() }) { Text("Erase mood data") }
+            },
+            dismissButton = { TextButton(onClick = { showEraseDialog = false }) { Text("Cancel") } },
+        )
     }
 }
 
@@ -1035,6 +1102,9 @@ fun SettingsScreen(
         onSetSimplifiedView = viewModel::setSimplifiedViewEnabled,
         onSetHighContrast = themePreferenceManager::setHighContrastEnabled,
         onSetHapticFeedback = viewModel::setHapticFeedbackEnabled,
+        onSetMoodTagsEnabled = viewModel::setMoodTagsEnabled,
+        onSetMoodTagsSyncEnabled = viewModel::setMoodTagsSyncEnabled,
+        onEraseMoodData = viewModel::eraseAllMoodData,
         onExportClick = viewModel::showExportDialog,
         onDeleteClick = viewModel::showDeleteDialog,
         onExportFormat = viewModel::exportData,
@@ -1113,6 +1183,9 @@ private fun SettingsScreenPreviewLight() {
                 onSetSimplifiedView = {},
                 onSetHighContrast = {},
                 onSetHapticFeedback = {},
+                onSetMoodTagsEnabled = {},
+                onSetMoodTagsSyncEnabled = {},
+                onEraseMoodData = {},
                 onExportClick = {},
                 onDeleteClick = {},
                 onExportFormat = {},
@@ -1151,6 +1224,9 @@ private fun SettingsScreenPreviewDark() {
                 onSetSimplifiedView = {},
                 onSetHighContrast = {},
                 onSetHapticFeedback = {},
+                onSetMoodTagsEnabled = {},
+                onSetMoodTagsSyncEnabled = {},
+                onEraseMoodData = {},
                 onExportClick = {},
                 onDeleteClick = {},
                 onExportFormat = {},

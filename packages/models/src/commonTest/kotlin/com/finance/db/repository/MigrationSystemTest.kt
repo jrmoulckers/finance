@@ -6,6 +6,7 @@ import com.finance.db.migration.migrations.V001_InitialSchema
 import com.finance.db.migration.migrations.V002_OwnerIdMigration
 import com.finance.db.migration.migrations.V003_PerformanceIndexes
 import com.finance.db.migration.migrations.V005_Liabilities
+import com.finance.db.migration.migrations.V006_MoodTagMigration
 import com.finance.db.migration.migrations.MigrationInitializer
 import com.finance.db.migration.MigrationRegistry
 import kotlin.test.Test
@@ -54,10 +55,19 @@ class MigrationSystemTest {
         assertTrue(sql.contains("idx_liability_installment_due_date"))
     }
 
+    @Test fun v006_hasCorrectVersion() = assertEquals(6, V006_MoodTagMigration.version)
+
+    @Test fun v006_addsMoodTagColumn() {
+        val sql = V006_MoodTagMigration.up.joinToString("\n")
+        assertTrue(sql.contains("mood_tag"))
+        assertTrue(sql.contains("ALTER TABLE ") && sql.contains("mood_tag TEXT"))
+    }
+
     @Test fun migrationsAreInOrder() {
         assertTrue(V001_InitialSchema.version < V002_OwnerIdMigration.version)
         assertTrue(V002_OwnerIdMigration.version < V003_PerformanceIndexes.version)
         assertTrue(V003_PerformanceIndexes.version < V005_Liabilities.version)
+        assertTrue(V005_Liabilities.version < V006_MoodTagMigration.version)
     }
 
     @Test fun migrationInitializer_canBeCalledTwice() {
@@ -72,7 +82,7 @@ class MigrationSystemTest {
 
     @Test fun migrationRegistry_latestVersion() {
         MigrationInitializer.initialize()
-        assertTrue(MigrationRegistry.latestVersion() >= 5)
+        assertTrue(MigrationRegistry.latestVersion() >= 6)
     }
 
     @Test fun migrationRegistry_getByVersion() {

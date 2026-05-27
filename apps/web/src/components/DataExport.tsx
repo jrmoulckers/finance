@@ -51,10 +51,17 @@ const STRINGS = {
   error: 'Error',
 };
 
-function gatherExportData(db: SqliteDb): ExportData {
+/** Gather all exportable financial data from the local SQLite-WASM database. */
+function gatherExportData(db: SqliteDb, includeMoodTags: boolean): ExportData {
+  const transactions = getAllTransactions(db).map((transaction) => {
+    if (includeMoodTags) return transaction;
+    const { moodTag: _moodTag, ...exportableTransaction } = transaction;
+    return exportableTransaction as typeof transaction;
+  });
+
   return {
     accounts: getAllAccounts(db),
-    transactions: getAllTransactions(db),
+    transactions,
     budgets: getAllBudgets(db),
     goals: getAllGoals(db),
     categories: getAllCategories(db),
@@ -194,7 +201,7 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
       try {
         if (!db)
           throw new Error('Database is still initializing. Please wait a moment and try again.');
-        const data = gatherExportData(db);
+        const data = gatherExportData(db, includeMoodTags);
         if (!hasExportData(data)) throw new Error('No data available to export.');
 
         const result = buildDataAccessPackage(

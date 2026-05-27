@@ -57,6 +57,9 @@ class SettingsSnapshotTest {
                     onSetSimplifiedView = {},
                     onSetHighContrast = {},
                     onSetHapticFeedback = {},
+                    onSetMoodTagsEnabled = {},
+                    onSetMoodTagsSyncEnabled = {},
+                    onEraseMoodData = {},
                     onExportClick = {},
                     onDeleteClick = {},
                     onExportFormat = {},
@@ -64,6 +67,7 @@ class SettingsSnapshotTest {
                     onDeleteTextChanged = {},
                     onConfirmDelete = {},
                     onDismissDeleteDialog = {},
+                    showExperimentalSection = false,
                 )
             }
         }

@@ -26,6 +26,8 @@ private enum SettingsKeys {
     static let lastSyncDate = "finance_last_sync_date"
     static let pendingChangesCount = "finance_pending_changes_count"
     static let bnplStackingThreshold = "finance_bnpl_stacking_threshold"
+    static let moodTagsEnabled = "experimental.moodTags.enabled"
+    static let moodTagsSyncEnabled = "experimental.moodTags.syncEnabled"
 }
 
 enum DeletionConfirmationStep: Sendable {
@@ -72,6 +74,17 @@ final class SettingsViewModel {
         didSet { defaults.set(bnplStackingThreshold, forKey: SettingsKeys.bnplStackingThreshold) }
     }
 
+    var moodTagsEnabled: Bool {
+        didSet {
+            defaults.set(moodTagsEnabled, forKey: SettingsKeys.moodTagsEnabled)
+            if !moodTagsEnabled { moodTagsSyncEnabled = false }
+        }
+    }
+
+    var moodTagsSyncEnabled: Bool {
+        didSet { defaults.set(moodTagsSyncEnabled, forKey: SettingsKeys.moodTagsSyncEnabled) }
+    }
+
     // MARK: - Biometric State
 
     /// Whether the biometric app-lock is currently enabled.
@@ -111,6 +124,7 @@ final class SettingsViewModel {
     // MARK: - Delete Confirmation
 
     var showingDeleteConfirmation = false
+    var showingMoodEraseConfirmation = false
     var deletionConfirmationStep: DeletionConfirmationStep = .none
     var isDeletingData = false
     var currentDeletionStep: DeletionStep?
@@ -221,6 +235,12 @@ final class SettingsViewModel {
         self.hapticFeedbackAvailable = HapticFeedbackPreferences.deviceSupportsHaptics
         self.hapticFeedbackEnabled = HapticFeedbackPreferences.isEnabled(defaults: defaults)
         self.bnplStackingThreshold = defaults.string(forKey: SettingsKeys.bnplStackingThreshold) ?? "500"
+        self.moodTagsEnabled = Self.bool(
+            forKey: SettingsKeys.moodTagsEnabled, default: false, in: defaults
+        )
+        self.moodTagsSyncEnabled = Self.bool(
+            forKey: SettingsKeys.moodTagsSyncEnabled, default: false, in: defaults
+        )
         self.lastSyncDate = defaults.object(forKey: SettingsKeys.lastSyncDate) as? Date
         self.pendingChangesCount = defaults.integer(forKey: SettingsKeys.pendingChangesCount)
 
@@ -390,6 +410,16 @@ final class SettingsViewModel {
         }
     }
 
+    func eraseAllMoodData() async {
+        do {
+            try await transactionRepository.eraseAllMoodTags()
+            moodTagsEnabled = false
+            moodTagsSyncEnabled = false
+        } catch {
+            errorMessage = String(localized: "Failed to erase mood data. Please try again.")
+        }
+    }
+
     func cancelDeletion() {
         deletionConfirmationStep = .none; deleteConfirmationText = ""
         isDeletingData = false; currentDeletionStep = nil; deletionError = nil
@@ -474,6 +504,7 @@ final class SettingsViewModel {
                 SettingsKeys.budgetAlerts, SettingsKeys.goalMilestones,
                 HapticFeedbackPreferences.key,
                 SettingsKeys.lastSyncDate, SettingsKeys.pendingChangesCount,
+                SettingsKeys.moodTagsEnabled, SettingsKeys.moodTagsSyncEnabled,
             ] {
                 defaults.removeObject(forKey: key)
             }

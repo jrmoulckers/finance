@@ -72,7 +72,7 @@ class SqlDelightTransactionRepository(
             entity.payee, entity.note, entity.date.toString(),
             entity.transferAccountId?.value, entity.transferTransactionId?.value,
             if (entity.isRecurring) 1L else 0L, entity.recurringRuleId?.value,
-            EntityMappers.serializeTags(entity.tags),
+            EntityMappers.serializeTags(entity.tags), entity.moodTag,
             entity.createdAt.toString(), entity.updatedAt.toString(),
             entity.syncVersion, 0L,
         )
@@ -86,7 +86,7 @@ class SqlDelightTransactionRepository(
             entity.payee, entity.note, entity.date.toString(),
             entity.transferAccountId?.value, entity.transferTransactionId?.value,
             if (entity.isRecurring) 1L else 0L, entity.recurringRuleId?.value,
-            EntityMappers.serializeTags(entity.tags),
+            EntityMappers.serializeTags(entity.tags), entity.moodTag,
             now, entity.syncVersion + 1, 0L, entity.id.value,
         )
     }
@@ -110,13 +110,13 @@ class SqlDelightTransactionRepository(
         categoryId: String?, type: String, status: String, amount: Long,
         currency: String, payee: String?, note: String?, date: String,
         transferAccountId: String?, transferTransactionId: String?,
-        isRecurring: Long, recurringRuleId: String?, tags: String,
+        isRecurring: Long, recurringRuleId: String?, tags: String, moodTag: String?,
         createdAt: String, updatedAt: String, deletedAt: String?,
         syncVersion: Long, isSynced: Long,
     ): Transaction = EntityMappers.mapTransaction(
         id, householdId, ownerId, accountId, categoryId, type, status,
         amount, currency, payee, note, date, transferAccountId,
         transferTransactionId, isRecurring, recurringRuleId, tags,
-        createdAt, updatedAt, deletedAt, syncVersion, isSynced,
+        createdAt, updatedAt, deletedAt, syncVersion, isSynced, moodTag,
     )
 }

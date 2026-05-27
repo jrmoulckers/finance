@@ -161,6 +161,7 @@ CREATE TABLE transactions (
     recurring_rule          TEXT,
     transfer_account_id     UUID        REFERENCES accounts(id),
     status                  TEXT        NOT NULL DEFAULT 'CLEARED',
+    mood_tag                TEXT,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at              TIMESTAMPTZ,

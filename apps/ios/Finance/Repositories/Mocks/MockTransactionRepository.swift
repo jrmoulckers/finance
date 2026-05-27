@@ -106,4 +106,8 @@ struct MockTransactionRepository: TransactionRepository {
     func deleteAllTransactions() async throws {
         // No-op for mock — mock data is stateless and returns hardcoded values.
     }
+
+    func eraseAllMoodTags() async throws {
+        // No-op for mock — mock data is stateless and returns hardcoded values.
+    }
 }

@@ -35,6 +35,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -179,6 +181,45 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                     checked = state.goalNotificationsEnabled,
                     onCheckedChange = viewModel::setGoalNotifications,
                 )
+            }
+
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
+
+            // ── Experimental ────────────────────────────────────────────
+            SettingsSection("Experimental") {
+                var showEraseDialog by remember { mutableStateOf(false) }
+                ToggleSetting(
+                    icon = Icons.Filled.Info,
+                    label = "Allow mood tags on transactions",
+                    description = "Add an optional emoji to saved transactions",
+                    checked = state.moodTagsEnabled,
+                    onCheckedChange = viewModel::setMoodTagsEnabled,
+                )
+                if (state.moodTagsEnabled) {
+                    ToggleSetting(
+                        icon = Icons.Filled.Sync,
+                        label = "Sync mood tags across my devices",
+                        description = "Keep emoji tags local unless this is on",
+                        checked = state.moodTagsSyncEnabled,
+                        onCheckedChange = viewModel::setMoodTagsSyncEnabled,
+                    )
+                }
+                TextButton(onClick = { showEraseDialog = true }) {
+                    Text("Erase all mood data")
+                }
+                if (showEraseDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showEraseDialog = false },
+                        title = { Text("Erase all mood data?") },
+                        text = { Text("This removes mood tags from your transactions on this device.") },
+                        confirmButton = {
+                            Button(onClick = { showEraseDialog = false; viewModel.eraseAllMoodData() }) {
+                                Text("Erase mood data")
+                            }
+                        },
+                        dismissButton = { TextButton(onClick = { showEraseDialog = false }) { Text("Cancel") } },
+                    )
+                }
             }
 
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))

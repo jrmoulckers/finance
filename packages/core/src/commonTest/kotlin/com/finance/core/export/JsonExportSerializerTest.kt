@@ -196,6 +196,27 @@ class JsonExportSerializerTest {
     }
 
     @Test
+    fun serialize_excludesMoodTagByDefault() {
+        val data = sampleData().copy(
+            transactions = listOf(TestFixtures.createExpense().copy(moodTag = "😊")),
+        )
+        val root = serializeAndParse(data = data)
+        val txn = root["data"]!!.jsonObject["transactions"]!!.jsonArray[0].jsonObject
+        assertFalse("mood_tag" in txn)
+    }
+
+    @Test
+    fun serialize_includesMoodTagWhenExportOptsIn() {
+        val data = sampleData().copy(
+            transactions = listOf(TestFixtures.createExpense().copy(moodTag = "😊")),
+            includeMoodTags = true,
+        )
+        val root = serializeAndParse(data = data)
+        val txn = root["data"]!!.jsonObject["transactions"]!!.jsonArray[0].jsonObject
+        assertEquals("😊", txn["mood_tag"]?.jsonPrimitive?.content)
+    }
+
+    @Test
     fun serialize_categoriesHaveCorrectFields() {
         val root = serializeAndParse()
         val category = root["data"]!!.jsonObject["categories"]!!.jsonArray[0].jsonObject

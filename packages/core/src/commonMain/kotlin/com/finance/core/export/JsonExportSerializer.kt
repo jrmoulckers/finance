@@ -8,6 +8,8 @@ import com.finance.models.types.Currency
 import com.finance.models.types.SyncId
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -45,6 +47,7 @@ import kotlinx.serialization.json.Json
  * @see ExportSerializer
  * @see DataExportService
  */
+@OptIn(ExperimentalSerializationApi::class)
 class JsonExportSerializer : ExportSerializer {
 
     override val format: ExportFormat = ExportFormat.JSON
@@ -137,7 +140,7 @@ class JsonExportSerializer : ExportSerializer {
         companion object {
             fun from(data: ExportData): ExportDataDto = ExportDataDto(
                 accounts = data.accounts.map { AccountDto.from(it) },
-                transactions = data.transactions.map { TransactionDto.from(it) },
+                transactions = data.transactions.map { TransactionDto.from(it, data.includeMoodTags) },
                 categories = data.categories.map { CategoryDto.from(it) },
                 budgets = data.budgets.map { BudgetDto.from(it) },
                 goals = data.goals.map { GoalDto.from(it) },
@@ -224,12 +227,14 @@ class JsonExportSerializer : ExportSerializer {
         @SerialName("is_recurring") val isRecurring: Boolean,
         @SerialName("recurring_rule_id") val recurringRuleId: String?,
         val tags: List<String>,
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        @SerialName("mood_tag") val moodTag: String? = null,
         @SerialName("created_at") val createdAt: String,
         @SerialName("updated_at") val updatedAt: String,
         @SerialName("deleted_at") val deletedAt: String?,
     ) {
         companion object {
-            fun from(transaction: Transaction): TransactionDto = TransactionDto(
+            fun from(transaction: Transaction, includeMoodTag: Boolean): TransactionDto = TransactionDto(
                 id = transaction.id.value,
                 householdId = transaction.householdId.value,
                 ownerId = transaction.ownerId.value,
@@ -246,6 +251,7 @@ class JsonExportSerializer : ExportSerializer {
                 isRecurring = transaction.isRecurring,
                 recurringRuleId = transaction.recurringRuleId?.value,
                 tags = transaction.tags,
+                moodTag = transaction.moodTag.takeIf { includeMoodTag },
                 createdAt = transaction.createdAt.toString(),
                 updatedAt = transaction.updatedAt.toString(),
                 deletedAt = transaction.deletedAt?.toString(),

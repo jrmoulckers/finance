@@ -117,4 +117,15 @@ class InMemoryTransactionRepository : TransactionRepository {
         store.value.active()
             .filter { it.householdId == householdId && it.date in start..end }
             .sortedByDescending { it.date }
+
+    override suspend fun eraseAllMoodTags(): Int {
+        val taggedCount = store.value.count { it.moodTag != null }
+        val now = Clock.System.now()
+        store.update { current ->
+            current.map { txn ->
+                if (txn.moodTag != null) txn.copy(moodTag = null, updatedAt = now, isSynced = false) else txn
+            }
+        }
+        return taggedCount
+    }
 }

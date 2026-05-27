@@ -35,6 +35,8 @@ class CsvExportSerializer : ExportSerializer {
 
     override val format: ExportFormat = ExportFormat.CSV
 
+    private var includeMoodTagsForCurrentExport: Boolean = false
+
     override fun serialize(data: ExportData, metadata: ExportMetadata): String {
         val sb = StringBuilder()
 
@@ -43,7 +45,9 @@ class CsvExportSerializer : ExportSerializer {
 
         // ── Entity sections ──────────────────────────────────────────
         appendAccountsSection(sb, data.accounts)
+        includeMoodTagsForCurrentExport = data.includeMoodTags
         appendTransactionsSection(sb, data.transactions)
+        includeMoodTagsForCurrentExport = false
         appendCategoriesSection(sb, data.categories)
         appendBudgetsSection(sb, data.budgets)
         appendGoalsSection(sb, data.goals)
@@ -101,40 +105,50 @@ class CsvExportSerializer : ExportSerializer {
     }
 
     private fun appendTransactionsSection(sb: StringBuilder, transactions: List<Transaction>) {
+        val includeMoodTags = transactions.any { it.moodTag != null } && includeMoodTagsForCurrentExport
+
         sb.appendLine("# TRANSACTIONS")
-        val headers = listOf(
-            "id", "household_id", "owner_id", "account_id", "category_id",
-            "type", "status", "amount", "currency",
-            "payee", "note", "date",
-            "transfer_account_id", "transfer_transaction_id",
-            "is_recurring", "recurring_rule_id", "tags",
-            "created_at", "updated_at", "deleted_at",
-        )
+        val headers = buildList {
+            addAll(
+                listOf(
+                    "id", "household_id", "owner_id", "account_id", "category_id",
+                    "type", "status", "amount", "currency",
+                    "payee", "note", "date",
+                    "transfer_account_id", "transfer_transaction_id",
+                    "is_recurring", "recurring_rule_id", "tags",
+                ),
+            )
+            if (includeMoodTags) add("mood_tag")
+            addAll(listOf("created_at", "updated_at", "deleted_at"))
+        }
         @Suppress("SpreadOperator")
         sb.appendRow(*headers.toTypedArray())
         for (txn in transactions) {
-            sb.appendRow(
-                txn.id.value,
-                txn.householdId.value,
-                txn.ownerId.value,
-                txn.accountId.value,
-                txn.categoryId?.value ?: "",
-                txn.type.name,
-                txn.status.name,
-                formatCentsDisplay(txn.amount, txn.currency),
-                txn.currency.code,
-                txn.payee ?: "",
-                txn.note ?: "",
-                txn.date.toString(),
-                txn.transferAccountId?.value ?: "",
-                txn.transferTransactionId?.value ?: "",
-                txn.isRecurring.toString(),
-                txn.recurringRuleId?.value ?: "",
-                txn.tags.joinToString(";"),
-                txn.createdAt.toString(),
-                txn.updatedAt.toString(),
-                txn.deletedAt?.toString() ?: "",
-            )
+            val row = buildList {
+                add(txn.id.value)
+                add(txn.householdId.value)
+                add(txn.ownerId.value)
+                add(txn.accountId.value)
+                add(txn.categoryId?.value ?: "")
+                add(txn.type.name)
+                add(txn.status.name)
+                add(formatCentsDisplay(txn.amount, txn.currency))
+                add(txn.currency.code)
+                add(txn.payee ?: "")
+                add(txn.note ?: "")
+                add(txn.date.toString())
+                add(txn.transferAccountId?.value ?: "")
+                add(txn.transferTransactionId?.value ?: "")
+                add(txn.isRecurring.toString())
+                add(txn.recurringRuleId?.value ?: "")
+                add(txn.tags.joinToString(";"))
+                if (includeMoodTags) add(txn.moodTag ?: "")
+                add(txn.createdAt.toString())
+                add(txn.updatedAt.toString())
+                add(txn.deletedAt?.toString() ?: "")
+            }
+            @Suppress("SpreadOperator")
+            sb.appendRow(*row.toTypedArray())
         }
         sb.appendCrlf()
     }

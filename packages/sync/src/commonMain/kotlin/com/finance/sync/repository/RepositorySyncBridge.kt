@@ -2,6 +2,7 @@
 
 package com.finance.sync.repository
 
+import com.finance.core.mood.MoodTagPrivacyFilters
 import com.finance.sync.ChangeOperation
 import com.finance.sync.MutationOperation
 import com.finance.sync.SyncChange
@@ -24,6 +25,7 @@ class RepositorySyncBridge(
     private val repositories: Map<String, SyncableRepository<*>>,
     private val mutationQueue: MutationQueue,
     private val clock: Clock = Clock.System,
+    private val moodTagSyncEnabled: () -> Boolean = { false },
 ) {
 
     @Suppress("UNCHECKED_CAST")
@@ -32,7 +34,7 @@ class RepositorySyncBridge(
         for ((tableName, repo) in repositories) {
             val unsynced = (repo as SyncableRepository<Any>).getUnsynced()
             for (entity in unsynced) {
-                val rowData = repo.toRowData(entity)
+                val rowData = filterOutboundRow(tableName, repo.toRowData(entity))
                 val id = rowData["id"] ?: continue
                 val mutation = SyncMutation(
                     id = "${tableName}_${id}_${clock.now().toEpochMilliseconds()}",
@@ -49,6 +51,13 @@ class RepositorySyncBridge(
         }
         return count
     }
+
+    private fun filterOutboundRow(tableName: String, rowData: Map<String, String?>): Map<String, String?> =
+        if (tableName == "transactions" || tableName == "transaction") {
+            MoodTagPrivacyFilters.filterForSync(rowData, moodTagSyncEnabled())
+        } else {
+            rowData
+        }
 
     suspend fun applyIncomingChanges(changes: List<SyncChange>): Int {
         var applied = 0

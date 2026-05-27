@@ -42,6 +42,7 @@ const TRANSACTION_COLUMNS = [
   'is_recurring',
   'recurring_rule_id',
   'tags',
+  'mood_tag',
   'merchant_address',
   'merchant_city',
   'merchant_state',
@@ -86,6 +87,7 @@ export interface CreateTransactionInput {
   isRecurring?: boolean;
   recurringRuleId?: SyncId | null;
   tags?: readonly string[];
+  moodTag?: string | null;
   merchantAddress?: string | null;
   merchantCity?: string | null;
   merchantState?: string | null;
@@ -116,6 +118,7 @@ export interface UpdateTransactionInput {
   isRecurring?: boolean;
   recurringRuleId?: SyncId | null;
   tags?: readonly string[];
+  moodTag?: string | null;
   merchantAddress?: string | null;
   merchantCity?: string | null;
   merchantState?: string | null;
@@ -147,6 +150,7 @@ function mapTransaction(row: Row): Transaction {
     isRecurring: toBoolean(row.is_recurring),
     recurringRuleId: optionalString(row.recurring_rule_id),
     tags: parseTags(row.tags),
+    moodTag: optionalString(row.mood_tag),
     merchantAddress: optionalString(row.merchant_address),
     merchantCity: optionalString(row.merchant_city),
     merchantState: optionalString(row.merchant_state),
@@ -253,6 +257,7 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
       is_recurring,
       recurring_rule_id,
       tags,
+      mood_tag,
       merchant_address,
       merchant_city,
       merchant_state,
@@ -270,7 +275,7 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
       sync_version,
       is_synced
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
       NULL,
@@ -294,6 +299,7 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
       input.isRecurring ? 1 : 0,
       input.recurringRuleId ?? null,
       serializeTags(input.tags ?? []),
+      input.moodTag ?? null,
       input.merchantAddress ?? null,
       input.merchantCity ?? null,
       input.merchantState ?? null,
@@ -353,6 +359,7 @@ export function updateTransaction(
         ? updates.recurringRuleId
         : existingTransaction.recurringRuleId,
     tags: updates.tags ?? existingTransaction.tags,
+    moodTag: updates.moodTag !== undefined ? updates.moodTag : existingTransaction.moodTag,
     merchantAddress:
       updates.merchantAddress !== undefined
         ? updates.merchantAddress
@@ -409,6 +416,7 @@ export function updateTransaction(
             is_recurring = ?,
             recurring_rule_id = ?,
             tags = ?,
+            mood_tag = ?,
             merchant_address = ?,
             merchant_city = ?,
             merchant_state = ?,
@@ -441,6 +449,7 @@ export function updateTransaction(
       mergedTransaction.isRecurring ? 1 : 0,
       mergedTransaction.recurringRuleId,
       serializeTags(mergedTransaction.tags),
+      mergedTransaction.moodTag,
       mergedTransaction.merchantAddress,
       mergedTransaction.merchantCity,
       mergedTransaction.merchantState,
@@ -479,6 +488,14 @@ export function deleteTransaction(db: SqliteDb, transactionId: SyncId): boolean 
   );
 
   return true;
+}
+
+/** Erase all mood tags from local transactions. */
+export function eraseAllMoodTags(db: SqliteDb): void {
+  execute(
+    db,
+    `UPDATE "transaction" SET mood_tag = NULL, updated_at = ${SQLITE_NOW_EXPRESSION}, sync_version = 1, is_synced = 0 WHERE mood_tag IS NOT NULL`,
+  );
 }
 
 /** Return transactions for a single account with optional filters applied. */

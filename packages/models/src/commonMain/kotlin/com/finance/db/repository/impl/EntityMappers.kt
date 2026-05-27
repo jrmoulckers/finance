@@ -41,7 +41,7 @@ object EntityMappers {
         transferAccountId: String?, transferTransactionId: String?,
         isRecurring: Long, recurringRuleId: String?, tags: String,
         createdAt: String, updatedAt: String, deletedAt: String?,
-        syncVersion: Long, isSynced: Long,
+        syncVersion: Long, isSynced: Long, moodTag: String? = null,
     ): Transaction = Transaction(
         id = SyncId(id), householdId = SyncId(householdId), ownerId = SyncId(ownerId),
         accountId = SyncId(accountId), categoryId = categoryId?.let { SyncId(it) },
@@ -51,7 +51,8 @@ object EntityMappers {
         transferAccountId = transferAccountId?.let { SyncId(it) },
         transferTransactionId = transferTransactionId?.let { SyncId(it) },
         isRecurring = isRecurring != 0L, recurringRuleId = recurringRuleId?.let { SyncId(it) },
-        tags = parseTags(tags), createdAt = Instant.parse(createdAt),
+        tags = parseTags(tags), moodTag = moodTag,
+        createdAt = Instant.parse(createdAt),
         updatedAt = Instant.parse(updatedAt), deletedAt = deletedAt?.let { Instant.parse(it) },
         syncVersion = syncVersion, isSynced = isSynced != 0L,
     )

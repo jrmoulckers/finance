@@ -162,6 +162,13 @@ fun TransactionCreateScreen(
                     CreateStep.CONFIRM -> ConfirmStep(state)
                 }
             }
+            if (state.currentStep == CreateStep.CONFIRM && state.moodTagsEnabled) {
+                MoodTagPicker(
+                    selectedMoodTag = state.selectedMoodTag,
+                    onMoodTagSelected = viewModel::selectMoodTag,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
             ActionBar(state.currentStep, state.isSaving, state.isEditing, viewModel::nextStep, viewModel::save, Modifier.padding(16.dp))
         }
     }
@@ -332,6 +339,7 @@ private fun ConfirmStep(state: TransactionCreateUiState) {
                     CRow("Category", state.selectedCategoryName); HorizontalDivider()
                     CRow("Account", state.selectedAccountName)
                     if (state.isBnplLiability) { HorizontalDivider(); CRow("BNPL installments", state.bnplInstallmentCountText) }
+                    if (state.selectedMoodTag != null) { HorizontalDivider(); CRow("Mood tag", state.selectedMoodTag) }
                     if (state.transactionType == TransactionType.TRANSFER) { HorizontalDivider(); CRow("To Account", state.selectedTransferAccountName) }
                     HorizontalDivider(); CRow("Date", state.date.toString())
                     if (state.note.isNotBlank()) { HorizontalDivider(); CRow("Note", state.note) }
@@ -346,6 +354,30 @@ private fun CRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth().semantics { contentDescription = "$label: $value" }, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MoodTagPicker(selectedMoodTag: String?, onMoodTagSelected: (String?) -> Unit, modifier: Modifier = Modifier) {
+    val tags = listOf("😊", "😐", "😟", "😡", "🤩", "😴")
+    FlowRow(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        tags.forEach { tag ->
+            FilterChip(
+                selected = selectedMoodTag == tag,
+                onClick = { onMoodTagSelected(tag) },
+                label = { Text(tag) },
+                modifier = Modifier.semantics { contentDescription = "Mood tag $tag" },
+            )
+        }
+        if (selectedMoodTag != null) {
+            FilterChip(
+                selected = false,
+                onClick = { onMoodTagSelected(null) },
+                label = { Text("Remove") },
+                modifier = Modifier.semantics { contentDescription = "Remove mood tag" },
+            )
+        }
     }
 }
 

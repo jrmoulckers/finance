@@ -119,6 +119,7 @@ export interface Transaction extends SyncMetadata {
   readonly isRecurring: boolean;
   readonly recurringRuleId: SyncId | null;
   readonly tags: readonly string[];
+  readonly moodTag?: string | null;
 
   // Merchant location (all optional)
   readonly merchantAddress: string | null;

@@ -14,4 +14,5 @@ interface TransactionRepository {
     fun observeByDateRange(householdId: SyncId, start: LocalDate, end: LocalDate): Flow<List<Transaction>>
     suspend fun insert(entity: Transaction)
     suspend fun delete(id: SyncId)
+    suspend fun eraseAllMoodTags(): Int
 }

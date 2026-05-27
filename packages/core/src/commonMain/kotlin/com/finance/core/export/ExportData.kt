@@ -37,6 +37,8 @@ data class ExportData(
     val budgets: List<Budget>,
     /** Active (non-deleted) goals to include in the export. */
     val goals: List<Goal>,
+    /** Include optional mood tags in transaction export output. Defaults to private. */
+    val includeMoodTags: Boolean = false,
 ) {
     /** `true` when every entity list is empty — nothing to export. */
     val isEmpty: Boolean

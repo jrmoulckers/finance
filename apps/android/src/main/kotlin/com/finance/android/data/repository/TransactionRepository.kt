@@ -57,4 +57,7 @@ interface TransactionRepository : BaseRepository<Transaction> {
         start: LocalDate,
         end: LocalDate,
     ): List<Transaction>
+
+    /** Clears all optional mood tags from local transactions. */
+    suspend fun eraseAllMoodTags(): Int = 0
 }

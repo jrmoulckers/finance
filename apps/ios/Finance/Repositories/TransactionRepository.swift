@@ -38,4 +38,11 @@ protocol TransactionRepository: Sendable {
 
     /// Permanently deletes every transaction. Used for GDPR "Delete Everything".
     func deleteAllTransactions() async throws
+
+    /// Clears mood tags from all transactions on this device.
+    func eraseAllMoodTags() async throws
+}
+
+extension TransactionRepository {
+    func eraseAllMoodTags() async throws {}
 }

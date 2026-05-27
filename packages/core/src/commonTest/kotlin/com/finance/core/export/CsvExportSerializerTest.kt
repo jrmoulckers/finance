@@ -189,6 +189,29 @@ class CsvExportSerializerTest {
     }
 
     @Test
+    fun serialize_excludesMoodTagByDefault() {
+        TestFixtures.reset()
+        val data = sampleData().copy(
+            transactions = listOf(TestFixtures.createExpense().copy(moodTag = "😊")),
+        )
+        val content = serializer.serialize(data, sampleMetadata())
+        assertFalse(content.lines().first { it.contains("recurring_rule_id") }.contains("mood_tag"))
+        assertFalse(content.contains("😊"))
+    }
+
+    @Test
+    fun serialize_includesMoodTagWhenExportOptsIn() {
+        TestFixtures.reset()
+        val data = sampleData().copy(
+            transactions = listOf(TestFixtures.createExpense().copy(moodTag = "😊")),
+            includeMoodTags = true,
+        )
+        val content = serializer.serialize(data, sampleMetadata())
+        assertTrue(content.lines().first { it.contains("recurring_rule_id") }.contains("mood_tag"))
+        assertTrue(content.contains("😊"))
+    }
+
+    @Test
     fun serialize_jpyCurrency_noDecimalPlaces() {
         TestFixtures.reset()
         val data = ExportData(

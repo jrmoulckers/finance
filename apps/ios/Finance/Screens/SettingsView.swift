@@ -30,6 +30,7 @@ struct SettingsView: View {
                 notificationsSection
                 accessibilitySection
                 securitySection
+                experimentalSection
                 syncSection
                 dataSection
                 aboutSection
@@ -239,6 +240,43 @@ struct SettingsView: View {
             }
             .accessibilityLabel(String(localized: "Privacy Policy"))
             .accessibilityHint(String(localized: "Opens the privacy policy"))
+        }
+    }
+
+    // MARK: - Experimental
+
+    private var experimentalSection: some View {
+        Section(String(localized: "Experimental")) {
+            Toggle(isOn: $viewModel.moodTagsEnabled) {
+                Label(String(localized: "Allow mood tags on transactions"), systemImage: "face.smiling")
+            }
+            .accessibilityLabel(String(localized: "Allow mood tags on transactions"))
+
+            if viewModel.moodTagsEnabled {
+                Toggle(isOn: $viewModel.moodTagsSyncEnabled) {
+                    Label(String(localized: "Sync mood tags across my devices"), systemImage: "arrow.triangle.2.circlepath")
+                }
+                .accessibilityLabel(String(localized: "Sync mood tags across my devices"))
+            }
+
+            Button(role: .destructive) {
+                viewModel.showingMoodEraseConfirmation = true
+            } label: {
+                Label(String(localized: "Erase all mood data"), systemImage: "trash")
+            }
+            .accessibilityLabel(String(localized: "Erase all mood data"))
+            .confirmationDialog(
+                String(localized: "Erase all mood data?"),
+                isPresented: $viewModel.showingMoodEraseConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "Erase mood data"), role: .destructive) {
+                    Task { await viewModel.eraseAllMoodData() }
+                }
+                Button(String(localized: "Cancel"), role: .cancel) {}
+            } message: {
+                Text(String(localized: "This removes mood tags from your transactions on this device."))
+            }
         }
     }
 

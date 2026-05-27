@@ -232,6 +232,25 @@ struct TransactionCreateView: View {
                     .accessibilityHint(String(localized: "Adds the entered text as a tag"))
                 }
             }
+            if viewModel.moodTagsEnabled {
+                Section(String(localized: "Mood tag")) {
+                    HStack {
+                        ForEach(viewModel.moodTagOptions, id: .self) { emoji in
+                            Button {
+                                viewModel.selectMoodTag(emoji)
+                            } label: {
+                                Text(emoji).font(.title2)
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityLabel(String(localized: "Mood tag (emoji)"))
+                        }
+                        if viewModel.moodTag != nil {
+                            Button(String(localized: "Remove")) { viewModel.clearMoodTag() }
+                                .accessibilityLabel(String(localized: "Remove mood tag"))
+                        }
+                    }
+                }
+            }
             Section(String(localized: "Date")) {
                 DatePicker(String(localized: "Date"), selection: $viewModel.date, displayedComponents: .date)
                     .accessibilityLabel(String(localized: "Transaction date"))
@@ -269,6 +288,9 @@ struct TransactionCreateView: View {
                     LabeledContent(String(localized: "BNPL installments")) { Text(viewModel.bnplInstallmentCount) }
                 }
                 LabeledContent(String(localized: "Date")) { Text(viewModel.date, style: .date) }
+                if let moodTag = viewModel.moodTag {
+                    LabeledContent(String(localized: "Mood tag")) { Text(moodTag) }
+                }
                 if !viewModel.tags.isEmpty {
                     LabeledContent(String(localized: "Tags")) {
                         Text(viewModel.tags.joined(separator: ", ")).foregroundStyle(.secondary)

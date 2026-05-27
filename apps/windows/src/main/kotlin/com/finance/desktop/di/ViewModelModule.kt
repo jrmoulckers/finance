@@ -24,7 +24,7 @@ val viewModelModule = module {
     single { BudgetsViewModel(get(), get()) }
     single { GoalsViewModel(get()) }
     single { SyncViewModel(get()) }
-    single { SettingsViewModel(get(), get()) }
+    single { SettingsViewModel(get(), get(), get()) }
     single { AuthViewModel(get(), get()) }
     single { LoginViewModel(get()) }
     single { GdprConsentViewModel(get(), get()) }

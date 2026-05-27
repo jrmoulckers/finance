@@ -50,6 +50,9 @@ final class TransactionCreateViewModel {
     var validationMessage = ""
     var selectedStatus: TransactionStatusUI = .pending
     var tags: [String] = []
+    var moodTag: String?
+    var moodTagsEnabled = UserDefaults.standard.bool(forKey: "experimental.moodTags.enabled")
+    let moodTagOptions = ["😊", "😐", "😟", "😡", "🤩", "😴"]
     var currentTagText = ""
     var isBnplLiability = false
     var bnplInstallmentCount = "4"
@@ -115,6 +118,12 @@ final class TransactionCreateViewModel {
     }
 
     /// Removes a tag at the specified index.
+    func selectMoodTag(_ tag: String) {
+        moodTag = moodTag == tag ? nil : tag
+    }
+
+    func clearMoodTag() { moodTag = nil }
+
     func removeTag(at index: Int) {
         guard tags.indices.contains(index) else { return }
         tags.remove(at: index)
@@ -152,10 +161,11 @@ final class TransactionCreateViewModel {
             date = transaction.date
             currencyCode = transaction.currencyCode
             selectedStatus = transaction.status
-            tags = transaction.tags
-            isBnplLiability = transaction.tags.contains(Self.bnplTag)
-            bnplInstallmentCount = transaction.tags.first(where: { $0.hasPrefix(Self.bnplInstallmentsPrefix) })?
+            tags = transaction.tagNames
+            isBnplLiability = transaction.tagNames.contains(Self.bnplTag)
+            bnplInstallmentCount = transaction.tagNames.first(where: { $0.hasPrefix(Self.bnplInstallmentsPrefix) })?
                 .replacingOccurrences(of: Self.bnplInstallmentsPrefix, with: "") ?? "4"
+            moodTag = transaction.moodTag
             // Category and account IDs are resolved after loadData()
         } else if let quickEntryAction {
             applyQuickEntry(action: quickEntryAction)
@@ -244,7 +254,8 @@ final class TransactionCreateViewModel {
             date: date,
             type: transactionType,
             status: selectedStatus,
-            tags: persistedTags
+            tagNames: persistedTags,
+            moodTag: moodTagsEnabled ? moodTag : nil
         )
 
         do {

@@ -25,7 +25,7 @@ struct TransactionDetailView: View {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.finance", category: "TransactionDetailView")
 
     init(transaction: TransactionItem, repository: TransactionRepository = RepositoryProvider.shared.transactions) {
-        _transaction = State(initialValue: transaction); _editedNotes = State(initialValue: transaction.notes); _receiptImageData = State(initialValue: transaction.receiptData); _isBnplInstallmentPaid = State(initialValue: transaction.tags.contains("bnpl-installment-paid")); self.repository = repository
+        _transaction = State(initialValue: transaction); _editedNotes = State(initialValue: transaction.notes); _receiptImageData = State(initialValue: transaction.receiptData); _isBnplInstallmentPaid = State(initialValue: transaction.tagNames.contains("bnpl-installment-paid")); self.repository = repository
     }
 
     var body: some View {
@@ -116,7 +116,7 @@ struct TransactionDetailView: View {
 
     @ViewBuilder
     private var bnplSection: some View {
-        if transaction.tags.contains("bnpl") {
+        if transaction.tagNames.contains("bnpl") {
             Section(String(localized: "BNPL Liability")) {
                 Text(isBnplInstallmentPaid ? String(localized: "Installment paid") : String(localized: "Installment due"))
                 if !isBnplInstallmentPaid {
@@ -316,6 +316,8 @@ struct TransactionDetailView: View {
             type: transaction.type,
             status: transaction.status,
             notes: editedNotes,
+            tagNames: transaction.tagNames,
+            moodTag: transaction.moodTag,
             isRecurring: transaction.isRecurring,
             receiptData: transaction.receiptData,
             tags: transaction.tags

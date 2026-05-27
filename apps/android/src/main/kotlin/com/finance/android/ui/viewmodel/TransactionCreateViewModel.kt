@@ -2,6 +2,7 @@
 
 package com.finance.android.ui.viewmodel
 
+import android.content.SharedPreferences
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -62,6 +63,8 @@ data class TransactionCreateUiState(
     val selectedTransferAccountName: String = "",
     val isBnplLiability: Boolean = false,
     val bnplInstallmentCountText: String = "4",
+    val moodTagsEnabled: Boolean = false,
+    val selectedMoodTag: String? = null,
 )
 
 /**
@@ -85,6 +88,7 @@ class TransactionCreateViewModel(
     private val transactionRepository: TransactionRepository,
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
+    private val prefs: SharedPreferences? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(TransactionCreateUiState())
     val uiState: StateFlow<TransactionCreateUiState> = _uiState.asStateFlow()
@@ -108,6 +112,8 @@ class TransactionCreateViewModel(
     /** Navigation argument key used to distinguish edit mode from create mode. */
     private val editTransactionId: String? = savedStateHandle["id"]
 
+    private val moodTagsEnabledKey = "experimental.moodTags.enabled"
+
     init {
         viewModelScope.launch {
             val householdId = householdIdProvider.householdId.value ?: run {
@@ -124,6 +130,7 @@ class TransactionCreateViewModel(
             _uiState.update {
                 it.copy(
                     categories = cats, accounts = accts,
+                    moodTagsEnabled = prefs?.getBoolean(moodTagsEnabledKey, false) ?: false,
                     selectedAccountId = accts.firstOrNull()?.id,
                     selectedAccountName = accts.firstOrNull()?.name ?: "",
                 )
@@ -157,6 +164,7 @@ class TransactionCreateViewModel(
                             isBnplLiability = txn.tags.contains(BNPL_TAG),
                             bnplInstallmentCountText = txn.tags.firstOrNull { tag -> tag.startsWith(BNPL_INSTALLMENTS_PREFIX) }
                                 ?.removePrefix(BNPL_INSTALLMENTS_PREFIX) ?: "4",
+                            selectedMoodTag = txn.moodTag,
                         )
                     }
                 }
@@ -238,6 +246,11 @@ class TransactionCreateViewModel(
     fun updateBnplInstallmentCount(value: String) {
         _uiState.update { it.copy(bnplInstallmentCountText = value.filter(Char::isDigit).take(2), errors = emptyList()) }
     }
+    fun selectMoodTag(tag: String?) {
+        _uiState.update { current ->
+            current.copy(selectedMoodTag = if (current.selectedMoodTag == tag) null else tag, errors = emptyList())
+        }
+    }
 
     fun save() {
         val errs = validateAll(_uiState.value)
@@ -267,6 +280,7 @@ class TransactionCreateViewModel(
                 date = s.date,
                 transferAccountId = s.selectedTransferAccountId,
                 tags = transactionTags,
+                moodTag = s.selectedMoodTag.takeIf { s.moodTagsEnabled },
                 updatedAt = now,
                 isSynced = false,
             ) ?: Transaction(
@@ -284,6 +298,7 @@ class TransactionCreateViewModel(
                 date = s.date,
                 transferAccountId = s.selectedTransferAccountId,
                 tags = transactionTags,
+                moodTag = s.selectedMoodTag.takeIf { s.moodTagsEnabled },
                 createdAt = now,
                 updatedAt = now,
             )

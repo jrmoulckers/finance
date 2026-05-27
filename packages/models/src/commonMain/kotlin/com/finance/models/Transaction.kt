@@ -39,9 +39,13 @@ data class Transaction(
     val deletedAt: Instant? = null,
     val syncVersion: Long = 0,
     val isSynced: Boolean = false,
+    val moodTag: String? = null,
 ) {
     init {
         require(amount.amount != 0L) { "Transaction amount cannot be zero" }
+        require(moodTag == null || moodTag in setOf("😊", "😐", "😟", "😡", "🤩", "😴")) {
+            "Mood tag must be one of the supported emoji tags"
+        }
         if (type == TransactionType.TRANSFER) {
             require(transferAccountId != null) { "Transfer must have a destination account" }
         }

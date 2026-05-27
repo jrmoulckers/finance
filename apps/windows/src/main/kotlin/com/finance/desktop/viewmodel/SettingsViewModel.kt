@@ -4,6 +4,7 @@ package com.finance.desktop.viewmodel
 
 import com.finance.desktop.data.repository.AppSettings
 import com.finance.desktop.data.repository.SettingsRepository
+import com.finance.desktop.data.repository.TransactionRepository
 import com.finance.desktop.security.WindowsHelloManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +39,8 @@ data class SettingsUiState(
     // ── Data & Sync ──
     val defaultCurrency: String = "USD",
     val cloudSyncEnabled: Boolean = true,
+    val moodTagsEnabled: Boolean = false,
+    val moodTagsSyncEnabled: Boolean = false,
 
     // ── Transient UI state ──
     val requiresAuth: Boolean = false,
@@ -63,6 +66,7 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val windowsHelloManager: WindowsHelloManager,
+    private val transactionRepository: TransactionRepository,
 ) : DesktopViewModel() {
 
     companion object {
@@ -128,6 +132,29 @@ class SettingsViewModel(
 
     fun setCloudSyncEnabled(enabled: Boolean) =
         updateAndSave { it.copy(cloudSyncEnabled = enabled) }
+
+    fun setMoodTagsEnabled(enabled: Boolean) = updateAndSave {
+        it.copy(
+            moodTagsEnabled = enabled,
+            moodTagsSyncEnabled = if (enabled) it.moodTagsSyncEnabled else false,
+        )
+    }
+
+    fun setMoodTagsSyncEnabled(enabled: Boolean) =
+        updateAndSave { it.copy(moodTagsSyncEnabled = enabled) }
+
+    fun eraseAllMoodData() {
+        viewModelScope.launch {
+            @Suppress("TooGenericExceptionCaught")
+            try {
+                transactionRepository.eraseAllMoodTags()
+                updateAndSave { it.copy(moodTagsEnabled = false, moodTagsSyncEnabled = false) }
+            } catch (e: Exception) {
+                logger.log(Level.SEVERE, "Failed to erase mood data", e)
+                _uiState.value = _uiState.value.copy(errorMessage = "Failed to erase mood data: ${e.message}")
+            }
+        }
+    }
 
     // ── Reset ───────────────────────────────────────────────────────────────
 
@@ -241,6 +268,8 @@ private fun AppSettings.toUiState(): SettingsUiState = SettingsUiState(
     goalNotificationsEnabled = goalNotificationsEnabled,
     defaultCurrency = defaultCurrency,
     cloudSyncEnabled = cloudSyncEnabled,
+    moodTagsEnabled = moodTagsEnabled,
+    moodTagsSyncEnabled = moodTagsSyncEnabled,
 )
 
 private fun SettingsUiState.toAppSettings(): AppSettings = AppSettings(
@@ -254,4 +283,6 @@ private fun SettingsUiState.toAppSettings(): AppSettings = AppSettings(
     goalNotificationsEnabled = goalNotificationsEnabled,
     defaultCurrency = defaultCurrency,
     cloudSyncEnabled = cloudSyncEnabled,
+    moodTagsEnabled = moodTagsEnabled,
+    moodTagsSyncEnabled = moodTagsSyncEnabled,
 )

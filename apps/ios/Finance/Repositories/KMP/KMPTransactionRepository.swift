@@ -59,4 +59,9 @@ struct KMPTransactionRepository: TransactionRepository {
         Self.logger.info("Deleting all transactions via KMP bridge")
         await store.deleteAllTransactions()
     }
+
+    func eraseAllMoodTags() async throws {
+        Self.logger.info("Erasing mood tags via KMP bridge")
+        await store.eraseAllMoodTags()
+    }
 }

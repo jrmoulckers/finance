@@ -72,7 +72,8 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
     let type: TransactionTypeUI
     let status: TransactionStatusUI
     let notes: String
-    let tags: [String]
+    let tagNames: [String]
+    let moodTag: String?
     let isRecurring: Bool
     let receiptData: Data?
     let tags: [Tag]
@@ -91,7 +92,8 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
         type: TransactionTypeUI = .expense,
         status: TransactionStatusUI = .cleared,
         notes: String = "",
-        tags: [String] = [],
+        tagNames: [String] = [],
+        moodTag: String? = nil,
         isRecurring: Bool = false,
         receiptData: Data? = nil,
         tags: [Tag] = []
@@ -106,7 +108,8 @@ struct TransactionItem: Identifiable, Hashable, Sendable {
         self.type = type
         self.status = status
         self.notes = notes
-        self.tags = tags
+        self.tagNames = tagNames
+        self.moodTag = moodTag
         self.isRecurring = isRecurring
         self.receiptData = receiptData
         self.tags = tags

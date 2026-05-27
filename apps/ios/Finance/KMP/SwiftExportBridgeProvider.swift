@@ -126,6 +126,7 @@ struct BridgedTransactionRepository: TransactionRepository {
     func updateTransaction(_ transaction: TransactionItem) async throws { try await module.updateTransaction(transaction) }
     func deleteTransaction(id: String) async throws { try await module.deleteTransaction(id: id) }
     func deleteAllTransactions() async throws { try await module.deleteAllTransactions() }
+    func eraseAllMoodTags() async throws {}
 }
 
 /// Adapts `SwiftExportBudgetModule` to the existing `BudgetRepository` protocol.

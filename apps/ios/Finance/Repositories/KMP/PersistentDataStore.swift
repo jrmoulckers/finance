@@ -290,6 +290,32 @@ actor PersistentDataStore {
         Self.logger.info("All transactions deleted")
     }
 
+    func eraseAllMoodTags() async throws {
+        await initialise()
+        let updated = transactions.mapValues { transaction in
+            TransactionItem(
+                id: transaction.id,
+                payee: transaction.payee,
+                category: transaction.category,
+                accountName: transaction.accountName,
+                amountMinorUnits: transaction.amountMinorUnits,
+                currencyCode: transaction.currencyCode,
+                date: transaction.date,
+                type: transaction.type,
+                status: transaction.status,
+                notes: transaction.notes,
+                tagNames: transaction.tagNames,
+                moodTag: nil,
+                isRecurring: transaction.isRecurring,
+                receiptData: transaction.receiptData,
+                tags: transaction.tags
+            )
+        }
+        transactions = updated
+        for transaction in updated.values { try? diskStore?.saveTransaction(transaction) }
+        Self.logger.info("Mood tags erased")
+    }
+
     // MARK: - Budgets
 
     func getBudgets() async throws -> [BudgetItem] {

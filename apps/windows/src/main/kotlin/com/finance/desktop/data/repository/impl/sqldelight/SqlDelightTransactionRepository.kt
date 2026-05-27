@@ -78,12 +78,20 @@ class SqlDelightTransactionRepository(
             is_recurring = if (entity.isRecurring) 1L else 0L,
             recurring_rule_id = entity.recurringRuleId?.value,
             tags = entity.tags.joinToString(","),
+            mood_tag = entity.moodTag,
             created_at = entity.createdAt.toString(),
             updated_at = entity.updatedAt.toString(),
             sync_version = entity.syncVersion,
             is_synced = if (entity.isSynced) 1L else 0L,
         )
         refreshCache()
+    }
+
+    override suspend fun eraseAllMoodTags(): Int = withContext(Dispatchers.IO) {
+        val taggedCount = queries.selectAll().executeAsList().count { it.mood_tag != null }
+        if (taggedCount > 0) queries.eraseAllMoodTags(Clock.System.now().toString())
+        refreshCache()
+        taggedCount
     }
 
     override suspend fun delete(id: SyncId) = withContext(Dispatchers.IO) {
@@ -125,6 +133,7 @@ internal fun com.finance.db.Transaction.toTransaction(): Transaction = Transacti
     isRecurring = is_recurring != 0L,
     recurringRuleId = recurring_rule_id?.let { SyncId(it) },
     tags = tags.split(",").filter { it.isNotBlank() },
+    moodTag = mood_tag,
     createdAt = Instant.parse(created_at),
     updatedAt = Instant.parse(updated_at),
     deletedAt = deleted_at?.let { Instant.parse(it) },
