@@ -132,6 +132,7 @@ final class TransactionCreateViewModel {
         transactionRepository: TransactionRepository,
         accountRepository: AccountRepository,
         transaction: TransactionItem? = nil,
+        quickEntryAction: String? = nil,
         transactionValidator: KMPTransactionValidatorProtocol = KMPBridge.shared.transactionValidator,
         categorizationEngine: KMPCategorizationEngineProtocol = KMPBridge.shared.categorizationEngine
     ) {
@@ -151,6 +152,8 @@ final class TransactionCreateViewModel {
             selectedStatus = transaction.status
             tags = transaction.tags
             // Category and account IDs are resolved after loadData()
+        } else if let quickEntryAction {
+            applyQuickEntry(action: quickEntryAction)
         }
     }
 
@@ -178,6 +181,30 @@ final class TransactionCreateViewModel {
         suggestedCategoryId = categorizationEngine.suggest(payee: payee)
         if selectedCategoryId == nil, let suggested = suggestedCategoryId {
             selectedCategoryId = suggested
+        }
+    }
+
+    /// Configures the form for lock-screen quick entry so the amount keypad is
+    /// visible immediately after biometric authentication.
+    func applyQuickEntry(action: String?) {
+        currentStep = .details
+        transactionType = .expense
+
+        switch action {
+        case "lunch":
+            payee = String(localized: "Lunch")
+            selectedCategoryId = "c2"
+        case "coffee":
+            payee = String(localized: "Coffee")
+            selectedCategoryId = "c2"
+        case "groceries":
+            payee = String(localized: "Groceries")
+            selectedCategoryId = "c1"
+        case "gas":
+            payee = String(localized: "Gas")
+            selectedCategoryId = "c3"
+        default:
+            payee = ""
         }
     }
 

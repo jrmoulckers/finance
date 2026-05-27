@@ -42,6 +42,12 @@ enum AppDeepLink: Sendable, Equatable {
     /// App Clip expense entry. Refs #648
     case clipExpense(amount: Int64?, category: String?)
 
+    /// Lock-screen widget quick entry. Refs #1605.
+    case quickEntry(action: String?)
+
+    /// Budget/category widget deep link. Refs #1608.
+    case budgetCategory(id: String)
+
     /// An unrecognized link that doesn't match any known route.
     case unknown(url: URL)
 }
@@ -79,6 +85,8 @@ final class DeepLinkHandler {
     private static let accountPrefix = "/account/"
     private static let transactionPrefix = "/transaction/"
     private static let clipExpensePath = "/clip/expense"
+    private static let quickEntryPath = "/quick-entry"
+    private static let budgetCategoryPrefix = "/budget/category/"
 
     // MARK: - Logger
 
@@ -111,6 +119,9 @@ final class DeepLinkHandler {
     private(set) var hasPendingClipExpense = false
     private(set) var pendingClipAmount: Int64?
     private(set) var pendingClipCategory: String?
+    private(set) var hasPendingQuickEntry = false
+    private(set) var pendingQuickEntryAction: String?
+    private(set) var pendingBudgetCategoryId: String?
 
     // MARK: - Init
 
@@ -178,6 +189,21 @@ final class DeepLinkHandler {
             selectedTab = .transactions
             Self.logger.debug("Routing to clip expense entry")
 
+        case .quickEntry(let action):
+            clearAuthInviteState()
+            clearEntityState()
+            hasPendingQuickEntry = true
+            pendingQuickEntryAction = action
+            selectedTab = .transactions
+            Self.logger.debug("Routing to biometric quick entry")
+
+        case .budgetCategory(let id):
+            clearAuthInviteState()
+            clearEntityState()
+            pendingBudgetCategoryId = id
+            selectedTab = .budgets
+            Self.logger.debug("Routing to budget category: \(id, privacy: .private(mask: .hash))")
+
         case .unknown:
             clearAllState()
             Self.logger.warning(
@@ -226,6 +252,19 @@ final class DeepLinkHandler {
         pendingClipAmount = nil
         pendingClipCategory = nil
         if case .clipExpense = currentDeepLink { currentDeepLink = nil }
+    }
+
+    /// Clears the pending lock-screen quick entry.
+    func consumeQuickEntry() {
+        hasPendingQuickEntry = false
+        pendingQuickEntryAction = nil
+        if case .quickEntry = currentDeepLink { currentDeepLink = nil }
+    }
+
+    /// Clears the pending budget/category navigation.
+    func consumeBudgetCategoryNavigation() {
+        pendingBudgetCategoryId = nil
+        if case .budgetCategory = currentDeepLink { currentDeepLink = nil }
     }
 
     /// Resets all pending state.
@@ -314,6 +353,26 @@ final class DeepLinkHandler {
             return .clipExpense(amount: amountMinorUnits, category: category?.isEmpty == true ? nil : category)
         }
 
+        // Route: /quick-entry (#1605)
+        if effectivePath.hasPrefix(Self.quickEntryPath) {
+            let action = URLComponents(url: url, resolvingAgainstBaseURL: true)?
+                .queryItems?
+                .first(where: { $0.name == "action" })?
+                .value
+            return .quickEntry(action: action?.isEmpty == true ? nil : action)
+        }
+
+        // Route: /budget/category/{id} (#1608)
+        if effectivePath.hasPrefix(Self.budgetCategoryPrefix) {
+            let id = extractPathSegment(
+                from: effectivePath,
+                after: Self.budgetCategoryPrefix
+            )
+            if let id {
+                return .budgetCategory(id: id)
+            }
+        }
+
         return .unknown(url: url)
     }
 
@@ -332,6 +391,9 @@ final class DeepLinkHandler {
         hasPendingClipExpense = false
         pendingClipAmount = nil
         pendingClipCategory = nil
+        hasPendingQuickEntry = false
+        pendingQuickEntryAction = nil
+        pendingBudgetCategoryId = nil
     }
 
     private func clearAuthInviteState() {
@@ -347,5 +409,8 @@ final class DeepLinkHandler {
         hasPendingClipExpense = false
         pendingClipAmount = nil
         pendingClipCategory = nil
+        hasPendingQuickEntry = false
+        pendingQuickEntryAction = nil
+        pendingBudgetCategoryId = nil
     }
 }

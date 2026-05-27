@@ -205,6 +205,50 @@ final class IntentTests: XCTestCase {
         }
     }
 
+    // MARK: - LogTransactionIntent
+
+    @MainActor
+    func testLogTransactionMinorUnitConversion() throws {
+        let minorUnits = try LogTransactionIntent.minorUnits(from: 12.34)
+        XCTAssertEqual(minorUnits, 1_234)
+    }
+
+    @MainActor
+    func testLogTransactionRejectsInvalidAmount() {
+        XCTAssertThrowsError(try LogTransactionIntent.minorUnits(from: 0))
+    }
+
+    @MainActor
+    func testLogTransactionBuildsSignedExpense() {
+        let transaction = LogTransactionIntent.makeTransaction(
+            amountMinorUnits: 1_250,
+            type: .expense,
+            category: .diningOut,
+            payee: "Lunch",
+            account: "Checking"
+        )
+
+        XCTAssertEqual(transaction.amountMinorUnits, -1_250)
+        XCTAssertEqual(transaction.payee, "Lunch")
+        XCTAssertEqual(transaction.category, "Dining Out")
+        XCTAssertEqual(transaction.type, .expense)
+    }
+
+    @MainActor
+    func testLogTransactionBuildsSignedIncome() {
+        let transaction = LogTransactionIntent.makeTransaction(
+            amountMinorUnits: 2_500,
+            type: .income,
+            category: .other,
+            payee: nil,
+            account: nil
+        )
+
+        XCTAssertEqual(transaction.amountMinorUnits, 2_500)
+        XCTAssertEqual(transaction.payee, "Other")
+        XCTAssertEqual(transaction.type, .income)
+    }
+
     // MARK: - Empty budgets
 
     @MainActor

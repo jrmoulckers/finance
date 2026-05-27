@@ -35,6 +35,7 @@ struct ContentView: View {
         )
         .environment(networkMonitor)
         .environment(deepLinkHandler)
+        .widgetPrivacyPrompt()
         .onChange(of: deepLinkHandler.currentDeepLink) { _, newLink in
             guard let newLink else { return }
             // Redirect auth deep links — user is already authenticated (#1489)

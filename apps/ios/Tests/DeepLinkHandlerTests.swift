@@ -102,6 +102,28 @@ struct DeepLinkHandlerParsingTests {
         #expect(result == .transaction(id: "txn-101"))
     }
 
+    @Test("Parses finance://quick-entry with action")
+    @MainActor
+    func parsesQuickEntryAction() {
+        let handler = DeepLinkHandler()
+        let url = URL(string: "finance://quick-entry?action=lunch")!
+
+        let result = handler.parse(url)
+
+        #expect(result == .quickEntry(action: "lunch"))
+    }
+
+    @Test("Parses finance://budget/category/{id}")
+    @MainActor
+    func parsesBudgetCategory() {
+        let handler = DeepLinkHandler()
+        let url = URL(string: "finance://budget/category/budget-123")!
+
+        let result = handler.parse(url)
+
+        #expect(result == .budgetCategory(id: "budget-123"))
+    }
+
     @Test("Returns unknown for unrecognized path")
     @MainActor
     func returnsUnknownForBadPath() {
@@ -154,6 +176,31 @@ struct DeepLinkHandlerNavigationTests {
         #expect(handler.selectedTab == .transactions)
         #expect(handler.pendingTransactionId == "txn-1")
         #expect(handler.pendingAccountId == nil)
+    }
+
+    @Test("handle() sets quick entry state")
+    @MainActor
+    func setsQuickEntryState() {
+        let handler = DeepLinkHandler()
+        let url = URL(string: "finance://quick-entry?action=coffee")!
+
+        handler.handle(url)
+
+        #expect(handler.hasPendingQuickEntry == true)
+        #expect(handler.pendingQuickEntryAction == "coffee")
+        #expect(handler.selectedTab == .transactions)
+    }
+
+    @Test("handle() sets selectedTab to budgets for budget category")
+    @MainActor
+    func setsTabForBudgetCategory() {
+        let handler = DeepLinkHandler()
+        let url = URL(string: "finance://budget/category/b1")!
+
+        handler.handle(url)
+
+        #expect(handler.pendingBudgetCategoryId == "b1")
+        #expect(handler.selectedTab == .budgets)
     }
 
     @Test("handle() sets isProcessingAuthCallback for auth callback")

@@ -1,21 +1,158 @@
 // SPDX-License-Identifier: BUSL-1.1
-// QuickEntryWidget.swift — Refs #380
+// QuickEntryWidget.swift — Refs #380, #1605
+
 import AppIntents
+import FinanceShared
 import SwiftUI
 import WidgetKit
-struct AddQuickExpenseIntent: AppIntent {
-    static var title: LocalizedStringResource = "Add Quick Expense"; static var description = IntentDescription("Record a quick expense.")
-    @Parameter(title:"Amount") var amountMinorUnits: Int; @Parameter(title:"Label") var displayLabel: String
-    init(){amountMinorUnits=500;displayLabel="$5"}; init(amountMinorUnits:Int,displayLabel:String){self.amountMinorUnits=amountMinorUnits;self.displayLabel=displayLabel}
-    func perform() async throws -> some IntentResult { let d=UserDefaults(suiteName:WidgetDataKeys.suiteName); let e=QuickExpenseEntry(id:UUID().uuidString,amountMinorUnits:Int64(amountMinorUnits),currencyCode:"USD",categoryId:"other",createdAt:Date()); var p=[QuickExpenseEntry](); if let data=d?.data(forKey:QuickExpenseEntry.storageKey){let dec=JSONDecoder();dec.dateDecodingStrategy = .iso8601;p=(try? dec.decode([QuickExpenseEntry].self,from:data)) ?? []}; p.append(e); let enc=JSONEncoder();enc.dateEncodingStrategy = .iso8601; if let data=try? enc.encode(p){d?.set(data,forKey:QuickExpenseEntry.storageKey)}; return .result() }
+
+enum QuickEntryShortcut: String, AppEnum, CaseIterable {
+    case none
+    case lunch
+    case coffee
+    case groceries
+    case gas
+
+    static let typeDisplayRepresentation = TypeDisplayRepresentation(
+        name: LocalizedStringResource("Quick Entry Shortcut")
+    )
+
+    static let caseDisplayRepresentations: [QuickEntryShortcut: DisplayRepresentation] = [
+        .none: DisplayRepresentation(title: LocalizedStringResource("Just Add")),
+        .lunch: DisplayRepresentation(title: LocalizedStringResource("Log lunch"), image: .init(systemName: "fork.knife")),
+        .coffee: DisplayRepresentation(title: LocalizedStringResource("Log coffee"), image: .init(systemName: "cup.and.saucer")),
+        .groceries: DisplayRepresentation(title: LocalizedStringResource("Log groceries"), image: .init(systemName: "cart")),
+        .gas: DisplayRepresentation(title: LocalizedStringResource("Log gas"), image: .init(systemName: "fuelpump")),
+    ]
+
+    var title: String {
+        switch self {
+        case .none: String(localized: "Add")
+        case .lunch: String(localized: "Log lunch")
+        case .coffee: String(localized: "Log coffee")
+        case .groceries: String(localized: "Log groceries")
+        case .gas: String(localized: "Log gas")
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .none: "plus"
+        case .lunch: "fork.knife"
+        case .coffee: "cup.and.saucer"
+        case .groceries: "cart"
+        case .gas: "fuelpump"
+        }
+    }
+
+    var deepLinkAction: String? {
+        self == .none ? nil : rawValue
+    }
 }
-struct QuickExpenseEntry: Codable, Sendable { let id: String; let amountMinorUnits: Int64; let currencyCode: String; let categoryId: String; let createdAt: Date; static let storageKey = "widget.quickExpenses" }
-struct QuickEntryWidgetEntry: TimelineEntry { let date: Date }
-struct QuickEntryWidgetProvider: TimelineProvider {
-    func placeholder(in context: Context) -> QuickEntryWidgetEntry { .init(date:.now) }; func getSnapshot(in context: Context, completion: @escaping (QuickEntryWidgetEntry) -> Void) { completion(.init(date:.now)) }; func getTimeline(in context: Context, completion: @escaping (Timeline<QuickEntryWidgetEntry>) -> Void) { completion(Timeline(entries:[.init(date:.now)],policy:.after(Calendar.current.date(byAdding:.hour,value:1,to:.now)!))) }
+
+struct QuickEntryWidgetIntent: WidgetConfigurationIntent {
+    static let title: LocalizedStringResource = "Quick Entry"
+    static let description = IntentDescription("Choose the single named quick-entry shortcut shown on the Lock Screen.")
+
+    @Parameter(title: "Shortcut")
+    var shortcut: QuickEntryShortcut
+
+    init() {
+        shortcut = .none
+    }
+
+    init(shortcut: QuickEntryShortcut) {
+        self.shortcut = shortcut
+    }
 }
-struct QuickEntryWidget: Widget { let kind = "QuickEntryWidget"; var body: some WidgetConfiguration { StaticConfiguration(kind:kind,provider:QuickEntryWidgetProvider()){entry in QuickEntryWidgetView(entry:entry).containerBackground(.fill.tertiary,for:.widget)}.configurationDisplayName(Text("Quick Expense",comment:"Widget")).description(Text("Quickly record an expense.",comment:"Desc")).supportedFamilies([.systemSmall]) } }
+
+struct QuickEntryWidgetEntry: TimelineEntry {
+    let date: Date
+    let shortcut: QuickEntryShortcut
+}
+
+struct QuickEntryWidgetProvider: AppIntentTimelineProvider {
+    func placeholder(in context: Context) -> QuickEntryWidgetEntry {
+        .init(date: .now, shortcut: .none)
+    }
+
+    func snapshot(for configuration: QuickEntryWidgetIntent, in context: Context) async -> QuickEntryWidgetEntry {
+        .init(date: .now, shortcut: configuration.shortcut)
+    }
+
+    func timeline(for configuration: QuickEntryWidgetIntent, in context: Context) async -> Timeline<QuickEntryWidgetEntry> {
+        Timeline(entries: [.init(date: .now, shortcut: configuration.shortcut)], policy: .atEnd)
+    }
+}
+
+struct QuickEntryWidget: Widget {
+    static let kind = "QuickEntryWidget"
+    let kind = QuickEntryWidget.kind
+
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(
+            kind: kind,
+            intent: QuickEntryWidgetIntent.self,
+            provider: QuickEntryWidgetProvider()
+        ) { entry in
+            QuickEntryWidgetView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName(Text("Lock Screen Quick Entry", comment: "Widget"))
+        .description(Text("Open a biometric-gated transaction sheet without showing money on the Lock Screen.", comment: "Widget description"))
+        .supportedFamilies([.accessoryCircular, .accessoryRectangular])
+    }
+}
+
 struct QuickEntryWidgetView: View {
-    let entry: QuickEntryWidgetEntry; private let presets:[(amount:Int,label:String)]=[(500,"$5"),(1_000,"$10"),(2_500,"$25")]
-    var body: some View { VStack(spacing:8){HStack(spacing:4){Image(systemName:"plus.circle.fill").font(.caption).foregroundStyle(FinanceWidgetColors.interactive).accessibilityHidden(true);Text("Add Expense",comment:"Hdr").font(.caption).fontWeight(.medium).foregroundStyle(.secondary)};Spacer();VStack(spacing:4){ForEach(presets,id:\.amount){p in Button(intent:AddQuickExpenseIntent(amountMinorUnits:p.amount,displayLabel:p.label)){Text(p.label).font(.system(.callout,design:.rounded,weight:.semibold)).monospacedDigit().frame(maxWidth:.infinity).padding(.vertical,4)}.buttonStyle(.borderedProminent).tint(FinanceWidgetColors.interactive).accessibilityLabel(String(localized:"Add \(p.label) expense"))}}}.accessibilityElement(children:.contain) }
+    @Environment(\.widgetFamily) private var family
+    let entry: QuickEntryWidgetEntry
+
+    var body: some View {
+        Link(destination: FinanceWidgetDeepLinks.quickEntryURL(action: entry.shortcut.deepLinkAction)) {
+            switch family {
+            case .accessoryCircular:
+                circularView
+            default:
+                rectangularView
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(localized: "Open Finance quick entry"))
+        .accessibilityValue(entry.shortcut.title)
+        .accessibilityHint(String(localized: "Authenticates before showing the transaction amount field"))
+    }
+
+    private var circularView: some View {
+        VStack(spacing: 2) {
+            Image(systemName: "plus.circle.fill")
+                .font(.title3)
+                .accessibilityHidden(true)
+            if entry.shortcut != .none {
+                Image(systemName: entry.shortcut.systemImage)
+                    .font(.caption2)
+                    .accessibilityHidden(true)
+            }
+        }
+        .widgetLabel {
+            Text(entry.shortcut.title)
+        }
+    }
+
+    private var rectangularView: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "plus.circle.fill")
+                .foregroundStyle(FinanceWidgetColors.interactive)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(String(localized: "Quick Entry"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(entry.shortcut.title)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+    }
 }
