@@ -6,6 +6,9 @@ import com.finance.db.repository.impl.EntityMappers
 import com.finance.models.AccountType
 import com.finance.models.BudgetPeriod
 import com.finance.models.GoalStatus
+import com.finance.models.LiabilityInstallmentStatus
+import com.finance.models.LiabilityStatus
+import com.finance.models.LiabilityType
 import com.finance.models.TransactionStatus
 import com.finance.models.TransactionType
 import com.finance.models.types.Cents
@@ -70,6 +73,32 @@ class EntityMappersTest {
         assertEquals(TransactionType.TRANSFER, txn.type)
         assertEquals("acc-2", txn.transferAccountId?.value)
         assertTrue(txn.isRecurring)
+    }
+
+    @Test
+    fun mapLiability_mapsAllFields() {
+        val liability = EntityMappers.mapLiability(
+            "lia-1", "hh-1", "user-1", "BNPL", "ACTIVE", "Klarna", "Store",
+            12000L, 9000L, "USD", "2025-01-01", null, "acc-1", "note",
+            "2025-01-01T00:00:00Z", "2025-01-15T12:00:00Z", null, 2L, 0L,
+        )
+        assertEquals(LiabilityType.BNPL, liability.type)
+        assertEquals(LiabilityStatus.ACTIVE, liability.status)
+        assertEquals(Cents(9000L), liability.remainingBalance)
+        assertEquals("acc-1", liability.accountId?.value)
+    }
+
+    @Test
+    fun mapLiabilityInstallment_mapsPaidFields() {
+        val installment = EntityMappers.mapLiabilityInstallment(
+            "lin-1", "lia-1", "hh-1", "user-1", 2L, "2025-02-01", 3000L,
+            "USD", "PAID", "2025-02-01T08:00:00Z", "txn-1",
+            "2025-01-01T00:00:00Z", "2025-02-01T08:00:00Z", null, 3L, 1L,
+        )
+        assertEquals(LiabilityInstallmentStatus.PAID, installment.status)
+        assertEquals(2, installment.sequenceNumber)
+        assertEquals("txn-1", installment.paymentTransactionId?.value)
+        assertTrue(installment.isSynced)
     }
 
     @Test

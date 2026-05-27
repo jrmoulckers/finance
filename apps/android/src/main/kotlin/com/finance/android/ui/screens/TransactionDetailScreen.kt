@@ -174,7 +174,10 @@ fun TransactionDetailScreen(
                 -> DetailLoadingState()
 
                 is TransactionDetailUiState.NotFound -> DetailNotFoundState(onBack)
-                is TransactionDetailUiState.Success -> TransactionDetailContent(state = s)
+                is TransactionDetailUiState.Success -> TransactionDetailContent(
+                    state = s,
+                    onMarkBnplInstallmentPaid = viewModel::markBnplInstallmentPaid,
+                )
             }
         }
     }
@@ -195,7 +198,10 @@ fun TransactionDetailScreen(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 @Suppress("LongMethod") // Compose UI function with cohesive layout logic
-private fun TransactionDetailContent(state: TransactionDetailUiState.Success) {
+private fun TransactionDetailContent(
+    state: TransactionDetailUiState.Success,
+    onMarkBnplInstallmentPaid: () -> Unit,
+) {
     val amountColor = when (state.type) {
         TransactionType.EXPENSE -> MaterialTheme.colorScheme.error
         TransactionType.INCOME -> Color(0xFF2E7D32)
@@ -275,6 +281,22 @@ private fun TransactionDetailContent(state: TransactionDetailUiState.Success) {
                                 contentDescription = "Status: ${state.statusLabel}"
                             },
                         )
+                    }
+                }
+            }
+        }
+
+        if (state.isBnplLiability) {
+            item(key = "bnpl-card") {
+                Card(Modifier.fillMaxWidth().semantics { contentDescription = "BNPL liability installment status" }) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("BNPL Liability", style = MaterialTheme.typography.titleMedium)
+                        Text(if (state.isBnplInstallmentPaid) "Installment paid" else "Installment due")
+                        if (!state.isBnplInstallmentPaid) {
+                            TextButton(onClick = onMarkBnplInstallmentPaid) {
+                                Text("Mark installment paid")
+                            }
+                        }
                     }
                 }
             }
@@ -539,7 +561,10 @@ private fun TransactionDetailExpensePreview() {
                 accountName = "Main Checking",
                 note = "Weekly grocery run",
                 tags = listOf("household", "recurring"),
+                isBnplLiability = false,
+                isBnplInstallmentPaid = false,
             ),
+            onMarkBnplInstallmentPaid = {},
         )
     }
 }
@@ -564,7 +589,10 @@ private fun TransactionDetailIncomePreview() {
                 accountName = "Main Checking",
                 note = null,
                 tags = emptyList(),
+                isBnplLiability = false,
+                isBnplInstallmentPaid = false,
             ),
+            onMarkBnplInstallmentPaid = {},
         )
     }
 }

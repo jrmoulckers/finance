@@ -1,0 +1,88 @@
+-- Liability installment entity
+-- Per-installment repayment schedule for first-class liabilities.
+
+CREATE TABLE IF NOT EXISTS liability_installment (
+    id TEXT NOT NULL PRIMARY KEY,
+    liability_id TEXT NOT NULL,
+    household_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    sequence_number INTEGER NOT NULL,
+    due_date TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    status TEXT NOT NULL DEFAULT 'DUE',
+    paid_at TEXT,
+    payment_transaction_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    sync_version INTEGER NOT NULL DEFAULT 0,
+    is_synced INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (liability_id) REFERENCES liability(id),
+    FOREIGN KEY (household_id) REFERENCES household(id),
+    FOREIGN KEY (owner_id) REFERENCES user(id),
+    FOREIGN KEY (payment_transaction_id) REFERENCES "transaction"(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_liability_installment_liability ON liability_installment (liability_id);
+CREATE INDEX IF NOT EXISTS idx_liability_installment_household ON liability_installment (household_id);
+CREATE INDEX IF NOT EXISTS idx_liability_installment_owner ON liability_installment (owner_id);
+CREATE INDEX IF NOT EXISTS idx_liability_installment_due_date ON liability_installment (due_date);
+CREATE INDEX IF NOT EXISTS idx_liability_installment_status ON liability_installment (status);
+CREATE INDEX IF NOT EXISTS idx_liability_installment_sync ON liability_installment (is_synced);
+
+selectAll:
+SELECT * FROM liability_installment WHERE deleted_at IS NULL;
+
+selectById:
+SELECT * FROM liability_installment WHERE id = ? AND deleted_at IS NULL;
+
+selectByLiability:
+SELECT * FROM liability_installment WHERE liability_id = ? AND deleted_at IS NULL ORDER BY sequence_number ASC;
+
+selectByHousehold:
+SELECT * FROM liability_installment WHERE household_id = ? AND deleted_at IS NULL ORDER BY due_date ASC;
+
+selectOutstandingByHousehold:
+SELECT * FROM liability_installment WHERE household_id = ? AND status = 'DUE' AND deleted_at IS NULL ORDER BY due_date ASC;
+
+selectDueBetween:
+SELECT * FROM liability_installment
+WHERE household_id = ? AND due_date >= ? AND due_date <= ? AND status = 'DUE' AND deleted_at IS NULL
+ORDER BY due_date ASC;
+
+insert:
+INSERT INTO liability_installment (id, liability_id, household_id, owner_id, sequence_number, due_date, amount, currency, status, paid_at, payment_transaction_id, created_at, updated_at, sync_version, is_synced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE liability_installment SET
+    sequence_number = ?,
+    due_date = ?,
+    amount = ?,
+    currency = ?,
+    status = ?,
+    paid_at = ?,
+    payment_transaction_id = ?,
+    updated_at = ?,
+    sync_version = ?,
+    is_synced = ?
+WHERE id = ?;
+
+markPaid:
+UPDATE liability_installment SET status = 'PAID', paid_at = ?, payment_transaction_id = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+softDelete:
+UPDATE liability_installment SET deleted_at = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+selectUnsynced:
+SELECT * FROM liability_installment WHERE is_synced = 0;
+
+markSynced:
+UPDATE liability_installment SET is_synced = 1, sync_version = ? WHERE id = ?;
+
+selectUnsyncedByHousehold:
+SELECT * FROM liability_installment WHERE household_id = ? AND is_synced = 0;
+
+markSyncedById:
+UPDATE liability_installment SET is_synced = 1 WHERE id = ?;

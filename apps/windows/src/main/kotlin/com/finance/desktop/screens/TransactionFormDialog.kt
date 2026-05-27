@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -41,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
@@ -72,6 +74,9 @@ data class TransactionFormState(
     val status: TransactionStatus = TransactionStatus.PENDING,
     val tags: List<String> = emptyList(),
     val note: String = "",
+    val isBnplLiability: Boolean = tags.contains(BNPL_TAG),
+    val bnplInstallmentCount: String = tags.firstOrNull { it.startsWith(BNPL_INSTALLMENTS_PREFIX) }
+        ?.removePrefix(BNPL_INSTALLMENTS_PREFIX) ?: "4",
 )
 
 /**
@@ -163,6 +168,24 @@ fun TransactionFormDialog(
 
                 Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = formState.isBnplLiability,
+                        onCheckedChange = { checked -> formState = formState.copy(isBnplLiability = checked) },
+                    )
+                    Text("Track as BNPL liability")
+                }
+                if (formState.isBnplLiability) {
+                    OutlinedTextField(
+                        value = formState.bnplInstallmentCount,
+                        onValueChange = { formState = formState.copy(bnplInstallmentCount = it.filter(Char::isDigit).take(2)) },
+                        label = { Text("Installments") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "BNPL installment count" },
+                    )
+                    Spacer(Modifier.height(FinanceDesktopTheme.spacing.md))
+                }
+
                 // ── Tags chip input ──
                 TransactionTagInput(
                     tags = formState.tags,
@@ -196,7 +219,7 @@ fun TransactionFormDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onSave(formState) },
+                onClick = { onSave(formState.withBnplTags()) },
                 enabled = formState.payee.isNotBlank() && formState.amountDigits.isNotEmpty(),
             ) {
                 Text(if (isEdit) "Save" else "Create")
@@ -216,6 +239,15 @@ fun TransactionFormDialog(
                     "New transaction dialog. Fill in details and create."
             },
     )
+}
+
+private const val BNPL_TAG = "bnpl"
+private const val BNPL_INSTALLMENTS_PREFIX = "bnpl-installments:"
+
+private fun TransactionFormState.withBnplTags(): TransactionFormState {
+    val cleanTags = tags.filterNot { it == BNPL_TAG || it.startsWith(BNPL_INSTALLMENTS_PREFIX) }
+    val liabilityTags = if (isBnplLiability) listOf(BNPL_TAG, "$BNPL_INSTALLMENTS_PREFIX$bnplInstallmentCount") else emptyList()
+    return copy(tags = cleanTags + liabilityTags)
 }
 
 /**

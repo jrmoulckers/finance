@@ -94,6 +94,7 @@ data class SettingsUiState(
     val defaultCurrency: SupportedCurrency = SupportedCurrency.USD,
     val notificationsEnabled: Boolean = true,
     val billRemindersEnabled: Boolean = true,
+    val bnplStackingThresholdText: String = "500",
 
     // Security
     val biometricEnabled: Boolean = false,
@@ -137,6 +138,7 @@ private object PrefKeys {
     const val DEFAULT_CURRENCY = "default_currency"
     const val NOTIFICATIONS_ENABLED = "notifications_enabled"
     const val BILL_REMINDERS_ENABLED = "bill_reminders_enabled"
+    const val BNPL_STACKING_THRESHOLD = "bnpl_stacking_threshold"
     const val BIOMETRIC_ENABLED = "biometric_enabled"
     const val APP_LOCK_TIMEOUT = "app_lock_timeout"
     const val SIMPLIFIED_VIEW = "simplified_view"
@@ -209,6 +211,7 @@ class SettingsViewModel(
                     ?: SupportedCurrency.USD,
                 notificationsEnabled = prefs.getBoolean(PrefKeys.NOTIFICATIONS_ENABLED, true),
                 billRemindersEnabled = prefs.getBoolean(PrefKeys.BILL_REMINDERS_ENABLED, true),
+                bnplStackingThresholdText = prefs.getString(PrefKeys.BNPL_STACKING_THRESHOLD, "500") ?: "500",
                 biometricEnabled = prefs.getBoolean(PrefKeys.BIOMETRIC_ENABLED, false),
                 biometricAvailable = biometricChecker.isBiometricAvailable(),
                 appLockTimeout = prefs.getString(PrefKeys.APP_LOCK_TIMEOUT, null)
@@ -246,6 +249,12 @@ class SettingsViewModel(
     fun setBillRemindersEnabled(enabled: Boolean) {
         updatePref { putBoolean(PrefKeys.BILL_REMINDERS_ENABLED, enabled) }
         _uiState.update { it.copy(billRemindersEnabled = enabled) }
+    }
+
+    fun setBnplStackingThreshold(value: String) {
+        val sanitized = value.filter { it.isDigit() }.take(7).ifBlank { "1" }
+        updatePref { putString(PrefKeys.BNPL_STACKING_THRESHOLD, sanitized) }
+        _uiState.update { it.copy(bnplStackingThresholdText = sanitized) }
     }
 
     fun setBiometricEnabled(enabled: Boolean) {

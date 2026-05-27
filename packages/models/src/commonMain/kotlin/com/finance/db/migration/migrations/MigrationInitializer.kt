@@ -11,5 +11,6 @@ object MigrationInitializer {
         registerV001()
         registerV002()
         registerV003()
+        registerV005()
     }
 }

@@ -130,6 +130,11 @@ struct SettingsView: View {
             .accessibilityLabel(String(localized: "Default currency"))
             .accessibilityHint(String(localized: "Select your preferred currency for displaying amounts"))
 
+            TextField(String(localized: "BNPL stacking threshold"), text: $viewModel.bnplStackingThreshold)
+                .keyboardType(.numberPad)
+                .accessibilityLabel(String(localized: "BNPL stacking alert threshold"))
+                .accessibilityHint(String(localized: "Alert when unpaid BNPL installments exceed this amount"))
+
             NavigationLink {
                 CategoryListView()
             } label: {

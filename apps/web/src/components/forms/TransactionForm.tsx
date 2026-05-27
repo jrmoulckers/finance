@@ -42,6 +42,7 @@ import type {
   TransactionStatus,
   TransactionType,
 } from '../../kmp/bridge';
+import { BNPL_CUSTOM_FIELD_KEYS } from '../../lib/bnpl-liability';
 import type { CategorySuggestion } from '../../lib/categorization';
 import type { MerchantMatchResult } from '../../lib/merchants';
 import { transactionSchema } from '../../lib/validation';
@@ -202,6 +203,8 @@ export function TransactionForm({
   const [suggestion, setSuggestion] = useState<CategorySuggestion | null>(null);
   const [counterpartyName, setCounterpartyName] = useState('');
   const [merchantMatch, setMerchantMatch] = useState<MerchantMatchResult | null>(null);
+  const [isBnplLiability, setIsBnplLiability] = useState(false);
+  const [bnplInstallmentCount, setBnplInstallmentCount] = useState('4');
 
   // -- additional details state ---------------------------------------------
   const [additionalOpen, setAdditionalOpen] = useState(false);
@@ -256,6 +259,12 @@ export function TransactionForm({
     setTagsInput(initialData ? tagsToString(initialData.tags) : '');
     setCounterpartyName(initialData?.counterpartyName ?? '');
     setMerchantMatch(null);
+    setIsBnplLiability(
+      initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.liabilityType] === 'BNPL',
+    );
+    setBnplInstallmentCount(
+      initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.installmentCount] ?? '4',
+    );
     setErrors({});
     setSubmitting(false);
     setSubmitError(null);
@@ -385,6 +394,13 @@ export function TransactionForm({
           customFields[trimmedKey] = entry.value;
         }
       }
+      if (isBnplLiability) {
+        customFields[BNPL_CUSTOM_FIELD_KEYS.liabilityType] = 'BNPL';
+        customFields[BNPL_CUSTOM_FIELD_KEYS.installmentCount] = bnplInstallmentCount;
+      } else {
+        delete customFields[BNPL_CUSTOM_FIELD_KEYS.liabilityType];
+        delete customFields[BNPL_CUSTOM_FIELD_KEYS.installmentCount];
+      }
 
       const input: CreateTransactionInput = {
         householdId: selectedAccount.householdId,
@@ -436,6 +452,8 @@ export function TransactionForm({
         setTagsInput('');
         setCounterpartyName('');
         setMerchantMatch(null);
+        setIsBnplLiability(false);
+        setBnplInstallmentCount('4');
         setErrors({});
         setSuggestion(null);
         setMerchantCity('');
@@ -474,6 +492,8 @@ export function TransactionForm({
       extraNotes,
       counterpartyName,
       merchantMatch,
+      isBnplLiability,
+      bnplInstallmentCount,
       onSubmit,
       submitFailureMessage,
       suggestion,
@@ -624,6 +644,30 @@ export function TransactionForm({
                 placeholder="e.g. Walgreens, Amazon"
               />
             </div>
+
+            <fieldset className="form-group">
+              <legend className="form-group__label">Buy-now-pay-later liability</legend>
+              <label className="form-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={isBnplLiability}
+                  onChange={(event) => setIsBnplLiability(event.target.checked)}
+                />
+                Track this purchase as a BNPL liability with installments
+              </label>
+              {isBnplLiability && (
+                <input
+                  id="txn-bnpl-installments"
+                  className="form-input"
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={bnplInstallmentCount}
+                  onChange={(event) => setBnplInstallmentCount(event.target.value)}
+                  aria-label="Number of BNPL installments"
+                />
+              )}
+            </fieldset>
 
             {/* Category */}
             <div className="form-group">

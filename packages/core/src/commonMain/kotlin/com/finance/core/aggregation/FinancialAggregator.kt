@@ -29,6 +29,41 @@ object FinancialAggregator {
     }
 
     /**
+     * Calculate net worth with first-class liabilities included explicitly.
+     */
+    fun netWorth(accounts: List<Account>, liabilities: List<Liability>): Cents {
+        val explicitLiabilities = liabilities
+            .filter { it.isActive }
+            .sumOf { it.remainingBalance.amount }
+        return netWorth(accounts) - Cents(explicitLiabilities)
+    }
+
+    /**
+     * Total scheduled liability payments due in a date range.
+     */
+    fun totalScheduledLiabilityPayments(
+        installments: List<LiabilityInstallment>,
+        from: LocalDate,
+        to: LocalDate,
+    ): Cents {
+        return Cents(installments
+            .filter { it.isOutstanding && it.dueDate >= from && it.dueDate <= to }
+            .sumOf { it.amount.amount })
+    }
+
+    /**
+     * Net cash flow with scheduled liability installments subtracted from free cash flow.
+     */
+    fun netCashFlow(
+        transactions: List<Transaction>,
+        installments: List<LiabilityInstallment>,
+        from: LocalDate,
+        to: LocalDate,
+    ): Cents {
+        return netCashFlow(transactions, from, to) - totalScheduledLiabilityPayments(installments, from, to)
+    }
+
+    /**
      * Total spending in a date range (sum of expense transactions).
      */
     fun totalSpending(transactions: List<Transaction>, from: LocalDate, to: LocalDate): Cents {

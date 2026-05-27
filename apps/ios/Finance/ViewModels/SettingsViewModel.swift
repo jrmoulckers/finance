@@ -25,6 +25,7 @@ private enum SettingsKeys {
     static let goalMilestones = "finance_goal_milestones"
     static let lastSyncDate = "finance_last_sync_date"
     static let pendingChangesCount = "finance_pending_changes_count"
+    static let bnplStackingThreshold = "finance_bnpl_stacking_threshold"
 }
 
 enum DeletionConfirmationStep: Sendable {
@@ -65,6 +66,11 @@ final class SettingsViewModel {
 
     /// Whether this device supports haptic feedback.
     let hapticFeedbackAvailable: Bool
+
+    /// Dollar threshold for BNPL stacking alerts, persisted to UserDefaults.
+    var bnplStackingThreshold: String {
+        didSet { defaults.set(bnplStackingThreshold, forKey: SettingsKeys.bnplStackingThreshold) }
+    }
 
     // MARK: - Biometric State
 
@@ -214,6 +220,7 @@ final class SettingsViewModel {
         )
         self.hapticFeedbackAvailable = HapticFeedbackPreferences.deviceSupportsHaptics
         self.hapticFeedbackEnabled = HapticFeedbackPreferences.isEnabled(defaults: defaults)
+        self.bnplStackingThreshold = defaults.string(forKey: SettingsKeys.bnplStackingThreshold) ?? "500"
         self.lastSyncDate = defaults.object(forKey: SettingsKeys.lastSyncDate) as? Date
         self.pendingChangesCount = defaults.integer(forKey: SettingsKeys.pendingChangesCount)
 

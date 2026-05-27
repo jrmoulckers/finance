@@ -9,6 +9,7 @@ import com.finance.android.data.repository.AccountRepository
 import com.finance.android.data.repository.CategoryRepository
 import com.finance.android.data.repository.TransactionRepository
 import com.finance.core.currency.CurrencyFormatter
+import com.finance.models.Transaction
 import com.finance.models.TransactionStatus
 import com.finance.models.TransactionType
 import com.finance.models.types.SyncId
@@ -80,6 +81,8 @@ sealed interface TransactionDetailUiState {
         val accountName: String,
         val note: String?,
         val tags: List<String>,
+        val isBnplLiability: Boolean,
+        val isBnplInstallmentPaid: Boolean,
         val isDeleting: Boolean = false,
     ) : TransactionDetailUiState
 }
@@ -128,6 +131,7 @@ class TransactionDetailViewModel(
      * (→ [TransactionDetailUiState.NotFound]).
      */
     private var isDeletingSnapshot = false
+    private var latestTransaction: Transaction? = null
 
     init {
         viewModelScope.launch {
@@ -142,6 +146,7 @@ class TransactionDetailViewModel(
                     return@collectLatest
                 }
 
+                latestTransaction = txn
                 val category = txn.categoryId?.let { categoryRepository.getById(it) }
                 val account = accountRepository.getById(txn.accountId)
                 val today = Clock.System.now()
@@ -161,9 +166,19 @@ class TransactionDetailViewModel(
                     accountName = account?.name ?: "Unknown Account",
                     note = txn.note?.takeIf { it.isNotBlank() },
                     tags = txn.tags,
+                    isBnplLiability = txn.tags.contains(BNPL_TAG),
+                    isBnplInstallmentPaid = txn.tags.contains(BNPL_PAID_TAG),
                     isDeleting = isDeletingSnapshot,
                 )
             }
+        }
+    }
+
+    /** Mark the linked BNPL installment paid by tagging this repayment transaction. */
+    fun markBnplInstallmentPaid() {
+        val txn = latestTransaction ?: return
+        viewModelScope.launch {
+            transactionRepository.update(txn.copy(tags = (txn.tags + BNPL_TAG + BNPL_PAID_TAG).distinct()))
         }
     }
 
@@ -204,5 +219,10 @@ class TransactionDetailViewModel(
         TransactionStatus.CLEARED -> "Cleared"
         TransactionStatus.RECONCILED -> "Reconciled"
         TransactionStatus.VOID -> "Void"
+    }
+
+    private companion object {
+        const val BNPL_TAG = "bnpl"
+        const val BNPL_PAID_TAG = "bnpl-installment-paid"
     }
 }

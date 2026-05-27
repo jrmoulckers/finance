@@ -19,16 +19,17 @@ struct TransactionDetailView: View {
     @State private var receiptImageData: Data?
     @State private var isDeleting = false
     @State private var errorMessage: String?
+    @State private var isBnplInstallmentPaid = false
     private let repository: TransactionRepository
 
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.finance", category: "TransactionDetailView")
 
     init(transaction: TransactionItem, repository: TransactionRepository = RepositoryProvider.shared.transactions) {
-        _transaction = State(initialValue: transaction); _editedNotes = State(initialValue: transaction.notes); _receiptImageData = State(initialValue: transaction.receiptData); self.repository = repository
+        _transaction = State(initialValue: transaction); _editedNotes = State(initialValue: transaction.notes); _receiptImageData = State(initialValue: transaction.receiptData); _isBnplInstallmentPaid = State(initialValue: transaction.tags.contains("bnpl-installment-paid")); self.repository = repository
     }
 
     var body: some View {
-        List { headerSection; detailsSection; tagsSection; notesSection; receiptSection; actionsSection }
+        List { headerSection; detailsSection; bnplSection; tagsSection; notesSection; receiptSection; actionsSection }
         .listStyle(.insetGrouped).navigationTitle(String(localized: "Transaction Details")).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .primaryAction) { Button { showingEditSheet = true } label: { Text(String(localized: "Edit")) }.accessibilityLabel(String(localized: "Edit transaction")).accessibilityHint(String(localized: "Opens a form to edit this transaction")) } }
         .confirmationDialog(String(localized: "Delete Transaction"), isPresented: $showingDeleteConfirmation, titleVisibility: .visible) { Button(String(localized: "Delete"), role: .destructive) { Task { await performDelete() } }; Button(String(localized: "Cancel"), role: .cancel) {} } message: { Text(String(localized: "Are you sure you want to delete this transaction? This action cannot be undone.")) }
@@ -107,6 +108,22 @@ struct TransactionDetailView: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(String(localized: "Recurring transaction"))
+            }
+        }
+    }
+
+    // MARK: - BNPL Section
+
+    @ViewBuilder
+    private var bnplSection: some View {
+        if transaction.tags.contains("bnpl") {
+            Section(String(localized: "BNPL Liability")) {
+                Text(isBnplInstallmentPaid ? String(localized: "Installment paid") : String(localized: "Installment due"))
+                if !isBnplInstallmentPaid {
+                    Button(String(localized: "Mark installment paid")) {
+                        isBnplInstallmentPaid = true
+                    }
+                }
             }
         }
     }

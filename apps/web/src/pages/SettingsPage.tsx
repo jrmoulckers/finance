@@ -13,6 +13,10 @@ import { PrivacyPersistenceOption, usePrivacyMode } from '../contexts/PrivacyMod
 import { useOfflineStatus } from '../hooks/useOfflineStatus';
 import { useTheme } from '../hooks/useTheme';
 import type { ThemeValue } from '../hooks/useTheme';
+import {
+  loadBnplStackingThresholdCents,
+  saveBnplStackingThresholdCents,
+} from '../lib/bnpl-liability';
 import type { CurrencyDisplayMode, NegativeFormat } from '../lib/display-settings';
 import { useMoneyDisplay } from '../lib/display-settings';
 import { initMonitoring } from '../lib/monitoring';
@@ -84,6 +88,9 @@ export const SettingsPage: React.FC = () => {
   const [monitoringEnabled, setMonitoringEnabled] = useState(
     () => localStorage.getItem(MONITORING_CONSENT_STORAGE_KEY) === 'true',
   );
+  const [bnplStackingThreshold, setBnplStackingThreshold] = useState(() =>
+    String(loadBnplStackingThresholdCents() / 100),
+  );
 
   const {
     isAuthenticated,
@@ -142,6 +149,15 @@ export const SettingsPage: React.FC = () => {
 
     if (enabled) {
       initMonitoring();
+    }
+  }, []);
+
+  const handleBnplThresholdChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const dollars = event.target.value;
+    setBnplStackingThreshold(dollars);
+    const cents = Math.round(Number.parseFloat(dollars || '0') * 100);
+    if (Number.isFinite(cents) && cents > 0) {
+      saveBnplStackingThresholdCents(cents);
     }
   }, []);
 
@@ -226,6 +242,28 @@ export const SettingsPage: React.FC = () => {
                   ))}
                 </select>
               </div>
+            </div>
+          </SettingInfoWidget>
+          <SettingInfoWidget settingKey="bnpl-stacking-threshold">
+            <div className="settings-item settings-item--static">
+              <label className="settings-item__label" htmlFor="settings-bnpl-threshold">
+                BNPL stacking alert threshold
+              </label>
+              <div className="settings-item__control">
+                <input
+                  id="settings-bnpl-threshold"
+                  className="settings-item__input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={bnplStackingThreshold}
+                  onChange={handleBnplThresholdChange}
+                  aria-describedby="settings-bnpl-threshold-help"
+                />
+              </div>
+              <p id="settings-bnpl-threshold-help" className="settings-item__description">
+                Alert when unpaid BNPL installments stack above this amount.
+              </p>
             </div>
           </SettingInfoWidget>
           <SettingInfoWidget settingKey="theme">

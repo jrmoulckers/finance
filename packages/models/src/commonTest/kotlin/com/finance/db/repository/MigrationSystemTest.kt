@@ -5,6 +5,7 @@ package com.finance.db.repository
 import com.finance.db.migration.migrations.V001_InitialSchema
 import com.finance.db.migration.migrations.V002_OwnerIdMigration
 import com.finance.db.migration.migrations.V003_PerformanceIndexes
+import com.finance.db.migration.migrations.V005_Liabilities
 import com.finance.db.migration.migrations.MigrationInitializer
 import com.finance.db.migration.MigrationRegistry
 import kotlin.test.Test
@@ -44,9 +45,19 @@ class MigrationSystemTest {
         assertTrue(sql.contains("idx_goal_household_status"))
     }
 
+    @Test fun v005_hasCorrectVersion() = assertEquals(5, V005_Liabilities.version)
+
+    @Test fun v005_addsLiabilityTablesAndIndexes() {
+        val sql = V005_Liabilities.up.joinToString("\n")
+        assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS liability"))
+        assertTrue(sql.contains("CREATE TABLE IF NOT EXISTS liability_installment"))
+        assertTrue(sql.contains("idx_liability_installment_due_date"))
+    }
+
     @Test fun migrationsAreInOrder() {
         assertTrue(V001_InitialSchema.version < V002_OwnerIdMigration.version)
         assertTrue(V002_OwnerIdMigration.version < V003_PerformanceIndexes.version)
+        assertTrue(V003_PerformanceIndexes.version < V005_Liabilities.version)
     }
 
     @Test fun migrationInitializer_canBeCalledTwice() {
@@ -56,12 +67,12 @@ class MigrationSystemTest {
 
     @Test fun migrationInitializer_registersAll() {
         MigrationInitializer.initialize()
-        assertTrue(MigrationRegistry.getAll().size >= 3)
+        assertTrue(MigrationRegistry.getAll().size >= 4)
     }
 
     @Test fun migrationRegistry_latestVersion() {
         MigrationInitializer.initialize()
-        assertTrue(MigrationRegistry.latestVersion() >= 3)
+        assertTrue(MigrationRegistry.latestVersion() >= 5)
     }
 
     @Test fun migrationRegistry_getByVersion() {

@@ -51,6 +51,8 @@ final class TransactionCreateViewModel {
     var selectedStatus: TransactionStatusUI = .pending
     var tags: [String] = []
     var currentTagText = ""
+    var isBnplLiability = false
+    var bnplInstallmentCount = "4"
 
     /// Venmo-style amount: stores raw digit input (no decimals).
     /// e.g. user types "1", "2", "3" → amountCents = 123 → displays "$1.23"
@@ -151,6 +153,9 @@ final class TransactionCreateViewModel {
             currencyCode = transaction.currencyCode
             selectedStatus = transaction.status
             tags = transaction.tags
+            isBnplLiability = transaction.tags.contains(Self.bnplTag)
+            bnplInstallmentCount = transaction.tags.first(where: { $0.hasPrefix(Self.bnplInstallmentsPrefix) })?
+                .replacingOccurrences(of: Self.bnplInstallmentsPrefix, with: "") ?? "4"
             // Category and account IDs are resolved after loadData()
         } else if let quickEntryAction {
             applyQuickEntry(action: quickEntryAction)
@@ -226,6 +231,9 @@ final class TransactionCreateViewModel {
         let categoryName = categories.first { $0.id == selectedCategoryId }?.name ?? ""
         let accountName = accounts.first { $0.id == selectedAccountId }?.name ?? ""
 
+        let bnplTags = isBnplLiability ? [Self.bnplTag, "\(Self.bnplInstallmentsPrefix)\(bnplInstallmentCount)"] : []
+        let persistedTags = tags.filter { $0 != Self.bnplTag && !$0.hasPrefix(Self.bnplInstallmentsPrefix) } + bnplTags
+
         let transaction = TransactionItem(
             id: editingTransaction?.id ?? UUID().uuidString,
             payee: payee,
@@ -236,7 +244,7 @@ final class TransactionCreateViewModel {
             date: date,
             type: transactionType,
             status: selectedStatus,
-            tags: tags
+            tags: persistedTags
         )
 
         do {
@@ -315,4 +323,7 @@ final class TransactionCreateViewModel {
     }
 
     // MARK: - Helpers
+
+    private static let bnplTag = "bnpl"
+    private static let bnplInstallmentsPrefix = "bnpl-installments:"
 }

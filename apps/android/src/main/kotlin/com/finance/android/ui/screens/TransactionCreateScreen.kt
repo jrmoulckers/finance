@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -154,7 +155,8 @@ fun TransactionCreateScreen(
             }, label = "step", modifier = Modifier.weight(1f).fillMaxWidth()) { step ->
                 when (step) {
                     CreateStep.AMOUNT -> AmountStep(state, viewModel::updateAmount, viewModel::updatePayee,
-                        viewModel::selectPayeeSuggestion, viewModel::updateTransactionType)
+                        viewModel::selectPayeeSuggestion, viewModel::updateTransactionType,
+                        viewModel::setBnplLiabilityEnabled, viewModel::updateBnplInstallmentCount)
                     CreateStep.CATEGORY -> CategoryStep(state, viewModel::selectCategory, viewModel::selectAccount,
                         viewModel::selectTransferAccount, viewModel::updateNote)
                     CreateStep.CONFIRM -> ConfirmStep(state)
@@ -189,7 +191,8 @@ private fun ErrorMessages(errors: List<String>, modifier: Modifier = Modifier) {
 
 @Composable
 private fun AmountStep(state: TransactionCreateUiState, onAmt: (String) -> Unit, onPayee: (String) -> Unit,
-    onSugg: (String) -> Unit, onType: (TransactionType) -> Unit) {
+    onSugg: (String) -> Unit, onType: (TransactionType) -> Unit,
+    onBnplChanged: (Boolean) -> Unit, onInstallmentCountChanged: (String) -> Unit) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item(key = "type") {
             Text("Transaction Type", style = MaterialTheme.typography.labelLarge,
@@ -228,6 +231,26 @@ private fun AmountStep(state: TransactionCreateUiState, onAmt: (String) -> Unit,
                             .semantics { contentDescription = "Suggestion: $s" }, style = MaterialTheme.typography.bodyMedium)
                         HorizontalDivider()
                     }}
+                }
+            }
+        }
+        item(key = "bnpl") {
+            Card(Modifier.fillMaxWidth().semantics { contentDescription = "BNPL liability options" }) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = state.isBnplLiability, onCheckedChange = onBnplChanged)
+                        Text("Track as BNPL liability")
+                    }
+                    if (state.isBnplLiability) {
+                        OutlinedTextField(
+                            value = state.bnplInstallmentCountText,
+                            onValueChange = onInstallmentCountChanged,
+                            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "BNPL installment count" },
+                            label = { Text("Installments") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                        )
+                    }
                 }
             }
         }
@@ -308,6 +331,7 @@ private fun ConfirmStep(state: TransactionCreateUiState) {
                     CRow("Payee", state.payee); HorizontalDivider()
                     CRow("Category", state.selectedCategoryName); HorizontalDivider()
                     CRow("Account", state.selectedAccountName)
+                    if (state.isBnplLiability) { HorizontalDivider(); CRow("BNPL installments", state.bnplInstallmentCountText) }
                     if (state.transactionType == TransactionType.TRANSFER) { HorizontalDivider(); CRow("To Account", state.selectedTransferAccountName) }
                     HorizontalDivider(); CRow("Date", state.date.toString())
                     if (state.note.isNotBlank()) { HorizontalDivider(); CRow("Note", state.note) }
@@ -361,7 +385,7 @@ private fun catIcon(name: String?): ImageVector = when (name) {
 private fun AmountStepPreview() {
     FinanceTheme(dynamicColor = false) {
         Column { StepIndicator(CreateStep.AMOUNT, Modifier.padding(16.dp))
-            AmountStep(TransactionCreateUiState(amountText = "42.50", amountCents = 4250, payee = "Whole Foods"), {}, {}, {}, {}) }
+            AmountStep(TransactionCreateUiState(amountText = "42.50", amountCents = 4250, payee = "Whole Foods"), {}, {}, {}, {}, {}, {}) }
     }
 }
 

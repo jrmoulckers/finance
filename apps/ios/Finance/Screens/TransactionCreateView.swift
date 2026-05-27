@@ -196,6 +196,14 @@ struct TransactionCreateView: View {
                 .accessibilityLabel(String(localized: "Transaction status"))
                 .accessibilityHint(String(localized: "Select the clearance status of this transaction"))
             }
+            Section(String(localized: "BNPL Liability")) {
+                Toggle(String(localized: "Track as BNPL liability"), isOn: $viewModel.isBnplLiability)
+                if viewModel.isBnplLiability {
+                    TextField(String(localized: "Installments"), text: $viewModel.bnplInstallmentCount)
+                        .keyboardType(.numberPad)
+                        .accessibilityLabel(String(localized: "BNPL installment count"))
+                }
+            }
             Section(String(localized: "Tags")) {
                 // Existing tags as removable capsules
                 if !viewModel.tags.isEmpty {
@@ -257,6 +265,9 @@ struct TransactionCreateView: View {
                     LabeledContent(String(localized: "Category")) { Text(category.name) }
                 }
                 LabeledContent(String(localized: "Status")) { Text(viewModel.selectedStatus.displayName) }
+                if viewModel.isBnplLiability {
+                    LabeledContent(String(localized: "BNPL installments")) { Text(viewModel.bnplInstallmentCount) }
+                }
                 LabeledContent(String(localized: "Date")) { Text(viewModel.date, style: .date) }
                 if !viewModel.tags.isEmpty {
                     LabeledContent(String(localized: "Tags")) {

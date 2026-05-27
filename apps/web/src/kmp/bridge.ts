@@ -141,6 +141,48 @@ export interface Transaction extends SyncMetadata {
   readonly counterpartyAccountId: SyncId | null;
 }
 
+/** Maps to KMP `com.finance.models.LiabilityType`. */
+export type LiabilityType = 'BNPL' | 'LOAN' | 'CREDIT_LINE' | 'OTHER';
+
+/** Maps to KMP `com.finance.models.LiabilityStatus`. */
+export type LiabilityStatus = 'ACTIVE' | 'CLOSED' | 'CANCELLED' | 'DEFAULTED';
+
+/** Maps to KMP `com.finance.models.LiabilityInstallmentStatus`. */
+export type LiabilityInstallmentStatus = 'DUE' | 'PAID' | 'SKIPPED' | 'VOID';
+
+/** Maps to KMP `com.finance.models.Liability`. */
+export interface Liability extends SyncMetadata {
+  readonly id: SyncId;
+  readonly householdId: SyncId;
+  readonly ownerId: SyncId;
+  readonly type: LiabilityType;
+  readonly status: LiabilityStatus;
+  readonly provider: string;
+  readonly merchantName: string;
+  readonly originalAmount: Cents;
+  readonly remainingBalance: Cents;
+  readonly currency: Currency;
+  readonly openedDate: LocalDate;
+  readonly closedDate: LocalDate | null;
+  readonly accountId: SyncId | null;
+  readonly note: string | null;
+}
+
+/** Maps to KMP `com.finance.models.LiabilityInstallment`. */
+export interface LiabilityInstallment extends SyncMetadata {
+  readonly id: SyncId;
+  readonly liabilityId: SyncId;
+  readonly householdId: SyncId;
+  readonly ownerId: SyncId;
+  readonly sequenceNumber: number;
+  readonly dueDate: LocalDate;
+  readonly amount: Cents;
+  readonly currency: Currency;
+  readonly status: LiabilityInstallmentStatus;
+  readonly paidAt: Instant | null;
+  readonly paymentTransactionId: SyncId | null;
+}
+
 /** Maps to KMP `com.finance.models.BudgetPeriod`. */
 export type BudgetPeriod = 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
 

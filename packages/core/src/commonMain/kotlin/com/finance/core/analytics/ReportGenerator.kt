@@ -170,6 +170,73 @@ object ReportGenerator {
         return snapshots.reversed()
     }
 
+    /**
+     * Simulates net-worth over time with first-class liabilities included in the
+     * current liability baseline.
+     */
+    fun netWorthOverTime(
+        accounts: List<Account>,
+        transactions: List<Transaction>,
+        liabilities: List<Liability>,
+        months: Int,
+        referenceDate: LocalDate = currentDate(),
+    ): List<NetWorthSnapshot> {
+        require(months > 0) { "months must be > 0" }
+
+        val currentNetWorth = FinancialAggregator.netWorth(accounts, liabilities)
+        val activeAccounts = accounts.filter { it.deletedAt == null && !it.isArchived }
+        val activeLiabilityAmount = liabilities
+            .filter { it.isActive }
+            .sumOf { it.remainingBalance.amount }
+        val currentAssets = Cents(activeAccounts
+            .filter { it.type != AccountType.CREDIT_CARD && it.type != AccountType.LOAN }
+            .sumOf { it.currentBalance.amount })
+        val currentLiabilities = Cents(activeAccounts
+            .filter { it.type == AccountType.CREDIT_CARD || it.type == AccountType.LOAN }
+            .sumOf { it.currentBalance.amount } + activeLiabilityAmount)
+
+        val snapshots = mutableListOf<NetWorthSnapshot>()
+        var runningNetWorth = currentNetWorth
+
+        for (offset in 0 until months) {
+            val monthDate = referenceDate.minus(offset, DateTimeUnit.MONTH)
+            val start = LocalDate(monthDate.year, monthDate.month, 1)
+            val end = start.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
+
+            if (offset == 0) {
+                snapshots.add(
+                    NetWorthSnapshot(
+                        date = end,
+                        totalAssets = currentAssets,
+                        totalLiabilities = currentLiabilities,
+                        netWorth = currentNetWorth,
+                    )
+                )
+            } else {
+                val followingMonthDate = referenceDate.minus(offset - 1, DateTimeUnit.MONTH)
+                val followingStart = LocalDate(followingMonthDate.year, followingMonthDate.month, 1)
+                val followingEnd = followingStart.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
+                val followingCashFlow = FinancialAggregator.netCashFlow(
+                    transactions, followingStart, followingEnd,
+                )
+                runningNetWorth = runningNetWorth - followingCashFlow
+                val estimated = estimateAssetLiabilitySplit(
+                    runningNetWorth, currentAssets, currentLiabilities,
+                )
+                snapshots.add(
+                    NetWorthSnapshot(
+                        date = end,
+                        totalAssets = estimated.first,
+                        totalLiabilities = estimated.second,
+                        netWorth = runningNetWorth,
+                    )
+                )
+            }
+        }
+
+        return snapshots.reversed()
+    }
+
     // ── Category trends ──────────────────────────────────────────────
 
     /**

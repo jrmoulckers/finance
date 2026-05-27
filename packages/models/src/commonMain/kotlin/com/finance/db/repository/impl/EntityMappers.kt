@@ -57,6 +57,38 @@ object EntityMappers {
     )
 
     @Suppress("LongParameterList")
+    fun mapLiability(
+        id: String, householdId: String, ownerId: String, type: String, status: String,
+        provider: String, merchantName: String, originalAmount: Long, remainingBalance: Long,
+        currency: String, openedDate: String, closedDate: String?, accountId: String?, note: String?,
+        createdAt: String, updatedAt: String, deletedAt: String?, syncVersion: Long, isSynced: Long,
+    ): Liability = Liability(
+        id = SyncId(id), householdId = SyncId(householdId), ownerId = SyncId(ownerId),
+        type = LiabilityType.valueOf(type), status = LiabilityStatus.valueOf(status),
+        provider = provider, merchantName = merchantName, originalAmount = Cents(originalAmount),
+        remainingBalance = Cents(remainingBalance), currency = Currency(currency),
+        openedDate = LocalDate.parse(openedDate), closedDate = closedDate?.let { LocalDate.parse(it) },
+        accountId = accountId?.let { SyncId(it) }, note = note, createdAt = Instant.parse(createdAt),
+        updatedAt = Instant.parse(updatedAt), deletedAt = deletedAt?.let { Instant.parse(it) },
+        syncVersion = syncVersion, isSynced = isSynced != 0L,
+    )
+
+    @Suppress("LongParameterList")
+    fun mapLiabilityInstallment(
+        id: String, liabilityId: String, householdId: String, ownerId: String,
+        sequenceNumber: Long, dueDate: String, amount: Long, currency: String, status: String,
+        paidAt: String?, paymentTransactionId: String?, createdAt: String, updatedAt: String,
+        deletedAt: String?, syncVersion: Long, isSynced: Long,
+    ): LiabilityInstallment = LiabilityInstallment(
+        id = SyncId(id), liabilityId = SyncId(liabilityId), householdId = SyncId(householdId),
+        ownerId = SyncId(ownerId), sequenceNumber = sequenceNumber.toInt(), dueDate = LocalDate.parse(dueDate),
+        amount = Cents(amount), currency = Currency(currency), status = LiabilityInstallmentStatus.valueOf(status),
+        paidAt = paidAt?.let { Instant.parse(it) }, paymentTransactionId = paymentTransactionId?.let { SyncId(it) },
+        createdAt = Instant.parse(createdAt), updatedAt = Instant.parse(updatedAt),
+        deletedAt = deletedAt?.let { Instant.parse(it) }, syncVersion = syncVersion, isSynced = isSynced != 0L,
+    )
+
+    @Suppress("LongParameterList")
     fun mapBudget(
         id: String, householdId: String, ownerId: String, categoryId: String,
         name: String, amount: Long, currency: String, period: String,

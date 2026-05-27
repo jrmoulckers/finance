@@ -60,6 +60,8 @@ data class TransactionCreateUiState(
     val selectedCategoryName: String = "",
     val selectedAccountName: String = "",
     val selectedTransferAccountName: String = "",
+    val isBnplLiability: Boolean = false,
+    val bnplInstallmentCountText: String = "4",
 )
 
 /**
@@ -152,6 +154,9 @@ class TransactionCreateViewModel(
                                 ?.let { id -> accountMap[id]?.name } ?: "",
                             date = txn.date,
                             note = txn.note ?: "",
+                            isBnplLiability = txn.tags.contains(BNPL_TAG),
+                            bnplInstallmentCountText = txn.tags.firstOrNull { tag -> tag.startsWith(BNPL_INSTALLMENTS_PREFIX) }
+                                ?.removePrefix(BNPL_INSTALLMENTS_PREFIX) ?: "4",
                         )
                     }
                 }
@@ -229,6 +234,10 @@ class TransactionCreateViewModel(
 
     fun updateDate(date: LocalDate) { _uiState.update { it.copy(date = date, errors = emptyList()) } }
     fun updateNote(note: String) { _uiState.update { it.copy(note = note, errors = emptyList()) } }
+    fun setBnplLiabilityEnabled(enabled: Boolean) { _uiState.update { it.copy(isBnplLiability = enabled, errors = emptyList()) } }
+    fun updateBnplInstallmentCount(value: String) {
+        _uiState.update { it.copy(bnplInstallmentCountText = value.filter(Char::isDigit).take(2), errors = emptyList()) }
+    }
 
     fun save() {
         val errs = validateAll(_uiState.value)
@@ -244,6 +253,9 @@ class TransactionCreateViewModel(
             val now = Clock.System.now()
             val amountCents = if (s.transactionType == TransactionType.INCOME)
                 Cents(s.amountCents) else Cents(-s.amountCents)
+            val bnplTags = if (s.isBnplLiability) listOf(BNPL_TAG, "$BNPL_INSTALLMENTS_PREFIX${s.bnplInstallmentCountText}") else emptyList()
+            val existingTags = existingBnplStrippedTags(editingTransaction?.tags.orEmpty())
+            val transactionTags = existingTags + bnplTags
             val existing = editingTransaction
             val transaction = existing?.copy(
                 accountId = s.selectedAccountId!!,
@@ -254,6 +266,7 @@ class TransactionCreateViewModel(
                 note = s.note.ifBlank { null },
                 date = s.date,
                 transferAccountId = s.selectedTransferAccountId,
+                tags = transactionTags,
                 updatedAt = now,
                 isSynced = false,
             ) ?: Transaction(
@@ -270,6 +283,7 @@ class TransactionCreateViewModel(
                 note = s.note.ifBlank { null },
                 date = s.date,
                 transferAccountId = s.selectedTransferAccountId,
+                tags = transactionTags,
                 createdAt = now,
                 updatedAt = now,
             )
@@ -306,6 +320,16 @@ class TransactionCreateViewModel(
         if (s.selectedAccountId == null) add("Please select an account")
         if (s.transactionType == TransactionType.TRANSFER && s.selectedTransferAccountId == null)
             add("Please select a destination account")
+        if (s.isBnplLiability && (s.bnplInstallmentCountText.toIntOrNull() ?: 0) <= 0)
+            add("Please enter a valid installment count")
         if (s.note.length > 1000) add("Note is too long (max 1000)")
+    }
+
+    private fun existingBnplStrippedTags(tags: List<String>): List<String> =
+        tags.filterNot { it == BNPL_TAG || it.startsWith(BNPL_INSTALLMENTS_PREFIX) }
+
+    private companion object {
+        const val BNPL_TAG = "bnpl"
+        const val BNPL_INSTALLMENTS_PREFIX = "bnpl-installments:"
     }
 }

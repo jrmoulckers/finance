@@ -1,0 +1,91 @@
+-- Liability entity
+-- First-class liabilities such as BNPL plans and loans.
+
+CREATE TABLE IF NOT EXISTS liability (
+    id TEXT NOT NULL PRIMARY KEY,
+    household_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
+    provider TEXT NOT NULL,
+    merchant_name TEXT NOT NULL,
+    original_amount INTEGER NOT NULL,
+    remaining_balance INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    opened_date TEXT NOT NULL,
+    closed_date TEXT,
+    account_id TEXT,
+    note TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    sync_version INTEGER NOT NULL DEFAULT 0,
+    is_synced INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (household_id) REFERENCES household(id),
+    FOREIGN KEY (owner_id) REFERENCES user(id),
+    FOREIGN KEY (account_id) REFERENCES account(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_liability_household ON liability (household_id);
+CREATE INDEX IF NOT EXISTS idx_liability_owner ON liability (owner_id);
+CREATE INDEX IF NOT EXISTS idx_liability_type ON liability (type);
+CREATE INDEX IF NOT EXISTS idx_liability_status ON liability (status);
+CREATE INDEX IF NOT EXISTS idx_liability_sync ON liability (is_synced);
+
+selectAll:
+SELECT * FROM liability WHERE deleted_at IS NULL;
+
+selectById:
+SELECT * FROM liability WHERE id = ? AND deleted_at IS NULL;
+
+selectByHousehold:
+SELECT * FROM liability WHERE household_id = ? AND deleted_at IS NULL ORDER BY opened_date DESC;
+
+selectByOwner:
+SELECT * FROM liability WHERE owner_id = ? AND deleted_at IS NULL ORDER BY opened_date DESC;
+
+selectActiveByHousehold:
+SELECT * FROM liability WHERE household_id = ? AND status = 'ACTIVE' AND deleted_at IS NULL ORDER BY opened_date DESC;
+
+insert:
+INSERT INTO liability (id, household_id, owner_id, type, status, provider, merchant_name, original_amount, remaining_balance, currency, opened_date, closed_date, account_id, note, created_at, updated_at, sync_version, is_synced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE liability SET
+    type = ?,
+    status = ?,
+    provider = ?,
+    merchant_name = ?,
+    original_amount = ?,
+    remaining_balance = ?,
+    currency = ?,
+    opened_date = ?,
+    closed_date = ?,
+    account_id = ?,
+    note = ?,
+    updated_at = ?,
+    sync_version = ?,
+    is_synced = ?
+WHERE id = ?;
+
+updateRemainingBalance:
+UPDATE liability SET remaining_balance = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+close:
+UPDATE liability SET status = 'CLOSED', closed_date = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+softDelete:
+UPDATE liability SET deleted_at = ?, updated_at = ?, sync_version = sync_version + 1, is_synced = 0 WHERE id = ?;
+
+selectUnsynced:
+SELECT * FROM liability WHERE is_synced = 0;
+
+markSynced:
+UPDATE liability SET is_synced = 1, sync_version = ? WHERE id = ?;
+
+selectUnsyncedByHousehold:
+SELECT * FROM liability WHERE household_id = ? AND is_synced = 0;
+
+markSyncedById:
+UPDATE liability SET is_synced = 1 WHERE id = ?;

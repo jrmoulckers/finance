@@ -9,6 +9,12 @@ import { Breadcrumb } from '../components/navigation';
 import { TagList } from '../components/tags';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts, useCategories, useTransactions } from '../hooks';
+import {
+  BNPL_CUSTOM_FIELD_KEYS,
+  bnplInstallmentCount,
+  isBnplInstallmentPaid,
+  isBnplLiabilityTransaction,
+} from '../lib/bnpl-liability';
 import type { Transaction } from '../kmp/bridge';
 import '../components/navigation/breadcrumb.css';
 
@@ -115,6 +121,24 @@ export const TransactionDetailPage: React.FC = () => {
       setTimeout(() => setCopiedRefId(false), 2000);
     });
   }, [transaction]);
+
+  const isBnplLiability = transaction ? isBnplLiabilityTransaction(transaction) : false;
+  const bnplPaid = transaction ? isBnplInstallmentPaid(transaction) : false;
+  const bnplCount = transaction ? bnplInstallmentCount(transaction) : null;
+
+  const handleMarkBnplPaid = useCallback(async (): Promise<void> => {
+    if (!transaction) return;
+    const customFields = {
+      ...(transaction.customFields ?? {}),
+      [BNPL_CUSTOM_FIELD_KEYS.liabilityType]: 'BNPL',
+      [BNPL_CUSTOM_FIELD_KEYS.installmentStatus]: 'PAID',
+    };
+    const result = updateTransaction(transaction.id, { customFields });
+    if (result === null) {
+      throw new Error('Failed to mark BNPL installment paid.');
+    }
+    refreshTransactions();
+  }, [refreshTransactions, transaction, updateTransaction]);
 
   const handleFormSubmit = useCallback(
     async (data: CreateTransactionInput): Promise<void> => {
@@ -287,6 +311,26 @@ export const TransactionDetailPage: React.FC = () => {
           )}
         </dl>
       </article>
+
+      {isBnplLiability && (
+        <article
+          className="card"
+          aria-label="BNPL liability details"
+          style={{ marginBottom: 'var(--spacing-6)' }}
+        >
+          <h3 className="card__title">BNPL Liability</h3>
+          <p>
+            This transaction is tracked as a first-class BNPL liability
+            {bnplCount ? ` with ${bnplCount} installments` : ''}.
+          </p>
+          <p>Status: {bnplPaid ? 'Installment paid' : 'Installment due'}</p>
+          {!bnplPaid && (
+            <button type="button" className="btn btn--primary" onClick={handleMarkBnplPaid}>
+              Mark installment paid
+            </button>
+          )}
+        </article>
+      )}
 
       {hasAdditionalDetails && (
         <article
