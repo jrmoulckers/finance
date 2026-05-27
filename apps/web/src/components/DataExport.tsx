@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import type { SqliteDb } from '../db/sqlite-wasm';
 import { getAllAccounts } from '../db/repositories/accounts';
@@ -8,18 +8,23 @@ import { getAllTransactions } from '../db/repositories/transactions';
 import { getAllBudgets } from '../db/repositories/budgets';
 import { getAllGoals } from '../db/repositories/goals';
 import { getAllCategories } from '../db/repositories/categories';
+import {
+  buildDataAccessPackage,
+  shouldAutoDeletePackage,
+  shouldWarnPackageExpiresSoon,
+  type DataAccessManifest,
+  type DataAccessPackageResult,
+} from '../lib/data-access-package';
 import './data-export.css';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/** Supported export formats. */
-export type ExportFormat = 'json' | 'csv';
-
-/** Current state of the export operation. */
-type ExportStatus = 'idle' | 'exporting' | 'success' | 'error';
-
+type ExportStatus =
+  | 'idle'
+  | 'pending'
+  | 'generating'
+  | 'ready'
+  | 'delivered'
+  | 'error'
+  | 'cancelled';
 type ExportRecord = Record<string, unknown>;
 
 interface ExportData {
@@ -34,11 +39,18 @@ export interface DataExportProps {
   className?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+const APP_VERSION = '0.1.0';
 
-/** Gather all exportable financial data from the local SQLite-WASM database. */
+const STRINGS = {
+  requestButton: 'Request my data',
+  pending: 'Pending',
+  generating: 'Generating',
+  ready: 'Ready',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  error: 'Error',
+};
+
 function gatherExportData(db: SqliteDb): ExportData {
   return {
     accounts: getAllAccounts(db),
@@ -49,7 +61,6 @@ function gatherExportData(db: SqliteDb): ExportData {
   };
 }
 
-/** Safely read the shared database instance when the provider may be unavailable. */
 function useExportDatabase(): SqliteDb | null {
   try {
     return useDatabase();
@@ -58,60 +69,26 @@ function useExportDatabase(): SqliteDb | null {
   }
 }
 
-/** Return `true` when at least one exported collection contains records. */
+function readLocalStorageRecords(prefix: string): ExportRecord[] {
+  const records: ExportRecord[] = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key?.startsWith(prefix)) continue;
+    records.push({ key, value: localStorage.getItem(key) });
+  }
+  return records;
+}
+
 function hasExportData(data: ExportData): boolean {
   return Object.values(data).some((records) => records.length > 0);
 }
 
-/** Serialize records to JSON string. */
-function serializeJson(data: ExportData): string {
-  return JSON.stringify({ exportedAt: new Date().toISOString(), data }, null, 2);
+function toExportRecords<T extends object>(records: readonly T[]): ExportRecord[] {
+  return records.map((record) => Object.fromEntries(Object.entries(record)));
 }
 
-/** Serialize a single value for safe CSV output. */
-function serializeCsvValue(value: unknown): string {
-  if (value === null || value === undefined) {
-    return '';
-  }
-
-  const serializedValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
-  return serializedValue.includes(',') ||
-    serializedValue.includes('"') ||
-    serializedValue.includes('\n')
-    ? `"${serializedValue.replace(/"/g, '""')}"`
-    : serializedValue;
-}
-
-/** Serialize a homogeneous record collection to CSV with a header row. */
-function serializeRecordCollection(records: ExportRecord[]): string {
-  if (records.length === 0) {
-    return '';
-  }
-
-  const headers = Object.keys(records[0]);
-  const rows = records.map((record) =>
-    headers.map((header) => serializeCsvValue(record[header])).join(','),
-  );
-  return [headers.join(','), ...rows].join('\n');
-}
-
-/** Serialize exported data collections to a multi-section CSV string. */
-function serializeCsv(data: ExportData): string {
-  return (Object.entries(data) as [keyof ExportData, ExportData[keyof ExportData]][])
-    .map(([tableName, records]) => {
-      const lines = [`# Table: ${String(tableName)}`, `# Records: ${records.length}`];
-      const section = serializeRecordCollection(records as unknown as ExportRecord[]);
-      if (section) {
-        lines.push(section);
-      }
-      return lines.join('\n');
-    })
-    .join('\n\n');
-}
-
-/** Trigger a browser file download from a Blob. */
-function downloadBlob(content: string, filename: string, mimeType: string): void {
-  const blob = new Blob([content], { type: mimeType });
+function downloadBytes(content: Uint8Array, filename: string, mimeType: string): string {
+  const blob = new Blob([content.slice().buffer], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -119,164 +96,249 @@ function downloadBlob(content: string, filename: string, mimeType: string): void
   anchor.style.display = 'none';
   document.body.appendChild(anchor);
   anchor.click();
-  // Clean up
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-    document.body.removeChild(anchor);
-  }, 100);
+  document.body.removeChild(anchor);
+  return url;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+async function shareOrDownloadPackage(
+  packageResult: DataAccessPackageResult,
+): Promise<string | null> {
+  const file = new File([packageResult.zipBytes.slice().buffer], packageResult.fileName, {
+    type: 'application/zip',
+  });
+  const navigatorWithShare = navigator as Navigator & {
+    canShare?: (data: ShareData) => boolean;
+    share?: (data: ShareData) => Promise<void>;
+  };
 
-/**
- * Data export UI — allows users to export their financial data as JSON or CSV.
- *
- * Features:
- * - Format selection (JSON / CSV) with accessible buttons
- * - Progress indicator during export
- * - Browser file download via blob URL
- * - Success/error feedback with ARIA live region
- * - Full keyboard navigation
- */
+  if (
+    navigatorWithShare.share &&
+    (!navigatorWithShare.canShare || navigatorWithShare.canShare({ files: [file] }))
+  ) {
+    await navigatorWithShare.share({ files: [file], title: 'Finance data package' });
+    return null;
+  }
+
+  return downloadBytes(packageResult.zipBytes, packageResult.fileName, 'application/zip');
+}
+
 export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
   const db = useExportDatabase();
   const [status, setStatus] = useState<ExportStatus>('idle');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [includeProtectedCategories, setIncludeProtectedCategories] = useState(true);
+  const [includeMoodTags, setIncludeMoodTags] = useState(false);
+  const [packageResult, setPackageResult] = useState<DataAccessPackageResult | null>(null);
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const [lastFormat, setLastFormat] = useState<ExportFormat | null>(null);
+  const [expirationWarning, setExpirationWarning] = useState(false);
+  const cancelledRef = useRef(false);
+  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Ref for returning focus after export completes
-  const jsonBtnRef = useRef<HTMLButtonElement>(null);
-  const csvBtnRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    return () => {
+      if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [objectUrl]);
 
-  const handleExport = useCallback(
-    async (format: ExportFormat) => {
-      setStatus('exporting');
-      setErrorMessage('');
-      setLastFormat(format);
-
-      try {
-        // Simulate a brief processing delay for UX feedback while queries run.
-        await new Promise((resolve) => setTimeout(resolve, 400));
-
-        if (!db) {
-          setStatus('error');
-          setErrorMessage('Database is still initializing. Please wait a moment and try again.');
-          return;
-        }
-
-        const data = gatherExportData(db);
-        if (!hasExportData(data)) {
-          setStatus('error');
-          setErrorMessage('No data available to export.');
-          return;
-        }
-
-        const timestamp = new Date().toISOString().slice(0, 10);
-        if (format === 'json') {
-          const content = serializeJson(data);
-          downloadBlob(content, `finance-export-${timestamp}.json`, 'application/json');
-        } else {
-          const content = serializeCsv(data);
-          downloadBlob(content, `finance-export-${timestamp}.csv`, 'text/csv');
-        }
-
-        setStatus('success');
-
-        // Auto-clear success after a few seconds
-        setTimeout(() => setStatus('idle'), 4000);
-      } catch {
-        setStatus('error');
-        setErrorMessage('Export failed. Please try again.');
-      }
-    },
-    [db],
-  );
-
-  const handleDismissError = useCallback(() => {
-    setStatus('idle');
-    setErrorMessage('');
-    // Return focus to the button that triggered the failed export
-    if (lastFormat === 'csv') {
-      csvBtnRef.current?.focus();
-    } else {
-      jsonBtnRef.current?.focus();
+  useEffect(() => {
+    if (!packageResult) return undefined;
+    const expiresAt = packageResult.manifest.expires_at;
+    if (shouldAutoDeletePackage(new Date(), expiresAt)) {
+      setPackageResult(null);
+      setStatus('idle');
+      return undefined;
     }
-  }, [lastFormat]);
+    setExpirationWarning(shouldWarnPackageExpiresSoon(new Date(), expiresAt));
+    const expiresInMs = Math.max(0, new Date(expiresAt).getTime() - Date.now());
+    const warningInMs = Math.max(0, expiresInMs - 24 * 60 * 60 * 1000);
+    const warningTimer = setTimeout(() => setExpirationWarning(true), warningInMs);
+    const deleteTimer = setTimeout(() => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setPackageResult(null);
+      setObjectUrl(null);
+      setStatus('idle');
+      setExpirationWarning(false);
+    }, expiresInMs);
+    return () => {
+      clearTimeout(warningTimer);
+      clearTimeout(deleteTimer);
+    };
+  }, [objectUrl, packageResult]);
 
-  const isExporting = status === 'exporting';
-  const isDatabaseUnavailable = db === null;
+  const manifest = packageResult?.manifest;
+  const dbUnavailable = db === null;
+
+  const startRequest = useCallback(() => {
+    setShowConfirmation(true);
+    setErrorMessage('');
+  }, []);
+
+  const cancelRequest = useCallback(() => {
+    cancelledRef.current = true;
+    if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
+    setShowConfirmation(false);
+    setStatus('cancelled');
+  }, []);
+
+  const confirmRequest = useCallback(() => {
+    setShowConfirmation(false);
+    setStatus('pending');
+    setErrorMessage('');
+    cancelledRef.current = false;
+
+    pendingTimerRef.current = setTimeout(async () => {
+      if (cancelledRef.current) return;
+      setStatus('generating');
+      try {
+        if (!db)
+          throw new Error('Database is still initializing. Please wait a moment and try again.');
+        const data = gatherExportData(db);
+        if (!hasExportData(data)) throw new Error('No data available to export.');
+
+        const result = buildDataAccessPackage(
+          {
+            accounts: toExportRecords(data.accounts),
+            transactions: toExportRecords(data.transactions),
+            budgets: toExportRecords(data.budgets),
+            goals: toExportRecords(data.goals),
+            categories: toExportRecords(data.categories),
+            preferences: readLocalStorageRecords('finance-'),
+            settings: readLocalStorageRecords('settings-'),
+            auditLog: [
+              { event: 'data_access_export_generated', timestamp: new Date().toISOString() },
+            ],
+            syncMetadata: [{ offline: !navigator.onLine, user_agent: navigator.userAgent }],
+            recurringRules: [],
+            attachments: [],
+            moodTags: includeMoodTags ? readLocalStorageRecords('finance-mood-') : [],
+          },
+          {
+            appVersion: APP_VERSION,
+            locale: navigator.language,
+            includeProtectedCategories,
+            includeMoodTags,
+          },
+        );
+        if (cancelledRef.current) return;
+        setPackageResult(result);
+        setStatus('ready');
+      } catch (error) {
+        setStatus('error');
+        setErrorMessage(error instanceof Error ? error.message : 'Data package generation failed.');
+      }
+    }, 100);
+  }, [db, includeMoodTags, includeProtectedCategories]);
+
+  const deliverPackage = useCallback(async () => {
+    if (!packageResult) return;
+    try {
+      const url = await shareOrDownloadPackage(packageResult);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setObjectUrl(url);
+      setStatus('delivered');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to open the share sheet.');
+    }
+  }, [objectUrl, packageResult]);
 
   return (
     <div className={`data-export ${className}`.trim()}>
       <p id="data-export-description" className="data-export__description">
-        {isDatabaseUnavailable
+        {dbUnavailable
           ? 'Database is not available. Please wait for it to initialize.'
-          : 'Download your financial data for backup or use in other applications.'}
+          : 'Generate a local ZIP package with manifest.json, per-domain JSON files, attachments, and a localized README.md. No server roundtrip is used.'}
       </p>
 
-      {/* Export buttons */}
       <div
+        className="data-export__button-group"
         role="group"
         aria-labelledby="data-export-description"
-        className="data-export__button-group"
       >
         <button
-          ref={jsonBtnRef}
           type="button"
           className="data-export__button"
-          disabled={isExporting || isDatabaseUnavailable}
-          onClick={() => handleExport('json')}
+          disabled={dbUnavailable || status === 'pending' || status === 'generating'}
+          onClick={startRequest}
           aria-describedby="data-export-description"
         >
-          {isExporting && lastFormat === 'json' ? (
-            <>
-              <SpinnerIcon />
-              Exporting…
-            </>
-          ) : (
-            <>
-              <DownloadIcon />
-              Export as JSON
-            </>
-          )}
+          <DownloadIcon />
+          {STRINGS.requestButton}
         </button>
-
-        <button
-          ref={csvBtnRef}
-          type="button"
-          className="data-export__button"
-          disabled={isExporting || isDatabaseUnavailable}
-          onClick={() => handleExport('csv')}
-          aria-describedby="data-export-description"
-        >
-          {isExporting && lastFormat === 'csv' ? (
-            <>
-              <SpinnerIcon />
-              Exporting…
-            </>
-          ) : (
-            <>
-              <DownloadIcon />
-              Export as CSV
-            </>
-          )}
-        </button>
+        {(status === 'pending' || status === 'generating') && (
+          <button type="button" className="data-export__button" onClick={cancelRequest}>
+            Cancel request
+          </button>
+        )}
+        {packageResult && status !== 'pending' && status !== 'generating' && (
+          <button
+            type="button"
+            className="data-export__button"
+            onClick={() => void deliverPackage()}
+          >
+            Share ZIP package
+          </button>
+        )}
       </div>
 
-      {/* Progress bar — shown during export */}
-      {isExporting && (
-        <div className="data-export__progress" role="status" aria-label="Export in progress">
+      <div className="data-export__progress" role="status" aria-live="polite">
+        <span>Status: {statusLabel(status)}</span>
+        {(status === 'pending' || status === 'generating') && (
           <div className="progress-bar">
             <div className="progress-bar__fill data-export__progress-fill" />
           </div>
-          <p className="data-export__progress-text">Preparing your data for download…</p>
+        )}
+      </div>
+
+      {showConfirmation && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="data-export-confirm-title"
+          className="data-export__feedback"
+        >
+          <h4 id="data-export-confirm-title">Request your data package?</h4>
+          <p>
+            Finance will include transactions, accounts, budgets, goals, recurring rules,
+            categories, tags, attachments, preferences, settings, audit log entries, and sync
+            metadata. The ZIP is generated on this device and is available in-app for 7 days.
+          </p>
+          <p>
+            Mood tag data can reveal sensitive wellbeing patterns. It is excluded by default and
+            only included if you opt in for this request.
+          </p>
+          <label>
+            <input
+              type="checkbox"
+              checked={includeProtectedCategories}
+              onChange={(event) => setIncludeProtectedCategories(event.target.checked)}
+            />
+            Include protected categories (included by default)
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={includeMoodTags}
+              onChange={(event) => setIncludeMoodTags(event.target.checked)}
+            />
+            Include mood tags for this request
+          </label>
+          <div className="data-export__button-group">
+            <button type="button" className="data-export__button" onClick={confirmRequest}>
+              Generate package
+            </button>
+            <button type="button" className="data-export__button" onClick={cancelRequest}>
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Success message — ARIA live region */}
-      {status === 'success' && (
+      {manifest && <PackageSummary manifest={manifest} expirationWarning={expirationWarning} />}
+
+      {status === 'delivered' && (
         <div
           role="status"
           aria-live="polite"
@@ -284,19 +346,18 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
         >
           <CheckIcon />
           <p className="data-export__feedback-message--success">
-            Export complete — your file has been downloaded.
+            Delivered — your ZIP package is ready in the share destination.
           </p>
         </div>
       )}
 
-      {/* Error message — ARIA alert */}
       {status === 'error' && (
         <div role="alert" className="data-export__feedback data-export__feedback--error">
           <ErrorIcon />
           <p className="data-export__feedback-message--error">{errorMessage}</p>
           <button
             type="button"
-            onClick={handleDismissError}
+            onClick={() => setStatus('idle')}
             aria-label="Dismiss error"
             className="data-export__feedback-dismiss"
           >
@@ -308,9 +369,46 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
   );
 };
 
-// ---------------------------------------------------------------------------
-// Icon sub-components (inline SVG, no external deps)
-// ---------------------------------------------------------------------------
+function statusLabel(status: ExportStatus): string {
+  switch (status) {
+    case 'pending':
+      return STRINGS.pending;
+    case 'generating':
+      return STRINGS.generating;
+    case 'ready':
+      return STRINGS.ready;
+    case 'delivered':
+      return STRINGS.delivered;
+    case 'cancelled':
+      return STRINGS.cancelled;
+    case 'error':
+      return STRINGS.error;
+    case 'idle':
+      return 'Not requested';
+  }
+}
+
+const PackageSummary: React.FC<{ manifest: DataAccessManifest; expirationWarning: boolean }> = ({
+  manifest,
+  expirationWarning,
+}) => (
+  <div className="data-export__feedback data-export__feedback--success">
+    <CheckIcon />
+    <div>
+      <p className="data-export__feedback-message--success">
+        Package ready. Expires {new Date(manifest.expires_at).toLocaleString()}.
+      </p>
+      {expirationWarning && (
+        <p role="alert">This data package expires within 24 hours and will be auto-deleted.</p>
+      )}
+      <p>
+        Protected categories included:{' '}
+        {manifest.privacy.protected_categories_included ? 'yes' : 'no'}; mood tags included:{' '}
+        {manifest.privacy.mood_tags_included ? 'yes' : 'no'}.
+      </p>
+    </div>
+  </div>
+);
 
 const DownloadIcon: React.FC = () => (
   <svg
@@ -324,34 +422,6 @@ const DownloadIcon: React.FC = () => (
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
     <polyline points="7 10 12 15 17 10" />
     <line x1="12" y1="15" x2="12" y2="3" />
-  </svg>
-);
-
-const SpinnerIcon: React.FC = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    aria-hidden="true"
-    className="data-export__spinner-icon"
-  >
-    <circle
-      cx="12"
-      cy="12"
-      r="10"
-      stroke="currentColor"
-      strokeWidth="3"
-      fill="none"
-      opacity={0.3}
-    />
-    <path
-      d="M12 2a10 10 0 0 1 10 10"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      fill="none"
-    />
   </svg>
 );
 
