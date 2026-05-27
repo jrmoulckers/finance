@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
-// WidgetDataProvider.swift — Refs #380
+// WidgetDataProvider.swift — Refs #380, #1605, #1608
 
+import FinanceShared
 import Foundation
 
-enum WidgetDataKeys {
-    static let suiteName = "group.com.finance.app"
+public enum WidgetDataKeys {
+    static let suiteName = SharedConstants.appGroupIdentifier
     static let balance = "widget.balance"
     static let transactions = "widget.transactions"
     static let budgets = "widget.budgets"
@@ -37,11 +38,33 @@ struct WidgetBudget: Codable, Sendable, Hashable, Identifiable {
     let spentMinorUnits: Int64
     let limitMinorUnits: Int64
     let currencyCode: String
+
     var progress: Double {
         guard limitMinorUnits > 0 else { return 0 }
         return Double(spentMinorUnits) / Double(limitMinorUnits)
     }
+
+    var remainingMinorUnits: Int64 { limitMinorUnits - spentMinorUnits }
     var isOverBudget: Bool { spentMinorUnits > limitMinorUnits }
+}
+
+struct WidgetBudgetRollup: Sendable, Hashable {
+    let budgets: [WidgetBudget]
+    let totalSpentMinorUnits: Int64
+    let totalLimitMinorUnits: Int64
+    let currencyCode: String
+
+    var progress: Double {
+        guard totalLimitMinorUnits > 0 else { return 0 }
+        return Double(totalSpentMinorUnits) / Double(totalLimitMinorUnits)
+    }
+
+    static let empty = WidgetBudgetRollup(
+        budgets: [],
+        totalSpentMinorUnits: 0,
+        totalLimitMinorUnits: 0,
+        currencyCode: "USD"
+    )
 }
 
 enum WidgetDataProvider {
@@ -50,62 +73,174 @@ enum WidgetDataProvider {
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }()
-    private static var defaults: UserDefaults? { UserDefaults(suiteName: WidgetDataKeys.suiteName) }
+
+    private static var defaults: UserDefaults? { SharedConstants.sharedDefaults }
+
     static func readBalance() -> WidgetBalance {
-        guard let defaults, let data = defaults.data(forKey: WidgetDataKeys.balance), let balance = try? decoder.decode(WidgetBalance.self, from: data) else { return .placeholder }
+        guard let defaults,
+              let data = defaults.data(forKey: WidgetDataKeys.balance),
+              let balance = try? decoder.decode(WidgetBalance.self, from: data)
+        else {
+            return .placeholder
+        }
         return balance
     }
+
     static func readTransactions(limit: Int = 5) -> [WidgetTransaction] {
-        guard let defaults, let data = defaults.data(forKey: WidgetDataKeys.transactions), let txns = try? decoder.decode([WidgetTransaction].self, from: data) else { return WidgetTransaction.placeholders }
-        return Array(txns.prefix(limit))
+        guard let defaults,
+              let data = defaults.data(forKey: WidgetDataKeys.transactions),
+              let transactions = try? decoder.decode([WidgetTransaction].self, from: data)
+        else {
+            return []
+        }
+        return Array(transactions.prefix(limit))
     }
-    static func readBudgets(limit: Int = 3) -> [WidgetBudget] {
-        guard let defaults, let data = defaults.data(forKey: WidgetDataKeys.budgets), let budgets = try? decoder.decode([WidgetBudget].self, from: data) else { return WidgetBudget.placeholders }
-        return Array(budgets.prefix(limit))
+
+    /// Reads budget data from the app-group cache only. Timeline providers must
+    /// never fetch from the network; an empty cache renders an empty state.
+    static func readBudgets(limit: Int? = nil) -> [WidgetBudget] {
+        guard let defaults,
+              let data = defaults.data(forKey: WidgetDataKeys.budgets),
+              let budgets = try? decoder.decode([WidgetBudget].self, from: data)
+        else {
+            return []
+        }
+        if let limit {
+            return Array(budgets.prefix(limit))
+        }
+        return budgets
+    }
+
+    static func budgetRollup() -> WidgetBudgetRollup {
+        let budgets = readBudgets()
+        guard !budgets.isEmpty else { return .empty }
+        let currency = budgets.first?.currencyCode ?? "USD"
+        return WidgetBudgetRollup(
+            budgets: budgets,
+            totalSpentMinorUnits: budgets.reduce(0) { $0 + $1.spentMinorUnits },
+            totalLimitMinorUnits: budgets.reduce(0) { $0 + $1.limitMinorUnits },
+            currencyCode: currency
+        )
+    }
+
+    static func maskingMode(for widgetId: String) -> WidgetMaskingMode {
+        let mode = WidgetPrivacySettings.maskingMode(for: widgetId, defaults: defaults)
+        if mode == .bucketed {
+            WidgetPrivacySettings.markFirstAddPromptPending(defaults: defaults)
+        }
+        return mode
     }
 }
 
 extension WidgetBalance {
-    static let placeholder = WidgetBalance(totalMinorUnits: 2_485_000, previousMonthMinorUnits: 2_340_000, currencyCode: "USD", accountName: String(localized: "All Accounts"), updatedAt: .now)
+    static let placeholder = WidgetBalance(
+        totalMinorUnits: 0,
+        previousMonthMinorUnits: 0,
+        currencyCode: "USD",
+        accountName: String(localized: "All Accounts"),
+        updatedAt: .now
+    )
 }
 
 extension WidgetTransaction {
     static let placeholders: [WidgetTransaction] = [
-        .init(id: "ph-1", payee: String(localized: "Grocery Store"), categoryIcon: "cart.fill", categoryName: String(localized: "Groceries"), amountMinorUnits: -8_540, currencyCode: "USD", date: .now, isIncome: false),
-        .init(id: "ph-2", payee: String(localized: "Direct Deposit"), categoryIcon: "building.columns", categoryName: String(localized: "Income"), amountMinorUnits: 350_000, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -1, to: .now) ?? .now, isIncome: true),
-        .init(id: "ph-3", payee: String(localized: "Coffee Shop"), categoryIcon: "cup.and.saucer.fill", categoryName: String(localized: "Food"), amountMinorUnits: -550, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -1, to: .now) ?? .now, isIncome: false),
-        .init(id: "ph-4", payee: String(localized: "Gas Station"), categoryIcon: "car.fill", categoryName: String(localized: "Transport"), amountMinorUnits: -4_200, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -2, to: .now) ?? .now, isIncome: false),
-        .init(id: "ph-5", payee: String(localized: "Online Store"), categoryIcon: "bag.fill", categoryName: String(localized: "Shopping"), amountMinorUnits: -2_999, currencyCode: "USD", date: Calendar.current.date(byAdding: .day, value: -3, to: .now) ?? .now, isIncome: false),
+        .init(
+            id: "ph-1",
+            payee: String(localized: "Grocery Store"),
+            categoryIcon: "cart.fill",
+            categoryName: String(localized: "Groceries"),
+            amountMinorUnits: -8_540,
+            currencyCode: "USD",
+            date: .now,
+            isIncome: false
+        ),
+        .init(
+            id: "ph-2",
+            payee: String(localized: "Direct Deposit"),
+            categoryIcon: "building.columns",
+            categoryName: String(localized: "Income"),
+            amountMinorUnits: 350_000,
+            currencyCode: "USD",
+            date: Calendar.current.date(byAdding: .day, value: -1, to: .now) ?? .now,
+            isIncome: true
+        ),
     ]
 }
 
 extension WidgetBudget {
     static let placeholders: [WidgetBudget] = [
-        .init(id: "pb-1", name: String(localized: "Groceries"), icon: "cart.fill", spentMinorUnits: 32_000, limitMinorUnits: 50_000, currencyCode: "USD"),
-        .init(id: "pb-2", name: String(localized: "Dining Out"), icon: "fork.knife", spentMinorUnits: 18_500, limitMinorUnits: 20_000, currencyCode: "USD"),
-        .init(id: "pb-3", name: String(localized: "Transport"), icon: "car.fill", spentMinorUnits: 8_000, limitMinorUnits: 15_000, currencyCode: "USD"),
+        .init(
+            id: "pb-1",
+            name: String(localized: "Groceries"),
+            icon: "cart.fill",
+            spentMinorUnits: 32_000,
+            limitMinorUnits: 50_000,
+            currencyCode: "USD"
+        ),
+        .init(
+            id: "pb-2",
+            name: String(localized: "Dining Out"),
+            icon: "fork.knife",
+            spentMinorUnits: 18_500,
+            limitMinorUnits: 20_000,
+            currencyCode: "USD"
+        ),
+        .init(
+            id: "pb-3",
+            name: String(localized: "Transport"),
+            icon: "car.fill",
+            spentMinorUnits: 8_000,
+            limitMinorUnits: 15_000,
+            currencyCode: "USD"
+        ),
     ]
 }
 
 enum WidgetCurrencyFormatter {
-    static func format(minorUnits: Int64, currencyCode: String, showCents: Bool = true) -> String {
-        let f = NumberFormatter(); f.numberStyle = .currency; f.currencyCode = currencyCode
-        f.maximumFractionDigits = showCents ? 2 : 0; f.minimumFractionDigits = showCents ? 2 : 0
-        return f.string(from: NSNumber(value: Double(minorUnits) / 100.0)) ?? currencyCode
+    static func format(
+        minorUnits: Int64,
+        currencyCode: String,
+        mode: WidgetMaskingMode,
+        showCents: Bool = true
+    ) -> String {
+        WidgetMoneyFormatter.formatAmount(
+            minorUnits: minorUnits,
+            currencyCode: currencyCode,
+            mode: mode,
+            showCents: showCents
+        )
     }
-    static func formatCompact(minorUnits: Int64, currencyCode: String) -> String {
-        let v = Double(abs(minorUnits)) / 100.0, s = minorUnits < 0 ? "-" : "", sym = currencySymbol(for: currencyCode)
-        if v >= 1_000_000 { return "\(s)\(sym)\(String(format: "%.1fM", v / 1_000_000))" }
-        if v >= 1_000 { return "\(s)\(sym)\(String(format: "%.1fK", v / 1_000))" }
-        return "\(s)\(sym)\(String(format: "%.0f", v))"
+
+    static func formatCompact(
+        minorUnits: Int64,
+        currencyCode: String,
+        mode: WidgetMaskingMode
+    ) -> String {
+        WidgetMoneyFormatter.formatAmount(
+            minorUnits: minorUnits,
+            currencyCode: currencyCode,
+            mode: mode,
+            compact: true,
+            showCents: false
+        )
     }
-    static func currencySymbol(for code: String) -> String {
-        let f = NumberFormatter(); f.numberStyle = .currency; f.currencyCode = code; f.locale = .current
-        return f.currencySymbol ?? "$"
-    }
-    static func formatForVoiceOver(minorUnits: Int64, currencyCode: String) -> String {
-        let f = NumberFormatter(); f.numberStyle = .currencyPlural; f.currencyCode = currencyCode
-        return f.string(from: NSNumber(value: Double(minorUnits) / 100.0)) ?? currencyCode
+
+    static func formatForVoiceOver(
+        minorUnits: Int64,
+        currencyCode: String,
+        mode: WidgetMaskingMode
+    ) -> String {
+        if mode == .visible {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .currencyPlural
+            formatter.currencyCode = currencyCode
+            return formatter.string(from: NSNumber(value: Double(minorUnits) / 100.0)) ?? currencyCode
+        }
+        return WidgetMoneyFormatter.formatAmount(
+            minorUnits: minorUnits,
+            currencyCode: currencyCode,
+            mode: mode
+        )
     }
 }
 
@@ -113,6 +248,9 @@ enum WidgetDateFormatter {
     static func relativeString(for date: Date) -> String {
         if Calendar.current.isDateInToday(date) { return String(localized: "Today") }
         if Calendar.current.isDateInYesterday(date) { return String(localized: "Yesterday") }
-        let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .none; return f.string(from: date)
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 }

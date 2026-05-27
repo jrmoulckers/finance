@@ -580,3 +580,39 @@
 /* Footer */
 "privacy.footer.lastUpdated" = "Last updated: March 2026";
 "privacy.footer.lastUpdated.accessibilityLabel" = "Privacy policy last updated March 2026";
+
+/* ==========================================================================
+   iOS Widgets — Alpha Launch (#1605, #1608)
+   ========================================================================== */
+"Budget Widgets" = "Budget Widgets";
+"Track category budgets from your local cache." = "Track category budgets from your local cache.";
+"Top Budgets" = "Top Budgets";
+"Monthly Budget" = "Monthly Budget";
+"All categories" = "All categories";
+"No cached budgets" = "No cached budgets";
+"Open Finance to sync budgets." = "Open Finance to sync budgets.";
+"This month spend" = "This month spend";
+"All categories budget progress" = "All categories budget progress";
+"%@ budget" = "%@ budget";
+"%@ of %@" = "%@ of %@";
+"%@–%@" = "%@–%@";
+"Progress only" = "Progress only";
+"Lock Screen Quick Entry" = "Lock Screen Quick Entry";
+"Open a biometric-gated transaction sheet without showing money on the Lock Screen." = "Open a biometric-gated transaction sheet without showing money on the Lock Screen.";
+"Quick Entry Shortcut" = "Quick Entry Shortcut";
+"Just Add" = "Just Add";
+"Log lunch" = "Log lunch";
+"Log coffee" = "Log coffee";
+"Log groceries" = "Log groceries";
+"Log gas" = "Log gas";
+"Quick Entry" = "Quick Entry";
+"Open Finance quick entry" = "Open Finance quick entry";
+"Authenticates before showing the transaction amount field" = "Authenticates before showing the transaction amount field";
+"Authenticate to log a transaction" = "Authenticate to log a transaction";
+"Show exact amounts on widgets?" = "Show exact amounts on widgets?";
+"Keep Bucketed" = "Keep Bucketed";
+"Show Exact Amounts" = "Show Exact Amounts";
+"Widgets can be visible when your device is locked. New budget widgets use bucketed amounts unless you opt in to exact values." = "Widgets can be visible when your device is locked. New budget widgets use bucketed amounts unless you opt in to exact values.";
+"Log Transaction" = "Log Transaction";
+"Record a transaction in Finance." = "Record a transaction in Finance.";
+"Transaction logged." = "Transaction logged.";

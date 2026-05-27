@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 // BalanceWidget.swift — Refs #380
+import FinanceShared
 import SwiftUI
 import WidgetKit
 struct BalanceWidgetEntry: TimelineEntry { let date: Date; let balance: WidgetBalance }
@@ -18,10 +19,11 @@ struct BalanceWidgetView: View {
     private var circView: some View { VStack(spacing:1){Image(systemName:"dollarsign.circle").font(.caption).accessibilityHidden(true);Text(cb).font(.caption2).fontWeight(.semibold).monospacedDigit().minimumScaleFactor(0.6)}.accessibilityLabel(vo) }
     private var rectView: some View { HStack{VStack(alignment:.leading,spacing:2){Text(entry.balance.accountName).font(.caption2).foregroundStyle(.secondary).lineLimit(1);Text(fmtBal).font(.caption).fontWeight(.bold).monospacedDigit().minimumScaleFactor(0.6).lineLimit(1)};Spacer()}.accessibilityElement(children:.combine).accessibilityLabel(vo) }
     private var inlView: some View { Text(fmtNc).monospacedDigit().accessibilityLabel(vo) }
-    private var fmtBal: String { WidgetCurrencyFormatter.format(minorUnits:entry.balance.totalMinorUnits,currencyCode:entry.balance.currencyCode) }
-    private var fmtNc: String { WidgetCurrencyFormatter.format(minorUnits:entry.balance.totalMinorUnits,currencyCode:entry.balance.currencyCode,showCents:false) }
-    private var cb: String { WidgetCurrencyFormatter.formatCompact(minorUnits:entry.balance.totalMinorUnits,currencyCode:entry.balance.currencyCode) }
+    private var maskingMode: WidgetMaskingMode { WidgetDataProvider.maskingMode(for: "BalanceWidget") }
+    private var fmtBal: String { WidgetCurrencyFormatter.format(minorUnits:entry.balance.totalMinorUnits,currencyCode:entry.balance.currencyCode,mode:maskingMode) }
+    private var fmtNc: String { WidgetCurrencyFormatter.format(minorUnits:entry.balance.totalMinorUnits,currencyCode:entry.balance.currencyCode,mode:maskingMode,showCents:false) }
+    private var cb: String { WidgetCurrencyFormatter.formatCompact(minorUnits:entry.balance.totalMinorUnits,currencyCode:entry.balance.currencyCode,mode:maskingMode) }
     private var tc: Color { entry.balance.isTrendingUp ? FinanceWidgetColors.amountPositive:FinanceWidgetColors.amountNegative }
-    private var td: String { let d=entry.balance.totalMinorUnits-entry.balance.previousMonthMinorUnits; let f=WidgetCurrencyFormatter.format(minorUnits:abs(d),currencyCode:entry.balance.currencyCode,showCents:false); return entry.balance.isTrendingUp ? String(localized:"+\(f) vs last month"):String(localized:"-\(f) vs last month") }
-    private var vo: String { let b=WidgetCurrencyFormatter.formatForVoiceOver(minorUnits:entry.balance.totalMinorUnits,currencyCode:entry.balance.currencyCode); return String(localized:"Balance: \(b)") }
+    private var td: String { let d=entry.balance.totalMinorUnits-entry.balance.previousMonthMinorUnits; let f=WidgetCurrencyFormatter.format(minorUnits:abs(d),currencyCode:entry.balance.currencyCode,mode:maskingMode,showCents:false); return entry.balance.isTrendingUp ? String(localized:"+\(f) vs last month"):String(localized:"-\(f) vs last month") }
+    private var vo: String { let b=WidgetCurrencyFormatter.formatForVoiceOver(minorUnits:entry.balance.totalMinorUnits,currencyCode:entry.balance.currencyCode,mode:maskingMode); return String(localized:"Balance: \(b)") }
 }

@@ -21,7 +21,8 @@ let package = Package(
         .library(name: "FinanceShared", targets: ["FinanceShared"]),
         .library(name: "FinanceClip", targets: ["FinanceClip"]),
         .library(name: "FinanceWatch", targets: ["FinanceWatch"]),
-        .library(name: "FinanceWidget", targets: ["FinanceWidget"]),
+        .library(name: "FinanceWidget", targets: ["FinanceWidgets"]),
+        .library(name: "FinanceWidgets", targets: ["FinanceWidgets"]),
     ],
     targets: [
         // MARK: - Shared module
@@ -59,7 +60,7 @@ let package = Package(
 
         // MARK: - Widget extension
         .target(
-            name: "FinanceWidget",
+            name: "FinanceWidgets",
             dependencies: ["FinanceShared"],
             path: "FinanceWidget"
         ),
@@ -85,7 +86,7 @@ let package = Package(
         // MARK: - Tests
         .testTarget(
             name: "FinanceTests",
-            dependencies: ["FinanceApp"],
+            dependencies: ["FinanceApp", "FinanceShared", "FinanceWidgets"],
             path: "Tests"
         ),
     ]

@@ -100,4 +100,5 @@ struct MainTabView: View {
 #Preview {
     MainTabView()
         .environment(BiometricAuthManager())
+        .environment(DeepLinkHandler())
 }

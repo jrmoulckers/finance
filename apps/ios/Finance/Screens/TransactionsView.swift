@@ -10,6 +10,8 @@ import SwiftUI
 // MARK: - View
 
 struct TransactionsView: View {
+    @Environment(BiometricAuthManager.self) private var biometricManager
+    @Environment(DeepLinkHandler.self) private var deepLinkHandler
     @State private var viewModel: TransactionsViewModel
 
     init(viewModel: TransactionsViewModel = TransactionsViewModel(
@@ -92,9 +94,14 @@ struct TransactionsView: View {
                 }
             }
             .sheet(isPresented: $viewModel.showingCreateTransaction, onDismiss: {
+                deepLinkHandler.consumeQuickEntry()
                 Task { await viewModel.loadTransactions() }
             }) {
-                TransactionCreateView()
+                TransactionCreateView(viewModel: TransactionCreateViewModel(
+                    transactionRepository: RepositoryProvider.shared.transactions,
+                    accountRepository: RepositoryProvider.shared.accounts,
+                    quickEntryAction: deepLinkHandler.pendingQuickEntryAction
+                ))
             }
             .sheet(isPresented: $viewModel.showingNlpInput, onDismiss: {
                 Task { await viewModel.loadTransactions() }
@@ -132,7 +139,16 @@ struct TransactionsView: View {
                 Text(String(localized: "Are you sure you want to delete this transaction? This action cannot be undone."))
             }
             .refreshable { await viewModel.loadTransactions() }
-            .task { await viewModel.loadTransactions() }
+            .task {
+                await viewModel.loadTransactions()
+                if deepLinkHandler.hasPendingQuickEntry {
+                    await openBiometricQuickEntry()
+                }
+            }
+            .onChange(of: deepLinkHandler.hasPendingQuickEntry) { _, hasPending in
+                guard hasPending else { return }
+                Task { await openBiometricQuickEntry() }
+            }
             .alert(String(localized: "Error"), isPresented: Binding(
                 get: { viewModel.showError },
                 set: { if !$0 { viewModel.dismissError() } }
@@ -143,6 +159,27 @@ struct TransactionsView: View {
                 Text(viewModel.errorMessage ?? "")
             }
         }
+    }
+
+    private func openBiometricQuickEntry() async {
+        guard deepLinkHandler.hasPendingQuickEntry else { return }
+
+        let appLockEnabled = UserDefaults.standard.bool(
+            forKey: BiometricAuthManager.appLockEnabledKey
+        )
+
+        if !appLockEnabled, biometricManager.canAuthenticate() {
+            do {
+                try await biometricManager.authenticate(
+                    reason: String(localized: "Authenticate to log a transaction")
+                )
+            } catch {
+                deepLinkHandler.consumeQuickEntry()
+                return
+            }
+        }
+
+        viewModel.showingCreateTransaction = true
     }
 
     private var transactionsList: some View {
@@ -252,4 +289,5 @@ struct TransactionsView: View {
 #Preview {
     TransactionsView(viewModel: TransactionsViewModel(repository: MockTransactionRepository()))
         .environment(BiometricAuthManager())
+        .environment(DeepLinkHandler())
 }

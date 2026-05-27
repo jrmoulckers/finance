@@ -570,3 +570,39 @@
 "privacy.section.contact.body" = "Contactez privacy@finance.app pour toute question sur la confidentialité.";
 "privacy.footer.lastUpdated" = "Dernière mise à jour : mars 2026";
 "privacy.footer.lastUpdated.accessibilityLabel" = "Politique de confidentialité mise à jour en mars 2026";
+
+/* ==========================================================================
+   Widgets iOS — Lancement alpha (#1605, #1608)
+   ========================================================================== */
+"Budget Widgets" = "Widgets de budget";
+"Track category budgets from your local cache." = "Suivez les budgets par catégorie depuis votre cache local.";
+"Top Budgets" = "Budgets principaux";
+"Monthly Budget" = "Budget mensuel";
+"All categories" = "Toutes les catégories";
+"No cached budgets" = "Aucun budget en cache";
+"Open Finance to sync budgets." = "Ouvrez Finance pour synchroniser les budgets.";
+"This month spend" = "Dépenses du mois";
+"All categories budget progress" = "Progression du budget de toutes les catégories";
+"%@ budget" = "Budget %@";
+"%@ of %@" = "%@ sur %@";
+"%@–%@" = "%@–%@";
+"Progress only" = "Progression uniquement";
+"Lock Screen Quick Entry" = "Saisie rapide écran verrouillé";
+"Open a biometric-gated transaction sheet without showing money on the Lock Screen." = "Ouvre une fiche de transaction protégée par biométrie sans afficher d'argent sur l'écran verrouillé.";
+"Quick Entry Shortcut" = "Raccourci de saisie rapide";
+"Just Add" = "Ajouter seulement";
+"Log lunch" = "Enregistrer déjeuner";
+"Log coffee" = "Enregistrer café";
+"Log groceries" = "Enregistrer courses";
+"Log gas" = "Enregistrer carburant";
+"Quick Entry" = "Saisie rapide";
+"Open Finance quick entry" = "Ouvrir la saisie rapide Finance";
+"Authenticates before showing the transaction amount field" = "Authentifie avant d'afficher le champ du montant";
+"Authenticate to log a transaction" = "Authentifiez-vous pour enregistrer une transaction";
+"Show exact amounts on widgets?" = "Afficher les montants exacts sur les widgets ?";
+"Keep Bucketed" = "Garder les fourchettes";
+"Show Exact Amounts" = "Afficher les montants exacts";
+"Widgets can be visible when your device is locked. New budget widgets use bucketed amounts unless you opt in to exact values." = "Les widgets peuvent être visibles lorsque l'appareil est verrouillé. Les nouveaux widgets de budget utilisent des fourchettes sauf si vous choisissez les valeurs exactes.";
+"Log Transaction" = "Enregistrer transaction";
+"Record a transaction in Finance." = "Enregistre une transaction dans Finance.";
+"Transaction logged." = "Transaction enregistrée.";

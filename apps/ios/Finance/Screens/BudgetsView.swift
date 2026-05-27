@@ -10,6 +10,7 @@ import SwiftUI
 // MARK: - View
 
 struct BudgetsView: View {
+    @Environment(DeepLinkHandler.self) private var deepLinkHandler
     @State private var viewModel: BudgetsViewModel
 
     init(viewModel: BudgetsViewModel = BudgetsViewModel(
@@ -74,7 +75,13 @@ struct BudgetsView: View {
                 ))
             }
             .refreshable { await viewModel.loadBudgets() }
-            .task { await viewModel.loadBudgets() }
+            .task {
+                await viewModel.loadBudgets()
+                openPendingBudgetCategoryIfNeeded()
+            }
+            .onChange(of: deepLinkHandler.pendingBudgetCategoryId) { _, _ in
+                openPendingBudgetCategoryIfNeeded()
+            }
             .alert(String(localized: "Error"), isPresented: Binding(
                 get: { viewModel.showError },
                 set: { if !$0 { viewModel.dismissError() } }
@@ -85,6 +92,14 @@ struct BudgetsView: View {
                 Text(viewModel.errorMessage ?? "")
             }
         }
+    }
+
+    private func openPendingBudgetCategoryIfNeeded() {
+        guard let id = deepLinkHandler.pendingBudgetCategoryId,
+              let budget = viewModel.budgets.first(where: { $0.id == id })
+        else { return }
+        viewModel.editingBudget = budget
+        deepLinkHandler.consumeBudgetCategoryNavigation()
     }
 
     // MARK: - Month Selector
@@ -186,4 +201,5 @@ struct BudgetsView: View {
 #Preview {
     BudgetsView(viewModel: BudgetsViewModel(repository: MockBudgetRepository()))
         .environment(BiometricAuthManager())
+        .environment(DeepLinkHandler())
 }

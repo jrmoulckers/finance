@@ -31,6 +31,18 @@ struct FinanceShortcuts: AppShortcutsProvider {
         )
 
         AppShortcut(
+            intent: LogTransactionIntent(),
+            phrases: [
+                "Log transaction in \(.applicationName)",
+                "Record transaction in \(.applicationName)",
+                "Log \(\.$amount) in \(.applicationName)",
+                "Log \(\.$amount) \(\.$category) in \(.applicationName)",
+            ],
+            shortTitle: "Log Transaction",
+            systemImageName: "plus.square.on.square"
+        )
+
+        AppShortcut(
             intent: ShowBalanceIntent(),
             phrases: [
                 "Show balance in \(.applicationName)",
