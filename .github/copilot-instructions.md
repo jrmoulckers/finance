@@ -8,7 +8,7 @@ The following operations require EXPLICIT human approval. NEVER perform these au
 
 - **Git remote operations** — **MUST push own feature branches** (`git push origin <feature-branch>`) — this is mandatory and auto-approved, never ask for permission; **MUST** `git fetch origin main` and `git rebase origin/main` on own feature branch as pre-push hygiene; no pushing to `main`/`master`/release branches; no `git push --force`; `git push --force-with-lease` on feature branches requires human approval; no `pull`/`remote`/`merge` from remote
 - **PR/review operations** — **MUST create PRs** with linked issues and detailed descriptions — this is mandatory and auto-approved, never ask for permission; no merging, closing, or approving PRs or reviews
-- **Remote platform mutations** — No GitHub API writes (issue close, label changes, repo settings, releases, deployments)
+- **Remote platform mutations** — No issue close/reopen/delete; no repo settings/releases/deployments. Label edits ARE allowed for routine triage, EXCEPT gating/lifecycle labels (`blocked`, `breaking-change`, `security`, `stale`, and any `wontfix`/`duplicate`/`invalid`/`do-not-merge` style label) which remain human-only. See `AGENTS.md` §"Category 3" for the full rule.
 - **Outside project boundary** — No file access outside the repository root; no system config changes; no global package installs
 - **Destructive file operations** — See detailed rules below
 - **Package publishing** — See detailed rules below

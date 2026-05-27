@@ -194,15 +194,25 @@ AI agents MUST NOT:
 
 ### Category 3: Remote Platform Operations
 
+AI agents MAY:
+
+- **Edit labels on issues and PRs** with `gh issue edit --add-label` / `--remove-label` and `gh pr edit --add-label` / `--remove-label` — as part of routine triage, sprint grooming, and platform-parity tracking (see "Business Sprint Integration" below).
+
 AI agents MUST NOT execute:
 
-- GitHub API writes (closing issues, changing labels, modifying repo settings)
+- **Close, reopen, or delete issues** — humans only. `gh issue close`, `gh issue reopen`, `gh issue delete` are forbidden. Leave a comment requesting closure if needed.
+- **Add, remove, or modify the following gating/lifecycle labels** — these gate PR merge or mark issue completion/removal and are reserved for humans:
+  - **PR-gating labels:** `blocked`, `breaking-change`, `security`
+  - **Completion/removal labels:** `stale`, plus any future `wontfix` / `duplicate` / `invalid` / `do-not-merge` style labels (treat any label whose semantic effect is "this work should not proceed / should be discarded / should be merged with caution" as gating, even if not listed above)
+- Modify repo settings, branch protection, secrets, or webhooks
 - Deployment triggers or release publishing
 - Hosting/infrastructure configuration changes
 - Cloud service API calls (AWS, GCP, Azure, etc.)
-- Any `gh repo`, `gh issue close/delete`, or `gh release` command
+- Any `gh repo`, `gh release`, or `gh api` write that touches repo configuration
 
-**Why:** Remote platform changes can affect production systems, billing, and user data.
+**Why:** Issue closure and gating-label changes are decisions about whether work proceeds or ships — those stay with humans. Routine labeling (priority, platform, component, effort, phase, sprint, feature-area) is mechanical triage work that agents should be able to do as part of grooming and platform-parity tracking. Remote platform changes (settings, deployments, releases) can affect production systems, billing, and user data.
+
+**When in doubt about a label:** if removing or adding the label would change _whether or when a PR can merge_, or _whether an issue is considered done/wontfix/duplicate_, treat it as restricted and leave a comment requesting the human do it. Otherwise it's fair game.
 
 ### Category 4: Operations Outside Project Boundary
 
