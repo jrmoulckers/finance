@@ -25,14 +25,14 @@
   IgnorableNamespaces="uap uap3 rescap desktop com">
 
   <Identity
-    Name="${MSIX_PACKAGE_IDENTITY}"
-    Publisher="${MSIX_PUBLISHER_IDENTITY}"
+    Name="Finance.Alpha"
+    Publisher="CN=Finance Dev, O=Finance, L=Local, S=Dev, C=US"
     Version="${MSIX_PACKAGE_VERSION}"
     ProcessorArchitecture="x64" />
 
   <Properties>
     <DisplayName>Finance</DisplayName>
-    <PublisherDisplayName>${MSIX_PUBLISHER_DISPLAY_NAME}</PublisherDisplayName>
+    <PublisherDisplayName>Finance Dev</PublisherDisplayName>
     <Logo>assets\StoreLogo.png</Logo>
     <Description>Personal finance tracker — budgets, accounts, and investments in one place.</Description>
   </Properties>
@@ -108,7 +108,7 @@
         <com:Extension Category="windows.comServer">
           <com:ComServer>
             <com:ExeServer Executable="Finance.exe" DisplayName="Finance Widget Provider">
-              <com:Class Id="${WIDGET_PROVIDER_CLSID}" DisplayName="Finance Widget Provider" />
+              <com:Class Id="2b1d9145-edf5-4f48-923c-bf03c8d715c5" DisplayName="Finance Widget Provider" />
             </com:ExeServer>
           </com:ComServer>
         </com:Extension>
@@ -125,7 +125,7 @@
                   <Icon Path="assets\Square44x44Logo.png" />
                 </ProviderIcons>
                 <Activation>
-                  <CreateInstance ClassId="${WIDGET_PROVIDER_CLSID}" />
+                  <CreateInstance ClassId="2b1d9145-edf5-4f48-923c-bf03c8d715c5" />
                 </Activation>
                 <Definitions>
                   <Definition
