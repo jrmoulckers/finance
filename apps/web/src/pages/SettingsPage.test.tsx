@@ -59,13 +59,28 @@ vi.mock('../components/gdpr', () => ({
 
 const togglePrivacyModeMock = vi.fn();
 vi.mock('../contexts/PrivacyModeContext', () => ({
+  PrivacyPersistenceOption: {
+    OffAfterOneMinute: 'off_after_1_minute',
+    OffWhenAppCloses: 'off_when_app_closes',
+    ManualOnly: 'manual_only',
+  },
   usePrivacyMode: () => ({
     isPrivacyMode: false,
+    persistence: 'off_after_1_minute',
+    firstActivationMessage: 'Privacy mode hides exact amounts.',
     togglePrivacyMode: togglePrivacyModeMock,
     setPrivacyMode: vi.fn(),
+    setPersistence: vi.fn(),
     maskValue: (v: string) => v,
   }),
   useIsPrivacyModeActive: () => false,
+  useEffectiveMaskingMode: () => 'Visible',
+  MaskingMode: {
+    Visible: 'Visible',
+    Bucketed: 'Bucketed',
+    Percent: 'Percent',
+    Dots: 'Dots',
+  },
   MASKED_AMOUNT: '•••.••',
   MASKED_LABEL: '••••',
 }));
