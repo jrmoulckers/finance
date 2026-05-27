@@ -35,6 +35,7 @@ import com.finance.android.ui.screens.DashboardScreen
 import com.finance.android.ui.screens.GoalCreateScreen
 import com.finance.android.ui.screens.GoalEditScreen
 import com.finance.android.ui.screens.PlanningScreen
+import com.finance.android.ui.screens.ReceiptOcrScreen
 import com.finance.android.ui.screens.SettingsScreen
 import com.finance.android.ui.screens.TransactionCreateScreen
 import com.finance.android.ui.screens.TransactionDetailScreen
@@ -171,6 +172,9 @@ sealed class Route(val route: String) {
 
     /** Data Import screen (#Sprint26). */
     data object DataImport : Route("data-import")
+
+    /** On-device receipt OCR quick-entry flow (#1852). */
+    data object ReceiptOcr : Route("receipt-ocr")
 
     /** Conflict Resolution screen (#Sprint27). */
     data object ConflictResolution : Route("conflict-resolution")
@@ -431,6 +435,12 @@ fun FinanceNavHost(
 
         composable(Route.BillReminders.route) {
             BillRemindersScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Route.ReceiptOcr.route) {
+            ReceiptOcrScreen(
                 onBack = { navController.popBackStack() },
             )
         }

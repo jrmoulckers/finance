@@ -26,6 +26,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/settings': 'Settings',
   '/import': 'Import',
   '/import/wizard': 'Import Wizard',
+  '/import/receipt-ocr': 'Receipt OCR',
   '/privacy-dashboard': 'Privacy Dashboard',
 };
 
@@ -47,6 +48,7 @@ const AUTHENTICATED_ROUTES = new Set([
   '/settings',
   '/import',
   '/import/wizard',
+  '/import/receipt-ocr',
   '/privacy-dashboard',
 ]);
 

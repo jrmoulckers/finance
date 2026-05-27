@@ -24,6 +24,7 @@
  */
 
 import React, { useId } from 'react';
+import { Link } from 'react-router-dom';
 
 import {
   ColumnMapper,
@@ -124,6 +125,10 @@ export const ImportPage: React.FC = () => {
   return (
     <div className="import-wizard">
       <h2 className="import-wizard__title">Import Transactions</h2>
+      <p className="import-section-description">
+        Have a receipt? <Link to="/import/receipt-ocr">Scan it on this device</Link> to pre-fill
+        quick entry and itemized splits.
+      </p>
 
       <StepIndicator currentStep={importState.step} />
 

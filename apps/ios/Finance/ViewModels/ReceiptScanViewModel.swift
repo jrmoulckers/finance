@@ -36,6 +36,7 @@ final class ReceiptScanViewModel {
     var selectedCategory: String = ""
     var currencyCode: String = "USD"
     var notes: String = ""
+    var acceptedLineItemIds: Set<UUID> = []
 
     var showError: Bool { errorMessage != nil }
     func dismissError() { errorMessage = nil }
@@ -103,6 +104,15 @@ final class ReceiptScanViewModel {
         }
 
         selectedCategory = data.suggestedCategory ?? ""
+        acceptedLineItemIds = Set(data.lineItems.map(\.id))
+    }
+
+    func setLineItemAccepted(_ item: ReceiptLineItem, accepted: Bool) {
+        if accepted {
+            acceptedLineItemIds.insert(item.id)
+        } else {
+            acceptedLineItemIds.remove(item.id)
+        }
     }
 
     // MARK: - Transaction Creation
@@ -118,6 +128,13 @@ final class ReceiptScanViewModel {
             return false
         }
 
+        let acceptedLineItems = scannedReceipt?.extractedData.lineItems.filter {
+            acceptedLineItemIds.contains($0.id)
+        } ?? []
+        let lineItemNote = acceptedLineItems.isEmpty ? "" : "\nItems: " + acceptedLineItems.map {
+            "\($0.description) \(String(format: "$%.2f", Double($0.amountMinorUnits) / 100.0))"
+        }.joined(separator: ", ")
+
         let transaction = TransactionItem(
             id: UUID().uuidString,
             payee: merchant,
@@ -127,7 +144,7 @@ final class ReceiptScanViewModel {
             date: transactionDate,
             type: .expense,
             status: .cleared,
-            notes: notes,
+            notes: notes + lineItemNote,
             receiptData: scannedReceipt?.imageData
         )
 
@@ -152,5 +169,6 @@ final class ReceiptScanViewModel {
         transactionDate = .now
         selectedCategory = ""
         notes = ""
+        acceptedLineItemIds = []
     }
 }

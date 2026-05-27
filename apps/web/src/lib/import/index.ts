@@ -58,6 +58,16 @@ export {
 export type { PdfExtractionConfig, StatementInfo } from './pdf-parser';
 export { COMMON_PATTERNS, detectPdfPattern, detectStatementInfo, parsePdfText } from './pdf-parser';
 
+// Receipt OCR parser and web adapter
+export type {
+  ExtractedReceiptLineItem,
+  ExtractedReceiptText,
+  ReceiptCategoryOption,
+} from './receipt-parser';
+export { parseReceiptText, suggestReceiptCategory } from './receipt-parser';
+export { TesseractReceiptOcrAdapter, webReceiptOcrAdapter } from './receipt-ocr';
+export type { ReceiptOcrAdapter } from './receipt-ocr';
+
 // Reconciliation
 export type {
   DuplicateCandidate,

@@ -12,10 +12,12 @@
 
 import PhotosUI
 import SwiftUI
+import UIKit
 
 struct ReceiptScanView: View {
     @State private var viewModel: ReceiptScanViewModel
     @State private var selectedPhoto: PhotosPickerItem?
+    @State private var showCamera = false
     @State private var showConfirmation = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -71,6 +73,11 @@ struct ReceiptScanView: View {
             } message: {
                 Text(String(localized: "The transaction has been created from the receipt."))
             }
+            .sheet(isPresented: $showCamera) {
+                CameraCaptureView { imageData in
+                    Task { await viewModel.processImage(imageData) }
+                }
+            }
         }
     }
 
@@ -98,6 +105,21 @@ struct ReceiptScanView: View {
             }
 
             VStack(spacing: 16) {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Label(
+                            String(localized: "Take Photo"),
+                            systemImage: "camera"
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityLabel(String(localized: "Take a receipt photo"))
+                }
+
                 PhotosPicker(
                     selection: $selectedPhoto,
                     matching: .images
@@ -109,7 +131,7 @@ struct ReceiptScanView: View {
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 44)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .accessibilityLabel(String(localized: "Choose a receipt photo from library"))
                 .accessibilityHint(String(localized: "Opens the photo picker"))
             }
@@ -217,15 +239,25 @@ struct ReceiptScanView: View {
                !receipt.extractedData.lineItems.isEmpty {
                 Section {
                     ForEach(receipt.extractedData.lineItems) { item in
-                        HStack {
-                            Text(item.description)
-                                .font(.subheadline)
-                            Spacer()
-                            Text(String(format: "$%.2f", Double(item.amountMinorUnits) / 100.0))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                        Toggle(
+                            isOn: .init(
+                                get: { viewModel.acceptedLineItemIds.contains(item.id) },
+                                set: { viewModel.setLineItemAccepted(item, accepted: $0) }
+                            )
+                        ) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.description)
+                                    .font(.subheadline)
+                                Text(String(format: "$%.2f", Double(item.amountMinorUnits) / 100.0))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                if let category = item.suggestedCategory {
+                                    Text(category)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
-                        .accessibilityElement(children: .combine)
                         .accessibilityLabel(
                             "\(item.description): \(String(format: "$%.2f", Double(item.amountMinorUnits) / 100.0))"
                         )
@@ -331,6 +363,47 @@ struct ReceiptScanView: View {
             viewModel.errorMessage = String(localized: "Failed to load the selected photo.")
         }
         self.selectedPhoto = nil
+    }
+}
+
+private struct CameraCaptureView: UIViewControllerRepresentable {
+    let onImageData: (Data) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        private let parent: CameraCaptureView
+
+        init(parent: CameraCaptureView) {
+            self.parent = parent
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            if let image = info[.originalImage] as? UIImage,
+               let data = image.jpegData(compressionQuality: 0.92) {
+                parent.onImageData(data)
+            }
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
     }
 }
 

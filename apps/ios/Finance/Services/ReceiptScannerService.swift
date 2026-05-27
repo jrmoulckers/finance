@@ -47,12 +47,19 @@ actor ReceiptScannerService: ReceiptScannerProtocol {
             "OCR recognized \(recognizedText.count, privacy: .public) text blocks"
         )
 
-        let extractedData = extractFinancialData(from: recognizedText)
+        var extractedData = extractFinancialData(from: recognizedText)
+        extractedData.rawText = recognizedText.map(\.text).joined(separator: "\n")
         let confidence = calculateConfidence(extractedData)
+        let extractedText = ExtractedReceiptText(
+            from: extractedData,
+            rawText: extractedData.rawText,
+            confidence: confidence
+        )
 
         return ScannedReceipt(
             imageData: imageData,
             extractedData: extractedData,
+            extractedText: extractedText,
             confidence: confidence
         )
     }

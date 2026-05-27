@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="420" viewBox="0 0 320 420" role="img" aria-label="Simple Market receipt fixture">
+  <rect width="320" height="420" fill="#ffffff"/>
+  <text x="32" y="48" font-family="monospace" font-size="24" fill="#111111">Simple Market</text>
+  <text x="32" y="88" font-family="monospace" font-size="18" fill="#111111">2026-05-26</text>
+  <text x="32" y="140" font-family="monospace" font-size="18" fill="#111111">Organic Apples 3.99</text>
+  <text x="32" y="176" font-family="monospace" font-size="18" fill="#111111">Whole Milk 4.49</text>
+  <text x="32" y="212" font-family="monospace" font-size="18" fill="#111111">Sourdough Bread 5.25</text>
+  <text x="32" y="272" font-family="monospace" font-size="18" fill="#111111">Subtotal 13.73</text>
+  <text x="32" y="308" font-family="monospace" font-size="18" fill="#111111">Tax 2.35</text>
+  <text x="32" y="352" font-family="monospace" font-size="22" font-weight="700" fill="#111111">Total $16.08</text>
+</svg>

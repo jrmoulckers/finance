@@ -181,6 +181,9 @@ dependencies {
     // Custom Tabs — OAuth browser flow
     implementation(libs.browser)
 
+    // On-device receipt OCR — ML Kit Text Recognition v2 (no server roundtrip)
+    implementation(libs.mlkit.text.recognition)
+
     // HTTP client — Supabase Auth API calls
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)

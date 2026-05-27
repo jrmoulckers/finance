@@ -134,6 +134,8 @@ export {
   removeNote,
   updateNote,
 } from './notes';
+export { storeReceiptAttachment } from './receipt-attachments';
+export type { StoreReceiptAttachmentInput, StoredReceiptAttachment } from './receipt-attachments';
 
 // ---------------------------------------------------------------------------
 // Search (#1626)

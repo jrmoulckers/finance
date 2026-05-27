@@ -1,0 +1,8 @@
+Simple Market
+2026-05-26
+Organic Apples 3.99
+Whole Milk 4.49
+Sourdough Bread 5.25
+Subtotal 13.73
+Tax 2.35
+Total $16.08

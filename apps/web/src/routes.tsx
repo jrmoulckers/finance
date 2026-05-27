@@ -26,6 +26,7 @@ const Insights = lazy(() => import('./pages/InsightsPage'));
 const Achievements = lazy(() => import('./pages/AchievementsPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
 const DataImportWizard = lazy(() => import('./pages/DataImportWizardPage'));
+const ReceiptOcr = lazy(() => import('./pages/ReceiptOcrPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
@@ -425,6 +426,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Data Import Wizard">
             <DataImportWizard />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/import/receipt-ocr"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Receipt OCR">
+            <ReceiptOcr />
           </RouteBoundary>
         </AuthenticatedRoute>
       }

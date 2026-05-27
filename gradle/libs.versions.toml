@@ -43,6 +43,7 @@ credentials = "1.3.0"
 androidx-test-runner = "1.6.2"
 glance = "1.1.1"
 material3-window-size = "1.3.1"
+mlkit-text-recognition = "16.0.1"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
@@ -95,6 +96,7 @@ browser = { module = "androidx.browser:browser", version.ref = "browser" }
 credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
 credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentials" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
+mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "mlkit-text-recognition" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

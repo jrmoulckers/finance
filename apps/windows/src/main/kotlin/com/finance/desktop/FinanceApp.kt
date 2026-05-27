@@ -43,6 +43,7 @@ import com.finance.desktop.screens.HealthScoreScreen
 import com.finance.desktop.screens.KeyboardShortcutsHelpDialog
 import com.finance.desktop.screens.LockScreen
 import com.finance.desktop.screens.ReportBuilderScreen
+import com.finance.desktop.screens.ReceiptOcrScreen
 import com.finance.desktop.screens.QuickAddTransactionDialog
 import com.finance.desktop.screens.SettingsScreen
 import com.finance.desktop.screens.TipsScreen
@@ -271,7 +272,7 @@ private fun MainAppContent(
                 Screen.HealthScore -> HealthScoreScreen()
                 Screen.Reports -> ReportBuilderScreen()
                 Screen.QuickAdd -> {} // handled by dialog
-                Screen.Import -> {} // placeholder
+                Screen.Import -> ReceiptOcrScreen()
                 Screen.Referral -> {} // placeholder
                 Screen.Negotiate -> BudgetNegotiationScreen()
                 Screen.Currency -> CurrencyConversionScreen()
