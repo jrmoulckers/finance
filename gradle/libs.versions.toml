@@ -7,6 +7,7 @@ kotlinx-datetime = "0.6.1"
 sqldelight = "2.0.2"
 detekt = "1.23.7"
 sqlcipher-android = "4.6.1"
+sqlite-jdbc-crypt = "3.51.2.0"
 ktor = "3.0.3"
 koin = "4.0.1"
 timber = "5.0.1"
@@ -57,6 +58,10 @@ sqldelight-native-driver = { module = "app.cash.sqldelight:native-driver", versi
 sqldelight-jvm-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 sqldelight-js-driver = { module = "app.cash.sqldelight:web-worker-driver", version.ref = "sqldelight" }
 sqlcipher-android = { module = "net.zetetic:sqlcipher-android", version.ref = "sqlcipher-android" }
+# SQLCipher-enabled drop-in replacement for org.xerial:sqlite-jdbc.
+# Stock xerial silently ignores `cipher`/`key` JDBC properties, leaving the
+# on-disk database plaintext. The Willena fork honors them. See #1894.
+sqlite-jdbc-crypt = { module = "io.github.willena:sqlite-jdbc", version.ref = "sqlite-jdbc-crypt" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }

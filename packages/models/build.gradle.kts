@@ -23,6 +23,7 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(libs.sqldelight.jvm.driver)
+                implementation(libs.sqlite.jdbc.crypt)
             }
         }
         if (project.extra["androidSdkAvailable"] as Boolean) {
@@ -58,4 +59,15 @@ sqldelight {
             generateAsync.set(true)
         }
     }
+}
+
+// SQLDelight's sqlite-driver pulls in xerial's `org.xerial:sqlite-jdbc`, which
+// SILENTLY drops the `cipher`/`key` JDBC properties — leaving the on-disk DB
+// plaintext (see #1894). The Willena fork `io.github.willena:sqlite-jdbc` is a
+// drop-in replacement that honors SQLCipher properties; we add it above and
+// strip xerial from every JVM-side configuration here. Excluding from all JVM
+// configurations (not just runtimeClasspath) ensures the kapt/test/etc. paths
+// can't accidentally pull xerial back in via another transitive route.
+configurations.matching { it.name.startsWith("jvm") }.configureEach {
+    exclude(group = "org.xerial", module = "sqlite-jdbc")
 }
