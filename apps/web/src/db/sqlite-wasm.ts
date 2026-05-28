@@ -281,7 +281,6 @@ export const MIGRATIONS: Migration[] = [
         is_recurring            INTEGER NOT NULL DEFAULT 0,
         recurring_rule_id       TEXT,
         tags                    TEXT    NOT NULL DEFAULT '[]',
-        mood_tag                TEXT,
         created_at              TEXT    NOT NULL,
         updated_at              TEXT    NOT NULL,
         deleted_at              TEXT,
@@ -370,7 +369,7 @@ export const MIGRATIONS: Migration[] = [
     ],
   },
   {
-    version: 2,
+    version: 3,
     label: 'add-mood-tag-to-transactions',
     up: ['ALTER TABLE "transaction" ADD COLUMN mood_tag TEXT;'],
   },
