@@ -63,26 +63,18 @@ Deno.test(
   },
 );
 
-Deno.test('generatePkceMaterial — state is URL-safe and distinct from verifier', async () => {
-  const pkce = await generatePkceMaterial();
-  assert(/^[A-Za-z0-9_-]+$/.test(pkce.state));
-  assert(pkce.state.length >= 43);
-  // Astronomically unlikely to collide if generation is sound.
-  assert(pkce.state !== pkce.codeVerifier);
-});
-
 Deno.test('generatePkceMaterial — successive calls produce distinct material', async () => {
   const a = await generatePkceMaterial();
   const b = await generatePkceMaterial();
   assert(a.codeVerifier !== b.codeVerifier);
-  assert(a.state !== b.state);
+  assert(a.codeChallenge !== b.codeChallenge);
 });
 
 // ---------------------------------------------------------------------------
 // buildAuthorizeUrl
 // ---------------------------------------------------------------------------
 
-Deno.test('buildAuthorizeUrl — embeds provider, challenge, state, redirect_to', async () => {
+Deno.test('buildAuthorizeUrl — embeds provider, challenge, redirect_to (no state)', async () => {
   Deno.env.set('SUPABASE_URL', 'https://example.supabase.co');
   try {
     const pkce = await generatePkceMaterial();
@@ -94,7 +86,9 @@ Deno.test('buildAuthorizeUrl — embeds provider, challenge, state, redirect_to'
     assertEquals(parsed.searchParams.get('provider'), 'google');
     assertEquals(parsed.searchParams.get('code_challenge'), pkce.codeChallenge);
     assertEquals(parsed.searchParams.get('code_challenge_method'), 'S256');
-    assertEquals(parsed.searchParams.get('state'), pkce.state);
+    // Supabase Cloud owns the `state` value end-to-end; passing our own
+    // nonce causes it to reject the callback with `bad_oauth_state`.
+    assertEquals(parsed.searchParams.get('state'), null);
     assertEquals(
       parsed.searchParams.get('redirect_to'),
       'http://localhost:5173/api/auth/oauth-callback',

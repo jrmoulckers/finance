@@ -11,7 +11,6 @@
 
 import { validateEnv } from '../_shared/env.ts';
 import {
-  COOKIE_OAUTH_STATE,
   COOKIE_PKCE,
   COOKIE_POST_LOGIN,
   COOKIE_REFRESH,
@@ -20,7 +19,7 @@ import {
 } from '../_shared/cookie.ts';
 import { refreshGrant, revokeRefreshToken } from '../_shared/supabase-auth.ts';
 
-Deno.serve(async (req) => {
+export const handler = async (req: Request): Promise<Response> => {
   const envError = validateEnv('auth-logout', req);
   if (envError) return envError;
 
@@ -42,7 +41,8 @@ Deno.serve(async (req) => {
   const headers = new Headers({ 'Cache-Control': 'no-store' });
   headers.append('Set-Cookie', buildClearCookie(req, COOKIE_REFRESH));
   headers.append('Set-Cookie', buildClearCookie(req, COOKIE_PKCE));
-  headers.append('Set-Cookie', buildClearCookie(req, COOKIE_OAUTH_STATE));
   headers.append('Set-Cookie', buildClearCookie(req, COOKIE_POST_LOGIN));
   return new Response(null, { status: 204, headers });
-});
+};
+
+if (import.meta.main) Deno.serve(handler);

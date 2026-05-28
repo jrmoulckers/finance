@@ -1,8 +1,7 @@
 # Supabase CLI project configuration
 # See: https://supabase.com/docs/guides/cli/config
 
-[project]
-id = "your-project-ref"
+project_id = "finance-local"
 
 [api]
 enabled = true

@@ -24,7 +24,7 @@ interface SignupBody {
   password?: unknown;
 }
 
-Deno.serve(async (req) => {
+export const handler = async (req: Request): Promise<Response> => {
   const envError = validateEnv('auth-signup', req);
   if (envError) return envError;
 
@@ -74,7 +74,9 @@ Deno.serve(async (req) => {
     }),
     { status: 201, headers },
   );
-});
+};
+
+if (import.meta.main) Deno.serve(handler);
 
 function badRequest(message: string): Response {
   return new Response(JSON.stringify({ error: message }), {

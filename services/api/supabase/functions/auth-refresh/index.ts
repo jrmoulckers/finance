@@ -31,7 +31,7 @@ const NO_STORE_HEADERS = {
   Pragma: 'no-cache',
 };
 
-Deno.serve(async (req) => {
+export const handler = async (req: Request): Promise<Response> => {
   const envError = validateEnv('auth-refresh', req);
   if (envError) return envError;
 
@@ -67,7 +67,9 @@ Deno.serve(async (req) => {
     }),
     { status: 200, headers },
   );
-});
+};
+
+if (import.meta.main) Deno.serve(handler);
 
 function unauthorized(req: Request): Response {
   const headers = new Headers(NO_STORE_HEADERS);

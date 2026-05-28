@@ -16,12 +16,7 @@
  */
 
 import { requireEnv, validateEnv } from '../_shared/env.ts';
-import {
-  COOKIE_OAUTH_STATE,
-  COOKIE_PKCE,
-  COOKIE_POST_LOGIN,
-  buildSetCookie,
-} from '../_shared/cookie.ts';
+import { COOKIE_PKCE, COOKIE_POST_LOGIN, buildSetCookie } from '../_shared/cookie.ts';
 import {
   buildAuthorizeUrl,
   generatePkceMaterial,
@@ -31,7 +26,7 @@ import { DEFAULT_POST_LOGIN_PATH, validateRedirectTo } from '../_shared/redirect
 
 const NO_STORE: HeadersInit = { 'Cache-Control': 'no-store', Pragma: 'no-cache' };
 
-Deno.serve(async (req) => {
+export const handler = async (req: Request): Promise<Response> => {
   const envError = validateEnv('auth-oauth-start', req);
   if (envError) return envError;
 
@@ -66,11 +61,9 @@ Deno.serve(async (req) => {
   );
   headers.append(
     'Set-Cookie',
-    buildSetCookie(req, COOKIE_OAUTH_STATE, pkce.state, { maxAgeSeconds: 300 }),
-  );
-  headers.append(
-    'Set-Cookie',
     buildSetCookie(req, COOKIE_POST_LOGIN, postLoginPath, { maxAgeSeconds: 300 }),
   );
   return new Response(null, { status: 302, headers });
-});
+};
+
+if (import.meta.main) Deno.serve(handler);

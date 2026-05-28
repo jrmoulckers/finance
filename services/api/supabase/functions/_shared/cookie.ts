@@ -22,10 +22,9 @@
  * @module
  */
 
-/** Names of the three HttpOnly auth cookies set by these functions. */
+/** Names of the auth cookies set by these functions. */
 export const COOKIE_REFRESH = 'finance_refresh';
 export const COOKIE_PKCE = 'finance_pkce';
-export const COOKIE_OAUTH_STATE = 'finance_oauth_state';
 export const COOKIE_POST_LOGIN = 'finance_post_login';
 
 /** Shared cookie path. Must match the route prefix exposed to the browser. */
