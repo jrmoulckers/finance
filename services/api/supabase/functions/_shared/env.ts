@@ -39,6 +39,18 @@ const BASE_ENV_VARS: readonly EnvVarSpec[] = [
 /** Per-function additional required env vars. */
 const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   'auth-webhook': [{ name: 'AUTH_WEBHOOK_SECRET', type: 'string' }],
+  'auth-login': [{ name: 'SUPABASE_ANON_KEY', type: 'string' }],
+  'auth-signup': [{ name: 'SUPABASE_ANON_KEY', type: 'string' }],
+  'auth-refresh': [{ name: 'SUPABASE_ANON_KEY', type: 'string' }],
+  'auth-logout': [{ name: 'SUPABASE_ANON_KEY', type: 'string' }],
+  'auth-oauth-start': [
+    { name: 'SUPABASE_ANON_KEY', type: 'string' },
+    { name: 'OAUTH_REDIRECT_BASE', type: 'url' },
+  ],
+  'auth-oauth-callback': [
+    { name: 'SUPABASE_ANON_KEY', type: 'string' },
+    { name: 'OAUTH_REDIRECT_BASE', type: 'url' },
+  ],
   'passkey-register': [
     { name: 'WEBAUTHN_RP_NAME', type: 'string' },
     { name: 'WEBAUTHN_RP_ID', type: 'string' },

@@ -559,10 +559,15 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       setIsLoading(true);
 
       try {
-        // Redirect to Supabase OAuth flow
-        const redirectTo = `${window.location.origin}/dashboard`;
-        const oauthUrl = `${config.supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
-        window.location.href = oauthUrl;
+        // Drive OAuth through our Edge Function (#1886). The function
+        // generates PKCE + state in HttpOnly cookies, redirects to
+        // Supabase, and on return sets the refresh cookie at
+        // Path=/api/auth before bouncing to /dashboard.
+        const params = new URLSearchParams({
+          provider,
+          redirect_to: '/dashboard',
+        });
+        window.location.href = `/api/auth/oauth-start?${params.toString()}`;
       } catch (err) {
         const message = err instanceof Error ? err.message : `OAuth login with ${provider} failed`;
         setError(message);
@@ -570,7 +575,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         throw err;
       }
     },
-    [config.supabaseUrl, demoModeActive],
+    [demoModeActive],
   );
 
   // -----------------------------------------------------------------------

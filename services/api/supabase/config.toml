@@ -32,3 +32,30 @@ enable_signup = true
 enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
+
+# ---------------------------------------------------------------------------
+# Edge Functions (#1886) — cookie-bearing auth proxy
+#
+# `verify_jwt = false` because these functions enforce their own auth via
+# the HttpOnly `finance_refresh` cookie (or accept anonymous traffic for
+# login/signup/OAuth start). Letting Kong validate a JWT would reject
+# requests that legitimately have no Authorization header.
+# ---------------------------------------------------------------------------
+
+[functions.auth-login]
+verify_jwt = false
+
+[functions.auth-signup]
+verify_jwt = false
+
+[functions.auth-refresh]
+verify_jwt = false
+
+[functions.auth-logout]
+verify_jwt = false
+
+[functions.auth-oauth-start]
+verify_jwt = false
+
+[functions.auth-oauth-callback]
+verify_jwt = false

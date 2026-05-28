@@ -108,8 +108,19 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
 
-  // Auth & sync API requests -> network-first (prefer fresh data)
-  if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/sync/')) {
+  // Auth API: strictly network-only, never cached (#1886).
+  // Auth responses carry bearer tokens (access_token in body, refresh
+  // token in HttpOnly cookie) so any caching path would persist
+  // credentials to disk-backed Cache Storage. The auth functions also
+  // emit `Cache-Control: no-store`, but defence-in-depth here protects
+  // against future strategy changes upstream.
+  if (url.pathname.startsWith('/api/auth/')) {
+    event.respondWith(networkOnlyNoStore(request));
+    return;
+  }
+
+  // Sync API requests -> network-first (prefer fresh data, fall back to cache)
+  if (url.pathname.startsWith('/api/sync/')) {
     event.respondWith(networkFirst(request));
     return;
   }
@@ -261,6 +272,32 @@ async function cacheFirst(request: Request, fallbackUrl?: string): Promise<Respo
       statusText: 'Service Unavailable',
       headers: { 'Content-Type': 'text/plain' },
     });
+  }
+}
+
+/**
+ * **Network-only, no-store**: always go to the network for auth
+ * requests, and never enter Cache Storage on any code path (success or
+ * failure). Falls back to a JSON 503 when the network throws.
+ *
+ * Exported so a regression test can assert that `/api/auth/*` is never
+ * routed through a caching strategy (#1886).
+ */
+export async function networkOnlyNoStore(request: Request): Promise<Response> {
+  try {
+    return await fetch(request);
+  } catch {
+    return new Response(
+      JSON.stringify({ error: 'offline', message: 'Network required for auth' }),
+      {
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        },
+      },
+    );
   }
 }
 

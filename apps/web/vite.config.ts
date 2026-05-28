@@ -151,6 +151,19 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: false,
+    // Proxy `/api/auth/*` to the local Supabase Edge Functions runtime
+    // (#1886). Same-origin proxying preserves HttpOnly cookie path
+    // matching (cookies use Path=/api/auth) and avoids CORS preflight
+    // entirely. In production these endpoints will be served from the
+    // same origin as the web app via Azure Front Door / nginx, so the
+    // client-side URL stays the same and no proxy is needed there.
+    proxy: {
+      '/api/auth': {
+        target: process.env.VITE_AUTH_PROXY_TARGET ?? 'http://localhost:54321/functions/v1',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/auth\//, '/auth-'),
+      },
+    },
     headers: {
       // Strict CSP - no inline scripts, no eval
       'Content-Security-Policy': [
