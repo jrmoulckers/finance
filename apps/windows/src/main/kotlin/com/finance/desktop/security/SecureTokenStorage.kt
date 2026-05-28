@@ -45,19 +45,16 @@ class SecureTokenStorage private constructor(
         /**
          * Returns the default storage directory for encrypted token files.
          *
-         * Resolves to `%LOCALAPPDATA%\Finance\security\` on Windows, falling
-         * back to `~\AppData\Local\Finance\security\` if the environment
-         * variable is not set.
+         * Resolves via [com.finance.desktop.data.storage.UserDataPaths] to
+         * `%LOCALAPPDATA%\FinanceUserData\security\` on Windows.
          */
         fun defaultStorageDir(): Path {
-            val localAppData = System.getenv("LOCALAPPDATA")
-                ?: System.getProperty("user.home") + "\\AppData\\Local"
-            return Path.of(localAppData, "Finance", "security")
+            return com.finance.desktop.data.storage.UserDataPaths.securityDir
         }
 
         /**
          * Creates a [SecureTokenStorage] using the default storage directory
-         * (`%LOCALAPPDATA%\Finance\security\`) and a default [DpapiManager].
+         * (`%LOCALAPPDATA%\FinanceUserData\security\`) and a default [DpapiManager].
          */
         fun create(): SecureTokenStorage {
             return create(DpapiManager.create(), defaultStorageDir())

@@ -3,6 +3,7 @@
 package com.finance.desktop.data.database
 
 import com.finance.db.EncryptionKeyProvider
+import com.finance.desktop.data.storage.UserDataPaths
 import com.finance.desktop.security.DpapiManager
 import java.security.SecureRandom
 import java.util.Base64
@@ -13,14 +14,14 @@ import java.util.logging.Logger
  * DPAPI-backed [EncryptionKeyProvider] for SQLCipher database encryption.
  *
  * Generates a 256-bit random key on first use, encrypts it with DPAPI
- * (CurrentUser scope), and stores it in `%LOCALAPPDATA%\Finance\security\`.
- * On subsequent calls, loads and decrypts the stored key.
+ * (CurrentUser scope), and stores it at [UserDataPaths.securityDir]
+ * (`%LOCALAPPDATA%\FinanceUserData\security\`). On subsequent calls,
+ * loads and decrypts the stored key.
  *
  * This ensures the SQLite database is encrypted at rest with a key that
  * only the current Windows user can decrypt.
  *
  * @param dpapiManager DPAPI encryption manager for key protection.
- * @param secureTokenStorage Token storage for persisting the encrypted key.
  */
 class DpapiEncryptionKeyProvider(
     private val dpapiManager: DpapiManager,
@@ -31,16 +32,10 @@ class DpapiEncryptionKeyProvider(
         private const val KEY_NAME = "db_encryption_key"
         private const val KEY_SIZE_BYTES = 32 // 256-bit
         private val secureRandom = SecureRandom()
-
-        private fun resolveKeyDir(): java.nio.file.Path {
-            val localAppData = System.getenv("LOCALAPPDATA")
-                ?: System.getProperty("user.home") + "\\AppData\\Local"
-            return java.nio.file.Path.of(localAppData, "Finance", "security")
-        }
     }
 
     private val keyFile: java.nio.file.Path
-        get() = resolveKeyDir().resolve("$KEY_NAME.enc")
+        get() = UserDataPaths.securityDir.resolve("$KEY_NAME.enc")
 
     @Volatile
     private var cachedKey: String? = null
@@ -85,10 +80,8 @@ class DpapiEncryptionKeyProvider(
         secureRandom.nextBytes(keyBytes)
         val hexKey = keyBytes.joinToString("") { "%02x".format(it) }
 
-        val dir = resolveKeyDir()
-        if (!java.nio.file.Files.exists(dir)) {
-            java.nio.file.Files.createDirectories(dir)
-        }
+        // UserDataPaths.securityDir ensures the directory exists.
+        UserDataPaths.securityDir
 
         val encrypted = dpapiManager.encrypt(hexKey.toByteArray(Charsets.UTF_8))
         val b64 = Base64.getEncoder().encodeToString(encrypted)

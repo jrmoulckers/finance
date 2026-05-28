@@ -108,7 +108,8 @@ This document tracks compliance with Microsoft Store certification policies
 The privacy policy must cover:
 
 1. **What data is collected**: Financial data (accounts, transactions, budgets, goals)
-2. **Where data is stored**: Locally on device in `%LOCALAPPDATA%\Finance\`
+2. **Where data is stored**: Locally on device in `%LOCALAPPDATA%\FinanceUserData\`
+   (legacy installs may also have data under `%LOCALAPPDATA%\Finance\`, automatically migrated on first launch)
 3. **How data is protected**: DPAPI encryption for credentials, Windows Hello for access
 4. **Cloud sync data**: When enabled, encrypted data synced to Finance backend
 5. **Third-party sharing**: No data shared with third parties

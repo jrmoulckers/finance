@@ -36,8 +36,14 @@ The App does **not** collect:
 All financial data is stored locally on your Windows device in:
 
 ```
-%LOCALAPPDATA%\Finance\
+%LOCALAPPDATA%\FinanceUserData\
 ```
+
+This directory is **separate from** the application install location
+(`%LOCALAPPDATA%\Finance\`) so that uninstalling or reinstalling the
+application does not affect your data. Installs from older builds (prior to
+v1.x where data lived inside the install root) are migrated automatically
+on first launch after upgrade.
 
 ### Credential Encryption
 
@@ -73,8 +79,12 @@ We do **not** share, sell, or transmit your personal or financial data to any th
 You can delete all your data at any time:
 
 1. **In-App**: Settings → Data & Sync → Delete All Data
-2. **Manual**: Delete the `%LOCALAPPDATA%\Finance\` directory
-3. **Uninstall**: Uninstalling the app removes all application data
+2. **Manual**: Delete the `%LOCALAPPDATA%\FinanceUserData\` directory
+   (and `%LOCALAPPDATA%\Finance\` if it predates the v1.x layout split)
+3. **Uninstall**: Uninstalling the app removes program files but, by design,
+   does **not** delete your financial data — it remains in
+   `%LOCALAPPDATA%\FinanceUserData\` so that a reinstall picks up where you
+   left off. Use option 2 above to delete it manually after uninstalling.
 
 ## Children's Privacy
 

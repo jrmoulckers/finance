@@ -10,6 +10,7 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.finance.desktop.components.rememberShortcutHandler
+import com.finance.desktop.data.storage.UserDataPaths
 import com.finance.desktop.di.appModules
 import com.finance.desktop.notifications.DesktopNotificationManager
 import com.finance.desktop.performance.PerformanceMonitor
@@ -25,6 +26,13 @@ import org.koin.core.context.stopKoin
 
 fun main() {
     PerformanceTracker.recordAppStart()
+
+    // ── One-time migration of user data out of MSI install root (#1900) ──
+    // Must run BEFORE Koin starts so any module that touches DB / DPAPI key /
+    // settings sees data at the new location. Idempotent and never throws.
+    timed("data_migration") {
+        UserDataPaths.migrateLegacyDataIfNeeded()
+    }
 
     timed("koin_init") {
         startKoin {

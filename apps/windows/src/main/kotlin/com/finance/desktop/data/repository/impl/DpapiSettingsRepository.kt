@@ -22,7 +22,7 @@ import java.util.logging.Logger
  *
  * Persists [AppSettings] as JSON serialised with `kotlinx.serialization`, then
  * encrypted via [DpapiManager] and stored as a single file at
- * `%LOCALAPPDATA%\Finance\settings\app_settings.enc`.
+ * `%LOCALAPPDATA%\FinanceUserData\settings\app_settings.enc`.
  *
  * **Security guarantees:**
  * - Settings are never stored in plaintext on disk
@@ -54,14 +54,12 @@ class DpapiSettingsRepository(
 
         /**
          * Factory: creates a [DpapiSettingsRepository] using the standard
-         * `%LOCALAPPDATA%\Finance\settings\` directory.
+         * `%LOCALAPPDATA%\FinanceUserData\settings\` directory.
          */
         fun createDefault(): DpapiSettingsRepository {
-            val localAppData = System.getenv("LOCALAPPDATA")
-                ?: (System.getProperty("user.home") + "\\AppData\\Local")
             return DpapiSettingsRepository(
                 dpapiManager = DpapiManager.create(),
-                storageDir = Path.of(localAppData, "Finance", "settings"),
+                storageDir = com.finance.desktop.data.storage.UserDataPaths.settingsDir,
             )
         }
     }

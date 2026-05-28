@@ -32,6 +32,13 @@ dependencies {
 
     // DI — Koin (core only, no Android dependency)
     implementation(libs.koin.core)
+
+    // ── Tests ──
+    testImplementation(libs.kotlin.test)
+}
+
+tasks.test {
+    useJUnit()
 }
 
 compose.desktop {

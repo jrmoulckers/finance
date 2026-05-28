@@ -5,13 +5,14 @@ package com.finance.desktop.data.database
 import com.finance.db.DatabaseFactory
 import com.finance.db.EncryptionKeyProvider
 import com.finance.db.FinanceDatabase
+import com.finance.desktop.data.storage.UserDataPaths
 import java.util.logging.Logger
 
 /**
  * Manages the SQLDelight [FinanceDatabase] singleton for the Windows desktop client.
  *
- * Creates the database in `%LOCALAPPDATA%\Finance\data\` with SQLCipher
- * encryption. The encryption key is derived from DPAPI-protected storage.
+ * Creates the database at [UserDataPaths.dataDir] (`%LOCALAPPDATA%\FinanceUserData\data\`)
+ * with SQLCipher encryption. The encryption key is derived from DPAPI-protected storage.
  *
  * The database instance is lazily created and cached for the application lifetime.
  *
@@ -24,13 +25,7 @@ class DesktopDatabaseManager(
         private val logger: Logger = Logger.getLogger(DesktopDatabaseManager::class.java.name)
 
         private fun resolveDbPath(): String {
-            val localAppData = System.getenv("LOCALAPPDATA")
-                ?: System.getProperty("user.home") + "\\AppData\\Local"
-            val dir = java.nio.file.Path.of(localAppData, "Finance", "data")
-            if (!java.nio.file.Files.exists(dir)) {
-                java.nio.file.Files.createDirectories(dir)
-            }
-            return dir.resolve("finance.db").toString()
+            return UserDataPaths.dataDir.resolve("finance.db").toString()
         }
     }
 

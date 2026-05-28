@@ -5,10 +5,10 @@ package com.finance.desktop.di
 import com.finance.desktop.data.repository.*
 import com.finance.desktop.data.repository.impl.*
 import com.finance.desktop.data.repository.impl.sqldelight.*
+import com.finance.desktop.data.storage.UserDataPaths
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
-import java.nio.file.Path
 
 /**
  * Koin module for repository bindings.
@@ -26,11 +26,9 @@ val repositoryModule = module {
 
     // ── Settings repository (DPAPI-encrypted persistence) ──
     single<SettingsRepository> {
-        val localAppData = System.getenv("LOCALAPPDATA")
-            ?: (System.getProperty("user.home") + "\\AppData\\Local")
         DpapiSettingsRepository(
             dpapiManager = get(),
-            storageDir = Path.of(localAppData, "Finance", "settings"),
+            storageDir = UserDataPaths.settingsDir,
         )
     }
 }

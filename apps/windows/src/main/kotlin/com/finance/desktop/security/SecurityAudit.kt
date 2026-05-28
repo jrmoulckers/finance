@@ -44,7 +44,7 @@ package com.finance.desktop.security
  * - **Encryption**: `CryptProtectData` via `ProtectedData.Protect()`
  * - **Decryption**: `CryptUnprotectData` via `ProtectedData.Unprotect()`
  * - **Scope**: `CurrentUser` — only the same Windows user can decrypt
- * - **Storage location**: `%LOCALAPPDATA%\Finance\security\`
+ * - **Storage location**: `%LOCALAPPDATA%\FinanceUserData\security\`
  * - **File format**: Base64-encoded DPAPI ciphertext, one file per token
  *
  * ### What's Protected

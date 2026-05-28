@@ -23,7 +23,7 @@ import java.util.logging.Logger
  * - Credentials are NEVER returned without prior Windows Hello authentication
  *   (when Windows Hello is available and auth is required)
  * - DPAPI binds ciphertext to the current Windows user account
- * - Token files reside in `%LOCALAPPDATA%\Finance\security\`
+ * - Token files reside in `%LOCALAPPDATA%\FinanceUserData\security\`
  *
  * @param windowsHelloManager Windows Hello biometric/PIN authentication
  * @param secureTokenStorage DPAPI-encrypted token persistence

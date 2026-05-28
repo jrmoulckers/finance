@@ -4,6 +4,7 @@ package com.finance.desktop.viewmodel
 
 import com.finance.desktop.data.repository.AuthRepository
 import com.finance.desktop.data.repository.SettingsRepository
+import com.finance.desktop.data.storage.UserDataPaths
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,11 +59,8 @@ class GdprConsentViewModel(
         private val logger: Logger = Logger.getLogger(GdprConsentViewModel::class.java.name)
 
         private fun resolveConsentFile(): File {
-            val localAppData = System.getenv("LOCALAPPDATA")
-                ?: System.getProperty("user.home") + "\\AppData\\Local"
-            val dir = File(localAppData, "Finance")
-            dir.mkdirs()
-            return File(dir, "gdpr_consent.json")
+            // UserDataPaths.consentFile ensures the root directory exists.
+            return UserDataPaths.consentFile.toFile()
         }
     }
 
