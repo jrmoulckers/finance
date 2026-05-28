@@ -16,12 +16,7 @@
  */
 
 import { requireEnv, validateEnv } from '../_shared/env.ts';
-import {
-  COOKIE_OAUTH_STATE,
-  COOKIE_PKCE,
-  COOKIE_POST_LOGIN,
-  buildSetCookie,
-} from '../_shared/cookie.ts';
+import { COOKIE_PKCE, COOKIE_POST_LOGIN, buildSetCookie } from '../_shared/cookie.ts';
 import {
   buildAuthorizeUrl,
   generatePkceMaterial,
@@ -63,10 +58,6 @@ export const handler = async (req: Request): Promise<Response> => {
   headers.append(
     'Set-Cookie',
     buildSetCookie(req, COOKIE_PKCE, pkce.codeVerifier, { maxAgeSeconds: 300 }),
-  );
-  headers.append(
-    'Set-Cookie',
-    buildSetCookie(req, COOKIE_OAUTH_STATE, pkce.state, { maxAgeSeconds: 300 }),
   );
   headers.append(
     'Set-Cookie',

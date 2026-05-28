@@ -1,15 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * GET /api/auth/oauth-callback?code=...&state=...
+ * GET /api/auth/oauth-callback?code=...
  *
  * Step 2 of the PKCE OAuth flow (#1886).
  *
- * Validates the `state` parameter against the cookie set by
- * {@link auth-oauth-start}, exchanges the authorization code + PKCE
- * verifier for a Supabase session, sets the HttpOnly `finance_refresh`
- * cookie, clears the PKCE / state / post-login cookies, and redirects
- * the browser to the previously validated post-login path.
+ * Reads the PKCE verifier from the HttpOnly cookie set by
+ * {@link auth-oauth-start}, exchanges the authorization code + verifier
+ * for a Supabase session, sets the HttpOnly `finance_refresh` cookie,
+ * clears the PKCE / post-login cookies, and redirects the browser to
+ * the previously validated post-login path.
+ *
+ * CSRF protection comes from the PKCE verifier itself: only the browser
+ * that initiated the flow has the verifier cookie, so only that browser
+ * can complete the token exchange. We do not validate `state` because
+ * Supabase Cloud owns the state value end-to-end (passing our own state
+ * causes Supabase to reject the flow as `bad_oauth_state`).
  *
  * On any failure the user is redirected back to `/login?error=oauth_*`
  * so the UI can show a generic message.
@@ -17,13 +23,11 @@
 
 import { requireEnv, validateEnv } from '../_shared/env.ts';
 import {
-  COOKIE_OAUTH_STATE,
   COOKIE_PKCE,
   COOKIE_POST_LOGIN,
   COOKIE_REFRESH,
   buildClearCookie,
   buildSetCookie,
-  constantTimeEqual,
   parseCookies,
 } from '../_shared/cookie.ts';
 import { pkceGrant } from '../_shared/supabase-auth.ts';
@@ -44,20 +48,18 @@ export const handler = async (req: Request): Promise<Response> => {
 
   const url = new URL(req.url);
   const code = url.searchParams.get('code');
-  const state = url.searchParams.get('state');
   const errorParam = url.searchParams.get('error');
 
   if (errorParam) {
     return redirectToError(req, 'oauth_provider_error');
   }
-  if (!code || !state) {
+  if (!code) {
     return redirectToError(req, 'oauth_invalid_response');
   }
 
   const cookies = parseCookies(req);
   const verifier = cookies[COOKIE_PKCE];
-  const expectedState = cookies[COOKIE_OAUTH_STATE];
-  if (!verifier || !expectedState || !constantTimeEqual(state, expectedState)) {
+  if (!verifier) {
     return redirectToError(req, 'oauth_state_mismatch');
   }
 
@@ -77,7 +79,6 @@ export const handler = async (req: Request): Promise<Response> => {
     }),
   );
   headers.append('Set-Cookie', buildClearCookie(req, COOKIE_PKCE));
-  headers.append('Set-Cookie', buildClearCookie(req, COOKIE_OAUTH_STATE));
   headers.append('Set-Cookie', buildClearCookie(req, COOKIE_POST_LOGIN));
   return new Response(null, { status: 302, headers });
 };
@@ -89,7 +90,6 @@ function redirectToError(req: Request, reason: string): Response {
   const target = `${base}/login?error=${encodeURIComponent(reason)}`;
   const headers = new Headers({ ...NO_STORE, Location: target });
   headers.append('Set-Cookie', buildClearCookie(req, COOKIE_PKCE));
-  headers.append('Set-Cookie', buildClearCookie(req, COOKIE_OAUTH_STATE));
   headers.append('Set-Cookie', buildClearCookie(req, COOKIE_POST_LOGIN));
   return new Response(null, { status: 302, headers });
 }

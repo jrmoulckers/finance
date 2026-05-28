@@ -52,9 +52,16 @@ const routes: Record<string, Handler> = {
   'auth-oauth-callback': authOAuthCallback,
 };
 
-function dispatch(req: Request): Promise<Response> {
+async function dispatch(req: Request): Promise<Response> {
   const url = new URL(req.url);
+  const start = Date.now();
+  const res = await dispatchInner(req, url);
+  const ms = Date.now() - start;
+  console.log(`[req] ${req.method} ${url.pathname}${url.search} -> ${res.status} (${ms}ms)`);
+  return res;
+}
 
+function dispatchInner(req: Request, url: URL): Promise<Response> {
   if (url.pathname === '/' || url.pathname === '/health') {
     return Promise.resolve(
       new Response(
