@@ -373,6 +373,23 @@ export const MIGRATIONS: Migration[] = [
     label: 'add-mood-tag-to-transactions',
     up: ['ALTER TABLE "transaction" ADD COLUMN mood_tag TEXT;'],
   },
+  {
+    version: 4,
+    label: 'add-merchant-and-extra-columns-to-transactions',
+    up: [
+      `ALTER TABLE "transaction" ADD COLUMN merchant_address       TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN merchant_city          TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN merchant_state         TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN merchant_zip           TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN merchant_country       TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN external_reference_id  TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN statement_description  TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN custom_fields          TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN extra_notes            TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN counterparty_name      TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN counterparty_account_id TEXT;`,
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection
