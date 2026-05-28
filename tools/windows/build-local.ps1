@@ -14,10 +14,10 @@
 #                                                 # the most recent MSI in build/
 #
 # Data protection: -Install and -Uninstall refuse to touch the existing install
-# if user data is present at %LOCALAPPDATA%\Finance\data\ or \security\ (see #1900
-# for why this lives inside the install root and is being moved out). Pass
-# -BackupData to snapshot to a sibling timestamped folder before proceeding, or
-# -NoBackup to acknowledge the data may be lost.
+# if user data is present at the legacy path (%LOCALAPPDATA%\Finance\{data,security})
+# or the new path shipped in #1900 (%LOCALAPPDATA%\FinanceUserData\{data,security,settings}).
+# Pass -BackupData to snapshot to a sibling timestamped folder before proceeding,
+# or -NoBackup to acknowledge the data may be lost.
 
 [CmdletBinding()]
 param(
@@ -44,6 +44,26 @@ $certDir     = Join-Path $scriptDir 'dev-cert'
 $installRoot = Join-Path $env:LOCALAPPDATA 'Finance'
 $dataDir     = Join-Path $installRoot 'data'
 $keyDir      = Join-Path $installRoot 'security'
+
+# ── User-data root (#1900: data now lives OUTSIDE the install root) ──
+# The app migrates legacy data from $installRoot\{data,security} into
+# $userDataRoot\{data,security,settings} on first launch. Both layouts must
+# be considered "user data" by the data-protection guard until the legacy
+# directories are confirmed empty.
+$userDataRoot     = Join-Path $env:LOCALAPPDATA 'FinanceUserData'
+$newDataDir       = Join-Path $userDataRoot 'data'
+$newKeyDir        = Join-Path $userDataRoot 'security'
+$newSettingsDir   = Join-Path $userDataRoot 'settings'
+
+# Convenience: all directories the data-protection guard inspects,
+# tagged with the layout root they belong to so backups can mirror it.
+$userDataDirs = @(
+    @{ Name = 'legacy data';      Path = $dataDir;        Layout = 'legacy' },
+    @{ Name = 'legacy security';  Path = $keyDir;         Layout = 'legacy' },
+    @{ Name = 'data';             Path = $newDataDir;     Layout = 'new' },
+    @{ Name = 'security';         Path = $newKeyDir;      Layout = 'new' },
+    @{ Name = 'settings';         Path = $newSettingsDir; Layout = 'new' }
+)
 
 function Write-Step([string]$msg)    { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-Ok([string]$msg)      { Write-Host "    [OK] $msg" -ForegroundColor Green }
@@ -125,24 +145,38 @@ function Get-InstalledFinance {
 }
 
 function Test-UserDataPresent {
-    $hasDb  = (Test-Path $dataDir) -and ((Get-ChildItem $dataDir -File -ErrorAction SilentlyContinue).Count -gt 0)
-    $hasKey = (Test-Path $keyDir)  -and ((Get-ChildItem $keyDir  -File -ErrorAction SilentlyContinue).Count -gt 0)
-    return ($hasDb -or $hasKey)
+    foreach ($entry in $userDataDirs) {
+        $p = $entry.Path
+        if ((Test-Path $p) -and ((Get-ChildItem $p -File -ErrorAction SilentlyContinue).Count -gt 0)) {
+            return $true
+        }
+    }
+    return $false
 }
 
 function Backup-UserData {
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
     $backup = Join-Path $env:LOCALAPPDATA "Finance-backup-$stamp"
     New-Item -ItemType Directory -Path $backup | Out-Null
-    if (Test-Path $dataDir) {
-        Copy-Item -Path $dataDir -Destination (Join-Path $backup 'data') -Recurse -Force
-        Write-Ok "Backed up data\  -> $backup\data"
+
+    # Mirror the on-disk layout under the backup root so a restore is a
+    # straight Copy-Item back to %LOCALAPPDATA%. Legacy and new live in
+    # different sub-roots to keep them distinguishable on restore.
+    $legacyBackup = Join-Path $backup 'Finance'
+    $newBackup    = Join-Path $backup 'FinanceUserData'
+
+    foreach ($entry in $userDataDirs) {
+        $p = $entry.Path
+        if (-not (Test-Path $p)) { continue }
+        $destRoot = if ($entry.Layout -eq 'legacy') { $legacyBackup } else { $newBackup }
+        if (-not (Test-Path $destRoot)) { New-Item -ItemType Directory -Path $destRoot | Out-Null }
+        $leaf = Split-Path $p -Leaf
+        Copy-Item -Path $p -Destination (Join-Path $destRoot $leaf) -Recurse -Force
+        Write-Ok "Backed up $($entry.Name)\  -> $destRoot\$leaf"
     }
-    if (Test-Path $keyDir) {
-        Copy-Item -Path $keyDir -Destination (Join-Path $backup 'security') -Recurse -Force
-        Write-Ok "Backed up security\ -> $backup\security"
-    }
-    Write-Warn2 "Restore manually if needed: Copy-Item $backup\* $installRoot -Recurse -Force"
+
+    Write-Warn2 "Restore (legacy): Copy-Item $legacyBackup\* $installRoot   -Recurse -Force"
+    Write-Warn2 "Restore (new):    Copy-Item $newBackup\*    $userDataRoot  -Recurse -Force"
     return $backup
 }
 
@@ -157,7 +191,7 @@ function Assert-SafeToUninstall {
         Write-Warn2 "User data detected, -NoBackup specified — data may be lost"
         return
     }
-    Write-Fail "Existing user data at $dataDir and/or $keyDir."
+    Write-Fail "Existing user data detected under $installRoot and/or $userDataRoot."
     Write-Fail "Refusing to uninstall to avoid data loss (see #1900)."
     Write-Fail "Re-run with -BackupData (recommended) or -NoBackup to proceed."
     exit 2

@@ -35,9 +35,10 @@ That call will:
    (gitignored).
 2. Run `./gradlew :apps:windows:packageMsi`.
 3. Sign the produced MSI with that cert.
-4. Snapshot any existing user data under `%LOCALAPPDATA%\Finance\data\` and
-   `%LOCALAPPDATA%\Finance\security\` to a timestamped sibling directory
-   (because `-BackupData` was passed), then uninstall the old version.
+4. Snapshot any existing user data under `%LOCALAPPDATA%\Finance\{data,security}\`
+   (legacy layout) and `%LOCALAPPDATA%\FinanceUserData\{data,security,settings}\`
+   (new layout, post-[#1900](../../../../issues/1900)) to a timestamped sibling
+   directory (because `-BackupData` was passed), then uninstall the old version.
 5. Install the freshly-built MSI silently.
 6. Launch `Finance.exe`.
 
@@ -50,9 +51,10 @@ That call will:
    (gitignored).
 2. Run `./gradlew :apps:windows:packageMsi`.
 3. Sign the produced MSI with that cert.
-4. Snapshot any existing user data under `%LOCALAPPDATA%\Finance\data\` and
-   `%LOCALAPPDATA%\Finance\security\` to a timestamped sibling directory,
-   then uninstall the old version.
+4. Snapshot any existing user data under `%LOCALAPPDATA%\Finance\{data,security}\`
+   (legacy layout) and `%LOCALAPPDATA%\FinanceUserData\{data,security,settings}\`
+   (new layout, post-[#1900](../../../../issues/1900)) to a timestamped sibling
+   directory, then uninstall the old version.
 5. Install the freshly-built MSI silently.
 6. Launch `Finance.exe`.
 
@@ -76,16 +78,23 @@ SDK (for `signtool.exe`) and your already-installed JDK 21.
 
 ### Data-safety design
 
-The Windows MSI currently installs to `%LOCALAPPDATA%\Finance\` and the app
-writes its SQLCipher database and DPAPI-wrapped key under that same root
-(`data\finance.db`, `security\db_encryption_key.enc`). A naive MSI uninstall
-will wipe those alongside the binaries. Until [#1900](../../../../issues/1900)
-moves the data outside the install root, the script defends against
-accidental data loss: any uninstall path (`-Uninstall`, or `-Install
--ForceUninstall` when an existing install is present) refuses to proceed if
-user data exists unless you opt in with either `-BackupData` (snapshot to a
-timestamped sibling directory) or `-NoBackup` (proceed and accept the
-loss). If you really want to nuke local data, pass `-NoBackup`.
+The Windows MSI installs `Finance.exe` and runtime resources to
+`%LOCALAPPDATA%\Finance\`. As of [#1900](../../../../issues/1900) the app's
+user data (SQLCipher DB, DPAPI-wrapped key, encrypted settings, GDPR consent)
+lives in a sibling root, `%LOCALAPPDATA%\FinanceUserData\`, so a clean
+uninstall no longer wipes user data. On first launch after upgrading from a
+pre-#1900 build, the app transparently migrates any data still under the
+legacy `%LOCALAPPDATA%\Finance\{data,security,settings}\` paths into the
+new root.
+
+Until that migration has run for every install on the machine the script
+defends against accidental data loss at **both** the legacy and the new
+location: any uninstall path (`-Uninstall`, or `-Install -ForceUninstall`
+when an existing install is present) refuses to proceed if user data exists
+under either root unless you opt in with either `-BackupData` (snapshot to a
+timestamped sibling directory mirroring the on-disk layout) or `-NoBackup`
+(proceed and accept the loss). If you really want to nuke local data, pass
+`-NoBackup`.
 
 ### Why a per-machine self-signed cert?
 
