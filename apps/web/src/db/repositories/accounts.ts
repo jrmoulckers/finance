@@ -227,3 +227,23 @@ export function getAccountsByType(db: SqliteDb, type: AccountType): Account[] {
     type,
   ]).rows.map(mapAccount);
 }
+
+/** Recompute an account balance from its non-deleted transactions. */
+export function recomputeAccountBalance(db: SqliteDb, accountId: SyncId): void {
+  execute(
+    db,
+    `UPDATE account
+        SET current_balance = (
+              SELECT COALESCE(SUM(amount), 0)
+              FROM "transaction"
+              WHERE account_id = ?
+                AND deleted_at IS NULL
+            ),
+            updated_at = ${SQLITE_NOW_EXPRESSION},
+            sync_version = 1,
+            is_synced = 0
+      WHERE id = ?
+        AND deleted_at IS NULL`,
+    [accountId, accountId],
+  );
+}

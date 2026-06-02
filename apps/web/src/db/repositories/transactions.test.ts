@@ -10,6 +10,7 @@ import {
   getAllTransactions,
   getTransactionById,
   getTransactionsByDateRange,
+  updateTransaction,
   type CreateTransactionInput,
   type TransactionFilters,
 } from './transactions';
@@ -577,6 +578,86 @@ describe('transactions repository', () => {
       expect(sql).not.toContain('LIKE');
       const params = mockQuery.mock.calls[0][2] as unknown[];
       expect(params).toEqual([]);
+    });
+  });
+
+  describe('balance recomputation', () => {
+    const transactionRow = (overrides: Partial<Row> = {}): Row => ({
+      id: 'txn-1',
+      household_id: 'hh-1',
+      account_id: 'acc-1',
+      category_id: null,
+      type: 'EXPENSE',
+      status: 'CLEARED',
+      amount: -5000,
+      currency: 'USD',
+      payee: null,
+      note: null,
+      date: '2024-01-15',
+      transfer_account_id: null,
+      transfer_transaction_id: null,
+      is_recurring: 0,
+      recurring_rule_id: null,
+      tags: '[]',
+      created_at: '2024-01-15T10:00:00Z',
+      updated_at: '2024-01-15T10:00:00Z',
+      deleted_at: null,
+      sync_version: 1,
+      is_synced: 0,
+      ...overrides,
+    });
+
+    const expectBalanceRecomputeFor = (callIndex: number, accountId: string) => {
+      expect(mockExecute).toHaveBeenNthCalledWith(
+        callIndex,
+        mockDb,
+        expect.stringContaining('UPDATE account'),
+        [accountId, accountId],
+      );
+      const sql = mockExecute.mock.calls[callIndex - 1][1];
+      expect(sql).toContain('SELECT COALESCE(SUM(amount), 0)');
+      expect(sql).toContain('deleted_at IS NULL');
+    };
+
+    it('recomputes the account balance after insert', () => {
+      mockQueryOne.mockReturnValue(transactionRow());
+
+      createTransaction(mockDb, {
+        householdId: 'hh-1',
+        accountId: 'acc-1',
+        type: 'EXPENSE' as TransactionType,
+        amount: { amount: -5000 },
+        date: '2024-01-15',
+      });
+
+      expectBalanceRecomputeFor(2, 'acc-1');
+    });
+
+    it('recomputes the account balance after an amount update', () => {
+      mockQueryOne.mockReturnValue(transactionRow());
+
+      updateTransaction(mockDb, 'txn-1', { amount: { amount: -7500 } });
+
+      expectBalanceRecomputeFor(2, 'acc-1');
+    });
+
+    it('recomputes both accounts when a transaction moves accounts', () => {
+      mockQueryOne
+        .mockReturnValueOnce(transactionRow({ account_id: 'acc-1' }))
+        .mockReturnValueOnce(transactionRow({ account_id: 'acc-2' }));
+
+      updateTransaction(mockDb, 'txn-1', { accountId: 'acc-2' });
+
+      expectBalanceRecomputeFor(2, 'acc-1');
+      expectBalanceRecomputeFor(3, 'acc-2');
+    });
+
+    it('recomputes the account balance after delete', () => {
+      mockQueryOne.mockReturnValue(transactionRow());
+
+      deleteTransaction(mockDb, 'txn-1');
+
+      expectBalanceRecomputeFor(2, 'acc-1');
     });
   });
 });

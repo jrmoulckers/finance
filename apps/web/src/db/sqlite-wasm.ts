@@ -390,6 +390,77 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE "transaction" ADD COLUMN counterparty_account_id TEXT;`,
     ],
   },
+  {
+    version: 5,
+    label: 'account-balance-recompute-triggers',
+    up: [
+      `CREATE TRIGGER IF NOT EXISTS trg_transaction_balance_insert
+        AFTER INSERT ON "transaction"
+        FOR EACH ROW
+        BEGIN
+          UPDATE account
+          SET current_balance = (
+            SELECT COALESCE(SUM(amount), 0)
+            FROM "transaction"
+            WHERE account_id = NEW.account_id
+              AND deleted_at IS NULL
+          )
+          WHERE id = NEW.account_id
+            AND deleted_at IS NULL;
+        END;`,
+      `CREATE TRIGGER IF NOT EXISTS trg_transaction_balance_update_new
+        AFTER UPDATE ON "transaction"
+        FOR EACH ROW
+        BEGIN
+          UPDATE account
+          SET current_balance = (
+            SELECT COALESCE(SUM(amount), 0)
+            FROM "transaction"
+            WHERE account_id = NEW.account_id
+              AND deleted_at IS NULL
+          )
+          WHERE id = NEW.account_id
+            AND deleted_at IS NULL;
+        END;`,
+      `CREATE TRIGGER IF NOT EXISTS trg_transaction_balance_update_old
+        AFTER UPDATE OF account_id ON "transaction"
+        FOR EACH ROW
+        WHEN OLD.account_id IS NOT NEW.account_id
+        BEGIN
+          UPDATE account
+          SET current_balance = (
+            SELECT COALESCE(SUM(amount), 0)
+            FROM "transaction"
+            WHERE account_id = OLD.account_id
+              AND deleted_at IS NULL
+          )
+          WHERE id = OLD.account_id
+            AND deleted_at IS NULL;
+        END;`,
+      `CREATE TRIGGER IF NOT EXISTS trg_transaction_balance_delete
+        AFTER DELETE ON "transaction"
+        FOR EACH ROW
+        BEGIN
+          UPDATE account
+          SET current_balance = (
+            SELECT COALESCE(SUM(amount), 0)
+            FROM "transaction"
+            WHERE account_id = OLD.account_id
+              AND deleted_at IS NULL
+          )
+          WHERE id = OLD.account_id
+            AND deleted_at IS NULL;
+        END;`,
+      `UPDATE account
+        SET current_balance = (
+          SELECT COALESCE(SUM(amount), 0)
+          FROM "transaction"
+          WHERE account_id = account.id
+            AND deleted_at IS NULL
+        )
+        WHERE deleted_at IS NULL;`,
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection

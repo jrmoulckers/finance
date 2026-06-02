@@ -10,6 +10,7 @@ import type {
 } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
 import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { recomputeAccountBalance } from './accounts';
 import {
   SQLITE_NOW_EXPRESSION,
   createLikePattern,
@@ -319,6 +320,8 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
     throw new Error('Failed to create transaction.');
   }
 
+  recomputeAccountBalance(db, input.accountId);
+
   return createdTransaction;
 }
 
@@ -465,6 +468,11 @@ export function updateTransaction(
     ],
   );
 
+  if (existingTransaction.accountId !== mergedTransaction.accountId) {
+    recomputeAccountBalance(db, existingTransaction.accountId);
+  }
+  recomputeAccountBalance(db, mergedTransaction.accountId);
+
   return getTransactionById(db, transactionId);
 }
 
@@ -486,6 +494,8 @@ export function deleteTransaction(db: SqliteDb, transactionId: SyncId): boolean 
         AND deleted_at IS NULL`,
     [transactionId],
   );
+
+  recomputeAccountBalance(db, existingTransaction.accountId);
 
   return true;
 }
