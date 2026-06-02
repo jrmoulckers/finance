@@ -45,7 +45,7 @@ export interface TokenManagerConfig {
   refreshEndpoint: string;
 
   /**
-   * Called when a refresh attempt fails (e.g. refresh token expired).
+   * Called when a refresh attempt proves the refresh session expired (HTTP 401).
    * The application should redirect to the login page.
    */
   onSessionExpired: () => void;
@@ -56,6 +56,12 @@ interface RefreshResponse {
   access_token: string;
   expires_in: number;
 }
+
+/** Typed outcome of a cookie-backed access-token refresh attempt. */
+export type RefreshAccessTokenResult =
+  | { kind: 'success'; token: string }
+  | { kind: 'session_expired' }
+  | { kind: 'network_error'; error: Error };
 
 // ---------------------------------------------------------------------------
 // Module State (in-memory only — never persisted)
@@ -74,7 +80,7 @@ let refreshTimerId: ReturnType<typeof setTimeout> | null = null;
 let isRefreshing = false;
 
 /** Queued callers waiting for a refresh to complete. */
-let refreshSubscribers: Array<(token: string | null) => void> = [];
+let refreshSubscribers: Array<(result: RefreshAccessTokenResult) => void> = [];
 
 /** Module configuration. */
 let managerConfig: TokenManagerConfig | null = null;
@@ -128,12 +134,17 @@ function decodeJwtPayload(token: string): JwtPayload {
 /**
  * Notify all queued subscribers after a refresh completes (or fails).
  */
-function notifyRefreshSubscribers(token: string | null): void {
+function notifyRefreshSubscribers(result: RefreshAccessTokenResult): void {
   const subscribers = refreshSubscribers;
   refreshSubscribers = [];
   for (const callback of subscribers) {
-    callback(token);
+    callback(result);
   }
+}
+
+/** Normalise thrown values into Error instances for typed network failures. */
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
 }
 
 /**
@@ -145,9 +156,9 @@ function notifyRefreshSubscribers(token: string | null): void {
  *   3. Set a new HttpOnly refresh cookie.
  *   4. Return `{ access_token, expires_in }` in the response body.
  */
-async function executeRefresh(): Promise<string | null> {
+async function executeRefresh(): Promise<RefreshAccessTokenResult> {
   if (!managerConfig) {
-    return null;
+    return { kind: 'session_expired' };
   }
 
   try {
@@ -159,19 +170,27 @@ async function executeRefresh(): Promise<string | null> {
       },
     });
 
+    if (response.status === 401) {
+      return { kind: 'session_expired' };
+    }
+
     if (!response.ok) {
-      // Refresh failed — session is expired
-      clearTokens();
-      managerConfig.onSessionExpired();
-      return null;
+      return {
+        kind: 'network_error',
+        error: new Error(`Token refresh failed with HTTP ${response.status}`),
+      };
     }
 
     const data = (await response.json()) as RefreshResponse;
+    if (typeof data.access_token !== 'string' || data.access_token.length === 0) {
+      return { kind: 'network_error', error: new Error('Token refresh response was invalid') };
+    }
+
     setAccessToken(data.access_token);
-    return data.access_token;
-  } catch {
-    // Network error — don't clear tokens, retry will happen
-    return null;
+    return { kind: 'success', token: data.access_token };
+  } catch (error) {
+    // Network error — don't clear tokens; callers can retry when connectivity returns.
+    return { kind: 'network_error', error: toError(error) };
   }
 }
 
@@ -193,7 +212,12 @@ function scheduleRefresh(): void {
   const refreshIn = Math.max(timeUntilExpiry - REFRESH_THRESHOLD_MS - REFRESH_SAFETY_MARGIN_MS, 0);
 
   refreshTimerId = setTimeout(() => {
-    void refreshAccessToken();
+    void refreshAccessToken().then((result) => {
+      if (result.kind === 'session_expired') {
+        clearTokens();
+        managerConfig?.onSessionExpired();
+      }
+    });
   }, refreshIn);
 }
 
@@ -256,7 +280,14 @@ export async function getAccessToken(): Promise<string | null> {
   }
 
   // Token is near expiry or expired — refresh
-  return refreshAccessToken();
+  const result = await refreshAccessToken();
+  if (result.kind === 'session_expired') {
+    clearTokens();
+    managerConfig?.onSessionExpired();
+    return null;
+  }
+
+  return result.kind === 'success' ? result.token : null;
 }
 
 /**
@@ -277,12 +308,12 @@ export function getAccessTokenSync(): string | null {
  * Deduplicates concurrent refresh requests — if a refresh is already
  * in-flight, subsequent callers wait for the same result.
  *
- * @returns The new access token, or `null` if refresh failed.
+ * @returns A typed result describing whether refresh succeeded, the session expired, or the network failed.
  */
-export async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<RefreshAccessTokenResult> {
   // If already refreshing, queue this caller
   if (isRefreshing) {
-    return new Promise<string | null>((resolve) => {
+    return new Promise<RefreshAccessTokenResult>((resolve) => {
       refreshSubscribers.push(resolve);
     });
   }
@@ -290,9 +321,9 @@ export async function refreshAccessToken(): Promise<string | null> {
   isRefreshing = true;
 
   try {
-    const newToken = await executeRefresh();
-    notifyRefreshSubscribers(newToken);
-    return newToken;
+    const result = await executeRefresh();
+    notifyRefreshSubscribers(result);
+    return result;
   } finally {
     isRefreshing = false;
   }

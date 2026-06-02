@@ -24,6 +24,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -76,6 +77,9 @@ export interface AuthUser {
   hasPasskey: boolean;
 }
 
+/** Result of creating a new email/password account. */
+export type SignupResult = { kind: 'authenticated' } | { kind: 'confirmation_required' };
+
 /** Actions available through the auth context. */
 export interface AuthActions {
   /** Sign in with email and password. */
@@ -93,7 +97,7 @@ export interface AuthActions {
   /** Manually trigger a token refresh. */
   refresh: () => Promise<void>;
   /** Create a new account with email and password. */
-  signupWithEmail: (email: string, password: string) => Promise<void>;
+  signupWithEmail: (email: string, password: string) => Promise<SignupResult>;
 }
 
 /** Supported OAuth providers. */
@@ -113,6 +117,8 @@ export interface AuthContextValue extends AuthActions {
   webAuthnSupported: boolean;
   /** Whether the app is running in demo mode (no backend configured). */
   isDemoMode: boolean;
+  /** Whether auth is preserving the last known user while refresh is offline/unreachable. */
+  isOffline: boolean;
   /** Whether the passkey setup prompt should be shown. */
   showPasskeyPrompt: boolean;
   /** Dismiss the passkey setup prompt. */
@@ -142,6 +148,7 @@ export interface AuthProviderConfig {
 // ---------------------------------------------------------------------------
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const LAST_USER_STORAGE_KEY = 'finance.lastUser';
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -171,14 +178,53 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [webAuthnSupported] = useState(() => isWebAuthnSupported());
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const onlineRetryHandlerRef = useRef<(() => void) | null>(null);
 
   const demoModeActive = isDemoMode(config.supabaseUrl);
-  const isAuthenticated = user !== null && hasValidToken();
+  const isAuthenticated = user !== null && (hasValidToken() || isOffline);
 
   /** Dismiss the passkey prompt (hides it without changing preferences). */
   const dismissPasskeyPrompt = useCallback(() => {
     setShowPasskeyPrompt(false);
   }, []);
+
+  function rememberUser(nextUser: AuthUser): void {
+    setUser(nextUser);
+    cacheLastUser(nextUser);
+  }
+
+  function handleSessionExpired(): void {
+    clearTokens();
+    clearCachedUser();
+    cancelOnlineRestoreRetry();
+    setIsOffline(false);
+    setUser(null);
+    config.onUnauthenticated?.();
+  }
+
+  function scheduleOnlineRestoreRetry(): void {
+    if (onlineRetryHandlerRef.current) {
+      return;
+    }
+
+    const handleOnline = () => {
+      cancelOnlineRestoreRetry();
+      void tryRestoreSession();
+    };
+
+    onlineRetryHandlerRef.current = handleOnline;
+    window.addEventListener('online', handleOnline, { once: true });
+  }
+
+  function cancelOnlineRestoreRetry(): void {
+    if (!onlineRetryHandlerRef.current) {
+      return;
+    }
+
+    window.removeEventListener('online', onlineRetryHandlerRef.current);
+    onlineRetryHandlerRef.current = null;
+  }
 
   // -----------------------------------------------------------------------
   // Initialisation
@@ -227,11 +273,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     // page refresh without storing tokens in localStorage.
     initTokenManager({
       refreshEndpoint: config.refreshEndpoint,
-      onSessionExpired: () => {
-        setUser(null);
-        clearTokens();
-        config.onUnauthenticated?.();
-      },
+      onSessionExpired: handleSessionExpired,
     });
 
     // Initialise WebAuthn
@@ -255,6 +297,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      cancelOnlineRestoreRetry();
     };
   }, []);
 
@@ -263,24 +306,33 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
    * via the HttpOnly refresh cookie.
    */
   async function tryRestoreSession(): Promise<void> {
-    try {
-      const token = await refreshAccessToken();
-      if (token) {
-        // Decode minimal user info from the token
-        const payload = parseTokenPayload(token);
-        if (payload) {
-          setUser({
-            id: payload.sub ?? '',
-            email: payload.email ?? '',
-            hasPasskey: false, // Will be updated on next profile fetch
-          });
+    const result = await refreshAccessToken();
+
+    switch (result.kind) {
+      case 'success': {
+        const restoredUser = userFromToken(result.token) ?? readCachedUser();
+        if (restoredUser) {
+          rememberUser(restoredUser);
         }
+        setIsOffline(false);
+        cancelOnlineRestoreRetry();
+        break;
       }
-    } catch {
-      // No valid session — user needs to log in
-    } finally {
-      setIsLoading(false);
+      case 'session_expired':
+        handleSessionExpired();
+        break;
+      case 'network_error': {
+        const cachedUser = readCachedUser();
+        if (cachedUser) {
+          setUser((current) => current ?? cachedUser);
+        }
+        setIsOffline(true);
+        scheduleOnlineRestoreRetry();
+        break;
+      }
     }
+
+    setIsLoading(false);
   }
 
   // -----------------------------------------------------------------------
@@ -307,11 +359,12 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         if (demoModeActive) {
           const result = await demoLogin(email, password);
           setAccessToken(result.accessToken);
-          setUser({
+          rememberUser({
             id: result.user.id,
             email: result.user.email,
             hasPasskey: false,
           });
+          setIsOffline(false);
           triggerPasskeyPromptCheck();
           return;
         }
@@ -336,11 +389,12 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         };
 
         setAccessToken(data.access_token);
-        setUser({
+        rememberUser({
           id: data.user.id,
           email: data.user.email,
           hasPasskey: data.user.has_passkey ?? false,
         });
+        setIsOffline(false);
         triggerPasskeyPromptCheck();
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An unexpected error occurred';
@@ -366,11 +420,12 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       // CSRF risk of a detached session endpoint (#1310).
       if (result.accessToken) {
         setAccessToken(result.accessToken);
-        setUser({
+        rememberUser({
           id: result.userId,
           email: result.email ?? email ?? '',
           hasPasskey: true,
         });
+        setIsOffline(false);
       } else {
         // Defensive fallback — should not occur with a correctly
         // configured server, but avoids a blank screen if the server
@@ -398,7 +453,13 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       await registerPasskey(token);
 
       // Update user state and localStorage to reflect passkey registration
-      setUser((prev) => (prev ? { ...prev, hasPasskey: true } : null));
+      setUser((prev) => {
+        const nextUser = prev ? { ...prev, hasPasskey: true } : null;
+        if (nextUser) {
+          cacheLastUser(nextUser);
+        }
+        return nextUser;
+      });
       setHasRegisteredPasskey();
       setShowPasskeyPrompt(false);
     } catch (err) {
@@ -419,6 +480,9 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       // Best-effort — clear local state regardless
     } finally {
       clearTokens();
+      clearCachedUser();
+      cancelOnlineRestoreRetry();
+      setIsOffline(false);
       setUser(null);
       if (demoModeActive) {
         clearDemoSession();
@@ -449,6 +513,8 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       clearTokens();
       localStorage.clear();
       sessionStorage.clear();
+      cancelOnlineRestoreRetry();
+      setIsOffline(false);
       setUser(null);
       config.onUnauthenticated?.();
     }
@@ -466,20 +532,34 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       return;
     }
 
-    try {
-      const token = await refreshAccessToken();
-      if (!token) {
-        setUser(null);
-        config.onUnauthenticated?.();
+    const result = await refreshAccessToken();
+    switch (result.kind) {
+      case 'success': {
+        const refreshedUser = userFromToken(result.token);
+        if (refreshedUser) {
+          rememberUser(refreshedUser);
+        }
+        setIsOffline(false);
+        cancelOnlineRestoreRetry();
+        break;
       }
-    } catch {
-      setUser(null);
-      config.onUnauthenticated?.();
+      case 'session_expired':
+        handleSessionExpired();
+        break;
+      case 'network_error': {
+        const cachedUser = readCachedUser();
+        if (cachedUser) {
+          setUser((current) => current ?? cachedUser);
+        }
+        setIsOffline(true);
+        scheduleOnlineRestoreRetry();
+        break;
+      }
     }
-  }, [config, demoModeActive, user?.email]);
+  }, [demoModeActive, user?.email]);
 
   const signupWithEmail = useCallback(
-    async (email: string, password: string): Promise<void> => {
+    async (email: string, password: string): Promise<SignupResult> => {
       setError(null);
       setIsLoading(true);
 
@@ -489,14 +569,15 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           // Auto-login after demo signup
           const result = await demoLogin(email, password);
           setAccessToken(result.accessToken);
-          setUser({
+          rememberUser({
             id: result.user.id,
             email: result.user.email,
             hasPasskey: false,
           });
+          setIsOffline(false);
           // demoLogin already calls persistDemoSession
           triggerPasskeyPromptCheck();
-          return;
+          return { kind: 'authenticated' };
         }
 
         const endpoint = config.signupEndpoint ?? '/api/auth/signup';
@@ -505,15 +586,38 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
         });
+        const body = (await response.json().catch(() => ({}))) as {
+          confirmation_required?: boolean;
+          error?: string;
+          access_token?: string;
+          user?: { id: string; email: string; has_passkey?: boolean };
+        };
+
+        if (response.status === 202) {
+          if (body.confirmation_required) {
+            return { kind: 'confirmation_required' };
+          }
+          throw new Error('Signup requires email confirmation, but the response was invalid.');
+        }
 
         if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as {
-            error?: string;
-          };
           throw new Error(body.error ?? 'Signup failed');
         }
 
-        // Auto-login: use the same credentials to establish a session
+        if (response.status === 201 && body.access_token && body.user) {
+          setAccessToken(body.access_token);
+          rememberUser({
+            id: body.user.id,
+            email: body.user.email,
+            hasPasskey: body.user.has_passkey ?? false,
+          });
+          setIsOffline(false);
+          triggerPasskeyPromptCheck();
+          return { kind: 'authenticated' };
+        }
+
+        // Auto-login: use the same credentials to establish a session when the
+        // signup endpoint does not return a session directly.
         const loginResponse = await fetch(config.loginEndpoint, {
           method: 'POST',
           credentials: 'include',
@@ -527,15 +631,15 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
             user: { id: string; email: string; has_passkey?: boolean };
           };
           setAccessToken(data.access_token);
-          setUser({
+          rememberUser({
             id: data.user.id,
             email: data.user.email,
             hasPasskey: data.user.has_passkey ?? false,
           });
+          setIsOffline(false);
           triggerPasskeyPromptCheck();
         }
-        // If auto-login fails, the signup still succeeded — caller can
-        // decide to redirect to login or show a message.
+        return { kind: 'authenticated' };
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An unexpected error occurred';
         setError(message);
@@ -590,6 +694,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       error,
       webAuthnSupported,
       isDemoMode: demoModeActive,
+      isOffline,
       showPasskeyPrompt,
       dismissPasskeyPrompt,
       loginWithEmail,
@@ -608,6 +713,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       error,
       webAuthnSupported,
       demoModeActive,
+      isOffline,
       showPasskeyPrompt,
       dismissPasskeyPrompt,
       loginWithEmail,
@@ -715,6 +821,56 @@ export function ProtectedRoute({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function cacheLastUser(nextUser: AuthUser): void {
+  try {
+    localStorage.setItem(LAST_USER_STORAGE_KEY, JSON.stringify(nextUser));
+  } catch {
+    // Best-effort only; auth cookies remain the source of truth.
+  }
+}
+
+function readCachedUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(LAST_USER_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<AuthUser>;
+    if (typeof parsed.id !== 'string' || typeof parsed.email !== 'string') {
+      return null;
+    }
+
+    return {
+      id: parsed.id,
+      email: parsed.email,
+      hasPasskey: parsed.hasPasskey === true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearCachedUser(): void {
+  try {
+    localStorage.removeItem(LAST_USER_STORAGE_KEY);
+  } catch {
+    // Best-effort only.
+  }
+}
+
+function userFromToken(token: string): AuthUser | null {
+  const payload = parseTokenPayload(token);
+  if (!payload || (!payload.sub && !payload.email)) {
+    return null;
+  }
+
+  const cachedUser = readCachedUser();
+  return {
+    id: payload.sub ?? cachedUser?.id ?? '',
+    email: payload.email ?? cachedUser?.email ?? '',
+    hasPasskey: cachedUser?.hasPasskey ?? false,
+  };
+}
 
 /**
  * Parse minimal claims from a JWT payload (without verification).

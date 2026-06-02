@@ -16,6 +16,7 @@ const authState = vi.hoisted(() => ({
   user: null,
   webAuthnSupported: true,
   isDemoMode: false,
+  isOffline: false,
 }));
 
 vi.mock('../auth/auth-context', () => ({
@@ -101,7 +102,7 @@ describe('SignupPage', () => {
   // ── Submission ────────────────────────────────────────────────────────────
 
   it('calls signupWithEmail with trimmed email and password on valid submission', async () => {
-    authState.signupWithEmail.mockResolvedValue(undefined);
+    authState.signupWithEmail.mockResolvedValue({ kind: 'authenticated' });
     renderSignupPage();
     fillValidForm();
 
@@ -116,7 +117,7 @@ describe('SignupPage', () => {
   it('redirects to /dashboard when isAuthenticated becomes true after signup', async () => {
     authState.signupWithEmail.mockImplementation(() => {
       authState.isAuthenticated = true;
-      return Promise.resolve();
+      return Promise.resolve({ kind: 'authenticated' });
     });
     renderSignupPage();
     fillValidForm();
@@ -127,6 +128,28 @@ describe('SignupPage', () => {
 
     // The component re-renders with isAuthenticated = true and navigates.
     expect(navigateMock).toHaveBeenCalledWith('/dashboard');
+  });
+
+  it('shows confirmation-required UI and can resend confirmation email', async () => {
+    authState.signupWithEmail.mockResolvedValue({ kind: 'confirmation_required' });
+    renderSignupPage();
+    fillValidForm();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Check your email' })).toBeInTheDocument();
+    expect(screen.getByText('alex@example.com')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toHaveAttribute('href', '/login');
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Resend confirmation email' }));
+    });
+
+    expect(authState.signupWithEmail).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText('Confirmation email sent again.')).toBeInTheDocument();
   });
 
   it('shows error banner when signup fails', async () => {

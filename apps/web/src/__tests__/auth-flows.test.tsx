@@ -36,6 +36,7 @@ const authState = vi.hoisted(() => ({
   user: null as { id: string; email: string; hasPasskey: boolean } | null,
   webAuthnSupported: true,
   isDemoMode: false,
+  isOffline: false,
 }));
 
 const navigateMock = vi.hoisted(() => vi.fn());
@@ -267,7 +268,7 @@ describe('Signup flow (#1331)', () => {
   });
 
   it('calls signupWithEmail on valid submission', async () => {
-    authState.signupWithEmail.mockResolvedValue(undefined);
+    authState.signupWithEmail.mockResolvedValue({ kind: 'authenticated' });
     renderSignupPage();
 
     fireEvent.change(screen.getByLabelText('Email'), {
@@ -290,7 +291,7 @@ describe('Signup flow (#1331)', () => {
   it('redirects to /dashboard when isAuthenticated becomes true after signup', async () => {
     authState.signupWithEmail.mockImplementation(() => {
       authState.isAuthenticated = true;
-      return Promise.resolve();
+      return Promise.resolve({ kind: 'authenticated' });
     });
     renderSignupPage();
 
@@ -309,6 +310,29 @@ describe('Signup flow (#1331)', () => {
     });
 
     expect(navigateMock).toHaveBeenCalledWith('/dashboard');
+  });
+
+  it('shows confirmation-required UI after signup returns 202 flow', async () => {
+    authState.signupWithEmail.mockResolvedValue({ kind: 'confirmation_required' });
+    renderSignupPage();
+
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'new@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'strongpass1234' },
+    });
+    fireEvent.change(screen.getByLabelText('Confirm Password'), {
+      target: { value: 'strongpass1234' },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Check your email' })).toBeInTheDocument();
+    expect(screen.getByText('new@example.com')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toHaveAttribute('href', '/login');
   });
 
   it('shows error banner when signup fails', async () => {
