@@ -94,6 +94,14 @@ describe('RouteErrorBoundary', () => {
       </RouteErrorBoundary>,
     );
 
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'RouteErrorBoundary caught route error',
+      expect.objectContaining({
+        route: 'Budgets',
+        error: expect.objectContaining({ message: 'Budget crash' }),
+        componentStack: expect.any(String),
+      }),
+    );
     expect(captureErrorMock).toHaveBeenCalledTimes(1);
     expect(captureErrorMock).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Budget crash' }),

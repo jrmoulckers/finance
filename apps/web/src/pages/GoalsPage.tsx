@@ -10,6 +10,7 @@ import {
   LoadingSpinner,
 } from '../components/common';
 import { GoalForm } from '../components/forms';
+import { OfflineBanner } from '../components/OfflineBanner';
 import type { CreateGoalInput } from '../db/repositories/goals';
 import { useGoals } from '../hooks';
 import type { Goal } from '../kmp/bridge';
@@ -103,6 +104,7 @@ export const GoalsPage: React.FC = () => {
 
   return (
     <>
+      <OfflineBanner />
       <div className="page-section__header" style={{ marginBottom: 'var(--spacing-6)' }}>
         <h2
           style={{

@@ -3,7 +3,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useOfflineStatus } from '../useOfflineStatus';
+import {
+  clearOfflineNetworkFailure,
+  reportOfflineNetworkFailure,
+  useOfflineStatus,
+} from '../useOfflineStatus';
 
 // ---------------------------------------------------------------------------
 // Navigator stubs
@@ -12,6 +16,7 @@ import { useOfflineStatus } from '../useOfflineStatus';
 let onlineState: boolean;
 
 beforeEach(() => {
+  clearOfflineNetworkFailure();
   onlineState = true;
   vi.clearAllMocks();
 
@@ -170,5 +175,37 @@ describe('useOfflineStatus', () => {
       onlineState = true;
       window.dispatchEvent(new Event('online'));
     });
+  });
+
+  it('reports offline when a loader records a network failure while the browser is online', () => {
+    onlineState = true;
+
+    const { result } = renderHook(() => useOfflineStatus());
+
+    act(() => {
+      reportOfflineNetworkFailure();
+    });
+
+    expect(result.current.isOnline).toBe(false);
+    expect(result.current.isOffline).toBe(true);
+    expect(result.current.hasNetworkFailure).toBe(true);
+  });
+
+  it('clears reported network failures when coming back online', () => {
+    onlineState = true;
+    const { result } = renderHook(() => useOfflineStatus());
+
+    act(() => {
+      reportOfflineNetworkFailure();
+    });
+
+    expect(result.current.isOffline).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    expect(result.current.isOnline).toBe(true);
+    expect(result.current.hasNetworkFailure).toBe(false);
   });
 });

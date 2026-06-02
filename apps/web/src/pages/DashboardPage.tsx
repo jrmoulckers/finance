@@ -10,6 +10,7 @@ import {
   type ViewType,
 } from '../components/charts';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { useCategories, useDashboardData, useTransactions } from '../hooks';
 import type { DashboardData } from '../hooks/useDashboardData';
 import type { Transaction } from '../kmp/bridge';
@@ -264,6 +265,7 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <>
+      <OfflineBanner />
       <h2
         style={{
           fontSize: 'var(--type-scale-headline-font-size)',

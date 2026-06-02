@@ -11,6 +11,7 @@ import {
   LoadingSpinner,
 } from '../components/common';
 import { BudgetForm } from '../components/forms';
+import { OfflineBanner } from '../components/OfflineBanner';
 import type { CreateBudgetInput } from '../db/repositories/budgets';
 import { useBudgets, useCategories } from '../hooks';
 import type { Budget } from '../kmp/bridge';
@@ -143,6 +144,7 @@ export const BudgetsPage: React.FC = () => {
 
   return (
     <>
+      <OfflineBanner />
       <div
         style={{
           display: 'flex',
