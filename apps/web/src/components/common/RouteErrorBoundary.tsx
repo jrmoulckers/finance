@@ -56,6 +56,7 @@ export class RouteErrorBoundary extends Component<
     const route = this.props.routeName ?? 'unknown';
     const componentStack = errorInfo.componentStack?.trim() || 'Unavailable';
 
+    // eslint-disable-next-line no-console -- dev visibility; captureError below feeds monitoring
     console.error('RouteErrorBoundary caught route error', {
       route,
       error,
