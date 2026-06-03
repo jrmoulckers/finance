@@ -325,9 +325,14 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         const cachedUser = readCachedUser();
         if (cachedUser) {
           setUser((current) => current ?? cachedUser);
+          setIsOffline(true);
+          scheduleOnlineRestoreRetry();
+        } else {
+          // No cached user — there is no session to keep alive offline.
+          // Treat as session_expired so the app redirects to login instead of
+          // leaving the user stranded on a protected route.
+          handleSessionExpired();
         }
-        setIsOffline(true);
-        scheduleOnlineRestoreRetry();
         break;
       }
     }

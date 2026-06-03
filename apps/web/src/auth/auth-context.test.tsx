@@ -137,4 +137,18 @@ describe('AuthProvider refresh restoration', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId('auth-state')).toHaveTextContent('authenticated');
   });
+
+  it('redirects to login when network refresh fails and no cached user exists', async () => {
+    expect(localStorage.getItem(LAST_USER_STORAGE_KEY)).toBeNull();
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId('loading-state')).toHaveTextContent('ready'));
+    expect(screen.getByTestId('auth-state')).toHaveTextContent('anonymous');
+    expect(screen.getByTestId('offline-state')).toHaveTextContent('online');
+    expect(screen.getByTestId('user-email')).toHaveTextContent('none');
+    expect(onUnauthenticated).toHaveBeenCalledOnce();
+  });
 });
