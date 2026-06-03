@@ -11,6 +11,7 @@ import { ScrollToTop } from './components/navigation/ScrollToTop';
 import { DatabaseProvider } from './db/DatabaseProvider';
 import { MoneyDisplayProvider } from './lib/display-settings';
 import { initMonitoring } from './lib/monitoring';
+import { registerAppServiceWorker } from './sw/register';
 import './theme/tokens.css';
 import './styles/responsive.css';
 import './styles/responsive-layout.css';
@@ -75,6 +76,25 @@ if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
 }
 
 initMonitoring();
+
+// ---------------------------------------------------------------------------
+// Service worker registration
+// ---------------------------------------------------------------------------
+//
+// Registered at boot (NOT inside the authenticated layout) so the SW is
+// active on ALL pages, including the anonymous `/login` and `/signup`
+// routes.  Chromium's PWA installability heuristic only credits the
+// install icon when the page that hosts the manifest link is controlled
+// by a SW with a `fetch` handler (#1965).
+if (typeof window !== 'undefined') {
+  // Wait for the load event so the SW install doesn't compete with
+  // critical app-shell rendering.  No await — registration is best-effort.
+  if (document.readyState === 'complete') {
+    void registerAppServiceWorker();
+  } else {
+    window.addEventListener('load', () => void registerAppServiceWorker(), { once: true });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Route-aware database gate

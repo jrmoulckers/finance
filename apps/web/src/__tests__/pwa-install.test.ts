@@ -37,8 +37,22 @@ describe('PWA manifest.json (#1329)', () => {
     expect(typeof manifest.short_name).toBe('string');
   });
 
-  it('has start_url set to "/"', () => {
-    expect(manifest.start_url).toBe('/');
+  it('has start_url rooted at "/"', () => {
+    // start_url may include a tracking query (e.g. ?source=pwa) but must
+    // resolve to the app root so installed sessions land on the home page.
+    expect(typeof manifest.start_url).toBe('string');
+    const startUrl = new URL(manifest.start_url as string, 'https://example.com');
+    expect(startUrl.pathname).toBe('/');
+  });
+
+  it('has explicit id rooted at "/" so Chromium treats updates as the same app (#1965)', () => {
+    expect(typeof manifest.id).toBe('string');
+    const id = new URL(manifest.id as string, 'https://example.com');
+    expect(id.pathname).toBe('/');
+  });
+
+  it('declares scope "/" so the SW controls the entire origin (#1965)', () => {
+    expect(manifest.scope).toBe('/');
   });
 
   it('has display set to "standalone"', () => {

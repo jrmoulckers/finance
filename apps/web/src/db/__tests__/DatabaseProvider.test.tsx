@@ -4,7 +4,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { DatabaseProvider, useDatabase, useStorageDiagnostics } from '../DatabaseProvider';
-import { StorageError, type StorageDiagnostics, type SqliteDb } from '../sqlite-wasm';
+import {
+  StorageError,
+  _resetInitSingletonForTesting,
+  type StorageDiagnostics,
+  type SqliteDb,
+} from '../sqlite-wasm';
 
 // Mock the sqlite-wasm module — we test provider behavior, not real WASM
 vi.mock('../sqlite-wasm', async (importOriginal) => {
@@ -53,6 +58,10 @@ function DiagnosticsConsumer() {
 describe('DatabaseProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset the module-level init singleton so each test starts fresh
+    // (the singleton dedupes across StrictMode mounts in production — for
+    // tests we must explicitly clear it).
+    _resetInitSingletonForTesting();
     // Reset E2E flag
     if (typeof window !== 'undefined') {
       delete window.__PLAYWRIGHT_E2E__;
@@ -218,6 +227,45 @@ describe('DatabaseProvider', () => {
     });
 
     expect(screen.getByText(/storage space is full/i)).toBeInTheDocument();
+  });
+
+  it('StrictMode double-mount converges on a ready DB without errors (#1909 regression)', async () => {
+    // StrictMode intentionally mounts then unmounts then re-mounts the
+    // provider in dev to surface side-effect bugs.  Before #1909 this
+    // launched two concurrent OPFS init paths and crashed the migration
+    // runner with "Cannot commit: no transaction is active".  The fix
+    // wraps init in a module-level singleton (covered in
+    // sqlite-wasm-singleton.test.ts) AND removes `db.close()` from the
+    // provider cleanup so the second mount inherits a live DB.
+    //
+    // This test asserts the React-layer contract: even after StrictMode's
+    // mount → unmount → re-mount cycle, the consumer renders against a
+    // valid database instance with no error banner.
+    (initDatabaseWithDiagnostics as Mock).mockResolvedValue({
+      db: mockDb,
+      diagnostics: mockDiagnostics,
+    });
+
+    const { StrictMode } = await import('react');
+
+    render(
+      <StrictMode>
+        <DatabaseProvider>
+          <DbConsumer />
+        </DatabaseProvider>
+      </StrictMode>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('db-ready')).toHaveTextContent('Database ready');
+    });
+
+    // No error banner — the migration race condition would surface here.
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    // db.close() must NOT be called during the StrictMode cleanup —
+    // doing so would hand the second mount a dead connection.
+    expect(mockDb.close).not.toHaveBeenCalled();
   });
 });
 

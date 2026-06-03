@@ -151,4 +151,45 @@ describe('AuthProvider refresh restoration', () => {
     expect(screen.getByTestId('user-email')).toHaveTextContent('none');
     expect(onUnauthenticated).toHaveBeenCalledOnce();
   });
+
+  it('runs session restore exactly once under React StrictMode (#1966 regression)', async () => {
+    // StrictMode mounts the provider twice in development.  Before
+    // #1966 hardening this fired `tryRestoreSession()` twice (and
+    // `handleSessionExpired()` twice when the refresh failed), which
+    // could race the redirect-to-login flow against a still-pending
+    // refresh.  The useRef guard now ensures the bootstrap runs once.
+    const token = makeToken({
+      sub: 'user-strict',
+      email: 'strict@example.com',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ access_token: token, expires_in: 3600 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { StrictMode } = await import('react');
+
+    render(
+      <StrictMode>
+        <AuthProvider config={config}>
+          <AuthProbe />
+        </AuthProvider>
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('loading-state')).toHaveTextContent('ready'));
+    expect(screen.getByTestId('auth-state')).toHaveTextContent('authenticated');
+    expect(screen.getByTestId('user-email')).toHaveTextContent('strict@example.com');
+
+    // Exactly one /api/auth/refresh call even though StrictMode mounted
+    // the provider twice.  Multiple calls would indicate the useRef guard
+    // is broken.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/refresh',
+      expect.objectContaining({ credentials: 'include' }),
+    );
+    expect(onUnauthenticated).not.toHaveBeenCalled();
+  });
 });
