@@ -14,7 +14,9 @@
  * and that activating each link navigates the SPA there.
  */
 
-import { test, expect, type Page } from './fixtures';
+import { type Page } from '@playwright/test';
+
+import { test, expect } from './fixtures';
 
 // ---------------------------------------------------------------------------
 // Destinations under test
