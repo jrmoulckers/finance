@@ -56,6 +56,7 @@ import {
   isDemoMode,
   restoreDemoSession,
 } from './demo-auth';
+import { getPasskeyErrorMessage } from './passkey-errors';
 
 import {
   incrementLoginCount,
@@ -438,8 +439,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         throw new Error('Passkey verification succeeded but no session token was returned.');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Passkey authentication failed';
-      setError(message);
+      setError(getPasskeyErrorMessage(err, 'authentication'));
       throw err;
     } finally {
       setIsLoading(false);
@@ -468,8 +468,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       setHasRegisteredPasskey();
       setShowPasskeyPrompt(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Passkey registration failed';
-      setError(message);
+      setError(getPasskeyErrorMessage(err, 'registration'));
       throw err;
     }
   }, []);

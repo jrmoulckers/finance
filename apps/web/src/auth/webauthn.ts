@@ -22,7 +22,7 @@
 
 /** Configuration for the WebAuthn client. */
 export interface WebAuthnConfig {
-  /** Supabase project URL (e.g. "https://<project>.supabase.co"). */
+  /** Supabase project URL. Retained for compatibility with auth configuration. */
   supabaseUrl: string;
   /** Supabase anon/public API key. */
   supabaseAnonKey: string;
@@ -156,6 +156,12 @@ export async function isConditionalMediationAvailable(): Promise<boolean> {
 
 let config: WebAuthnConfig | null = null;
 
+const EDGE_FUNCTIONS_BASE_PATH = '/functions/v1';
+
+export function getWebAuthnFunctionUrl(functionName: string, step: string): string {
+  return `${EDGE_FUNCTIONS_BASE_PATH}/${functionName}?step=${encodeURIComponent(step)}`;
+}
+
 /**
  * Initialize the WebAuthn module with Supabase connection details.
  * Must be called before `registerPasskey` or `authenticateWithPasskey`.
@@ -182,7 +188,7 @@ async function callEdgeFunction<T>(
     throw new Error('WebAuthn not initialised. Call initWebAuthn() first.');
   }
 
-  const url = `${config.supabaseUrl}/functions/v1/${functionName}?step=${step}`;
+  const url = getWebAuthnFunctionUrl(functionName, step);
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

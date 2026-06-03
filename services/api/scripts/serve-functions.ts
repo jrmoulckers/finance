@@ -30,6 +30,8 @@
  *   - POST /auth-logout
  *   - GET  /auth-oauth-start
  *   - GET  /auth-oauth-callback
+ *   - POST /passkey-register
+ *   - POST /passkey-authenticate
  */
 
 import { handler as authLogin } from '../supabase/functions/auth-login/index.ts';
@@ -39,6 +41,8 @@ import { handler as authLogout } from '../supabase/functions/auth-logout/index.t
 import { handler as authOAuthStart } from '../supabase/functions/auth-oauth-start/index.ts';
 import { handler as authOAuthCallback } from '../supabase/functions/auth-oauth-callback/index.ts';
 import { handler as accountDeleteHandler } from '../supabase/functions/account-delete/index.ts';
+import { handler as passkeyRegister } from '../supabase/functions/passkey-register/index.ts';
+import { handler as passkeyAuthenticate } from '../supabase/functions/passkey-authenticate/index.ts';
 
 type Handler = (req: Request) => Promise<Response>;
 
@@ -52,6 +56,8 @@ const routes: Record<string, Handler> = {
   'auth-oauth-start': authOAuthStart,
   'auth-oauth-callback': authOAuthCallback,
   'account-delete': accountDeleteHandler,
+  'passkey-register': passkeyRegister,
+  'passkey-authenticate': passkeyAuthenticate,
 };
 
 async function dispatch(req: Request): Promise<Response> {
