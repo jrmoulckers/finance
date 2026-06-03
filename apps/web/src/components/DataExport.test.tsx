@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
+// @vitest-environment jsdom
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DataExport } from './DataExport';
@@ -69,6 +70,19 @@ vi.mock('../db/repositories/transactions', () => ({
 
 vi.mock('../db/repositories/budgets', () => ({ getAllBudgets: vi.fn(() => []) }));
 vi.mock('../db/repositories/goals', () => ({ getAllGoals: vi.fn(() => []) }));
+vi.mock('../db/repositories/bills', () => ({ getAllBills: vi.fn(() => []) }));
+vi.mock('../db/repositories/investments', () => ({ getAllInvestments: vi.fn(() => []) }));
+vi.mock('../db/repositories/investment-lots', () => ({ getLotsByInvestment: vi.fn(() => []) }));
+vi.mock('../db/repositories/household', () => ({
+  getHouseholdById: vi.fn(() => ({ id: 'hh-1', name: 'Home', ownerId: 'owner-1' })),
+  getHouseholdMembers: vi.fn(() => []),
+  getHouseholdInvitations: vi.fn(() => []),
+  getAccountSharings: vi.fn(() => []),
+  getSharedBudgets: vi.fn(() => []),
+  getBudgetContributions: vi.fn(() => []),
+  getSharedGoals: vi.fn(() => []),
+  getGoalContributions: vi.fn(() => []),
+}));
 vi.mock('../db/repositories/categories', () => ({
   getAllCategories: vi.fn(() => [
     {
@@ -97,6 +111,7 @@ beforeEach(() => {
     createObjectURL: vi.fn(() => 'blob:mock-url'),
     revokeObjectURL: vi.fn(),
   });
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
   Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
   Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
   Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });
@@ -104,6 +119,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -131,8 +147,12 @@ describe('DataExport', () => {
   it('renders the request-my-data entry point and status indicator', () => {
     render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
 
+    expect(screen.getByRole('button', { name: /download all data \(json\)/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /download transactions \(csv\)/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /request my data/i })).toBeInTheDocument();
-    expect(screen.getByText(/local ZIP package/i)).toBeInTheDocument();
+    expect(screen.getByText(/plain JSON dump or transactions CSV/i)).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(/not requested/i);
   });
 
@@ -141,6 +161,41 @@ describe('DataExport', () => {
 
     expect(screen.getByText(/database is not available/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /request my data/i })).toBeDisabled();
+  });
+
+  it('downloads a full JSON export directly from local data', async () => {
+    localStorage.setItem('finance-currency', 'USD');
+    const user = userEvent.setup();
+    render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
+
+    await user.click(screen.getByRole('button', { name: /download all data \(json\)/i }));
+
+    const blob = vi.mocked(URL.createObjectURL).mock.calls[0][0] as Blob;
+    const payload = JSON.parse(await blob.text()) as {
+      accounts: unknown[];
+      preferences: unknown[];
+    };
+    expect(blob.type).toBe('application/json;charset=utf-8');
+    expect(payload.accounts).toHaveLength(1);
+    expect(payload.preferences).toEqual([{ key: 'finance-currency', value: 'USD' }]);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    expect(screen.getByText(/JSON download started/i)).toBeInTheDocument();
+  });
+
+  it('downloads denormalized transactions CSV directly from local data', async () => {
+    const user = userEvent.setup();
+    render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
+
+    await user.click(screen.getByRole('button', { name: /download transactions \(csv\)/i }));
+
+    const blob = vi.mocked(URL.createObjectURL).mock.calls[0][0] as Blob;
+    expect(blob.type).toBe('text/csv;charset=utf-8');
+    await expect(blob.text()).resolves.toContain(
+      'date,account_name,category_name,description,amount,currency\r\n' +
+        '2024-03-06,Checking,Food,Grocery Store,-67.42,USD',
+    );
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    expect(screen.getByText(/Transactions CSV download started/i)).toBeInTheDocument();
   });
 
   it('shows a confirmation modal with protected-category and mood-tag choices', async () => {

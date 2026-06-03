@@ -15,6 +15,12 @@ import {
   type DataAccessManifest,
   type DataAccessPackageResult,
 } from '../lib/data-access-package';
+import {
+  buildDatedExportFileName,
+  buildFullJsonExport,
+  buildTransactionsCsv,
+  serializeFullJsonExport,
+} from '../lib/export/simple-export';
 import './data-export.css';
 
 type ExportStatus =
@@ -107,6 +113,22 @@ function downloadBytes(content: Uint8Array, filename: string, mimeType: string):
   return url;
 }
 
+function triggerBrowserDownload(content: string, filename: string, mimeType: string): void {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  try {
+    anchor.click();
+  } finally {
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }
+}
+
 async function shareOrDownloadPackage(
   packageResult: DataAccessPackageResult,
 ): Promise<string | null> {
@@ -138,6 +160,7 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
   const [packageResult, setPackageResult] = useState<DataAccessPackageResult | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [simpleDownloadMessage, setSimpleDownloadMessage] = useState('');
   const [expirationWarning, setExpirationWarning] = useState(false);
   const cancelledRef = useRef(false);
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -180,6 +203,7 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
   const startRequest = useCallback(() => {
     setShowConfirmation(true);
     setErrorMessage('');
+    setSimpleDownloadMessage('');
   }, []);
 
   const cancelRequest = useCallback(() => {
@@ -238,6 +262,53 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
     }, 100);
   }, [db, includeMoodTags, includeProtectedCategories]);
 
+  const downloadFullJson = useCallback(() => {
+    setErrorMessage('');
+    setSimpleDownloadMessage('');
+    try {
+      if (!db)
+        throw new Error('Database is still initializing. Please wait a moment and try again.');
+      const generatedAt = new Date();
+      const exportData = buildFullJsonExport(db, {
+        appVersion: APP_VERSION,
+        generatedAt,
+        preferences: readLocalStorageRecords('finance-'),
+        settings: readLocalStorageRecords('settings-'),
+      });
+      triggerBrowserDownload(
+        serializeFullJsonExport(exportData),
+        buildDatedExportFileName('finance-data', 'json', generatedAt),
+        'application/json;charset=utf-8',
+      );
+      setSimpleDownloadMessage('JSON download started.');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to download JSON export.');
+    }
+  }, [db]);
+
+  const downloadTransactionsCsv = useCallback(() => {
+    setErrorMessage('');
+    setSimpleDownloadMessage('');
+    try {
+      if (!db)
+        throw new Error('Database is still initializing. Please wait a moment and try again.');
+      const generatedAt = new Date();
+      const exportData = buildFullJsonExport(db, { appVersion: APP_VERSION, generatedAt });
+      triggerBrowserDownload(
+        buildTransactionsCsv(exportData),
+        buildDatedExportFileName('finance-transactions', 'csv', generatedAt),
+        'text/csv;charset=utf-8',
+      );
+      setSimpleDownloadMessage('Transactions CSV download started.');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to download transactions CSV.',
+      );
+    }
+  }, [db]);
+
   const deliverPackage = useCallback(async () => {
     if (!packageResult) return;
     try {
@@ -256,7 +327,7 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
       <p id="data-export-description" className="data-export__description">
         {dbUnavailable
           ? 'Database is not available. Please wait for it to initialize.'
-          : 'Generate a local ZIP package with manifest.json, per-domain JSON files, attachments, and a localized README.md. No server roundtrip is used.'}
+          : 'Download a plain JSON dump or transactions CSV immediately, or generate the advanced local ZIP package. No server roundtrip is used.'}
       </p>
 
       <div
@@ -264,6 +335,26 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
         role="group"
         aria-labelledby="data-export-description"
       >
+        <button
+          type="button"
+          className="data-export__button"
+          disabled={dbUnavailable || status === 'pending' || status === 'generating'}
+          onClick={downloadFullJson}
+          aria-describedby="data-export-description"
+        >
+          <DownloadIcon />
+          Download all data (JSON)
+        </button>
+        <button
+          type="button"
+          className="data-export__button"
+          disabled={dbUnavailable || status === 'pending' || status === 'generating'}
+          onClick={downloadTransactionsCsv}
+          aria-describedby="data-export-description"
+        >
+          <DownloadIcon />
+          Download transactions (CSV)
+        </button>
         <button
           type="button"
           className="data-export__button"
@@ -298,6 +389,17 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
           </div>
         )}
       </div>
+
+      {simpleDownloadMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="data-export__feedback data-export__feedback--success"
+        >
+          <CheckIcon />
+          <p className="data-export__feedback-message--success">{simpleDownloadMessage}</p>
+        </div>
+      )}
 
       {showConfirmation && (
         <div
