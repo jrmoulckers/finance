@@ -348,9 +348,24 @@ function sanitizePathSegment(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]/g, '_') || 'attachment';
 }
 
-interface ZipEntry {
+/**
+ * Entry in a ZIP archive built by {@link buildZipArchive}.
+ *
+ * @public
+ */
+export interface ZipEntry {
   path: string;
   bytes: Uint8Array;
+}
+
+/**
+ * Build a minimal, store-only (uncompressed) ZIP archive. Shared zip utility
+ * used by both the data-access package and the per-entity CSV export.
+ *
+ * @public
+ */
+export function buildZipArchive(files: readonly ZipEntry[]): Uint8Array {
+  return buildZip(files);
 }
 
 function buildZip(files: readonly ZipEntry[]): Uint8Array {

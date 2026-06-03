@@ -19,6 +19,7 @@ import {
 import { getAllInvestments } from '../../db/repositories/investments';
 import { getLotsByInvestment } from '../../db/repositories/investment-lots';
 import { getAllTransactions } from '../../db/repositories/transactions';
+import { buildZipArchive, type ZipEntry } from '../data-access-package';
 
 type HouseholdRecord = NonNullable<ReturnType<typeof getHouseholdById>>;
 
@@ -186,6 +187,153 @@ export function buildTransactionsCsvExport(db: SqliteDb): string {
   return buildTransactionsCsv(buildFullJsonExport(db));
 }
 
+/** A single CSV file produced by {@link buildEntityCsvFiles}. */
+export interface EntityCsvFile {
+  /** Filename (no path) — e.g. `transactions.csv`. */
+  name: string;
+  /** UTF-8 encoded CSV body, header row + data rows. */
+  contents: string;
+}
+
+const FULL_EXPORT_ENTITY_KEYS = [
+  'accounts',
+  'transactions',
+  'categories',
+  'budgets',
+  'goals',
+  'bills',
+  'investments',
+  'investmentLots',
+  'households',
+  'householdMembers',
+  'householdInvitations',
+  'accountSharings',
+  'sharedBudgets',
+  'budgetContributions',
+  'sharedGoals',
+  'goalContributions',
+  'preferences',
+  'settings',
+] as const satisfies readonly (keyof FullJsonExport)[];
+
+/** Map camelCase JSON keys to snake_case CSV filenames for the per-entity zip. */
+const CSV_FILENAMES: Record<(typeof FULL_EXPORT_ENTITY_KEYS)[number], string> = {
+  accounts: 'accounts.csv',
+  transactions: 'transactions.csv',
+  categories: 'categories.csv',
+  budgets: 'budgets.csv',
+  goals: 'goals.csv',
+  bills: 'bills.csv',
+  investments: 'investments.csv',
+  investmentLots: 'investment_lots.csv',
+  households: 'households.csv',
+  householdMembers: 'household_members.csv',
+  householdInvitations: 'household_invitations.csv',
+  accountSharings: 'account_sharings.csv',
+  sharedBudgets: 'shared_budgets.csv',
+  budgetContributions: 'budget_contributions.csv',
+  sharedGoals: 'shared_goals.csv',
+  goalContributions: 'goal_contributions.csv',
+  preferences: 'preferences.csv',
+  settings: 'settings.csv',
+};
+
+/**
+ * Build one CSV per entity from a full JSON export. Each file always emits a
+ * header row — even when the entity has no records — so the output is
+ * consistent for fresh-account users.
+ */
+export function buildEntityCsvFiles(exportData: FullJsonExport): EntityCsvFile[] {
+  return FULL_EXPORT_ENTITY_KEYS.map((key) => {
+    const records = (exportData[key] as readonly unknown[] | undefined) ?? [];
+    return {
+      name: CSV_FILENAMES[key],
+      contents: buildGenericCsv(records),
+    };
+  });
+}
+
+/**
+ * Build a ZIP containing one CSV per entity plus a small manifest.
+ * Used by the "Download all data (CSV)" action.
+ */
+export function buildAllCsvZip(exportData: FullJsonExport): Uint8Array {
+  const encoder = new TextEncoder();
+  const csvFiles = buildEntityCsvFiles(exportData);
+  const manifest = {
+    schemaVersion: exportData.schemaVersion,
+    generatedAt: exportData.generatedAt,
+    appVersion: exportData.appVersion,
+    files: csvFiles.map((file) => ({ name: file.name })),
+  };
+  const entries: ZipEntry[] = [
+    { path: 'manifest.json', bytes: encoder.encode(`${JSON.stringify(manifest, null, 2)}\n`) },
+    ...csvFiles.map((file) => ({ path: file.name, bytes: encoder.encode(file.contents) })),
+  ];
+  return buildZipArchive(entries);
+}
+
+/**
+ * Build a CSV body for an arbitrary collection of plain objects.
+ *
+ * - Headers are the union of all top-level keys across rows, sorted for
+ *   determinism.
+ * - Nested objects and arrays are JSON-stringified into a single cell.
+ * - When the collection is empty, returns the header `(empty)` so the file
+ *   is still a valid CSV that downstream tools can open.
+ */
+export function buildGenericCsv(records: readonly unknown[]): string {
+  if (records.length === 0) {
+    return '(empty)\r\n';
+  }
+
+  const headers = collectHeaders(records);
+  const lines: string[] = [headers.map(escapeCsvField).join(',')];
+  for (const record of records) {
+    const flat = isPlainRecord(record) ? flattenForCsv(record) : { value: stringify(record) };
+    lines.push(headers.map((header) => escapeCsvField(flat[header] ?? '')).join(','));
+  }
+  return `${lines.join('\r\n')}\r\n`;
+}
+
+function collectHeaders(records: readonly unknown[]): string[] {
+  const headerSet = new Set<string>();
+  for (const record of records) {
+    if (!isPlainRecord(record)) {
+      headerSet.add('value');
+      continue;
+    }
+    for (const key of Object.keys(flattenForCsv(record))) {
+      headerSet.add(key);
+    }
+  }
+  return [...headerSet].sort();
+}
+
+function flattenForCsv(record: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(record)) {
+    out[key] = stringify(value);
+  }
+  return out;
+}
+
+function stringify(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'bigint') return value.toString();
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export function escapeCsvField(value: unknown): string {
   const text = value == null ? '' : String(value);
   if (!/[",\r\n]/.test(text)) return text;
@@ -194,7 +342,7 @@ export function escapeCsvField(value: unknown): string {
 
 export function buildDatedExportFileName(
   prefix: string,
-  extension: 'csv' | 'json',
+  extension: 'csv' | 'json' | 'zip',
   generatedAt = new Date(),
 ): string {
   return `${prefix}-${generatedAt.toISOString().slice(0, 10)}.${extension}`;
@@ -204,8 +352,12 @@ function readOptionalTable<T>(read: () => T[]): T[] {
   try {
     return read();
   } catch (error) {
-    if (isMissingOptionalTable(error)) return [];
-    throw error;
+    // Always degrade gracefully: an export must not abort because a single
+    // optional table or row is missing / partially populated. Missing tables
+    // and stricter row-validation errors (missing required fields on
+    // pre-migration rows) both surface as `Error` instances.
+    logExportReadFailure(error);
+    return [];
   }
 }
 
@@ -213,14 +365,20 @@ function readOptionalRecord<T>(read: () => T | null): T | null {
   try {
     return read();
   } catch (error) {
-    if (isMissingOptionalTable(error)) return null;
-    throw error;
+    logExportReadFailure(error);
+    return null;
   }
 }
 
-function isMissingOptionalTable(error: unknown): boolean {
-  return error instanceof Error && /no such table/i.test(error.message);
+/* eslint-disable no-console -- intentional diagnostic for export read failures */
+function logExportReadFailure(error: unknown): void {
+  // Surface in dev so we can diagnose; never throw — the export is best-effort
+  // and must always produce a downloadable artifact.
+  if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+    console.warn('[export] skipping unreadable table:', error);
+  }
 }
+/* eslint-enable no-console */
 
 function collectHouseholdIds(
   recordGroups: readonly (readonly { householdId?: string | null }[])[],

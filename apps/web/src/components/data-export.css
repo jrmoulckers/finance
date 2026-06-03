@@ -7,12 +7,49 @@
  * Uses design-token CSS custom properties throughout.
  * ------------------------------------------------------------------- */
 
+.data-export {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
 .data-export__description {
   font-size: var(--type-scale-body-font-size);
   color: var(--semantic-text-secondary);
-  margin-bottom: var(--spacing-4);
+  margin: 0;
 }
 
+/* Action groups (Direct download / Signed data package) */
+.data-export__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--semantic-border-default, var(--semantic-interactive-default));
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-surface-secondary, transparent);
+}
+
+.data-export__group-title {
+  margin: 0;
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+}
+
+.data-export__group-help {
+  margin: 0;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.data-export__button-row {
+  display: flex;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+/* Legacy class kept for any external selectors still pointing at it. */
 .data-export__button-group {
   display: flex;
   gap: var(--spacing-3);
@@ -31,6 +68,12 @@
   cursor: pointer;
   font-size: var(--type-scale-body-font-size);
   font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.data-export__button--primary {
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-on-interactive, #fff);
 }
 
 .data-export__button:disabled {
@@ -43,9 +86,107 @@
   outline-offset: 2px;
 }
 
+/* -------------------------------------------------------------------
+ * Confirmation dialog — single-column vertical form
+ * ------------------------------------------------------------------- */
+
+.data-export__dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--semantic-border-default, var(--semantic-interactive-default));
+  background: var(--semantic-surface-primary, transparent);
+}
+
+.data-export__dialog-title {
+  margin: 0;
+  font-size: var(--type-scale-heading-3-font-size, 1.125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-primary);
+}
+
+.data-export__dialog-body {
+  margin: 0;
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-secondary);
+  line-height: 1.5;
+}
+
+.data-export__fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin: 0;
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--semantic-border-default, var(--semantic-interactive-default));
+  border-radius: var(--border-radius-md);
+  min-width: 0;
+}
+
+.data-export__legend {
+  padding: 0 var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.data-export__option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--spacing-3);
+  align-items: start;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.data-export__checkbox {
+  margin-top: 0.2rem;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.data-export__option-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  min-width: 0;
+}
+
+.data-export__option-label {
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-medium);
+  color: var(--semantic-text-primary);
+  /* Critical: keep label on one line where possible, otherwise wrap at word
+   * boundaries — never break to one syllable per line (#1934). */
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+}
+
+.data-export__option-help {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+}
+
+.data-export__dialog-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
 /* Progress section */
 .data-export__progress {
-  margin-top: var(--spacing-4);
+  margin-top: 0;
 }
 
 .data-export__progress-text {
@@ -56,7 +197,7 @@
 
 /* Success / error feedback */
 .data-export__feedback {
-  margin-top: var(--spacing-4);
+  margin-top: 0;
   display: flex;
   align-items: center;
   gap: var(--spacing-2);
@@ -113,6 +254,14 @@
   flex-shrink: 0;
 }
 
+.data-export__icon--positive {
+  stroke: var(--semantic-status-positive);
+}
+
+.data-export__icon--negative {
+  stroke: var(--semantic-status-negative);
+}
+
 .data-export__spinner-icon {
   animation: spinner-rotate 1s linear infinite;
 }
@@ -120,6 +269,23 @@
 .data-export__progress-fill {
   width: 100%;
   animation: export-progress 0.8s ease-in-out infinite alternate;
+}
+
+/* -------------------------------------------------------------------
+ * Responsive: keep dialog single-column on mobile; on wider viewports allow
+ * the two privacy-options checkboxes to sit side by side.
+ * ------------------------------------------------------------------- */
+
+@media (min-width: 720px) {
+  .data-export__fieldset {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--spacing-6, 1.5rem);
+    row-gap: var(--spacing-3);
+  }
+  .data-export__legend {
+    grid-column: 1 / -1;
+  }
 }
 
 /* -------------------------------------------------------------------
@@ -191,7 +357,10 @@
   }
 
   .data-export__feedback--success,
-  .data-export__feedback--error {
+  .data-export__feedback--error,
+  .data-export__group,
+  .data-export__dialog,
+  .data-export__fieldset {
     border-width: 2px;
   }
 }

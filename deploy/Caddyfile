@@ -44,8 +44,11 @@
 		# Referrer policy
 		Referrer-Policy "strict-origin-when-cross-origin"
 
-		# Permissions-Policy — restrict sensitive browser APIs
-		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)"
+		# Permissions-Policy — restrict sensitive browser APIs.
+		# `web-share=(self)` explicitly grants the Web Share API to the app
+		# origin so navigator.share() / canShare({ files }) is not blocked by
+		# a stricter default policy (#1935).
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self), web-share=(self)"
 
 		# Content Security Policy — strict, no inline scripts, no eval
 		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'"

@@ -151,8 +151,11 @@ describe('DataExport', () => {
     expect(
       screen.getByRole('button', { name: /download transactions \(csv\)/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /request my data/i })).toBeInTheDocument();
-    expect(screen.getByText(/plain JSON dump or transactions CSV/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /download all data \(csv zip\)/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /request my data package/i })).toBeInTheDocument();
+    expect(screen.getByText(/Download your data directly/i)).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(/not requested/i);
   });
 
@@ -160,7 +163,7 @@ describe('DataExport', () => {
     render(<DataExport />, { wrapper: createTestWrapper(null) });
 
     expect(screen.getByText(/database is not available/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /request my data/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /request my data package/i })).toBeDisabled();
   });
 
   it('downloads a full JSON export directly from local data', async () => {
@@ -202,7 +205,7 @@ describe('DataExport', () => {
     const user = userEvent.setup();
     render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
 
-    await user.click(screen.getByRole('button', { name: /request my data/i }));
+    await user.click(screen.getByRole('button', { name: /request my data package/i }));
 
     expect(screen.getByRole('dialog', { name: /request your data package/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/include protected categories/i)).toBeChecked();
@@ -217,7 +220,7 @@ describe('DataExport', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
 
-    await user.click(screen.getByRole('button', { name: /request my data/i }));
+    await user.click(screen.getByRole('button', { name: /request my data package/i }));
     await user.click(screen.getByRole('button', { name: /generate package/i }));
     expect(screen.getByRole('status')).toHaveTextContent(/pending/i);
 
@@ -232,7 +235,7 @@ describe('DataExport', () => {
     const user = userEvent.setup();
     render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
 
-    await user.click(screen.getByRole('button', { name: /request my data/i }));
+    await user.click(screen.getByRole('button', { name: /request my data package/i }));
     await user.click(screen.getByLabelText(/include mood tags/i));
     await user.click(screen.getByRole('button', { name: /generate package/i }));
 
@@ -242,18 +245,86 @@ describe('DataExport', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('delivers the ZIP through share/download fallback', async () => {
+  it('downloads the ZIP via the always-available download button', async () => {
     const user = userEvent.setup();
     render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
 
-    await user.click(screen.getByRole('button', { name: /request my data/i }));
+    await user.click(screen.getByRole('button', { name: /request my data package/i }));
     await user.click(screen.getByRole('button', { name: /generate package/i }));
     await screen.findByText(/Package ready/i);
-    await user.click(screen.getByRole('button', { name: /share zip package/i }));
+    await user.click(screen.getByRole('button', { name: /^download zip$/i }));
 
     expect(URL.createObjectURL).toHaveBeenCalled();
     expect(
       screen.getAllByRole('status').some((status) => /delivered/i.test(status.textContent ?? '')),
     ).toBe(true);
+  });
+
+  it('hides Share button when navigator.share is not supported', async () => {
+    // Default beforeEach sets navigator.share = undefined.
+    const user = userEvent.setup();
+    render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
+
+    await user.click(screen.getByRole('button', { name: /request my data package/i }));
+    await user.click(screen.getByRole('button', { name: /generate package/i }));
+    await screen.findByText(/Package ready/i);
+
+    expect(screen.queryByRole('button', { name: /share my exported package/i })).toBeNull();
+  });
+
+  it('disables Share button when no package has been generated yet', () => {
+    Object.defineProperty(navigator, 'share', { value: vi.fn(), configurable: true });
+    Object.defineProperty(navigator, 'canShare', {
+      value: vi.fn(() => true),
+      configurable: true,
+    });
+    render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
+
+    const shareBtn = screen.getByRole('button', { name: /share my exported package/i });
+    expect(shareBtn).toBeDisabled();
+    expect(shareBtn).toHaveAttribute('title', expect.stringMatching(/generate a package first/i));
+    expect(screen.getByText(/opens your device's share sheet/i)).toBeInTheDocument();
+  });
+
+  it('silently dismisses share when the user cancels (AbortError)', async () => {
+    const shareSpy = vi.fn(() => Promise.reject(new DOMException('cancelled', 'AbortError')));
+    Object.defineProperty(navigator, 'share', { value: shareSpy, configurable: true });
+    Object.defineProperty(navigator, 'canShare', {
+      value: vi.fn(() => true),
+      configurable: true,
+    });
+    const user = userEvent.setup();
+    render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
+
+    await user.click(screen.getByRole('button', { name: /request my data package/i }));
+    await user.click(screen.getByRole('button', { name: /generate package/i }));
+    await screen.findByText(/Package ready/i);
+    await user.click(screen.getByRole('button', { name: /share my exported package/i }));
+
+    await waitFor(() => expect(shareSpy).toHaveBeenCalled());
+    // No error banner.
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('renders an "unsupported" message when share rejects with NotAllowedError', async () => {
+    const shareSpy = vi.fn(() =>
+      Promise.reject(new DOMException('Permission denied', 'NotAllowedError')),
+    );
+    Object.defineProperty(navigator, 'share', { value: shareSpy, configurable: true });
+    Object.defineProperty(navigator, 'canShare', {
+      value: vi.fn(() => true),
+      configurable: true,
+    });
+    const user = userEvent.setup();
+    render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
+
+    await user.click(screen.getByRole('button', { name: /request my data package/i }));
+    await user.click(screen.getByRole('button', { name: /generate package/i }));
+    await screen.findByText(/Package ready/i);
+    await user.click(screen.getByRole('button', { name: /share my exported package/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/sharing isn't available/i);
+    expect(alert).not.toHaveTextContent(/permission denied/i);
   });
 });
