@@ -26,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +47,7 @@ import com.finance.desktop.theme.FinanceDesktopTheme
  * - Primary "Unlock with Windows Hello" button (biometric/PIN)
  * - Loading spinner during authentication
  * - Error message on failure with retry
- * - Skip option when Windows Hello is unavailable
+ * - Local-only fallback only when Windows Hello is unavailable
  *
  * ## Accessibility
  *
@@ -61,7 +60,7 @@ import com.finance.desktop.theme.FinanceDesktopTheme
  * @param isWindowsHelloAvailable Whether the device supports Windows Hello.
  * @param authError Error message from the last failed attempt, if any.
  * @param onAuthenticate Callback to initiate Windows Hello authentication.
- * @param onSkip Callback to bypass authentication (fallback).
+ * @param onContinueWithoutAuthentication Optional local-only fallback when Windows Hello is unavailable.
  */
 @Composable
 @Suppress("LongMethod") // Lock screen composable with biometric prompt
@@ -70,7 +69,7 @@ fun LockScreen(
     isWindowsHelloAvailable: Boolean,
     authError: String?,
     onAuthenticate: () -> Unit,
-    onSkip: () -> Unit,
+    onContinueWithoutAuthentication: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -189,22 +188,6 @@ fun LockScreen(
                             fontWeight = FontWeight.SemiBold,
                         )
                     }
-
-                    Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
-
-                    // Secondary skip option
-                    TextButton(
-                        onClick = onSkip,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Skip authentication"
-                        },
-                    ) {
-                        Text(
-                            text = "Skip for now",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
                 } else {
                     // Windows Hello not available — show enter/skip
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -215,23 +198,25 @@ fun LockScreen(
                             textAlign = TextAlign.Center,
                         )
                         Spacer(Modifier.height(FinanceDesktopTheme.spacing.lg))
-                        OutlinedButton(
-                            onClick = onSkip,
-                            modifier = Modifier
-                                .width(280.dp)
-                                .height(48.dp)
-                                .semantics {
-                                    contentDescription =
-                                        "Continue without authentication. Windows Hello is not configured."
-                                },
-                        ) {
-                            Text(
-                                text = "Continue without authentication",
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                        }
+                        if (onContinueWithoutAuthentication != null) {
+                            OutlinedButton(
+                                onClick = onContinueWithoutAuthentication,
+                                modifier = Modifier
+                                    .width(280.dp)
+                                    .height(48.dp)
+                                    .semantics {
+                                        contentDescription =
+                                            "Continue without authentication. Windows Hello is not configured."
+                                    },
+                            ) {
+                                Text(
+                                    text = "Continue without authentication",
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                            }
 
-                        Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
+                            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
+                        }
 
                         Text(
                             text = "Set up Windows Hello in Windows Settings to enable\nbiometric or PIN authentication for Finance.",

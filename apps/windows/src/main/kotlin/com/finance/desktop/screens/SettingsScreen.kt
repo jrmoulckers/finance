@@ -20,6 +20,9 @@ import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
@@ -43,6 +46,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,9 +57,13 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import com.finance.desktop.data.repository.AuthAccount
+import com.finance.desktop.data.repository.AuthRepository
 import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
+import com.finance.desktop.viewmodel.AuthViewModel
 import com.finance.desktop.viewmodel.SettingsViewModel
+import kotlinx.coroutines.launch
 
 // =============================================================================
 // Settings Screen — ViewModel-driven, DPAPI-persisted
@@ -80,9 +88,17 @@ import com.finance.desktop.viewmodel.SettingsViewModel
  */
 @Composable
 @Suppress("LongMethod") // Settings form composable
-fun SettingsScreen(modifier: Modifier = Modifier) {
+fun SettingsScreen(
+    modifier: Modifier = Modifier,
+    onSignInRequested: () -> Unit = {},
+) {
     val viewModel = koinGet<SettingsViewModel>()
     val state by viewModel.uiState.collectAsState()
+    val authRepository = koinGet<AuthRepository>()
+    val authViewModel = koinGet<AuthViewModel>()
+    val account by authRepository.currentAccount.collectAsState()
+    val isSignedIn by authRepository.isAuthenticated.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
 
     if (state.isLoading) {
         Box(
@@ -115,6 +131,23 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                     contentDescription = "Settings heading"
                 },
             )
+
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
+
+            // ── Account ─────────────────────────────────────────────────
+            SettingsSection("Account") {
+                AccountSetting(
+                    account = account,
+                    isSignedIn = isSignedIn,
+                    onSignIn = onSignInRequested,
+                    onSignOut = {
+                        coroutineScope.launch {
+                            authRepository.signOut()
+                            authViewModel.signOut()
+                        }
+                    },
+                )
+            }
 
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.xxl))
 
@@ -317,6 +350,79 @@ private fun SettingsSection(
 // =============================================================================
 // Setting row types
 // =============================================================================
+
+@Composable
+private fun AccountSetting(
+    account: AuthAccount?,
+    isSignedIn: Boolean,
+    onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
+) {
+    val email = account?.email
+    val provider = formatProvider(account?.provider)
+    val title = if (isSignedIn) email ?: account?.userId ?: "Signed in" else "Not signed in"
+    val description = if (isSignedIn) {
+        "Signed in via $provider"
+    } else {
+        "Your data is local-only. Sign in to enable sync across devices."
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = FinanceDesktopTheme.spacing.sm)
+            .semantics {
+                contentDescription = "Account: $title. $description"
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = accountIcon(isSignedIn),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(end = FinanceDesktopTheme.spacing.md),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (isSignedIn) {
+            TextButton(onClick = onSignOut) {
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                Text("Sign out")
+            }
+        } else {
+            Button(onClick = onSignIn) {
+                Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null)
+                Text("Sign in")
+            }
+        }
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+}
+
+private fun accountIcon(isSignedIn: Boolean): ImageVector = if (isSignedIn) {
+    Icons.Filled.AccountCircle
+} else {
+    Icons.AutoMirrored.Filled.Login
+}
+
+private fun formatProvider(provider: String?): String = when (provider?.lowercase()) {
+    "email" -> "Email"
+    "github" -> "GitHub"
+    "google" -> "Google"
+    "apple" -> "Apple"
+    null -> "Email"
+    else -> provider
+}
 
 /**
  * Toggle setting row: icon + label + description + switch.

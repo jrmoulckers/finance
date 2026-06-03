@@ -59,6 +59,10 @@ class LoginViewModel(
         )
     }
 
+    fun resetForSignIn() {
+        _uiState.value = LoginUiState()
+    }
+
     @Suppress("ReturnCount") // Multi-step auth validation
     fun signIn() {
         val state = _uiState.value

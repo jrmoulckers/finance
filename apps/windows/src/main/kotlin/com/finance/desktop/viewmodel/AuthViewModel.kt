@@ -117,14 +117,23 @@ class AuthViewModel(
     }
 
     /**
-     * Bypasses authentication (for development or when Windows Hello is unavailable).
-     *
-     * In production builds, this should only be called when Windows Hello
-     * is not available on the device.
+     * Marks the app shell as unlocked after a successful non-Windows-Hello auth flow.
      */
-    fun skipAuth() {
+    fun markAuthenticated() {
         _uiState.value = _uiState.value.copy(
             isAuthenticated = true,
+            authError = null,
+        )
+    }
+
+    /**
+     * Enters local-only mode only when no cloud credential is present to protect.
+     */
+    fun continueWithoutCloudAuth() {
+        if (secureTokenStorage.hasToken(SecureTokenStorage.KEY_ACCESS_TOKEN)) return
+        _uiState.value = _uiState.value.copy(
+            isAuthenticated = true,
+            requiresAuth = false,
             authError = null,
         )
     }

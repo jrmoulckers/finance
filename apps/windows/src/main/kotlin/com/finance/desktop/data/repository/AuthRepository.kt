@@ -2,7 +2,6 @@
 
 package com.finance.desktop.data.repository
 
-import com.finance.sync.auth.AuthCredentials
 import com.finance.sync.auth.AuthSession
 import kotlinx.coroutines.flow.StateFlow
 
@@ -12,10 +11,19 @@ import kotlinx.coroutines.flow.StateFlow
  * Abstracts the Supabase Auth API for desktop use, coordinating
  * email/password authentication with DPAPI-backed token storage.
  */
+data class AuthAccount(
+    val userId: String,
+    val email: String?,
+    val provider: String?,
+)
+
 interface AuthRepository {
 
     /** Observable authentication session — `null` when signed out. */
     val currentSession: StateFlow<AuthSession?>
+
+    /** Observable signed-in account metadata — `null` when signed out. */
+    val currentAccount: StateFlow<AuthAccount?>
 
     /** Observable authentication state. */
     val isAuthenticated: StateFlow<Boolean>

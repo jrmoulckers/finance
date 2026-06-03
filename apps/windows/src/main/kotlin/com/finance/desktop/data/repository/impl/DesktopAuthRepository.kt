@@ -2,6 +2,7 @@
 
 package com.finance.desktop.data.repository.impl
 
+import com.finance.desktop.data.repository.AuthAccount
 import com.finance.desktop.data.repository.AuthException
 import com.finance.desktop.data.repository.AuthRepository
 import com.finance.desktop.security.SecureTokenStorage
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.*
+import java.util.Base64
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -47,8 +49,16 @@ class DesktopAuthRepository(
         private val json = Json { ignoreUnknownKeys = true }
     }
 
+    private data class ParsedAuthResponse(
+        val session: AuthSession,
+        val account: AuthAccount,
+    )
+
     private val _currentSession = MutableStateFlow<AuthSession?>(null)
     override val currentSession: StateFlow<AuthSession?> = _currentSession.asStateFlow()
+
+    private val _currentAccount = MutableStateFlow<AuthAccount?>(null)
+    override val currentAccount: StateFlow<AuthAccount?> = _currentAccount.asStateFlow()
 
     private val _isAuthenticated = MutableStateFlow(false)
     override val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
@@ -70,9 +80,9 @@ class DesktopAuthRepository(
                 return Result.failure(AuthException("Sign-in failed (${response.status}): $body"))
             }
 
-            val session = parseAuthResponse(response.bodyAsText())
-            storeSession(session)
-            Result.success(session)
+            val parsed = parseAuthResponse(response.bodyAsText())
+            storeSession(parsed.session, parsed.account)
+            Result.success(parsed.session)
         } catch (e: Exception) {
             logger.log(Level.SEVERE, "Sign-in failed", e)
             Result.failure(AuthException("Sign-in failed: ${e.message}", e))
@@ -96,9 +106,9 @@ class DesktopAuthRepository(
                 return Result.failure(AuthException("Sign-up failed (${response.status}): $body"))
             }
 
-            val session = parseAuthResponse(response.bodyAsText())
-            storeSession(session)
-            Result.success(session)
+            val parsed = parseAuthResponse(response.bodyAsText())
+            storeSession(parsed.session, parsed.account)
+            Result.success(parsed.session)
         } catch (e: Exception) {
             logger.log(Level.SEVERE, "Sign-up failed", e)
             Result.failure(AuthException("Sign-up failed: ${e.message}", e))
@@ -143,9 +153,9 @@ class DesktopAuthRepository(
                 return Result.failure(AuthException("Token refresh failed (${response.status})"))
             }
 
-            val session = parseAuthResponse(response.bodyAsText())
-            storeSession(session)
-            Result.success(session)
+            val parsed = parseAuthResponse(response.bodyAsText())
+            storeSession(parsed.session, parsed.account)
+            Result.success(parsed.session)
         } catch (e: Exception) {
             logger.log(Level.SEVERE, "Token refresh failed", e)
             Result.failure(AuthException("Token refresh failed: ${e.message}", e))
@@ -187,23 +197,25 @@ class DesktopAuthRepository(
         }
 
         _currentSession.value = stored
+        _currentAccount.value = accountFromSession(stored)
         _isAuthenticated.value = true
         return Result.success(stored)
     }
 
     @Suppress("ThrowsCount") // Auth operations may throw distinct security exceptions
-    private fun parseAuthResponse(body: String): AuthSession {
+    private fun parseAuthResponse(body: String): ParsedAuthResponse {
         val obj = json.parseToJsonElement(body).jsonObject
         val accessToken = obj["access_token"]?.jsonPrimitive?.content
             ?: throw AuthException("Missing access_token in response")
         val refreshToken = obj["refresh_token"]?.jsonPrimitive?.content
             ?: throw AuthException("Missing refresh_token in response")
         val expiresIn = obj["expires_in"]?.jsonPrimitive?.long ?: 3600L
-        val userId = obj["user"]?.jsonObject?.get("id")?.jsonPrimitive?.content
+        val user = obj["user"]?.jsonObject
+        val userId = user?.get("id")?.jsonPrimitive?.content
             ?: throw AuthException("Missing user.id in response")
 
         val now = Clock.System.now()
-        return AuthSession(
+        val session = AuthSession(
             accessToken = accessToken,
             refreshToken = refreshToken,
             expiresAt = Instant.fromEpochMilliseconds(
@@ -212,9 +224,22 @@ class DesktopAuthRepository(
             userId = userId,
             createdAt = now,
         )
+        return ParsedAuthResponse(
+            session = session,
+            account = AuthAccount(
+                userId = userId,
+                email = user?.get("email")?.jsonPrimitive?.contentOrNull ?: emailFromToken(accessToken),
+                provider = user?.get("app_metadata")
+                    ?.jsonObject
+                    ?.get("provider")
+                    ?.jsonPrimitive
+                    ?.contentOrNull
+                    ?: providerFromToken(accessToken),
+            ),
+        )
     }
 
-    private fun storeSession(session: AuthSession) {
+    private fun storeSession(session: AuthSession, account: AuthAccount = accountFromSession(session)) {
         // Store in DPAPI-encrypted storage
         secureTokenStorage.saveToken(SecureTokenStorage.KEY_ACCESS_TOKEN, session.accessToken)
         secureTokenStorage.saveToken(SecureTokenStorage.KEY_REFRESH_TOKEN, session.refreshToken)
@@ -223,6 +248,7 @@ class DesktopAuthRepository(
         tokenManager.storeTokens(session)
 
         _currentSession.value = session
+        _currentAccount.value = account
         _isAuthenticated.value = true
         logger.info("Session stored for user: ${session.userId}")
     }
@@ -231,7 +257,41 @@ class DesktopAuthRepository(
         secureTokenStorage.clearAllTokens()
         tokenManager.clearTokens()
         _currentSession.value = null
+        _currentAccount.value = null
         _isAuthenticated.value = false
         logger.info("Session cleared")
+    }
+
+    private fun accountFromSession(session: AuthSession): AuthAccount = AuthAccount(
+        userId = session.userId,
+        email = emailFromToken(session.accessToken),
+        provider = providerFromToken(session.accessToken),
+    )
+
+    private fun emailFromToken(accessToken: String): String? = jwtPayload(accessToken)
+        ?.get("email")
+        ?.jsonPrimitive
+        ?.contentOrNull
+
+    private fun providerFromToken(accessToken: String): String? {
+        val payload = jwtPayload(accessToken) ?: return null
+        return payload["app_metadata"]
+            ?.jsonObject
+            ?.get("provider")
+            ?.jsonPrimitive
+            ?.contentOrNull
+    }
+
+    private fun jwtPayload(accessToken: String): JsonObject? {
+        @Suppress("TooGenericExceptionCaught") // Best-effort display metadata only
+        return try {
+            val payload = accessToken.split('.').getOrNull(1) ?: return null
+            val paddedPayload = payload.padEnd(payload.length + ((4 - payload.length % 4) % 4), '=')
+            val decoded = String(Base64.getUrlDecoder().decode(paddedPayload), Charsets.UTF_8)
+            json.parseToJsonElement(decoded).jsonObject
+        } catch (e: Exception) {
+            logger.log(Level.FINE, "Unable to decode auth token metadata", e)
+            null
+        }
     }
 }

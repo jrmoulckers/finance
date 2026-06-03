@@ -61,6 +61,7 @@ import com.finance.desktop.data.repository.AuthRepository
 import com.finance.desktop.viewmodel.AuthViewModel
 import com.finance.desktop.viewmodel.AuthUiState
 import com.finance.desktop.viewmodel.GdprConsentViewModel
+import com.finance.desktop.viewmodel.LoginViewModel
 
 /**
  * Root composable for the Finance Windows desktop application.
@@ -236,11 +237,10 @@ private fun AuthGateContent(
             isWindowsHelloAvailable = authState.isWindowsHelloAvailable,
             authError = authState.authError,
             onAuthenticate = { authViewModel.authenticate() },
-            onSkip = { authViewModel.skipAuth() },
         )
     } else {
         LoginScreen(
-            onAuthenticated = { authViewModel.skipAuth() },
+            onAuthenticated = { authViewModel.markAuthenticated() },
         )
     }
 }
@@ -254,8 +254,18 @@ private fun MainAppContent(
     quickAddManager: QuickAddTransactionManager,
     systemTray: FinanceSystemTray,
 ) {
+    val loginViewModel = koinGet<LoginViewModel>()
+    var showSignInScreen by remember { mutableStateOf(false) }
+    val openSignIn = {
+        loginViewModel.resetForSignIn()
+        showSignInScreen = true
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        SidebarNavigation(shortcutHandler = shortcutHandler) { screen ->
+        SidebarNavigation(
+            shortcutHandler = shortcutHandler,
+            onAccountSelected = { /* Settings shows the Account section. */ },
+        ) { screen ->
             when (screen) {
                 Screen.Dashboard -> DashboardScreen()
                 Screen.Accounts -> AccountsScreen()
@@ -276,7 +286,7 @@ private fun MainAppContent(
                 Screen.Referral -> {} // placeholder
                 Screen.Negotiate -> BudgetNegotiationScreen()
                 Screen.Currency -> CurrencyConversionScreen()
-                Screen.Settings -> SettingsScreen()
+                Screen.Settings -> SettingsScreen(onSignInRequested = openSignIn)
             }
         }
 
@@ -288,6 +298,13 @@ private fun MainAppContent(
             quickAddManager = quickAddManager,
             systemTray = systemTray,
         )
+
+        if (showSignInScreen) {
+            LoginScreen(
+                onAuthenticated = { showSignInScreen = false },
+                onCancel = { showSignInScreen = false },
+            )
+        }
     }
 }
 

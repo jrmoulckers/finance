@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
@@ -54,6 +55,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,8 +74,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.finance.desktop.components.KeyboardShortcut
+import com.finance.desktop.data.repository.AuthAccount
+import com.finance.desktop.data.repository.AuthRepository
 import com.finance.desktop.components.KeyboardShortcutEffect
 import com.finance.desktop.components.ShortcutHandler
+import com.finance.desktop.di.koinGet
 import com.finance.desktop.theme.FinanceDesktopTheme
 
 /**
@@ -130,10 +135,14 @@ private val SIDEBAR_COLLAPSED_WIDTH = 64.dp
 @Composable
 fun SidebarNavigation(
     shortcutHandler: ShortcutHandler,
+    onAccountSelected: () -> Unit = {},
     content: @Composable (Screen) -> Unit,
 ) {
     var currentScreen by rememberSaveable { mutableStateOf(Screen.Dashboard) }
     var isExpanded by rememberSaveable { mutableStateOf(true) }
+    val authRepository = koinGet<AuthRepository>()
+    val account by authRepository.currentAccount.collectAsState()
+    val isSignedIn by authRepository.isAuthenticated.collectAsState()
 
     // Register keyboard shortcuts (Ctrl+1 … Ctrl+6)
     KeyboardShortcutEffect(shortcutHandler) {
@@ -149,7 +158,13 @@ fun SidebarNavigation(
         SidebarPanel(
             currentScreen = currentScreen,
             isExpanded = isExpanded,
+            account = account,
+            isSignedIn = isSignedIn,
             onScreenSelected = { currentScreen = it },
+            onAccountSelected = {
+                currentScreen = Screen.Settings
+                onAccountSelected()
+            },
             onToggleExpanded = { isExpanded = !isExpanded },
         )
 
@@ -167,7 +182,10 @@ fun SidebarNavigation(
 private fun SidebarPanel(
     currentScreen: Screen,
     isExpanded: Boolean,
+    account: AuthAccount?,
+    isSignedIn: Boolean,
     onScreenSelected: (Screen) -> Unit,
+    onAccountSelected: () -> Unit,
     onToggleExpanded: () -> Unit,
 ) {
     val sidebarWidth by animateDpAsState(
@@ -235,7 +253,14 @@ private fun SidebarPanel(
 
             Spacer(Modifier.weight(1f))
 
-            // Settings at bottom
+            // Account status and settings at bottom
+            AccountStatusItem(
+                account = account,
+                isSignedIn = isSignedIn,
+                isExpanded = isExpanded,
+                onClick = onAccountSelected,
+            )
+            Spacer(Modifier.height(FinanceDesktopTheme.spacing.xs))
             HorizontalDivider(
                 modifier = Modifier.padding(horizontal = FinanceDesktopTheme.spacing.sm),
                 color = MaterialTheme.colorScheme.outlineVariant,
@@ -248,6 +273,87 @@ private fun SidebarPanel(
                 onClick = { onScreenSelected(Screen.Settings) },
             )
             Spacer(Modifier.height(FinanceDesktopTheme.spacing.sm))
+        }
+    }
+}
+
+@Composable
+private fun AccountStatusItem(
+    account: AuthAccount?,
+    isSignedIn: Boolean,
+    isExpanded: Boolean,
+    onClick: () -> Unit,
+) {
+    val title = if (isSignedIn) account?.email ?: account?.userId ?: "Signed in" else "Not signed in"
+    val subtitle = if (isSignedIn) "Account" else "Local-only"
+    val initial = account?.email?.firstOrNull()?.uppercase() ?: "?"
+    val accessibilityLabel = if (isSignedIn) {
+        "Account, $title, signed in. Opens Settings account section"
+    } else {
+        "Not signed in. Opens Settings account section"
+    }
+
+    Row(
+        modifier = Modifier
+            .padding(horizontal = FinanceDesktopTheme.spacing.sm, vertical = 2.dp)
+            .height(48.dp)
+            .then(
+                if (isExpanded) Modifier.width(SIDEBAR_EXPANDED_WIDTH - FinanceDesktopTheme.spacing.lg)
+                else Modifier.width(SIDEBAR_COLLAPSED_WIDTH - FinanceDesktopTheme.spacing.lg),
+            )
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(),
+                onClick = onClick,
+            )
+            .semantics {
+                role = Role.Button
+                contentDescription = accessibilityLabel
+            }
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .background(
+                    color = if (isSignedIn) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.errorContainer
+                    },
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = initial,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isSignedIn) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onErrorContainer
+                },
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        AnimatedVisibility(visible = isExpanded, enter = fadeIn(), exit = fadeOut()) {
+            Column(modifier = Modifier.padding(start = 12.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

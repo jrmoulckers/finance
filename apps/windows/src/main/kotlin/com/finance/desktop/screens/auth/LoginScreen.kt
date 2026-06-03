@@ -47,6 +47,7 @@ import com.finance.desktop.viewmodel.LoginViewModel
 fun LoginScreen(
     onAuthenticated: () -> Unit,
     modifier: Modifier = Modifier,
+    onCancel: (() -> Unit)? = null,
 ) {
     val viewModel = koinGet<LoginViewModel>()
     val state by viewModel.uiState.collectAsState()
@@ -258,6 +259,18 @@ fun LoginScreen(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )
+                    }
+
+                    if (onCancel != null) {
+                        TextButton(
+                            onClick = onCancel,
+                            enabled = !state.isLoading,
+                            modifier = Modifier.semantics {
+                                contentDescription = "Cancel sign in"
+                            },
+                        ) {
+                            Text("Cancel")
+                        }
                     }
                 }
             }
