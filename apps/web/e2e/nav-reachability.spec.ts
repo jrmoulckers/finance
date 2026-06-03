@@ -19,6 +19,19 @@ import { type Page } from '@playwright/test';
 import { test, expect } from './fixtures';
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Escape a string for use inside a RegExp. We can't rely on the input
+ * being free of regex metacharacters (CodeQL js/incomplete-sanitization
+ * specifically flags partial escapes like `.replace(/\//g, '\\/')`).
+ */
+const escapeRegex = (input: string): string => input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const hrefRegex = (href: string): RegExp => new RegExp(escapeRegex(href));
+
+// ---------------------------------------------------------------------------
 // Destinations under test
 // ---------------------------------------------------------------------------
 
@@ -126,7 +139,7 @@ test.describe('Desktop navigation reachability (#1930)', () => {
       await link.click();
 
       // The SPA navigates client-side; the URL must reflect the destination.
-      await expect(page).toHaveURL(new RegExp(dest.href.replace(/\//g, '\\/')));
+      await expect(page).toHaveURL(hrefRegex(dest.href));
     });
   }
 });
@@ -153,7 +166,7 @@ test.describe('Mobile navigation reachability (#1930)', () => {
       await expect(tab).toBeVisible();
       await tab.click();
 
-      await expect(page).toHaveURL(new RegExp(dest.href.replace(/\//g, '\\/')));
+      await expect(page).toHaveURL(hrefRegex(dest.href));
     });
   }
 
@@ -177,7 +190,7 @@ test.describe('Mobile navigation reachability (#1930)', () => {
 
       // Sheet closes and the SPA navigates.
       await expect(sheet).toBeHidden();
-      await expect(page).toHaveURL(new RegExp(dest.href.replace(/\//g, '\\/')));
+      await expect(page).toHaveURL(hrefRegex(dest.href));
     });
   }
 

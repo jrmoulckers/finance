@@ -78,9 +78,11 @@ test.describe('Accounts page', () => {
   test('shows account cards or empty state', async ({ authenticatedPage: page }) => {
     await page.goto('/accounts');
 
-    // Wait for loading to complete — either account data appears or empty state
-    const accountList = page.getByRole('list');
-    const emptyState = page.getByText(/no accounts yet/i);
+    // Wait for loading to complete — either account data appears or empty state.
+    // Scope to <main> so the sidebar/section nav lists don't match.
+    const mainRegion = page.getByRole('main');
+    const accountList = mainRegion.getByRole('list').first();
+    const emptyState = mainRegion.getByText(/no accounts yet/i);
 
     // One of these should be visible after loading
     await expect(accountList.or(emptyState)).toBeVisible();
@@ -94,8 +96,10 @@ test.describe('Accounts page', () => {
     // Wait for the page to finish loading (either data or empty state).
     // Avoid `networkidle` — the Vite dev server keeps connections open for
     // HMR, which prevents networkidle from resolving on CI runners.
-    const accountList = page.getByRole('list');
-    const emptyState = page.getByText(/no accounts yet/i);
+    // Scope to <main> so the sidebar/section nav lists don't match.
+    const mainRegion = page.getByRole('main');
+    const accountList = mainRegion.getByRole('list').first();
+    const emptyState = mainRegion.getByText(/no accounts yet/i);
     await expect(accountList.or(emptyState)).toBeVisible();
 
     // Check if there are account links (seed data present)
@@ -130,7 +134,12 @@ test.describe('Account detail page', () => {
     await page.goto('/accounts');
 
     // Wait for the page to finish loading (data or empty state).
-    const listOrEmpty = page.getByRole('list').or(page.getByText(/no accounts yet/i));
+    // Scope to <main> so the sidebar/section nav lists don't match.
+    const mainRegion = page.getByRole('main');
+    const listOrEmpty = mainRegion
+      .getByRole('list')
+      .first()
+      .or(mainRegion.getByText(/no accounts yet/i));
     await expect(listOrEmpty).toBeVisible();
 
     const accountLinks = page.getByRole('link').filter({
