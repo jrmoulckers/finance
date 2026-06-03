@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import serviceWorkerUrl from '../sw/service-worker.ts?worker&url';
+import { registerAppServiceWorker } from '../sw/register';
 
 import type { ClientToSwMessage } from '../db/sync/types';
 
@@ -10,7 +10,15 @@ export interface UseServiceWorkerUpdateResult {
   applyUpdate: () => void;
 }
 
-/** Listen for waiting service workers and expose a way to activate them immediately. */
+/**
+ * Listen for waiting service workers and expose a way to activate them
+ * immediately.
+ *
+ * The actual SW registration happens at app boot in `main.tsx` via
+ * {@link registerAppServiceWorker} (#1965) — this hook reuses the
+ * resulting Registration rather than registering its own, so the SW is
+ * installed even on anonymous routes where this hook never mounts.
+ */
 export function useServiceWorkerUpdate(): UseServiceWorkerUpdateResult {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
@@ -56,14 +64,13 @@ export function useServiceWorkerUpdate(): UseServiceWorkerUpdateResult {
       });
     };
 
-    navigator.serviceWorker
-      .register(serviceWorkerUrl, { scope: '/', type: 'module' })
+    registerAppServiceWorker()
       .then((registration) => {
-        if (mounted) {
+        if (mounted && registration) {
           monitorRegistration(registration);
         }
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         // eslint-disable-next-line no-console -- dev visibility; SW errors are non-fatal
         console.error('[sw] registration failed', err);
         registrationRef.current = null;

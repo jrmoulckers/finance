@@ -4,15 +4,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useServiceWorkerUpdate } from '../useServiceWorkerUpdate';
-
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-// Mock the service worker URL import so the module can load
-vi.mock('../../sw/service-worker.ts?worker&url', () => ({
-  default: '/sw.js',
-}));
+import { _resetServiceWorkerRegistrationForTesting } from '../../sw/register';
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -28,6 +20,11 @@ let registerPromiseResolve: (reg: unknown) => void;
 
 beforeEach(() => {
   vi.clearAllMocks();
+
+  // Reset the registerAppServiceWorker singleton so each test triggers
+  // a fresh navigator.serviceWorker.register() call.  Otherwise the
+  // first test's resolved promise leaks into subsequent tests (#1965).
+  _resetServiceWorkerRegistrationForTesting();
 
   mockRegistration = {
     waiting: null,
@@ -58,6 +55,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  _resetServiceWorkerRegistrationForTesting();
   vi.restoreAllMocks();
 });
 

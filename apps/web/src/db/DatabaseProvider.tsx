@@ -7,6 +7,7 @@ import {
   initDatabaseWithDiagnostics,
   getUserFriendlyStorageMessage,
   StorageError,
+  _resetInitSingletonForTesting,
   type SqliteDb,
   type StorageDiagnostics,
   type StorageErrorCode,
@@ -106,6 +107,10 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
   const [reloadToken, setReloadToken] = useState(0);
 
   const retryInitialization = useCallback(() => {
+    // Clear the cached singleton so the next init call actually retries
+    // (the singleton clears itself on rejection, but explicit reset is
+    // safer if the retry button is somehow pressed during a success).
+    _resetInitSingletonForTesting();
     setReloadToken((currentValue) => currentValue + 1);
   }, []);
 
@@ -113,8 +118,17 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     // In E2E mode the stub DB is already set — skip real WASM init.
     if (isE2E) return;
 
+    // React 19 StrictMode double-mounts the provider in dev.  We rely on
+    // the module-level singleton in `initDatabaseWithDiagnostics()` so
+    // both mounts converge on the SAME init promise — running the
+    // migration sequence exactly once (#1909).
+    //
+    // We intentionally DO NOT call `db.close()` in the cleanup function.
+    // The database is a process-wide singleton that lives for the page
+    // lifetime.  Closing it during StrictMode's synthetic unmount would
+    // hand the second mount a dead instance and cause "Cannot commit:
+    // no transaction is active" or "database is closed" errors.
     let isDisposed = false;
-    let initializedDb: SqliteDb | null = null;
 
     const initializeDatabase = async () => {
       setIsLoading(true);
@@ -123,27 +137,18 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
       try {
         const result = await initDatabaseWithDiagnostics();
-        initializedDb = result.db;
 
-        await seedDatabase(initializedDb);
+        await seedDatabase(result.db);
 
         if (isDisposed) {
-          await initializedDb.close();
-          initializedDb = null;
+          // Provider truly unmounted (not just StrictMode replay) — leave
+          // the cached DB in place; the next provider mount will pick it
+          // up via the singleton promise.
           return;
         }
 
-        setCtxValue({ db: initializedDb, diagnostics: result.diagnostics });
+        setCtxValue({ db: result.db, diagnostics: result.diagnostics });
       } catch (initializationError) {
-        if (initializedDb) {
-          try {
-            await initializedDb.close();
-          } catch {
-            // Ignore cleanup failures after an init error.
-          }
-          initializedDb = null;
-        }
-
         if (!isDisposed) {
           setInitError(toInitError(initializationError));
         }
@@ -158,10 +163,6 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 
     return () => {
       isDisposed = true;
-      if (initializedDb) {
-        void initializedDb.close();
-        initializedDb = null;
-      }
     };
   }, [isE2E, reloadToken]);
 

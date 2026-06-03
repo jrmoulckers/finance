@@ -189,6 +189,19 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const onlineRetryHandlerRef = useRef<(() => void) | null>(null);
+  /**
+   * Tracks whether the initial session-restore effect has already run for
+   * this provider instance (#1966).  React 19 StrictMode mounts the
+   * provider twice in development, which previously fired
+   * `tryRestoreSession()` twice and could redirect the user to /login
+   * mid-restore via duplicate `handleSessionExpired` calls.
+   *
+   * `useRef` survives StrictMode's mount → unmount → re-mount cycle
+   * because React keeps the underlying fiber's ref object alive across
+   * the simulated remount.  Gating the effect body on this ref ensures
+   * the auth bootstrap runs exactly once per page load.
+   */
+  const initStartedRef = useRef(false);
 
   const demoModeActive = isDemoMode(config.supabaseUrl);
   const isAuthenticated = user !== null && (hasValidToken() || isOffline);
@@ -240,6 +253,18 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
   // -----------------------------------------------------------------------
 
   useEffect(() => {
+    // StrictMode mounts this effect twice in dev.  The second invocation
+    // would re-fire `tryRestoreSession()` and any side-effecting
+    // `handleSessionExpired()` calls — including the hard
+    // `window.location.href = '/login'` navigation registered by
+    // `config.onUnauthenticated`.  Gating on the module-/instance-scoped
+    // ref ensures the auth bootstrap runs exactly once per page load
+    // (#1966).
+    if (initStartedRef.current) {
+      return;
+    }
+    initStartedRef.current = true;
+
     if (demoModeActive) {
       // In demo mode, skip WebAuthn and use localStorage-based session
       // persistence instead of the HttpOnly cookie refresh flow.

@@ -582,6 +582,40 @@ function classifyError(err: unknown): StorageErrorCode {
 // ---------------------------------------------------------------------------
 
 /**
+ * Module-level singleton promise (#1909).
+ *
+ * Under React 19 StrictMode (dev), the {@link DatabaseProvider} effect
+ * mounts twice — back-to-back — which previously launched two concurrent
+ * `initDatabaseInternal()` calls against the same OPFS file.  The second
+ * call's `BEGIN TRANSACTION` would auto-commit/rollback the first call's
+ * still-open transaction, and the first call's subsequent `COMMIT;` would
+ * throw "Cannot commit: no transaction is active".
+ *
+ * We dedupe by caching the in-flight promise.  Both StrictMode mounts now
+ * share the same database instance and the same migration sequence runs
+ * exactly once.
+ *
+ * On rejection we clear the cache so that {@link retryInitialization} from
+ * the provider UI can recover from transient failures (e.g. flaky OPFS
+ * handle, quota exhausted then freed).
+ */
+let _initPromise: Promise<StorageInitResult> | null = null;
+
+/**
+ * Reset the cached init promise.
+ *
+ * Intended ONLY for the Vitest test suite where module-level state from
+ * one test can otherwise leak into the next.  Production code should
+ * never need to call this — the singleton is designed to last for the
+ * lifetime of the page.
+ *
+ * @internal
+ */
+export function _resetInitSingletonForTesting(): void {
+  _initPromise = null;
+}
+
+/**
  * Initialises (or opens) the Finance SQLite database.
  *
  * 1. Detects the best storage backend (OPFS preferred, IndexedDB fallback).
@@ -595,12 +629,28 @@ function classifyError(err: unknown): StorageErrorCode {
  *
  * Throws {@link StorageError} with a machine-readable `code` on failure.
  *
+ * Concurrent callers (e.g. React 19 StrictMode's double-mounted effect)
+ * receive the same in-flight promise — the database is opened and
+ * migrations are executed exactly once per page load (#1909).
+ *
  * Usage:
  * ```ts
  * const { db, diagnostics } = await initDatabaseWithDiagnostics();
  * ```
  */
-export async function initDatabaseWithDiagnostics(): Promise<StorageInitResult> {
+export function initDatabaseWithDiagnostics(): Promise<StorageInitResult> {
+  if (!_initPromise) {
+    _initPromise = initDatabaseInternal().catch((error) => {
+      // Allow the caller to retry after a failure (e.g. via the
+      // ErrorBanner retry button in DatabaseProvider).
+      _initPromise = null;
+      throw error;
+    });
+  }
+  return _initPromise;
+}
+
+async function initDatabaseInternal(): Promise<StorageInitResult> {
   const detectedBackend = await detectBackend();
   const opfsAvailable = detectedBackend === 'opfs';
   let didFallback = false;
