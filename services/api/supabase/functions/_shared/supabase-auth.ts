@@ -156,6 +156,42 @@ export function buildAuthorizeUrl(
   return `${authUrl()}/authorize?${params.toString()}`;
 }
 
+/**
+ * Ask Supabase Auth to send a password recovery email.
+ *
+ * Returns the upstream status code so callers can keep account-existence
+ * responses generic while still surfacing service outages.
+ */
+export async function requestPasswordRecovery(email: string, redirectTo: string): Promise<number> {
+  const url = `${authUrl()}/recover?${new URLSearchParams({ redirect_to: redirectTo }).toString()}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: requireEnv('SUPABASE_ANON_KEY'),
+    },
+    body: JSON.stringify({ email }),
+  });
+  return response.status;
+}
+
+/** Update a user's password using the recovery access token from Supabase. */
+export async function updatePasswordWithAccessToken(
+  accessToken: string,
+  password: string,
+): Promise<boolean> {
+  const response = await fetch(`${authUrl()}/user`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      apikey: requireEnv('SUPABASE_ANON_KEY'),
+    },
+    body: JSON.stringify({ password }),
+  });
+  return response.ok;
+}
+
 // ---------------------------------------------------------------------------
 // PKCE / state generation
 // ---------------------------------------------------------------------------

@@ -41,6 +41,8 @@ const FUNCTION_ENV_VARS: Record<string, readonly EnvVarSpec[]> = {
   'auth-webhook': [{ name: 'AUTH_WEBHOOK_SECRET', type: 'string' }],
   'auth-login': [{ name: 'SUPABASE_ANON_KEY', type: 'string' }],
   'auth-signup': [{ name: 'SUPABASE_ANON_KEY', type: 'string' }],
+  'auth-request-password-reset': [{ name: 'SUPABASE_ANON_KEY', type: 'string' }],
+  'auth-reset-password': [{ name: 'SUPABASE_ANON_KEY', type: 'string' }],
   'auth-refresh': [{ name: 'SUPABASE_ANON_KEY', type: 'string' }],
   'auth-logout': [{ name: 'SUPABASE_ANON_KEY', type: 'string' }],
   'auth-oauth-start': [

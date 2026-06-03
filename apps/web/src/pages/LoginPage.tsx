@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/auth-context';
 import { PasskeySetupPrompt } from '../components/auth/PasskeySetupPrompt';
@@ -22,6 +22,7 @@ interface LoginFieldErrors {
  */
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     loginWithEmail,
     loginWithPasskey,
@@ -121,6 +122,8 @@ export const LoginPage: React.FC = () => {
   };
 
   const isBusy = isSubmitting || isLoading;
+  const locationState = location.state as { message?: unknown } | null;
+  const infoMessage = typeof locationState?.message === 'string' ? locationState.message : null;
 
   return (
     <main className="auth-page">
@@ -140,6 +143,12 @@ export const LoginPage: React.FC = () => {
           </div>
         )}
 
+        {infoMessage && (
+          <div className="auth-info" role="status" aria-live="polite">
+            {infoMessage}
+          </div>
+        )}
+
         {error && (
           <div
             ref={errorRef}
@@ -149,13 +158,6 @@ export const LoginPage: React.FC = () => {
             tabIndex={-1}
           >
             {error}
-            {!isDemoMode && (
-              <p className="auth-error__forgot">
-                <Link to="/forgot-password" className="auth-footer__link">
-                  Forgot password?
-                </Link>
-              </p>
-            )}
           </div>
         )}
 
@@ -247,6 +249,13 @@ export const LoginPage: React.FC = () => {
               <p id={passwordErrorId} className="form-error">
                 {fieldErrors.password ?? ' '}
               </p>
+              {!isDemoMode && (
+                <p className="auth-forgot-password">
+                  <Link to="/forgot-password" className="auth-footer__link">
+                    Forgot password?
+                  </Link>
+                </p>
+              )}
             </div>
           </div>
 

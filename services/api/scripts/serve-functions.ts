@@ -28,6 +28,8 @@
  *   - POST /auth-signup
  *   - POST /auth-refresh
  *   - POST /auth-logout
+ *   - POST /auth-request-password-reset
+ *   - POST /auth-reset-password
  *   - GET  /auth-oauth-start
  *   - GET  /auth-oauth-callback
  *   - POST /passkey-register
@@ -38,6 +40,8 @@ import { handler as authLogin } from '../supabase/functions/auth-login/index.ts'
 import { handler as authSignup } from '../supabase/functions/auth-signup/index.ts';
 import { handler as authRefresh } from '../supabase/functions/auth-refresh/index.ts';
 import { handler as authLogout } from '../supabase/functions/auth-logout/index.ts';
+import { handler as authRequestPasswordReset } from '../supabase/functions/auth-request-password-reset/index.ts';
+import { handler as authResetPassword } from '../supabase/functions/auth-reset-password/index.ts';
 import { handler as authOAuthStart } from '../supabase/functions/auth-oauth-start/index.ts';
 import { handler as authOAuthCallback } from '../supabase/functions/auth-oauth-callback/index.ts';
 import { handler as accountDeleteHandler } from '../supabase/functions/account-delete/index.ts';
@@ -53,6 +57,8 @@ const routes: Record<string, Handler> = {
   'auth-signup': authSignup,
   'auth-refresh': authRefresh,
   'auth-logout': authLogout,
+  'auth-request-password-reset': authRequestPasswordReset,
+  'auth-reset-password': authResetPassword,
   'auth-oauth-start': authOAuthStart,
   'auth-oauth-callback': authOAuthCallback,
   'account-delete': accountDeleteHandler,
