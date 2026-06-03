@@ -167,8 +167,15 @@ jobs:
   # bind-mounted directory is updated. No container restart needed.
   deploy-web-vm:
     name: Deploy Web (Azure VM)
-    needs: pre-deploy-checks
-    if: needs.pre-deploy-checks.outputs.web_changed == 'true' || github.event_name == 'workflow_dispatch'
+    # Serialized after deploy-backend to avoid a race on the VM's shared
+    # `~/finance/.git` directory — both jobs run `git pull origin main` and
+    # without serialization the second loser hits:
+    #   error: cannot lock ref 'refs/remotes/origin/main'
+    needs: [pre-deploy-checks, deploy-backend]
+    if: |
+      always() &&
+      (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped') &&
+      (needs.pre-deploy-checks.outputs.web_changed == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -202,12 +209,17 @@ jobs:
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
           # SSH in and rebuild. Each line is a separate command so an early
-          # failure aborts the build (set -e inside the heredoc).
+          # failure aborts the build (set -e inside the heredoc). Use
+          # `git fetch --force --prune` then `reset --hard` so we recover
+          # from any stale refs (e.g. if a prior backend deploy already
+          # advanced origin/main before this fetch read its expected value).
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" bash <<'DEPLOY'
             set -euo pipefail
             cd ~/finance
-            echo "→ git pull origin main"
-            git pull --ff-only origin main
+            echo "→ git fetch --force --prune origin main"
+            git fetch --force --prune origin main
+            echo "→ git reset --hard origin/main"
+            git reset --hard origin/main
             echo "→ npm ci (this can take a few minutes on first run)"
             npm ci --no-audit --no-fund --silent
             echo "→ build design tokens"
