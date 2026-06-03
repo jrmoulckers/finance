@@ -197,12 +197,28 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          # Deploy via SSH: pull latest, rebuild containers
+          # Deploy via SSH: pull latest, rebuild containers, reload Caddy
+          # (Caddy bind-mounts ./Caddyfile so changes need an explicit reload —
+          # `docker compose up -d` only restarts containers whose image/env
+          # changed, not when a mounted config file changed. Without this
+          # reload, CSP / header / route updates silently never take effect.)
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << DEPLOY
+            set -e
             cd $DEPLOY_PATH
             git pull origin main
             docker compose -f deploy/docker-compose.yml pull
             docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+
+            # Hot-reload Caddy with the freshly pulled Caddyfile. Tolerant of
+            # the container name varying across compose project prefixes.
+            CADDY_CID=\$(docker compose -f deploy/docker-compose.yml ps -q caddy)
+            if [ -n "\$CADDY_CID" ]; then
+              docker exec "\$CADDY_CID" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile \
+                || echo "::warning::caddy reload failed (config may be invalid)"
+            else
+              echo "::warning::caddy container not found; skipped reload"
+            fi
+
             docker compose -f deploy/docker-compose.yml ps
           DEPLOY
 

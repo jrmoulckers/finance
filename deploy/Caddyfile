@@ -50,8 +50,11 @@
 		# a stricter default policy (#1935).
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self), web-share=(self)"
 
-		# Content Security Policy — strict, no inline scripts, no eval
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'"
+		# Content Security Policy — strict, no JS eval, but allow WASM
+		# instantiation (sqlite-wasm) via the dedicated `wasm-unsafe-eval`
+		# directive. `wasm-unsafe-eval` does NOT enable JS `eval()` — it is
+		# the least-privilege grant for WebAssembly instantiation.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'"
 
 		# Remove server identification
 		-Server
