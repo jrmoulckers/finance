@@ -21,7 +21,13 @@ vi.mock('../../auth/auth-context', () => ({
   }),
 }));
 
-import { BottomNavigation, SidebarNavigation, NAV_ITEMS } from './Navigation';
+import { BottomNavigation, SidebarNavigation } from './Navigation';
+import {
+  BOTTOM_NAV_PRIORITY_ITEMS,
+  NAV_CONFIG,
+  NAV_GROUP_LABELS,
+  PINNED_NAV_ITEMS,
+} from './navConfig';
 
 describe('BottomNavigation', () => {
   const defaultProps = {
@@ -29,25 +35,45 @@ describe('BottomNavigation', () => {
     onNavigate: vi.fn(),
   };
 
-  it('renders 5 navigation items for mobile', () => {
+  it('renders the priority destinations plus a More button', () => {
     render(<BottomNavigation {...defaultProps} />);
 
-    const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(5);
+    // 4 priority items + 1 "More" button = 5 buttons on the bottom nav.
+    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    const buttons = within(nav).getAllByRole('button');
+    expect(buttons).toHaveLength(BOTTOM_NAV_PRIORITY_ITEMS.length + 1);
   });
 
-  it('renders the first 5 expected nav item labels', () => {
+  it('renders the four priority nav item labels', () => {
     render(<BottomNavigation {...defaultProps} />);
 
-    for (const item of NAV_ITEMS.slice(0, 5)) {
+    for (const item of BOTTOM_NAV_PRIORITY_ITEMS) {
       expect(screen.getByRole('button', { name: item.label })).toBeInTheDocument();
     }
+  });
+
+  it('renders the More button with the right ARIA attributes', () => {
+    render(<BottomNavigation {...defaultProps} />);
+
+    const moreButton = screen.getByRole('button', { name: 'More destinations' });
+    expect(moreButton).toBeInTheDocument();
+    expect(moreButton).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(moreButton).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('marks the active item with aria-current="page"', () => {
     render(<BottomNavigation {...defaultProps} activePath="/accounts" />);
 
     expect(screen.getByRole('button', { name: 'Accounts' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('marks the More button active when the current route is reachable only via the sheet', () => {
+    render(<BottomNavigation {...defaultProps} activePath="/insights" />);
+
+    expect(screen.getByRole('button', { name: 'More destinations' })).toHaveAttribute(
       'aria-current',
       'page',
     );
@@ -62,7 +88,7 @@ describe('BottomNavigation', () => {
     );
   });
 
-  it('calls onNavigate with the correct path when a nav item is clicked', () => {
+  it('calls onNavigate with the correct path when a priority item is clicked', () => {
     const onNavigate = vi.fn();
     render(<BottomNavigation {...defaultProps} onNavigate={onNavigate} />);
 
@@ -70,6 +96,28 @@ describe('BottomNavigation', () => {
 
     expect(onNavigate).toHaveBeenCalledTimes(1);
     expect(onNavigate).toHaveBeenCalledWith('/transactions');
+  });
+
+  it('opens the More sheet when the More button is clicked', () => {
+    render(<BottomNavigation {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'More destinations' }));
+
+    // The sheet is a dialog with the title "All destinations".
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('All destinations')).toBeInTheDocument();
+  });
+
+  it('every destination not on the bottom-nav is reachable from the More sheet', () => {
+    render(<BottomNavigation {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'More destinations' }));
+
+    const dialog = screen.getByRole('dialog');
+    for (const item of NAV_CONFIG) {
+      if (BOTTOM_NAV_PRIORITY_ITEMS.some((p) => p.id === item.id)) continue;
+      expect(within(dialog).getByRole('button', { name: item.label })).toBeInTheDocument();
+    }
   });
 
   it('has an accessible nav label', () => {
@@ -85,15 +133,29 @@ describe('SidebarNavigation', () => {
     onNavigate: vi.fn(),
   };
 
-  it('renders all primary nav items', () => {
+  it('renders the pinned destinations at the top', () => {
     render(<SidebarNavigation {...defaultProps} />);
 
-    for (const item of NAV_ITEMS) {
+    for (const item of PINNED_NAV_ITEMS) {
       expect(screen.getByRole('button', { name: item.label })).toBeInTheDocument();
     }
   });
 
-  it('renders the Settings button', () => {
+  it('renders every navigation destination somewhere in the sidebar (groups expand on demand)', () => {
+    render(<SidebarNavigation {...defaultProps} activePath="/insights" />);
+
+    // Expand the Connect group so its items are queryable; the other
+    // groups (Money, Plan) are expanded by default and Insights is forced
+    // open because /insights is the active route.
+    const expandConnect = screen.getByRole('button', { name: 'Connect section' });
+    fireEvent.click(expandConnect);
+
+    for (const item of NAV_CONFIG) {
+      expect(screen.getByRole('button', { name: item.label })).toBeInTheDocument();
+    }
+  });
+
+  it('renders the Settings button in the footer', () => {
     render(<SidebarNavigation {...defaultProps} />);
 
     expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
@@ -119,6 +181,16 @@ describe('SidebarNavigation', () => {
 
     expect(screen.getByRole('button', { name: 'Dashboard' })).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('button', { name: 'Settings' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('forces the section open when one of its routes is active', () => {
+    render(<SidebarNavigation {...defaultProps} activePath="/cash-flow" />);
+
+    // /cash-flow is in the "Insights" group, which is collapsed by default.
+    // Because the active route is inside it, the group must auto-expand and
+    // the Cash Flow button must be visible.
+    const cashFlow = screen.getByRole('button', { name: 'Cash Flow' });
+    expect(cashFlow).toHaveAttribute('aria-current', 'page');
   });
 
   it('calls onNavigate with the correct path when a nav item is clicked', () => {
@@ -170,18 +242,10 @@ describe('SidebarNavigation', () => {
     expect(screen.queryByRole('button', { name: 'Shortcuts' })).not.toBeInTheDocument();
   });
 
-  it('has a nav region with accessible label', () => {
+  it('has a Primary nav region with accessible label', () => {
     render(<SidebarNavigation {...defaultProps} />);
 
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument();
-  });
-
-  it('renders nav items in a list', () => {
-    render(<SidebarNavigation {...defaultProps} />);
-
-    const lists = screen.getAllByRole('list');
-    const listItems = within(lists[0]).getAllByRole('listitem');
-    expect(listItems).toHaveLength(NAV_ITEMS.length);
   });
 
   it('renders a Sign Out button', () => {
@@ -190,9 +254,28 @@ describe('SidebarNavigation', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
-  it('renders a More toggle button', () => {
+  it('renders a section header for each nav group', () => {
     render(<SidebarNavigation {...defaultProps} />);
 
-    expect(screen.getByRole('button', { name: /More/ })).toBeInTheDocument();
+    for (const label of Object.values(NAV_GROUP_LABELS)) {
+      expect(screen.getByRole('button', { name: `${label} section` })).toBeInTheDocument();
+    }
+  });
+
+  it('toggling a group header collapses the items underneath', () => {
+    render(<SidebarNavigation {...defaultProps} />);
+
+    // Money is expanded by default and contains Accounts.
+    expect(screen.getByRole('button', { name: 'Accounts' })).toBeVisible();
+
+    const moneyToggle = screen.getByRole('button', { name: 'Money section' });
+    fireEvent.click(moneyToggle);
+
+    // After collapsing, the parent list has `hidden` so the items are
+    // still in the DOM but not accessible.
+    const moneyList = document.getElementById('sidebar-group-money');
+    expect(moneyList).not.toBeNull();
+    expect(moneyList?.hasAttribute('hidden')).toBe(true);
+    expect(moneyToggle).toHaveAttribute('aria-expanded', 'false');
   });
 });

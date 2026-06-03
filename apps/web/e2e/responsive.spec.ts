@@ -143,8 +143,12 @@ test.describe('Mobile viewport (375px)', () => {
     const bottomNav = page.locator('nav.bottom-nav');
     const navButtons = bottomNav.getByRole('button');
 
-    // Expect the 5 primary nav items for mobile: Dashboard, Accounts, Transactions, Budgets, Goals
+    // Expect 5 buttons on the bottom nav: the 4 highest-priority
+    // destinations (Dashboard, Accounts, Transactions, Budgets) plus a
+    // "More" button that opens the sheet listing the remaining routes
+    // (#1930).
     await expect(navButtons).toHaveCount(5);
+    await expect(bottomNav.getByRole('button', { name: 'More destinations' })).toBeVisible();
   });
 
   test('form dialog is full-screen on small mobile', async ({ authenticatedPage: page }) => {

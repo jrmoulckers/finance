@@ -1,0 +1,407 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/*
+ * Primary navigation styles.
+ *
+ * Layers on top of the shell styles defined in responsive.css. Adds:
+ *   - Grouped, collapsible sections in the desktop sidebar.
+ *   - A clearer active-state indicator (left rail + colour + weight).
+ *   - The mobile "More" sheet drawer.
+ *   - The "More" tab in the bottom nav.
+ */
+
+/* ── Sidebar groups (desktop) ─────────────────────────────────────────── */
+
+.app-sidebar__group {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--semantic-border-default, var(--navigation-border));
+  padding: var(--spacing-2) var(--spacing-1) 0;
+  margin-top: var(--spacing-2);
+}
+
+.app-sidebar__group:first-of-type {
+  border-top: none;
+  margin-top: 0;
+}
+
+.app-sidebar__group-heading {
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.app-sidebar__group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--semantic-text-secondary, var(--navigation-text));
+  font: inherit;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: var(--border-radius-sm, 4px);
+}
+
+.app-sidebar__group-toggle:hover,
+.app-sidebar__group-toggle:focus-visible {
+  color: var(--semantic-text-primary, var(--navigation-text-active));
+}
+
+.app-sidebar__group-toggle:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.app-sidebar__group-label {
+  flex: 1;
+  text-align: left;
+}
+
+.app-sidebar__group-chevron {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: transform 150ms ease;
+}
+
+.app-sidebar__group-chevron svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-sidebar__group-chevron--expanded {
+  transform: rotate(0deg);
+}
+
+.app-sidebar__group:not([data-expanded='true']) .app-sidebar__group-chevron {
+  transform: rotate(-90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar__group-chevron {
+    transition: none;
+  }
+}
+
+.sidebar-nav__list--nested {
+  padding-top: 0;
+  padding-bottom: var(--spacing-1);
+}
+
+/* ── Enhanced active state for sidebar items ──────────────────────────── */
+
+.sidebar-nav__item {
+  position: relative;
+  font-weight: var(--font-weight-medium, 500);
+}
+
+/* Left rail accent on the active row — readable in any theme because it
+ * uses the same accent token as the bottom-nav indicator. */
+.sidebar-nav__item[aria-current='page']::before,
+.sidebar-nav__item--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(
+    --navigation-indicator,
+    var(--semantic-interactive-default, var(--color-blue-700, currentColor))
+  );
+}
+
+.sidebar-nav__item[aria-current='page'],
+.sidebar-nav__item--active {
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.sidebar-nav__item--sign-out {
+  color: var(--semantic-text-secondary, var(--navigation-text));
+}
+
+.sidebar-nav__item--sign-out:hover,
+.sidebar-nav__item--sign-out:focus-visible {
+  color: var(--semantic-status-negative, var(--color-red-700));
+}
+
+/* ── Bottom-nav "More" tab ────────────────────────────────────────────── */
+
+.nav-item--more .nav-item__icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ── More sheet (mobile drawer) ───────────────────────────────────────── */
+
+.more-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+}
+
+.more-sheet__scrim {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(15, 23, 42, 0.55);
+  cursor: pointer;
+  /* Don't show a focus ring on the scrim — the close button is the
+   * focusable affordance. */
+  outline: none;
+}
+
+.more-sheet__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--semantic-background-primary, var(--navigation-background, #fff));
+  color: var(--semantic-text-primary);
+  border-top-left-radius: var(--border-radius-lg, 16px);
+  border-top-right-radius: var(--border-radius-lg, 16px);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  /* Honour the device safe-area on iOS so the bottom edge isn't cut off. */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  animation: more-sheet-slide-up 180ms ease-out;
+}
+
+@keyframes more-sheet-slide-up {
+  from {
+    transform: translateY(8%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more-sheet__panel {
+    animation: none;
+  }
+}
+
+.more-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4);
+  border-bottom: 1px solid var(--semantic-border-default, var(--navigation-border));
+  flex-shrink: 0;
+}
+
+.more-sheet__title {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size, 1.125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-primary);
+}
+
+.more-sheet__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-md, 8px);
+  color: var(--semantic-text-secondary);
+  cursor: pointer;
+}
+
+.more-sheet__close:hover,
+.more-sheet__close:focus-visible {
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+}
+
+.more-sheet__close:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.more-sheet__close svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.more-sheet__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-2) var(--spacing-3) var(--spacing-4);
+  -webkit-overflow-scrolling: touch;
+}
+
+.more-sheet__group {
+  margin-top: var(--spacing-4);
+}
+
+.more-sheet__group:first-child {
+  margin-top: var(--spacing-2);
+}
+
+.more-sheet__group-heading {
+  margin: 0 0 var(--spacing-2);
+  padding: 0 var(--spacing-2);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--semantic-text-secondary);
+}
+
+.more-sheet__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.more-sheet__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  width: 100%;
+  padding: var(--spacing-3);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-md, 8px);
+  color: var(--semantic-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-height: 56px;
+}
+
+.more-sheet__item:hover,
+.more-sheet__item:focus-visible {
+  background: var(--semantic-background-secondary);
+}
+
+.more-sheet__item:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: -2px;
+}
+
+.more-sheet__item--active {
+  background: var(--color-blue-50, rgba(59, 130, 246, 0.08));
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-semibold, 600);
+  position: relative;
+}
+
+.more-sheet__item--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(
+    --navigation-indicator,
+    var(--semantic-interactive-default, var(--color-blue-700))
+  );
+}
+
+[data-theme='dark'] .more-sheet__item--active {
+  background: rgba(96, 165, 250, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .more-sheet__item--active {
+    background: rgba(96, 165, 250, 0.16);
+  }
+}
+
+.more-sheet__item--danger {
+  color: var(--semantic-status-negative, var(--color-red-700));
+}
+
+.more-sheet__item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  color: var(--semantic-text-secondary);
+}
+
+.more-sheet__item--active .more-sheet__item-icon,
+.more-sheet__item--danger .more-sheet__item-icon {
+  color: inherit;
+}
+
+.more-sheet__item-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.more-sheet__item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.more-sheet__item-label {
+  font-size: var(--type-scale-body-font-size, 1rem);
+  line-height: 1.25;
+}
+
+.more-sheet__item-description {
+  font-size: var(--type-scale-caption-font-size, 0.8125rem);
+  color: var(--semantic-text-secondary);
+  line-height: 1.3;
+  font-weight: var(--font-weight-regular, 400);
+}
+
+/* Hide the More sheet on viewports where the sidebar is the primary nav.
+ * It's only triggered from the bottom-nav and the bottom-nav itself is
+ * hidden ≥ 768px, but a defensive guard keeps the DOM tidy. */
+@media (min-width: 768px) {
+  .more-sheet {
+    display: none;
+  }
+}

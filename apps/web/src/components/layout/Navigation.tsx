@@ -1,142 +1,64 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useState } from 'react';
+/**
+ * Primary navigation chrome.
+ *
+ * - `SidebarNavigation` is the wide-screen layout: a pinned Dashboard at
+ *   the top, four collapsible grouped sections (Money, Plan, Insights,
+ *   Connect), and a pinned footer for Shortcuts / Settings / Sign Out.
+ * - `BottomNavigation` is the narrow-screen tab bar. It surfaces the
+ *   four most-used destinations plus a "More" button that opens a sheet
+ *   listing every remaining destination — every route in the app is
+ *   reachable on every viewport (#1930).
+ *
+ * Both components read from the same `NAV_CONFIG` source-of-truth so the
+ * two layouts can never drift.
+ */
+
+import React, { useCallback, useMemo, useState } from 'react';
+
 import { useAuth } from '../../auth/auth-context';
 
+import { MoreNavSheet } from './MoreNavSheet';
+import {
+  BOTTOM_NAV_PRIORITY_ITEMS,
+  NAV_CONFIG,
+  NAV_GROUP_LABELS,
+  NAV_GROUP_ORDER,
+  PINNED_NAV_ITEMS,
+  getItemsByGroup,
+  type NavConfigItem,
+  type NavGroup,
+} from './navConfig';
+import { ChevronDownIcon, KeyboardIcon, MoreIcon, SettingsIcon, SignOutIcon } from './navIcons';
+
+// ---------------------------------------------------------------------------
+// Back-compat shims for existing consumers / tests.
+// ---------------------------------------------------------------------------
+
+/**
+ * @deprecated Prefer `NAV_CONFIG` from `./navConfig`. Kept so existing
+ * tests and external imports continue to compile during the migration.
+ */
 export interface NavItem {
   path: string;
   label: string;
   icon: React.ReactNode;
 }
 
-/** Primary navigation items shown in the main nav section. */
-export const NAV_ITEMS: NavItem[] = [
-  {
-    path: '/dashboard',
-    label: 'Dashboard',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z" />
-      </svg>
-    ),
-  },
-  {
-    path: '/accounts',
-    label: 'Accounts',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-      </svg>
-    ),
-  },
-  {
-    path: '/transactions',
-    label: 'Transactions',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-      </svg>
-    ),
-  },
-  {
-    path: '/budgets',
-    label: 'Budgets',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17" />
-      </svg>
-    ),
-  },
-  {
-    path: '/goals',
-    label: 'Goals',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    ),
-  },
-  {
-    path: '/investments',
-    label: 'Investments',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M3 17l6-6 4 4 8-8" />
-        <path d="M17 7h4v4" />
-      </svg>
-    ),
-  },
-  {
-    path: '/bills',
-    label: 'Bills',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
-        <path d="M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        <path d="M9 14l2 2 4-4" />
-      </svg>
-    ),
-  },
-  {
-    path: '/insights',
-    label: 'Insights',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
-  },
-  {
-    path: '/household',
-    label: 'Household',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
-    ),
-  },
-  {
-    path: '/categories',
-    label: 'Categories',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M7 7h.01M3 11.172V5a2 2 0 012-2h6.172a2 2 0 011.414.586l7.828 7.828a2 2 0 010 2.828l-6.172 6.172a2 2 0 01-2.828 0l-7.828-7.828A2 2 0 013 11.172z" />
-      </svg>
-    ),
-  },
-];
+/**
+ * @deprecated Use `NAV_CONFIG` directly. Provided for backwards
+ * compatibility with code that imported the old flat array.
+ */
+export const NAV_ITEMS: NavItem[] = NAV_CONFIG.map((item) => ({
+  path: item.href,
+  label: item.label,
+  icon: item.icon,
+}));
 
-/** Secondary navigation items shown in a collapsible "More" section. */
-export const MORE_NAV_ITEMS: NavItem[] = [
-  {
-    path: '/report-builder',
-    label: 'Report Builder',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-    ),
-  },
-  {
-    path: '/achievements',
-    label: 'Achievements',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-      </svg>
-    ),
-  },
-  {
-    path: '/watchlists',
-    label: 'Watchlists',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-      </svg>
-    ),
-  },
-];
+// ---------------------------------------------------------------------------
+// Shared types
+// ---------------------------------------------------------------------------
 
 export interface NavigationProps {
   activePath: string;
@@ -145,29 +67,165 @@ export interface NavigationProps {
   onOpenFeedback?: () => void;
 }
 
-/** Bottom navigation for mobile viewports. */
-export const BottomNavigation: React.FC<NavigationProps> = ({ activePath, onNavigate }) => (
-  <nav className="bottom-nav" aria-label="Main navigation">
-    {NAV_ITEMS.slice(0, 5).map((item) => {
-      const isActive = activePath === item.path;
-      return (
-        <button
-          key={item.path}
-          type="button"
-          className={`nav-item${isActive ? ' nav-item--active' : ''}`}
-          aria-current={isActive ? 'page' : undefined}
-          aria-label={item.label}
-          onClick={() => onNavigate(item.path)}
-        >
-          <span className="nav-item__icon">{item.icon}</span>
-          <span className="nav-item__label">{item.label}</span>
-        </button>
-      );
-    })}
-  </nav>
-);
+function isActive(activePath: string, href: string): boolean {
+  return activePath === href || activePath.startsWith(href + '/');
+}
 
-/** Sidebar navigation for desktop viewports with pinned footer. */
+// ---------------------------------------------------------------------------
+// Bottom navigation (mobile)
+// ---------------------------------------------------------------------------
+
+/**
+ * Bottom tab bar for narrow viewports. Renders the four highest-priority
+ * destinations plus a "More" tab that opens {@link MoreNavSheet}.
+ */
+export const BottomNavigation: React.FC<NavigationProps> = ({
+  activePath,
+  onNavigate,
+  onOpenShortcuts,
+}) => {
+  const { logout } = useAuth();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const isMoreActive = useMemo(() => {
+    // The "More" tab should appear active when the user is on any route
+    // that is reachable only via the sheet (i.e. not a priority item).
+    if (BOTTOM_NAV_PRIORITY_ITEMS.some((item) => isActive(activePath, item.href))) {
+      return false;
+    }
+    return NAV_CONFIG.some((item) => isActive(activePath, item.href));
+  }, [activePath]);
+
+  const handleSignOut = useCallback(async () => {
+    await logout();
+  }, [logout]);
+
+  return (
+    <>
+      <nav className="bottom-nav" aria-label="Main navigation">
+        {BOTTOM_NAV_PRIORITY_ITEMS.map((item) => {
+          const active = isActive(activePath, item.href);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`nav-item${active ? ' nav-item--active' : ''}`}
+              aria-current={active ? 'page' : undefined}
+              aria-label={item.label}
+              onClick={() => onNavigate(item.href)}
+            >
+              <span className="nav-item__icon">{item.icon}</span>
+              <span className="nav-item__label">{item.label}</span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          className={`nav-item nav-item--more${isMoreActive ? ' nav-item--active' : ''}`}
+          aria-label="More destinations"
+          aria-haspopup="dialog"
+          aria-expanded={moreOpen}
+          aria-current={isMoreActive ? 'page' : undefined}
+          onClick={() => setMoreOpen(true)}
+        >
+          <span className="nav-item__icon">
+            <MoreIcon />
+          </span>
+          <span className="nav-item__label">More</span>
+        </button>
+      </nav>
+      <MoreNavSheet
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        activePath={activePath}
+        onNavigate={onNavigate}
+        onOpenShortcuts={onOpenShortcuts}
+        onSignOut={handleSignOut}
+      />
+    </>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Sidebar navigation (desktop)
+// ---------------------------------------------------------------------------
+
+interface SidebarGroupProps {
+  group: NavGroup;
+  items: readonly NavConfigItem[];
+  activePath: string;
+  onNavigate: (path: string) => void;
+  defaultExpanded: boolean;
+}
+
+const SidebarGroup: React.FC<SidebarGroupProps> = ({
+  group,
+  items,
+  activePath,
+  onNavigate,
+  defaultExpanded,
+}) => {
+  const containsActive = items.some((item) => isActive(activePath, item.href));
+  const [userExpanded, setUserExpanded] = useState(defaultExpanded);
+  // The section is always visible when one of its routes is active so the
+  // user can see where they are in the IA. Otherwise the user controls
+  // expand/collapse via the toggle.
+  const expanded = userExpanded || containsActive;
+
+  const sectionId = `sidebar-group-${group}`;
+  const headingId = `sidebar-group-${group}-heading`;
+  const label = NAV_GROUP_LABELS[group];
+
+  return (
+    <section className="app-sidebar__group" aria-labelledby={headingId} data-expanded={expanded}>
+      <h2 id={headingId} className="app-sidebar__group-heading">
+        <button
+          type="button"
+          className="app-sidebar__group-toggle"
+          aria-expanded={expanded}
+          aria-controls={sectionId}
+          aria-label={`${label} section`}
+          onClick={() => setUserExpanded((prev) => !prev)}
+        >
+          <span className="app-sidebar__group-label">{label}</span>
+          <span
+            className={`app-sidebar__group-chevron${expanded ? ' app-sidebar__group-chevron--expanded' : ''}`}
+            aria-hidden="true"
+          >
+            <ChevronDownIcon />
+          </span>
+        </button>
+      </h2>
+      <ul
+        id={sectionId}
+        className="sidebar-nav__list sidebar-nav__list--nested"
+        role="list"
+        hidden={!expanded}
+      >
+        {items.map((item) => {
+          const active = isActive(activePath, item.href);
+          return (
+            <li key={item.id} role="listitem">
+              <button
+                type="button"
+                className={`sidebar-nav__item${active ? ' sidebar-nav__item--active' : ''}`}
+                aria-current={active ? 'page' : undefined}
+                onClick={() => onNavigate(item.href)}
+              >
+                <span className="sidebar-nav__item-icon" aria-hidden="true">
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+};
+
+/** Sidebar navigation for wide viewports. */
 export const SidebarNavigation: React.FC<NavigationProps> = ({
   activePath,
   onNavigate,
@@ -175,12 +233,11 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
   onOpenFeedback,
 }) => {
   const { logout } = useAuth();
-  const [moreExpanded, setMoreExpanded] = useState(false);
-  const isSettingsActive = activePath === '/settings';
+  const isSettingsActive = isActive(activePath, '/settings');
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     await logout();
-  };
+  }, [logout]);
 
   return (
     <aside className="app-sidebar" aria-label="Main navigation">
@@ -188,81 +245,45 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
         <span className="app-sidebar__logo">Finance</span>
       </div>
 
-      {/* Scrollable navigation section */}
-      <div className="app-sidebar__scrollable">
-        <nav className="app-sidebar__nav" aria-label="Primary">
-          <ul className="sidebar-nav__list" role="list">
-            {NAV_ITEMS.map((item) => {
-              const isActive = activePath === item.path;
-              return (
-                <li key={item.path} role="listitem">
-                  <button
-                    type="button"
-                    className={`sidebar-nav__item${isActive ? ' sidebar-nav__item--active' : ''}`}
-                    aria-current={isActive ? 'page' : undefined}
-                    onClick={() => onNavigate(item.path)}
-                  >
-                    <span className="sidebar-nav__item-icon">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+      <nav className="app-sidebar__nav" aria-label="Primary">
+        {/* Pinned destinations (Dashboard) */}
+        <ul className="sidebar-nav__list" role="list">
+          {PINNED_NAV_ITEMS.map((item) => {
+            const active = isActive(activePath, item.href);
+            return (
+              <li key={item.id} role="listitem">
+                <button
+                  type="button"
+                  className={`sidebar-nav__item${active ? ' sidebar-nav__item--active' : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => onNavigate(item.href)}
+                >
+                  <span className="sidebar-nav__item-icon" aria-hidden="true">
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
 
-        {/* Collapsible "More" section */}
-        <div className="app-sidebar__more">
-          <button
-            type="button"
-            className="sidebar-nav__item sidebar-nav__item--more-toggle"
-            aria-expanded={moreExpanded}
-            aria-controls="sidebar-more-section"
-            onClick={() => setMoreExpanded((prev) => !prev)}
-          >
-            <span className="sidebar-nav__item-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-              </svg>
-            </span>
-            <span>More</span>
-            <span
-              className={`sidebar-nav__item-chevron${moreExpanded ? ' sidebar-nav__item-chevron--expanded' : ''}`}
-              aria-hidden="true"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M19 9l-7 7-7-7" />
-              </svg>
-            </span>
-          </button>
-          {moreExpanded && (
-            <ul
-              id="sidebar-more-section"
-              className="sidebar-nav__list sidebar-nav__list--nested"
-              role="list"
-            >
-              {MORE_NAV_ITEMS.map((item) => {
-                const isActive = activePath === item.path;
-                return (
-                  <li key={item.path} role="listitem">
-                    <button
-                      type="button"
-                      className={`sidebar-nav__item${isActive ? ' sidebar-nav__item--active' : ''}`}
-                      aria-current={isActive ? 'page' : undefined}
-                      onClick={() => onNavigate(item.path)}
-                    >
-                      <span className="sidebar-nav__item-icon">{item.icon}</span>
-                      <span>{item.label}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </div>
+        {/* Grouped destinations. Money + Plan are expanded by default
+            because they hold the most-used routes; Insights + Connect
+            start collapsed to reduce cognitive load. */}
+        {NAV_GROUP_ORDER.map((group) => (
+          <SidebarGroup
+            key={group}
+            group={group}
+            items={getItemsByGroup(group)}
+            activePath={activePath}
+            onNavigate={onNavigate}
+            defaultExpanded={group === 'money' || group === 'plan'}
+          />
+        ))}
+      </nav>
 
-      {/* Pinned footer — always visible without scrolling */}
+      {/* Pinned footer — always visible without scrolling. */}
       <div className="app-sidebar__footer">
         {onOpenShortcuts ? (
           <button
@@ -272,100 +293,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
             onClick={onOpenShortcuts}
           >
             <span className="sidebar-nav__item-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <rect
-                  x="2"
-                  y="4"
-                  width="20"
-                  height="16"
-                  rx="2"
-                  ry="2"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-                <line
-                  x1="6"
-                  y1="8"
-                  x2="6"
-                  y2="8"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="10"
-                  y1="8"
-                  x2="10"
-                  y2="8"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="14"
-                  y1="8"
-                  x2="14"
-                  y2="8"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="18"
-                  y1="8"
-                  x2="18"
-                  y2="8"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="6"
-                  y1="12"
-                  x2="6"
-                  y2="12"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="10"
-                  y1="12"
-                  x2="10"
-                  y2="12"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="14"
-                  y1="12"
-                  x2="14"
-                  y2="12"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="18"
-                  y1="12"
-                  x2="18"
-                  y2="12"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="8"
-                  y1="16"
-                  x2="16"
-                  y2="16"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <KeyboardIcon />
             </span>
             <span>Shortcuts</span>
           </button>
@@ -378,16 +306,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
             onClick={onOpenFeedback}
           >
             <span className="sidebar-nav__item-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path
-                  d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <KeyboardIcon />
             </span>
             <span>Feedback</span>
           </button>
@@ -399,10 +318,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
           onClick={() => onNavigate('/settings')}
         >
           <span className="sidebar-nav__item-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z" />
-              <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <SettingsIcon />
           </span>
           <span>Settings</span>
         </button>
@@ -413,9 +329,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
           aria-label="Sign out"
         >
           <span className="sidebar-nav__item-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <SignOutIcon />
           </span>
           <span>Sign Out</span>
         </button>
