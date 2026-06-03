@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
-import { ErrorBoundary } from './components/common';
+import { ErrorBoundary, ToastProvider } from './components/common';
 import { ScrollToTop } from './components/navigation/ScrollToTop';
 import { DatabaseProvider } from './db/DatabaseProvider';
 import { MoneyDisplayProvider } from './lib/display-settings';
@@ -116,16 +116,18 @@ const DatabaseGate: FC<{ children: ReactNode }> = ({ children }) => {
 createRoot(rootElement).render(
   <StrictMode>
     <ErrorBoundary>
-      <AuthProvider config={authConfig}>
-        <MoneyDisplayProvider>
-          <BrowserRouter>
-            <ScrollToTop />
-            <DatabaseGate>
-              <App />
-            </DatabaseGate>
-          </BrowserRouter>
-        </MoneyDisplayProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider config={authConfig}>
+          <MoneyDisplayProvider>
+            <BrowserRouter>
+              <ScrollToTop />
+              <DatabaseGate>
+                <App />
+              </DatabaseGate>
+            </BrowserRouter>
+          </MoneyDisplayProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ErrorBoundary>
   </StrictMode>,
 );

@@ -76,6 +76,14 @@ export interface AuthUser {
   email: string;
   /** Whether the user has a registered passkey. */
   hasPasskey: boolean;
+  /**
+   * Best-effort display name derived from OAuth claims
+   * (`name`, `full_name`, `given_name`, or `user_metadata.full_name`).
+   * Empty when no name was supplied (e.g. email/password signup).
+   *
+   * Issue #1931: never render a raw UUID for a logged-in user.
+   */
+  name?: string;
 }
 
 /** Result of creating a new email/password account. */
@@ -844,11 +852,15 @@ function readCachedUser(): AuthUser | null {
       return null;
     }
 
-    return {
+    const user: AuthUser = {
       id: parsed.id,
       email: parsed.email,
       hasPasskey: parsed.hasPasskey === true,
     };
+    if (typeof parsed.name === 'string' && parsed.name.trim().length > 0) {
+      user.name = parsed.name.trim();
+    }
+    return user;
   } catch {
     return null;
   }
@@ -869,10 +881,68 @@ function userFromToken(token: string): AuthUser | null {
   }
 
   const cachedUser = readCachedUser();
-  return {
+  const name = pickDisplayName(payload);
+  const user: AuthUser = {
     id: payload.sub ?? cachedUser?.id ?? '',
     email: payload.email ?? cachedUser?.email ?? '',
     hasPasskey: cachedUser?.hasPasskey ?? false,
+  };
+  if (name) {
+    user.name = name;
+  } else if (cachedUser?.name) {
+    user.name = cachedUser.name;
+  }
+  return user;
+}
+
+/**
+ * Pick the best human-readable display name from JWT claims.
+ *
+ * Supabase / OAuth providers expose the name under any of:
+ *   - `name`              (Google OIDC standard)
+ *   - `full_name`         (Supabase user_metadata projection)
+ *   - `user_metadata.full_name` / `user_metadata.name`
+ *   - first + last combined
+ *
+ * We return `undefined` if none is available so callers can fall back
+ * to email.
+ *
+ * Issue #1931.
+ */
+function pickDisplayName(payload: TokenPayload): string | undefined {
+  const candidates: Array<string | undefined> = [
+    payload.name,
+    payload.full_name,
+    payload.user_metadata?.full_name,
+    payload.user_metadata?.name,
+  ];
+
+  const first = payload.given_name ?? payload.user_metadata?.given_name;
+  const last = payload.family_name ?? payload.user_metadata?.family_name;
+  if (first || last) {
+    candidates.push([first, last].filter(Boolean).join(' '));
+  }
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+  return undefined;
+}
+
+interface TokenPayload {
+  sub?: string;
+  email?: string;
+  name?: string;
+  full_name?: string;
+  given_name?: string;
+  family_name?: string;
+  user_metadata?: {
+    full_name?: string;
+    name?: string;
+    given_name?: string;
+    family_name?: string;
   };
 }
 
@@ -881,7 +951,7 @@ function userFromToken(token: string): AuthUser | null {
  * Only used to extract user info for the UI — all real validation
  * happens server-side.
  */
-function parseTokenPayload(token: string): { sub?: string; email?: string } | null {
+function parseTokenPayload(token: string): TokenPayload | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
@@ -889,7 +959,7 @@ function parseTokenPayload(token: string): { sub?: string; email?: string } | nu
     const base64 = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
     const json = atob(padded);
-    return JSON.parse(json) as { sub?: string; email?: string };
+    return JSON.parse(json) as TokenPayload;
   } catch {
     return null;
   }

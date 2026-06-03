@@ -13,9 +13,12 @@
 import { useCallback, useState } from 'react';
 import type { FormEvent } from 'react';
 
+import { useAuth } from '../auth/auth-context';
+import { useToast } from '../components/common/Toast';
 import { useHousehold } from '../hooks/useHousehold';
 import type { HouseholdRole, AccountSharingMode, SharedBudgetMode } from '../kmp/bridge';
 import { ROLE_PERMISSIONS } from '../kmp/bridge';
+import { buildInviteUrl, getMemberDisplayName } from '../lib/household/display-name';
 
 import './HouseholdPage.css';
 
@@ -97,6 +100,13 @@ export function HouseholdPage() {
     checkPermission,
   } = useHousehold();
 
+  // Issue #1931: pull the auth user as a fallback for the owner's display name
+  // (so the user's own entry never shows a raw UUID).
+  const authUser = useOptionalAuthUser();
+
+  // Issue #1933: copy the full invite URL on click and confirm via toast.
+  const toast = useOptionalToast();
+
   // -- Create household form state -----------------------------------------
   const [householdName, setHouseholdName] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
@@ -154,6 +164,54 @@ export function HouseholdPage() {
       }
     },
     [inviteEmail, inviteRole, inviteMember],
+  );
+
+  /**
+   * Resolve a member to a human-readable label.
+   *
+   * For the OWNER specifically we also fall back to the current
+   * signed-in user's OAuth name / email so the user's *own* row
+   * never displays a raw UUID (issue #1931).
+   */
+  const resolveMemberName = useCallback(
+    (member: { displayName?: string | null; userId?: string | null; role: HouseholdRole }) => {
+      const isCurrentUser =
+        member.role === 'OWNER' || (authUser?.id && member.userId === authUser.id);
+      const profile = isCurrentUser
+        ? { name: authUser?.name ?? null, email: authUser?.email ?? null }
+        : null;
+      return getMemberDisplayName(member, profile);
+    },
+    [authUser?.id, authUser?.name, authUser?.email],
+  );
+
+  /**
+   * Click handler for the invite-code chip.
+   *
+   * Issue #1933: copies the full invite URL (not just the bare code) to
+   * the clipboard and shows a brief "Invite link copied" toast.  Falls
+   * back to `document.execCommand('copy')` on browsers that don't expose
+   * `navigator.clipboard.writeText` (older Safari, file://, http://, etc.).
+   */
+  const handleCopyInvite = useCallback(
+    async (code: string) => {
+      const url = buildInviteUrl(code);
+      const success = await copyToClipboard(url);
+      if (success) {
+        toast?.showToast({
+          type: 'success',
+          message: 'Invite link copied',
+          duration: 2000,
+        });
+      } else {
+        toast?.showToast({
+          type: 'error',
+          message: `Couldn't copy automatically. Copy this link manually: ${url}`,
+          duration: 6000,
+        });
+      }
+    },
+    [toast],
   );
 
   // -- Loading state -------------------------------------------------------
@@ -251,47 +309,52 @@ export function HouseholdPage() {
           <p className="household-card__empty">No members yet.</p>
         ) : (
           <ul className="household-member-list" role="list" aria-label="Household members">
-            {members.map((member) => (
-              <li key={member.id} className="household-member-item">
-                <div className="household-member-item__info">
-                  <span className="household-member-item__avatar" aria-hidden="true">
-                    {member.role === 'OWNER' ? '👑' : member.role === 'ADMIN' ? '🛡️' : '👤'}
-                  </span>
-                  <div>
-                    <span className="household-member-item__name">
-                      {member.displayName ?? `${member.userId.slice(0, 8)}…`}
+            {members.map((member) => {
+              const name = resolveMemberName(member);
+              return (
+                <li key={member.id} className="household-member-item">
+                  <div className="household-member-item__info">
+                    <span className="household-member-item__avatar" aria-hidden="true">
+                      {member.role === 'OWNER' ? '👑' : member.role === 'ADMIN' ? '🛡️' : '👤'}
                     </span>
-                    <span className="household-member-item__role">{ROLE_LABELS[member.role]}</span>
-                    <span className="household-member-item__permissions">
-                      {ROLE_PERMISSIONS[member.role].length} permissions
-                    </span>
+                    <div>
+                      <span className="household-member-item__name">{name}</span>
+                      <span className="household-member-item__role">
+                        {ROLE_LABELS[member.role]}
+                      </span>
+                      <span className="household-member-item__permissions">
+                        {ROLE_PERMISSIONS[member.role].length} permissions
+                      </span>
+                    </div>
                   </div>
-                </div>
-                {member.role !== 'OWNER' && (
-                  <div className="household-member-item__actions">
-                    <select
-                      className="household-form-select household-form-select--small"
-                      value={member.role}
-                      onChange={(e) => updateMemberRole(member.id, e.target.value as HouseholdRole)}
-                      aria-label={`Change role for ${member.displayName ?? member.userId.slice(0, 8)}`}
-                    >
-                      {ROLE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="household-button household-button--danger household-button--small"
-                      onClick={() => removeMember(member.id)}
-                      aria-label={`Remove ${member.displayName ?? member.userId.slice(0, 8)}`}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
+                  {member.role !== 'OWNER' && (
+                    <div className="household-member-item__actions">
+                      <select
+                        className="household-form-select household-form-select--small"
+                        value={member.role}
+                        onChange={(e) =>
+                          updateMemberRole(member.id, e.target.value as HouseholdRole)
+                        }
+                        aria-label={`Change role for ${name}`}
+                      >
+                        {ROLE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className="household-button household-button--danger household-button--small"
+                        onClick={() => removeMember(member.id)}
+                        aria-label={`Remove ${name}`}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
 
@@ -389,14 +452,46 @@ export function HouseholdPage() {
           <h2 id="invitations-title" className="household-card__title">
             Pending Invitations
           </h2>
-          <ul className="household-invitation-list" role="list" aria-label="Pending invitations">
+          <p className="household-card__description" id="invitations-helper">
+            Send the invite code (or click the code to copy the full invite link) to the person you
+            want to share with. They can paste it at <code>/invite</code> or click the link from
+            their email.
+          </p>
+          <ul
+            className="household-invitation-list"
+            role="list"
+            aria-label="Pending invitations"
+            aria-describedby="invitations-helper"
+          >
             {pendingInvitations.map((inv) => (
               <li key={inv.id} className="household-invitation-item">
                 <div className="household-invitation-item__info">
                   <span className="household-invitation-item__email">{inv.email}</span>
                   <span className="household-invitation-item__role">{ROLE_LABELS[inv.role]}</span>
-                  <span className="household-invitation-item__code" title="Invite code">
-                    Code: {inv.inviteCode}
+                  <span className="household-invitation-item__code-group">
+                    <span
+                      className="household-invitation-item__code-label"
+                      id={`invite-code-label-${inv.id}`}
+                    >
+                      Invite code:
+                    </span>
+                    <button
+                      type="button"
+                      className="household-invitation-item__code"
+                      onClick={() => void handleCopyInvite(inv.inviteCode)}
+                      aria-label={`Copy invite link for ${inv.email}`}
+                      title="Click to copy the full invite link"
+                    >
+                      {/*
+                        Issue #1932: keep the bare code as the visible label so
+                        users still recognise the value being copied.  Issue
+                        #1933: clicking copies the full URL, not the bare code.
+                      */}
+                      <code className="household-invitation-item__code-text">{inv.inviteCode}</code>
+                      <span aria-hidden="true" className="household-invitation-item__code-hint">
+                        Copy link
+                      </span>
+                    </button>
                   </span>
                   <span className="household-invitation-item__status">{inv.status}</span>
                 </div>
@@ -644,3 +739,81 @@ export function HouseholdPage() {
 }
 
 export default HouseholdPage;
+
+// ---------------------------------------------------------------------------
+// Local helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Read the auth user without throwing if no AuthProvider is mounted.
+ *
+ * `useAuth()` is intentionally strict (throws on misuse) so production
+ * callers fail loudly, but a handful of unit tests render the page
+ * without wrapping it in `<AuthProvider>`.  We swallow that error and
+ * fall back to `null`; the display-name resolver handles a missing
+ * profile gracefully by falling back to `member.displayName` /
+ * truncated UUID.
+ *
+ * Issue #1931.
+ */
+function useOptionalAuthUser(): { id: string; email: string; name?: string } | null {
+  try {
+    return useAuth().user;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read the toast API without throwing if no ToastProvider is mounted.
+ *
+ * Same rationale as {@link useOptionalAuthUser}: we don't want to force
+ * every test render to wrap children in `<ToastProvider>`, and a missing
+ * toast is a soft degradation (clipboard write still succeeds; the user
+ * just doesn't see the confirmation).
+ *
+ * Issue #1933.
+ */
+function useOptionalToast(): ReturnType<typeof useToast> | null {
+  try {
+    return useToast();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Copy `text` to the clipboard.
+ *
+ * Uses `navigator.clipboard.writeText` when available (modern browsers,
+ * secure contexts) and falls back to the legacy `document.execCommand`
+ * shim otherwise.  Returns `true` on success.
+ *
+ * Issue #1933.
+ */
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall through to the legacy shim below.
+  }
+
+  try {
+    if (typeof document === 'undefined') return false;
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'absolute';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}

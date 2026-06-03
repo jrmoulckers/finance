@@ -27,6 +27,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { useAuth } from '../auth/auth-context';
 import type {
   AccountSharing,
   AccountSharingMode,
@@ -183,6 +184,13 @@ function generateInviteCode(): string {
  * - #1786: Shared savings goals
  */
 export function useHousehold(): UseHouseholdResult {
+  // Issue #1931: capture the current authenticated user so we can stamp
+  // the owner member's displayName at creation time (and avoid showing
+  // the raw user UUID).  `useAuth` may throw if a provider is absent
+  // (e.g. some isolated unit tests that don't mount AuthProvider), so we
+  // guard with a try/catch and degrade gracefully to anonymous behaviour.
+  const authUser = useOptionalAuthUser();
+
   const [household, setHousehold] = useState<Household | null>(null);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [invitations, setInvitations] = useState<HouseholdInvitation[]>([]);
@@ -218,46 +226,57 @@ export function useHousehold(): UseHouseholdResult {
   }, [refreshToken]);
 
   // -- Household creation --
-  const createHousehold = useCallback((input: CreateHouseholdInput): Household | null => {
-    try {
-      const now = new Date().toISOString();
-      const ownerId = crypto.randomUUID();
-      const newHousehold: Household = {
-        id: crypto.randomUUID(),
-        name: input.name.trim(),
-        ownerId,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-        syncVersion: 1,
-        isSynced: false,
-      };
+  const createHousehold = useCallback(
+    (input: CreateHouseholdInput): Household | null => {
+      try {
+        const now = new Date().toISOString();
+        // Issue #1931: when an auth user is available, use *their* id so the
+        // owner member maps back to the signed-in account.  Otherwise fall
+        // back to a random UUID for demo/unauth flows.
+        const ownerId = authUser?.id?.trim() ? authUser.id : crypto.randomUUID();
+        // Prefer the OAuth name, then email — never expose a raw UUID.
+        const ownerDisplayName =
+          (authUser?.name && authUser.name.trim().length > 0 ? authUser.name.trim() : null) ??
+          (authUser?.email && authUser.email.trim().length > 0 ? authUser.email.trim() : null);
 
-      const ownerMember: HouseholdMember = {
-        id: crypto.randomUUID(),
-        householdId: newHousehold.id,
-        userId: ownerId,
-        displayName: null,
-        role: 'OWNER',
-        joinedAt: now,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-        syncVersion: 1,
-        isSynced: false,
-      };
+        const newHousehold: Household = {
+          id: crypto.randomUUID(),
+          name: input.name.trim(),
+          ownerId,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+          syncVersion: 1,
+          isSynced: false,
+        };
 
-      saveToStorage(STORAGE_KEY_HOUSEHOLD, newHousehold);
-      saveToStorage(STORAGE_KEY_MEMBERS, [ownerMember]);
+        const ownerMember: HouseholdMember = {
+          id: crypto.randomUUID(),
+          householdId: newHousehold.id,
+          userId: ownerId,
+          displayName: ownerDisplayName,
+          role: 'OWNER',
+          joinedAt: now,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+          syncVersion: 1,
+          isSynced: false,
+        };
 
-      setHousehold(newHousehold);
-      setMembers([ownerMember]);
-      return newHousehold;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create household.');
-      return null;
-    }
-  }, []);
+        saveToStorage(STORAGE_KEY_HOUSEHOLD, newHousehold);
+        saveToStorage(STORAGE_KEY_MEMBERS, [ownerMember]);
+
+        setHousehold(newHousehold);
+        setMembers([ownerMember]);
+        return newHousehold;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create household.');
+        return null;
+      }
+    },
+    [authUser?.id, authUser?.name, authUser?.email],
+  );
 
   // -- Invitation flow (#1779) --
   const inviteMember = useCallback(
@@ -623,4 +642,22 @@ export function useHousehold(): UseHouseholdResult {
     setSharedGoal: setSharedGoalFn,
     refresh,
   };
+}
+
+/**
+ * Read the current auth user without throwing when no AuthProvider is mounted.
+ *
+ * The auth context throws by design (so misuse is caught early), but the
+ * household hook is also exercised in unit tests that intentionally mount
+ * components in isolation.  We swallow that error and return `null` rather
+ * than forcing every test to wrap children in `<AuthProvider>`.
+ *
+ * Issue #1931.
+ */
+function useOptionalAuthUser(): { id: string; email: string; name?: string } | null {
+  try {
+    return useAuth().user;
+  } catch {
+    return null;
+  }
 }

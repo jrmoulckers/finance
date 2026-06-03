@@ -641,10 +641,59 @@
  * Invitation code display
  * ------------------------------------------------------------------------- */
 
-.household-invitation-item__code {
+.household-invitation-item__code-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.household-invitation-item__code-label {
   font-size: var(--type-scale-caption-font-size);
   color: var(--semantic-text-secondary);
-  font-family: monospace;
+  font-weight: var(--font-weight-medium);
+  text-transform: none;
+}
+
+.household-invitation-item__code {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-primary);
+  background: var(--semantic-surface-subtle, var(--semantic-surface-secondary));
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+  transition:
+    background 120ms ease-in-out,
+    border-color 120ms ease-in-out;
+}
+
+.household-invitation-item__code:hover,
+.household-invitation-item__code:focus-visible {
+  background: var(--semantic-surface-hover, var(--semantic-surface-tertiary));
+  border-color: var(--semantic-border-emphasis, var(--semantic-border-default));
+}
+
+.household-invitation-item__code:focus-visible {
+  outline: 2px solid var(--semantic-focus-ring, var(--semantic-action-primary));
+  outline-offset: 2px;
+}
+
+.household-invitation-item__code-text {
+  font-family:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-weight: var(--font-weight-medium);
+}
+
+.household-invitation-item__code-hint {
+  font-size: calc(var(--type-scale-caption-font-size) * 0.85);
+  color: var(--semantic-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 /* ---------------------------------------------------------------------------
