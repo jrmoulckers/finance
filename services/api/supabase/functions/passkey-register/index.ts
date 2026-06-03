@@ -17,7 +17,6 @@
  *   WEBAUTHN_ORIGIN           — Expected origin (e.g. "https://app.finance.example.com")
  */
 
-import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import {
   generateRegistrationOptions,
@@ -56,7 +55,7 @@ async function getAuthenticatedUser(req: Request): Promise<{ id: string; email: 
   return { id: user.id, email: user.email ?? '' };
 }
 
-serve(async (req: Request): Promise<Response> => {
+export const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return handleCorsPreflightRequest(req);
@@ -298,4 +297,6 @@ serve(async (req: Request): Promise<Response> => {
       headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
-});
+};
+
+if (import.meta.main) Deno.serve(handler);

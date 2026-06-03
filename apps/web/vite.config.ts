@@ -98,6 +98,10 @@ function allowServiceWorkerRootScope(): Plugin {
   };
 }
 
+const functionsProxyTarget = process.env.VITE_FUNCTIONS_PROXY_TARGET ?? 'http://127.0.0.1:54321';
+const authProxyTarget =
+  process.env.VITE_AUTH_PROXY_TARGET ?? `${functionsProxyTarget}/functions/v1`;
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), copySqlJsWasm(), swPrecacheManifest(), allowServiceWorkerRootScope()],
@@ -166,20 +170,21 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: false,
-    // Proxy `/api/auth/*` to the local Supabase Edge Functions runtime
-    // (#1886). Same-origin proxying preserves HttpOnly cookie path
-    // matching (cookies use Path=/api/auth) and avoids CORS preflight
-    // entirely. In production these endpoints will be served from the
-    // same origin as the web app via Azure Front Door / nginx, so the
-    // client-side URL stays the same and no proxy is needed there.
+    // Proxy auth and Edge Function calls to the local Supabase runtime.
+    // Same-origin proxying preserves cookie path matching and avoids CORS
+    // preflights in dev. Production routes `/functions/v1/*` through Caddy.
     proxy: {
+      '/functions/v1': {
+        target: functionsProxyTarget,
+        changeOrigin: true,
+      },
       '/api/auth': {
-        target: process.env.VITE_AUTH_PROXY_TARGET ?? 'http://localhost:54321/functions/v1',
+        target: authProxyTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/auth\//, '/auth-'),
       },
       '/api/account': {
-        target: process.env.VITE_AUTH_PROXY_TARGET ?? 'http://localhost:54321/functions/v1',
+        target: authProxyTarget,
         changeOrigin: true,
         rewrite: (path) =>
           path
