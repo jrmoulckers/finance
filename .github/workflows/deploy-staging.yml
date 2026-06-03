@@ -209,16 +209,14 @@ jobs:
             docker compose -f deploy/docker-compose.yml up -d --remove-orphans \
               || echo "::warning::compose up reported non-zero (deps may be transiently unhealthy)"
 
-            # Hot-reload Caddy with the freshly pulled Caddyfile. Bind-mounted
-            # files don't trigger container restart, so without this, CSP /
-            # header / route updates silently never take effect.
-            CADDY_CID=\$(docker compose -f deploy/docker-compose.yml ps -q caddy)
-            if [ -n "\$CADDY_CID" ]; then
-              docker exec "\$CADDY_CID" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile \
-                || echo "::warning::caddy reload failed (config may be invalid)"
-            else
-              echo "::warning::caddy container not found; skipped reload"
-            fi
+            # Ensure Caddy picks up any bind-mounted Caddyfile changes.
+            # Bind-mounted files don't trigger container restart, and
+            # `caddy reload` requires a healthy admin API (port 2019) which
+            # may be intermittently unresponsive. A full container restart
+            # is fast (<3s, no TLS re-issuance) and guarantees the new
+            # Caddyfile is parsed fresh.
+            docker compose -f deploy/docker-compose.yml restart caddy \
+              || echo "::warning::caddy restart failed"
 
             docker compose -f deploy/docker-compose.yml ps
           DEPLOY
