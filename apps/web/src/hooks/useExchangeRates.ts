@@ -22,6 +22,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ExchangeRate, ExchangeRateProvider } from '../lib/currency/exchange-rate-types';
 import { ExchangeRateService } from '../lib/currency/exchange-rate-service';
 import { getCacheTimestamp } from '../lib/currency/rate-cache';
+import { isNetworkError } from '../lib/network/network-errors';
+import { useOfflineStatus } from './useOfflineStatus';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,6 +41,8 @@ export interface UseExchangeRatesResult {
   lastUpdated: string | null;
   /** Name of the active rate provider. */
   providerName: string;
+  /** `true` when exchange-rate requests have degraded due to connectivity. */
+  isOffline: boolean;
   /** Convert an amount (cents) from one currency to another. */
   convert: (amount: number, from: string, to: string) => Promise<number>;
   /** Get the exchange rate for a pair. */
@@ -75,6 +79,7 @@ export function useExchangeRates(
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, number>>({});
   const [refreshToken, setRefreshToken] = useState(0);
+  const { isOffline, reportNetworkFailure, clearNetworkFailure } = useOfflineStatus();
 
   // Stable service ref — recreate only when provider changes
   const serviceRef = useRef<ExchangeRateService | null>(null);
@@ -95,13 +100,19 @@ export function useExchangeRates(
       try {
         const allRates = await service.getAllRates(baseCurrency);
         if (!cancelled) {
+          clearNetworkFailure();
           setRates(allRates);
           setLastUpdated(getCacheTimestamp() ?? new Date().toISOString());
           setOverrides(service.getUserOverrides());
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load exchange rates.');
+          if (isNetworkError(err)) {
+            reportNetworkFailure();
+            setError(null);
+          } else {
+            setError(err instanceof Error ? err.message : 'Failed to load exchange rates.');
+          }
         }
       } finally {
         if (!cancelled) {
@@ -115,7 +126,7 @@ export function useExchangeRates(
     return () => {
       cancelled = true;
     };
-  }, [baseCurrency, refreshToken, service]);
+  }, [baseCurrency, clearNetworkFailure, refreshToken, reportNetworkFailure, service]);
 
   const refresh = useCallback(() => {
     setRefreshToken((t) => t + 1);
@@ -123,17 +134,34 @@ export function useExchangeRates(
 
   const convert = useCallback(
     async (amount: number, from: string, to: string): Promise<number> => {
-      const result = await service.convert(amount, from, to);
-      return result.amount;
+      try {
+        const result = await service.convert(amount, from, to);
+        clearNetworkFailure();
+        return result.amount;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          reportNetworkFailure();
+        }
+        throw err;
+      }
     },
-    [service],
+    [clearNetworkFailure, reportNetworkFailure, service],
   );
 
   const getRate = useCallback(
     async (from: string, to: string): Promise<ExchangeRate> => {
-      return service.getRate(from, to);
+      try {
+        const rate = await service.getRate(from, to);
+        clearNetworkFailure();
+        return rate;
+      } catch (err) {
+        if (isNetworkError(err)) {
+          reportNetworkFailure();
+        }
+        throw err;
+      }
     },
-    [service],
+    [clearNetworkFailure, reportNetworkFailure, service],
   );
 
   const setOverride = useCallback(
@@ -166,6 +194,7 @@ export function useExchangeRates(
     error,
     lastUpdated,
     providerName: service.providerName,
+    isOffline,
     convert,
     getRate,
     setOverride,

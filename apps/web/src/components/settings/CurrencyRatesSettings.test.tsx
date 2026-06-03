@@ -33,6 +33,7 @@ const defaultHookResult: UseExchangeRatesResult = {
   error: null,
   lastUpdated: '2025-01-15T12:00:00.000Z',
   providerName: 'Static Rates',
+  isOffline: false,
   convert: mockConvert,
   getRate: mockGetRate,
   setOverride: mockSetOverride,

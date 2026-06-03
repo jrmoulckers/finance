@@ -11,6 +11,7 @@ import {
   LoadingSpinner,
 } from '../components/common';
 import { TransactionForm } from '../components/forms';
+import { OfflineBanner } from '../components/OfflineBanner';
 import {
   TransactionFilters,
   TransactionSort,
@@ -438,6 +439,7 @@ export const TransactionsPage: React.FC = () => {
 
   return (
     <>
+      <OfflineBanner />
       <div className="transactions-page-header">
         <h2
           style={{

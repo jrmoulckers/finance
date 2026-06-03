@@ -17,6 +17,7 @@ vi.mock('../hooks/useExchangeRates', () => ({
     error: null,
     lastUpdated: null,
     providerName: 'Static Rates',
+    isOffline: false,
     convert: vi.fn().mockResolvedValue(0),
     getRate: vi.fn(),
     setOverride: vi.fn(),

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { AccountForm } from '../components/forms';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { useAccounts } from '../hooks';
 import { useExchangeRates } from '../hooks/useExchangeRates';
 import type { AccountType } from '../kmp/bridge';
@@ -161,10 +162,12 @@ export const AccountsPage: React.FC = () => {
       }}
     />
   );
+  const offlineBanner = <OfflineBanner />;
 
   if (loading) {
     return (
       <>
+        {offlineBanner}
         <h2 className="page-heading">Accounts</h2>
         <div className="page-loading">
           <LoadingSpinner label="Loading accounts" />
@@ -176,6 +179,7 @@ export const AccountsPage: React.FC = () => {
   if (error) {
     return (
       <>
+        {offlineBanner}
         <h2 className="page-heading">Accounts</h2>
         <ErrorBanner message={error} onRetry={refresh} />
       </>
@@ -185,6 +189,7 @@ export const AccountsPage: React.FC = () => {
   if (accounts.length === 0) {
     return (
       <>
+        {offlineBanner}
         {pageHeader}
         <EmptyState
           title="No accounts yet"
@@ -197,6 +202,7 @@ export const AccountsPage: React.FC = () => {
 
   return (
     <>
+      {offlineBanner}
       {pageHeader}
       <p className="page-summary" aria-live="polite">
         Net worth: <MultiCurrencyTotal accounts={accounts} colorize />

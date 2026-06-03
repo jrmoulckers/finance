@@ -369,7 +369,7 @@ describe('DashboardPage loading state (#1334)', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: /loading/i })).toBeInTheDocument();
   });
 
   it('does not show summary cards while loading', () => {

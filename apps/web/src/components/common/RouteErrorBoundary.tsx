@@ -53,10 +53,20 @@ export class RouteErrorBoundary extends Component<
 
   /** Report the error to monitoring. */
   public override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    const route = this.props.routeName ?? 'unknown';
+    const componentStack = errorInfo.componentStack?.trim() || 'Unavailable';
+
+    // eslint-disable-next-line no-console -- dev visibility; captureError below feeds monitoring
+    console.error('RouteErrorBoundary caught route error', {
+      route,
+      error,
+      componentStack,
+    });
+
     captureError(error, {
       boundary: 'RouteErrorBoundary',
-      route: this.props.routeName ?? 'unknown',
-      componentStack: errorInfo.componentStack?.trim() || 'Unavailable',
+      route,
+      componentStack,
     });
   }
 
