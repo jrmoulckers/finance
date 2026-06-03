@@ -83,6 +83,40 @@ function swPrecacheManifest(): Plugin {
   };
 }
 
+/**
+ * Workaround for an interaction between `@vitejs/plugin-react@6.x` and
+ * `vite@8.x` where the React Fast Refresh preamble is never injected into
+ * `index.html` in dev. The oxc-based JSX transform still emits calls to
+ * `$RefreshSig$()` and `$RefreshReg$()` at the top of every module, so the
+ * browser throws `ReferenceError: $RefreshSig$ is not defined` and the app
+ * never mounts. Inject the preamble ourselves before any other transform.
+ *
+ * Mirrors the code at https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/src/index.ts
+ */
+function injectReactRefreshPreamble(): Plugin {
+  return {
+    name: 'inject-react-refresh-preamble',
+    apply: 'serve',
+    transformIndexHtml: {
+      order: 'pre',
+      handler() {
+        return [
+          {
+            tag: 'script',
+            attrs: { type: 'module' },
+            children: [
+              'import { injectIntoGlobalHook } from "/@react-refresh";',
+              'injectIntoGlobalHook(window);',
+              'window.$RefreshReg$ = () => {};',
+              'window.$RefreshSig$ = () => (type) => type;',
+            ].join('\n'),
+          },
+        ];
+      },
+    },
+  };
+}
+
 function allowServiceWorkerRootScope(): Plugin {
   return {
     name: 'allow-service-worker-root-scope',
@@ -100,7 +134,13 @@ function allowServiceWorkerRootScope(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), copySqlJsWasm(), swPrecacheManifest(), allowServiceWorkerRootScope()],
+  plugins: [
+    react(),
+    injectReactRefreshPreamble(),
+    copySqlJsWasm(),
+    swPrecacheManifest(),
+    allowServiceWorkerRootScope(),
+  ],
 
   resolve: {
     alias: {
