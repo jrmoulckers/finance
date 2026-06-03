@@ -21,7 +21,6 @@ import {
   CONSENT_LABELS,
   CURRENT_POLICY_VERSION,
   exportConsentRecord,
-  clearConsentData,
   type ConsentCategory,
 } from '../../lib/consent-storage';
 import './privacy-settings.css';
@@ -53,7 +52,6 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
   onDeleteAccount,
 }) => {
   const { consent, updateCategory } = useConsent();
-  const [deleteConfirmation, setDeleteConfirmation] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   const handleToggle = useCallback(
@@ -85,20 +83,24 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
     }
   }, []);
 
+  /**
+   * Open the typed-DELETE confirmation modal (issue #1961).
+   *
+   * Previously this component rendered its own two-step inline
+   * "Are you sure? Yes, Delete Everything" confirmation that had NO
+   * typed-confirmation gate. The "Yes" button only invoked
+   * `onDeleteAccount` (which then opened the proper typed-DELETE
+   * modal), but the duplicated copy made users believe the deletion
+   * had already fired. We've collapsed it into a single click that
+   * hands off to the parent's typed-DELETE modal — the single source
+   * of truth for the gate.
+   */
   const handleDeleteRequest = useCallback(() => {
-    if (!deleteConfirmation) {
-      setDeleteConfirmation(true);
-      return;
-    }
-
-    // Clear local consent data
-    clearConsentData();
-
-    // Trigger the account deletion callback (server-side)
+    // Local consent state is cleared in SettingsPage's success path
+    // (after the server confirms the deletion) via localStorage.clear().
+    // Clearing here would race with the user cancelling the modal.
     onDeleteAccount?.();
-
-    setDeleteConfirmation(false);
-  }, [deleteConfirmation, onDeleteAccount]);
+  }, [onDeleteAccount]);
 
   return (
     <section aria-label="Privacy & Data" className="page-section">
@@ -194,47 +196,15 @@ export const PrivacySettings: React.FC<PrivacySettingsProps> = ({
           recommend exporting your data first.
         </p>
 
-        {deleteConfirmation ? (
-          <div role="alert" className="privacy-settings__delete-confirm">
-            <p className="privacy-settings__delete-confirm-title">
-              Are you absolutely sure? This will permanently delete:
-            </p>
-            <ul className="privacy-settings__delete-confirm-list">
-              <li>All accounts, transactions, budgets, and goals</li>
-              <li>Your household membership and shared data</li>
-              <li>All consent records and preferences</li>
-              <li>Your user account on our servers</li>
-            </ul>
-            <div className="privacy-settings__delete-actions">
-              <button
-                type="button"
-                className="settings-item settings-item--button settings-item--destructive"
-                onClick={handleDeleteRequest}
-                aria-label="Confirm account deletion"
-              >
-                <span className="settings-item__label">Yes, Delete Everything</span>
-              </button>
-              <button
-                type="button"
-                className="settings-item settings-item--button"
-                onClick={() => setDeleteConfirmation(false)}
-                aria-label="Cancel account deletion"
-              >
-                <span className="settings-item__label">Cancel</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="settings-item settings-item--button settings-item--destructive"
-            onClick={handleDeleteRequest}
-            aria-label="Request account deletion"
-          >
-            <span className="settings-item__label">Delete My Account & Data</span>
-            <span className="settings-item__value">&rarr;</span>
-          </button>
-        )}
+        <button
+          type="button"
+          className="settings-item settings-item--button settings-item--destructive"
+          onClick={handleDeleteRequest}
+          aria-label="Delete my account and all data"
+        >
+          <span className="settings-item__label">Delete My Account & Data</span>
+          <span className="settings-item__value">&rarr;</span>
+        </button>
       </div>
     </section>
   );

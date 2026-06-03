@@ -294,6 +294,11 @@ export const SettingsPage: React.FC = () => {
   }, [db, isDeleteModalOpen, user?.id]);
 
   const handleAccountDelete = useCallback(async () => {
+    // Defense-in-depth: even though the destructive button is disabled
+    // when the typed token does not match, re-check here in case the
+    // disabled attribute is bypassed via devtools or assistive tech
+    // (issue #1961). The server also independently re-validates the
+    // confirmation in services/api/supabase/functions/account-delete.
     if (!isAuthenticated || deleteConfirmationText !== 'DELETE' || isDeletingAccount) {
       return;
     }
@@ -305,11 +310,22 @@ export const SettingsPage: React.FC = () => {
       const response = await fetch('/api/account/delete-account', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ confirmation: 'DELETE' }),
       });
 
-      if (!response.ok) {
+      // Issue #1960 — the production Caddy config used to be missing the
+      // `/api/account/*` proxy rule, so this fetch fell through to the
+      // SPA fallback and returned 200 OK with an HTML body. The client
+      // happily treated that as "success" and cleared the local cache
+      // while the server had not deleted a single row.
+      //
+      // Guard against any future regression of that nature by insisting
+      // the response is either 204 (success contract — see the edge
+      // function), or a non-HTML payload with a 2xx status.
+      const contentType = response.headers.get('Content-Type') ?? '';
+      const looksLikeHtml = contentType.includes('text/html');
+      if (!response.ok || looksLikeHtml) {
         throw new Error('Account deletion failed.');
       }
 
@@ -809,20 +825,43 @@ export const SettingsPage: React.FC = () => {
               This permanently deletes your account, personal finance data, passkeys, connected bank
               links, audit entries, and authentication record. This cannot be undone.
             </p>
-            <ul aria-label="Household deletion impact" className="settings-item__description">
+            {/*
+              Household + shared-data consequences (issue #1962).
+              The wording is mirrored by the server-side policy in
+              services/api/supabase/functions/account-delete/index.ts —
+              update both together.
+            */}
+            <ul aria-label="What will be deleted" className="settings-item__description">
               <li>
-                {householdImpact.soloOwnedHouseholds} solo-owned household
-                {householdImpact.soloOwnedHouseholds === 1 ? '' : 's'} will be permanently deleted.
+                All your personal accounts, transactions, budgets, goals, categories, settings, and
+                audit records will be permanently deleted.
               </li>
+              {householdImpact.soloOwnedHouseholds > 0 && (
+                <li>
+                  {householdImpact.soloOwnedHouseholds} household
+                  {householdImpact.soloOwnedHouseholds === 1 ? '' : 's'} you solely own will be
+                  deleted entirely — any other invited members lose access.
+                </li>
+              )}
+              {householdImpact.memberHouseholds > 0 && (
+                <li>
+                  You will be removed from {householdImpact.memberHouseholds} shared household
+                  {householdImpact.memberHouseholds === 1 ? '' : 's'}. The household itself stays,
+                  but every transaction, budget, goal, account, and category you contributed there
+                  is deleted. Data owned by other members is untouched.
+                </li>
+              )}
+              {householdImpact.pendingInvites > 0 && (
+                <li>
+                  {householdImpact.pendingInvites} pending invitation
+                  {householdImpact.pendingInvites === 1 ? '' : 's'} you sent will be revoked.
+                </li>
+              )}
               <li>
-                {householdImpact.memberHouseholds} household
-                {householdImpact.memberHouseholds === 1 ? '' : 's'} will keep existing; you will be
-                removed and ownership transfers if needed.
+                Your sign-in identity (Google / Apple / email / passkey) is unlinked. Signing in
+                again creates a brand-new empty account.
               </li>
-              <li>
-                {householdImpact.pendingInvites} pending invite
-                {householdImpact.pendingInvites === 1 ? '' : 's'} will be revoked.
-              </li>
+              <li>This action cannot be undone.</li>
             </ul>
             <label className="settings-item__label" htmlFor="delete-account-confirmation">
               Type DELETE to confirm
@@ -834,7 +873,15 @@ export const SettingsPage: React.FC = () => {
               onChange={(event) => setDeleteConfirmationText(event.target.value)}
               disabled={isDeletingAccount}
               autoComplete="off"
+              aria-describedby="delete-account-confirmation-help"
             />
+            <p
+              id="delete-account-confirmation-help"
+              className="settings-item__description"
+              style={{ marginTop: 'var(--spacing-1, 0.25rem)' }}
+            >
+              The deletion button stays disabled until you type the word DELETE exactly.
+            </p>
             {deleteError && (
               <p role="alert" style={{ color: 'var(--semantic-danger, #dc2626)' }}>
                 {deleteError}
@@ -870,6 +917,7 @@ export const SettingsPage: React.FC = () => {
                   void handleAccountDelete();
                 }}
                 disabled={deleteConfirmationText !== 'DELETE' || isDeletingAccount}
+                aria-disabled={deleteConfirmationText !== 'DELETE' || isDeletingAccount}
                 style={{
                   border: '1px solid var(--semantic-danger, #dc2626)',
                   background: 'var(--semantic-danger, #dc2626)',
@@ -878,6 +926,10 @@ export const SettingsPage: React.FC = () => {
                   padding: '0.625rem 1rem',
                   borderRadius: 'var(--radius-md, 0.5rem)',
                   opacity: deleteConfirmationText !== 'DELETE' || isDeletingAccount ? 0.55 : 1,
+                  cursor:
+                    deleteConfirmationText !== 'DELETE' || isDeletingAccount
+                      ? 'not-allowed'
+                      : 'pointer',
                 }}
               >
                 {isDeletingAccount ? 'Deleting…' : 'Yes, Delete Everything'}

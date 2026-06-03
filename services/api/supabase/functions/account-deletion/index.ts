@@ -1,6 +1,31 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
+ * @deprecated Use `account-delete/index.ts` instead (#1949, #1960).
+ *
+ * This handler implemented a SOFT-DELETE (setting `deleted_at` columns
+ * and shredding encryption keys) which left the underlying rows in
+ * place. The same OAuth identity could sign back in and PowerSync
+ * would re-hydrate every row because none of them were actually
+ * removed — the alpha-blocker reported in #1960.
+ *
+ * The active production handler is `account-delete/index.ts`, which
+ *   - deletes (not soft-deletes) every user-owned row,
+ *   - clears references that point at the user from other peoples'
+ *     audit / invitation rows,
+ *   - calls `supabase.auth.admin.deleteUser` LAST so re-sign-in goes
+ *     through a fresh signup flow,
+ * and is the one exposed at `/api/account/delete-account` via both the
+ * Vite dev proxy and the production Caddyfile.
+ *
+ * This file is kept for backwards compatibility with the public
+ * OpenAPI spec (`services/api/docs/README.md`) and existing audit-log
+ * references, but it is NOT mounted in `serve-functions.ts` and MUST
+ * NOT be re-wired without first replacing its soft-delete behaviour
+ * with a real cascade.
+ */
+
+/**
  * Account Deletion Edge Function (#98)
  *
  * GDPR Article 17 — Right to Erasure.

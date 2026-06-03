@@ -94,6 +94,45 @@
 	}
 
 	# -------------------------------------------------------------------------
+	# /api/auth/* and /api/account/* — same-origin façade for Edge Functions.
+	#
+	# The Vite dev server proxies these to /functions/v1/auth-* and
+	# /functions/v1/account-* (apps/web/vite.config.ts). In production we
+	# need the exact same rewrite or every `/api/auth/*` and
+	# `/api/account/*` call falls through to the SPA `handle {}` block at
+	# the bottom of this file, returns 200 OK with the index.html body,
+	# and the client reads `response.ok === true`. That is what caused
+	# #1960 — "Delete account" reported success while the server never
+	# ran the edge function and zero rows were deleted.
+	#
+	# We use `uri replace` (not `handle_path`) because the edge function
+	# routing matches on the path *after* the `/functions/v1/` prefix has
+	# been stripped server-side; rewriting in-place preserves cookies and
+	# the Host header.
+	# -------------------------------------------------------------------------
+	@apiAuth path /api/auth/*
+	handle @apiAuth {
+		uri replace /api/auth/ /functions/v1/auth-
+		reverse_proxy edge-functions:9000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# /api/account/delete-account must be rewritten BEFORE the generic
+	# /api/account/ rule because the edge function directory is named
+	# `account-delete` (without the trailing word "account"), not
+	# `account-delete-account`. Order matters here — Caddy evaluates the
+	# `uri replace` directives in the order they appear.
+	@apiAccount path /api/account/*
+	handle @apiAccount {
+		uri replace /api/account/delete-account /functions/v1/account-delete
+		uri replace /api/account/ /functions/v1/account-
+		reverse_proxy edge-functions:9000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -------------------------------------------------------------------------
 	# Health check endpoint (no auth required)
 	# -------------------------------------------------------------------------
 	handle /health {

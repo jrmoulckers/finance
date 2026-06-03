@@ -66,6 +66,72 @@ Deno.test('account-delete cascades sole-household data before deleting auth user
   assert(response.headers.get('Set-Cookie')?.includes('finance_refresh='));
 });
 
+Deno.test('account-delete rejects when confirmation token is missing', async () => {
+  withEnv();
+  const fake = createFakeSupabase();
+  const handler = createAccountDeleteHandler({
+    createClient: () => fake.client as unknown as AdminClient,
+  });
+
+  const response = await handler(
+    new Request('http://localhost/functions/v1/account-delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer access-token',
+      },
+      body: JSON.stringify({}),
+    }),
+  );
+
+  assertEquals(response.status, 400);
+  assertEquals(fake.operations.length, 0);
+  assertEquals(fake.deletedAuthUser, null);
+});
+
+Deno.test(
+  'account-delete does NOT silently transfer shared-household ownership (#1962)',
+  async () => {
+    withEnv();
+    const fake = createFakeSupabase({ sharedHousehold: true });
+    const handler = createAccountDeleteHandler({
+      createClient: () => fake.client as unknown as AdminClient,
+    });
+
+    const response = await handler(
+      new Request('http://localhost/functions/v1/account-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer access-token',
+        },
+        body: JSON.stringify({ confirmation: 'DELETE' }),
+      }),
+    );
+
+    assertEquals(response.status, 204);
+    // The household entity itself must NOT be deleted (others still use it).
+    assert(!fake.operations.includes('delete:households'));
+    // The user's contributed rows in the shared household ARE deleted via
+    // owner_id (USER_OWNED_TABLES loop).
+    assert(fake.operations.includes('delete:transactions'));
+    assert(fake.operations.includes('delete:budgets'));
+    assert(fake.operations.includes('delete:goals'));
+    // created_by is cleared, NOT reassigned to another member.
+    const householdUpdates = fake.updates.filter((u) => u.table === 'households');
+    assert(householdUpdates.length > 0, 'expected an update to households');
+    for (const update of householdUpdates) {
+      assertEquals(
+        update.values.created_by,
+        null,
+        'created_by must be null, never another user_id',
+      );
+    }
+    // Auth user is still deleted last.
+    assertEquals(fake.deletedAuthUser, 'user-1');
+  },
+);
+
 function withEnv(): void {
   Deno.env.set('SUPABASE_URL', 'http://localhost:54321');
   Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', 'service-role');
@@ -74,7 +140,9 @@ function withEnv(): void {
 
 interface FakeState {
   operations: string[];
+  updates: Array<{ table: string; values: Record<string, unknown> }>;
   deletedAuthUser: string | null;
+  sharedHousehold: boolean;
 }
 
 interface FakeClient {
@@ -88,8 +156,17 @@ interface FakeClient {
   from: (table: string) => FakeQuery;
 }
 
-function createFakeSupabase(): FakeState & { client: FakeClient } {
-  const state: FakeState = { operations: [], deletedAuthUser: null };
+interface FakeSupabaseOptions {
+  sharedHousehold?: boolean;
+}
+
+function createFakeSupabase(opts: FakeSupabaseOptions = {}): FakeState & { client: FakeClient } {
+  const state: FakeState = {
+    operations: [],
+    updates: [],
+    deletedAuthUser: null,
+    sharedHousehold: opts.sharedHousehold === true,
+  };
   const client = {
     auth: {
       getUser: (_token: string) =>
@@ -113,8 +190,12 @@ function createFakeSupabase(): FakeState & { client: FakeClient } {
   };
   return {
     operations: state.operations,
+    updates: state.updates,
     get deletedAuthUser() {
       return state.deletedAuthUser;
+    },
+    get sharedHousehold() {
+      return state.sharedHousehold;
     },
     client,
   };
@@ -123,6 +204,7 @@ function createFakeSupabase(): FakeState & { client: FakeClient } {
 class FakeQuery {
   private op: 'select' | 'delete' | 'update' | null = null;
   private filters = new Map<string, unknown>();
+  private updateValues: Record<string, unknown> | null = null;
 
   constructor(
     private readonly table: string,
@@ -140,9 +222,11 @@ class FakeQuery {
     return this;
   }
 
-  update(_values: Record<string, unknown>): this {
+  update(values: Record<string, unknown>): this {
     this.op = 'update';
+    this.updateValues = values;
     this.state.operations.push(`update:${this.table}`);
+    this.state.updates.push({ table: this.table, values });
     return this;
   }
 
@@ -180,7 +264,8 @@ class FakeQuery {
       return [{ household_id: 'household-1' }];
     }
     if (this.table === 'household_members' && this.filters.get('household_id') === 'household-1') {
-      return [];
+      // When shared, return another member; when sole, return empty.
+      return this.state.sharedHousehold ? [{ user_id: 'user-2' }] : [];
     }
     if (this.table === 'households') {
       return [{ id: 'household-1', created_by: 'user-1' }];

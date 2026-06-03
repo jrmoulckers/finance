@@ -66,6 +66,29 @@
 	}
 
 	# -------------------------------------------------------------------------
+	# /api/auth/* and /api/account/* — same-origin façade for Edge Functions.
+	# Mirrors the Vite dev proxy (apps/web/vite.config.ts). Without these
+	# rewrites the client fetches fall through to the SPA fallback and
+	# silently "succeed" with an HTML body — see #1960.
+	# -------------------------------------------------------------------------
+	@apiAuth path /api/auth/*
+	handle @apiAuth {
+		uri replace /api/auth/ /functions/v1/auth-
+		reverse_proxy edge-functions:9000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	@apiAccount path /api/account/*
+	handle @apiAccount {
+		uri replace /api/account/delete-account /functions/v1/account-delete
+		uri replace /api/account/ /functions/v1/account-
+		reverse_proxy edge-functions:9000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# -------------------------------------------------------------------------
 	# Health check endpoint (no auth required)
 	# -------------------------------------------------------------------------
 	handle /health {
