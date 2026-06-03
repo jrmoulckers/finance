@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const logoutMock = vi.fn<() => Promise<void>>();
@@ -261,23 +261,81 @@ describe('SettingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /delete my account & data/i }));
 
     const dialog = await screen.findByRole('dialog', { name: /delete account and all data/i });
-    expect(dialog).toHaveTextContent('1 solo-owned household will be permanently deleted.');
-    expect(dialog).toHaveTextContent('2 households will keep existing; you will be removed');
-    expect(dialog).toHaveTextContent('3 pending invites will be revoked.');
+    // New copy per #1962 — only renders bullets when the count is non-zero
+    // so the wording stays accurate for users with no households at all.
+    expect(dialog).toHaveTextContent('1 household you solely own will be deleted entirely');
+    expect(dialog).toHaveTextContent('You will be removed from 2 shared households');
+    expect(dialog).toHaveTextContent(
+      'every transaction, budget, goal, account, and category you contributed there is deleted',
+    );
+    expect(dialog).toHaveTextContent('3 pending invitations you sent will be revoked');
+    expect(dialog).toHaveTextContent(/sign-in identity.*unlinked/i);
+    expect(dialog).toHaveTextContent(/cannot be undone/i);
 
     const destructiveButton = screen.getByRole('button', { name: /yes, delete everything/i });
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
 
+    // Issue #1961 — destructive button must be both visually disabled AND
+    // announced as disabled to screen readers via aria-disabled.
     expect(destructiveButton).toBeDisabled();
+    expect(destructiveButton).toHaveAttribute('aria-disabled', 'true');
     expect(destructiveButton).toHaveClass('settings-account-delete__confirm-button--danger');
     expect(cancelButton).toHaveClass('settings-account-delete__cancel-button--secondary');
+
+    // Bypass attempt — click the disabled button. The native disabled
+    // attribute already blocks the click, but defense-in-depth means the
+    // handler also early-returns. Either way, no fetch must fire.
+    fireEvent.click(destructiveButton);
+    expect(fetch).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/type delete to confirm/i), {
+      target: { value: 'delete' }, // wrong case
+    });
+    expect(destructiveButton).toBeDisabled();
+    expect(destructiveButton).toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.change(screen.getByLabelText(/type delete to confirm/i), {
       target: { value: 'DELETE' },
     });
 
     expect(destructiveButton).toBeEnabled();
+    expect(destructiveButton).toHaveAttribute('aria-disabled', 'false');
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('treats an HTML 200 response from the delete endpoint as a failure (#1960)', async () => {
+    // Production Caddy used to be missing the /api/account/* proxy rule,
+    // so this fetch silently returned 200 OK + index.html. The client
+    // must NOT treat that as a successful deletion.
+    const htmlResponse = {
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'Content-Type': 'text/html; charset=utf-8' }),
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(htmlResponse));
+    const assignSpy = vi.fn();
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, assign: assignSpy },
+    });
+
+    render(<SettingsPage />);
+    fireEvent.click(screen.getByRole('button', { name: /delete my account & data/i }));
+    await screen.findByRole('dialog', { name: /delete account and all data/i });
+
+    fireEvent.change(screen.getByLabelText(/type delete to confirm/i), {
+      target: { value: 'DELETE' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /yes, delete everything/i }));
+
+    // Yield to the in-flight async handler.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(clearLocalAccountDataMock).not.toHaveBeenCalled();
+    expect(assignSpy).not.toHaveBeenCalled();
+    expect(await screen.findByText(/couldn't delete account/i)).toBeInTheDocument();
   });
 
   describe('Display settings section', () => {

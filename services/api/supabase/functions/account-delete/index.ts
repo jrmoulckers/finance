@@ -209,30 +209,51 @@ async function deleteAccountData(
   supabase: SupabaseAdminClient,
   user: AuthenticatedUser,
 ): Promise<void> {
+  // ---------------------------------------------------------------------
+  // Household deletion policy (issue #1962):
+  //
+  //   - Solely-owned households (no other members): DELETED entirely.
+  //     All child data rows and the household record itself are removed.
+  //
+  //   - Shared households (>=1 other member): the user's MEMBERSHIP is
+  //     removed and any data they personally owned (transactions,
+  //     budgets, goals, categories, accounts, etc.) is DELETED via the
+  //     USER_OWNED_TABLES loop below. The household entity and the
+  //     other members' data stay intact.
+  //
+  //     We intentionally do NOT silently transfer household ownership
+  //     ("created_by") to another member — that surprised collaborators
+  //     in alpha. If the deleting user was the recorded creator, the
+  //     historical `created_by` reference is cleared (best-effort —
+  //     ignored if the column is NOT NULL). The household continues to
+  //     exist for the remaining members.
+  //
+  // Delete order (must not change without testing — see #1960):
+  //   1. Resolve household memberships & ownership.
+  //   2. Crypto-shred user encryption keys (defense in depth — even if
+  //      a later step fails, encrypted data is unrecoverable).
+  //   3. Crypto-shred sole-household keys + delete sole-household rows.
+  //   4. Detach shared-household ownership references for this user.
+  //   5. Delete invitation + audit references that point at this user.
+  //   6. Delete every user-owned row across USER_OWNED_TABLES.
+  //   7. Delete the user's `household_members` rows and `users` row.
+  //   8. (Caller) Delete the Supabase Auth user LAST — keeps re-sign-in
+  //      flowing through a fresh signup so no data resurrects.
+  // ---------------------------------------------------------------------
   const plans = await loadHouseholdPlans(supabase, user.id);
   const soleHouseholdIds = plans
     .filter((plan) => plan.otherMemberUserIds.length === 0)
     .map((plan) => plan.householdId);
   const sharedHouseholds = plans.filter((plan) => plan.otherMemberUserIds.length > 0);
 
-  for (const plan of sharedHouseholds) {
-    if (plan.createdBy === user.id) {
-      await updateRows(
-        supabase,
-        'households',
-        { created_by: plan.otherMemberUserIds[0] },
-        'id',
-        plan.householdId,
-      );
-    }
-  }
-
+  // Step 2: crypto-shred user encryption keys (best-effort).
   await bestEffortRpc(supabase, 'destroy_user_encryption_keys', {
     p_user_id: user.id,
     p_destroyed_by: user.id,
     p_reason: 'account_deletion',
   });
 
+  // Step 3: crypto-shred + purge sole-owned households.
   for (const householdId of soleHouseholdIds) {
     await bestEffortRpc(supabase, 'destroy_household_encryption_keys', {
       p_household_id: householdId,
@@ -249,6 +270,22 @@ async function deleteAccountData(
     await deleteByIn(supabase, 'households', 'id', soleHouseholdIds);
   }
 
+  // Step 4: detach this user from shared-household ownership without
+  // silently re-assigning to another member. Best-effort — if `created_by`
+  // is NOT NULL the column update fails harmlessly and the household
+  // simply keeps its historical creator pointer (the user row itself is
+  // deleted below, so any FK from `households.created_by → users.id`
+  // would have prevented account deletion long before we got here; in
+  // practice the column is nullable, see #1962 discussion).
+  for (const plan of sharedHouseholds) {
+    if (plan.createdBy === user.id) {
+      await bestEffortUpdate(supabase, 'households', { created_by: null }, 'id', plan.householdId);
+    }
+  }
+
+  // Step 5: clear references that point AT this user from other people's
+  // invitations / audit rows. Without this, FK constraints can block the
+  // delete and the user's `users` row would survive.
   await updateRows(
     supabase,
     'household_invitations',
@@ -261,14 +298,21 @@ async function deleteAccountData(
   await deleteAnomalyRulesOwnedByUser(supabase, user.id);
   await deleteReferralRows(supabase, user.id);
 
+  // Step 6: delete every user-owned row. For shared households this is
+  // how the user's contributed data (transactions, budgets, etc.) is
+  // removed — they all carry `owner_id = user.id`.
   for (const [table, column] of USER_OWNED_TABLES) {
     await deleteByEq(supabase, table, column, user.id);
   }
 
+  // Step 7: remove key material and membership rows, then the user row.
   await deleteByEq(supabase, 'encryption_keys', 'destroyed_by', user.id);
   await deleteByEq(supabase, 'encryption_keys', 'user_id', user.id);
   await deleteByEq(supabase, 'household_members', 'user_id', user.id);
   await deleteByEq(supabase, 'users', 'id', user.id);
+  // Step 8 (`supabase.auth.admin.deleteUser`) is invoked by the caller —
+  // ALWAYS LAST so a partial failure leaves the auth row in place and
+  // the user can retry from a known state.
 }
 
 async function loadHouseholdPlans(
@@ -396,6 +440,33 @@ async function updateRows(
 ): Promise<void> {
   const { error } = await supabase.from(table).update(values).eq(column, value);
   if (error) throw error;
+}
+
+/**
+ * Like updateRows but never throws — used for "nice to clear" pointers
+ * such as `households.created_by` where a NOT NULL constraint or RLS
+ * failure must NOT block the rest of the deletion. Logged for review.
+ */
+async function bestEffortUpdate(
+  supabase: SupabaseAdminClient,
+  table: string,
+  values: Record<string, unknown>,
+  column: string,
+  value: string,
+): Promise<void> {
+  const { error } = await supabase.from(table).update(values).eq(column, value);
+  if (error) {
+    console.warn(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'warn',
+        function: 'account-delete',
+        table,
+        column,
+        message: error.message,
+      }),
+    );
+  }
 }
 
 function unauthorized(req: Request): Response {
