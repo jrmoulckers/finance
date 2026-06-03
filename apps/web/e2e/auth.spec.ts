@@ -20,8 +20,23 @@ test('unauthenticated redirect to login', async ({ page }) => {
   await expect(page).toHaveURL(/login/);
 });
 
-test('login page links to signup', async ({ page }) => {
+test('login page links to signup and forgot password', async ({ page }) => {
   await page.goto('/login');
   const signupLink = page.getByRole('link', { name: /sign up/i });
   await expect(signupLink).toBeVisible();
+  await expect(page.getByRole('link', { name: /forgot password/i })).toBeVisible();
+});
+
+test('forgot password page renders', async ({ page }) => {
+  await page.goto('/forgot-password');
+  await expect(page.getByRole('heading', { name: /finance/i })).toBeVisible();
+  await expect(page.getByText('Reset your password', { exact: true })).toBeVisible();
+  await expect(page.getByLabel(/email/i)).toBeVisible();
+});
+
+test('reset password page renders invalid-link state', async ({ page }) => {
+  await page.goto('/reset-password');
+  await expect(page.getByRole('heading', { name: /finance/i })).toBeVisible();
+  await expect(page.getByText(/choose a new password/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: /update password/i })).toBeDisabled();
 });

@@ -49,6 +49,7 @@ describe('LoginPage', () => {
   beforeEach(() => {
     authState.loginWithEmail.mockReset();
     authState.loginWithPasskey.mockReset();
+    authState.loginWithOAuth.mockReset();
     authState.isAuthenticated = false;
     authState.isLoading = false;
     authState.error = null;
@@ -76,6 +77,27 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/signup');
+  });
+
+  it('shows forgot password link without requiring a login error', () => {
+    renderLoginPage();
+
+    expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute(
+      'href',
+      '/forgot-password',
+    );
+  });
+
+  it('shows password-updated banner from route state', () => {
+    render(
+      <MemoryRouter
+        initialEntries={[{ pathname: '/login', state: { message: 'Password updated.' } }]}
+      >
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('Password updated.');
   });
 
   it('shows passkey button when webAuthn supported', () => {

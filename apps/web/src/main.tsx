@@ -34,7 +34,8 @@ const authConfig = {
   logoutEndpoint: import.meta.env.VITE_LOGOUT_ENDPOINT ?? '/api/auth/logout',
   onUnauthenticated: () => {
     // Redirect to login when session expires or user is not authenticated
-    if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+    const publicAuthPaths = new Set(['/login', '/signup', '/forgot-password', '/reset-password']);
+    if (!publicAuthPaths.has(window.location.pathname)) {
       window.location.href = '/login';
     }
   },
@@ -82,13 +83,13 @@ initMonitoring();
 /**
  * Routes that render without waiting for SQLite-WASM initialisation.
  *
- * Pre-auth pages (login, signup) never access the database, so gating them
+ * Pre-auth pages (login, signup, password reset) never access the database, so gating them
  * behind DatabaseProvider unnecessarily blocks rendering.  On CI especially
  * (headless Chromium + OPFS + WASM fetch), initialisation can exceed 60 s
  * and cause the E2E authenticatedPage fixture to time out before the login
  * form ever appears.
  */
-const PRE_AUTH_ROUTES = new Set(['/login', '/signup']);
+const PRE_AUTH_ROUTES = new Set(['/login', '/signup', '/forgot-password', '/reset-password']);
 
 /**
  * Conditionally wraps children in DatabaseProvider.

@@ -30,6 +30,8 @@ const DataImportWizard = lazy(() => import('./pages/DataImportWizardPage'));
 const ReceiptOcr = lazy(() => import('./pages/ReceiptOcrPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPassword = lazy(() => import('./pages/ResetPasswordPage'));
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
 const Watchlists = lazy(() => import('./pages/WatchlistsPage'));
 const Household = lazy(() => import('./pages/HouseholdPage'));
@@ -159,6 +161,24 @@ export const AppRoutes: FC = () => (
             <Signup />
           </RouteBoundary>
         </RedirectIfAuthenticated>
+      }
+    />
+    <Route
+      path="/forgot-password"
+      element={
+        <RedirectIfAuthenticated>
+          <RouteBoundary name="Forgot Password">
+            <ForgotPassword />
+          </RouteBoundary>
+        </RedirectIfAuthenticated>
+      }
+    />
+    <Route
+      path="/reset-password"
+      element={
+        <RouteBoundary name="Reset Password">
+          <ResetPassword />
+        </RouteBoundary>
       }
     />
 
