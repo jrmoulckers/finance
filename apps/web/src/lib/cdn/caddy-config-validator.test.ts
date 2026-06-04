@@ -150,13 +150,16 @@ describe('Security headers in Caddyfile', () => {
     expect(caddyfileContent).toContain('-Server');
   });
 
-  it('CSP disallows eval', () => {
-    // The CSP should not contain unsafe-eval
+  it('CSP disallows generic eval (allows wasm-unsafe-eval for WebAssembly)', () => {
+    // CSP must not enable arbitrary `eval()`. The Caddyfile is allowed to use
+    // the narrower `'wasm-unsafe-eval'` directive which only permits
+    // WebAssembly instantiation (required by sqlite-wasm) — see #1972.
     const cspLine = caddyfileContent
       .split('\n')
       .find((line) => line.includes('Content-Security-Policy'));
     expect(cspLine).toBeDefined();
-    expect(cspLine).not.toContain('unsafe-eval');
+    // Match a quoted `'unsafe-eval'` that is NOT preceded by `wasm-`.
+    expect(cspLine).not.toMatch(/(?<!wasm-)'unsafe-eval'/);
   });
 
   it('CSP allows worker-src self for service worker', () => {
