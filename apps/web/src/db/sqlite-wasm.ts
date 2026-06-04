@@ -98,6 +98,8 @@ export interface QueryResult<T = Row> {
 
 /** Minimal interface exposed by the underlying WASM driver. */
 export interface SqliteDb {
+  /** Storage backend used by this connection, when known. */
+  readonly backend?: StorageBackend;
   exec(sql: string, params?: unknown[]): void;
   selectAll(sql: string, params?: unknown[]): Row[];
   selectOne(sql: string, params?: unknown[]): Row | null;
@@ -870,6 +872,107 @@ function execRaw(
   }
 }
 
+type SavepointOperation = 'release' | 'rollback';
+type SavepointLogBackend = StorageBackend | 'unknown';
+
+const NO_ACTIVE_TRANSACTION_ERROR = 'no transaction is active';
+
+function isNoActiveTransactionError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.toLowerCase().includes(NO_ACTIVE_TRANSACTION_ERROR);
+}
+
+function getSavepointIdentifier(savepointName: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(savepointName)) {
+    throw new Error(`Invalid SQLite savepoint name: ${savepointName}`);
+  }
+  return savepointName;
+}
+
+function logSuppressedNoActiveTransaction(
+  operation: SavepointOperation,
+  backend: SavepointLogBackend,
+  savepointName: string,
+  error: unknown,
+): void {
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[sqlite-wasm] Suppressed ${operation} failure for savepoint "${savepointName}" on ${backend} backend: ${NO_ACTIVE_TRANSACTION_ERROR}.`,
+    { backend, savepointName, error },
+  );
+}
+
+function execSavepointControl(
+  executor: () => void,
+  operation: SavepointOperation,
+  backend: SavepointLogBackend,
+  savepointName: string,
+): void {
+  try {
+    executor();
+  } catch (error) {
+    if (isNoActiveTransactionError(error)) {
+      logSuppressedNoActiveTransaction(operation, backend, savepointName, error);
+      return;
+    }
+    throw error;
+  }
+}
+
+function releaseSavepointRaw(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  driver: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  backend: StorageBackend,
+  savepointName: string,
+): void {
+  const savepointIdentifier = getSavepointIdentifier(savepointName);
+  execSavepointControl(
+    () => execRaw(driver, db, `RELEASE SAVEPOINT ${savepointIdentifier};`, backend),
+    'release',
+    backend,
+    savepointName,
+  );
+}
+
+function rollbackToSavepointRaw(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  driver: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  backend: StorageBackend,
+  savepointName: string,
+): void {
+  const savepointIdentifier = getSavepointIdentifier(savepointName);
+  execSavepointControl(
+    () => execRaw(driver, db, `ROLLBACK TO SAVEPOINT ${savepointIdentifier};`, backend),
+    'rollback',
+    backend,
+    savepointName,
+  );
+}
+
+export function releaseSavepoint(db: SqliteDb, savepointName: string): void {
+  const savepointIdentifier = getSavepointIdentifier(savepointName);
+  execSavepointControl(
+    () => execute(db, `RELEASE SAVEPOINT ${savepointIdentifier};`),
+    'release',
+    db.backend ?? 'unknown',
+    savepointName,
+  );
+}
+
+export function rollbackToSavepoint(db: SqliteDb, savepointName: string): void {
+  const savepointIdentifier = getSavepointIdentifier(savepointName);
+  execSavepointControl(
+    () => execute(db, `ROLLBACK TO SAVEPOINT ${savepointIdentifier};`),
+    'rollback',
+    db.backend ?? 'unknown',
+    savepointName,
+  );
+}
+
 function selectRaw(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   driver: any,
@@ -964,7 +1067,9 @@ async function runMigrations(
       continue;
     }
 
-    execRaw(driver, db, 'BEGIN TRANSACTION;', backend);
+    const savepointName = `migration_${migration.version}`;
+    const savepointIdentifier = getSavepointIdentifier(savepointName);
+    execRaw(driver, db, `SAVEPOINT ${savepointIdentifier};`, backend);
     try {
       for (const stmt of migration.up) {
         if (stmt.includes(MIGRATIONS_TABLE) && stmt.trimStart().startsWith('CREATE TABLE')) {
@@ -981,12 +1086,13 @@ async function runMigrations(
         [migration.version, migration.label, new Date().toISOString()],
       );
 
-      execRaw(driver, db, 'COMMIT;', backend);
+      releaseSavepointRaw(driver, db, backend, savepointName);
     } catch (err) {
       try {
-        execRaw(driver, db, 'ROLLBACK;', backend);
+        rollbackToSavepointRaw(driver, db, backend, savepointName);
+        releaseSavepointRaw(driver, db, backend, savepointName);
       } catch {
-        // ROLLBACK may fail if SQLite already auto-rolled back the transaction.
+        // Preserve the original migration error if SQLite already ended the savepoint.
       }
       throw new Error(
         `Migration v${migration.version} (${migration.label}) failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -994,6 +1100,16 @@ async function runMigrations(
       );
     }
   }
+}
+
+export async function _runMigrationsForTesting(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  driver: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  backend: StorageBackend = 'indexeddb',
+): Promise<void> {
+  await runMigrations(driver, db, backend);
 }
 
 // ---------------------------------------------------------------------------
@@ -1072,6 +1188,8 @@ function createDbWrapper(
   backend: StorageBackend,
 ): SqliteDb {
   return {
+    backend,
+
     exec(sql: string, params?: unknown[]): void {
       execRaw(driver, db, sql, backend, params);
       if (backend === 'indexeddb') {

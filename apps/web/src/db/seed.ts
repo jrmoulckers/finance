@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { Currencies, cents, type LocalDate, type TransactionType } from '../kmp/bridge';
-import { execute, queryOne, type SqliteDb } from './sqlite-wasm';
+import {
+  execute,
+  queryOne,
+  releaseSavepoint,
+  rollbackToSavepoint,
+  type SqliteDb,
+} from './sqlite-wasm';
 import {
   createAccount,
   createBudget,
@@ -58,7 +64,8 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
   const householdMemberId = crypto.randomUUID();
   const monthStart = firstDayOfCurrentMonth();
 
-  execute(db, 'BEGIN TRANSACTION');
+  const seedSavepoint = 'seed_init';
+  execute(db, `SAVEPOINT ${seedSavepoint}`);
 
   try {
     execute(
@@ -490,12 +497,13 @@ export async function seedDatabase(db: SqliteDb): Promise<void> {
       accountId: checking.id,
     });
 
-    execute(db, 'COMMIT');
+    releaseSavepoint(db, seedSavepoint);
   } catch (error) {
     try {
-      execute(db, 'ROLLBACK');
+      rollbackToSavepoint(db, seedSavepoint);
+      releaseSavepoint(db, seedSavepoint);
     } catch {
-      // ROLLBACK may fail if SQLite already auto-rolled back the transaction.
+      // Preserve the original seed error if SQLite already ended the savepoint.
     }
     throw error;
   }
