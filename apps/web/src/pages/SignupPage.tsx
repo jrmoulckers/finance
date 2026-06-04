@@ -42,12 +42,7 @@ interface SubmitMessage {
  */
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    signupWithEmail,
-    isLoading,
-    isDemoMode: demoMode,
-    isAuthenticated,
-  } = useAuth();
+  const { signupWithEmail, isLoading, isDemoMode: demoMode, isAuthenticated } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
