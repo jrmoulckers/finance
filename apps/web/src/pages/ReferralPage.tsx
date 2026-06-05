@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { AppIcon, type IconName } from '../components/icons';
 
 import { useReferral } from '../hooks/useReferral';
 import type { ReferralStatus } from '../hooks/useReferral';
@@ -27,11 +28,11 @@ const STATUS_LABELS: Record<ReferralStatus, string> = {
   rewarded: 'Rewarded',
 };
 
-const STATUS_ICONS: Record<ReferralStatus, string> = {
-  pending: '⏳',
-  signed_up: '✉️',
-  activated: '✅',
-  rewarded: '🎁',
+const STATUS_ICONS: Record<ReferralStatus, IconName> = {
+  pending: 'calendar',
+  signed_up: 'mail',
+  activated: 'check',
+  rewarded: 'gift',
 };
 
 // ---------------------------------------------------------------------------
@@ -142,7 +143,13 @@ export function ReferralPage() {
               onClick={handleCopy}
               aria-label={copied ? 'Link copied!' : 'Copy referral link'}
             >
-              {copied ? '✓ Copied!' : 'Copy Link'}
+              {copied ? (
+                <>
+                  <AppIcon name="check" /> Copied!
+                </>
+              ) : (
+                'Copy Link'
+              )}
             </button>
             <button
               className="referral-button referral-button--primary"
@@ -170,7 +177,7 @@ export function ReferralPage() {
             {referrals.map((referral) => (
               <li key={referral.id} className="referral-list__item">
                 <span className="referral-list__icon" aria-hidden="true">
-                  {STATUS_ICONS[referral.status]}
+                  <AppIcon name={STATUS_ICONS[referral.status]} />
                 </span>
                 <div className="referral-list__info">
                   <span className="referral-list__email">{referral.referredEmail}</span>

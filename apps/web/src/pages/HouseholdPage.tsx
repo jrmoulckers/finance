@@ -12,6 +12,7 @@
 
 import { useCallback, useState } from 'react';
 import type { FormEvent } from 'react';
+import { AppIcon } from '../components/icons';
 
 import { useAuth } from '../auth/auth-context';
 import { useToast } from '../components/common/Toast';
@@ -315,7 +316,13 @@ export function HouseholdPage() {
                 <li key={member.id} className="household-member-item">
                   <div className="household-member-item__info">
                     <span className="household-member-item__avatar" aria-hidden="true">
-                      {member.role === 'OWNER' ? '👑' : member.role === 'ADMIN' ? '🛡️' : '👤'}
+                      {member.role === 'OWNER' ? (
+                        <AppIcon name="medal" />
+                      ) : member.role === 'ADMIN' ? (
+                        <AppIcon name="shield" />
+                      ) : (
+                        <AppIcon name="account" />
+                      )}
                     </span>
                     <div>
                       <span className="household-member-item__name">{name}</span>
@@ -534,7 +541,15 @@ export function HouseholdPage() {
                   <span
                     className={`household-sharing-item__badge ${isShared ? 'household-sharing-item__badge--shared' : 'household-sharing-item__badge--private'}`}
                   >
-                    {isShared ? '🔓 Shared' : '🔒 Private'}
+                    {isShared ? (
+                      <>
+                        <AppIcon name="unlock" /> Shared
+                      </>
+                    ) : (
+                      <>
+                        <AppIcon name="lock" /> Private
+                      </>
+                    )}
                   </span>
                 </div>
                 <button
@@ -719,11 +734,11 @@ export function HouseholdPage() {
                     <td key={role} className="household-permissions-table__cell">
                       {checkPermission(role, perm) ? (
                         <span aria-label="Allowed" title="Allowed">
-                          ✅
+                          <AppIcon name="check" />
                         </span>
                       ) : (
                         <span aria-label="Denied" title="Denied">
-                          ❌
+                          <AppIcon name="x" />
                         </span>
                       )}
                     </td>

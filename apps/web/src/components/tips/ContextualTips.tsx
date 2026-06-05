@@ -19,6 +19,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { FinancialTip, TipSeverity } from './tips-engine';
 import './tips.css';
+import { AppIcon, type IconName } from '../icons';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -37,17 +38,17 @@ export interface ContextualTipsProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getSeverityIcon(severity: TipSeverity): string {
+function getSeverityIcon(severity: TipSeverity): IconName {
   switch (severity) {
     case 'critical':
-      return '🚨';
+      return 'alert-triangle';
     case 'warning':
-      return '⚠️';
+      return 'alert-circle';
     case 'success':
-      return '✅';
+      return 'check';
     case 'info':
     default:
-      return '💡';
+      return 'info';
   }
 }
 
@@ -91,7 +92,7 @@ export const ContextualTips: React.FC<ContextualTipsProps> = ({
             aria-label={`${getSeverityLabel(tip.severity)}: ${tip.title}`}
           >
             <div className="contextual-tip__icon" aria-hidden="true">
-              {getSeverityIcon(tip.severity)}
+              <AppIcon name={getSeverityIcon(tip.severity)} />
             </div>
             <div className="contextual-tip__content">
               <h3 className="contextual-tip__title">{tip.title}</h3>

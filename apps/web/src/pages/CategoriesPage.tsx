@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { AppIcon, type IconName } from '../components/icons';
 
 import { ConfirmDialog, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { CategoryForm } from '../components/forms';
@@ -9,35 +10,35 @@ import { useCategories, useTransactions } from '../hooks';
 import type { Category } from '../kmp/bridge';
 import '../styles/pages.css';
 
-function getCategoryIcon(iconName: string | null | undefined): string {
-  if (iconName && iconName.length <= 4) {
-    return iconName;
-  }
+function isCustomCategoryIcon(iconName: string | null | undefined): iconName is string {
+  return Boolean(iconName && iconName.length <= 4);
+}
 
+function getCategoryIcon(iconName: string | null | undefined): IconName {
   switch (iconName) {
     case 'utensils':
     case 'food':
     case 'groceries':
-      return '🛒';
+      return 'shopping-cart';
     case 'home':
-      return '🏠';
+      return 'home';
     case 'car':
     case 'transport':
-      return '🚗';
+      return 'car';
     case 'film':
     case 'entertainment':
-      return '🎬';
+      return 'film';
     case 'wallet':
     case 'income':
-      return '💰';
+      return 'wallet';
     case 'bolt':
     case 'utilities':
-      return '⚡';
+      return 'lightning';
     case 'heart':
     case 'health':
-      return '💊';
+      return 'heart-pulse';
     default:
-      return '🏷️';
+      return 'tag';
   }
 }
 
@@ -252,7 +253,11 @@ export const CategoriesPage: React.FC = () => {
                             background: category.color ?? 'var(--semantic-background-secondary)',
                           }}
                         >
-                          {getCategoryIcon(category.icon)}
+                          {isCustomCategoryIcon(category.icon) ? (
+                            category.icon
+                          ) : (
+                            <AppIcon name={getCategoryIcon(category.icon)} />
+                          )}
                         </span>
                         <h3 className="category-card__name">{category.name}</h3>
                       </div>

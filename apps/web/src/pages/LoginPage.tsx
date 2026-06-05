@@ -255,7 +255,7 @@ export const LoginPage: React.FC = () => {
                   <span>Signing in...</span>
                 </>
               ) : (
-                '🔐 Sign in with biometrics'
+                'Sign in with biometrics'
               )}
             </button>
 

@@ -17,6 +17,7 @@ import { useInsights } from '../hooks/useInsights';
 import { formatCurrency } from '../lib/currency';
 import type { InsightsData, MonthComparison, Recommendation } from '../hooks/useInsights';
 import './InsightsPage.css';
+import { AppIcon, type IconName } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -94,12 +95,12 @@ interface RecommendationCardProps {
 }
 
 const RecommendationCard: React.FC<RecommendationCardProps> = ({ recommendation }) => {
-  const icon =
+  const icon: IconName =
     recommendation.severity === 'success'
-      ? '✅'
+      ? 'check'
       : recommendation.severity === 'warning'
-        ? '⚠️'
-        : '💡';
+        ? 'alert-triangle'
+        : 'info';
 
   return (
     <article
@@ -108,7 +109,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({ recommendation 
       role="listitem"
     >
       <span className="insights-recommendation__icon" aria-hidden="true">
-        {icon}
+        <AppIcon name={icon} />
       </span>
       <div className="insights-recommendation__content">
         <h3 className="insights-recommendation__title">{recommendation.title}</h3>

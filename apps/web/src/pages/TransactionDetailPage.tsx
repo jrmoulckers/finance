@@ -2,6 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AppIcon } from '../components/icons';
 
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { TransactionForm } from '../components/forms';
@@ -238,7 +239,7 @@ export const TransactionDetailPage: React.FC = () => {
             onClick={() => setIsFormOpen(true)}
             aria-label={`Edit ${label}`}
           >
-            <span aria-hidden="true">✏️</span>
+            <AppIcon name="edit" />
           </button>
           <button
             type="button"
@@ -246,7 +247,7 @@ export const TransactionDetailPage: React.FC = () => {
             onClick={() => setDeletingTransaction(transaction)}
             aria-label={`Delete ${label}`}
           >
-            <span aria-hidden="true">🗑️</span>
+            <AppIcon name="trash" />
           </button>
         </div>
       </div>
@@ -413,7 +414,7 @@ export const TransactionDetailPage: React.FC = () => {
                       className="icon-button"
                       style={{ fontSize: '0.875rem', padding: 'var(--spacing-1)' }}
                     >
-                      {copiedRefId ? '✓' : '📋'}
+                      {copiedRefId ? <AppIcon name="check" /> : <AppIcon name="clipboard" />}
                     </button>
                   </dd>
                 </div>

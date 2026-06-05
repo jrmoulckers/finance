@@ -16,21 +16,22 @@ import type { CreateBudgetInput } from '../db/repositories/budgets';
 import { useBudgets, useCategories } from '../hooks';
 import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
+import { AppIcon, type IconName } from '../components/icons';
 
-function getBudgetIcon(iconName: string | null | undefined): string {
+function getBudgetIcon(iconName: string | null | undefined): IconName {
   switch (iconName) {
     case 'utensils':
-      return '🛒';
+      return 'shopping-cart';
     case 'home':
-      return '🏠';
+      return 'home';
     case 'car':
-      return '🚗';
+      return 'car';
     case 'film':
-      return '🎬';
+      return 'film';
     case 'wallet':
-      return '💰';
+      return 'wallet';
     default:
-      return '📊';
+      return 'chart-bar';
   }
 }
 
@@ -321,8 +322,7 @@ export const BudgetsPage: React.FC = () => {
                               style={{ textDecoration: 'none', color: 'inherit' }}
                               aria-label={`View details for ${budget.name}`}
                             >
-                              <span aria-hidden="true">{getBudgetIcon(category?.icon)}</span>{' '}
-                              {budget.name}
+                              <AppIcon name={getBudgetIcon(category?.icon)} /> {budget.name}
                             </Link>
                           </p>
                           <p
@@ -350,7 +350,7 @@ export const BudgetsPage: React.FC = () => {
                             aria-label={`Edit ${budget.name}`}
                             title="Edit budget"
                           >
-                            <span aria-hidden="true">✏️</span>
+                            <AppIcon name="edit" />
                           </button>
                           <button
                             type="button"
@@ -359,7 +359,7 @@ export const BudgetsPage: React.FC = () => {
                             aria-label={`Delete ${budget.name}`}
                             title="Delete budget"
                           >
-                            <span aria-hidden="true">🗑️</span>
+                            <AppIcon name="trash" />
                           </button>
                         </div>
                       </div>
@@ -372,7 +372,7 @@ export const BudgetsPage: React.FC = () => {
                               : 'var(--semantic-status-negative)',
                         }}
                       >
-                        <span aria-hidden="true">{budgetStatus.icon} </span>
+                        <AppIcon name={budgetStatus.icon} />{' '}
                         {remainingAmount >= 0 ? (
                           <>
                             <CurrencyDisplay

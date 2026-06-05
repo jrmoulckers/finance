@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
+import { AppIcon } from '../icons';
 
 import type { Milestone, MilestoneType } from '../../hooks/useMilestones';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
@@ -95,7 +96,7 @@ export const MilestoneCelebration: React.FC<MilestoneCelebrationProps> = ({
 
       {/* Icon */}
       <span className="milestone-celebration__icon" aria-hidden="true">
-        {milestone.icon}
+        <AppIcon name={milestone.icon} />
       </span>
 
       {/* Text */}

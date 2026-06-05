@@ -20,6 +20,7 @@ import { useConsent } from '../hooks/useConsent';
 import { useConsentHistory } from '../hooks/useConsentHistory';
 import type { FeatureAvailability } from '../lib/local-only-mode';
 import './OnboardingPage.css';
+import { AppIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -42,7 +43,7 @@ const FeatureRow: React.FC<{
     >
       {feature.availableLocalOnly ? (
         <span className="onboarding__check" aria-hidden="true">
-          ✓
+          <AppIcon name="check" />
         </span>
       ) : (
         <span className="onboarding__cross" aria-hidden="true">
@@ -52,7 +53,7 @@ const FeatureRow: React.FC<{
     </td>
     <td className="onboarding__feature-cell" aria-label="Available with Account">
       <span className="onboarding__check" aria-hidden="true">
-        ✓
+        <AppIcon name="check" />
       </span>
     </td>
   </tr>
@@ -131,17 +132,25 @@ const OnboardingPage: React.FC = () => {
             {/* Local Only */}
             <article className="onboarding__path-card onboarding__path-card--local">
               <div className="onboarding__path-icon" aria-hidden="true">
-                🔒
+                <AppIcon name="lock" />
               </div>
               <h2 className="onboarding__path-title">Local Only</h2>
               <p className="onboarding__path-description">
                 Keep everything on this device. No account needed. No data ever leaves your browser.
               </p>
               <ul className="onboarding__path-features" role="list">
-                <li role="listitem">✓ Full budgeting & tracking</li>
-                <li role="listitem">✓ All data stays on device</li>
-                <li role="listitem">✓ No email required</li>
-                <li role="listitem">✓ Works completely offline</li>
+                <li role="listitem">
+                  <AppIcon name="check" /> Full budgeting & tracking
+                </li>
+                <li role="listitem">
+                  <AppIcon name="check" /> All data stays on device
+                </li>
+                <li role="listitem">
+                  <AppIcon name="check" /> No email required
+                </li>
+                <li role="listitem">
+                  <AppIcon name="check" /> Works completely offline
+                </li>
               </ul>
               <button
                 type="button"
@@ -158,17 +167,25 @@ const OnboardingPage: React.FC = () => {
             {/* Account */}
             <article className="onboarding__path-card onboarding__path-card--account">
               <div className="onboarding__path-icon" aria-hidden="true">
-                ☁️
+                <AppIcon name="cloud" />
               </div>
               <h2 className="onboarding__path-title">Create Account</h2>
               <p className="onboarding__path-description">
                 Sign up to sync across devices and share with household members.
               </p>
               <ul className="onboarding__path-features" role="list">
-                <li role="listitem">✓ Everything in Local Only</li>
-                <li role="listitem">✓ Sync across devices</li>
-                <li role="listitem">✓ Household sharing</li>
-                <li role="listitem">✓ Automatic cloud backups</li>
+                <li role="listitem">
+                  <AppIcon name="check" /> Everything in Local Only
+                </li>
+                <li role="listitem">
+                  <AppIcon name="check" /> Sync across devices
+                </li>
+                <li role="listitem">
+                  <AppIcon name="check" /> Household sharing
+                </li>
+                <li role="listitem">
+                  <AppIcon name="check" /> Automatic cloud backups
+                </li>
               </ul>
               <button
                 type="button"
@@ -257,7 +274,7 @@ const OnboardingPage: React.FC = () => {
       <div className="onboarding__container onboarding__container--narrow">
         <div className="onboarding__complete">
           <div className="onboarding__complete-icon" aria-hidden="true">
-            🎉
+            <AppIcon name="sparkles" />
           </div>
           <h1 className="onboarding__title">You&apos;re All Set!</h1>
           <p className="onboarding__subtitle">
@@ -265,13 +282,15 @@ const OnboardingPage: React.FC = () => {
           </p>
           <div className="onboarding__complete-details">
             <p className="onboarding__complete-item">
-              🔒 <strong>Local-only mode</strong> — no data leaves your browser
+              <AppIcon name="lock" /> <strong>Local-only mode</strong> — no data leaves your browser
             </p>
             <p className="onboarding__complete-item">
-              💾 <strong>SQLite storage</strong> — fast, reliable, offline-first
+              <AppIcon name="database" /> <strong>SQLite storage</strong> — fast, reliable,
+              offline-first
             </p>
             <p className="onboarding__complete-item">
-              🔄 <strong>Upgrade anytime</strong> — create an account later to enable sync
+              <AppIcon name="refresh" /> <strong>Upgrade anytime</strong> — create an account later
+              to enable sync
             </p>
           </div>
           <button

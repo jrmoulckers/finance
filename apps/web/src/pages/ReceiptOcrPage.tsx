@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useId, useMemo, useState } from 'react';
+import { AppIcon } from '../components/icons';
 
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
@@ -144,7 +145,7 @@ export const ReceiptOcrPage: React.FC = () => {
 
       {error !== null && (
         <div className="import-error-banner" role="alert">
-          <span aria-hidden="true">⚠️</span>
+          <AppIcon name="alert-triangle" />
           {error}
         </div>
       )}

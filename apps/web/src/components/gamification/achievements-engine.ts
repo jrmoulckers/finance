@@ -9,6 +9,8 @@
  * All monetary values are in cents (integers).
  */
 
+import type { IconName } from '../icons';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -27,8 +29,8 @@ export interface Achievement {
   readonly name: string;
   /** Description of how to earn this achievement. */
   readonly description: string;
-  /** Emoji icon for the badge. */
-  readonly icon: string;
+  /** Icon name for the badge. */
+  readonly icon: IconName;
   /** Category grouping. */
   readonly category: AchievementCategory;
   /** Current status. */
@@ -119,7 +121,7 @@ interface AchievementDefinition {
   id: string;
   name: string;
   description: string;
-  icon: string;
+  icon: IconName;
   category: AchievementCategory;
   check: (input: GamificationInput) => { unlocked: boolean; progress: number };
   points: number;
@@ -131,7 +133,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'first-transaction',
     name: 'First Step',
     description: 'Log your first transaction',
-    icon: '👣',
+    icon: 'account',
     category: 'tracking',
     check: (input) => ({
       unlocked: input.transactionCount >= 1,
@@ -143,7 +145,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'transaction-10',
     name: 'Getting Started',
     description: 'Log 10 transactions',
-    icon: '📝',
+    icon: 'edit',
     category: 'tracking',
     check: (input) => ({
       unlocked: input.transactionCount >= 10,
@@ -155,7 +157,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'transaction-100',
     name: 'Dedicated Tracker',
     description: 'Log 100 transactions',
-    icon: '📊',
+    icon: 'chart-bar',
     category: 'tracking',
     check: (input) => ({
       unlocked: input.transactionCount >= 100,
@@ -167,7 +169,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'transaction-500',
     name: 'Finance Master',
     description: 'Log 500 transactions',
-    icon: '🏆',
+    icon: 'trophy',
     category: 'tracking',
     check: (input) => ({
       unlocked: input.transactionCount >= 500,
@@ -179,7 +181,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'daily-streak-7',
     name: 'Week Warrior',
     description: 'Log transactions for 7 consecutive days',
-    icon: '🔥',
+    icon: 'flame',
     category: 'tracking',
     check: (input) => ({
       unlocked: input.longestDailyLoggingStreak >= 7,
@@ -191,7 +193,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'daily-streak-30',
     name: 'Monthly Champion',
     description: 'Log transactions for 30 consecutive days',
-    icon: '💪',
+    icon: 'trophy',
     category: 'tracking',
     check: (input) => ({
       unlocked: input.longestDailyLoggingStreak >= 30,
@@ -205,7 +207,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'first-budget',
     name: 'Budget Beginner',
     description: 'Create your first budget',
-    icon: '📋',
+    icon: 'clipboard',
     category: 'budgeting',
     check: (input) => ({
       unlocked: input.budgetCount >= 1,
@@ -217,7 +219,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'budget-under',
     name: 'Under Budget',
     description: 'Stay under budget for a month',
-    icon: '✨',
+    icon: 'sparkles',
     category: 'budgeting',
     check: (input) => ({
       unlocked: input.budgetAdherenceMonths >= 1,
@@ -229,7 +231,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'budget-streak-3',
     name: 'Budget Streak',
     description: 'Stay under budget for 3 consecutive months',
-    icon: '🎯',
+    icon: 'target',
     category: 'budgeting',
     check: (input) => ({
       unlocked: input.budgetAdherenceMonths >= 3,
@@ -243,7 +245,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'first-goal',
     name: 'Goal Setter',
     description: 'Create your first savings goal',
-    icon: '🎯',
+    icon: 'target',
     category: 'saving',
     check: (input) => ({
       unlocked: input.goalCount >= 1,
@@ -255,7 +257,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'goal-completed',
     name: 'Goal Crusher',
     description: 'Complete a savings goal',
-    icon: '🏅',
+    icon: 'medal',
     category: 'saving',
     check: (input) => ({
       unlocked: input.goalsCompleted >= 1,
@@ -267,7 +269,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'saved-1000',
     name: 'First Thousand',
     description: 'Save $1,000 across all goals',
-    icon: '💰',
+    icon: 'wallet',
     category: 'saving',
     check: (input) => ({
       unlocked: input.totalSaved >= 100000,
@@ -279,7 +281,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'saved-10000',
     name: 'Serious Saver',
     description: 'Save $10,000 across all goals',
-    icon: '💎',
+    icon: 'sparkles',
     category: 'saving',
     check: (input) => ({
       unlocked: input.totalSaved >= 1000000,
@@ -293,7 +295,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'first-account',
     name: 'Account Opener',
     description: 'Add your first account',
-    icon: '🏦',
+    icon: 'bank',
     category: 'milestone',
     check: (input) => ({
       unlocked: input.accountCount >= 1,
@@ -305,7 +307,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'multi-account',
     name: 'Diversified',
     description: 'Track 3 or more accounts',
-    icon: '🗂️',
+    icon: 'folder',
     category: 'milestone',
     check: (input) => ({
       unlocked: input.accountCount >= 3,
@@ -317,7 +319,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'category-organizer',
     name: 'Well Organized',
     description: 'Use 5 or more spending categories',
-    icon: '🏷️',
+    icon: 'tag',
     category: 'milestone',
     check: (input) => ({
       unlocked: input.categoriesUsed >= 5,
@@ -329,7 +331,7 @@ const ACHIEVEMENT_DEFINITIONS: AchievementDefinition[] = [
     id: 'positive-net-worth',
     name: 'In the Green',
     description: 'Achieve positive net worth',
-    icon: '🌿',
+    icon: 'leaf',
     category: 'milestone',
     check: (input) => ({
       unlocked: input.netWorth > 0 && input.accountCount > 0,

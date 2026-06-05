@@ -2,6 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AppIcon, type IconName } from '../components/icons';
 
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { BudgetForm } from '../components/forms';
@@ -19,20 +20,20 @@ const PERIOD_LABELS: Record<string, string> = {
   YEARLY: 'Yearly',
 };
 
-function getBudgetIcon(iconName: string | null | undefined): string {
+function getBudgetIcon(iconName: string | null | undefined): IconName {
   switch (iconName) {
     case 'utensils':
-      return '🛒';
+      return 'shopping-cart';
     case 'home':
-      return '🏠';
+      return 'home';
     case 'car':
-      return '🚗';
+      return 'car';
     case 'film':
-      return '🎬';
+      return 'film';
     case 'wallet':
-      return '💰';
+      return 'wallet';
     default:
-      return '📊';
+      return 'chart-bar';
   }
 }
 
@@ -148,7 +149,7 @@ export const BudgetDetailPage: React.FC = () => {
 
       <div className="page-header">
         <h2 className="page-heading">
-          <span aria-hidden="true">{getBudgetIcon(category?.icon)}</span> {budget.name}
+          <AppIcon name={getBudgetIcon(category?.icon)} /> {budget.name}
         </h2>
         <div className="page-actions">
           <button
@@ -157,7 +158,7 @@ export const BudgetDetailPage: React.FC = () => {
             onClick={() => setIsFormOpen(true)}
             aria-label={`Edit ${budget.name}`}
           >
-            ✏️ Edit
+            <AppIcon name="edit" /> Edit
           </button>
           <button
             type="button"
@@ -165,7 +166,7 @@ export const BudgetDetailPage: React.FC = () => {
             onClick={() => setDeletingBudget(budget)}
             aria-label={`Delete ${budget.name}`}
           >
-            🗑️ Delete
+            <AppIcon name="trash" /> Delete
           </button>
         </div>
       </div>
@@ -291,7 +292,7 @@ export const BudgetDetailPage: React.FC = () => {
                     : 'var(--semantic-status-negative)',
               }}
             >
-              <span aria-hidden="true">{budgetStatus.icon} </span>
+              <AppIcon name={budgetStatus.icon} />{' '}
               {budget.remainingAmount.amount >= 0 ? (
                 <>
                   <CurrencyDisplay

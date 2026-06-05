@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppIcon } from '../icons';
 
 import { useAuth } from '../../auth/auth-context';
 import {
@@ -232,7 +233,7 @@ export function PasskeySetupPrompt({ isOpen, onClose }: PasskeySetupPromptProps)
       >
         {/* Icon */}
         <div className="passkey-prompt__icon" aria-hidden="true">
-          🔐
+          <AppIcon name="shield" />
         </div>
 
         {/* Title */}

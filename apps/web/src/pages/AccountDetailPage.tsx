@@ -2,6 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AppIcon } from '../components/icons';
 
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { AccountDeleteDialog } from '../components/accounts';
@@ -87,7 +88,7 @@ export const AccountDetailPage: React.FC = () => {
             onClick={() => setIsFormOpen(true)}
             aria-label={`Edit ${account.name}`}
           >
-            ✏️ Edit
+            <AppIcon name="edit" /> Edit
           </button>
           <button
             type="button"
@@ -95,7 +96,7 @@ export const AccountDetailPage: React.FC = () => {
             onClick={() => setDeletingAccount(account)}
             aria-label={`Delete ${account.name}`}
           >
-            🗑️ Delete
+            <AppIcon name="trash" /> Delete
           </button>
         </div>
       </div>

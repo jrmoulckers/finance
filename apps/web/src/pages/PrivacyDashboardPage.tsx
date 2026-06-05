@@ -28,6 +28,7 @@ import {
   type ConsentCategory,
 } from '../lib/consent-storage';
 import './PrivacyDashboardPage.css';
+import { AppIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -156,21 +157,23 @@ const PrivacyDashboardPage: React.FC = () => {
                 aria-label={category.name}
               >
                 <div className="privacy-dashboard__category-icon" aria-hidden="true">
-                  {category.icon}
+                  <AppIcon name={category.icon} />
                 </div>
                 <div className="privacy-dashboard__category-content">
                   <h3 className="privacy-dashboard__category-name">{category.name}</h3>
                   <p className="privacy-dashboard__category-description">{category.description}</p>
                   <div className="privacy-dashboard__category-meta">
                     <span className="privacy-dashboard__category-storage">
-                      📦 {category.storageLocation}
+                      <AppIcon name="package" /> {category.storageLocation}
                     </span>
                     {category.leavesDevice ? (
                       <span className="privacy-dashboard__category-leaves">
-                        ☁️ {category.leavesDeviceCondition ?? 'May sync'}
+                        <AppIcon name="cloud" /> {category.leavesDeviceCondition ?? 'May sync'}
                       </span>
                     ) : (
-                      <span className="privacy-dashboard__category-local">🔒 Stays on device</span>
+                      <span className="privacy-dashboard__category-local">
+                        <AppIcon name="lock" /> Stays on device
+                      </span>
                     )}
                     {category.estimatedBytes > 0 && (
                       <span className="privacy-dashboard__category-size">
@@ -269,7 +272,9 @@ const PrivacyDashboardPage: React.FC = () => {
         <h2 className="privacy-dashboard__section-title">Your Data Rights</h2>
         <div className="privacy-dashboard__rights">
           <article className="privacy-dashboard__right-card">
-            <h3 className="privacy-dashboard__right-title">📥 Export Your Data</h3>
+            <h3 className="privacy-dashboard__right-title">
+              <AppIcon name="download" /> Export Your Data
+            </h3>
             <p className="privacy-dashboard__right-description">
               Download all your financial data in JSON or CSV format. This is your data — you can
               take it with you at any time.
@@ -279,7 +284,9 @@ const PrivacyDashboardPage: React.FC = () => {
             </a>
           </article>
           <article className="privacy-dashboard__right-card">
-            <h3 className="privacy-dashboard__right-title">🗑️ Delete Your Data</h3>
+            <h3 className="privacy-dashboard__right-title">
+              <AppIcon name="trash" /> Delete Your Data
+            </h3>
             <p className="privacy-dashboard__right-description">
               Permanently delete all your data from this device. If you have an account, you can
               also request server-side deletion.

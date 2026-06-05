@@ -13,6 +13,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import type { DragEvent, ChangeEvent } from 'react';
+import { AppIcon } from '../components/icons';
 
 import { useDataImportWizard } from '../hooks/useDataImportWizard';
 import type {
@@ -120,7 +121,7 @@ function InlineEditField({
     >
       {hasError && (
         <span className="import-inline-error-icon" aria-hidden="true">
-          ⚠
+          <AppIcon name="alert-triangle" />
         </span>
       )}
       {value || '—'}
@@ -149,7 +150,7 @@ function DuplicateComparisonCard({ comparison, action, onAction }: DuplicateComp
     >
       <div className="import-duplicate-card__header">
         <span className="import-duplicate-card__badge" aria-hidden="true">
-          ⚠ Potential Duplicate
+          <AppIcon name="alert-triangle" /> Potential Duplicate
         </span>
         <span className="import-duplicate-card__row">Row {rowIndex + 1}</span>
       </div>
@@ -432,7 +433,7 @@ export function DataImportWizardPage() {
               aria-current={i === currentStepIndex ? 'step' : undefined}
             >
               <span className="import-step__number" aria-hidden="true">
-                {i < currentStepIndex ? '✓' : i + 1}
+                {i < currentStepIndex ? <AppIcon name="check" /> : i + 1}
               </span>
               <span className="import-step__label">{STEP_LABELS[s]}</span>
             </li>
@@ -475,7 +476,7 @@ export function DataImportWizardPage() {
             }}
           >
             <span className="import-dropzone__icon" aria-hidden="true">
-              📁
+              <AppIcon name="folder" />
             </span>
             <span className="import-dropzone__text">
               {dragActive ? 'Drop your file here' : 'Click or drag CSV file here'}
@@ -604,9 +605,15 @@ export function DataImportWizardPage() {
           </h2>
 
           <div className="import-preview-stats" role="status">
-            <span className="import-stat import-stat--success">✓ {validCount} valid</span>
-            <span className="import-stat import-stat--warning">⚠ {duplicateCount} duplicates</span>
-            <span className="import-stat import-stat--error">✗ {errorCount} errors</span>
+            <span className="import-stat import-stat--success">
+              <AppIcon name="check" /> {validCount} valid
+            </span>
+            <span className="import-stat import-stat--warning">
+              <AppIcon name="alert-triangle" /> {duplicateCount} duplicates
+            </span>
+            <span className="import-stat import-stat--error">
+              <AppIcon name="x" /> {errorCount} errors
+            </span>
           </div>
 
           {errorCount > 0 && (
@@ -695,7 +702,7 @@ export function DataImportWizardPage() {
       {step === 'complete' && result && (
         <section className="import-card import-card--complete" aria-labelledby="complete-title">
           <span className="import-complete-icon" aria-hidden="true">
-            🎉
+            <AppIcon name="sparkles" />
           </span>
           <h2 id="complete-title" className="import-card__title">
             Import Complete!

@@ -35,6 +35,7 @@ import {
   type ConsentCategory,
 } from '../../lib/consent-storage';
 import './privacy-gate.css';
+import { AppIcon } from '../icons';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -91,7 +92,7 @@ export const PrivacyGate: React.FC<PrivacyGateProps> = ({
     <section className="privacy-gate" aria-label={`${featureName} requires consent`}>
       <div className="privacy-gate__card">
         <div className="privacy-gate__icon" aria-hidden="true">
-          🔒
+          <AppIcon name="lock" />
         </div>
 
         <h3 className="privacy-gate__title">{featureName}</h3>

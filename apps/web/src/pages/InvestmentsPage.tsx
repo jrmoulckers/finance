@@ -14,6 +14,7 @@ import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../com
 import { useInvestments } from '../hooks';
 import { formatCurrency, formatGainLoss } from '../lib/currency';
 import type { Investment, InvestmentType } from '../kmp/bridge';
+import { AppIcon, type IconName } from '../components/icons';
 
 /** Color palette for the allocation pie chart. */
 const CHART_COLORS = [
@@ -39,25 +40,25 @@ const TYPE_LABELS: Record<InvestmentType, string> = {
   OTHER: 'Other',
 };
 
-/** Emoji icons for investment types. */
-function getInvestmentIcon(type: InvestmentType): string {
+/** Icons for investment types. */
+function getInvestmentIcon(type: InvestmentType): IconName {
   switch (type) {
     case 'STOCK':
-      return '📈';
+      return 'trending-up';
     case 'BOND':
-      return '🏛️';
+      return 'bank';
     case 'ETF':
-      return '📊';
+      return 'chart-bar';
     case 'MUTUAL_FUND':
-      return '💼';
+      return 'folder';
     case 'CRYPTO':
-      return '₿';
+      return 'wallet';
     case 'REAL_ESTATE':
-      return '🏠';
+      return 'home';
     case 'COMMODITY':
-      return '🥇';
+      return 'medal';
     default:
-      return '💰';
+      return 'wallet';
   }
 }
 
@@ -428,7 +429,7 @@ export const InvestmentsPage: React.FC = () => {
                               style={{ textDecoration: 'none', color: 'inherit' }}
                               aria-label={`View details for ${inv.name} (${inv.symbol})`}
                             >
-                              <span aria-hidden="true">{getInvestmentIcon(inv.type)} </span>
+                              <AppIcon name={getInvestmentIcon(inv.type)} />{' '}
                               <strong>{inv.symbol}</strong>
                               <br />
                               <span
