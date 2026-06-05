@@ -215,4 +215,3 @@ describe('PasskeySetupPrompt', () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
-
