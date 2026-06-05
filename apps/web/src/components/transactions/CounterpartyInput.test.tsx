@@ -6,7 +6,7 @@
  * References: issue #1514
  */
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { KnownMerchant } from '../../lib/merchants';
@@ -197,6 +197,40 @@ describe('CounterpartyInput', () => {
 
     fireEvent.keyDown(input, { key: 'Escape' });
     expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('dismisses dropdown and prevents form submission on Enter with free text', () => {
+    render(
+      <CounterpartyInput
+        value="wal"
+        onChange={vi.fn()}
+        merchants={MOCK_MERCHANTS}
+        recentCounterparties={MOCK_RECENT}
+      />,
+    );
+
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    expect(screen.queryByRole('listbox')).not.toBeNull();
+
+    const enterEvent = createEvent.keyDown(input, { key: 'Enter' });
+    fireEvent(input, enterEvent);
+
+    expect(enterEvent.defaultPrevented).toBe(true);
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('selects the highlighted suggestion on Enter', async () => {
+    const onChange = vi.fn();
+    render(<CounterpartyInput value="ama" onChange={onChange} merchants={MOCK_MERCHANTS} />);
+
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onChange).toHaveBeenCalledWith('Amazon');
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
   });
 
   it('is disabled when disabled prop is true', () => {

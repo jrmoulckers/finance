@@ -108,6 +108,8 @@ describe('TransactionForm', () => {
     expect(screen.getByRole('dialog', { name: 'New Transaction' })).toBeInTheDocument();
     expect(screen.getByLabelText('Amount')).toBeInTheDocument();
     expect(screen.getByLabelText('Payee')).toBeInTheDocument();
+    expect(screen.getByText(/What appears on your statement/i)).toBeInTheDocument();
+    expect(screen.getByText(/The actual merchant or person/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Category')).toBeInTheDocument();
     expect(screen.getByLabelText('Account')).toBeInTheDocument();
     expect(screen.getByLabelText('Date')).toHaveValue('2025-06-15');
@@ -131,6 +133,10 @@ describe('TransactionForm', () => {
 
     expect(screen.getByText('Amount must be greater than zero.')).toBeInTheDocument();
     expect(screen.getByText('Please select an account.')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Some fields need attention — see highlighted errors above.',
+    );
+    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -187,6 +193,35 @@ describe('TransactionForm', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  it('locks body scrolling while the modal is open and restores it on close', () => {
+    document.body.style.overflow = 'auto';
+
+    const { rerender } = render(
+      <TransactionForm
+        isOpen={true}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+        onCancel={vi.fn()}
+        accounts={accounts}
+        categories={categories}
+      />,
+    );
+
+    expect(document.body.style.overflow).toBe('hidden');
+
+    rerender(
+      <TransactionForm
+        isOpen={false}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+        onCancel={vi.fn()}
+        accounts={accounts}
+        categories={categories}
+      />,
+    );
+
+    expect(document.body.style.overflow).toBe('auto');
+    document.body.style.overflow = '';
+  });
+
   // ---------------------------------------------------------------------------
   // Additional details
   // ---------------------------------------------------------------------------
@@ -200,13 +235,13 @@ describe('TransactionForm', () => {
     // Expand it
     fireEvent.click(screen.getByRole('button', { name: /additional details/i }));
 
-    expect(screen.getByLabelText('Merchant City')).toBeInTheDocument();
-    expect(screen.getByLabelText('Merchant State')).toBeInTheDocument();
+    expect(screen.getByLabelText('Merchant City')).toHaveAttribute('placeholder', 'Seattle');
+    expect(screen.getByLabelText('Merchant State')).toHaveAttribute('placeholder', 'WA');
     expect(screen.getByLabelText('Merchant ZIP')).toBeInTheDocument();
     expect(screen.getByLabelText('Merchant Country')).toBeInTheDocument();
     expect(screen.getByLabelText('Statement Description')).toBeInTheDocument();
     expect(screen.getByLabelText('External Reference ID')).toBeInTheDocument();
-    expect(screen.getByLabelText('Extra Notes')).toBeInTheDocument();
+    expect(screen.getByLabelText('Extra Notes')).not.toHaveAttribute('placeholder');
     expect(screen.getByText('+ Add Field')).toBeInTheDocument();
   });
 

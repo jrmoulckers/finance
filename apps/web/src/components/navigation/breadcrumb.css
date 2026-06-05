@@ -21,7 +21,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  font-size: var(--font-size-sm, 0.875rem);
+  font-size: var(--type-scale-caption-font-size, var(--font-size-sm, 0.875rem));
   color: var(--semantic-text-secondary, #666);
 }
 
@@ -32,12 +32,14 @@
 }
 
 .breadcrumb__link {
-  color: var(--semantic-text-link, #2563eb);
+  color: var(--semantic-text-secondary, #666);
+  font-weight: var(--font-weight-medium, 500);
   text-decoration: none;
 }
 
 .breadcrumb__link:hover {
-  text-decoration: underline;
+  color: var(--semantic-text-primary, #111);
+  text-decoration: none;
 }
 
 .breadcrumb__link:focus-visible {
@@ -53,7 +55,7 @@
 
 .breadcrumb__current {
   color: var(--semantic-text-primary, #111);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium, 500);
 }
 
 /* On narrow screens, hide the current page segment to avoid duplication

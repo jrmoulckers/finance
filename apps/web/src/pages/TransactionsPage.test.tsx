@@ -254,20 +254,32 @@ describe('TransactionsPage', () => {
     expect(screen.getByText('Transactions')).toBeInTheDocument();
   });
 
-  it('displays Add Transaction dropdown with Manual Entry and Import options', () => {
+  it('opens the default add transaction action from the split button primary action', () => {
     render(
       <MemoryRouter>
         <TransactionsPage />
       </MemoryRouter>,
     );
 
-    const addButton = screen.getByRole('button', { name: /add transaction/i });
-    expect(addButton).toBeInTheDocument();
-    expect(addButton).toHaveAttribute('aria-haspopup', 'true');
-    expect(addButton).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
 
-    fireEvent.click(addButton);
-    expect(addButton).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('dialog', { name: 'Transaction form' })).toBeInTheDocument();
+  });
+
+  it('displays Add Transaction split-button menu with Manual Entry and Import options', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    const menuButton = screen.getByRole('button', { name: /open transaction options/i });
+    expect(menuButton).toBeInTheDocument();
+    expect(menuButton).toHaveAttribute('aria-haspopup', 'menu');
+    expect(menuButton).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(menuButton);
+    expect(menuButton).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('menuitem', { name: /manual entry/i })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /import from file/i })).toBeInTheDocument();
   });

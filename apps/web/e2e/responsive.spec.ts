@@ -157,9 +157,8 @@ test.describe('Mobile viewport (375px)', () => {
     await page.goto('/transactions');
     await waitForPageLoad(page);
 
-    // Open the "Add Transaction" dropdown, then click Manual Entry.
-    await page.getByRole('button', { name: /add.*transaction/i }).click();
-    await page.getByRole('menuitem', { name: /manual entry/i }).click();
+    // Open the default Add Transaction action.
+    await page.getByRole('button', { name: 'Add Transaction', exact: true }).click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -341,8 +340,7 @@ test.describe('Desktop viewport (1280px)', () => {
     await page.goto('/transactions');
     await waitForPageLoad(page);
 
-    await page.getByRole('button', { name: /add.*transaction/i }).click();
-    await page.getByRole('menuitem', { name: /manual entry/i }).click();
+    await page.getByRole('button', { name: 'Add Transaction', exact: true }).click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();

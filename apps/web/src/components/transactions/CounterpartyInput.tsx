@@ -51,6 +51,8 @@ export interface CounterpartyInputProps {
   disabled?: boolean;
   /** Placeholder text. */
   placeholder?: string;
+  /** IDs of helper or error text that describe the input. */
+  ariaDescribedBy?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +131,7 @@ export function CounterpartyInput({
   id: externalId,
   disabled = false,
   placeholder = 'Enter counterparty name',
+  ariaDescribedBy,
 }: CounterpartyInputProps) {
   const autoId = useId();
   const inputId = externalId ?? `counterparty-${autoId}`;
@@ -176,8 +179,6 @@ export function CounterpartyInput({
           confidence: 1,
         });
       }
-
-      inputRef.current?.focus();
     },
     [onChange, onMerchantMatch],
   );
@@ -194,6 +195,17 @@ export function CounterpartyInput({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (showDropdown && focusedIndex >= 0 && focusedIndex < suggestions.length) {
+          handleSelect(suggestions[focusedIndex]);
+          return;
+        }
+        setIsOpen(false);
+        setFocusedIndex(-1);
+        return;
+      }
+
       if (!showDropdown) {
         if (e.key === 'ArrowDown' && suggestions.length > 0) {
           e.preventDefault();
@@ -211,12 +223,6 @@ export function CounterpartyInput({
         case 'ArrowUp':
           e.preventDefault();
           setFocusedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
-          break;
-        case 'Enter':
-          e.preventDefault();
-          if (focusedIndex >= 0 && focusedIndex < suggestions.length) {
-            handleSelect(suggestions[focusedIndex]);
-          }
           break;
         case 'Escape':
           e.preventDefault();
@@ -255,6 +261,7 @@ export function CounterpartyInput({
           aria-controls={listboxId}
           aria-activedescendant={activeDescendantId}
           aria-autocomplete="list"
+          aria-describedby={ariaDescribedBy}
           autoComplete="off"
         />
       </div>
