@@ -26,6 +26,11 @@ const Import = lazy(() => import('./pages/ImportPage'));
 const Insights = lazy(() => import('./pages/InsightsPage'));
 const Achievements = lazy(() => import('./pages/AchievementsPage'));
 const Settings = lazy(() => import('./pages/SettingsPage'));
+const SettingsAccount = lazy(() => import('./pages/settings/SettingsAccountPage'));
+const SettingsPreferences = lazy(() => import('./pages/settings/SettingsPreferencesPage'));
+const SettingsPrivacy = lazy(() => import('./pages/settings/SettingsPrivacyPage'));
+const SettingsSync = lazy(() => import('./pages/settings/SettingsSyncPage'));
+const SettingsAdvanced = lazy(() => import('./pages/settings/SettingsAdvancedPage'));
 const DataImportWizard = lazy(() => import('./pages/DataImportWizardPage'));
 const ReceiptOcr = lazy(() => import('./pages/ReceiptOcrPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
@@ -349,7 +354,49 @@ export const AppRoutes: FC = () => (
           </RouteBoundary>
         </AuthenticatedRoute>
       }
-    />
+    >
+      <Route index element={<Navigate to="account" replace />} />
+      <Route
+        path="account"
+        element={
+          <RouteBoundary name="Settings · Account">
+            <SettingsAccount />
+          </RouteBoundary>
+        }
+      />
+      <Route
+        path="preferences"
+        element={
+          <RouteBoundary name="Settings · Preferences">
+            <SettingsPreferences />
+          </RouteBoundary>
+        }
+      />
+      <Route
+        path="privacy"
+        element={
+          <RouteBoundary name="Settings · Privacy">
+            <SettingsPrivacy />
+          </RouteBoundary>
+        }
+      />
+      <Route
+        path="sync"
+        element={
+          <RouteBoundary name="Settings · Sync">
+            <SettingsSync />
+          </RouteBoundary>
+        }
+      />
+      <Route
+        path="advanced"
+        element={
+          <RouteBoundary name="Settings · Advanced">
+            <SettingsAdvanced />
+          </RouteBoundary>
+        }
+      />
+    </Route>
     <Route
       path="/watchlists"
       element={

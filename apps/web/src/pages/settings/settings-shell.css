@@ -1,0 +1,78 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/*
+ * Layout for the Settings shell.
+ *
+ * On desktop (>= 768px) shows a 220px left rail of section links beside the
+ * sub-page content. On mobile the rail collapses to a stacked list of links
+ * above the content area — the rail acts as the primary navigation index.
+ */
+
+.settings-shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-6, 1.5rem);
+}
+
+@media (min-width: 768px) {
+  .settings-shell {
+    grid-template-columns: 220px 1fr;
+    align-items: start;
+  }
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 0.25rem);
+  padding: var(--spacing-2, 0.5rem) 0;
+  border-bottom: 1px solid var(--semantic-border-primary, #e5e7eb);
+}
+
+@media (min-width: 768px) {
+  .settings-nav {
+    border-bottom: none;
+    position: sticky;
+    top: var(--spacing-4, 1rem);
+  }
+}
+
+.settings-nav__link {
+  display: block;
+  padding: var(--spacing-2, 0.5rem) var(--spacing-3, 0.75rem);
+  border-radius: var(--radius-md, 0.5rem);
+  color: var(--semantic-text-primary, #1f2937);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.settings-nav__link:hover {
+  background: var(--semantic-surface-hover, rgba(15, 23, 42, 0.05));
+}
+
+.settings-nav__link:focus-visible {
+  outline: 2px solid var(--semantic-focus-ring, #2563eb);
+  outline-offset: 2px;
+}
+
+.settings-nav__link--active,
+.settings-nav__link[aria-current='page'] {
+  background: var(--semantic-surface-selected, rgba(37, 99, 235, 0.12));
+  color: var(--semantic-text-link, #1d4ed8);
+  font-weight: 600;
+}
+
+.settings-subpage__title {
+  font-size: var(--type-scale-title-font-size, 1.5rem);
+  font-weight: var(--type-scale-title-font-weight, 700);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.settings-shell__content {
+  min-width: 0;
+}
