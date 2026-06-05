@@ -34,6 +34,7 @@ import {
 import { CHART_COLORS, formatChartCurrency } from './chart-palette';
 import { useArrowKeyNavigation } from '../../accessibility/aria';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
+import './spending-trend.css';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -90,10 +91,60 @@ const PERIOD_OPTIONS: Array<{ value: TimePeriod; label: string }> = [
   { value: '1y', label: '1Y' },
 ];
 
-const VIEW_OPTIONS: Array<{ value: ViewType; label: string; ariaLabel: string }> = [
-  { value: 'line', label: '━', ariaLabel: 'Line chart view' },
-  { value: 'bar', label: '▮', ariaLabel: 'Bar chart view' },
-  { value: 'area', label: '▓', ariaLabel: 'Area chart view' },
+// ---------------------------------------------------------------------------
+// View-toggle icons (inline SVG, ~16px). Decorative — buttons carry aria-label.
+// ---------------------------------------------------------------------------
+
+const LineIcon: FC = () => (
+  <svg
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <polyline points="2,12 6,7 9,10 14,3" />
+  </svg>
+);
+
+const BarIcon: FC = () => (
+  <svg
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+    fill="currentColor"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <rect x="2.5" y="8" width="2.5" height="6" rx="0.5" />
+    <rect x="6.75" y="4" width="2.5" height="10" rx="0.5" />
+    <rect x="11" y="10" width="2.5" height="4" rx="0.5" />
+  </svg>
+);
+
+const AreaIcon: FC = () => (
+  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+    <path
+      d="M2 12 L6 7 L9 10 L14 3 L14 14 L2 14 Z"
+      fill="currentColor"
+      fillOpacity="0.25"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const VIEW_OPTIONS: Array<{ value: ViewType; Icon: FC; ariaLabel: string }> = [
+  { value: 'line', Icon: LineIcon, ariaLabel: 'Line chart view' },
+  { value: 'bar', Icon: BarIcon, ariaLabel: 'Bar chart view' },
+  { value: 'area', Icon: AreaIcon, ariaLabel: 'Area chart view' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -146,18 +197,21 @@ interface ViewToggleProps {
 const ViewToggle: FC<ViewToggleProps> = ({ selected, onChange }) => {
   return (
     <div className="spending-trend__view-toggle" role="group" aria-label="Chart view type">
-      {VIEW_OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          className={`spending-trend__view-btn${selected === option.value ? ' spending-trend__view-btn--active' : ''}`}
-          onClick={() => onChange(option.value)}
-          aria-pressed={selected === option.value}
-          aria-label={option.ariaLabel}
-        >
-          {option.label}
-        </button>
-      ))}
+      {VIEW_OPTIONS.map((option) => {
+        const Icon = option.Icon;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            className={`spending-trend__view-btn${selected === option.value ? ' spending-trend__view-btn--active' : ''}`}
+            onClick={() => onChange(option.value)}
+            aria-pressed={selected === option.value}
+            aria-label={option.ariaLabel}
+          >
+            <Icon />
+          </button>
+        );
+      })}
     </div>
   );
 };

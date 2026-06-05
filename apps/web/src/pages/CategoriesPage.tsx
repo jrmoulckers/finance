@@ -240,56 +240,29 @@ export const CategoriesPage: React.FC = () => {
                 return (
                   <article
                     key={category.id}
-                    className="card"
+                    className="card category-card"
                     aria-label={`${category.name} category`}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        justifyContent: 'space-between',
-                        gap: 'var(--spacing-3)',
-                        marginBottom: 'var(--spacing-3)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', gap: 'var(--spacing-3)', minWidth: 0 }}>
+                    <header className="category-card__header">
+                      <div className="category-card__title-row">
                         <span
                           aria-hidden="true"
+                          className="category-card__icon"
                           style={{
-                            alignItems: 'center',
                             background: category.color ?? 'var(--semantic-background-secondary)',
-                            border: '1px solid var(--semantic-border-default)',
-                            borderRadius: '999px',
-                            color: 'var(--semantic-text-inverse)',
-                            display: 'inline-flex',
-                            flex: '0 0 auto',
-                            fontSize: '1rem',
-                            height: '2rem',
-                            justifyContent: 'center',
-                            width: '2rem',
                           }}
                         >
                           {getCategoryIcon(category.icon)}
                         </span>
-                        <div>
-                          <h3 style={{ fontWeight: 'var(--font-weight-semibold)', margin: 0 }}>
-                            {category.name}
-                          </h3>
-                          <p
-                            style={{
-                              color: 'var(--semantic-text-secondary)',
-                              fontSize: 'var(--type-scale-caption-font-size)',
-                              margin: 'var(--spacing-1) 0 0',
-                            }}
-                          >
-                            {category.isIncome ? 'Income' : 'Expense'} ·{' '}
-                            {getUsageLabel(transactionCount)}
-                            {parentCategory ? ` · Child of ${parentCategory.name}` : ''}
-                            {category.isSystem ? ' · System' : ''}
-                          </p>
-                        </div>
+                        <h3 className="category-card__name">{category.name}</h3>
                       </div>
-                      <div className="page-actions">
+                      <p className="category-card__meta">
+                        {category.isIncome ? 'Income' : 'Expense'} ·{' '}
+                        {getUsageLabel(transactionCount)}
+                        {parentCategory ? ` · Child of ${parentCategory.name}` : ''}
+                        {category.isSystem ? ' · System' : ''}
+                      </p>
+                      <div className="category-card__actions">
                         <button
                           type="button"
                           className="form-button form-button--secondary"
@@ -307,15 +280,8 @@ export const CategoriesPage: React.FC = () => {
                           Delete
                         </button>
                       </div>
-                    </div>
-                    <dl
-                      style={{
-                        display: 'grid',
-                        gap: 'var(--spacing-2)',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                        margin: 0,
-                      }}
-                    >
+                    </header>
+                    <dl className="category-card__details">
                       <div>
                         <dt className="card__title">Icon</dt>
                         <dd className="card__value">{category.icon ?? 'Default'}</dd>

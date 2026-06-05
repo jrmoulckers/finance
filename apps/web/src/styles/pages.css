@@ -147,3 +147,74 @@
   margin-top: var(--spacing-4);
   color: var(--semantic-text-secondary);
 }
+
+/* -------------------------------------------------------------------
+ * Category card layout
+ *
+ * Stacked header (title -> meta -> actions) avoids action buttons
+ * overlapping or crowding the title. Actions are right-aligned and
+ * wrap on small viewports.
+ * ------------------------------------------------------------------- */
+.category-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.category-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.category-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--semantic-border-default);
+  color: var(--semantic-text-inverse);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.category-card__name {
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.category-card__meta {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  overflow-wrap: anywhere;
+}
+
+.category-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing-2);
+}
+
+.category-card__details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-2);
+  margin: 0;
+}
+
+.category-card__details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
