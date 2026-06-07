@@ -60,6 +60,7 @@ jobs:
             const days = ${{ github.event.inputs.days || 7 }};
             const since = new Date(Date.now() - days * 86400000).toISOString();
             const prevSince = new Date(Date.now() - days * 2 * 86400000).toISOString();
+            const defaultBranch = context.payload.repository?.default_branch || 'main';
 
             const workflows = [
               'ci.yml', 'android-ci.yml', 'ios-ci.yml',
@@ -68,7 +69,8 @@ jobs:
             ];
 
             let report = `## 🏥 CI Health Report\n\n`;
-            report += `**Period:** Last ${days} days (since ${since.split('T')[0]})\n\n`;
+            report += `**Period:** Last ${days} days (since ${since.split('T')[0]})\n`;
+            report += `**Scope:** default branch (\`${defaultBranch}\`) runs only\n\n`;
             report += `| Workflow | Total | ✅ Pass | ❌ Fail | ⏭️ Skip | Success Rate | Avg Duration | Trend |\n`;
             report += `|----------|-------|---------|---------|---------|--------------|--------------|-------|\n`;
 
@@ -86,20 +88,23 @@ jobs:
                 const workflow = wfData.workflows.find(w => w.path.endsWith(wf));
                 if (!workflow) continue;
 
-                // Get runs for current period
+                // Get default-branch runs for current period. PR branch failures are
+                // handled by PR checks and should not page the pipeline health monitor.
                 const { data: runs } = await github.rest.actions.listWorkflowRuns({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   workflow_id: workflow.id,
+                  branch: defaultBranch,
                   created: `>=${since}`,
                   per_page: 100,
                 });
 
-                // Get runs for previous period (for trend)
+                // Get default-branch runs for previous period (for trend)
                 const { data: prevRuns } = await github.rest.actions.listWorkflowRuns({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   workflow_id: workflow.id,
+                  branch: defaultBranch,
                   created: `${prevSince}..${since}`,
                   per_page: 100,
                 });
@@ -164,6 +169,7 @@ jobs:
                 if (rate !== 'N/A' && parseFloat(rate) < 80 && actionableTotal >= MIN_RUNS_FOR_ALERT) {
                   degraded.push({
                     name: wf.replace('.yml', ''),
+                    branch: defaultBranch,
                     rate: parseFloat(rate),
                     failures: failure,
                     total: actionableTotal,
@@ -174,6 +180,7 @@ jobs:
                 if (rate !== 'N/A' && parseFloat(rate) >= 80) {
                   allRecovered.push({
                     name: wf.replace('.yml', ''),
+                    branch: defaultBranch,
                     rate: parseFloat(rate),
                   });
                 }
@@ -209,11 +216,12 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   workflow_id: workflow.id,
+                  branch: defaultBranch,
                   created: `>=${since}`,
                   per_page: 100,
                 });
 
-                // Look for runs that were re-run (attempt_number > 1) — indicates flakiness
+                // Look for default-branch runs that were re-run (attempt_number > 1) — indicates flakiness
                 const reRuns = runs.workflow_runs.filter(r => r.run_attempt > 1);
                 if (reRuns.length > 0) {
                   flakyFound = true;
@@ -252,7 +260,7 @@ jobs:
             report += `- 🟡 **80-95%** — Needs attention (check flaky tests or infra issues)\n`;
             report += `- 🔴 **<80%** — Critical (investigate immediately)\n`;
             report += `- 📈 Improving / 📉 Degrading (compared to previous ${days}-day period)\n`;
-            report += `\n> **Note:** Cancelled and skipped runs are excluded from success rate calculations to avoid false-positive alerts from superseded or path-filtered runs.\n`;
+            report += `\n> **Note:** Metrics are scoped to the default branch. Cancelled and skipped runs are excluded from success rate calculations to avoid false-positive alerts from superseded or path-filtered runs.\n`;
 
             // Recommendations
             if (degraded.length > 0) {
@@ -305,10 +313,11 @@ jobs:
                 body: [
                   `## 🚨 Pipeline Health Alert`,
                   ``,
-                  `The **${d.name}** pipeline has dropped below 80% success rate.`,
+                  `The **${d.name}** pipeline has dropped below 80% success rate on the default branch.`,
                   ``,
                   `| Metric | Value |`,
                   `|--------|-------|`,
+                  `| Branch | ${d.branch} |`,
                   `| Success Rate | ${d.rate}% |`,
                   `| Failures | ${d.failures} |`,
                   `| Total Runs | ${d.total} |`,
@@ -364,7 +373,7 @@ jobs:
                 body: [
                   `## ✅ Pipeline Recovered`,
                   ``,
-                  `The **${r.name}** pipeline has recovered to **${r.rate}%** success rate (above the 80% threshold).`,
+                  `The **${r.name}** pipeline has recovered to **${r.rate}%** success rate on **${r.branch}** (above the 80% threshold).`,
                   ``,
                   `This issue was auto-closed by the CI Health Monitor. If the degradation recurs, a new issue will be created.`,
                   ``,
