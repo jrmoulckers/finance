@@ -331,6 +331,70 @@
   outline: 2px solid var(--semantic-border-focus);
   outline-offset: 2px;
 }
+.add-button svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+.add-transaction-menu {
+  position: relative;
+  display: inline-flex;
+}
+.add-transaction-split-button {
+  display: inline-flex;
+  align-items: stretch;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.08));
+}
+.add-transaction-split-button__primary {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.add-transaction-split-button__toggle {
+  min-width: 40px;
+  padding-inline: var(--spacing-2);
+  border-left-color: rgba(255, 255, 255, 0.35);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.add-transaction-dropdown {
+  position: absolute;
+  top: calc(100% + var(--spacing-1));
+  right: 0;
+  z-index: 100;
+  min-width: 220px;
+  padding: var(--spacing-1);
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-lg, var(--border-radius-md));
+  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.15));
+}
+.add-transaction-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 0;
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--semantic-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.add-transaction-dropdown__item:hover,
+.add-transaction-dropdown__item:focus-visible {
+  background: var(--semantic-background-secondary);
+}
+.add-transaction-dropdown__item:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: -2px;
+}
+.add-transaction-dropdown__item svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--semantic-text-secondary);
+}
 .list-group {
   display: flex;
   flex-direction: column;

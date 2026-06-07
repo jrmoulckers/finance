@@ -51,15 +51,17 @@ test.describe('Transactions page', () => {
   test('shows the Add Transaction button', async ({ authenticatedPage: page }) => {
     await page.goto('/transactions');
 
-    const addButton = page.getByRole('button', { name: /add.*transaction/i });
+    const addButton = page.getByRole('button', { name: 'Add Transaction', exact: true });
     await expect(addButton).toBeVisible();
   });
 
-  test('clicking Add Transaction opens dropdown menu', async ({ authenticatedPage: page }) => {
+  test('clicking transaction options opens split-button menu', async ({
+    authenticatedPage: page,
+  }) => {
     await page.goto('/transactions');
 
-    const addButton = page.getByRole('button', { name: /add.*transaction/i });
-    await addButton.click();
+    const menuButton = page.getByRole('button', { name: /open transaction options/i });
+    await menuButton.click();
 
     // Dropdown menu should appear with Manual Entry and Import options
     const manualEntry = page.getByRole('menuitem', { name: /manual entry/i });
@@ -71,7 +73,7 @@ test.describe('Transactions page', () => {
   test('clicking Manual Entry opens form dialog', async ({ authenticatedPage: page }) => {
     await page.goto('/transactions');
 
-    await page.getByRole('button', { name: /add.*transaction/i }).click();
+    await page.getByRole('button', { name: /open transaction options/i }).click();
     await page.getByRole('menuitem', { name: /manual entry/i }).click();
 
     const dialog = page.getByRole('dialog');
@@ -85,8 +87,7 @@ test.describe('Transactions page', () => {
     authenticatedPage: page,
   }) => {
     await page.goto('/transactions');
-    await page.getByRole('button', { name: /add.*transaction/i }).click();
-    await page.getByRole('menuitem', { name: /manual entry/i }).click();
+    await page.getByRole('button', { name: 'Add Transaction', exact: true }).click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();

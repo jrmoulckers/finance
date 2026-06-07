@@ -247,6 +247,19 @@ export function TransactionForm({
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     const refreshMoodPreference = () => setMoodTagsEnabled(isMoodTagsEnabled());
     window.addEventListener(MOOD_TAGS_CHANGED_EVENT, refreshMoodPreference);
     window.addEventListener('storage', refreshMoodPreference);
@@ -534,6 +547,7 @@ export function TransactionForm({
   const hasAmountError = Boolean(errors.amount);
   const hasDescriptionError = Boolean(errors.description);
   const hasAccountError = Boolean(errors.accountId);
+  const hasValidationErrors = Object.keys(errors).length > 0;
 
   return (
     <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
@@ -596,6 +610,9 @@ export function TransactionForm({
               >
                 Payee
               </label>
+              <p id="txn-description-help" className="form-group__help">
+                What appears on your statement (e.g. “AMZN MKTPL*XYZ”).
+              </p>
               <input
                 id="txn-description"
                 className={`form-input${hasDescriptionError ? ' form-input--error' : ''}`}
@@ -603,7 +620,9 @@ export function TransactionForm({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 aria-invalid={hasDescriptionError}
-                aria-describedby={hasDescriptionError ? 'txn-description-error' : undefined}
+                aria-describedby={`txn-description-help${
+                  hasDescriptionError ? ' txn-description-error' : ''
+                }`}
                 aria-required="true"
                 autoComplete="off"
               />
@@ -657,6 +676,9 @@ export function TransactionForm({
               <label htmlFor="txn-counterparty" className="form-group__label">
                 Counterparty
               </label>
+              <p id="txn-counterparty-help" className="form-group__help">
+                The actual merchant or person (e.g. “Amazon”, “Sarah Lee”).
+              </p>
               <CounterpartyInput
                 id="txn-counterparty"
                 value={counterpartyName}
@@ -665,10 +687,11 @@ export function TransactionForm({
                 matchResult={merchantMatch}
                 onMerchantMatch={handleMerchantMatch}
                 placeholder="e.g. Walgreens, Amazon"
+                ariaDescribedBy="txn-counterparty-help"
               />
             </div>
 
-            <fieldset className="form-group">
+            <fieldset className="form-group form-fieldset">
               <legend className="form-group__label">Buy-now-pay-later liability</legend>
               <label className="form-checkbox-row">
                 <input
@@ -913,6 +936,7 @@ export function TransactionForm({
                         type="text"
                         value={merchantCity}
                         onChange={(e) => setMerchantCity(e.target.value)}
+                        placeholder="Seattle"
                         autoComplete="off"
                       />
                     </div>
@@ -926,6 +950,7 @@ export function TransactionForm({
                         type="text"
                         value={merchantState}
                         onChange={(e) => setMerchantState(e.target.value)}
+                        placeholder="WA"
                         autoComplete="off"
                       />
                     </div>
@@ -1071,13 +1096,18 @@ export function TransactionForm({
                       value={extraNotes}
                       onChange={(e) => setExtraNotes(e.target.value)}
                       rows={3}
-                      placeholder="Free-form text — bank memos, import leftovers, etc."
                     />
                   </div>
                 </div>
               )}
             </fieldset>
           </div>
+
+          {hasValidationErrors && (
+            <div className="form-submit-summary" role="status" aria-live="polite">
+              Some fields need attention — see highlighted errors above.
+            </div>
+          )}
 
           {/* Actions */}
           <div className="form-actions">

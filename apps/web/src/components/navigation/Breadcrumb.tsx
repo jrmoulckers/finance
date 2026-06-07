@@ -57,7 +57,7 @@ export const Breadcrumb: FC<BreadcrumbProps> = ({ segments, ariaLabel = 'Breadcr
               <span>{segment.label}</span>
             )}
             <span className="breadcrumb__separator" aria-hidden="true">
-              /
+              ›
             </span>
           </li>
         ))}

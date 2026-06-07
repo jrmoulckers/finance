@@ -36,6 +36,7 @@
   max-width: 520px;
   max-height: calc(100dvh - var(--spacing-8));
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--semantic-background-primary);
   border: 1px solid var(--semantic-border-default);
   border-radius: var(--border-radius-lg, var(--border-radius-md));
@@ -91,6 +92,38 @@
 .form-group__label--required::after {
   content: ' *';
   color: var(--semantic-status-negative);
+}
+
+.form-group__help {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  line-height: var(--line-height-normal);
+}
+
+.form-fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.form-checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  line-height: var(--line-height-normal);
+  cursor: pointer;
+}
+
+.form-checkbox-row input[type='checkbox'] {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  margin: 0.125rem 0 0;
+  accent-color: var(--semantic-interactive-default);
 }
 
 /* ---------------------------------------------------------------------------
@@ -446,7 +479,8 @@
  * Form-level error banner
  * ------------------------------------------------------------------------- */
 
-.form-banner-error {
+.form-banner-error,
+.form-submit-summary {
   display: flex;
   align-items: center;
   gap: var(--spacing-2);
@@ -457,6 +491,10 @@
   color: var(--semantic-status-negative);
   font-size: var(--type-scale-caption-font-size);
   font-weight: var(--font-weight-medium);
+}
+
+.form-submit-summary {
+  margin-top: var(--spacing-4);
 }
 
 /* ---------------------------------------------------------------------------
@@ -513,7 +551,8 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23aaa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 
-  html:not([data-theme='light']) .form-banner-error {
+  html:not([data-theme='light']) .form-banner-error,
+  html:not([data-theme='light']) .form-submit-summary {
     background: rgba(239, 68, 68, 0.1);
   }
 
@@ -530,7 +569,8 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23aaa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-[data-theme='dark'] .form-banner-error {
+[data-theme='dark'] .form-banner-error,
+[data-theme='dark'] .form-submit-summary {
   background: rgba(239, 68, 68, 0.1);
 }
 
