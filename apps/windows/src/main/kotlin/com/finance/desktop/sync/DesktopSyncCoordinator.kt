@@ -127,15 +127,10 @@ class DesktopSyncCoordinator(
      * Stop the background sync loop and disconnect.
      */
     fun stop() {
-        syncJob?.cancel()
-        syncJob = null
-        scope.launch {
-            @Suppress("TooGenericExceptionCaught") // Sync disconnect must not crash
-            try {
-                syncEngine.disconnect()
-            } catch (e: Exception) {
-                logger.log(Level.WARNING, "Error during sync disconnect", e)
-            }
+        runBlocking {
+            syncJob?.cancelAndJoin()
+            syncJob = null
+            disconnectSafely()
         }
         logger.info("Sync coordinator stopped")
     }
@@ -146,6 +141,15 @@ class DesktopSyncCoordinator(
     fun dispose() {
         stop()
         scope.cancel()
+    }
+
+    private suspend fun disconnectSafely() {
+        @Suppress("TooGenericExceptionCaught") // Sync disconnect must not crash
+        try {
+            syncEngine.disconnect()
+        } catch (e: Exception) {
+            logger.log(Level.WARNING, "Error during sync disconnect", e)
+        }
     }
 
     private fun formatTrayStatus(status: SyncStatus): String = when (status) {

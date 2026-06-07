@@ -11,6 +11,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.finance.desktop.components.rememberShortcutHandler
 import com.finance.desktop.data.storage.UserDataPaths
+import com.finance.desktop.di.SupabaseConfig
 import com.finance.desktop.di.appModules
 import com.finance.desktop.notifications.DesktopNotificationManager
 import com.finance.desktop.performance.PerformanceMonitor
@@ -23,8 +24,12 @@ import com.finance.desktop.widgets.WidgetRegistrationManager
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import java.awt.GraphicsEnvironment
+import javax.swing.JOptionPane
+import kotlin.system.exitProcess
 
 fun main() {
+    validateStartupConfiguration()
     PerformanceTracker.recordAppStart()
 
     // ── One-time migration of user data out of MSI install root (#1900) ──
@@ -109,5 +114,24 @@ fun main() {
         ) {
             FinanceApp(shortcutHandler, quickAddManager, systemTray)
         }
+    }
+}
+
+private fun validateStartupConfiguration() {
+    try {
+        SupabaseConfig.fromEnvironment()
+    } catch (exception: IllegalStateException) {
+        val message = exception.message ?: "Finance is missing required Supabase configuration."
+        if (!GraphicsEnvironment.isHeadless()) {
+            JOptionPane.showMessageDialog(
+                null,
+                message,
+                "Finance configuration missing",
+                JOptionPane.ERROR_MESSAGE,
+            )
+        } else {
+            System.err.println(message)
+        }
+        exitProcess(1)
     }
 }

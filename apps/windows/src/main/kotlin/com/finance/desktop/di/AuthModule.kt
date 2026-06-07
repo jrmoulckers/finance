@@ -18,13 +18,17 @@ import org.koin.dsl.module
  * - KMP [TokenStorage] and [TokenManager] for token lifecycle
  * - [DesktopAuthRepository] binding [AuthRepository] interface
  *
- * Supabase configuration is read from environment variables:
+ * Supabase configuration is read from required environment variables:
  * - `SUPABASE_URL` — project URL (e.g., "https://xxx.supabase.co")
  * - `SUPABASE_ANON_KEY` — public/anonymous API key
- *
- * Fallback values are provided for local development.
  */
-val authModule = module {
+val authModule = createAuthModule()
+
+internal fun createAuthModule(
+    configProvider: () -> SupabaseConfig = { SupabaseConfig.fromEnvironment() },
+) = module {
+    single { configProvider() }
+
     // Ktor HTTP client for auth API calls
     single {
         HttpClient(OkHttp) {
@@ -44,10 +48,11 @@ val authModule = module {
 
     // Auth repository
     single<AuthRepository> {
+        val config = get<SupabaseConfig>()
         DesktopAuthRepository(
             httpClient = get(),
-            supabaseUrl = System.getenv("SUPABASE_URL") ?: "https://finance.supabase.co",
-            supabaseAnonKey = System.getenv("SUPABASE_ANON_KEY") ?: "",
+            supabaseUrl = config.url,
+            supabaseAnonKey = config.anonKey,
             secureTokenStorage = get(),
             tokenManager = get(),
         )

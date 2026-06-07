@@ -16,6 +16,7 @@ kover = "0.9.1"
 paparazzi = "1.3.5"
 compose-multiplatform = "1.7.3"
 netty = "4.1.133.Final"
+slf4j = "2.0.17"
 
 # Security: forced transitive dependency versions
 commons-lang3 = "3.18.0"
@@ -75,6 +76,7 @@ koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", ver
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 
 # Android / Compose
 core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }

@@ -6,6 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -105,15 +108,19 @@ object PerformanceMonitor {
     const val SCREEN_RENDER_WARNING_MS = 500L
 
     private var isRunning = false
+    private var monitorScope: CoroutineScope? = null
+    private var monitorJob: Job? = null
 
     /**
      * Starts the periodic background monitoring.
      */
     fun start() {
-        if (isRunning) return
+        if (monitorJob?.isActive == true) return
         isRunning = true
 
-        CoroutineScope(Dispatchers.Default).launch {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        monitorScope = scope
+        monitorJob = scope.launch {
             logger.info("Performance monitor started")
             while (isActive && isRunning) {
                 PerformanceTracker.captureMemorySnapshot()
@@ -135,6 +142,9 @@ object PerformanceMonitor {
      */
     fun stop() {
         isRunning = false
+        monitorScope?.cancel()
+        monitorScope = null
+        monitorJob = null
         logger.info("Performance monitor stopped")
     }
 }

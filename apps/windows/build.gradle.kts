@@ -30,6 +30,9 @@ dependencies {
     // HTTP client — Ktor OkHttp engine for JVM sync networking
     implementation(libs.ktor.client.okhttp)
 
+    // Logging provider for Ktor and sync libraries on JVM/Windows
+    runtimeOnly(libs.slf4j.simple)
+
     // DI — Koin (core only, no Android dependency)
     implementation(libs.koin.core)
 

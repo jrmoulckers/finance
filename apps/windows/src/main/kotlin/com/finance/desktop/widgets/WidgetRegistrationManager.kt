@@ -4,6 +4,9 @@ package com.finance.desktop.widgets
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -100,6 +103,8 @@ class WidgetRegistrationManager(
 
     /** Cached widget content for each widget type. */
     private val widgetContentCache = mutableMapOf<FinanceWidgetType, String>()
+    private var refreshScope: CoroutineScope? = null
+    private var refreshJob: Job? = null
 
     /**
      * Whether the application is running as a packaged MSIX with widget
@@ -128,8 +133,12 @@ class WidgetRegistrationManager(
             return
         }
 
+        if (refreshJob?.isActive == true) return
+
         logger.info("Widget manager initialising for packaged app")
-        CoroutineScope(Dispatchers.IO).launch {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        refreshScope = scope
+        refreshJob = scope.launch {
             refreshAllWidgets()
         }
     }
@@ -184,6 +193,9 @@ class WidgetRegistrationManager(
      * Called on application shutdown to clean up resources.
      */
     fun dispose() {
+        refreshScope?.cancel()
+        refreshScope = null
+        refreshJob = null
         widgetContentCache.clear()
         logger.info("Widget manager disposed")
     }
