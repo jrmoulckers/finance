@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { AppIcon } from '../icons';
 
 import type { ImportSummary } from '../../hooks/useImport';
 
@@ -13,7 +14,7 @@ export interface ImportCompleteProps {
 export const ImportComplete: React.FC<ImportCompleteProps> = ({ summary, onReset }) => (
   <section aria-labelledby="complete-heading" className="import-complete">
     <span className="import-complete__icon" aria-hidden="true">
-      ✅
+      <AppIcon name="check" />
     </span>
     <h3 id="complete-heading" className="import-complete__title">
       Import Complete

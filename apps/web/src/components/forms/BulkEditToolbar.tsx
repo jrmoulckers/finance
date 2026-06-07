@@ -20,6 +20,7 @@
 import React, { useCallback, useState } from 'react';
 import type { Category, SyncId } from '../../kmp/bridge';
 import type { BulkUpdateFields, BulkOperationResult } from '../../hooks/useBulkTransactions';
+import { AppIcon } from '../icons';
 
 import '../../styles/bulk-edit.css';
 
@@ -112,7 +113,7 @@ export const BulkEditToolbar: React.FC<BulkEditToolbarProps> = ({
             aria-expanded={showCategoryPicker}
             aria-label="Change category for selected transactions"
           >
-            <span aria-hidden="true">📁</span> Category
+            <AppIcon name="folder" /> Category
           </button>
           {showCategoryPicker && (
             <div
@@ -153,7 +154,7 @@ export const BulkEditToolbar: React.FC<BulkEditToolbarProps> = ({
             onClick={() => setShowDeleteConfirm(true)}
             aria-label={`Delete ${selectionCount} selected transactions`}
           >
-            <span aria-hidden="true">🗑️</span> Delete
+            <AppIcon name="trash" /> Delete
           </button>
         ) : (
           <div

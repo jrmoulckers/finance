@@ -22,6 +22,7 @@ import type {
 } from '../components/gamification/achievements-engine';
 import { getAchievementsByCategory } from '../components/gamification/achievements-engine';
 import './AchievementsPage.css';
+import { AppIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -44,7 +45,7 @@ const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement }) => {
         aria-hidden="true"
         style={{ opacity: isUnlocked ? 1 : 0.4 }}
       >
-        {achievement.icon}
+        <AppIcon name={achievement.icon} />
       </div>
       <div className="achievement-badge__info">
         <h4 className="achievement-badge__name">{achievement.name}</h4>
@@ -67,7 +68,7 @@ const AchievementBadge: React.FC<AchievementBadgeProps> = ({ achievement }) => {
       </div>
       {isUnlocked && (
         <span className="achievement-badge__check" aria-hidden="true">
-          ✓
+          <AppIcon name="check" />
         </span>
       )}
     </article>
@@ -81,7 +82,7 @@ interface StreakCardProps {
 const StreakCard: React.FC<StreakCardProps> = ({ streak }) => (
   <article className="streak-card" aria-label={`${streak.label} streak`}>
     <div className="streak-card__flame" aria-hidden="true">
-      🔥
+      <AppIcon name="flame" />
     </div>
     <div className="streak-card__info">
       <h4 className="streak-card__label">{streak.label}</h4>
@@ -128,7 +129,7 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone }) => (
     {milestone.nextMilestone !== null ? (
       <p className="milestone-card__next">Next milestone: {milestone.nextMilestone}%</p>
     ) : (
-      <p className="milestone-card__next milestone-card__next--completed">Goal complete! 🎉</p>
+      <p className="milestone-card__next milestone-card__next--completed">Goal complete!</p>
     )}
   </article>
 );

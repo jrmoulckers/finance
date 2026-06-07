@@ -15,6 +15,7 @@ import PrivacyDashboardPage from './PrivacyDashboardPage';
 import { useConsent } from '../hooks/useConsent';
 import { useConsentHistory } from '../hooks/useConsentHistory';
 import { usePrivacyDashboard } from '../hooks/usePrivacyDashboard';
+import type { DataCategory } from '../hooks/usePrivacyDashboard';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -58,14 +59,14 @@ const mockConsent = {
   hasCompletedFirstRun: true,
 };
 
-const mockCategories = [
+const mockCategories: DataCategory[] = [
   {
     id: 'accounts',
     name: 'Financial Accounts',
     description: 'Bank accounts and credit cards.',
     storageLocation: 'SQLite (OPFS)' as const,
     leavesDevice: false,
-    icon: '🏦',
+    icon: 'bank',
     estimatedBytes: 0,
   },
   {
@@ -74,7 +75,7 @@ const mockCategories = [
     description: 'Your preferences.',
     storageLocation: 'localStorage' as const,
     leavesDevice: false,
-    icon: '⚙️',
+    icon: 'settings',
     estimatedBytes: 512,
   },
 ];

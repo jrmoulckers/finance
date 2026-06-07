@@ -24,7 +24,7 @@ const baseMilestone: Milestone = {
   type: 'first-transaction',
   title: 'First Transaction!',
   description: 'You logged your first transaction. Great start!',
-  icon: '🎉',
+  icon: 'sparkles',
 };
 
 function renderCelebration(overrides: Partial<MilestoneCelebrationProps> = {}) {
@@ -62,7 +62,7 @@ describe('MilestoneCelebration', () => {
   it('renders the milestone icon', () => {
     renderCelebration();
 
-    expect(screen.getByText('🎉')).toBeInTheDocument();
+    expect(document.querySelector('.milestone-celebration__icon svg')).toBeInTheDocument();
   });
 
   it('renders each milestone type correctly', () => {
@@ -71,19 +71,19 @@ describe('MilestoneCelebration', () => {
         type: 'goal-50',
         title: 'Halfway!',
         description: "You're at 50% of your savings goal!",
-        icon: '⭐',
+        icon: 'sparkles',
       },
       {
         type: 'streak-7',
         title: '7-Day Streak!',
         description: 'A whole week of consistent logging!',
-        icon: '📅',
+        icon: 'calendar',
       },
       {
         type: 'goal-100',
         title: 'Goal Achieved!',
         description: 'Congratulations! You reached your savings goal!',
-        icon: '🏆',
+        icon: 'trophy',
       },
     ];
 

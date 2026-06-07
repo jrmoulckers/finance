@@ -2,6 +2,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AppIcon, type IconName } from '../components/icons';
 
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { GoalForm } from '../components/forms';
@@ -11,18 +12,18 @@ import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
 import '../styles/pages.css';
 
-function getGoalIcon(iconName: string | null | undefined): string {
+function getGoalIcon(iconName: string | null | undefined): IconName {
   switch (iconName) {
     case 'shield':
-      return '🛡️';
+      return 'shield';
     case 'plane':
-      return '✈️';
+      return 'plane';
     case 'home':
-      return '🏡';
+      return 'home';
     case 'laptop':
-      return '💻';
+      return 'laptop';
     default:
-      return '🎯';
+      return 'target';
   }
 }
 
@@ -155,7 +156,7 @@ export const GoalDetailPage: React.FC = () => {
 
       <div className="page-header">
         <h2 className="page-heading">
-          <span aria-hidden="true">{getGoalIcon(goal.icon)}</span> {goal.name}
+          <AppIcon name={getGoalIcon(goal.icon)} /> {goal.name}
         </h2>
         <div className="page-actions">
           <button
@@ -164,7 +165,7 @@ export const GoalDetailPage: React.FC = () => {
             onClick={() => setIsFormOpen(true)}
             aria-label={`Edit ${goal.name}`}
           >
-            ✏️ Edit
+            <AppIcon name="edit" /> Edit
           </button>
           <button
             type="button"
@@ -172,7 +173,7 @@ export const GoalDetailPage: React.FC = () => {
             onClick={() => setDeletingGoal(goal)}
             aria-label={`Delete ${goal.name}`}
           >
-            🗑️ Delete
+            <AppIcon name="trash" /> Delete
           </button>
         </div>
       </div>
@@ -274,9 +275,9 @@ export const GoalDetailPage: React.FC = () => {
             }}
           >
             <span>
-              <span aria-hidden="true">{goalStatus.icon} </span>
+              <AppIcon name={goalStatus.icon} />{' '}
               {percentComplete >= 100 ? (
-                'Goal reached! 🎉'
+                'Goal reached!'
               ) : (
                 <>
                   <CurrencyDisplay

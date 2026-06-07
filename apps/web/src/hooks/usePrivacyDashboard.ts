@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import type { IconName } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,7 +39,7 @@ export interface DataCategory {
   /** Estimated storage in bytes (0 if not calculable). */
   readonly estimatedBytes: number;
   /** Icon name for the category. */
-  readonly icon: string;
+  readonly icon: IconName;
 }
 
 /** Shape returned by {@link usePrivacyDashboard}. */
@@ -81,7 +82,7 @@ const DATA_CATEGORY_DEFS: Omit<DataCategory, 'estimatedBytes'>[] = [
     storageLocation: 'SQLite (OPFS)',
     leavesDevice: false,
     leavesDeviceCondition: 'Only if Cloud Sync is enabled',
-    icon: '🏦',
+    icon: 'bank',
   },
   {
     id: 'transactions',
@@ -91,7 +92,7 @@ const DATA_CATEGORY_DEFS: Omit<DataCategory, 'estimatedBytes'>[] = [
     storageLocation: 'SQLite (OPFS)',
     leavesDevice: false,
     leavesDeviceCondition: 'Only if Cloud Sync is enabled',
-    icon: '💳',
+    icon: 'wallet',
   },
   {
     id: 'budgets',
@@ -101,7 +102,7 @@ const DATA_CATEGORY_DEFS: Omit<DataCategory, 'estimatedBytes'>[] = [
     storageLocation: 'SQLite (OPFS)',
     leavesDevice: false,
     leavesDeviceCondition: 'Only if Cloud Sync is enabled',
-    icon: '📊',
+    icon: 'chart-bar',
   },
   {
     id: 'goals',
@@ -111,7 +112,7 @@ const DATA_CATEGORY_DEFS: Omit<DataCategory, 'estimatedBytes'>[] = [
     storageLocation: 'SQLite (OPFS)',
     leavesDevice: false,
     leavesDeviceCondition: 'Only if Cloud Sync is enabled',
-    icon: '🎯',
+    icon: 'target',
   },
   {
     id: 'categories',
@@ -120,7 +121,7 @@ const DATA_CATEGORY_DEFS: Omit<DataCategory, 'estimatedBytes'>[] = [
       'Custom spending categories and tags for organizing transactions. Includes auto-categorization rules.',
     storageLocation: 'SQLite (OPFS)',
     leavesDevice: false,
-    icon: '🏷️',
+    icon: 'tag',
   },
   {
     id: 'settings',
@@ -129,7 +130,7 @@ const DATA_CATEGORY_DEFS: Omit<DataCategory, 'estimatedBytes'>[] = [
       'Your preferences: theme, currency, notification settings, privacy mode, and display options.',
     storageLocation: 'localStorage',
     leavesDevice: false,
-    icon: '⚙️',
+    icon: 'settings',
   },
   {
     id: 'consent',
@@ -138,7 +139,7 @@ const DATA_CATEGORY_DEFS: Omit<DataCategory, 'estimatedBytes'>[] = [
       'Timestamped records of your privacy consent choices. Required for GDPR compliance and your own audit trail.',
     storageLocation: 'localStorage',
     leavesDevice: false,
-    icon: '📋',
+    icon: 'clipboard',
   },
   {
     id: 'investments',
@@ -147,7 +148,7 @@ const DATA_CATEGORY_DEFS: Omit<DataCategory, 'estimatedBytes'>[] = [
     storageLocation: 'SQLite (OPFS)',
     leavesDevice: false,
     leavesDeviceCondition: 'Only if Cloud Sync is enabled',
-    icon: '📈',
+    icon: 'trending-up',
   },
 ];
 

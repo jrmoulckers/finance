@@ -22,6 +22,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
+import type { IconName } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -48,8 +49,8 @@ export interface Milestone {
   title: string;
   /** Description text. */
   description: string;
-  /** Emoji icon for the celebration. */
-  icon: string;
+  /** Icon name for the celebration. */
+  icon: IconName;
 }
 
 /** Progress data supplied to the hook. */
@@ -106,59 +107,61 @@ function saveDismissed(dismissed: Set<MilestoneType>): void {
 // Milestone definitions
 // ---------------------------------------------------------------------------
 
-const MILESTONE_DEFS: Record<MilestoneType, { title: string; description: string; icon: string }> =
-  {
-    'first-transaction': {
-      title: 'First Transaction!',
-      description: 'You logged your first transaction. Great start!',
-      icon: '🎉',
-    },
-    'first-budget': {
-      title: 'Budget Created!',
-      description: 'Your first budget is set up. Stay on track!',
-      icon: '📊',
-    },
-    'first-goal': {
-      title: 'Goal Set!',
-      description: 'You created your first savings goal. Keep going!',
-      icon: '🎯',
-    },
-    'goal-25': {
-      title: '25% There!',
-      description: "You've reached a quarter of your goal!",
-      icon: '🌱',
-    },
-    'goal-50': {
-      title: 'Halfway!',
-      description: "You're at 50% of your savings goal!",
-      icon: '⭐',
-    },
-    'goal-75': {
-      title: 'Almost There!',
-      description: '75% complete — the finish line is in sight!',
-      icon: '🔥',
-    },
-    'goal-100': {
-      title: 'Goal Achieved!',
-      description: 'Congratulations! You reached your savings goal!',
-      icon: '🏆',
-    },
-    'streak-7': {
-      title: '7-Day Streak!',
-      description: 'A whole week of consistent logging!',
-      icon: '📅',
-    },
-    'streak-30': {
-      title: '30-Day Streak!',
-      description: "A full month — you're building a habit!",
-      icon: '💪',
-    },
-    'streak-90': {
-      title: '90-Day Streak!',
-      description: 'Three months strong! Incredible dedication!',
-      icon: '👑',
-    },
-  };
+const MILESTONE_DEFS: Record<
+  MilestoneType,
+  { title: string; description: string; icon: IconName }
+> = {
+  'first-transaction': {
+    title: 'First Transaction!',
+    description: 'You logged your first transaction. Great start!',
+    icon: 'sparkles',
+  },
+  'first-budget': {
+    title: 'Budget Created!',
+    description: 'Your first budget is set up. Stay on track!',
+    icon: 'chart-bar',
+  },
+  'first-goal': {
+    title: 'Goal Set!',
+    description: 'You created your first savings goal. Keep going!',
+    icon: 'target',
+  },
+  'goal-25': {
+    title: '25% There!',
+    description: "You've reached a quarter of your goal!",
+    icon: 'leaf',
+  },
+  'goal-50': {
+    title: 'Halfway!',
+    description: "You're at 50% of your savings goal!",
+    icon: 'sparkles',
+  },
+  'goal-75': {
+    title: 'Almost There!',
+    description: '75% complete — the finish line is in sight!',
+    icon: 'flame',
+  },
+  'goal-100': {
+    title: 'Goal Achieved!',
+    description: 'Congratulations! You reached your savings goal!',
+    icon: 'trophy',
+  },
+  'streak-7': {
+    title: '7-Day Streak!',
+    description: 'A whole week of consistent logging!',
+    icon: 'calendar',
+  },
+  'streak-30': {
+    title: '30-Day Streak!',
+    description: "A full month — you're building a habit!",
+    icon: 'trophy',
+  },
+  'streak-90': {
+    title: '90-Day Streak!',
+    description: 'Three months strong! Incredible dedication!',
+    icon: 'medal',
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Hook

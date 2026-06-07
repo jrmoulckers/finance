@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AchievementsPage } from './AchievementsPage';
+import type { GamificationState } from '../components/gamification/achievements-engine';
 
 vi.mock('../hooks/useGamification', () => ({
   useGamification: vi.fn(),
@@ -12,13 +13,13 @@ vi.mock('../hooks/useGamification', () => ({
 import { useGamification } from '../hooks/useGamification';
 const mockedUseGamification = vi.mocked(useGamification);
 
-const makeState = () => ({
+const makeState = (): GamificationState => ({
   achievements: [
     {
       id: 'first-transaction',
       name: 'First Step',
       description: 'Log your first transaction',
-      icon: '👣',
+      icon: 'account',
       category: 'tracking' as const,
       status: 'unlocked' as const,
       progress: 100,
@@ -27,7 +28,7 @@ const makeState = () => ({
       id: 'transaction-10',
       name: 'Getting Started',
       description: 'Log 10 transactions',
-      icon: '📝',
+      icon: 'edit',
       category: 'tracking' as const,
       status: 'locked' as const,
       progress: 50,
@@ -36,7 +37,7 @@ const makeState = () => ({
       id: 'first-budget',
       name: 'Budget Beginner',
       description: 'Create your first budget',
-      icon: '📋',
+      icon: 'clipboard',
       category: 'budgeting' as const,
       status: 'unlocked' as const,
       progress: 100,
@@ -45,7 +46,7 @@ const makeState = () => ({
       id: 'first-goal',
       name: 'Goal Setter',
       description: 'Create your first savings goal',
-      icon: '🎯',
+      icon: 'target',
       category: 'saving' as const,
       status: 'locked' as const,
       progress: 0,
@@ -54,7 +55,7 @@ const makeState = () => ({
       id: 'first-account',
       name: 'Account Opener',
       description: 'Add your first account',
-      icon: '🏦',
+      icon: 'bank',
       category: 'milestone' as const,
       status: 'unlocked' as const,
       progress: 100,

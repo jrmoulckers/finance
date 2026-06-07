@@ -25,6 +25,7 @@
 
 import React, { useId } from 'react';
 import { Link } from 'react-router-dom';
+import { AppIcon } from '../components/icons';
 
 import {
   ColumnMapper,
@@ -100,7 +101,7 @@ const UploadStep: React.FC<UploadStepProps> = ({
 
       {uploadError !== null && (
         <div className="import-error-banner" role="alert">
-          <span aria-hidden="true">⚠️</span>
+          <AppIcon name="alert-triangle" />
           {uploadError}
         </div>
       )}

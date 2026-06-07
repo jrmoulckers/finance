@@ -33,6 +33,7 @@ import type {
   SweepLogEntry,
 } from '../lib/planning';
 import './PlanningPage.css';
+import { AppIcon, type IconName } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,11 +41,11 @@ import './PlanningPage.css';
 
 type PlanningTab = 'scenarios' | 'retirement' | 'goals' | 'sweep';
 
-const TAB_CONFIG: { id: PlanningTab; label: string; icon: string }[] = [
-  { id: 'scenarios', label: 'What-If Modeler', icon: '🔮' },
-  { id: 'retirement', label: 'Retirement', icon: '🏖️' },
-  { id: 'goals', label: 'Savings Goals', icon: '🎯' },
-  { id: 'sweep', label: 'Automations', icon: '⚡' },
+const TAB_CONFIG: { id: PlanningTab; label: string; icon: IconName }[] = [
+  { id: 'scenarios', label: 'What-If Modeler', icon: 'sparkles' },
+  { id: 'retirement', label: 'Retirement', icon: 'leaf' },
+  { id: 'goals', label: 'Savings Goals', icon: 'target' },
+  { id: 'sweep', label: 'Automations', icon: 'lightning' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -95,11 +96,16 @@ const ReadinessScoreCircle: React.FC<{
 
 /** Single retirement factor display. */
 const FactorItem: React.FC<{ factor: RetirementFactor }> = ({ factor }) => {
-  const icon = factor.impact === 'positive' ? '✅' : factor.impact === 'negative' ? '⚠️' : 'ℹ️';
+  const icon: IconName =
+    factor.impact === 'positive'
+      ? 'check'
+      : factor.impact === 'negative'
+        ? 'alert-triangle'
+        : 'info';
   return (
     <li className="factor-item" role="listitem">
       <span className="factor-icon" aria-hidden="true">
-        {icon}
+        <AppIcon name={icon} />
       </span>
       <div>
         <span className="factor-item__label">{factor.label}</span>
@@ -289,7 +295,7 @@ const GoalProgressCard: React.FC<{ goal: LinkedGoal }> = ({ goal }) => (
             className={`milestone__icon ${m.reached ? 'milestone__icon--reached' : ''}`}
             aria-hidden="true"
           >
-            {m.reached ? '✓' : m.percent}
+            {m.reached ? <AppIcon name="check" /> : m.percent}
           </span>
           <span className="milestone__label">{m.percent}%</span>
         </div>
@@ -406,7 +412,7 @@ const ScenariosPanel: React.FC = () => {
       {scenarios.length === 0 ? (
         <div className="planning-empty">
           <div className="planning-empty__icon" aria-hidden="true">
-            🔮
+            <AppIcon name="sparkles" />
           </div>
           <p className="planning-empty__text">
             Create a &quot;what if&quot; scenario to see how financial decisions impact your future.
@@ -697,7 +703,7 @@ const GoalsPanel: React.FC = () => {
     return (
       <div className="planning-empty">
         <div className="planning-empty__icon" aria-hidden="true">
-          🎯
+          <AppIcon name="target" />
         </div>
         <p className="planning-empty__text">
           No savings goals yet. Create a goal from the Goals page to track progress here.
@@ -762,14 +768,14 @@ const SweepPanel: React.FC = () => {
           disabled={rules.length === 0}
           aria-label="Simulate all sweep rules"
         >
-          🔄 Simulate All Rules
+          <AppIcon name="refresh" /> Simulate All Rules
         </button>
       </div>
 
       {rules.length === 0 ? (
         <div className="planning-empty">
           <div className="planning-empty__icon" aria-hidden="true">
-            ⚡
+            <AppIcon name="lightning" />
           </div>
           <p className="planning-empty__text">
             No sweep rules configured. Rules automate savings transfers like round-ups,
@@ -881,7 +887,7 @@ export const PlanningPage: React.FC = () => {
             aria-controls={`panel-${tab.id}`}
             onClick={() => setActiveTab(tab.id)}
           >
-            <span aria-hidden="true">{tab.icon}</span> {tab.label}
+            <AppIcon name={tab.icon} /> {tab.label}
           </button>
         ))}
       </div>

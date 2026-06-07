@@ -11,6 +11,7 @@
  */
 
 import React from 'react';
+import { AppIcon } from '../icons';
 
 import type { BankConnectionHealth } from '../../hooks/useBankConnections';
 
@@ -133,9 +134,13 @@ export const ConnectionHealthCard: React.FC<ConnectionHealthCardProps> = ({
         <div className="connection-health-card__detail">
           <span className="connection-health-card__label">Access</span>
           <span className="connection-health-card__value">
-            {connection.permissionLevel === 'read_only'
-              ? '🔒 Read-only'
-              : connection.permissionLevel}
+            {connection.permissionLevel === 'read_only' ? (
+              <>
+                <AppIcon name="lock" /> Read-only
+              </>
+            ) : (
+              connection.permissionLevel
+            )}
           </span>
         </div>
 

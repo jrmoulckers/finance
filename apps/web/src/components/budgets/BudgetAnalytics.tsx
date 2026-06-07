@@ -26,6 +26,7 @@ import {
   type ChangeDirection,
 } from '../../lib/budget-analytics';
 import './budget-analytics.css';
+import { AppIcon, type IconName } from '../icons';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -63,10 +64,10 @@ const HEALTH_LABELS: Record<BudgetHealthStatus, string> = {
   'over-budget': 'Over Budget',
 };
 
-const HEALTH_ICONS: Record<BudgetHealthStatus, string> = {
-  'on-track': '✓',
-  'at-risk': '⚠',
-  'over-budget': '✗',
+const HEALTH_ICONS: Record<BudgetHealthStatus, IconName> = {
+  'on-track': 'check',
+  'at-risk': 'alert-triangle',
+  'over-budget': 'x',
 };
 
 /** Renders the traffic-light budget health indicator with text + icon. */
@@ -79,8 +80,7 @@ function HealthIndicator({ status }: { status: BudgetHealthStatus }) {
     >
       <span className="health-indicator__icon" aria-hidden="true" />
       <span className="health-indicator__label">
-        <span aria-hidden="true">{HEALTH_ICONS[status]} </span>
-        {HEALTH_LABELS[status]}
+        <AppIcon name={HEALTH_ICONS[status]} /> {HEALTH_LABELS[status]}
       </span>
     </span>
   );

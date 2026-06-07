@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { AppIcon } from '../components/icons';
 
 import {
   ConfirmDialog,
@@ -156,44 +157,6 @@ function ChevronDownIcon() {
         fill="none"
         stroke="currentColor"
         strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function PencilIcon() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <path
-        d="M3.25 11.75 3 13l1.25-.25 7.35-7.35-1-1-7.35 7.35Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m9.9 3.7.7-.7a1.1 1.1 0 0 1 1.55 0l.85.85a1.1 1.1 0 0 1 0 1.55l-.7.7"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ImportIcon() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <path
-        d="M8 2.75v6.5m0 0L5.5 6.75M8 9.25l2.5-2.5M3.25 10.5v1.75c0 .55.45 1 1 1h7.5c.55 0 1-.45 1-1V10.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -524,7 +487,7 @@ export const TransactionsPage: React.FC = () => {
           disabled={transactions.length === 0}
           style={{ marginRight: 'var(--spacing-2)' }}
         >
-          <span aria-hidden="true">📤</span> Export CSV
+          <AppIcon name="upload" /> Export CSV
         </button>
         <div className="add-transaction-menu" ref={addMenuRef}>
           <div className="add-transaction-split-button">
@@ -559,8 +522,7 @@ export const TransactionsPage: React.FC = () => {
                 role="menuitem"
                 onClick={handleOpenCreateForm}
               >
-                <PencilIcon />
-                Manual Entry
+                <AppIcon name="edit" /> Manual Entry
               </button>
               <button
                 type="button"
@@ -568,8 +530,7 @@ export const TransactionsPage: React.FC = () => {
                 role="menuitem"
                 onClick={handleImportFromFile}
               >
-                <ImportIcon />
-                Import from File
+                <AppIcon name="download" /> Import from File
               </button>
             </div>
           )}
@@ -666,7 +627,7 @@ export const TransactionsPage: React.FC = () => {
                               onClick={() => handleEditTransaction(transaction)}
                               aria-label={`Edit ${transactionLabel}`}
                             >
-                              <span aria-hidden="true">✏️</span>
+                              <AppIcon name="edit" />
                             </button>
                             <button
                               type="button"
@@ -674,7 +635,7 @@ export const TransactionsPage: React.FC = () => {
                               onClick={() => setDeletingTransaction(transaction)}
                               aria-label={`Delete ${transactionLabel}`}
                             >
-                              <span aria-hidden="true">🗑️</span>
+                              <AppIcon name="trash" />
                             </button>
                           </div>
                         </div>

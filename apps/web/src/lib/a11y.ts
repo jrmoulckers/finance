@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import type { IconName } from '../components/icons';
+
 /**
  * Accessibility utility functions for the Finance web app.
  *
@@ -123,26 +125,26 @@ export function getStatusIndicator(amount: number): {
  *
  * @example
  * ```ts
- * getGoalStatusIndicator(100); // { icon: '✓', label: 'Goal reached', tone: 'positive' }
- * getGoalStatusIndicator(60);  // { icon: '◐', label: 'In progress', tone: 'positive' }
- * getGoalStatusIndicator(20);  // { icon: '○', label: 'Getting started', tone: 'warning' }
+ * getGoalStatusIndicator(100); // { icon: 'check', label: 'Goal reached', tone: 'positive' }
+ * getGoalStatusIndicator(60);  // { icon: 'target', label: 'In progress', tone: 'positive' }
+ * getGoalStatusIndicator(20);  // { icon: 'target', label: 'Getting started', tone: 'warning' }
  * ```
  */
 export function getGoalStatusIndicator(percentComplete: number): {
-  icon: string;
+  icon: IconName;
   label: string;
   tone: 'positive' | 'warning' | 'negative';
 } {
   if (percentComplete >= 100) {
-    return { icon: '✓', label: 'Goal reached', tone: 'positive' };
+    return { icon: 'check', label: 'Goal reached', tone: 'positive' };
   }
   if (percentComplete >= 50) {
-    return { icon: '◐', label: 'In progress', tone: 'positive' };
+    return { icon: 'target', label: 'In progress', tone: 'positive' };
   }
   if (percentComplete >= 25) {
-    return { icon: '◔', label: 'Getting started', tone: 'warning' };
+    return { icon: 'target', label: 'Getting started', tone: 'warning' };
   }
-  return { icon: '○', label: 'Just started', tone: 'negative' };
+  return { icon: 'target', label: 'Just started', tone: 'negative' };
 }
 
 /**
@@ -152,23 +154,23 @@ export function getGoalStatusIndicator(percentComplete: number): {
  *
  * @example
  * ```ts
- * getBudgetStatusIndicator(95);  // { icon: '⚠', label: 'Over limit', tone: 'negative' }
- * getBudgetStatusIndicator(80);  // { icon: '◐', label: 'Near limit', tone: 'warning' }
- * getBudgetStatusIndicator(50);  // { icon: '●', label: 'On track', tone: 'positive' }
+ * getBudgetStatusIndicator(95);  // { icon: 'alert-triangle', label: 'Over limit', tone: 'negative' }
+ * getBudgetStatusIndicator(80);  // { icon: 'target', label: 'Near limit', tone: 'warning' }
+ * getBudgetStatusIndicator(50);  // { icon: 'check', label: 'On track', tone: 'positive' }
  * ```
  */
 export function getBudgetStatusIndicator(percentUsed: number): {
-  icon: string;
+  icon: IconName;
   label: string;
   tone: 'positive' | 'warning' | 'negative';
 } {
   if (percentUsed > 90) {
-    return { icon: '⚠', label: 'Over limit', tone: 'negative' };
+    return { icon: 'alert-triangle', label: 'Over limit', tone: 'negative' };
   }
   if (percentUsed > 75) {
-    return { icon: '◐', label: 'Near limit', tone: 'warning' };
+    return { icon: 'target', label: 'Near limit', tone: 'warning' };
   }
-  return { icon: '●', label: 'On track', tone: 'positive' };
+  return { icon: 'check', label: 'On track', tone: 'positive' };
 }
 
 // ---------------------------------------------------------------------------

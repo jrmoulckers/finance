@@ -15,19 +15,20 @@ import type { CreateGoalInput } from '../db/repositories/goals';
 import { useGoals } from '../hooks';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
+import { AppIcon, type IconName } from '../components/icons';
 
-function getGoalIcon(iconName: string | null | undefined): string {
+function getGoalIcon(iconName: string | null | undefined): IconName {
   switch (iconName) {
     case 'shield':
-      return '🛡️';
+      return 'shield';
     case 'plane':
-      return '✈️';
+      return 'plane';
     case 'home':
-      return '🏡';
+      return 'home';
     case 'laptop':
-      return '💻';
+      return 'laptop';
     default:
-      return '🎯';
+      return 'target';
   }
 }
 
@@ -213,7 +214,7 @@ export const GoalsPage: React.FC = () => {
                           style={{ textDecoration: 'none', color: 'inherit' }}
                           aria-label={`View details for ${goal.name}`}
                         >
-                          <span aria-hidden="true">{getGoalIcon(goal.icon)}</span> {goal.name}
+                          <AppIcon name={getGoalIcon(goal.icon)} /> {goal.name}
                         </Link>
                       </h3>
                       <div
@@ -306,7 +307,7 @@ export const GoalsPage: React.FC = () => {
                       }}
                     >
                       <span>
-                        <span aria-hidden="true">{goalStatus.icon} </span>
+                        <AppIcon name={goalStatus.icon} />{' '}
                         {percentComplete >= 100 ? (
                           'Goal reached!'
                         ) : (

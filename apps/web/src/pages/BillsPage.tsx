@@ -18,6 +18,7 @@ import {
 } from '../components/common';
 import { useBills } from '../hooks';
 import type { Bill, BillFrequency, BillStatus } from '../kmp/bridge';
+import { AppIcon, type IconName } from '../components/icons';
 
 /** Human-readable labels for bill frequency. */
 const FREQUENCY_LABELS: Record<BillFrequency, string> = {
@@ -63,17 +64,17 @@ function getStatusStyle(status: BillStatus): React.CSSProperties {
   }
 }
 
-/** Emoji icons for bill status. */
-function getStatusIcon(status: BillStatus): string {
+/** Icons for bill status. */
+function getStatusIcon(status: BillStatus): IconName {
   switch (status) {
     case 'UPCOMING':
-      return '📅';
+      return 'calendar';
     case 'PAID':
-      return '✅';
+      return 'check';
     case 'OVERDUE':
-      return '⚠️';
+      return 'alert-triangle';
     case 'CANCELLED':
-      return '❌';
+      return 'x';
   }
 }
 
@@ -196,7 +197,7 @@ export const BillsPage: React.FC = () => {
               }}
             >
               <p style={{ margin: 0, fontSize: 'var(--type-scale-body-font-size)' }}>
-                🔔 Enable notifications to get reminded before bills are due.
+                <AppIcon name="bell" /> Enable notifications to get reminded before bills are due.
               </p>
               <button
                 type="button"
@@ -320,8 +321,7 @@ export const BillsPage: React.FC = () => {
                         style={{ textDecoration: 'none', color: 'inherit' }}
                         aria-label={`View details for ${bill.name}`}
                       >
-                        <span aria-hidden="true">{getStatusIcon(bill.status)} </span>
-                        {bill.name}
+                        <AppIcon name={getStatusIcon(bill.status)} /> {bill.name}
                       </Link>
                     </h3>
                     <span
@@ -377,7 +377,7 @@ export const BillsPage: React.FC = () => {
                         marginBottom: 'var(--spacing-2)',
                       }}
                     >
-                      ⚡ Auto-pay enabled
+                      <AppIcon name="lightning" /> Auto-pay enabled
                     </p>
                   )}
 

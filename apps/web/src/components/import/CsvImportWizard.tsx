@@ -16,6 +16,7 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react';
+import { AppIcon } from '../icons';
 
 import { parseCsv, autoDetectColumns, type CsvParseResult } from '../../utils/csvParser';
 
@@ -220,7 +221,7 @@ export const CsvImportWizard: React.FC<CsvImportWizardProps> = ({
       tabIndex={0}
       aria-label="Upload CSV file. Click or drag and drop."
     >
-      <span aria-hidden="true">📁</span>
+      <AppIcon name="folder" />
       <p className="csv-import-wizard__dropzone-text">
         Drag and drop a CSV file here, or click to browse
       </p>
@@ -323,7 +324,7 @@ export const CsvImportWizard: React.FC<CsvImportWizardProps> = ({
 
         {duplicateCount > 0 && (
           <div className="csv-import-wizard__warning" role="alert">
-            ⚠ {duplicateCount} potential duplicate
+            <AppIcon name="alert-triangle" /> {duplicateCount} potential duplicate
             {duplicateCount === 1 ? ' transaction' : ' transactions'} detected. These will be
             skipped during import.
           </div>

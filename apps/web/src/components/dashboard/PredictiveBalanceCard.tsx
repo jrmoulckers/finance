@@ -22,6 +22,7 @@
 import React, { useCallback, useState } from 'react';
 import { CurrencyDisplay } from '../common';
 import type { PredictionSummary, AccountPrediction } from '../../lib/predictiveBalance';
+import { AppIcon, type IconName } from '../icons';
 
 import '../../styles/predictive-balance.css';
 
@@ -38,14 +39,14 @@ export interface PredictiveBalanceCardProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getTrendIcon(trend: AccountPrediction['trend']): string {
+function getTrendIcon(trend: AccountPrediction['trend']): IconName {
   switch (trend) {
     case 'positive':
-      return '📈';
+      return 'trending-up';
     case 'negative':
-      return '📉';
+      return 'trending-down';
     case 'flat':
-      return '➡️';
+      return 'arrow-right';
   }
 }
 
@@ -104,7 +105,7 @@ export const PredictiveBalanceCard: React.FC<PredictiveBalanceCardProps> = ({ pr
             className={`predictive-card__trend predictive-card__trend--${overallTrend}`}
             aria-label={getTrendLabel(overallTrend)}
           >
-            <span aria-hidden="true">{getTrendIcon(overallTrend)}</span>
+            <AppIcon name={getTrendIcon(overallTrend)} />
             <CurrencyDisplay amount={prediction.predictedChangeCents} colorize showSign />
           </span>
         </div>
@@ -140,7 +141,7 @@ export const PredictiveBalanceCard: React.FC<PredictiveBalanceCardProps> = ({ pr
                       className={`predictive-card__account-trend predictive-card__trend--${account.trend}`}
                       aria-label={getTrendLabel(account.trend)}
                     >
-                      <span aria-hidden="true">{getTrendIcon(account.trend)}</span>
+                      <AppIcon name={getTrendIcon(account.trend)} />
                     </span>
                   </div>
                   <div className="predictive-card__account-amounts">

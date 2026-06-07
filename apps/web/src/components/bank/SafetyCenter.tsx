@@ -12,6 +12,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { AppIcon, type IconName } from '../icons';
 
 import type {
   ConnectorPermission,
@@ -40,11 +41,11 @@ export interface SafetyCenterProps {
 // ---------------------------------------------------------------------------
 
 /** Human-readable permission level labels. */
-const PERMISSION_LABELS: Record<string, string> = {
-  read_only: '🔒 Read-only',
-  read_write: '🔓 Read & Write',
-  read_balance: '👁️ Balance only',
-  read_transactions: '📋 Transactions only',
+const PERMISSION_LABELS: Record<string, { icon: IconName; label: string }> = {
+  read_only: { icon: 'lock', label: 'Read-only' },
+  read_write: { icon: 'unlock', label: 'Read & Write' },
+  read_balance: { icon: 'eye', label: 'Balance only' },
+  read_transactions: { icon: 'clipboard', label: 'Transactions only' },
 };
 
 /** Human-readable access type labels. */
@@ -158,7 +159,14 @@ export const SafetyCenter: React.FC<SafetyCenterProps> = ({
 
                 <div className="safety-center__item-details">
                   <span className="safety-center__permission-badge">
-                    {PERMISSION_LABELS[perm.permissionLevel] ?? perm.permissionLevel}
+                    {PERMISSION_LABELS[perm.permissionLevel] ? (
+                      <>
+                        <AppIcon name={PERMISSION_LABELS[perm.permissionLevel].icon} />{' '}
+                        {PERMISSION_LABELS[perm.permissionLevel].label}
+                      </>
+                    ) : (
+                      perm.permissionLevel
+                    )}
                   </span>
 
                   <span

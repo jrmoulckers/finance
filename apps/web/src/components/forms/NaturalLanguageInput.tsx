@@ -17,6 +17,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
+import { AppIcon, type IconName } from '../icons';
 
 import { useNaturalLanguageInput } from '../../hooks/useNaturalLanguageInput';
 import type { EditableField } from '../../hooks/useNaturalLanguageInput';
@@ -191,7 +192,7 @@ export function NaturalLanguageInput({
                 aria-expanded={showLocaleMenu}
                 aria-haspopup="listbox"
               >
-                🌐 {locale}
+                <AppIcon name="globe" /> {locale}
               </button>
               {showLocaleMenu && (
                 <ul className="nl-locale-menu" role="listbox" aria-label="Select input locale">
@@ -284,7 +285,7 @@ export function NaturalLanguageInput({
                   <span className="nl-suggestion-text">{suggestion.text}</span>
                   {suggestion.source === 'history' && (
                     <span className="nl-suggestion-badge" aria-label="From history">
-                      🕐
+                      <AppIcon name="calendar" />
                     </span>
                   )}
                 </li>
@@ -370,7 +371,7 @@ export function NaturalLanguageInput({
             {parsedTransaction.payee && (
               <ParsedTag
                 field="payee"
-                icon="📍"
+                icon="map-pin"
                 label={parsedTransaction.payee}
                 confidence={parsedTransaction.fieldConfidences.payee}
                 editingField={editingField}
@@ -383,7 +384,7 @@ export function NaturalLanguageInput({
             {parsedTransaction.amountCents != null && (
               <ParsedTag
                 field="amount"
-                icon="💰"
+                icon="wallet"
                 label={formatCents(parsedTransaction.amountCents)}
                 confidence={parsedTransaction.fieldConfidences.amount}
                 editingField={editingField}
@@ -396,7 +397,7 @@ export function NaturalLanguageInput({
             {parsedTransaction.category && (
               <ParsedTag
                 field="category"
-                icon="🏷️"
+                icon="tag"
                 label={parsedTransaction.category}
                 confidence={parsedTransaction.fieldConfidences.category}
                 editingField={editingField}
@@ -409,7 +410,7 @@ export function NaturalLanguageInput({
             {parsedTransaction.date && (
               <ParsedTag
                 field="date"
-                icon="📅"
+                icon="calendar"
                 label={parsedTransaction.date}
                 confidence={parsedTransaction.fieldConfidences.date}
                 editingField={editingField}
@@ -423,10 +424,10 @@ export function NaturalLanguageInput({
               field="type"
               icon={
                 parsedTransaction.type === 'INCOME'
-                  ? '📈'
+                  ? 'trending-up'
                   : parsedTransaction.type === 'TRANSFER'
-                    ? '🔄'
-                    : '📉'
+                    ? 'refresh'
+                    : 'trending-down'
               }
               label={parsedTransaction.type}
               confidence={parsedTransaction.fieldConfidences.type}
@@ -478,7 +479,7 @@ export function NaturalLanguageInput({
 
 interface ParsedTagProps {
   field: EditableField;
-  icon: string;
+  icon: IconName;
   label: string;
   confidence: { value: number; label: string };
   editingField: EditableField | null;
@@ -515,7 +516,7 @@ function ParsedTag({
   if (isEditing) {
     return (
       <span className={`nl-parsed-tag nl-parsed-tag--${field} nl-parsed-tag--editing`}>
-        <span aria-hidden="true">{icon}</span>
+        <AppIcon name={icon} />
         <input
           ref={quickFixRef}
           className="nl-quickfix-input"
@@ -543,7 +544,7 @@ function ParsedTag({
       aria-label={`${field}: ${label} (${confidence.label} confidence, ${Math.round(confidence.value * 100)}%). Click to edit.`}
       title={`Click to correct ${field}`}
     >
-      <span aria-hidden="true">{icon}</span>
+      <AppIcon name={icon} />
       <span>{label}</span>
       <span
         className={`nl-field-confidence nl-field-confidence--${confidence.label}`}

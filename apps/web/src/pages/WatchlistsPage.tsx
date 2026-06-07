@@ -34,6 +34,7 @@ import {
 } from '../hooks/useSpendingWatchlists';
 
 import '../styles/watchlists.css';
+import { AppIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Subcomponents
@@ -58,7 +59,15 @@ const AlertCard: React.FC<AlertCardProps> = ({ alert, onDismiss }) => (
   >
     <div className="watchlist-alert__content">
       <span className="watchlist-alert__icon" aria-hidden="true">
-        {alert.level === 'critical' ? '🚨' : alert.level === 'warning' ? '⚠️' : 'ℹ️'}
+        <AppIcon
+          name={
+            alert.level === 'critical'
+              ? 'alert-triangle'
+              : alert.level === 'warning'
+                ? 'alert-circle'
+                : 'info'
+          }
+        />
       </span>
       <div className="watchlist-alert__text">
         <p className="watchlist-alert__message">{alert.message}</p>
@@ -136,7 +145,13 @@ const WatchlistItem: React.FC<WatchlistItemProps> = ({
           aria-label={`${watchlist.alertsEnabled ? 'Disable' : 'Enable'} alerts for ${watchlist.categoryName}`}
           aria-pressed={watchlist.alertsEnabled}
         >
-          {watchlist.alertsEnabled ? '🔔 Alerts on' : '🔕 Alerts off'}
+          {watchlist.alertsEnabled ? (
+            <>
+              <AppIcon name="bell" /> Alerts on
+            </>
+          ) : (
+            'Alerts off'
+          )}
         </button>
         <button
           type="button"
