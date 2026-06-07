@@ -182,6 +182,7 @@
 }
 
 html {
+  scrollbar-gutter: stable;
   font-family:
     system-ui,
     -apple-system,
