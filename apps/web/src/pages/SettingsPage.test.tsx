@@ -442,7 +442,7 @@ describe('SettingsPage', () => {
     it('shows online sync status and passkey registration state', () => {
       renderSettingsAt('/settings/sync');
 
-      expect(screen.getByText('Online — synced')).toBeInTheDocument();
+      expect(screen.getByText('All synced')).toBeInTheDocument();
       expect(screen.getByText('✓ Registered')).toBeInTheDocument();
     });
 

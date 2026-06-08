@@ -90,7 +90,7 @@ export const SettingsSyncPage: React.FC = () => {
                   className={`settings-item__status-dot ${isOffline ? 'settings-item__status-dot--offline' : 'settings-item__status-dot--online'}`}
                 />
                 <span className="settings-item__value">
-                  {isOffline ? 'Offline — changes saved locally' : 'Online — synced'}
+                  {isOffline ? 'Offline — changes saved locally' : 'All synced'}
                 </span>
               </span>
             </div>
