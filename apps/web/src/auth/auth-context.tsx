@@ -468,54 +468,57 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     [config.loginEndpoint, demoModeActive],
   );
 
-  const loginWithPasskey = useCallback(async (email?: string): Promise<void> => {
-    setError(null);
+  const loginWithPasskey = useCallback(
+    async (email?: string): Promise<void> => {
+      setError(null);
 
-    // Hard guard for demo mode (#2011). The initialisation `useEffect`
-    // returns early in demo mode and never calls `initWebAuthn()`, so a
-    // call into `authenticateWithPasskey` here would throw the cryptic
-    // developer-facing "WebAuthn not initialised. Call initWebAuthn()
-    // first." error. The UI is supposed to hide passkey controls in demo
-    // mode, but defence-in-depth in case some surface forgets.
-    if (demoModeActive) {
-      const message = 'Passkey sign-in is not available in demo mode.';
-      setError(message);
-      throw new Error(message);
-    }
-
-    setIsLoading(true);
-
-    try {
-      const result = await authenticateWithPasskey(email);
-
-      // The verify step returns a full Supabase session (access_token,
-      // refresh_token, user). No separate session-minting call is needed —
-      // binding session issuance to the WebAuthn ceremony eliminates the
-      // CSRF risk of a detached session endpoint (#1310).
-      if (result.accessToken) {
-        setAccessToken(result.accessToken);
-        rememberUser({
-          id: result.userId,
-          email: result.email ?? email ?? '',
-          hasPasskey: true,
-        });
-        setIsOffline(false);
-        // A successful passkey sign-in reaffirms the user's preference
-        // (#1983). Idempotent — safe to call on every login.
-        setPreferredAuthMethod('passkey');
-      } else {
-        // Defensive fallback — should not occur with a correctly
-        // configured server, but avoids a blank screen if the server
-        // response shape changes.
-        throw new Error('Passkey verification succeeded but no session token was returned.');
+      // Hard guard for demo mode (#2011). The initialisation `useEffect`
+      // returns early in demo mode and never calls `initWebAuthn()`, so a
+      // call into `authenticateWithPasskey` here would throw the cryptic
+      // developer-facing "WebAuthn not initialised. Call initWebAuthn()
+      // first." error. The UI is supposed to hide passkey controls in demo
+      // mode, but defence-in-depth in case some surface forgets.
+      if (demoModeActive) {
+        const message = 'Passkey sign-in is not available in demo mode.';
+        setError(message);
+        throw new Error(message);
       }
-    } catch (err) {
-      setError(getPasskeyErrorMessage(err, 'authentication'));
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [demoModeActive]);
+
+      setIsLoading(true);
+
+      try {
+        const result = await authenticateWithPasskey(email);
+
+        // The verify step returns a full Supabase session (access_token,
+        // refresh_token, user). No separate session-minting call is needed —
+        // binding session issuance to the WebAuthn ceremony eliminates the
+        // CSRF risk of a detached session endpoint (#1310).
+        if (result.accessToken) {
+          setAccessToken(result.accessToken);
+          rememberUser({
+            id: result.userId,
+            email: result.email ?? email ?? '',
+            hasPasskey: true,
+          });
+          setIsOffline(false);
+          // A successful passkey sign-in reaffirms the user's preference
+          // (#1983). Idempotent — safe to call on every login.
+          setPreferredAuthMethod('passkey');
+        } else {
+          // Defensive fallback — should not occur with a correctly
+          // configured server, but avoids a blank screen if the server
+          // response shape changes.
+          throw new Error('Passkey verification succeeded but no session token was returned.');
+        }
+      } catch (err) {
+        setError(getPasskeyErrorMessage(err, 'authentication'));
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [demoModeActive],
+  );
 
   const registerNewPasskey = useCallback(async (): Promise<void> => {
     setError(null);
