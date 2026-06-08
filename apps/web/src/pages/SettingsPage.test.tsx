@@ -156,6 +156,7 @@ vi.mock('../components/settings/CurrencyRatesSettings', () => ({
 
 import { SettingsPage } from './SettingsPage';
 import { SettingsAccountPage } from './settings/SettingsAccountPage';
+import { SettingsAboutPage } from './settings/SettingsAboutPage';
 import { SettingsAdvancedPage } from './settings/SettingsAdvancedPage';
 import { SettingsPreferencesPage } from './settings/SettingsPreferencesPage';
 import { SettingsPrivacyPage } from './settings/SettingsPrivacyPage';
@@ -176,6 +177,7 @@ function renderSettingsAt(path: string) {
           <Route path="privacy" element={<SettingsPrivacyPage />} />
           <Route path="sync" element={<SettingsSyncPage />} />
           <Route path="advanced" element={<SettingsAdvancedPage />} />
+          <Route path="about" element={<SettingsAboutPage />} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -227,7 +229,7 @@ describe('SettingsPage', () => {
       const nav = screen.getByRole('navigation', { name: /settings sections/i });
       expect(nav).toBeInTheDocument();
       // Each section is a real <a> link inside <nav> for keyboard nav.
-      ['Account', 'Preferences', 'Privacy & Data', 'Sync & Devices', 'Advanced'].forEach(
+      ['Account', 'Preferences', 'Privacy & Data', 'Sync & Devices', 'Advanced', 'About'].forEach(
         (label) => {
           expect(nav.querySelector(`a[href$='${label.toLowerCase().split(' ')[0]}']`)).toBeTruthy();
         },
@@ -469,13 +471,28 @@ describe('SettingsPage', () => {
   });
 
   describe('Advanced sub-page', () => {
-    it('renders the version and experimental mood-tags controls', () => {
+    it('renders experimental mood-tags controls', () => {
       renderSettingsAt('/settings/advanced');
 
-      expect(screen.getByText('0.1.0')).toBeInTheDocument();
       expect(
         screen.getByRole('checkbox', { name: 'Allow mood tags on transactions' }),
       ).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'About' })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('About sub-page', () => {
+    it('renders app metadata, license, and credits', () => {
+      renderSettingsAt('/settings/about');
+
+      expect(screen.getByRole('heading', { name: 'About', level: 2 })).toBeInTheDocument();
+      expect(screen.getByText('0.1.0')).toBeInTheDocument();
+      expect(screen.getByText('Not available in this build')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /open business source license/i })).toHaveAttribute(
+        'href',
+        'https://github.com/jrmoulckers/finance/blob/main/LICENSE',
+      );
+      expect(screen.getByText(/Built with React, Vite, TypeScript/i)).toBeInTheDocument();
     });
   });
 });

@@ -11,8 +11,6 @@ import {
   setMoodTagPreference,
 } from '../../lib/mood-tags';
 
-const APP_VERSION = '0.1.0';
-
 function useOptionalDatabase() {
   try {
     return useDatabase();
@@ -22,8 +20,7 @@ function useOptionalDatabase() {
 }
 
 /**
- * Advanced sub-page — experimental feature flags, developer-leaning
- * preferences, and metadata such as the app version.
+ * Advanced sub-page — experimental feature flags and developer-leaning preferences.
  */
 export const SettingsAdvancedPage: React.FC = () => {
   const db = useOptionalDatabase();
@@ -104,16 +101,6 @@ export const SettingsAdvancedPage: React.FC = () => {
             <span className="settings-item__label">Erase all mood data</span>
             <span className="settings-item__value">⌫</span>
           </button>
-        </div>
-      </section>
-
-      <section aria-label="About" className="page-section">
-        <div className="settings-group">
-          <h3 className="settings-group__title">About</h3>
-          <div className="settings-item settings-item--static">
-            <span className="settings-item__label">Version</span>
-            <span className="settings-item__value">{APP_VERSION}</span>
-          </div>
         </div>
       </section>
     </>
