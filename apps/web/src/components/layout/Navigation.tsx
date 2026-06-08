@@ -15,7 +15,7 @@
  * two layouts can never drift.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../../auth/auth-context';
 
@@ -166,11 +166,24 @@ const SidebarGroup: React.FC<SidebarGroupProps> = ({
   defaultExpanded,
 }) => {
   const containsActive = items.some((item) => isActive(activePath, item.href));
-  const [userExpanded, setUserExpanded] = useState(defaultExpanded);
-  // The section is always visible when one of its routes is active so the
-  // user can see where they are in the IA. Otherwise the user controls
-  // expand/collapse via the toggle.
-  const expanded = userExpanded || containsActive;
+  // Initialise from the static default, OR force-open if the active route is
+  // already inside this group at mount (so the user always lands on a visible
+  // active item even when the group would otherwise start collapsed, #2005).
+  const [userExpanded, setUserExpanded] = useState(defaultExpanded || containsActive);
+
+  // Auto-expand only on the *rising edge* of containsActive — i.e. when the
+  // user navigates INTO this group from another. This keeps the helpful
+  // "show me where I am" behaviour without sticking the section open and
+  // making the toggle non-functional (#2005).
+  const prevContainsActive = useRef(containsActive);
+  useEffect(() => {
+    if (containsActive && !prevContainsActive.current) {
+      setUserExpanded(true);
+    }
+    prevContainsActive.current = containsActive;
+  }, [containsActive]);
+
+  const expanded = userExpanded;
 
   const sectionId = `sidebar-group-${group}`;
   const headingId = `sidebar-group-${group}-heading`;

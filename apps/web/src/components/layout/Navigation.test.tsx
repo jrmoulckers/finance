@@ -278,4 +278,55 @@ describe('SidebarNavigation', () => {
     expect(moneyList?.hasAttribute('hidden')).toBe(true);
     expect(moneyToggle).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it('can collapse a group that contains the currently active route (#2005)', () => {
+    // Regression: previously `expanded = userExpanded || containsActive`
+    // made the section permanently expanded as long as the active route was
+    // inside it. Users could click the chevron and watch nothing happen.
+    render(<SidebarNavigation {...defaultProps} activePath="/subscriptions" />);
+
+    const moneyToggle = screen.getByRole('button', { name: 'Money section' });
+    // Group opens on mount because it contains the active route.
+    expect(moneyToggle).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(moneyToggle);
+
+    expect(moneyToggle).toHaveAttribute('aria-expanded', 'false');
+    const moneyList = document.getElementById('sidebar-group-money');
+    expect(moneyList?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('auto-expands a group on cross-group navigation (#2005)', () => {
+    // After the user collapses Money on /dashboard, navigating into a Money
+    // route should re-open the group so the active item is visible.
+    const { rerender } = render(<SidebarNavigation {...defaultProps} activePath="/dashboard" />);
+
+    const moneyToggle = screen.getByRole('button', { name: 'Money section' });
+    // Default-expanded; collapse it.
+    fireEvent.click(moneyToggle);
+    expect(moneyToggle).toHaveAttribute('aria-expanded', 'false');
+
+    // Simulate cross-group navigation into /accounts.
+    rerender(<SidebarNavigation {...defaultProps} activePath="/accounts" />);
+
+    expect(moneyToggle).toHaveAttribute('aria-expanded', 'true');
+    const moneyList = document.getElementById('sidebar-group-money');
+    expect(moneyList?.hasAttribute('hidden')).toBe(false);
+  });
+
+  it('does not re-expand a group on same-group navigation after user collapsed it (#2005)', () => {
+    // If the user collapses Money while on /transactions and then navigates
+    // to /accounts (still in Money), the section should stay collapsed
+    // because containsActive did not flip from false to true.
+    const { rerender } = render(<SidebarNavigation {...defaultProps} activePath="/transactions" />);
+
+    const moneyToggle = screen.getByRole('button', { name: 'Money section' });
+    fireEvent.click(moneyToggle);
+    expect(moneyToggle).toHaveAttribute('aria-expanded', 'false');
+
+    rerender(<SidebarNavigation {...defaultProps} activePath="/accounts" />);
+
+    // Money still contains the active route; no rising edge → stays collapsed.
+    expect(moneyToggle).toHaveAttribute('aria-expanded', 'false');
+  });
 });

@@ -102,6 +102,14 @@
   padding-bottom: var(--spacing-1);
 }
 
+/* Honour the `hidden` HTML attribute on collapsed group lists.
+ * Needed because `.sidebar-nav__list { display: flex }` in responsive.css is
+ * author-origin and otherwise overrides the browser's `[hidden]` UA default
+ * (#2005). */
+.sidebar-nav__list[hidden] {
+  display: none;
+}
+
 /* ── Enhanced active state for sidebar items ──────────────────────────── */
 
 .sidebar-nav__item {
