@@ -3,7 +3,8 @@
 import React, { useCallback, useState } from 'react';
 
 import { useAuth } from '../../auth/auth-context';
-import { SettingInfoWidget } from '../../components/settings';
+import { AppIcon } from '../../components/icons';
+import { DangerZone, SettingInfoWidget } from '../../components/settings';
 import { useAccountDeletion } from '../../components/settings/AccountDeletionModal';
 
 /**
@@ -55,7 +56,9 @@ export const SettingsAccountPage: React.FC = () => {
             aria-label="Sign out"
           >
             <span className="settings-item__label">Sign Out</span>
-            <span className="settings-item__value">&rarr;</span>
+            <span className="settings-item__value settings-item__chevron">
+              <AppIcon name="chevron-right" size={20} strokeWidth={2.75} />
+            </span>
           </button>
           {signOutError && (
             <div className="settings-item settings-item--static" role="alert">
@@ -65,23 +68,25 @@ export const SettingsAccountPage: React.FC = () => {
         </div>
       </section>
 
-      <section aria-label="Danger Zone" className="page-section">
-        <div className="settings-group">
-          <h3 className="settings-group__title">Danger Zone</h3>
-          <SettingInfoWidget settingKey="accountDeletion">
-            <button
-              type="button"
-              className="settings-item settings-item--button settings-item--destructive"
-              onClick={openDeleteModal}
-              disabled={!isAuthenticated}
-              aria-label="Delete account"
-            >
-              <span className="settings-item__label">Delete account</span>
-              <span className="settings-item__value">&rarr;</span>
-            </button>
-          </SettingInfoWidget>
-        </div>
-      </section>
+      <DangerZone description="Permanently delete your account, synced data, and household access. This action cannot be undone.">
+        <SettingInfoWidget settingKey="accountDeletion">
+          <button
+            type="button"
+            className="danger-zone__action"
+            onClick={openDeleteModal}
+            disabled={!isAuthenticated}
+            aria-label="Delete account"
+          >
+            <span className="danger-zone__action-label">Delete account</span>
+            <AppIcon
+              name="chevron-right"
+              size={20}
+              strokeWidth={2.75}
+              className="danger-zone__action-icon"
+            />
+          </button>
+        </SettingInfoWidget>
+      </DangerZone>
 
       {deleteModal}
     </>

@@ -1,0 +1,98 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.danger-zone {
+  --danger-border: var(--semantic-border-error, var(--semantic-status-negative));
+  --danger-fg: var(--semantic-status-negative);
+
+  overflow: hidden;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--card-border-radius);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.danger-zone__header {
+  padding: var(--spacing-4) var(--card-padding);
+  border-bottom: 1px solid var(--danger-border);
+}
+
+.danger-zone__title {
+  margin: 0 0 var(--spacing-2);
+  color: var(--danger-fg);
+  font-size: var(--type-scale-label-font-size);
+  font-weight: var(--font-weight-bold, 700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.danger-zone__description {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  line-height: 1.5;
+}
+
+.danger-zone__content {
+  padding: var(--spacing-4) var(--card-padding);
+}
+
+.danger-zone .setting-info-widget__row {
+  align-items: stretch;
+}
+
+.danger-zone__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--border-radius-md, 0.5rem);
+  background: var(--danger-fg);
+  color: var(--semantic-text-inverse, #fff);
+  font: inherit;
+  font-weight: var(--font-weight-bold, 700);
+  text-align: left;
+  cursor: pointer;
+}
+
+.danger-zone__action:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.danger-zone__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.danger-zone__action:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.danger-zone__action-icon,
+.settings-item__chevron {
+  flex-shrink: 0;
+}
+
+.settings-item__chevron {
+  display: inline-flex;
+  align-items: center;
+  color: var(--semantic-text-secondary);
+}
+
+.settings-item--button:hover:not(:disabled) .settings-item__chevron {
+  color: var(--semantic-text-primary);
+}
+
+@media (prefers-contrast: more) {
+  .danger-zone {
+    background: var(--semantic-background-primary);
+    border-width: 2px;
+  }
+
+  .danger-zone__action {
+    border-width: 2px;
+  }
+}

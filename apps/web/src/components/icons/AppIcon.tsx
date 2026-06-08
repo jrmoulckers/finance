@@ -14,6 +14,7 @@ export type IconName =
   | 'chart-bar'
   | 'check'
   | 'check-circle'
+  | 'chevron-right'
   | 'circle'
   | 'clipboard'
   | 'cloud'
@@ -93,6 +94,7 @@ const paths: Record<IconName, string[]> = {
   'chart-bar': ['M4 19V9', 'M12 19V5', 'M20 19v-7', 'M3 21h18'],
   check: ['m5 12 4 4L19 6'],
   'check-circle': ['M9 12l2 2 4-4', 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'],
+  'chevron-right': ['m9 18 6-6-6-6'],
   circle: ['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'],
   clipboard: ['M9 4h6l1 2h3v16H5V6h3l1-2Z', 'M9 10h6', 'M9 14h6'],
   cloud: ['M17.5 19H7a5 5 0 1 1 1.5-9.8A6 6 0 0 1 20 12a3.5 3.5 0 0 1-2.5 7Z'],
