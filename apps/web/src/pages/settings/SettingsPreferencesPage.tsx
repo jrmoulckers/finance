@@ -145,7 +145,7 @@ export const SettingsPreferencesPage: React.FC = () => {
               <div className="settings-item__control">
                 <input
                   id="settings-bnpl-threshold"
-                  className="settings-item__input"
+                  className="form-input settings-item__input"
                   type="number"
                   min="1"
                   step="1"

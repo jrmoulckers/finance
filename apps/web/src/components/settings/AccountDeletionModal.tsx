@@ -190,7 +190,7 @@ export function useAccountDeletion(): {
         </label>
         <input
           id="delete-account-confirmation"
-          className="settings-item__input"
+          className="form-input settings-item__input"
           value={confirmationText}
           onChange={(event) => setConfirmationText(event.target.value)}
           disabled={isDeleting}
