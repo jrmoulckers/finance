@@ -40,7 +40,7 @@
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.1.5",
     "@types/sql.js": "^1.4.11",
-    "@vitejs/plugin-react": "5.2.0",
+    "@vitejs/plugin-react": "6.0.2",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
     "nanoid": "^5.1.11",
