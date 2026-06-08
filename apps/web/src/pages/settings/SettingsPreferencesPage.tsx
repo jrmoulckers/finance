@@ -202,14 +202,7 @@ export const SettingsPreferencesPage: React.FC = () => {
       <section aria-label="Display" className="page-section">
         <div className="settings-group">
           <h3 className="settings-group__title">Display</h3>
-          <p
-            className="settings-group__description"
-            style={{
-              fontSize: 'var(--font-size-sm, 0.875rem)',
-              color: 'var(--semantic-text-secondary)',
-              marginBottom: 'var(--spacing-4, 1rem)',
-            }}
-          >
+          <p className="settings-group__description">
             Customize how monetary amounts appear throughout the app.
           </p>
 

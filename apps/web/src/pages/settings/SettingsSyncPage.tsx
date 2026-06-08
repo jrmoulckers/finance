@@ -145,7 +145,7 @@ export const SettingsSyncPage: React.FC = () => {
               </label>
               <select
                 id="settings-preferred-auth-method"
-                className="settings-item__value"
+                className="settings-item__select"
                 value={preferredAuth ?? 'password'}
                 onChange={handlePreferredAuthChange}
                 aria-describedby="settings-preferred-auth-method-help"
