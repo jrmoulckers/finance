@@ -66,6 +66,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   // Format the visible text using the canonical privacy-aware formatter.
   const baseFormatOptions = {
     currency,
+    currencyDisplay: displaySettings.currencyDisplay,
     minimumFractionDigits: displaySettings.showDecimals ? 2 : 0,
     maximumFractionDigits: displaySettings.showDecimals ? 2 : 0,
   } as const;

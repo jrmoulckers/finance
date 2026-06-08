@@ -176,107 +176,113 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
         </div>
 
         {/* Rate list */}
-        <div
-          role="table"
-          aria-label={`Exchange rates from ${baseCurrency}`}
-          className="currency-rates-table"
-        >
-          <div role="row" className="currency-rates-table__header">
-            <span role="columnheader" className="currency-rates-table__cell">
-              Currency
-            </span>
-            <span role="columnheader" className="currency-rates-table__cell">
-              Rate
-            </span>
-            <span role="columnheader" className="currency-rates-table__cell">
-              Source
-            </span>
-            <span role="columnheader" className="currency-rates-table__cell">
-              Actions
-            </span>
-          </div>
+        <details className="currency-rates-disclosure">
+          <summary className="currency-rates-disclosure__summary">
+            <span className="currency-rates-disclosure__title">Exchange rates</span>
+            <span className="currency-rates-disclosure__hint">Click to expand</span>
+          </summary>
+          <div
+            role="table"
+            aria-label={`Exchange rates from ${baseCurrency}`}
+            className="currency-rates-table"
+          >
+            <div role="row" className="currency-rates-table__header">
+              <span role="columnheader" className="currency-rates-table__cell">
+                Currency
+              </span>
+              <span role="columnheader" className="currency-rates-table__cell">
+                Rate
+              </span>
+              <span role="columnheader" className="currency-rates-table__cell">
+                Source
+              </span>
+              <span role="columnheader" className="currency-rates-table__cell">
+                Actions
+              </span>
+            </div>
 
-          {displayCurrencies.map((code) => {
-            const rate = rates[code];
-            const isEditing = editingPair === code;
-            const hasOverride = isOverridden(code);
+            {displayCurrencies.map((code) => {
+              const rate = rates[code];
+              const isEditing = editingPair === code;
+              const hasOverride = isOverridden(code);
 
-            return (
-              <div key={code} role="row" className="currency-rates-table__row">
-                <span role="cell" className="currency-rates-table__cell">
-                  {code}
-                </span>
-                <span role="cell" className="currency-rates-table__cell">
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      className="currency-rates-table__input"
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, code)}
-                      aria-label={`Override rate for ${baseCurrency} to ${code}`}
-                      autoFocus
-                    />
-                  ) : (
-                    <span>{rate ? rate.rate.toFixed(4) : '—'}</span>
-                  )}
-                </span>
-                <span role="cell" className="currency-rates-table__cell">
-                  <span
-                    className={`currency-rates-badge currency-rates-badge--${rate?.source ?? 'static'}`}
-                  >
-                    {getSourceLabel(rate)}
+              return (
+                <div key={code} role="row" className="currency-rates-table__row">
+                  <span role="cell" className="currency-rates-table__cell">
+                    {code}
                   </span>
-                </span>
-                <span role="cell" className="currency-rates-table__cell">
-                  {isEditing ? (
-                    <>
-                      <button
-                        type="button"
-                        className="currency-rates-table__action"
-                        onClick={() => handleSaveEdit(code)}
-                        aria-label={`Save override for ${code}`}
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        className="currency-rates-table__action"
-                        onClick={handleCancelEdit}
-                        aria-label="Cancel editing"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="currency-rates-table__action"
-                        onClick={() => handleStartEdit(code, rate?.rate ?? 0)}
-                        aria-label={`Override rate for ${code}`}
-                      >
-                        Override
-                      </button>
-                      {hasOverride && (
+                  <span role="cell" className="currency-rates-table__cell">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        className="currency-rates-table__input"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, code)}
+                        aria-label={`Override rate for ${baseCurrency} to ${code}`}
+                        autoFocus
+                      />
+                    ) : (
+                      <span>{rate ? rate.rate.toFixed(4) : '—'}</span>
+                    )}
+                  </span>
+                  <span role="cell" className="currency-rates-table__cell">
+                    <span
+                      className={`currency-rates-badge currency-rates-badge--${rate?.source ?? 'static'}`}
+                    >
+                      {getSourceLabel(rate)}
+                    </span>
+                  </span>
+                  <span role="cell" className="currency-rates-table__cell">
+                    {isEditing ? (
+                      <>
                         <button
                           type="button"
-                          className="currency-rates-table__action currency-rates-table__action--reset"
-                          onClick={() => handleResetOverride(code)}
-                          aria-label={`Reset override for ${code}`}
+                          className="currency-rates-table__action"
+                          onClick={() => handleSaveEdit(code)}
+                          aria-label={`Save override for ${code}`}
                         >
-                          Reset
+                          Save
                         </button>
-                      )}
-                    </>
-                  )}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+                        <button
+                          type="button"
+                          className="currency-rates-table__action"
+                          onClick={handleCancelEdit}
+                          aria-label="Cancel editing"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="currency-rates-table__action"
+                          onClick={() => handleStartEdit(code, rate?.rate ?? 0)}
+                          aria-label={`Override rate for ${code}`}
+                        >
+                          Override
+                        </button>
+                        {hasOverride && (
+                          <button
+                            type="button"
+                            className="currency-rates-table__action currency-rates-table__action--reset"
+                            onClick={() => handleResetOverride(code)}
+                            aria-label={`Reset override for ${code}`}
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </details>
 
         {/* Disclaimer */}
         <div className="settings-item settings-item--static">

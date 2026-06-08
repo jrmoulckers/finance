@@ -63,6 +63,15 @@ describe('CurrencyDisplay', () => {
     expect(screen.getByText('($12.34)')).toBeInTheDocument();
   });
 
+  it('uses the configured currency display mode', () => {
+    renderWithSettings(createElement(CurrencyDisplay, { amount: 1234 }), {
+      currencyDisplay: 'code',
+    });
+    expect(
+      screen.getByText((content) => content.includes('USD') && content.includes('12.34')),
+    ).toBeInTheDocument();
+  });
+
   it('renders negative amounts without sign in color-only mode', () => {
     renderWithSettings(createElement(CurrencyDisplay, { amount: -1234 }), {
       negativeFormat: 'color-only',

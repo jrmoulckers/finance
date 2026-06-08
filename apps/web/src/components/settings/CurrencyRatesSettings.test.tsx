@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { UseExchangeRatesResult } from '../../hooks/useExchangeRates';
@@ -52,6 +52,10 @@ vi.mock('../../hooks/useExchangeRates', () => ({
 // We need to import AFTER mocking
 import { CurrencyRatesSettings } from './CurrencyRatesSettings';
 
+function expandRatesTable(): void {
+  fireEvent.click(screen.getByText('Exchange rates'));
+}
+
 describe('CurrencyRatesSettings', () => {
   beforeEach(() => {
     hookResult = { ...defaultHookResult };
@@ -88,12 +92,14 @@ describe('CurrencyRatesSettings', () => {
 
   it('shows source badges for rates', () => {
     render(<CurrencyRatesSettings />);
+    expandRatesTable();
     const staticBadges = screen.getAllByText('Static');
     expect(staticBadges.length).toBeGreaterThan(0);
   });
 
   it('renders override buttons for each currency', () => {
     render(<CurrencyRatesSettings />);
+    expandRatesTable();
     const overrideButtons = screen.getAllByText('Override');
     expect(overrideButtons.length).toBeGreaterThan(0);
   });
@@ -108,6 +114,7 @@ describe('CurrencyRatesSettings', () => {
       },
     };
     render(<CurrencyRatesSettings />);
+    expandRatesTable();
     expect(screen.getByLabelText('Reset override for EUR')).toBeInTheDocument();
   });
 
@@ -121,8 +128,16 @@ describe('CurrencyRatesSettings', () => {
     expect(screen.getByLabelText('Currency Rates')).toBeInTheDocument();
   });
 
-  it('has proper aria-label on the rates table', () => {
+  it('collapses the rates table by default', () => {
     render(<CurrencyRatesSettings />);
+    const disclosure = screen.getByText('Exchange rates').closest('details');
+    expect(disclosure).toBeInTheDocument();
+    expect(disclosure).not.toHaveAttribute('open');
+  });
+
+  it('has proper aria-label on the rates table after expanding', () => {
+    render(<CurrencyRatesSettings />);
+    expandRatesTable();
     expect(screen.getByRole('table', { name: /Exchange rates from USD/ })).toBeInTheDocument();
   });
 });

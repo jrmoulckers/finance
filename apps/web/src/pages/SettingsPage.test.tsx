@@ -116,11 +116,18 @@ vi.mock('../lib/display-settings', () => ({
     updateSettings: mockUpdateSettings,
     resetSettings: mockResetSettings,
   }),
-  formatAmountWithSettings: (amount: number) => {
+  formatAmountWithSettings: (
+    amount: number,
+    settings: { currencyDisplay?: string; negativeFormat?: string } = {},
+  ) => {
     const abs = Math.abs(amount) / 100;
-    const formatted = `$${abs.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
-    if (amount < 0) return `-${formatted}`;
-    return formatted;
+    const formattedNumber = abs.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const formatted =
+      settings.currencyDisplay === 'code' ? `USD ${formattedNumber}` : `$${formattedNumber}`;
+    if (amount >= 0) return formatted;
+    if (settings.negativeFormat === 'parentheses') return `(${formatted})`;
+    if (settings.negativeFormat === 'color-only') return formatted;
+    return `-${formatted}`;
   },
   getAmountColor: (amount: number) => {
     if (amount > 0) return '#22c55e';
@@ -372,6 +379,15 @@ describe('SettingsPage', () => {
       renderSettingsAt('/settings/preferences');
 
       expect(screen.getByText('Preview')).toBeInTheDocument();
+    });
+
+    it('renders accurate negative format examples', () => {
+      renderSettingsAt('/settings/preferences');
+
+      const examples = screen.getByLabelText('Negative format examples');
+      expect(examples).toHaveTextContent('Standard-$1,234.56');
+      expect(examples).toHaveTextContent('Accounting($1,234.56)');
+      expect(examples).toHaveTextContent('Color Only$1,234.56');
     });
 
     it('calls updateSettings when show decimals is toggled', () => {
