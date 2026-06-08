@@ -50,6 +50,9 @@ jobs:
           npm run build -w apps/web
           echo "duration=$(( SECONDS - BUILD_START ))" >> "$GITHUB_OUTPUT"
 
+      - name: Verify web build env
+        run: node tools/verify-build-env.mjs apps/web/dist
+
       - name: Report bundle size
         run: |
           echo "### 🌐 Web Build Summary" >> "$GITHUB_STEP_SUMMARY"

@@ -48,6 +48,7 @@ jobs:
     needs: approve
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: ${{ inputs.environment || 'staging' }}
     outputs:
       version: ${{ steps.version.outputs.version }}
       deploy-url: ${{ steps.deploy.outputs.url }}
@@ -83,6 +84,16 @@ jobs:
         env:
           VITE_APP_VERSION: ${{ steps.version.outputs.version }}
           VITE_APP_ENVIRONMENT: ${{ inputs.environment || 'staging' }}
+          VITE_ENVIRONMENT: ${{ inputs.environment || 'staging' }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+
+      - name: Verify web build env
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node tools/verify-build-env.mjs --check-env apps/web/dist
 
       - name: Run unit tests
         run: npm test -w apps/web

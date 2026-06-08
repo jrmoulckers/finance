@@ -27,10 +27,25 @@ if (!rootElement) {
   throw new Error('Root element not found. Ensure <div id="root"></div> exists in index.html.');
 }
 
-// Auth configuration - in production these would come from environment variables
+function requiredProductionEnv(name: string): never {
+  throw new Error(`${name} is required for production builds`);
+}
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
+  ? import.meta.env.VITE_SUPABASE_URL.trim()
+  : import.meta.env.PROD
+    ? requiredProductionEnv('VITE_SUPABASE_URL')
+    : 'https://placeholder.supabase.co';
+
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
+  ? import.meta.env.VITE_SUPABASE_ANON_KEY.trim()
+  : import.meta.env.PROD
+    ? requiredProductionEnv('VITE_SUPABASE_ANON_KEY')
+    : 'placeholder-anon-key';
+
 const authConfig = {
-  supabaseUrl: import.meta.env.VITE_SUPABASE_URL ?? 'https://placeholder.supabase.co',
-  supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'placeholder-anon-key',
+  supabaseUrl,
+  supabaseAnonKey,
   loginEndpoint: import.meta.env.VITE_LOGIN_ENDPOINT ?? '/api/auth/login',
   refreshEndpoint: import.meta.env.VITE_REFRESH_ENDPOINT ?? '/api/auth/refresh',
   logoutEndpoint: import.meta.env.VITE_LOGOUT_ENDPOINT ?? '/api/auth/logout',
@@ -55,8 +70,7 @@ const authConfig = {
 // cause issues (e.g. E2E tests under Playwright).
 // NOTE: configureSyncEndpoint is only available on branches with #535 sync wiring.
 // Skip sync configuration when the function doesn't exist.
-const supabaseUrl = authConfig.supabaseUrl;
-if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+if (authConfig.supabaseUrl && !authConfig.supabaseUrl.includes('placeholder')) {
   void import('./db/sync/replayMutations').then((mod) => {
     if ('configureSyncEndpoint' in mod) {
       (
@@ -68,7 +82,7 @@ if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
           }) => void;
         }
       ).configureSyncEndpoint({
-        baseUrl: `${supabaseUrl}/functions/v1`,
+        baseUrl: `${authConfig.supabaseUrl}/functions/v1`,
         pushEndpoint: '/sync-push',
         apiKey: authConfig.supabaseAnonKey,
       });
