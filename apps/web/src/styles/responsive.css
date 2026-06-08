@@ -792,6 +792,74 @@
 .settings-item--destructive .settings-item__value {
   color: var(--semantic-status-negative);
 }
+.danger-zone-card {
+  --danger-border: var(--semantic-border-error, var(--semantic-status-negative));
+  --danger-fg: var(--semantic-status-negative);
+
+  overflow: hidden;
+  margin-bottom: var(--spacing-4);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--card-border-radius);
+  background: rgba(239, 68, 68, 0.06);
+}
+.danger-zone-card__header {
+  padding: var(--spacing-4) var(--card-padding);
+  border-bottom: 1px solid var(--danger-border);
+}
+.danger-zone-card__title {
+  margin: 0 0 var(--spacing-2);
+  color: var(--danger-fg);
+  font-size: var(--type-scale-label-font-size);
+  font-weight: var(--font-weight-bold, 700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.danger-zone-card__description {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  line-height: 1.5;
+}
+.danger-zone-card__content {
+  padding: var(--spacing-4) var(--card-padding);
+}
+.danger-zone-card .setting-info-widget__row {
+  align-items: stretch;
+}
+.danger-zone-card__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--border-radius-md, 0.5rem);
+  background: var(--danger-fg);
+  color: var(--semantic-text-inverse, #fff);
+  font: inherit;
+  font-weight: var(--font-weight-bold, 700);
+  text-align: left;
+  cursor: pointer;
+}
+.danger-zone-card__action:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.danger-zone-card__action:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+@media (prefers-contrast: more) {
+  .danger-zone-card {
+    background: var(--semantic-background-primary);
+    border-width: 2px;
+  }
+
+  .danger-zone-card__action {
+    border-width: 2px;
+  }
+}
 @media (max-width: 640px) {
   .settings-item {
     grid-template-columns: minmax(0, 1fr);

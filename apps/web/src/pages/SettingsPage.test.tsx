@@ -471,13 +471,34 @@ describe('SettingsPage', () => {
   });
 
   describe('Advanced sub-page', () => {
-    it('renders experimental mood-tags controls', () => {
+    it('renders experimental mood-tags controls with info buttons', () => {
+      localStorage.setItem('experimental.moodTags.enabled', 'true');
       renderSettingsAt('/settings/advanced');
 
       expect(
         screen.getByRole('checkbox', { name: 'Allow mood tags on transactions' }),
       ).toBeInTheDocument();
+      expect(
+        screen.getByRole('checkbox', { name: 'Sync mood tags across my devices' }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /more info about moodTags setting/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /more info about moodTagsSync setting/i }),
+      ).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'About' })).not.toBeInTheDocument();
+    });
+
+    it('treats erase mood data as a danger-zone action with info', () => {
+      renderSettingsAt('/settings/advanced');
+
+      expect(screen.getByRole('region', { name: /danger zone/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Danger Zone' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^erase all mood data$/i })).toHaveClass(
+        'danger-zone-card__action',
+      );
+      expect(
+        screen.getByRole('button', { name: /more info about eraseMoodData setting/i }),
+      ).toBeInTheDocument();
     });
   });
 

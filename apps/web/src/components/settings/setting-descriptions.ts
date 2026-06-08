@@ -37,6 +37,12 @@ export const SETTING_DESCRIPTIONS: Record<string, SettingDescription> = {
       'When enabled, the app may request notification permission from your browser. No data is sent to external servers.',
     recommendation: 'Enable for timely bill reminders and budget warnings.',
   },
+  'bnpl-stacking-threshold': {
+    summary: 'Sets the unpaid BNPL installment total that triggers a stacking alert.',
+    impact:
+      'The threshold is stored locally and only changes when the app warns about overlapping installment obligations.',
+    recommendation: 'Use a number that reflects the point where multiple BNPL payments become risky.',
+  },
   monitoring: {
     summary: 'Sends anonymous error reports to help improve app stability.',
     impact:
@@ -66,5 +72,25 @@ export const SETTING_DESCRIPTIONS: Record<string, SettingDescription> = {
     impact:
       'Exported files contain all your transactions, accounts, and budgets. Store exports securely.',
     recommendation: 'Export periodically as a backup, especially before major changes.',
+  },
+  accountDeletion: {
+    summary: 'Permanently deletes your account, synced data, and household access.',
+    impact: 'This is irreversible after confirmation and also unlinks your sign-in identity.',
+    recommendation: 'Export your data before deleting your account.',
+  },
+  moodTags: {
+    summary: 'Allows optional mood tags to be attached to transactions.',
+    impact: 'When disabled, mood tag controls are hidden and mood tag sync is turned off.',
+    recommendation: 'Enable only if you want to track emotional context alongside spending.',
+  },
+  moodTagsSync: {
+    summary: 'Syncs transaction mood tags across your signed-in devices.',
+    impact: 'Mood tag metadata follows the same sync path as other transaction data.',
+    recommendation: 'Keep disabled if you only want mood tags on this device.',
+  },
+  eraseMoodData: {
+    summary: 'Removes all saved mood tags and disables mood-tag preferences.',
+    impact: 'This destructive action cannot restore erased mood tags later.',
+    recommendation: 'Use only when you are sure you no longer need mood history.',
   },
 };
