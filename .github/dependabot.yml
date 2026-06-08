@@ -28,6 +28,13 @@ updates:
       npm-major:
         update-types:
           - 'major'
+    ignore:
+      # @vitejs/plugin-react@6.x is incompatible with Vite 8 — the Fast Refresh
+      # preamble is never injected and every dev page crashes with
+      # "$RefreshSig$ is not defined". Pinned to 5.x in #1995 (#1908). Revisit
+      # when upstream ships a Vite 8-compatible 6.x.
+      - dependency-name: '@vitejs/plugin-react'
+        versions: ['6.x']
     commit-message:
       prefix: 'chore(deps)'
     open-pull-requests-limit: 15
