@@ -767,10 +767,18 @@
     display: none;
   }
   .app-sidebar {
+    /*
+     * Pin the entire sidebar to the viewport (#2011). Using `height: 100dvh`
+     * (not `min-height`) constrains the flex column to exactly viewport
+     * height; the inner `.app-sidebar__nav` (flex: 1; overflow-y: auto)
+     * absorbs overflow, which keeps `.app-sidebar__footer` (Shortcuts /
+     * Settings / Sign Out) visible at the bottom of the screen at all
+     * times instead of scrolling off below the page fold.
+     */
     display: flex;
     flex-direction: column;
     width: var(--layout-sidebar-width);
-    min-height: 100dvh;
+    height: 100dvh;
     position: sticky;
     top: 0;
     background: var(--navigation-background);

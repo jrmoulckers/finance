@@ -470,6 +470,19 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
 
   const loginWithPasskey = useCallback(async (email?: string): Promise<void> => {
     setError(null);
+
+    // Hard guard for demo mode (#2011). The initialisation `useEffect`
+    // returns early in demo mode and never calls `initWebAuthn()`, so a
+    // call into `authenticateWithPasskey` here would throw the cryptic
+    // developer-facing "WebAuthn not initialised. Call initWebAuthn()
+    // first." error. The UI is supposed to hide passkey controls in demo
+    // mode, but defence-in-depth in case some surface forgets.
+    if (demoModeActive) {
+      const message = 'Passkey sign-in is not available in demo mode.';
+      setError(message);
+      throw new Error(message);
+    }
+
     setIsLoading(true);
 
     try {
@@ -502,7 +515,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [demoModeActive]);
 
   const registerNewPasskey = useCallback(async (): Promise<void> => {
     setError(null);

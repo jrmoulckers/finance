@@ -240,7 +240,12 @@ export const LoginPage: React.FC = () => {
         )}
 
         {/* ── Passkey-first layout: biometric primary when preferred (#1983) ── */}
-        {passkeyPrimary && (
+        {/* Passkey UI is suppressed in demo mode (#2011) — the demo build
+            ships with a placeholder Supabase URL, so `initWebAuthn()` is
+            skipped in `auth-context.tsx`. Showing the button would call
+            into an uninitialised WebAuthn module and surface the cryptic
+            "WebAuthn not initialised" developer error to end users. */}
+        {passkeyPrimary && !isDemoMode && (
           <div className="auth-actions" style={{ marginBottom: 'var(--spacing-4)' }}>
             <button
               type="button"
@@ -371,8 +376,10 @@ export const LoginPage: React.FC = () => {
               )}
             </button>
 
-            {/* Show passkey as secondary when no passkey registered yet */}
-            {webAuthnSupported && !passkeyPrimary ? (
+            {/* Show passkey as secondary when no passkey registered yet
+                — but never in demo mode (#2011), where WebAuthn is not
+                initialised. */}
+            {webAuthnSupported && !passkeyPrimary && !isDemoMode ? (
               <>
                 <div className="auth-divider" aria-hidden="true">
                   <span className="auth-divider__text">or</span>

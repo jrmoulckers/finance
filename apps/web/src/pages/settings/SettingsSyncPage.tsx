@@ -146,14 +146,15 @@ export const SettingsSyncPage: React.FC = () => {
               <select
                 id="settings-preferred-auth-method"
                 className="settings-item__value"
-                value={preferredAuth ?? ''}
+                value={preferredAuth ?? 'password'}
                 onChange={handlePreferredAuthChange}
                 aria-describedby="settings-preferred-auth-method-help"
               >
-                <option value="" disabled>
-                  Not set
+                <option value="password">Password (default)</option>
+                <option value="passkey" disabled={!webAuthnSupported}>
+                  Passkey (biometrics)
+                  {!webAuthnSupported ? ' — not supported in this browser' : ''}
                 </option>
-                <option value="passkey">Passkey (biometrics)</option>
               </select>
               <p id="settings-preferred-auth-method-help" className="settings-item__help">
                 Controls which option is shown first on the sign-in page.
