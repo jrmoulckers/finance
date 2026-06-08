@@ -381,6 +381,7 @@ const ScenariosPanel: React.FC = () => {
     <div>
       <div className="planning-actions">
         <input
+          className="form-input"
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
