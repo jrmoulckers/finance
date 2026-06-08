@@ -294,13 +294,12 @@ services:
   #
   # Setup (first deployment only):
   #   1. Run on the database:
-  #        SELECT pg_create_logical_replication_slot('powersync', 'pgoutput');
   #        CREATE PUBLICATION powersync FOR ALL TABLES;
-  #   2. Ensure MongoDB is configured as a replica set (see mongo service below).
+  #   2. MongoDB is configured as a single-node replica set by mongo-rs-init.
   #   3. Sync rules are mounted from services/api/powersync/sync-rules.yaml.
   #
-  # Config: v1.20.5+ requires a YAML file at /app/powersync.yaml.
-  # The entrypoint generates it from env vars using the mounted template.
+  # Config: deploy/powersync.yaml follows the current self-hosted service schema
+  # and substitutes PS_* values provided below.
   #
   # Ports: 8080 (API) — internal only, routed through Caddy at /sync/*
   #
@@ -314,54 +313,28 @@ services:
   powersync:
     image: journeyapps/powersync-service:latest
     restart: unless-stopped
+    command: ['start', '-r', 'unified']
     environment:
-      # These env vars are used by the startup script to generate powersync.yaml
+      POWERSYNC_CONFIG_PATH: /config/powersync.yaml
+      NODE_OPTIONS: ${POWERSYNC_NODE_OPTIONS:---max-old-space-size=384}
+      # These PS_* env vars are substituted by deploy/powersync.yaml.
       # TODO(#1306): Replace supabase_admin with a dedicated powersync_replication
       # role once the migration is created (see comment block above).
       PS_PG_URI: postgres://supabase_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
-      PS_PG_SLOT: ${POWERSYNC_SLOT_NAME:-powersync}
-      PS_PG_PUBLICATION: ${POWERSYNC_PUBLICATION:-powersync}
-      PS_MONGO_URI: ${POWERSYNC_MONGO_URI}
+      PS_MONGO_URI: ${POWERSYNC_MONGO_URI:-mongodb://powersync:${MONGO_PASSWORD}@mongo:27017/powersync?authSource=admin&replicaSet=rs0}
       PS_JWT_SECRET: ${JWT_SECRET}
-    entrypoint: /usr/bin/sh
-    command:
-      - -c
-      - |
-        node -e "
-          const fs = require('fs');
-          const lines = [
-            'replication:',
-            '  connections:',
-            '    - type: postgresql',
-            '      uri: ' + process.env.PS_PG_URI,
-            '      sslmode: disable',  // Acceptable: traffic stays on Docker bridge network (finance-internal). For production deployments outside Docker, upgrade to sslmode: require or verify-full.
-            '      slot_name: ' + process.env.PS_PG_SLOT,
-            '      publication_name: ' + process.env.PS_PG_PUBLICATION,
-            '',
-            'storage:',
-            '  type: mongodb',
-            '  uri: ' + process.env.PS_MONGO_URI,
-            '',
-            'client_auth:',
-            '  supabase_jwt_secret: ' + process.env.PS_JWT_SECRET,
-            '',
-            'port: 8080',
-            '',
-            'sync_rules:',
-            '  path: /sync-rules/sync-rules.yaml'
-          ].join('\n');
-          fs.writeFileSync('/tmp/powersync.yaml', lines);
-          console.log('Generated /tmp/powersync.yaml');
-        " && exec node service/lib/entry.js start --config-path /tmp/powersync.yaml
+      PS_PORT: '8080'
     volumes:
-      - ${POWERSYNC_SYNC_RULES_PATH:-../services/api/powersync}:/sync-rules:ro
+      - ./powersync.yaml:/config/powersync.yaml:ro
+      - ${POWERSYNC_SYNC_RULES_PATH:-../services/api/powersync}/sync-rules.yaml:/config/sync-config.yaml:ro
     healthcheck:
-      # PowerSync exposes diagnostics on its HTTP port.
-      # Verify HTTP 200 — not just "any status code".
+      # PowerSync exposes official HTTP health probes at /probes/*.
       test:
         [
-          'CMD-SHELL',
-          'node -e "require(\"http\").get(\"http://localhost:8080/\",r=>{process.exit(r.statusCode===200?0:1)}).on(\"error\",()=>process.exit(1))"',
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:8080/probes/liveness').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 15s
       timeout: 5s
@@ -370,8 +343,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      mongo:
-        condition: service_healthy
+      mongo-rs-init:
+        condition: service_completed_successfully
     deploy:
       resources:
         limits:
@@ -389,10 +362,7 @@ services:
   # PowerSync requires MongoDB for its internal bucket storage.
   # This is NOT used for application data — only sync-engine state.
   # IMPORTANT: Must run as a replica set (PowerSync uses change streams).
-  #
-  # First deployment: After the container starts, run:
-  #   docker exec deploy-mongo-1 mongosh -u <user> -p <pass> --eval \
-  #     'rs.initiate({_id:"rs0",members:[{_id:0,host:"mongo:27017"}]})'
+  # mongo-rs-init performs the idempotent single-node rs.initiate() bootstrap.
   mongo:
     image: mongo:7-jammy
     restart: unless-stopped
@@ -410,7 +380,11 @@ services:
       chown mongodb:mongodb /tmp/mongo-keyfile &&
       exec mongod --replSet rs0 --keyFile /tmp/mongo-keyfile --bind_ip_all"
     healthcheck:
-      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      test:
+        [
+          'CMD-SHELL',
+          'mongosh --host localhost:27017 --username "$$MONGO_INITDB_ROOT_USERNAME" --password "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --quiet --eval "db.adminCommand({ ping: 1 })" || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -423,6 +397,42 @@ services:
         reservations:
           cpus: '0.1'
           memory: 128M
+    networks:
+      - finance-internal
+
+  # ---------------------------------------------------------------------------
+  # MongoDB replica-set bootstrap — required by PowerSync bucket storage
+  # ---------------------------------------------------------------------------
+  mongo-rs-init:
+    image: mongo:7-jammy
+    restart: 'no'
+    environment:
+      MONGO_USER: ${MONGO_USER:-powersync}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        for attempt in {1..30}; do
+          if mongosh --host mongo:27017 --username "$${MONGO_USER}" --password "$${MONGO_PASSWORD}" --authenticationDatabase admin --quiet --eval '
+            try {
+              rs.status();
+              quit(0);
+            } catch (e) {
+              print("Initializing MongoDB replica set: " + (e.codeName || e.message));
+            }
+            rs.initiate({_id:"rs0",members:[{_id:0,host:"mongo:27017"}]});
+          '; then
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "MongoDB replica set initialization failed" >&2
+        exit 1
     networks:
       - finance-internal
 
@@ -458,14 +468,15 @@ services:
       retries: 5
       start_period: 10s
     depends_on:
+      # Caddy can start before upstream services are healthy; reverse_proxy will
+      # connect once each backend is ready. Avoid letting one unhealthy optional
+      # upstream leave the public proxy stuck in Created state during deploy.
       rest:
-        condition: service_healthy
+        condition: service_started
       auth:
-        condition: service_healthy
+        condition: service_started
       edge-functions:
-        condition: service_healthy
-      powersync:
-        condition: service_healthy
+        condition: service_started
     deploy:
       resources:
         limits:

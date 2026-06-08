@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://unpkg.com/@powersync/service-schema@latest/json-schema/powersync-config.json
+# =============================================================================
+# PowerSync Service Configuration
+# =============================================================================
+# Values marked with !env are substituted by the PowerSync service from PS_*
+# environment variables provided by docker-compose.yml.
+
+telemetry:
+  disable_telemetry_sharing: true
+
+replication:
+  connections:
+    - type: postgresql
+      uri: !env PS_PG_URI
+      # Private Docker bridge traffic only. Use verify-full for external DBs.
+      sslmode: disable
+
+storage:
+  type: mongodb
+  uri: !env PS_MONGO_URI
+
+port: !env PS_PORT
+
+# services/api/powersync/sync-rules.yaml is mounted here by docker-compose.yml.
+sync_config:
+  path: /config/sync-config.yaml
+
+client_auth:
+  supabase: true
+  supabase_jwt_secret: !env PS_JWT_SECRET
+
+healthcheck:
+  probes:
+    use_http: true
+
+system:
+  logging:
+    level: info
+    format: text

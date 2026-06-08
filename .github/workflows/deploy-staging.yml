@@ -209,6 +209,23 @@ jobs:
             docker compose -f deploy/docker-compose.yml up -d --remove-orphans \
               || echo "::warning::compose up reported non-zero (deps may be transiently unhealthy)"
 
+            # Caddy serves the public site and can safely start before backend
+            # healthchecks settle. If compose left it Created because an
+            # upstream was unhealthy, explicitly start/recreate just Caddy.
+            caddy_started=false
+            for attempt in 1 2 3; do
+              if docker compose -f deploy/docker-compose.yml up -d --no-deps caddy \
+                || docker compose -f deploy/docker-compose.yml start caddy; then
+                caddy_started=true
+                break
+              fi
+              echo "::warning::caddy start attempt ${attempt} failed; retrying"
+              sleep 5
+            done
+            if [ "$caddy_started" != true ]; then
+              echo "::warning::caddy was not confirmed started after retries"
+            fi
+
             # Ensure Caddy picks up any bind-mounted Caddyfile changes.
             # Bind-mounted files don't trigger container restart, and
             # `caddy reload` requires a healthy admin API (port 2019) which
@@ -216,7 +233,8 @@ jobs:
             # is fast (<3s, no TLS re-issuance) and guarantees the new
             # Caddyfile is parsed fresh.
             docker compose -f deploy/docker-compose.yml restart caddy \
-              || echo "::warning::caddy restart failed"
+              || docker compose -f deploy/docker-compose.yml start caddy \
+              || echo "::warning::caddy restart/start failed"
 
             docker compose -f deploy/docker-compose.yml ps
           DEPLOY

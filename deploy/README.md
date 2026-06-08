@@ -103,7 +103,7 @@ chmod 444 volumes/mongo/replica-keyfile
 # URL-encode the Mongo password for the PowerSync connection URI
 MONGO_PASS_ENCODED=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$(grep MONGO_PASSWORD .env | cut -d= -f2)'))")
 # Update POWERSYNC_MONGO_URI in .env with the encoded password:
-#   POWERSYNC_MONGO_URI=mongodb://powersync:${MONGO_PASS_ENCODED}@mongo:27017/powersync?authSource=admin
+#   POWERSYNC_MONGO_URI=mongodb://powersync:${MONGO_PASS_ENCODED}@mongo:27017/powersync?authSource=admin&replicaSet=rs0
 ```
 
 ### Step 4 — Start the stack
@@ -115,7 +115,7 @@ docker compose up -d
 Wait for all services to become healthy:
 
 ```bash
-docker compose ps       # All services should show "healthy"
+docker compose ps       # Long-running services should show "healthy"; mongo-rs-init should exit 0
 docker compose logs -f  # Watch logs for errors (Ctrl+C to exit)
 ```
 
@@ -141,18 +141,13 @@ docker compose exec db psql -U postgres -c "
   ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin;
 "
 
-# 3. Create PowerSync replication slot and publication
+# 3. Create PowerSync publication (the service manages replication slots)
 docker compose exec db psql -U postgres -c "
-  SELECT pg_create_logical_replication_slot('powersync', 'pgoutput');
   CREATE PUBLICATION powersync FOR ALL TABLES;
 "
 
-# 4. Initialize MongoDB replica set
-docker compose exec mongo mongosh -u powersync -p "$(grep MONGO_PASSWORD .env | cut -d= -f2)" --eval '
-  rs.initiate({_id: "rs0", members: [{_id: 0, host: "mongo:27017"}]})
-'
-
-# 5. Restart auth and powersync to pick up the new configuration
+# 4. Restart auth and powersync to pick up the new configuration
+# MongoDB replica-set initialization is handled by the mongo-rs-init service.
 docker compose restart auth powersync
 ```
 
@@ -309,6 +304,7 @@ docker compose ps
 | `BACKUP_RETENTION_DAYS`   | `30`                                 | Number of daily backups to keep                                                  |
 | `POWERSYNC_URL`           | —                                    | PowerSync instance URL (optional)                                                |
 | `POWERSYNC_PUBLIC_KEY`    | —                                    | PowerSync public key (optional)                                                  |
+| `POWERSYNC_MONGO_URI`     | internal mongo URI                   | Override bucket-storage URI; include `replicaSet=rs0` when using bundled MongoDB |
 
 ---
 
