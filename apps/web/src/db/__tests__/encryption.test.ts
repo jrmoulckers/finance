@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
-  encryptDatabase,
+  clearEncryptedData,
   decryptDatabase,
   deriveEncryptionKey,
+  encryptDatabase,
   isEncryptionSupported,
+  loadEncryptedDatabase,
+  saveEncryptedDatabase,
 } from '../encryption';
 
 describe('encryption', () => {
@@ -15,6 +18,10 @@ describe('encryption', () => {
   beforeAll(() => {
     expect(typeof crypto).toBe('object');
     expect(typeof crypto.subtle).toBe('object');
+  });
+
+  afterEach(async () => {
+    await clearEncryptedData();
   });
 
   describe('isEncryptionSupported', () => {
@@ -105,5 +112,37 @@ describe('encryption', () => {
       const decrypted = await decryptDatabase(encrypted.data, testSecret);
       expect(Array.from(decrypted)).toEqual(Array.from(largeData));
     });
+
+    it('round-trips persisted IndexedDB snapshots without storing plaintext', async () => {
+      await saveEncryptedDatabase(testData, testSecret);
+
+      const raw = await readRawEncryptedSnapshot();
+      expect(raw?.byteLength).toBeGreaterThan(testData.byteLength);
+      expect(new TextDecoder().decode(raw!)).not.toContain('SQLite format 3');
+
+      const restored = await loadEncryptedDatabase(testSecret);
+      expect(Array.from(restored ?? [])).toEqual(Array.from(testData));
+    });
   });
 });
+
+async function readRawEncryptedSnapshot(): Promise<ArrayBuffer | undefined> {
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open('finance-sqlite-encrypted', 1);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('encrypted', 'readonly');
+    const request = tx.objectStore('encrypted').get('db');
+    request.onsuccess = () => {
+      db.close();
+      resolve(request.result as ArrayBuffer | undefined);
+    };
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
