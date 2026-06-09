@@ -29,8 +29,18 @@ import { SYNC_TAG, type ClientToSwMessage, type SwToClientMessage } from '../db/
 // Cache configuration
 // ---------------------------------------------------------------------------
 
-/** Bump this value to invalidate all caches on the next deploy. */
-const CACHE_VERSION = 'v1';
+/**
+ * Bump this value to invalidate all caches on the next deploy.
+ *
+ * v2 (#2021): forces eviction of the v1 precache that pinned the
+ * pre-#2019 web bundle. That bundle was built without
+ * `VITE_SUPABASE_URL`, so `isDemoMode()` evaluated true and the entire
+ * app booted into local-only demo auth. Users with a populated v1
+ * cache continued to see demo mode even after #2019 wired the env vars,
+ * because the SW's `cacheFirst` strategy keeps serving the cached
+ * `/assets/main-*.js` chunks until the cache name changes.
+ */
+const CACHE_VERSION = 'v2';
 
 /** Cache bucket names. */
 const STATIC_CACHE = `finance-static-${CACHE_VERSION}`;

@@ -18,7 +18,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // Service worker caching strategy constants (mirrored from source)
 // ---------------------------------------------------------------------------
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `finance-static-${CACHE_VERSION}`;
 const API_CACHE = `finance-api-${CACHE_VERSION}`;
 const APP_SHELL: string[] = ['/', '/index.html', '/manifest.json'];
@@ -30,15 +30,15 @@ const STATIC_EXTENSIONS = /\.(js|css|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|we
 
 describe('Cache version naming (#1330)', () => {
   it('static cache includes version prefix', () => {
-    expect(STATIC_CACHE).toBe('finance-static-v1');
+    expect(STATIC_CACHE).toBe('finance-static-v2');
   });
 
   it('API cache includes version prefix', () => {
-    expect(API_CACHE).toBe('finance-api-v1');
+    expect(API_CACHE).toBe('finance-api-v2');
   });
 
   it('changing CACHE_VERSION produces new cache names', () => {
-    const nextVersion = 'v2';
+    const nextVersion = 'v3';
     const nextStatic = `finance-static-${nextVersion}`;
     const nextApi = `finance-api-${nextVersion}`;
 
