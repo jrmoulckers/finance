@@ -3,7 +3,13 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthProvider, useAuth, type AuthProviderConfig } from './auth-context';
+import {
+  AuthProvider,
+  isBetaEmailAllowed,
+  parseBetaAllowedEmails,
+  useAuth,
+  type AuthProviderConfig,
+} from './auth-context';
 import { clearTokens } from './token-storage';
 
 const LAST_USER_STORAGE_KEY = 'finance.lastUser';
@@ -35,6 +41,28 @@ function AuthProbe() {
   );
 }
 
+describe('beta email allowlist', () => {
+  it('allows everyone when the allowlist is empty or unset', () => {
+    expect(isBetaEmailAllowed('anyone@example.com', parseBetaAllowedEmails(undefined))).toBe(true);
+    expect(isBetaEmailAllowed('anyone@example.com', parseBetaAllowedEmails(''))).toBe(true);
+    expect(isBetaEmailAllowed('anyone@example.com', parseBetaAllowedEmails(' ,  '))).toBe(true);
+  });
+
+  it('matches allowlisted emails case-insensitively and trims whitespace', () => {
+    const allowlist = parseBetaAllowedEmails(' beta@example.com, Friend@Example.com ');
+
+    expect(isBetaEmailAllowed('BETA@example.com', allowlist)).toBe(true);
+    expect(isBetaEmailAllowed('friend@example.com ', allowlist)).toBe(true);
+  });
+
+  it('denies emails that are not allowlisted', () => {
+    const allowlist = parseBetaAllowedEmails('beta@example.com');
+
+    expect(isBetaEmailAllowed('outsider@example.com', allowlist)).toBe(false);
+    expect(isBetaEmailAllowed(undefined, allowlist)).toBe(false);
+  });
+});
+
 describe('AuthProvider refresh restoration', () => {
   const onUnauthenticated = vi.fn();
   const config: AuthProviderConfig = {
@@ -59,9 +87,9 @@ describe('AuthProvider refresh restoration', () => {
     localStorage.clear();
   });
 
-  function renderProvider() {
+  function renderProvider(configOverrides: Partial<AuthProviderConfig> = {}) {
     return render(
-      <AuthProvider config={config}>
+      <AuthProvider config={{ ...config, ...configOverrides }}>
         <AuthProbe />
       </AuthProvider>,
     );
@@ -89,6 +117,34 @@ describe('AuthProvider refresh restoration', () => {
       email: 'fresh@example.com',
     });
     expect(onUnauthenticated).not.toHaveBeenCalled();
+  });
+
+  it('shows the beta access required screen when a restored user is not allowlisted', async () => {
+    const token = makeToken({
+      sub: 'user-2',
+      email: 'outsider@example.com',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ access_token: token, expires_in: 3600 }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderProvider({ betaAllowedEmails: 'beta@example.com' });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Beta access required' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('outsider@example.com');
+    expect(screen.queryByTestId('auth-state')).not.toBeInTheDocument();
+    expect(localStorage.getItem(LAST_USER_STORAGE_KEY)).toBeNull();
+    expect(onUnauthenticated).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/auth/logout',
+      expect.objectContaining({ credentials: 'include' }),
+    );
   });
 
   it('clears the cached user and signs out on session_expired refresh', async () => {

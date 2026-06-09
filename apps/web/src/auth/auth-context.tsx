@@ -57,6 +57,7 @@ import {
   restoreDemoSession,
 } from './demo-auth';
 import { getPasskeyErrorMessage } from './passkey-errors';
+import '../styles/auth.css';
 
 import {
   incrementLoginCount,
@@ -162,6 +163,10 @@ export interface AuthProviderConfig {
   logoutEndpoint: string;
   /** Backend endpoint for account registration. Defaults to '/api/auth/signup'. */
   signupEndpoint?: string;
+  /**
+   * Comma-separated beta/staging allowlist. Empty or unset disables beta access gating.
+   */
+  betaAllowedEmails?: string;
   /** Callback when the user should be redirected to login. */
   onUnauthenticated?: () => void;
 }
@@ -172,6 +177,7 @@ export interface AuthProviderConfig {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const LAST_USER_STORAGE_KEY = 'finance.lastUser';
+export const BETA_ACCESS_REQUIRED_MESSAGE = 'Beta access required';
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -204,6 +210,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
+  const [betaAccessDeniedEmail, setBetaAccessDeniedEmail] = useState<string | null>(null);
   const onlineRetryHandlerRef = useRef<(() => void) | null>(null);
   /**
    * Tracks whether the initial session-restore effect has already run for
@@ -220,6 +227,10 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
   const initStartedRef = useRef(false);
 
   const demoModeActive = isDemoMode(config.supabaseUrl);
+  const betaAllowedEmails = useMemo(
+    () => parseBetaAllowedEmails(config.betaAllowedEmails),
+    [config.betaAllowedEmails],
+  );
   const webAuthnConfig = useMemo<WebAuthnConfig>(
     () => ({
       supabaseUrl: config.supabaseUrl,
@@ -227,7 +238,8 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     }),
     [config.supabaseAnonKey, config.supabaseUrl],
   );
-  const isAuthenticated = user !== null && (hasValidToken() || isOffline);
+  const isAuthenticated =
+    user !== null && (hasValidToken() || isOffline) && betaAccessDeniedEmail === null;
 
   /** Dismiss the passkey prompt (hides it without changing preferences). */
   const dismissPasskeyPrompt = useCallback(() => {
@@ -237,6 +249,35 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
   function rememberUser(nextUser: AuthUser): void {
     setUser(nextUser);
     cacheLastUser(nextUser);
+  }
+
+  async function denyBetaAccess(email: string): Promise<void> {
+    setError(BETA_ACCESS_REQUIRED_MESSAGE);
+    setBetaAccessDeniedEmail(email);
+    setShowPasskeyPrompt(false);
+    clearCachedUser();
+    cancelOnlineRestoreRetry();
+    setIsOffline(false);
+    setUser(null);
+
+    if (demoModeActive) {
+      clearDemoSession();
+      clearTokens();
+      return;
+    }
+
+    await revokeRefreshToken(config.logoutEndpoint);
+  }
+
+  async function rememberAllowedUser(nextUser: AuthUser): Promise<boolean> {
+    if (!isBetaEmailAllowed(nextUser.email, betaAllowedEmails)) {
+      await denyBetaAccess(nextUser.email);
+      return false;
+    }
+
+    setBetaAccessDeniedEmail(null);
+    rememberUser(nextUser);
+    return true;
   }
 
   function handleSessionExpired(): void {
@@ -314,11 +355,12 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           setAccessToken(token);
           const payload = parseTokenPayload(token);
           if (payload) {
-            setUser({
+            void rememberAllowedUser({
               id: payload.sub ?? '',
               email: payload.email ?? '',
               hasPasskey: false,
-            });
+            }).finally(() => setIsLoading(false));
+            return;
           }
         }
       }
@@ -367,7 +409,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       case 'success': {
         const restoredUser = userFromToken(result.token) ?? readCachedUser();
         if (restoredUser) {
-          rememberUser(restoredUser);
+          await rememberAllowedUser(restoredUser);
         }
         setIsOffline(false);
         cancelOnlineRestoreRetry();
@@ -379,9 +421,10 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       case 'network_error': {
         const cachedUser = readCachedUser();
         if (cachedUser) {
-          setUser((current) => current ?? cachedUser);
-          setIsOffline(true);
-          scheduleOnlineRestoreRetry();
+          if (await rememberAllowedUser(cachedUser)) {
+            setIsOffline(true);
+            scheduleOnlineRestoreRetry();
+          }
         } else {
           // No cached user — there is no session to keep alive offline.
           // Treat as session_expired so the app redirects to login instead of
@@ -428,11 +471,14 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         if (demoModeActive) {
           const result = await demoLogin(email, password);
           setAccessToken(result.accessToken);
-          rememberUser({
+          const allowed = await rememberAllowedUser({
             id: result.user.id,
             email: result.user.email,
             hasPasskey: false,
           });
+          if (!allowed) {
+            throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
+          }
           setIsOffline(false);
           triggerPasskeyPromptCheck();
           return;
@@ -458,11 +504,14 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         };
 
         setAccessToken(data.access_token);
-        rememberUser({
+        const allowed = await rememberAllowedUser({
           id: data.user.id,
           email: data.user.email,
           hasPasskey: data.user.has_passkey ?? false,
         });
+        if (!allowed) {
+          throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
+        }
         setIsOffline(false);
         triggerPasskeyPromptCheck();
       } catch (err) {
@@ -500,11 +549,14 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         // CSRF risk of a detached session endpoint (#1310).
         if (result.accessToken) {
           setAccessToken(result.accessToken);
-          rememberUser({
+          const allowed = await rememberAllowedUser({
             id: result.userId,
             email: result.email ?? email ?? '',
             hasPasskey: true,
           });
+          if (!allowed) {
+            throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
+          }
           setIsOffline(false);
           // A successful passkey sign-in reaffirms the user's preference
           // (#1983). Idempotent — safe to call on every login.
@@ -629,7 +681,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       case 'success': {
         const refreshedUser = userFromToken(result.token);
         if (refreshedUser) {
-          rememberUser(refreshedUser);
+          await rememberAllowedUser(refreshedUser);
         }
         setIsOffline(false);
         cancelOnlineRestoreRetry();
@@ -641,7 +693,9 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       case 'network_error': {
         const cachedUser = readCachedUser();
         if (cachedUser) {
-          setUser((current) => current ?? cachedUser);
+          if (!(await rememberAllowedUser(cachedUser))) {
+            break;
+          }
         }
         setIsOffline(true);
         scheduleOnlineRestoreRetry();
@@ -661,11 +715,14 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
           // Auto-login after demo signup
           const result = await demoLogin(email, password);
           setAccessToken(result.accessToken);
-          rememberUser({
+          const allowed = await rememberAllowedUser({
             id: result.user.id,
             email: result.user.email,
             hasPasskey: false,
           });
+          if (!allowed) {
+            throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
+          }
           setIsOffline(false);
           // demoLogin already calls persistDemoSession
           triggerPasskeyPromptCheck();
@@ -698,11 +755,14 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
 
         if (response.status === 201 && body.access_token && body.user) {
           setAccessToken(body.access_token);
-          rememberUser({
+          const allowed = await rememberAllowedUser({
             id: body.user.id,
             email: body.user.email,
             hasPasskey: body.user.has_passkey ?? false,
           });
+          if (!allowed) {
+            throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
+          }
           setIsOffline(false);
           triggerPasskeyPromptCheck();
           return { kind: 'authenticated' };
@@ -723,11 +783,14 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
             user: { id: string; email: string; has_passkey?: boolean };
           };
           setAccessToken(data.access_token);
-          rememberUser({
+          const allowed = await rememberAllowedUser({
             id: data.user.id,
             email: data.user.email,
             hasPasskey: data.user.has_passkey ?? false,
           });
+          if (!allowed) {
+            throw new Error(BETA_ACCESS_REQUIRED_MESSAGE);
+          }
           setIsOffline(false);
           triggerPasskeyPromptCheck();
         }
@@ -823,7 +886,58 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     ],
   );
 
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
+  const handleBetaSwitchAccount = useCallback(() => {
+    setBetaAccessDeniedEmail(null);
+    setError(null);
+    clearTokens();
+    clearCachedUser();
+    clearDemoSession();
+    setIsOffline(false);
+    setUser(null);
+    config.onUnauthenticated?.();
+  }, [config]);
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {betaAccessDeniedEmail ? (
+        <BetaAccessRequiredScreen
+          email={betaAccessDeniedEmail}
+          onSwitchAccount={handleBetaSwitchAccount}
+        />
+      ) : (
+        children
+      )}
+    </AuthContext.Provider>
+  );
+}
+
+function BetaAccessRequiredScreen({
+  email,
+  onSwitchAccount,
+}: {
+  email: string;
+  onSwitchAccount: () => void;
+}) {
+  return (
+    <main className="auth-page">
+      <section className="auth-card" aria-labelledby="beta-access-required-title">
+        <header className="auth-brand">
+          <h1 id="beta-access-required-title" className="auth-brand__name">
+            Beta access required
+          </h1>
+          <p className="auth-brand__tagline">
+            This deployment is limited to approved beta testers.
+          </p>
+        </header>
+        <div className="auth-error" role="alert">
+          Ask the Finance beta coordinator to add {email} to the beta allowlist, then sign in again.
+        </div>
+        <button type="button" className="auth-submit" onClick={onSwitchAccount}>
+          Sign in with a different account
+        </button>
+      </section>
+    </main>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -917,6 +1031,26 @@ export function ProtectedRoute({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+export function parseBetaAllowedEmails(value: string | null | undefined): Set<string> {
+  return new Set(
+    (value ?? '')
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter((email) => email.length > 0),
+  );
+}
+
+export function isBetaEmailAllowed(
+  email: string | null | undefined,
+  allowedEmails: Set<string>,
+): boolean {
+  if (allowedEmails.size === 0) {
+    return true;
+  }
+
+  return typeof email === 'string' && allowedEmails.has(email.trim().toLowerCase());
+}
 
 function cacheLastUser(nextUser: AuthUser): void {
   try {

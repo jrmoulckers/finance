@@ -74,14 +74,15 @@ Manual re-deploy: **Actions → Deploy — Staging → Run workflow**
 
 Scoped to the `staging` GitHub Environment:
 
-| Secret              | Description                              |
-| ------------------- | ---------------------------------------- |
-| `DEPLOY_HOST`       | Staging server hostname                  |
-| `DEPLOY_SSH_KEY`    | SSH private key for staging              |
-| `DEPLOY_USER`       | SSH username for staging                 |
-| `SUPABASE_URL`      | Supabase URL (e.g. `https://staging...`) |
-| `SUPABASE_ANON_KEY` | Supabase anon key                        |
-| `POWERSYNC_URL`     | PowerSync URL                            |
+| Secret                | Description                                 |
+| --------------------- | ------------------------------------------- |
+| `DEPLOY_HOST`         | Staging server hostname                     |
+| `DEPLOY_SSH_KEY`      | SSH private key for staging                 |
+| `DEPLOY_USER`         | SSH username for staging                    |
+| `SUPABASE_URL`        | Supabase URL (e.g. `https://staging...`)    |
+| `SUPABASE_ANON_KEY`   | Supabase anon key                           |
+| `POWERSYNC_URL`       | PowerSync URL                               |
+| `BETA_ALLOWED_EMAILS` | Optional comma-separated web beta allowlist |
 
 ### Production Server (Backend)
 

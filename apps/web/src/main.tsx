@@ -64,6 +64,7 @@ const authConfig = {
   loginEndpoint: import.meta.env.VITE_LOGIN_ENDPOINT ?? '/api/auth/login',
   refreshEndpoint: import.meta.env.VITE_REFRESH_ENDPOINT ?? '/api/auth/refresh',
   logoutEndpoint: import.meta.env.VITE_LOGOUT_ENDPOINT ?? '/api/auth/logout',
+  betaAllowedEmails: import.meta.env.VITE_BETA_ALLOWED_EMAILS,
   onUnauthenticated: () => {
     // Redirect to login when session expires or user is not authenticated.
     if (!isPreAuthRoute(window.location.pathname)) {

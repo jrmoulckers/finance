@@ -112,6 +112,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          BETA_ALLOWED_EMAILS: ${{ secrets.BETA_ALLOWED_EMAILS }}
         run: |
           set -euo pipefail
 
@@ -136,6 +137,7 @@ jobs:
           SUPABASE_URL_B64=$(printf '%s' "$SUPABASE_URL" | base64 -w 0)
           SUPABASE_ANON_KEY_B64=$(printf '%s' "$SUPABASE_ANON_KEY" | base64 -w 0)
           POWERSYNC_URL_B64=$(printf '%s' "$POWERSYNC_URL" | base64 -w 0)
+          BETA_ALLOWED_EMAILS_B64=$(printf '%s' "$BETA_ALLOWED_EMAILS" | base64 -w 0)
 
           # SSH in and rebuild. Each line is a separate command so an early
           # failure aborts the build (set -e inside the heredoc). Use
@@ -143,11 +145,12 @@ jobs:
           # from any stale refs (e.g. if a prior backend deploy already
           # advanced origin/main before this fetch read its expected value).
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            "SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' bash -s" <<'DEPLOY'
+            "SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' BETA_ALLOWED_EMAILS_B64='$BETA_ALLOWED_EMAILS_B64' bash -s" <<'DEPLOY'
             set -euo pipefail
             export VITE_SUPABASE_URL="$(printf '%s' "$SUPABASE_URL_B64" | base64 -d)"
             export VITE_SUPABASE_ANON_KEY="$(printf '%s' "$SUPABASE_ANON_KEY_B64" | base64 -d)"
             export VITE_POWERSYNC_URL="$(printf '%s' "$POWERSYNC_URL_B64" | base64 -d)"
+            export VITE_BETA_ALLOWED_EMAILS="$(printf '%s' "$BETA_ALLOWED_EMAILS_B64" | base64 -d)"
             cd ~/finance
             echo "→ git fetch --force --prune origin main"
             git fetch --force --prune origin main

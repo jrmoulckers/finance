@@ -88,6 +88,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          VITE_BETA_ALLOWED_EMAILS: ${{ secrets.BETA_ALLOWED_EMAILS }}
 
       - name: Verify web build env
         env:

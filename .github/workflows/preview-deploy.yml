@@ -85,6 +85,7 @@ jobs:
           NODE_ENV: production
           VITE_APP_VERSION: pr-${{ github.event.pull_request.number || github.event.inputs.pr_number }}-${{ github.sha }}
           VITE_ENVIRONMENT: preview
+          VITE_BETA_ALLOWED_EMAILS: ${{ secrets.BETA_ALLOWED_EMAILS }}
         run: |
           BUILD_START=$SECONDS
           npm run build -w apps/web

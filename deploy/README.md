@@ -290,21 +290,26 @@ docker compose ps
 
 ### Optional
 
-| Variable                  | Default                              | Description                                                                      |
-| ------------------------- | ------------------------------------ | -------------------------------------------------------------------------------- |
-| `POSTGRES_DB`             | `postgres`                           | Database name                                                                    |
-| `POSTGRES_USER`           | `supabase_admin`                     | Database superuser name (must be supabase_admin for the supabase/postgres image) |
-| `POSTGRES_PORT`           | `5432`                               | Host port for direct database access                                             |
-| `JWT_EXPIRY`              | `3600`                               | JWT lifetime in seconds                                                          |
-| `AUTH_RATE_LIMIT_EMAIL`   | `30`                                 | Max email sends per hour                                                         |
-| `AUTH_RATE_LIMIT_REFRESH` | `150`                                | Max token refreshes per hour                                                     |
-| `MAILER_AUTOCONFIRM`      | `false`                              | Skip email confirmation (testing)                                                |
-| `AUTH_REDIRECT_URLS`      | —                                    | Allowed OAuth redirect URLs                                                      |
-| `EDGE_FUNCTIONS_PATH`     | `../services/api/supabase/functions` | Path to Edge Functions source                                                    |
-| `BACKUP_RETENTION_DAYS`   | `30`                                 | Number of daily backups to keep                                                  |
-| `POWERSYNC_URL`           | —                                    | PowerSync instance URL (optional)                                                |
-| `POWERSYNC_PUBLIC_KEY`    | —                                    | PowerSync public key (optional)                                                  |
-| `POWERSYNC_MONGO_URI`     | internal mongo URI                   | Override bucket-storage URI; include `replicaSet=rs0` when using bundled MongoDB |
+| Variable                   | Default                              | Description                                                                                                                                          |
+| -------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POSTGRES_DB`              | `postgres`                           | Database name                                                                                                                                        |
+| `POSTGRES_USER`            | `supabase_admin`                     | Database superuser name (must be supabase_admin for the supabase/postgres image)                                                                     |
+| `POSTGRES_PORT`            | `5432`                               | Host port for direct database access                                                                                                                 |
+| `JWT_EXPIRY`               | `3600`                               | JWT lifetime in seconds                                                                                                                              |
+| `AUTH_RATE_LIMIT_EMAIL`    | `30`                                 | Max email sends per hour                                                                                                                             |
+| `AUTH_RATE_LIMIT_REFRESH`  | `150`                                | Max token refreshes per hour                                                                                                                         |
+| `MAILER_AUTOCONFIRM`       | `false`                              | Skip email confirmation (testing)                                                                                                                    |
+| `AUTH_REDIRECT_URLS`       | —                                    | Allowed OAuth redirect URLs                                                                                                                          |
+| `EDGE_FUNCTIONS_PATH`      | `../services/api/supabase/functions` | Path to Edge Functions source                                                                                                                        |
+| `BACKUP_RETENTION_DAYS`    | `30`                                 | Number of daily backups to keep                                                                                                                      |
+| `POWERSYNC_URL`            | —                                    | PowerSync instance URL (optional)                                                                                                                    |
+| `POWERSYNC_PUBLIC_KEY`     | —                                    | PowerSync public key (optional)                                                                                                                      |
+| `POWERSYNC_MONGO_URI`      | internal mongo URI                   | Override bucket-storage URI; include `replicaSet=rs0` when using bundled MongoDB                                                                     |
+| `VITE_BETA_ALLOWED_EMAILS` | empty                                | Comma-separated web beta allowlist; when set, signed-in users whose account email is absent see “Beta access required” before protected routes load. |
+
+#### Granting web beta access
+
+For staging/preview web builds, set `VITE_BETA_ALLOWED_EMAILS` (or the GitHub Environment secret `BETA_ALLOWED_EMAILS`) to a comma-separated list of approved account emails, for example `alice@example.com,bob@example.com`. Users still sign in normally with email/password or passkeys; the app admits only allowlisted account emails after sign-in/session restore. Leave the value empty or unset to disable the gate (the production default).
 
 ---
 
