@@ -13,7 +13,7 @@ import {
   saveBnplStackingThresholdCents,
 } from '../../lib/bnpl-liability';
 import type { CurrencyDisplayMode, NegativeFormat } from '../../lib/display-settings';
-import { useMoneyDisplay } from '../../lib/display-settings';
+import { formatAmountWithSettings, useMoneyDisplay } from '../../lib/display-settings';
 
 const CURRENCY_STORAGE_KEY = 'finance-currency';
 const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
@@ -52,9 +52,9 @@ function resolveColorForPicker(color: string, fallback: string): string {
 
 /** Labels for negative format options. */
 const NEGATIVE_FORMAT_OPTIONS: Array<{ value: NegativeFormat; label: string }> = [
-  { value: 'minus', label: 'Minus sign (−$1,234.56)' },
-  { value: 'parentheses', label: 'Parentheses (($1,234.56))' },
-  { value: 'color-only', label: 'Color only ($1,234.56)' },
+  { value: 'minus', label: 'Standard' },
+  { value: 'parentheses', label: 'Accounting' },
+  { value: 'color-only', label: 'Color Only' },
 ];
 
 /** Labels for currency display mode options. */
@@ -275,28 +275,61 @@ export const SettingsPreferencesPage: React.FC = () => {
             />
           </div>
 
-          <div className="settings-item settings-item--static">
-            <label className="settings-item__label" htmlFor="settings-negative-format">
-              Negative format
-            </label>
-            <div className="settings-item__control">
-              <select
-                id="settings-negative-format"
-                aria-label="Negative number format"
-                className="settings-item__select"
-                value={displaySettings.negativeFormat}
-                onChange={(e) =>
-                  displaySettings.updateSettings({
-                    negativeFormat: e.target.value as NegativeFormat,
-                  })
-                }
-              >
-                {NEGATIVE_FORMAT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+          <div className="settings-item settings-item--static settings-item--stacked">
+            <div className="settings-item__row">
+              <label className="settings-item__label" htmlFor="settings-negative-format">
+                Negative format
+              </label>
+              <div className="settings-item__control">
+                <select
+                  id="settings-negative-format"
+                  aria-label="Negative number format"
+                  className="settings-item__select"
+                  value={displaySettings.negativeFormat}
+                  onChange={(e) =>
+                    displaySettings.updateSettings({
+                      negativeFormat: e.target.value as NegativeFormat,
+                    })
+                  }
+                >
+                  {NEGATIVE_FORMAT_OPTIONS.map((opt) => {
+                    const example = formatAmountWithSettings(
+                      -123456,
+                      { ...displaySettings, negativeFormat: opt.value },
+                      { currency },
+                    );
+                    return (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label} ({example})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+            <div className="negative-format-preview" aria-label="Negative format examples">
+              {NEGATIVE_FORMAT_OPTIONS.map((opt) => {
+                const example = formatAmountWithSettings(
+                  -123456,
+                  { ...displaySettings, negativeFormat: opt.value },
+                  { currency },
+                );
+                const isColorOnly = opt.value === 'color-only';
+                return (
+                  <div className="negative-format-preview__row" key={opt.value}>
+                    <span className="negative-format-preview__label">{opt.label}</span>
+                    <span
+                      className={
+                        isColorOnly
+                          ? 'negative-format-preview__amount negative-format-preview__amount--error'
+                          : 'negative-format-preview__amount'
+                      }
+                    >
+                      {example}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -339,9 +372,9 @@ export const SettingsPreferencesPage: React.FC = () => {
                 flexWrap: 'wrap',
               }}
             >
-              <CurrencyDisplay amount={123456} colorize />
-              <CurrencyDisplay amount={0} colorize />
-              <CurrencyDisplay amount={-123456} colorize />
+              <CurrencyDisplay amount={123456} currency={currency} colorize />
+              <CurrencyDisplay amount={0} currency={currency} colorize />
+              <CurrencyDisplay amount={-123456} currency={currency} colorize />
             </span>
           </div>
 
