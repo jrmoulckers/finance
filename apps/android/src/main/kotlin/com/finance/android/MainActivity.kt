@@ -14,15 +14,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,6 +44,9 @@ import com.finance.android.auth.AuthViewModel
 import com.finance.android.auth.LoginScreen
 import com.finance.android.auth.SignupScreen
 import com.finance.android.auth.SignupViewModel
+import com.finance.android.ui.components.IconPreferenceManager
+import com.finance.android.ui.components.IconView
+import com.finance.android.ui.components.LocalIconPack
 import com.finance.android.ui.navigation.FinanceBottomBar
 import com.finance.android.ui.navigation.FinanceNavHost
 import com.finance.android.ui.navigation.FinanceTopBar
@@ -53,6 +54,7 @@ import com.finance.android.ui.navigation.Route
 import com.finance.android.ui.theme.FinanceTheme
 import com.finance.android.ui.theme.ThemePreference
 import com.finance.android.ui.theme.ThemePreferenceManager
+import com.finance.core.icons.IconToken
 import org.koin.android.ext.android.inject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -66,6 +68,7 @@ import org.koin.compose.viewmodel.koinViewModel
 class MainActivity : ComponentActivity() {
 
     private val themePreferenceManager: ThemePreferenceManager by inject()
+    private val iconPreferenceManager: IconPreferenceManager by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,9 +82,12 @@ class MainActivity : ComponentActivity() {
             }
 
             val highContrast by themePreferenceManager.highContrastEnabled.collectAsState()
+            val iconPack by iconPreferenceManager.iconPack.collectAsState()
 
             FinanceTheme(darkTheme = darkTheme, highContrast = highContrast) {
-                FinanceApp()
+                CompositionLocalProvider(LocalIconPack provides iconPack) {
+                    FinanceApp()
+                }
             }
         }
     }
@@ -236,10 +242,7 @@ private fun AuthenticatedContent(modifier: Modifier = Modifier) {
                         contentDescription = "Create new transaction"
                     },
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "Create new transaction",
-                    )
+                    IconView(token = IconToken.ADD)
                 }
             }
         },

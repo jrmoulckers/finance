@@ -29,6 +29,7 @@ import com.finance.android.ui.screens.BiometricAvailabilityChecker
 import com.finance.android.ui.screens.DefaultBiometricAvailabilityChecker
 import com.finance.android.ui.screens.SettingsViewModel
 import com.finance.android.ui.screens.affordability.AffordabilityViewModel
+import com.finance.android.ui.components.IconPreferenceManager
 import com.finance.android.ui.expertise.ExpertiseTierManager
 import com.finance.android.ui.expertise.ExpertiseTierViewModel
 import com.finance.android.ui.learning.LearningPathViewModel
@@ -133,6 +134,9 @@ val appModule = module {
 
     /** Theme preference manager — provides reactive theme state for the whole app. */
     single { ThemePreferenceManager(get()) }
+
+    /** Icon preference manager — provides reactive icon pack state for the whole app. */
+    single { IconPreferenceManager(get()) }
 
     // ── Expertise tier ──────────────────────────────────────────────────
 
