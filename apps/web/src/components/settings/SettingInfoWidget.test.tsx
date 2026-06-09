@@ -32,7 +32,9 @@ describe('SettingInfoWidget', () => {
     );
 
     expect(screen.getByText('Currency Setting')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /more info/i })).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: 'Sets the default display currency.' });
+    expect(button).toBeInTheDocument();
+    expect(button).toHaveAttribute('title', 'Sets the default display currency.');
   });
 
   it('renders only children when setting has no description', () => {
@@ -43,7 +45,9 @@ describe('SettingInfoWidget', () => {
     );
 
     expect(screen.getByText('Unknown Setting')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /more info/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Sets the default display currency.' }),
+    ).not.toBeInTheDocument();
   });
 
   it('expands description on button click', () => {
@@ -53,7 +57,7 @@ describe('SettingInfoWidget', () => {
       </SettingInfoWidget>,
     );
 
-    const button = screen.getByRole('button', { name: /more info/i });
+    const button = screen.getByRole('button', { name: 'Sets the default display currency.' });
     expect(button).toHaveAttribute('aria-expanded', 'false');
 
     fireEvent.click(button);
@@ -71,7 +75,7 @@ describe('SettingInfoWidget', () => {
       </SettingInfoWidget>,
     );
 
-    const button = screen.getByRole('button', { name: /more info/i });
+    const button = screen.getByRole('button', { name: 'Sets the default display currency.' });
     fireEvent.click(button); // expand
     fireEvent.click(button); // collapse
 
@@ -85,7 +89,7 @@ describe('SettingInfoWidget', () => {
       </SettingInfoWidget>,
     );
 
-    const button = screen.getByRole('button', { name: /more info/i });
+    const button = screen.getByRole('button', { name: 'Sets the default display currency.' });
     const controlsId = button.getAttribute('aria-controls');
     expect(controlsId).toBeTruthy();
 
@@ -102,7 +106,7 @@ describe('SettingInfoWidget', () => {
       </SettingInfoWidget>,
     );
 
-    const button = screen.getByRole('button', { name: /more info/i });
+    const button = screen.getByRole('button', { name: 'Sets the default display currency.' });
     fireEvent.keyDown(button, { key: 'Enter' });
     expect(button).toHaveAttribute('aria-expanded', 'true');
   });

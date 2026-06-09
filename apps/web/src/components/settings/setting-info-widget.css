@@ -29,11 +29,15 @@
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 0.15s ease;
+  color: var(--semantic-text-secondary);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .setting-info-widget__trigger:hover {
   background-color: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
 }
 
 .setting-info-widget__trigger:focus-visible {
@@ -42,8 +46,7 @@
 }
 
 .setting-info-widget__icon {
-  font-size: 16px;
-  line-height: 1;
+  display: block;
 }
 
 .setting-info-widget__content {

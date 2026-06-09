@@ -2,6 +2,8 @@
 
 import { useCallback, useId, useRef, useState, type KeyboardEvent } from 'react';
 
+import { AppIcon } from '../icons';
+
 import { SETTING_DESCRIPTIONS, type SettingDescription } from './setting-descriptions';
 
 import './setting-info-widget.css';
@@ -17,7 +19,7 @@ export interface SettingInfoWidgetProps {
 /**
  * Wraps a setting item with an expandable info description.
  *
- * Shows a small info button (ℹ️) inline with the setting.
+ * Shows a small info button inline with the setting.
  * Clicking it expands an accessible description panel below.
  */
 export function SettingInfoWidget({ settingKey, children }: SettingInfoWidgetProps) {
@@ -58,12 +60,10 @@ export function SettingInfoWidget({ settingKey, children }: SettingInfoWidgetPro
           onKeyDown={handleKeyDown}
           aria-expanded={isExpanded}
           aria-controls={contentId}
-          aria-label={`More info about ${settingKey} setting`}
-          title={`Info: ${description.summary}`}
+          aria-label={description.summary}
+          title={description.summary}
         >
-          <span aria-hidden="true" className="setting-info-widget__icon">
-            ℹ️
-          </span>
+          <AppIcon className="setting-info-widget__icon" name="info" size={24} />
         </button>
       </div>
 
