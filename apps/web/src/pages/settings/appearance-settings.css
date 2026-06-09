@@ -1,0 +1,87 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.settings-group__header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-4, 1rem);
+  flex-wrap: wrap;
+}
+
+.appearance-settings__reset {
+  border: none;
+  background: transparent;
+  color: var(--semantic-interactive-default, var(--color-blue-700));
+  font: inherit;
+  font-weight: var(--font-weight-medium, 500);
+  cursor: pointer;
+  padding: 0;
+}
+
+.appearance-settings__reset:hover,
+.appearance-settings__reset:focus-visible {
+  text-decoration: underline;
+}
+
+.icon-style-picker {
+  border: 0;
+  margin: var(--spacing-4, 1rem) 0 0;
+  padding: 0;
+}
+
+.icon-style-picker__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-3, 0.75rem);
+  margin-top: var(--spacing-3, 0.75rem);
+}
+
+.icon-style-option {
+  display: flex;
+  gap: var(--spacing-3, 0.75rem);
+  align-items: flex-start;
+  border: 1px solid var(--semantic-border-default, var(--color-border));
+  border-radius: var(--border-radius-lg, 0.75rem);
+  padding: var(--spacing-4, 1rem);
+  cursor: pointer;
+  background: var(--semantic-background-primary, var(--color-surface));
+}
+
+.icon-style-option:hover,
+.icon-style-option:focus-within {
+  border-color: var(--semantic-border-focus, var(--color-blue-600));
+}
+
+.icon-style-option--selected {
+  border-color: var(--semantic-interactive-default, var(--color-blue-700));
+  box-shadow: 0 0 0 1px var(--semantic-interactive-default, var(--color-blue-700));
+}
+
+.icon-style-option input {
+  margin-top: 0.25rem;
+}
+
+.icon-style-option__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 0.5rem);
+  min-width: 0;
+}
+
+.icon-style-option__title {
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-primary);
+}
+
+.icon-style-option__description {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  line-height: 1.35;
+}
+
+.icon-style-option__preview {
+  display: flex;
+  gap: var(--spacing-2, 0.5rem);
+  align-items: center;
+  color: var(--semantic-text-primary);
+}

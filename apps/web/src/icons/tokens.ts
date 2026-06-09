@@ -93,6 +93,10 @@ export const ICON_TOKENS = [
 
 export type IconToken = (typeof ICON_TOKENS)[number];
 
+export const IconToken = Object.fromEntries(ICON_TOKENS.map((token) => [token, token])) as {
+  readonly [Token in IconToken]: Token;
+};
+
 export type IconMapping = Record<IconToken, string>;
 
 export const STANDARD_LUCIDE = 'standard_lucide';
@@ -104,6 +108,15 @@ export const FLUENT_REGULAR = 'fluent_regular';
 export const FLUENT_FILLED = 'fluent_filled';
 
 export const ICON_PACK_PREFERENCE_KEY = 'icon_pack_id';
+
+export type IconPackId =
+  | typeof STANDARD_LUCIDE
+  | typeof IOS_SF_SYMBOLS
+  | typeof MATERIAL_SYMBOLS_OUTLINED
+  | typeof MATERIAL_SYMBOLS_ROUNDED
+  | typeof MATERIAL_SYMBOLS_SHARP
+  | typeof FLUENT_REGULAR
+  | typeof FLUENT_FILLED;
 
 export const LUCIDE_MAPPING: IconMapping = {
   HOME: 'home',
@@ -196,10 +209,10 @@ export const LUCIDE_MAPPING: IconMapping = {
   CATEGORY_SALARY: 'badge-dollar-sign',
 };
 
-export const MATERIAL_SYMBOLS_OUTLINED_MAPPING: Partial<IconMapping> = {};
-export const MATERIAL_SYMBOLS_ROUNDED_MAPPING: Partial<IconMapping> = {};
-export const MATERIAL_SYMBOLS_SHARP_MAPPING: Partial<IconMapping> = {};
-export const FLUENT_REGULAR_MAPPING: Partial<IconMapping> = {};
-export const FLUENT_FILLED_MAPPING: Partial<IconMapping> = {};
+export { MATERIAL_SYMBOLS_OUTLINED_MAPPING } from './materialSymbolsOutlined';
+export { MATERIAL_SYMBOLS_ROUNDED_MAPPING } from './materialSymbolsRounded';
+export { MATERIAL_SYMBOLS_SHARP_MAPPING } from './materialSymbolsSharp';
+export { FLUENT_REGULAR_MAPPING } from './fluentRegular';
+export { FLUENT_FILLED_MAPPING } from './fluentFilled';
 
 export default LUCIDE_MAPPING;

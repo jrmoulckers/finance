@@ -166,6 +166,7 @@ const paths: Record<IconName, string[]> = {
   x: ['M6 6l12 12', 'M18 6 6 18'],
 };
 
+// TODO(#2009): Migrate the remaining legacy AppIcon call sites to the token-based <Icon />.
 export function AppIcon({ name, size = 16, label, style, ...svgProps }: AppIconProps) {
   const iconStyle: CSSProperties = {
     display: 'inline-block',

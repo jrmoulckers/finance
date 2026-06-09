@@ -18,6 +18,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../../auth/auth-context';
+import { Icon } from '../common/Icon';
+import { IconToken } from '../../icons/tokens';
 
 import { MoreNavSheet } from './MoreNavSheet';
 import {
@@ -30,7 +32,7 @@ import {
   type NavConfigItem,
   type NavGroup,
 } from './navConfig';
-import { ChevronDownIcon, KeyboardIcon, MoreIcon, SettingsIcon, SignOutIcon } from './navIcons';
+import { ChevronDownIcon, KeyboardIcon, MoreIcon, SignOutIcon } from './navIcons';
 
 // ---------------------------------------------------------------------------
 // Back-compat shims for existing consumers / tests.
@@ -334,7 +336,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
           onClick={() => onNavigate('/settings')}
         >
           <span className="sidebar-nav__item-icon" aria-hidden="true">
-            <SettingsIcon />
+            <Icon name={IconToken.SETTINGS} />
           </span>
           <span>Settings</span>
         </button>

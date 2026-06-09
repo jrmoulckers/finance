@@ -16,6 +16,8 @@
 
 import React, { useCallback, useEffect, useRef } from 'react';
 
+import { Icon } from '../common/Icon';
+import { IconToken } from '../../icons/tokens';
 import {
   MORE_SHEET_ITEMS,
   NAV_GROUP_LABELS,
@@ -23,7 +25,7 @@ import {
   type NavConfigItem,
   type NavGroup,
 } from './navConfig';
-import { CloseIcon, KeyboardIcon, SettingsIcon, SignOutIcon } from './navIcons';
+import { CloseIcon, KeyboardIcon, SignOutIcon } from './navIcons';
 
 export interface MoreNavSheetProps {
   /** Whether the sheet is open. */
@@ -206,7 +208,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
                   onClick={() => handleNavigate('/settings')}
                 >
                   <span className="more-sheet__item-icon" aria-hidden="true">
-                    <SettingsIcon />
+                    <Icon name={IconToken.SETTINGS} />
                   </span>
                   <span className="more-sheet__item-text">
                     <span className="more-sheet__item-label">Settings</span>

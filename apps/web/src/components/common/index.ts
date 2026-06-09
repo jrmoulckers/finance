@@ -18,6 +18,8 @@ export type { WidgetErrorBoundaryProps } from './WidgetErrorBoundary';
 export { InstallBanner } from './InstallBanner';
 export { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 export type { KeyboardShortcutsModalProps } from './KeyboardShortcutsModal';
+export { Icon } from './Icon';
+export type { IconProps } from './Icon';
 export { LoadingSpinner } from './LoadingSpinner';
 export type { LoadingSpinnerProps } from './LoadingSpinner';
 export { SyncStatusBar } from './SyncStatusBar';
