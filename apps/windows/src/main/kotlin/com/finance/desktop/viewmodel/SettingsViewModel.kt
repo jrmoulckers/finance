@@ -2,6 +2,9 @@
 
 package com.finance.desktop.viewmodel
 
+import com.finance.core.icons.FLUENT_REGULAR
+import com.finance.core.icons.IconPacks
+import com.finance.core.icons.Platform
 import com.finance.desktop.data.repository.AppSettings
 import com.finance.desktop.data.repository.SettingsRepository
 import com.finance.desktop.data.repository.TransactionRepository
@@ -26,6 +29,7 @@ data class SettingsUiState(
     val darkMode: Boolean = false,
     val language: String = "English",
     val accentColor: String = "Blue",
+    val iconPackId: String = FLUENT_REGULAR,
 
     // ── Security ──
     val windowsHelloEnabled: Boolean = true,
@@ -87,6 +91,11 @@ class SettingsViewModel(
     fun setLanguage(language: String) = updateAndSave { it.copy(language = language) }
 
     fun setAccentColor(color: String) = updateAndSave { it.copy(accentColor = color) }
+
+    fun setIconPack(iconPackId: String) = updateAndSave { state ->
+        val supportedPack = IconPacks.forPlatform(Platform.WINDOWS).firstOrNull { it.id == iconPackId }
+        state.copy(iconPackId = supportedPack?.id ?: IconPacks.defaultFor(Platform.WINDOWS).id)
+    }
 
     // ── Security (Windows Hello gated) ──────────────────────────────────────
 
@@ -261,6 +270,7 @@ private fun AppSettings.toUiState(): SettingsUiState = SettingsUiState(
     darkMode = darkMode,
     language = language,
     accentColor = accentColor,
+    iconPackId = iconPackId,
     windowsHelloEnabled = windowsHelloEnabled,
     autoLockEnabled = autoLockEnabled,
     autoLockTimeoutMinutes = autoLockTimeoutMinutes,
@@ -276,6 +286,7 @@ private fun SettingsUiState.toAppSettings(): AppSettings = AppSettings(
     darkMode = darkMode,
     language = language,
     accentColor = accentColor,
+    iconPackId = iconPackId,
     windowsHelloEnabled = windowsHelloEnabled,
     autoLockEnabled = autoLockEnabled,
     autoLockTimeoutMinutes = autoLockTimeoutMinutes,

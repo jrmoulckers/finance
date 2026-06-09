@@ -2,7 +2,10 @@
 
 package com.finance.desktop.data.repository
 
+import com.finance.core.icons.FLUENT_REGULAR
+import com.finance.core.icons.ICON_PACK_PREFERENCE_KEY
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -20,6 +23,8 @@ data class AppSettings(
     val darkMode: Boolean = false,
     val language: String = "English",
     val accentColor: String = "Blue",
+    @SerialName(ICON_PACK_PREFERENCE_KEY)
+    val iconPackId: String = FLUENT_REGULAR,
 
     // ── Security ──
     val windowsHelloEnabled: Boolean = true,

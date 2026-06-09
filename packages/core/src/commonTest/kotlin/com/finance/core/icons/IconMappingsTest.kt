@@ -2,6 +2,8 @@
 
 package com.finance.core.icons
 
+import com.finance.core.icons.mappings.FluentFilledMapping
+import com.finance.core.icons.mappings.FluentRegularMapping
 import com.finance.core.icons.mappings.LucideMapping
 import com.finance.core.icons.mappings.MaterialSymbolsOutlinedMapping
 import com.finance.core.icons.mappings.MaterialSymbolsRoundedMapping
@@ -29,6 +31,16 @@ class IconMappingsTest {
     @Test
     fun materialSymbolsSharpMappingCoversAllTokens() {
         assertMappingCoversAllTokens("Material Symbols Sharp", MaterialSymbolsSharpMapping.mapping)
+    }
+
+    @Test
+    fun fluentRegularMappingCoversAllTokens() {
+        assertMappingCoversAllTokens("Fluent Regular", FluentRegularMapping.mapping)
+    }
+
+    @Test
+    fun fluentFilledMappingCoversAllTokens() {
+        assertMappingCoversAllTokens("Fluent Filled", FluentFilledMapping.mapping)
     }
 
     private fun assertMappingCoversAllTokens(
