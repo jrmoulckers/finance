@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
-import { ErrorBoundary, ToastProvider } from './components/common';
+import { ErrorBoundary, ToastProvider, UpdateBanner } from './components/common';
 import { ScrollToTop } from './components/navigation/ScrollToTop';
 import { DatabaseProvider } from './db/DatabaseProvider';
 import { MoneyDisplayProvider } from './lib/display-settings';
@@ -157,6 +157,7 @@ createRoot(rootElement).render(
           <MoneyDisplayProvider>
             <BrowserRouter>
               <ScrollToTop />
+              <UpdateBanner />
               <DatabaseGate>
                 <App />
               </DatabaseGate>

@@ -15,6 +15,54 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Auto-apply waiting service-worker updates (#2023).
+      //
+      // When a new build is deployed, the browser detects the changed
+      // /sw.js and installs a new SW which enters the "waiting" state
+      // until the old SW's clients close. Without manual intervention
+      // (clicking an "Update available" banner), users can stay pinned
+      // to the old bundle indefinitely — see the demo-mode-stuck bug
+      // from #2021 where the banner only rendered inside the
+      // authenticated layout, so users stuck on /login could never
+      // trigger the update.
+      //
+      // This inline script runs on every page load (Caddy serves
+      // /index.html with no-cache, so this is always the latest copy)
+      // and immediately tells any waiting SW to skipWaiting. It also
+      // listens for `updatefound` so newly-installed waiting SWs are
+      // activated as soon as they're ready (handles the race where the
+      // browser is still fetching /sw.js when this script runs).
+      //
+      // The reload guard prevents an infinite loop if controllerchange
+      // fires for an unrelated reason.
+      if ('serviceWorker' in navigator) {
+        var reloaded = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (reloaded) return;
+          reloaded = true;
+          window.location.reload();
+        });
+        var activateWaiting = function (reg) {
+          if (reg && reg.waiting && navigator.serviceWorker.controller) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        };
+        navigator.serviceWorker.getRegistration().then(function (reg) {
+          if (!reg) return;
+          activateWaiting(reg);
+          reg.addEventListener('updatefound', function () {
+            var installing = reg.installing;
+            if (!installing) return;
+            installing.addEventListener('statechange', function () {
+              if (installing.state === 'installed') {
+                activateWaiting(reg);
+              }
+            });
+          });
+        });
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

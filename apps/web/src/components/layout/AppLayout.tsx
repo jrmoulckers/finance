@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState } from 'react';
 
-import { KeyboardShortcutsModal, UpdateBanner, SyncStatusBar } from '../common';
+import { KeyboardShortcutsModal, SyncStatusBar } from '../common';
 import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
 import { useKeyboardShortcuts } from '../../hooks';
 import { usePrivacyMode } from '../../contexts/PrivacyModeContext';
@@ -66,7 +66,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         onOpenShortcuts={openKeyboardShortcuts}
       />
       <div className="app-shell">
-        <UpdateBanner />
         <SyncStatusBar />
         <header className="app-header" aria-label="App header">
           <h1 className="app-header__title">{pageTitle}</h1>

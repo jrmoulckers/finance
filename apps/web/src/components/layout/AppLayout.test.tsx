@@ -40,7 +40,6 @@ vi.mock('../common/ConflictResolutionDialog', () => ({
 vi.mock('../common', () => ({
   KeyboardShortcutsModal: ({ isOpen }: { isOpen: boolean; onClose: () => void }) =>
     isOpen ? <div data-testid="keyboard-shortcuts-modal">Shortcuts Modal</div> : null,
-  UpdateBanner: () => <div data-testid="update-banner">Update Banner</div>,
   SyncStatusBar: () => <div data-testid="sync-status-bar">Sync Status</div>,
 }));
 
@@ -159,12 +158,6 @@ describe('AppLayout', () => {
     render(<AppLayout {...defaultProps} />);
 
     expect(screen.getByRole('banner', { name: 'App header' })).toBeInTheDocument();
-  });
-
-  it('renders the UpdateBanner', () => {
-    render(<AppLayout {...defaultProps} />);
-
-    expect(screen.getByTestId('update-banner')).toBeInTheDocument();
   });
 
   it('renders without the removed OfflineBanner (offline state handled by SyncStatusBar)', () => {
