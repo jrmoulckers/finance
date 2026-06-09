@@ -41,7 +41,8 @@ export const SETTING_DESCRIPTIONS: Record<string, SettingDescription> = {
     summary: 'Sets the unpaid BNPL installment total that triggers a stacking alert.',
     impact:
       'The threshold is stored locally and only changes when the app warns about overlapping installment obligations.',
-    recommendation: 'Use a number that reflects the point where multiple BNPL payments become risky.',
+    recommendation:
+      'Use a number that reflects the point where multiple BNPL payments become risky.',
   },
   monitoring: {
     summary: 'Sends anonymous error reports to help improve app stability.',

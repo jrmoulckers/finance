@@ -55,8 +55,7 @@ export const SettingsAboutPage: React.FC = () => (
         <div className="settings-item settings-item--static">
           <span className="settings-item__label">Acknowledgements</span>
           <span className="settings-item__value">
-            Built with React, Vite, TypeScript, sql.js, wa-sqlite, Recharts, D3, and
-            Tesseract.js.
+            Built with React, Vite, TypeScript, sql.js, wa-sqlite, Recharts, D3, and Tesseract.js.
           </span>
         </div>
       </div>

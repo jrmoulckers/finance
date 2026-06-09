@@ -481,7 +481,9 @@ describe('SettingsPage', () => {
       expect(
         screen.getByRole('checkbox', { name: 'Sync mood tags across my devices' }),
       ).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /more info about moodTags setting/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /more info about moodTags setting/i }),
+      ).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /more info about moodTagsSync setting/i }),
       ).toBeInTheDocument();
