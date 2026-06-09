@@ -64,6 +64,13 @@ export interface UpdateGoalInput {
   accountId?: SyncId | null;
 }
 
+/** Input used when adding progress to an existing goal. */
+export interface GoalContributionInput {
+  goalId: SyncId;
+  amount: { amount: number };
+  note?: string | null;
+}
+
 function mapGoal(row: Row): Goal {
   return {
     id: requireString(row.id, 'goal.id'),
@@ -206,6 +213,77 @@ export function updateGoal(db: SqliteDb, goalId: SyncId, updates: UpdateGoalInpu
       mergedGoal.color,
       mergedGoal.accountId,
       goalId,
+    ],
+  );
+
+  return getGoalById(db, goalId);
+}
+
+/** Add a positive contribution amount to a goal's current progress. */
+export function contributeToGoal(
+  db: SqliteDb,
+  goalId: SyncId,
+  input: GoalContributionInput,
+): Goal | null {
+  const existingGoal = getGoalById(db, goalId);
+  if (!existingGoal) {
+    return null;
+  }
+
+  if (!Number.isFinite(input.amount.amount) || input.amount.amount <= 0) {
+    throw new Error('Contribution amount must be greater than zero.');
+  }
+
+  const nextCurrentAmount = existingGoal.currentAmount.amount + input.amount.amount;
+  const nextStatus =
+    nextCurrentAmount >= existingGoal.targetAmount.amount ? 'COMPLETED' : existingGoal.status;
+
+  const contributionId = crypto.randomUUID();
+
+  execute(
+    db,
+    `UPDATE goal
+        SET current_amount = ?,
+            status = ?,
+            updated_at = ${SQLITE_NOW_EXPRESSION},
+            sync_version = 1,
+            is_synced = 0
+      WHERE id = ?
+        AND deleted_at IS NULL`,
+    [nextCurrentAmount, nextStatus, goalId],
+  );
+
+  execute(
+    db,
+    `INSERT INTO goal_progress_contribution (
+      id,
+      goal_id,
+      household_id,
+      amount,
+      currency,
+      note,
+      contributed_at,
+      created_at,
+      updated_at,
+      deleted_at,
+      sync_version,
+      is_synced
+    ) VALUES (
+      ?, ?, ?, ?, ?, ?,
+      ${SQLITE_NOW_EXPRESSION},
+      ${SQLITE_NOW_EXPRESSION},
+      ${SQLITE_NOW_EXPRESSION},
+      NULL,
+      1,
+      0
+    )`,
+    [
+      contributionId,
+      goalId,
+      existingGoal.householdId,
+      input.amount.amount,
+      existingGoal.currency.code,
+      input.note?.trim() || null,
     ],
   );
 

@@ -19,12 +19,14 @@ vi.mock('../../db/DatabaseProvider', () => ({
 const mockGetAllGoals = vi.fn<(...args: unknown[]) => Goal[]>();
 const mockCreateGoal = vi.fn<(...args: unknown[]) => Goal>();
 const mockUpdateGoal = vi.fn<(...args: unknown[]) => Goal | null>();
+const mockContributeToGoal = vi.fn<(...args: unknown[]) => Goal | null>();
 const mockDeleteGoal = vi.fn<(...args: unknown[]) => boolean>();
 
 vi.mock('../../db/repositories/goals', () => ({
   getAllGoals: (...args: unknown[]) => mockGetAllGoals(...args),
   createGoal: (...args: unknown[]) => mockCreateGoal(...args),
   updateGoal: (...args: unknown[]) => mockUpdateGoal(...args),
+  contributeToGoal: (...args: unknown[]) => mockContributeToGoal(...args),
   deleteGoal: (...args: unknown[]) => mockDeleteGoal(...args),
 }));
 
@@ -215,6 +217,54 @@ describe('useGoals', () => {
 
     expect(returned).toBeNull();
     expect(result.current.error).toBe('Update failed');
+  });
+
+  // -----------------------------------------------------------------------
+  // CRUD — contributeToGoal
+  // -----------------------------------------------------------------------
+
+  it('contributes to a goal and triggers refresh', () => {
+    mockGetAllGoals.mockReturnValue([makeGoal()]);
+    const updated = makeGoal({ currentAmount: { amount: 300000 } });
+    mockContributeToGoal.mockReturnValue(updated);
+
+    const { result } = renderHook(() => useGoals());
+
+    let returned: Goal | null = null;
+    act(() => {
+      returned = result.current.contributeToGoal('goal-1', {
+        goalId: 'goal-1',
+        amount: { amount: 50000 },
+        note: 'Paycheck transfer',
+      });
+    });
+
+    expect(returned).toEqual(updated);
+    expect(mockContributeToGoal).toHaveBeenCalledWith(mockDb, 'goal-1', {
+      goalId: 'goal-1',
+      amount: { amount: 50000 },
+      note: 'Paycheck transfer',
+    });
+  });
+
+  it('returns null and sets error when contributeToGoal throws', () => {
+    mockGetAllGoals.mockReturnValue([makeGoal()]);
+    mockContributeToGoal.mockImplementation(() => {
+      throw new Error('Contribution failed');
+    });
+
+    const { result } = renderHook(() => useGoals());
+
+    let returned: Goal | null = null;
+    act(() => {
+      returned = result.current.contributeToGoal('goal-1', {
+        goalId: 'goal-1',
+        amount: { amount: 50000 },
+      });
+    });
+
+    expect(returned).toBeNull();
+    expect(result.current.error).toBe('Contribution failed');
   });
 
   // -----------------------------------------------------------------------

@@ -468,6 +468,31 @@ export const MIGRATIONS: Migration[] = [
     label: 'add-description-to-goals',
     up: [`ALTER TABLE goal ADD COLUMN description TEXT;`],
   },
+  {
+    version: 7,
+    label: 'add-goal-progress-contributions',
+    up: [
+      `CREATE TABLE IF NOT EXISTS goal_progress_contribution (
+        id             TEXT    NOT NULL PRIMARY KEY,
+        goal_id        TEXT    NOT NULL,
+        household_id   TEXT    NOT NULL,
+        amount         INTEGER NOT NULL,
+        currency       TEXT    NOT NULL DEFAULT 'USD',
+        note           TEXT,
+        contributed_at TEXT    NOT NULL,
+        created_at     TEXT    NOT NULL,
+        updated_at     TEXT    NOT NULL,
+        deleted_at     TEXT,
+        sync_version   INTEGER NOT NULL DEFAULT 0,
+        is_synced      INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (goal_id)      REFERENCES goal(id),
+        FOREIGN KEY (household_id) REFERENCES household(id)
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_goal_progress_contribution_goal ON goal_progress_contribution (goal_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_goal_progress_contribution_household ON goal_progress_contribution (household_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_goal_progress_contribution_sync ON goal_progress_contribution (is_synced);`,
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection

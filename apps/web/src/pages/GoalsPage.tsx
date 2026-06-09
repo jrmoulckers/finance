@@ -8,10 +8,12 @@ import {
   EmptyState,
   ErrorBanner,
   LoadingSpinner,
+  useToast,
 } from '../components/common';
+import { GoalContributionDialog } from '../components/goals/GoalContributionDialog';
 import { GoalForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
-import type { CreateGoalInput } from '../db/repositories/goals';
+import type { CreateGoalInput, GoalContributionInput } from '../db/repositories/goals';
 import { useGoals } from '../hooks';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
@@ -32,12 +34,23 @@ function getGoalIcon(iconName: string | null | undefined): IconName {
   }
 }
 
+function useOptionalToast(): ReturnType<typeof useToast> | null {
+  try {
+    return useToast();
+  } catch {
+    return null;
+  }
+}
+
 export const GoalsPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null);
+  const [contributingGoal, setContributingGoal] = useState<Goal | null>(null);
   const [isDeletingGoal, setIsDeletingGoal] = useState(false);
-  const { goals, loading, error, refresh, createGoal, updateGoal, deleteGoal } = useGoals();
+  const { goals, loading, error, refresh, createGoal, updateGoal, contributeToGoal, deleteGoal } =
+    useGoals();
+  const toast = useOptionalToast();
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount.amount, 0);
   const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount.amount, 0);
 
@@ -58,6 +71,14 @@ export const GoalsPage: React.FC = () => {
 
   const handleRequestDelete = useCallback((goal: Goal) => {
     setDeletingGoal(goal);
+  }, []);
+
+  const handleContributeGoal = useCallback((goal: Goal) => {
+    setContributingGoal(goal);
+  }, []);
+
+  const handleCloseContribution = useCallback(() => {
+    setContributingGoal(null);
   }, []);
 
   const handleCancelDelete = useCallback(() => {
@@ -82,6 +103,22 @@ export const GoalsPage: React.FC = () => {
       setIsFormOpen(false);
     },
     [createGoal, editingGoal, updateGoal],
+  );
+
+  const handleSubmitContribution = useCallback(
+    async (input: GoalContributionInput) => {
+      const updatedGoal = contributeToGoal(input.goalId, input);
+      if (updatedGoal === null) {
+        throw new Error('Failed to contribute to goal.');
+      }
+
+      toast?.showToast({
+        type: 'success',
+        message: `Contribution added to ${updatedGoal.name}`,
+        duration: 3000,
+      });
+    },
+    [contributeToGoal, toast],
   );
 
   const handleConfirmDelete = useCallback(async () => {
@@ -329,6 +366,22 @@ export const GoalsPage: React.FC = () => {
                             : 'Past due'}
                       </span>
                     </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        marginTop: 'var(--spacing-4)',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="form-button form-button--secondary"
+                        onClick={() => handleContributeGoal(goal)}
+                        aria-label={`Contribute to ${goal.name}`}
+                      >
+                        Contribute
+                      </button>
+                    </div>
                   </article>
                 );
               })}
@@ -336,6 +389,12 @@ export const GoalsPage: React.FC = () => {
           </section>
         </>
       )}
+      <GoalContributionDialog
+        isOpen={contributingGoal !== null}
+        goal={contributingGoal}
+        onCancel={handleCloseContribution}
+        onSubmit={handleSubmitContribution}
+      />
       <GoalForm
         isOpen={isFormOpen}
         onCancel={handleCloseForm}

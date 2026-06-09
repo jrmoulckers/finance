@@ -95,6 +95,7 @@ describe('GoalsPage', () => {
       refresh: vi.fn(),
       createGoal: vi.fn(),
       updateGoal: vi.fn(),
+      contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
     });
   });
@@ -138,5 +139,15 @@ describe('GoalsPage', () => {
     );
     const progressBars = screen.getAllByRole('progressbar');
     expect(progressBars.length).toBe(4);
+  });
+
+  it('displays a contribute action for each goal', () => {
+    render(
+      <MemoryRouter>
+        <GoalsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByRole('button', { name: /contribute to/i })).toHaveLength(4);
   });
 });

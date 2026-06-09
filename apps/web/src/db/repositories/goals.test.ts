@@ -5,6 +5,7 @@ import type { GoalStatus } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
 import type { Row, SqliteDb } from '../sqlite-wasm';
 import {
+  contributeToGoal,
   createGoal,
   deleteGoal,
   getActiveGoals,
@@ -428,6 +429,151 @@ describe('goals repository', () => {
 
       expect(params[2]).toBe('For the new roof');
       expect(goal?.description).toBe('For the new roof');
+    });
+  });
+
+  describe('contributeToGoal', () => {
+    it('adds the contribution to current amount', () => {
+      mockQueryOne
+        .mockReturnValueOnce({
+          id: 'goal-1',
+          household_id: 'hh-1',
+          name: 'Goal',
+          description: null,
+          target_amount: 100000,
+          current_amount: 25000,
+          currency: 'USD',
+          target_date: null,
+          status: 'ACTIVE',
+          icon: null,
+          color: null,
+          account_id: null,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+          deleted_at: null,
+          sync_version: 1,
+          is_synced: 0,
+        })
+        .mockReturnValueOnce({
+          id: 'goal-1',
+          household_id: 'hh-1',
+          name: 'Goal',
+          description: null,
+          target_amount: 100000,
+          current_amount: 40000,
+          currency: 'USD',
+          target_date: null,
+          status: 'ACTIVE',
+          icon: null,
+          color: null,
+          account_id: null,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-02T00:00:00Z',
+          deleted_at: null,
+          sync_version: 1,
+          is_synced: 0,
+        });
+
+      const goal = contributeToGoal(mockDb, 'goal-1', {
+        goalId: 'goal-1',
+        amount: { amount: 15000 },
+        note: 'Paycheck transfer',
+      });
+
+      expect(mockExecute).toHaveBeenCalledWith(mockDb, expect.stringContaining('UPDATE goal'), [
+        40000,
+        'ACTIVE',
+        'goal-1',
+      ]);
+      expect(mockExecute).toHaveBeenCalledWith(
+        mockDb,
+        expect.stringContaining('INSERT INTO goal_progress_contribution'),
+        expect.arrayContaining([
+          expect.any(String),
+          'goal-1',
+          'hh-1',
+          15000,
+          'USD',
+          'Paycheck transfer',
+        ]),
+      );
+      expect(goal?.currentAmount.amount).toBe(40000);
+    });
+
+    it('marks the goal completed when the contribution reaches the target', () => {
+      mockQueryOne
+        .mockReturnValueOnce({
+          id: 'goal-1',
+          household_id: 'hh-1',
+          name: 'Goal',
+          description: null,
+          target_amount: 100000,
+          current_amount: 95000,
+          currency: 'USD',
+          target_date: null,
+          status: 'ACTIVE',
+          icon: null,
+          color: null,
+          account_id: null,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+          deleted_at: null,
+          sync_version: 1,
+          is_synced: 0,
+        })
+        .mockReturnValueOnce({
+          id: 'goal-1',
+          household_id: 'hh-1',
+          name: 'Goal',
+          description: null,
+          target_amount: 100000,
+          current_amount: 105000,
+          currency: 'USD',
+          target_date: null,
+          status: 'COMPLETED',
+          icon: null,
+          color: null,
+          account_id: null,
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-02T00:00:00Z',
+          deleted_at: null,
+          sync_version: 1,
+          is_synced: 0,
+        });
+
+      const goal = contributeToGoal(mockDb, 'goal-1', {
+        goalId: 'goal-1',
+        amount: { amount: 10000 },
+      });
+
+      expect((mockExecute.mock.calls[0][2] as unknown[])[1]).toBe('COMPLETED');
+      expect(goal?.status).toBe('COMPLETED');
+    });
+
+    it('rejects non-positive contribution amounts', () => {
+      mockQueryOne.mockReturnValue({
+        id: 'goal-1',
+        household_id: 'hh-1',
+        name: 'Goal',
+        target_amount: 100000,
+        current_amount: 25000,
+        currency: 'USD',
+        target_date: null,
+        status: 'ACTIVE',
+        icon: null,
+        color: null,
+        account_id: null,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        deleted_at: null,
+        sync_version: 1,
+        is_synced: 0,
+      });
+
+      expect(() =>
+        contributeToGoal(mockDb, 'goal-1', { goalId: 'goal-1', amount: { amount: 0 } }),
+      ).toThrow('Contribution amount must be greater than zero.');
+      expect(mockExecute).not.toHaveBeenCalled();
     });
   });
 

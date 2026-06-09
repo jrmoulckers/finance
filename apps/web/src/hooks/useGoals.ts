@@ -18,11 +18,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import {
+  contributeToGoal as repoContributeToGoal,
   createGoal as repoCreateGoal,
   deleteGoal as repoDeleteGoal,
   getAllGoals,
   updateGoal as repoUpdateGoal,
   type CreateGoalInput,
+  type GoalContributionInput,
   type UpdateGoalInput,
 } from '../db/repositories/goals';
 import type { Goal, SyncId } from '../kmp/bridge';
@@ -54,6 +56,11 @@ export interface UseGoalsResult {
    * @returns The updated goal, or `null` if the goal was not found or update failed.
    */
   updateGoal: (goalId: SyncId, updates: UpdateGoalInput) => Goal | null;
+  /**
+   * Add progress to a goal and automatically refresh the list.
+   * @returns The updated goal, or `null` if the goal was not found or contribution failed.
+   */
+  contributeToGoal: (goalId: SyncId, input: GoalContributionInput) => Goal | null;
   /**
    * Soft-delete a goal and automatically refresh the list.
    * @returns `true` if deletion succeeded, `false` otherwise.
@@ -127,6 +134,23 @@ export function useGoals(): UseGoalsResult {
     [db, refresh],
   );
 
+  const contributeToGoal = useCallback(
+    (goalId: SyncId, input: GoalContributionInput): Goal | null => {
+      try {
+        const updated = repoContributeToGoal(db, goalId, input);
+        if (updated !== null) {
+          refresh();
+        }
+        return updated;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to contribute to goal.');
+        setLoading(false);
+        return null;
+      }
+    },
+    [db, refresh],
+  );
+
   const deleteGoal = useCallback(
     (goalId: SyncId): boolean => {
       try {
@@ -151,6 +175,7 @@ export function useGoals(): UseGoalsResult {
     refresh,
     createGoal,
     updateGoal,
+    contributeToGoal,
     deleteGoal,
   };
 }

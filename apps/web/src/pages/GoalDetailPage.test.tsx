@@ -65,6 +65,7 @@ describe('GoalDetailPage', () => {
       refresh: refreshMock,
       createGoal: vi.fn(),
       updateGoal: vi.fn(),
+      contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
     });
   });
@@ -81,6 +82,7 @@ describe('GoalDetailPage', () => {
       refresh: refreshMock,
       createGoal: vi.fn(),
       updateGoal: vi.fn(),
+      contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
     });
 
@@ -101,6 +103,7 @@ describe('GoalDetailPage', () => {
       refresh: refreshMock,
       createGoal: vi.fn(),
       updateGoal: vi.fn(),
+      contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
     });
 
@@ -118,6 +121,7 @@ describe('GoalDetailPage', () => {
       refresh: refreshMock,
       createGoal: vi.fn(),
       updateGoal: vi.fn(),
+      contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
     });
 
@@ -236,6 +240,7 @@ describe('GoalDetailPage', () => {
       refresh: refreshMock,
       createGoal: vi.fn(),
       updateGoal: vi.fn(),
+      contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
     });
 
@@ -268,6 +273,7 @@ describe('GoalDetailPage', () => {
       refresh: refreshMock,
       createGoal: vi.fn(),
       updateGoal: vi.fn(),
+      contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
     });
 
