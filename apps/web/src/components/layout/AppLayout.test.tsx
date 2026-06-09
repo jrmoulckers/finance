@@ -121,6 +121,25 @@ describe('AppLayout', () => {
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
   });
 
+  it('renders hosted legal links in the app footer', () => {
+    render(<AppLayout {...defaultProps} />);
+
+    const legalNav = screen.getByRole('navigation', { name: 'Legal links' });
+    expect(within(legalNav).getByRole('link', { name: 'Legal' })).toHaveAttribute('href', '/legal');
+    expect(within(legalNav).getByRole('link', { name: 'Privacy' })).toHaveAttribute(
+      'href',
+      '/legal/privacy',
+    );
+    expect(within(legalNav).getByRole('link', { name: 'Terms' })).toHaveAttribute(
+      'href',
+      '/legal/terms',
+    );
+    expect(within(legalNav).getByRole('link', { name: 'CCPA' })).toHaveAttribute(
+      'href',
+      '/legal/ccpa',
+    );
+  });
+
   it('renders a Settings button in the header', () => {
     render(<AppLayout {...defaultProps} />);
 

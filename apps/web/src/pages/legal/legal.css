@@ -1,0 +1,82 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.legal-page {
+  min-height: 100dvh;
+  padding: var(--spacing-6) var(--spacing-4);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+}
+
+.legal-page__draft,
+.legal-page__card {
+  width: min(100%, 760px);
+  margin-inline: auto;
+}
+
+.legal-page__draft {
+  margin-bottom: var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--semantic-border-warning, var(--semantic-border-default));
+  border-radius: var(--border-radius-md, 8px);
+  background: var(--semantic-background-warning, var(--semantic-background-secondary));
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.legal-page__card {
+  padding: var(--spacing-6);
+  border: 1px solid var(--card-border, var(--semantic-border-default));
+  border-radius: var(--card-border-radius, 12px);
+  background: var(--card-background, var(--semantic-background-primary));
+  box-shadow: var(--card-shadow, none);
+}
+
+.legal-page h1 {
+  margin: 0 0 var(--spacing-3);
+  font-size: var(--type-scale-headline-font-size, 2rem);
+  font-weight: var(--type-scale-headline-font-weight, 700);
+}
+
+.legal-page h2 {
+  margin: 0 0 var(--spacing-2);
+  font-size: var(--type-scale-title-font-size, 1.25rem);
+}
+
+.legal-page p {
+  line-height: 1.65;
+}
+
+.legal-page__lede,
+.legal-page__updated {
+  color: var(--semantic-text-secondary);
+}
+
+.legal-page__index-list {
+  display: grid;
+  gap: var(--spacing-3);
+  padding-left: var(--spacing-5);
+  margin: var(--spacing-5) 0 0;
+}
+
+.legal-page__section {
+  margin-top: var(--spacing-5);
+}
+
+.legal-page__back-link {
+  display: inline-flex;
+  margin-bottom: var(--spacing-4);
+  color: var(--semantic-interactive-default);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.legal-page a:hover {
+  color: var(--semantic-interactive-hover);
+  text-decoration: underline;
+}
+
+.legal-page a:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--border-radius-sm, 2px);
+}

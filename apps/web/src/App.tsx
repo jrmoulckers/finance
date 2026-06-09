@@ -44,6 +44,10 @@ const PAGE_TITLES: Record<string, string> = {
   '/net-worth': 'Net Worth',
   '/subscriptions': 'Subscriptions',
   '/bank-connections': 'Bank Connections',
+  '/legal': 'Legal',
+  '/legal/privacy': 'Privacy Policy',
+  '/legal/terms': 'Terms of Service',
+  '/legal/ccpa': 'California Privacy Notice',
 };
 
 /**
@@ -61,6 +65,7 @@ const STANDALONE_ROUTES: readonly string[] = [
   '/signup',
   '/forgot-password',
   '/reset-password',
+  '/legal',
   '/onboarding',
 ];
 

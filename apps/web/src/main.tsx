@@ -44,6 +44,20 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
     ? requiredProductionEnv('VITE_SUPABASE_ANON_KEY')
     : 'placeholder-anon-key';
 
+const PRE_AUTH_ROUTES = new Set([
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/legal',
+]);
+
+function isPreAuthRoute(pathname: string): boolean {
+  return Array.from(PRE_AUTH_ROUTES).some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
+
 const authConfig = {
   supabaseUrl,
   supabaseAnonKey,
@@ -51,9 +65,8 @@ const authConfig = {
   refreshEndpoint: import.meta.env.VITE_REFRESH_ENDPOINT ?? '/api/auth/refresh',
   logoutEndpoint: import.meta.env.VITE_LOGOUT_ENDPOINT ?? '/api/auth/logout',
   onUnauthenticated: () => {
-    // Redirect to login when session expires or user is not authenticated
-    const publicAuthPaths = new Set(['/login', '/signup', '/forgot-password', '/reset-password']);
-    if (!publicAuthPaths.has(window.location.pathname)) {
+    // Redirect to login when session expires or user is not authenticated.
+    if (!isPreAuthRoute(window.location.pathname)) {
       window.location.href = '/login';
     }
   },
@@ -125,8 +138,6 @@ if (typeof window !== 'undefined') {
  * and cause the E2E authenticatedPage fixture to time out before the login
  * form ever appears.
  */
-const PRE_AUTH_ROUTES = new Set(['/login', '/signup', '/forgot-password', '/reset-password']);
-
 /**
  * Conditionally wraps children in DatabaseProvider.
  *

@@ -38,6 +38,12 @@ const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPassword = lazy(() => import('./pages/ResetPasswordPage'));
+const LegalIndex = lazy(() =>
+  import('./pages/legal/LegalPage').then((module) => ({ default: module.LegalIndexPage })),
+);
+const LegalDocument = lazy(() =>
+  import('./pages/legal/LegalPage').then((module) => ({ default: module.LegalDocumentPage })),
+);
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
 const Watchlists = lazy(() => import('./pages/WatchlistsPage'));
 const Household = lazy(() => import('./pages/HouseholdPage'));
@@ -184,6 +190,38 @@ export const AppRoutes: FC = () => (
       element={
         <RouteBoundary name="Reset Password">
           <ResetPassword />
+        </RouteBoundary>
+      }
+    />
+    <Route
+      path="/legal"
+      element={
+        <RouteBoundary name="Legal">
+          <LegalIndex />
+        </RouteBoundary>
+      }
+    />
+    <Route
+      path="/legal/privacy"
+      element={
+        <RouteBoundary name="Privacy Policy">
+          <LegalDocument documentId="privacy" />
+        </RouteBoundary>
+      }
+    />
+    <Route
+      path="/legal/terms"
+      element={
+        <RouteBoundary name="Terms of Service">
+          <LegalDocument documentId="terms" />
+        </RouteBoundary>
+      }
+    />
+    <Route
+      path="/legal/ccpa"
+      element={
+        <RouteBoundary name="California Privacy Notice">
+          <LegalDocument documentId="ccpa" />
         </RouteBoundary>
       }
     />

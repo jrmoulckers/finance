@@ -560,6 +560,10 @@ describe('SettingsPage', () => {
       expect(screen.getByRole('heading', { name: 'About', level: 2 })).toBeInTheDocument();
       expect(screen.getByText('0.1.0')).toBeInTheDocument();
       expect(screen.getByText('Not available in this build')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /open legal index/i })).toHaveAttribute(
+        'href',
+        '/legal',
+      );
       expect(screen.getByRole('link', { name: /open business source license/i })).toHaveAttribute(
         'href',
         'https://github.com/jrmoulckers/finance/blob/main/LICENSE',

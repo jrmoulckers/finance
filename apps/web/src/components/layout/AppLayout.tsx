@@ -11,6 +11,7 @@ import { useSyncStatus } from '../../hooks/useSyncStatus';
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
 import { InstallBanner } from '../common/InstallBanner';
+import { LegalLinks } from '../legal/LegalLinks';
 
 export interface AppLayoutProps {
   activePath: string;
@@ -137,6 +138,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         <main id="main-content" className="app-main" aria-label={pageTitle}>
           {children}
         </main>
+        <footer className="app-footer">
+          <LegalLinks />
+        </footer>
         <BottomNavigation activePath={activePath} onNavigate={onNavigate} />
       </div>
       <InstallBanner />
