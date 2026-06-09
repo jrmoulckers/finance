@@ -482,10 +482,14 @@ describe('SettingsPage', () => {
         screen.getByRole('checkbox', { name: 'Sync mood tags across my devices' }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: /more info about moodTags setting/i }),
+        screen.getByRole('button', {
+          name: /allows optional mood tags to be attached to transactions/i,
+        }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: /more info about moodTagsSync setting/i }),
+        screen.getByRole('button', {
+          name: /syncs transaction mood tags across your signed-in devices/i,
+        }),
       ).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'About' })).not.toBeInTheDocument();
     });
@@ -499,7 +503,9 @@ describe('SettingsPage', () => {
         'danger-zone-card__action',
       );
       expect(
-        screen.getByRole('button', { name: /more info about eraseMoodData setting/i }),
+        screen.getByRole('button', {
+          name: /removes all saved mood tags and disables mood-tag preferences/i,
+        }),
       ).toBeInTheDocument();
     });
   });
