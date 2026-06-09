@@ -9,6 +9,8 @@ import WidgetKit
 
 @main
 struct FinanceWatchApp: App {
+    // TODO(#2033): Wire Sentry SDK for watchOS here.
+    // See docs/ops/monitoring-setup.md for DSN, consent, and scrubbing requirements.
     @WKExtensionDelegateAdaptor(ExtensionDelegate.self) private var delegate
     @State private var connectivityManager = WatchConnectivityManager()
     var body: some Scene {
@@ -143,4 +145,3 @@ struct WatchBudgetStatus: Identifiable, Sendable {
         self.id = id; self.name = name; self.spentMinorUnits = sp; self.budgetedMinorUnits = bu
     }
 }
-

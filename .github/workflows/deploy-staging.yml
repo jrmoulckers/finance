@@ -113,6 +113,7 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
           BETA_ALLOWED_EMAILS: ${{ secrets.BETA_ALLOWED_EMAILS }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
           set -euo pipefail
 
@@ -138,6 +139,7 @@ jobs:
           SUPABASE_ANON_KEY_B64=$(printf '%s' "$SUPABASE_ANON_KEY" | base64 -w 0)
           POWERSYNC_URL_B64=$(printf '%s' "$POWERSYNC_URL" | base64 -w 0)
           BETA_ALLOWED_EMAILS_B64=$(printf '%s' "$BETA_ALLOWED_EMAILS" | base64 -w 0)
+          SENTRY_DSN_B64=$(printf '%s' "$SENTRY_DSN" | base64 -w 0)
 
           # SSH in and rebuild. Each line is a separate command so an early
           # failure aborts the build (set -e inside the heredoc). Use
@@ -145,12 +147,15 @@ jobs:
           # from any stale refs (e.g. if a prior backend deploy already
           # advanced origin/main before this fetch read its expected value).
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            "SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' BETA_ALLOWED_EMAILS_B64='$BETA_ALLOWED_EMAILS_B64' bash -s" <<'DEPLOY'
+            "SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' BETA_ALLOWED_EMAILS_B64='$BETA_ALLOWED_EMAILS_B64' SENTRY_DSN_B64='$SENTRY_DSN_B64' SHA_SHORT='$SHA_SHORT' bash -s" <<'DEPLOY'
             set -euo pipefail
             export VITE_SUPABASE_URL="$(printf '%s' "$SUPABASE_URL_B64" | base64 -d)"
             export VITE_SUPABASE_ANON_KEY="$(printf '%s' "$SUPABASE_ANON_KEY_B64" | base64 -d)"
             export VITE_POWERSYNC_URL="$(printf '%s' "$POWERSYNC_URL_B64" | base64 -d)"
             export VITE_BETA_ALLOWED_EMAILS="$(printf '%s' "$BETA_ALLOWED_EMAILS_B64" | base64 -d)"
+            export VITE_SENTRY_DSN="$(printf '%s' "$SENTRY_DSN_B64" | base64 -d)"
+            export VITE_ENVIRONMENT=staging
+            export VITE_APP_VERSION="$SHA_SHORT"
             cd ~/finance
             echo "→ git fetch --force --prune origin main"
             git fetch --force --prune origin main
@@ -176,6 +181,52 @@ jobs:
           echo "**Commit:** \`$SHA_SHORT\`" >> "$GITHUB_STEP_SUMMARY"
           echo "**Served at:** https://finance.jrmoulckers.com" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Verify monitoring configured
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SENTRY_DSN" ]; then
+            echo "::warning::SENTRY_DSN is not configured for staging; Sentry will no-op after deploy"
+            exit 0
+          fi
+
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "::warning::Deployment SSH secrets are missing; cannot verify monitoring bundle"
+            exit 0
+          fi
+
+          if [ ! -f ~/.ssh/deploy_key ]; then
+            mkdir -p ~/.ssh
+            echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+            chmod 600 ~/.ssh/deploy_key
+            ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          fi
+
+          SENTRY_DSN_B64=$(printf '%s' "$SENTRY_DSN" | base64 -w 0)
+
+          if ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' SENTRY_DSN_B64='$SENTRY_DSN_B64' bash -s" <<'VERIFY'
+            set -euo pipefail
+            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#~}" ;; esac
+            cd "$DEPLOY_PATH"
+            expected_dsn="$(printf '%s' "$SENTRY_DSN_B64" | base64 -d)"
+            if grep -R --fixed-strings --quiet "$expected_dsn" apps/web/dist/index.html apps/web/dist/assets 2>/dev/null; then
+              echo "Monitoring DSN found in deployed web bundle."
+            else
+              echo "::warning::SENTRY_DSN was not found in the deployed web bundle; Sentry may be disabled"
+            fi
+          VERIFY
+          then
+            true
+          else
+            echo "::warning::Unable to verify monitoring configuration in deployed bundle"
+          fi
       - name: Clean up SSH key
         if: always()
         run: rm -f ~/.ssh/deploy_key

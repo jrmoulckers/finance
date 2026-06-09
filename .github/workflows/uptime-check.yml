@@ -1,0 +1,98 @@
+# =============================================================================
+# Uptime Check — Beta health endpoint
+# =============================================================================
+
+name: Uptime Check
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime-check
+  cancel-in-progress: true
+
+jobs:
+  health:
+    name: Check beta health endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check /health
+        id: check
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          set +e
+
+          if [ -n "${DEPLOY_HOST:-}" ]; then
+            if [[ "$DEPLOY_HOST" == http://* || "$DEPLOY_HOST" == https://* ]]; then
+              url="${DEPLOY_HOST%/}/health"
+            else
+              url="https://${DEPLOY_HOST%/}/health"
+            fi
+          else
+            url="https://finance.jrmoulckers.com/health"
+          fi
+
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          curl_output=$(curl --silent --show-error --location --max-time 10 --output /dev/null --write-out '%{http_code}' "$url" 2>&1)
+          curl_status=$?
+          status_code="${curl_output: -3}"
+
+          echo "status_code=$status_code" >> "$GITHUB_OUTPUT"
+          echo "curl_status=$curl_status" >> "$GITHUB_OUTPUT"
+
+          if [ "$curl_status" -ne 0 ] || [ "$status_code" = "000" ] || [ "$status_code" -ge 500 ]; then
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Uptime check failed"
+              echo ""
+              echo "- URL: $url"
+              echo "- HTTP status: $status_code"
+              echo "- curl exit: $curl_status"
+              echo "- Checked at: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+            echo "Health check passed with HTTP $status_code for $url" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Open or update uptime issue
+        if: steps.check.outputs.failed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEALTH_URL: ${{ steps.check.outputs.url }}
+          STATUS_CODE: ${{ steps.check.outputs.status_code }}
+          CURL_STATUS: ${{ steps.check.outputs.curl_status }}
+        run: |
+          set -euo pipefail
+
+          gh label create uptime --repo "$GITHUB_REPOSITORY" --color D73A4A --description "Uptime monitor alerts" --force >/dev/null
+          gh label create beta --repo "$GITHUB_REPOSITORY" --color 1D76DB --description "Beta environment" --force >/dev/null
+
+          body="Automated beta uptime check failed.
+
+          - URL: ${HEALTH_URL}
+          - HTTP status: ${STATUS_CODE}
+          - curl exit: ${CURL_STATUS}
+          - Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          - Checked at: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          existing_issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --label uptime --label beta --json number --jq '.[0].number // empty')
+          if [ -n "$existing_issue" ]; then
+            gh issue comment "$existing_issue" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Beta uptime check failing" \
+              --label uptime \
+              --label beta \
+              --body "$body"
+          fi

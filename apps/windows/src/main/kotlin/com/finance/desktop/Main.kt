@@ -29,6 +29,8 @@ import javax.swing.JOptionPane
 import kotlin.system.exitProcess
 
 fun main() {
+    // TODO(#2033): Wire Sentry SDK for Windows here.
+    // See docs/ops/monitoring-setup.md for DSN, consent, and scrubbing requirements.
     validateStartupConfiguration()
     PerformanceTracker.recordAppStart()
 
