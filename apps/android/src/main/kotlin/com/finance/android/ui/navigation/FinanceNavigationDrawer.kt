@@ -6,14 +6,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -25,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.finance.android.ui.components.IconView
+import com.finance.core.icons.IconToken
 import timber.log.Timber
 
 /**
@@ -34,7 +30,7 @@ import timber.log.Timber
 private data class DrawerDestination(
     val route: String,
     val label: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val iconToken: IconToken,
     val a11yDescription: String,
 )
 
@@ -45,25 +41,25 @@ private val drawerDestinations = listOf(
     DrawerDestination(
         route = Route.Dashboard.route,
         label = "Dashboard",
-        icon = Icons.Filled.Home,
+        iconToken = IconToken.DASHBOARD,
         a11yDescription = "Navigate to Dashboard",
     ),
     DrawerDestination(
         route = Route.Transactions.route,
         label = "Activity",
-        icon = Icons.Filled.SwapHoriz,
+        iconToken = IconToken.TRANSACTIONS,
         a11yDescription = "View transaction activity",
     ),
     DrawerDestination(
         route = Route.Planning.route,
         label = "Planning",
-        icon = Icons.Filled.PieChart,
+        iconToken = IconToken.BUDGETS,
         a11yDescription = "Navigate to Planning",
     ),
     DrawerDestination(
         route = Route.Settings.route,
         label = "Settings",
-        icon = Icons.Filled.Settings,
+        iconToken = IconToken.SETTINGS,
         a11yDescription = "Navigate to Settings",
     ),
 )
@@ -135,10 +131,7 @@ fun FinanceNavigationDrawer(
                     val selected = currentRoute == destination.route
                     NavigationDrawerItem(
                         icon = {
-                            Icon(
-                                imageVector = destination.icon,
-                                contentDescription = null,
-                            )
+                            IconView(token = destination.iconToken)
                         },
                         label = {
                             Text(text = destination.label)

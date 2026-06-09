@@ -49,6 +49,7 @@ class SettingsSnapshotTest {
                     onNavigateBack = {},
                     onSignOut = {},
                     onSetThemePreference = {},
+                    onSetIconPack = {},
                     onSetCurrency = {},
                     onSetNotifications = {},
                     onSetBillReminders = {},

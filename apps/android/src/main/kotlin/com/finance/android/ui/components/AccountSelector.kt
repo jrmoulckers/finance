@@ -11,14 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -33,7 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import com.finance.core.icons.IconToken
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -69,14 +63,14 @@ data class AccountDisplayItem(
 /**
  * Returns the Material icon for the given account type.
  */
-private fun iconForAccountType(type: AccountDisplayType): ImageVector = when (type) {
-    AccountDisplayType.CHECKING -> Icons.Default.AccountBalance
-    AccountDisplayType.SAVINGS -> Icons.Default.Savings
-    AccountDisplayType.CREDIT_CARD -> Icons.Default.CreditCard
-    AccountDisplayType.CASH -> Icons.Default.Wallet
-    AccountDisplayType.INVESTMENT -> Icons.Default.ShowChart
-    AccountDisplayType.LOAN -> Icons.Default.Payments
-    AccountDisplayType.OTHER -> Icons.Default.AccountBalance
+private fun iconForAccountType(type: AccountDisplayType): IconToken = when (type) {
+    AccountDisplayType.CHECKING -> IconToken.CHECKING_ACCOUNT
+    AccountDisplayType.SAVINGS -> IconToken.SAVINGS_ACCOUNT
+    AccountDisplayType.CREDIT_CARD -> IconToken.CREDIT_ACCOUNT
+    AccountDisplayType.CASH -> IconToken.CASH_ACCOUNT
+    AccountDisplayType.INVESTMENT -> IconToken.INVESTMENT_ACCOUNT
+    AccountDisplayType.LOAN -> IconToken.LOAN_ACCOUNT
+    AccountDisplayType.OTHER -> IconToken.ACCOUNTS
 }
 
 /**
@@ -143,11 +137,10 @@ fun AccountSelector(
                     .padding(12.dp),
             ) {
                 if (selectedAccount != null) {
-                    Icon(
-                        imageVector = iconForAccountType(selectedAccount.type),
-                        contentDescription = null, // parent semantics covers this
+                    IconView(
+                        token = iconForAccountType(selectedAccount.type),
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
+                        size = 24.dp,
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -221,15 +214,14 @@ fun AccountSelector(
                                     }
                                 },
                             ) {
-                                Icon(
-                                    imageVector = iconForAccountType(account.type),
-                                    contentDescription = null,
+                                IconView(
+                                    token = iconForAccountType(account.type),
                                     tint = if (isSelected) {
                                         MaterialTheme.colorScheme.primary
                                     } else {
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     },
-                                    modifier = Modifier.size(20.dp),
+                                    size = 20.dp,
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
