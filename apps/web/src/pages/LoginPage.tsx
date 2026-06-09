@@ -32,6 +32,7 @@ export const LoginPage: React.FC = () => {
     isLoading,
     error,
     webAuthnSupported,
+    webAuthnReady,
     isDemoMode,
     showPasskeyPrompt,
     dismissPasskeyPrompt,
@@ -70,6 +71,7 @@ export const LoginPage: React.FC = () => {
    */
   const passkeyPrimary =
     webAuthnSupported &&
+    webAuthnReady &&
     platformAuthAvailable === true &&
     (preferredMethod === 'passkey' || hasRegisteredPasskey());
 
@@ -240,18 +242,16 @@ export const LoginPage: React.FC = () => {
         )}
 
         {/* ── Passkey-first layout: biometric primary when preferred (#1983) ── */}
-        {/* Passkey UI is suppressed in demo mode (#2011) — the demo build
-            ships with a placeholder Supabase URL, so `initWebAuthn()` is
-            skipped in `auth-context.tsx`. Showing the button would call
-            into an uninitialised WebAuthn module and surface the cryptic
-            "WebAuthn not initialised" developer error to end users. */}
+        {/* Passkey UI is suppressed in demo mode (#2011) because the demo
+            build ships with a placeholder Supabase URL and no backend
+            passkey service. */}
         {passkeyPrimary && !isDemoMode && (
           <div className="auth-actions" style={{ marginBottom: 'var(--spacing-4)' }}>
             <button
               type="button"
               className="auth-submit"
               onClick={handlePasskeyLogin}
-              disabled={isBusy}
+              disabled={isBusy || !webAuthnReady}
               aria-busy={isBusy}
             >
               {isBusy ? (
@@ -377,8 +377,7 @@ export const LoginPage: React.FC = () => {
             </button>
 
             {/* Show passkey as secondary when no passkey registered yet
-                — but never in demo mode (#2011), where WebAuthn is not
-                initialised. */}
+                — but keep it disabled until WebAuthn has backend config. */}
             {webAuthnSupported && !passkeyPrimary && !isDemoMode ? (
               <>
                 <div className="auth-divider" aria-hidden="true">
@@ -388,7 +387,7 @@ export const LoginPage: React.FC = () => {
                   type="button"
                   className="form-button form-button--secondary auth-passkey-button"
                   onClick={handlePasskeyLogin}
-                  disabled={isBusy}
+                  disabled={isBusy || !webAuthnReady}
                   aria-busy={isBusy}
                 >
                   Sign in with passkey

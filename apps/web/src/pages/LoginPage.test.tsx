@@ -15,6 +15,7 @@ const authState = vi.hoisted(() => ({
   error: null as string | null,
   user: null,
   webAuthnSupported: true,
+  webAuthnReady: true,
   isDemoMode: false,
   showPasskeyPrompt: false,
   dismissPasskeyPrompt: vi.fn(),
@@ -79,6 +80,7 @@ describe('LoginPage', () => {
     authState.error = null;
     authState.user = null;
     authState.webAuthnSupported = true;
+    authState.webAuthnReady = true;
     authState.showPasskeyPrompt = false;
     authState.isSigningOut = false;
     authState.dismissPasskeyPrompt.mockReset();
@@ -137,6 +139,15 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     expect(screen.getByRole('button', { name: /sign in with passkey/i })).toBeInTheDocument();
+  });
+
+  it('disables passkey button until WebAuthn is ready', () => {
+    authState.webAuthnSupported = true;
+    authState.webAuthnReady = false;
+
+    renderLoginPage();
+
+    expect(screen.getByRole('button', { name: /sign in with passkey/i })).toBeDisabled();
   });
 
   it('disables submit while loading', () => {

@@ -156,6 +156,8 @@ export async function isConditionalMediationAvailable(): Promise<boolean> {
 
 let config: WebAuthnConfig | null = null;
 
+const WEB_AUTHN_NOT_READY_ERROR = 'Passkey sign-in is still initialising. Try again in a moment.';
+
 const EDGE_FUNCTIONS_BASE_PATH = '/functions/v1';
 
 export function getWebAuthnFunctionUrl(functionName: string, step: string): string {
@@ -171,28 +173,46 @@ export function initWebAuthn(cfg: WebAuthnConfig): void {
 }
 
 /**
+ * Returns whether the WebAuthn client has connection details available.
+ */
+export function isWebAuthnReady(): boolean {
+  return config !== null;
+}
+
+function ensureWebAuthnConfig(cfg?: WebAuthnConfig): WebAuthnConfig {
+  if (!config && cfg) {
+    initWebAuthn(cfg);
+  }
+
+  if (!config) {
+    throw new Error(WEB_AUTHN_NOT_READY_ERROR);
+  }
+
+  return config;
+}
+
+/**
  * Make an authenticated request to a Supabase Edge Function.
  *
  * @param functionName Edge Function name (e.g. "passkey-register").
  * @param step Query parameter step ("options" | "verify").
  * @param body Request body (JSON-serialisable).
  * @param accessToken Optional JWT for authenticated requests.
+ * @param cfg Optional connection details used to initialise defensively.
  */
 async function callEdgeFunction<T>(
   functionName: string,
   step: string,
   body: unknown,
   accessToken?: string,
+  cfg?: WebAuthnConfig,
 ): Promise<T> {
-  if (!config) {
-    throw new Error('WebAuthn not initialised. Call initWebAuthn() first.');
-  }
-
+  const activeConfig = ensureWebAuthnConfig(cfg);
   const url = getWebAuthnFunctionUrl(functionName, step);
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    apikey: config.supabaseAnonKey,
+    apikey: activeConfig.supabaseAnonKey,
   };
 
   if (accessToken) {
@@ -229,10 +249,14 @@ async function callEdgeFunction<T>(
  *   3. Send the attestation response back to the server for verification.
  *
  * @param accessToken A valid access token for the authenticated user.
+ * @param cfg Optional connection details used to initialise defensively.
  * @returns The registration result including credential ID and device type.
  * @throws If WebAuthn is not supported or the ceremony fails.
  */
-export async function registerPasskey(accessToken: string): Promise<RegistrationResult> {
+export async function registerPasskey(
+  accessToken: string,
+  cfg?: WebAuthnConfig,
+): Promise<RegistrationResult> {
   if (!isWebAuthnSupported()) {
     throw new Error('WebAuthn is not supported in this browser.');
   }
@@ -243,6 +267,7 @@ export async function registerPasskey(accessToken: string): Promise<Registration
     'options',
     {},
     accessToken,
+    cfg,
   );
 
   // Step 2: Convert server options to Web API format
@@ -316,7 +341,7 @@ export async function registerPasskey(accessToken: string): Promise<Registration
     verified: boolean;
     credential_id: string;
     device_type: string;
-  }>('passkey-register', 'verify', attestationBody, accessToken);
+  }>('passkey-register', 'verify', attestationBody, accessToken, cfg);
 
   if (!result.verified) {
     throw new Error('Server rejected the registration.');
@@ -344,10 +369,14 @@ export async function registerPasskey(accessToken: string): Promise<Registration
  * Supports both username-based and usernameless (discoverable credential) flows.
  *
  * @param email Optional email to restrict credentials to a specific user.
+ * @param cfg Optional connection details used to initialise defensively.
  * @returns The authentication result including the user ID.
  * @throws If WebAuthn is not supported or the ceremony fails.
  */
-export async function authenticateWithPasskey(email?: string): Promise<AuthenticationResult> {
+export async function authenticateWithPasskey(
+  email?: string,
+  cfg?: WebAuthnConfig,
+): Promise<AuthenticationResult> {
   if (!isWebAuthnSupported()) {
     throw new Error('WebAuthn is not supported in this browser.');
   }
@@ -358,6 +387,8 @@ export async function authenticateWithPasskey(email?: string): Promise<Authentic
     'passkey-authenticate',
     'options',
     requestBody,
+    undefined,
+    cfg,
   );
 
   // Step 2: Convert server options to Web API format
@@ -410,7 +441,7 @@ export async function authenticateWithPasskey(email?: string): Promise<Authentic
     refresh_token?: string;
     expires_in?: number;
     user?: { id: string; email?: string };
-  }>('passkey-authenticate', 'verify', assertionBody);
+  }>('passkey-authenticate', 'verify', assertionBody, undefined, cfg);
 
   if (!result.verified && !result.access_token) {
     throw new Error('Server rejected the authentication.');

@@ -128,6 +128,8 @@ export interface AuthContextValue extends AuthActions {
   error: string | null;
   /** Whether WebAuthn is supported in the current browser. */
   webAuthnSupported: boolean;
+  /** Whether the WebAuthn client has been initialised with backend config. */
+  webAuthnReady: boolean;
   /** Whether the app is running in demo mode (no backend configured). */
   isDemoMode: boolean;
   /** Whether auth is preserving the last known user while refresh is offline/unreachable. */
@@ -198,6 +200,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [webAuthnSupported] = useState(() => isWebAuthnSupported());
+  const [webAuthnReady, setWebAuthnReady] = useState(false);
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -217,6 +220,13 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
   const initStartedRef = useRef(false);
 
   const demoModeActive = isDemoMode(config.supabaseUrl);
+  const webAuthnConfig = useMemo<WebAuthnConfig>(
+    () => ({
+      supabaseUrl: config.supabaseUrl,
+      supabaseAnonKey: config.supabaseAnonKey,
+    }),
+    [config.supabaseAnonKey, config.supabaseUrl],
+  );
   const isAuthenticated = user !== null && (hasValidToken() || isOffline);
 
   /** Dismiss the passkey prompt (hides it without changing preferences). */
@@ -278,9 +288,14 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     }
     initStartedRef.current = true;
 
+    // Initialise WebAuthn before any demo-mode early return so anonymous
+    // login surfaces cannot race ahead of module configuration.
+    initWebAuthn(webAuthnConfig);
+    setWebAuthnReady(true);
+
     if (demoModeActive) {
-      // In demo mode, skip WebAuthn and use localStorage-based session
-      // persistence instead of the HttpOnly cookie refresh flow.
+      // In demo mode, skip the backend auth bootstrap and use localStorage-based
+      // session persistence instead of the HttpOnly cookie refresh flow.
       initTokenManager({
         refreshEndpoint: '',
         onSessionExpired: () => {
@@ -322,13 +337,6 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       refreshEndpoint: config.refreshEndpoint,
       onSessionExpired: handleSessionExpired,
     });
-
-    // Initialise WebAuthn
-    const webAuthnConfig: WebAuthnConfig = {
-      supabaseUrl: config.supabaseUrl,
-      supabaseAnonKey: config.supabaseAnonKey,
-    };
-    initWebAuthn(webAuthnConfig);
 
     // Attempt to restore session via cookie-based refresh
     void tryRestoreSession();
@@ -472,12 +480,9 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
     async (email?: string): Promise<void> => {
       setError(null);
 
-      // Hard guard for demo mode (#2011). The initialisation `useEffect`
-      // returns early in demo mode and never calls `initWebAuthn()`, so a
-      // call into `authenticateWithPasskey` here would throw the cryptic
-      // developer-facing "WebAuthn not initialised. Call initWebAuthn()
-      // first." error. The UI is supposed to hide passkey controls in demo
-      // mode, but defence-in-depth in case some surface forgets.
+      // Hard guard for demo mode (#2011). The UI is supposed to hide passkey
+      // controls in demo mode, but keep defence-in-depth in case some surface
+      // forgets.
       if (demoModeActive) {
         const message = 'Passkey sign-in is not available in demo mode.';
         setError(message);
@@ -487,7 +492,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       setIsLoading(true);
 
       try {
-        const result = await authenticateWithPasskey(email);
+        const result = await authenticateWithPasskey(email, webAuthnConfig);
 
         // The verify step returns a full Supabase session (access_token,
         // refresh_token, user). No separate session-minting call is needed —
@@ -517,7 +522,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         setIsLoading(false);
       }
     },
-    [demoModeActive],
+    [demoModeActive, webAuthnConfig],
   );
 
   const registerNewPasskey = useCallback(async (): Promise<void> => {
@@ -529,7 +534,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         throw new Error('Must be authenticated to register a passkey.');
       }
 
-      await registerPasskey(token);
+      await registerPasskey(token, webAuthnConfig);
 
       // Update user state and localStorage to reflect passkey registration
       setUser((prev) => {
@@ -548,7 +553,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       setError(getPasskeyErrorMessage(err, 'registration'));
       throw err;
     }
-  }, []);
+  }, [webAuthnConfig]);
 
   const logout = useCallback(async (): Promise<void> => {
     setError(null);
@@ -780,6 +785,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       user,
       error,
       webAuthnSupported,
+      webAuthnReady,
       isDemoMode: demoModeActive,
       isOffline,
       showPasskeyPrompt,
@@ -800,6 +806,7 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       user,
       error,
       webAuthnSupported,
+      webAuthnReady,
       demoModeActive,
       isOffline,
       showPasskeyPrompt,

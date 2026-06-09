@@ -35,6 +35,7 @@ vi.mock('../auth/auth-context', () => ({
     },
     error: null,
     webAuthnSupported: true,
+    webAuthnReady: true,
     isDemoMode: false,
     loginWithEmail: vi.fn(),
     loginWithPasskey: vi.fn(),

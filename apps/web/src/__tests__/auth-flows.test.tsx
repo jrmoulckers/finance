@@ -35,6 +35,7 @@ const authState = vi.hoisted(() => ({
   error: null as string | null,
   user: null as { id: string; email: string; hasPasskey: boolean } | null,
   webAuthnSupported: true,
+  webAuthnReady: true,
   isDemoMode: false,
   isOffline: false,
 }));
@@ -111,6 +112,7 @@ beforeEach(() => {
   authState.error = null;
   authState.user = null;
   authState.webAuthnSupported = true;
+  authState.webAuthnReady = true;
   navigateMock.mockReset();
 });
 
