@@ -45,7 +45,7 @@ struct CategoryListView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button { viewModel.showingCreateForm = true } label: {
-                        Image(systemName: "plus")
+                        IconView(.add, size: 20)
                     }
                     .accessibilityIdentifier("add_category_button")
                     .accessibilityLabel(String(localized: "Add category"))

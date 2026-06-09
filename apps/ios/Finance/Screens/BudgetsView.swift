@@ -52,7 +52,7 @@ struct BudgetsView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button { viewModel.showingCreateBudget = true } label: {
-                        Image(systemName: "plus")
+                        IconView(.add, size: 20)
                     }
                     .accessibilityIdentifier("create_budget_button")
                     .accessibilityLabel(String(localized: "Create budget"))

@@ -160,7 +160,7 @@ struct DashboardView: View {
                 } label: {
                     quickAccessCard(
                         title: String(localized: "Investments"),
-                        icon: "chart.line.uptrend.xyaxis",
+                        iconToken: .investment,
                         color: .blue
                     )
                 }
@@ -172,7 +172,7 @@ struct DashboardView: View {
                 } label: {
                     quickAccessCard(
                         title: String(localized: "Bills"),
-                        icon: "calendar.badge.clock",
+                        iconToken: .bill,
                         color: .orange
                     )
                 }
@@ -184,7 +184,7 @@ struct DashboardView: View {
                 } label: {
                     quickAccessCard(
                         title: String(localized: "Reports"),
-                        icon: "doc.text.magnifyingglass",
+                        iconToken: .reports,
                         color: .purple
                     )
                 }
@@ -194,10 +194,9 @@ struct DashboardView: View {
         }
     }
 
-    private func quickAccessCard(title: String, icon: String, color: Color) -> some View {
+    private func quickAccessCard(title: String, iconToken: IconToken, color: Color) -> some View {
         VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
+            IconView(iconToken, size: 22)
                 .foregroundStyle(color)
                 .frame(width: 44, height: 44)
                 .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
@@ -249,8 +248,7 @@ struct DashboardView: View {
 
     private func transactionRow(_ transaction: TransactionItem) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: transaction.isExpense ? "arrow.up.right" : "arrow.down.left")
-                .font(.body)
+            IconView(transaction.isExpense ? .expense : .income, size: 16)
                 .foregroundStyle(transaction.isExpense ? .red : .green)
                 .frame(width: 32, height: 32)
                 .background((transaction.isExpense ? Color.red : Color.green).opacity(0.1), in: Circle())

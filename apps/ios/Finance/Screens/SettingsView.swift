@@ -27,6 +27,7 @@ struct SettingsView: View {
             Form {
                 accountSection
                 generalSection
+                appearanceSection
                 notificationsSection
                 accessibilitySection
                 securitySection
@@ -97,7 +98,8 @@ struct SettingsView: View {
         Section(String(localized: "Account")) {
             if authService.isAuthenticated, let user = authService.currentUser {
                 HStack {
-                    Image(systemName: "person.crop.circle.fill").font(.title).foregroundStyle(.secondary).accessibilityHidden(true)
+                    IconView(.profile, size: 28, weight: .semibold)
+                        .foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 2) {
                         if let name = user.name { Text(name).font(.headline) }
                         if let email = user.email { Text(email).font(.subheadline).foregroundStyle(.secondary) }
@@ -143,6 +145,23 @@ struct SettingsView: View {
             }
             .accessibilityLabel(String(localized: "Manage Categories"))
             .accessibilityHint(String(localized: "Opens the category management screen"))
+        }
+    }
+
+    // MARK: - Appearance
+
+    private var appearanceSection: some View {
+        Section(String(localized: "Appearance")) {
+            NavigationLink {
+                AppearanceSettingsView()
+            } label: {
+                HStack {
+                    IconView(.settings, size: 20)
+                    Text(String(localized: "Icon Style"))
+                }
+            }
+            .accessibilityLabel(String(localized: "Icon Style"))
+            .accessibilityHint(String(localized: "Choose between Standard Lucide icons and SF Symbols"))
         }
     }
 

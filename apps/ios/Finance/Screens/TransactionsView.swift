@@ -50,7 +50,7 @@ struct TransactionsView: View {
                     Button {
                         viewModel.showingFilterSheet = true
                     } label: {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
+                        IconView(.filter, size: 22)
                             .overlay(alignment: .topTrailing) {
                                 if viewModel.activeFilterCount > 0 {
                                     Text("\(viewModel.activeFilterCount)")
@@ -86,7 +86,7 @@ struct TransactionsView: View {
                         }
                         .accessibilityIdentifier("nlp_input_button")
                     } label: {
-                        Image(systemName: "plus")
+                        IconView(.add, size: 20)
                     }
                     .accessibilityIdentifier("add_transaction_button")
                     .accessibilityLabel(String(localized: "Add transaction"))
@@ -237,8 +237,8 @@ struct TransactionsView: View {
 
     private func transactionRow(_ transaction: TransactionItem) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: transaction.type.systemImage)
-                .font(.caption).foregroundStyle(transaction.type.color)
+            IconView(transaction.type.iconToken, size: 16)
+                .foregroundStyle(transaction.type.color)
                 .frame(width: 32, height: 32)
                 .background(transaction.type.color.opacity(0.1), in: Circle())
             VStack(alignment: .leading, spacing: 2) {
