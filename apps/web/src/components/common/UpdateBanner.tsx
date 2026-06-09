@@ -21,15 +21,15 @@ export const UpdateBanner: React.FC = () => {
 
   return (
     <div className="update-banner" role="status" aria-live="polite" aria-atomic="true">
-      <span className="update-banner__text">Update available</span>
+      <span className="update-banner__text">A new version of the app is available</span>
       <div className="update-banner__actions">
         <button
           type="button"
           className="update-banner__action"
-          aria-label="Update the app now and reload to the latest version"
+          aria-label="Reload the page to install the new app version"
           onClick={applyUpdate}
         >
-          Update now
+          Reload to update
         </button>
         <button
           type="button"

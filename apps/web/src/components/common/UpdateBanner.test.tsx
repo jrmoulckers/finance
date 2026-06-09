@@ -31,23 +31,23 @@ describe('UpdateBanner', () => {
 
     render(<UpdateBanner />);
 
-    expect(screen.getByText('Update available')).toBeInTheDocument();
+    expect(screen.getByText('A new version of the app is available')).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
-        name: 'Update the app now and reload to the latest version',
+        name: 'Reload the page to install the new app version',
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Dismiss update notification' })).toBeInTheDocument();
   });
 
-  it('calls applyUpdate when the Update now button is clicked', () => {
+  it('calls applyUpdate when the reload-to-update button is clicked', () => {
     swUpdateMock.updateAvailable = true;
 
     render(<UpdateBanner />);
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: 'Update the app now and reload to the latest version',
+        name: 'Reload the page to install the new app version',
       }),
     );
 
@@ -59,11 +59,11 @@ describe('UpdateBanner', () => {
 
     render(<UpdateBanner />);
 
-    expect(screen.getByText('Update available')).toBeInTheDocument();
+    expect(screen.getByText('A new version of the app is available')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss update notification' }));
 
-    expect(screen.queryByText('Update available')).not.toBeInTheDocument();
+    expect(screen.queryByText('A new version of the app is available')).not.toBeInTheDocument();
   });
 
   it('has a polite live region for screen reader announcements', () => {
