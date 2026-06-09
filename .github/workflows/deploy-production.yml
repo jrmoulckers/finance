@@ -128,6 +128,8 @@ jobs:
     if: github.event.inputs.rollback != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment:
+      name: production
     steps:
       - name: Checkout at deploy version
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -153,6 +155,13 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
         run: npm run build -w apps/web
+
+      - name: Verify web build env
+        if: needs.prepare.outputs.deploy_web == 'true'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node tools/verify-build-env.mjs --check-env apps/web/dist
 
       - name: Type check
         run: npm run type-check 2>/dev/null || true
@@ -201,6 +210,12 @@ jobs:
         run: |
           npm run build -w packages/design-tokens
           npm run build -w apps/web
+
+      - name: Verify web build env
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node tools/verify-build-env.mjs --check-env apps/web/dist
 
       - name: Deploy to Vercel (production)
         id: deploy

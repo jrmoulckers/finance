@@ -109,6 +109,9 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
           SHA_SHORT: ${{ needs.pre-deploy-checks.outputs.sha_short }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
         run: |
           set -euo pipefail
 
@@ -125,13 +128,26 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::SUPABASE_URL and SUPABASE_ANON_KEY secrets are required for staging web builds"
+            exit 1
+          fi
+
+          SUPABASE_URL_B64=$(printf '%s' "$SUPABASE_URL" | base64 -w 0)
+          SUPABASE_ANON_KEY_B64=$(printf '%s' "$SUPABASE_ANON_KEY" | base64 -w 0)
+          POWERSYNC_URL_B64=$(printf '%s' "$POWERSYNC_URL" | base64 -w 0)
+
           # SSH in and rebuild. Each line is a separate command so an early
           # failure aborts the build (set -e inside the heredoc). Use
           # `git fetch --force --prune` then `reset --hard` so we recover
           # from any stale refs (e.g. if a prior backend deploy already
           # advanced origin/main before this fetch read its expected value).
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" bash <<'DEPLOY'
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' bash -s" <<'DEPLOY'
             set -euo pipefail
+            export VITE_SUPABASE_URL="$(printf '%s' "$SUPABASE_URL_B64" | base64 -d)"
+            export VITE_SUPABASE_ANON_KEY="$(printf '%s' "$SUPABASE_ANON_KEY_B64" | base64 -d)"
+            export VITE_POWERSYNC_URL="$(printf '%s' "$POWERSYNC_URL_B64" | base64 -d)"
             cd ~/finance
             echo "→ git fetch --force --prune origin main"
             git fetch --force --prune origin main
@@ -143,6 +159,8 @@ jobs:
             npm run build -w packages/design-tokens --silent
             echo "→ build apps/web"
             npm run build -w apps/web --silent
+            echo "→ verify Supabase env in build output"
+            node tools/verify-build-env.mjs --check-env apps/web/dist
             echo "→ verify dist"
             test -f apps/web/dist/index.html
             ls -la apps/web/dist | head -10
