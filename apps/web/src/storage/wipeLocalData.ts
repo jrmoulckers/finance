@@ -31,6 +31,13 @@ interface StorageWithDirectory {
   getDirectory?: () => Promise<OpfsDirectoryHandle>;
 }
 
+declare global {
+  interface Window {
+    __PLAYWRIGHT_E2E__?: boolean;
+    __financeWipeLocalDataForE2E__?: () => Promise<void>;
+  }
+}
+
 /**
  * Best-effort browser data wipe used after server-confirmed account deletion.
  */
@@ -145,4 +152,8 @@ async function deleteAllCaches(): Promise<void> {
   } catch {
     // Best-effort wipe: cache APIs can be blocked by browser policy.
   }
+}
+
+if (typeof window !== 'undefined' && window.__PLAYWRIGHT_E2E__ === true) {
+  window.__financeWipeLocalDataForE2E__ = wipeLocalData;
 }

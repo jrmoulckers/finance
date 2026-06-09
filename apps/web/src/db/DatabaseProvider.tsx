@@ -69,19 +69,205 @@ declare global {
   }
 }
 
-/**
- * Minimal in-memory database stub used during E2E tests.
- *
- * Returns empty results for all queries.  Page components render their
- * "no data" / empty states, which is sufficient for E2E structural and
- * navigation tests that don't depend on seed data.
- */
-const E2E_STUB_DB: SqliteDb = {
-  exec: () => {},
-  selectAll: () => [],
-  selectOne: () => null,
-  close: async () => {},
-};
+/** Minimal in-memory database stub used during E2E tests. */
+function createE2eTableData(): Record<string, Array<Record<string, unknown>>> {
+  const now = new Date('2026-05-26T12:00:00.000Z').toISOString();
+  return {
+    user: [
+      {
+        id: 'e2e-user-1',
+        email: 'demo@finance.local',
+        display_name: 'E2E User',
+        avatar_url: null,
+        default_currency: 'USD',
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+        sync_version: 1,
+        is_synced: 0,
+      },
+    ],
+    household: [
+      {
+        id: 'e2e-household-1',
+        name: 'E2E Household',
+        owner_id: 'e2e-user-1',
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+        sync_version: 1,
+        is_synced: 0,
+      },
+    ],
+    household_member: [
+      {
+        id: 'e2e-member-1',
+        household_id: 'e2e-household-1',
+        user_id: 'e2e-user-1',
+        role: 'OWNER',
+        joined_at: now,
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+        sync_version: 1,
+        is_synced: 0,
+      },
+    ],
+    account: [
+      {
+        id: 'e2e-account-1',
+        household_id: 'e2e-household-1',
+        name: 'Checking',
+        type: 'CHECKING',
+        currency: 'USD',
+        current_balance: 250000,
+        is_archived: 0,
+        sort_order: 1,
+        icon: 'bank',
+        color: '#2563EB',
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+        sync_version: 1,
+        is_synced: 0,
+      },
+    ],
+    category: [
+      {
+        id: 'e2e-category-1',
+        household_id: 'e2e-household-1',
+        name: 'Food',
+        icon: 'utensils',
+        color: '#16A34A',
+        parent_id: null,
+        is_income: 0,
+        is_system: 0,
+        sort_order: 1,
+        is_biometric_protected: 0,
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+        sync_version: 1,
+        is_synced: 0,
+      },
+    ],
+    budget: [
+      {
+        id: 'e2e-budget-1',
+        household_id: 'e2e-household-1',
+        category_id: 'e2e-category-1',
+        name: 'Groceries',
+        amount: 50000,
+        currency: 'USD',
+        period: 'MONTHLY',
+        start_date: '2026-05-01',
+        end_date: null,
+        is_rollover: 0,
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+        sync_version: 1,
+        is_synced: 0,
+      },
+    ],
+    goal: [
+      {
+        id: 'e2e-goal-1',
+        household_id: 'e2e-household-1',
+        name: 'Emergency fund',
+        description: 'Three months expenses',
+        target_amount: 1000000,
+        current_amount: 250000,
+        currency: 'USD',
+        target_date: '2026-12-31',
+        status: 'ACTIVE',
+        icon: 'piggy-bank',
+        color: '#059669',
+        account_id: 'e2e-account-1',
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+        sync_version: 1,
+        is_synced: 0,
+      },
+    ],
+    transaction: [
+      {
+        id: 'e2e-transaction-1',
+        household_id: 'e2e-household-1',
+        account_id: 'e2e-account-1',
+        category_id: 'e2e-category-1',
+        type: 'EXPENSE',
+        status: 'CLEARED',
+        amount: -6742,
+        currency: 'USD',
+        payee: 'Grocery Store',
+        note: 'Weekly shop',
+        date: '2026-05-25',
+        transfer_account_id: null,
+        transfer_transaction_id: null,
+        is_recurring: 0,
+        recurring_rule_id: null,
+        tags: '[]',
+        mood_tag: null,
+        merchant_address: null,
+        merchant_city: null,
+        merchant_state: null,
+        merchant_zip: null,
+        merchant_country: null,
+        external_reference_id: null,
+        statement_description: null,
+        custom_fields: null,
+        extra_notes: null,
+        counterparty_name: null,
+        counterparty_account_id: null,
+        created_at: now,
+        updated_at: now,
+        deleted_at: null,
+        sync_version: 1,
+        is_synced: 0,
+      },
+    ],
+    goal_progress_contribution: [],
+  };
+}
+
+function tableNameFromSql(sql: string): string | null {
+  return /(?:FROM|INTO|DELETE FROM)\s+"?([a-zA-Z_][\w]*)"?/i.exec(sql)?.[1] ?? null;
+}
+
+function createE2eStubDb(): SqliteDb {
+  const tables = createE2eTableData();
+  return {
+    exec: (sql, params) => {
+      const deleteTable = /^DELETE FROM\s+"?([a-zA-Z_][\w]*)"?/i.exec(sql)?.[1];
+      if (deleteTable) {
+        tables[deleteTable] = [];
+        return;
+      }
+      const insert = /^INSERT INTO\s+"?([a-zA-Z_][\w]*)"?\s+\((.+)\)\s+VALUES/i.exec(sql);
+      if (insert) {
+        const columns = [...insert[2].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+        const row = Object.fromEntries(columns.map((column, index) => [column, params?.[index]]));
+        tables[insert[1]] = [...(tables[insert[1]] ?? []), row];
+      }
+    },
+    selectAll: (sql) => {
+      const table = tableNameFromSql(sql);
+      if (!table) return [];
+      const rows = (tables[table] ?? []).filter((row) => row.deleted_at == null);
+      if (/SELECT\s+id\s+FROM/i.test(sql)) return rows.map((row) => ({ id: row.id }));
+      return rows;
+    },
+    selectOne: (sql) => {
+      const rows = E2E_STUB_DB.selectAll(sql);
+      return rows[0] ?? null;
+    },
+    close: async () => {},
+  };
+}
+
+const E2E_STUB_DB: SqliteDb = createE2eStubDb();
 
 const E2E_STUB_DIAGNOSTICS: StorageDiagnostics = {
   backend: 'indexeddb',

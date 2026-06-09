@@ -403,6 +403,31 @@
   font-weight: var(--font-weight-medium);
 }
 
+.import-banner--success {
+  padding: var(--spacing-3);
+  background: var(--color-green-50, #f0fdf4);
+  border: 1px solid var(--semantic-status-positive);
+  border-radius: var(--border-radius-md);
+  color: var(--semantic-status-positive);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+}
+
+.import-backup-preview {
+  margin-top: var(--spacing-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.import-checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
 /* Hidden utility */
 .import-hidden {
   position: absolute;

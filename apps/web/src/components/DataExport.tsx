@@ -15,12 +15,12 @@ import {
   type DataAccessManifest,
   type DataAccessPackageResult,
 } from '../lib/data-access-package';
+import { buildBackupPackage, serializeBackupPackage } from '../lib/export/backup-package';
 import {
   buildAllCsvZip,
   buildDatedExportFileName,
   buildFullJsonExport,
   buildTransactionsCsv,
-  serializeFullJsonExport,
 } from '../lib/export/simple-export';
 import './data-export.css';
 
@@ -359,15 +359,13 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
       if (!db)
         throw new Error('Database is still initializing. Please wait a moment and try again.');
       const generatedAt = new Date();
-      const exportData = buildFullJsonExport(db, {
+      const exportData = buildBackupPackage(db, {
         appVersion: APP_VERSION,
         generatedAt,
-        preferences: readLocalStorageRecords('finance-'),
-        settings: readLocalStorageRecords('settings-'),
       });
       triggerBrowserDownload(
-        serializeFullJsonExport(exportData),
-        buildDatedExportFileName('finance-data', 'json', generatedAt),
+        serializeBackupPackage(exportData),
+        buildDatedExportFileName('finance-backup', 'json', generatedAt),
         'application/json;charset=utf-8',
       );
       setSimpleDownloadMessage('JSON download started.');

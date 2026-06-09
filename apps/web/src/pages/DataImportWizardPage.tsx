@@ -14,6 +14,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { DragEvent, ChangeEvent } from 'react';
 import { AppIcon } from '../components/icons';
+import { useDatabase } from '../db/DatabaseProvider';
 
 import { useDataImportWizard } from '../hooks/useDataImportWizard';
 import type {
@@ -22,6 +23,12 @@ import type {
   DuplicateComparison,
   DuplicateAction,
 } from '../hooks/useDataImportWizard';
+import {
+  buildRestorePreview,
+  parseBackupFile,
+  restoreBackupPackage,
+} from '../lib/export/backup-package';
+import type { BackupPackage, BackupRestorePreview, BackupRestoreResult } from '../types/backup';
 
 import './DataImportWizardPage.css';
 
@@ -354,19 +361,55 @@ export function DataImportWizardPage() {
     reset,
   } = useDataImportWizard();
 
+  const db = useDatabase();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [backupPackage, setBackupPackage] = useState<BackupPackage | null>(null);
+  const [backupPreview, setBackupPreview] = useState<BackupRestorePreview | null>(null);
+  const [backupResult, setBackupResult] = useState<BackupRestoreResult | null>(null);
+  const [backupError, setBackupError] = useState('');
+  const [backupWipeFirst, setBackupWipeFirst] = useState(false);
+  const [backupRestoring, setBackupRestoring] = useState(false);
 
   // -- File handling -------------------------------------------------------
 
   const handleFile = useCallback(
     async (file: File) => {
-      if (!file.name.endsWith('.csv') && file.type !== 'text/csv') {
+      const lowerName = file.name.toLowerCase();
+      const isBackup =
+        lowerName.endsWith('.json') ||
+        lowerName.endsWith('.zip') ||
+        file.type === 'application/json' ||
+        file.type === 'application/zip';
+
+      if (isBackup) {
+        try {
+          const parsed = await parseBackupFile(file);
+          const preview = buildRestorePreview(db, parsed, { wipeLocalDataFirst: backupWipeFirst });
+          setBackupPackage(parsed);
+          setBackupPreview(preview);
+          setBackupResult(null);
+          setBackupError('');
+        } catch (error) {
+          setBackupPackage(null);
+          setBackupPreview(null);
+          setBackupResult(null);
+          setBackupError(error instanceof Error ? error.message : 'Unable to parse backup file.');
+        }
         return;
       }
+
+      if (!lowerName.endsWith('.csv') && file.type !== 'text/csv') {
+        setBackupError('Choose a .json backup, .zip backup, or .csv transaction import file.');
+        return;
+      }
+      setBackupPackage(null);
+      setBackupPreview(null);
+      setBackupResult(null);
+      setBackupError('');
       await uploadFile(file);
     },
-    [uploadFile],
+    [backupWipeFirst, db, uploadFile],
   );
 
   const handleFileChange = useCallback(
@@ -406,6 +449,43 @@ export function DataImportWizardPage() {
     [handleFile],
   );
 
+  const handleBackupWipeChange = useCallback(
+    (checked: boolean) => {
+      setBackupWipeFirst(checked);
+      if (backupPackage) {
+        setBackupPreview(buildRestorePreview(db, backupPackage, { wipeLocalDataFirst: checked }));
+        setBackupResult(null);
+      }
+    },
+    [backupPackage, db],
+  );
+
+  const handleRestoreBackup = useCallback(() => {
+    if (!backupPackage) return;
+    setBackupRestoring(true);
+    setBackupError('');
+    try {
+      const restored = restoreBackupPackage(db, backupPackage, {
+        wipeLocalDataFirst: backupWipeFirst,
+      });
+      setBackupResult(restored);
+      setBackupPreview(restored);
+    } catch (error) {
+      setBackupError(error instanceof Error ? error.message : 'Backup restore failed.');
+    } finally {
+      setBackupRestoring(false);
+    }
+  }, [backupPackage, backupWipeFirst, db]);
+
+  const resetBackupImport = useCallback(() => {
+    setBackupPackage(null);
+    setBackupPreview(null);
+    setBackupResult(null);
+    setBackupError('');
+    setBackupWipeFirst(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
   // -- Step indicator -------------------------------------------------------
 
   const steps = ['upload', 'mapping', 'preview', 'importing', 'complete'];
@@ -420,7 +500,7 @@ export function DataImportWizardPage() {
   return (
     <div className="import-wizard" aria-labelledby="import-wizard-title">
       <h2 id="import-wizard-title" className="import-wizard__title">
-        Import Transactions
+        Import & Restore Data
       </h2>
 
       {/* Step indicator */}
@@ -441,9 +521,9 @@ export function DataImportWizardPage() {
         </ol>
       </nav>
 
-      {error && (
+      {(error || backupError) && (
         <div className="import-banner--error" role="alert">
-          {error}
+          {error || backupError}
         </div>
       )}
 
@@ -454,8 +534,8 @@ export function DataImportWizardPage() {
             Upload CSV File
           </h2>
           <p className="import-card__description">
-            Drag and drop a CSV file, or click to browse. Supports Mint, YNAB, Chase, American
-            Express, Wells Fargo, Citi, and custom formats.
+            Drag and drop a JSON backup for full restore, a ZIP backup wrapper, or a CSV file for
+            transaction-only import.
           </p>
 
           <div
@@ -479,23 +559,97 @@ export function DataImportWizardPage() {
               <AppIcon name="folder" />
             </span>
             <span className="import-dropzone__text">
-              {dragActive ? 'Drop your file here' : 'Click or drag CSV file here'}
+              {dragActive ? 'Drop your file here' : 'Click or drag backup/CSV file here'}
             </span>
             <span className="import-dropzone__hint">
-              Supported: .csv files from Mint, YNAB, Chase, Amex, Wells Fargo, Citi, or custom
-              exports
+              Supported: .json/.zip Finance backups, plus .csv files from Mint, YNAB, Chase, Amex,
+              Wells Fargo, Citi, or custom exports
             </span>
           </div>
 
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".json,.zip,.csv,application/json,application/zip,text/csv"
             onChange={handleFileChange}
             className="import-hidden"
             aria-hidden="true"
             tabIndex={-1}
           />
+
+          {backupPreview && (
+            <div className="import-backup-preview" aria-live="polite">
+              <div className="import-card__header">
+                <h3 className="import-card__title">Dry-run restore preview</h3>
+                <span className="import-format-badge">Backup v{backupPreview.version}</span>
+              </div>
+              <p className="import-card__description">
+                Review what will be imported. Existing records with the same id are skipped unless
+                you choose a clean restore.
+              </p>
+              <label className="import-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={backupWipeFirst}
+                  onChange={(event) => handleBackupWipeChange(event.target.checked)}
+                />
+                <span>Wipe local data first</span>
+              </label>
+              <div
+                className="import-mapping-table-wrapper"
+                role="region"
+                aria-label="Backup preview"
+              >
+                <table className="import-mapping-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Entity</th>
+                      <th scope="col">Total</th>
+                      <th scope="col">Will import</th>
+                      <th scope="col">Skipped duplicates</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {backupPreview.entities.map((entity) => (
+                      <tr key={entity.entity}>
+                        <td className="import-mapping-table__col-name">{entity.entity}</td>
+                        <td>{entity.total}</td>
+                        <td>{entity.imported}</td>
+                        <td>{entity.skippedDuplicates}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {backupResult && (
+                <div className="import-banner--success" role="status">
+                  Restore complete:{' '}
+                  {backupResult.entities.reduce((sum, entity) => sum + entity.imported, 0)} records
+                  imported,{' '}
+                  {backupResult.entities.reduce((sum, entity) => sum + entity.skippedDuplicates, 0)}{' '}
+                  duplicates skipped.
+                </div>
+              )}
+              <div className="import-actions">
+                <button
+                  className="import-button import-button--secondary"
+                  onClick={resetBackupImport}
+                >
+                  Choose another file
+                </button>
+                <button
+                  className="import-button import-button--primary"
+                  onClick={handleRestoreBackup}
+                  disabled={
+                    backupRestoring ||
+                    backupPreview.entities.every((entity) => entity.imported === 0)
+                  }
+                >
+                  {backupRestoring ? 'Restoring…' : 'Restore backup'}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
