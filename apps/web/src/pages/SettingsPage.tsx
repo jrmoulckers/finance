@@ -24,7 +24,8 @@ const SETTINGS_SECTIONS: ReadonlyArray<{ to: string; label: string; description:
     description: 'Privacy mode, consent, export, deletion',
   },
   { to: 'sync', label: 'Sync & Devices', description: 'Sync status, passkeys, biometric lock' },
-  { to: 'advanced', label: 'Advanced', description: 'Experimental features, about' },
+  { to: 'advanced', label: 'Advanced', description: 'Experimental features' },
+  { to: 'about', label: 'About', description: 'Version, build, license, credits' },
 ];
 
 /**

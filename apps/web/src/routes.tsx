@@ -31,6 +31,7 @@ const SettingsPreferences = lazy(() => import('./pages/settings/SettingsPreferen
 const SettingsPrivacy = lazy(() => import('./pages/settings/SettingsPrivacyPage'));
 const SettingsSync = lazy(() => import('./pages/settings/SettingsSyncPage'));
 const SettingsAdvanced = lazy(() => import('./pages/settings/SettingsAdvancedPage'));
+const SettingsAbout = lazy(() => import('./pages/settings/SettingsAboutPage'));
 const DataImportWizard = lazy(() => import('./pages/DataImportWizardPage'));
 const ReceiptOcr = lazy(() => import('./pages/ReceiptOcrPage'));
 const Login = lazy(() => import('./pages/LoginPage'));
@@ -393,6 +394,14 @@ export const AppRoutes: FC = () => (
         element={
           <RouteBoundary name="Settings · Advanced">
             <SettingsAdvanced />
+          </RouteBoundary>
+        }
+      />
+      <Route
+        path="about"
+        element={
+          <RouteBoundary name="Settings · About">
+            <SettingsAbout />
           </RouteBoundary>
         }
       />
