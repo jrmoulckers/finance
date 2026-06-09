@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,8 +53,11 @@ import com.finance.desktop.screens.TransactionsScreen
 import com.finance.desktop.screens.UpgradeScreen
 import com.finance.desktop.screens.VoiceTransactionOverlay
 import com.finance.desktop.screens.WidgetBoardScreen
+import com.finance.desktop.data.repository.AppSettings
+import com.finance.desktop.data.repository.SettingsRepository
 import com.finance.desktop.theme.FinanceDesktopTheme
 import com.finance.desktop.tray.FinanceSystemTray
+import com.finance.desktop.ui.components.IconPackProvider
 import com.finance.desktop.tray.QuickAddTransactionManager
 import com.finance.desktop.screens.auth.LoginScreen
 import com.finance.desktop.screens.gdpr.GdprConsentDialog
@@ -110,6 +114,12 @@ fun FinanceApp(
     val sessionAuthenticated by authRepository.isAuthenticated.collectAsState()
     val gdprViewModel = koinGet<GdprConsentViewModel>()
     val gdprState by gdprViewModel.uiState.collectAsState()
+    val settingsRepository = koinGet<SettingsRepository>()
+    val appSettings by settingsRepository.observe().collectAsState(AppSettings())
+
+    LaunchedEffect(settingsRepository) {
+        settingsRepository.load()
+    }
 
     // Dialog state for global shortcuts
     var showNewTransactionDialog by remember { mutableStateOf(false) }
@@ -132,56 +142,58 @@ fun FinanceApp(
     )
 
     FinanceDesktopTheme {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .semantics { contentDescription = "Finance application" },
-            color = MaterialTheme.colorScheme.background,
-        ) {
-            // ── Layer 0: Splash screen while auth state resolves ──
-            // Prevents flash of login screen during startup
-            if (authState.isAuthenticating && !authState.isAuthenticated && !sessionAuthenticated) {
-                SplashLoadingScreen()
-                return@Surface
-            }
+        IconPackProvider(iconPackId = appSettings.iconPackId) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .semantics { contentDescription = "Finance application" },
+                color = MaterialTheme.colorScheme.background,
+            ) {
+                // ── Layer 0: Splash screen while auth state resolves ──
+                // Prevents flash of login screen during startup
+                if (authState.isAuthenticating && !authState.isAuthenticated && !sessionAuthenticated) {
+                    SplashLoadingScreen()
+                    return@Surface
+                }
 
-            // ── Layer 1: GDPR consent dialog (first run) ──
-            if (gdprState.showConsentDialog) {
-                GdprConsentDialog(
-                    onAcceptAll = { gdprViewModel.acceptAll() },
-                    onAcceptRequired = { gdprViewModel.acceptRequiredOnly() },
-                    onCustomize = { analytics, crash ->
-                        gdprViewModel.customizeConsent(analytics, crash)
-                    },
+                // ── Layer 1: GDPR consent dialog (first run) ──
+                if (gdprState.showConsentDialog) {
+                    GdprConsentDialog(
+                        onAcceptAll = { gdprViewModel.acceptAll() },
+                        onAcceptRequired = { gdprViewModel.acceptRequiredOnly() },
+                        onCustomize = { analytics, crash ->
+                            gdprViewModel.customizeConsent(analytics, crash)
+                        },
+                    )
+                    return@Surface
+                }
+
+                // ── Auth Guard: If user has an active session, always show main app ──
+                // This ensures deep links to login/signup are redirected to dashboard
+                val isFullyAuthenticated = authState.isAuthenticated || sessionAuthenticated
+
+                if (!isFullyAuthenticated && authState.requiresAuth) {
+                    AuthGateContent(authState = authState, authViewModel = authViewModel)
+                } else {
+                    MainAppContent(
+                        shortcutHandler = shortcutHandler,
+                        quickAddManager = quickAddManager,
+                        systemTray = systemTray,
+                    )
+                }
+
+                // ── Global dialogs (rendered above everything) ──
+                GlobalDialogs(
+                    showNewTransactionDialog = showNewTransactionDialog,
+                    showFeedbackDialog = showFeedbackDialog,
+                    showShortcutsHelp = showShortcutsHelp,
+                    onDismissNewTransaction = { showNewTransactionDialog = false },
+                    onDismissFeedback = { showFeedbackDialog = false },
+                    onDismissShortcutsHelp = { showShortcutsHelp = false },
                 )
-                return@Surface
-            }
-
-            // ── Auth Guard: If user has an active session, always show main app ──
-            // This ensures deep links to login/signup are redirected to dashboard
-            val isFullyAuthenticated = authState.isAuthenticated || sessionAuthenticated
-
-            if (!isFullyAuthenticated && authState.requiresAuth) {
-                AuthGateContent(authState = authState, authViewModel = authViewModel)
-            } else {
-                MainAppContent(
-                    shortcutHandler = shortcutHandler,
-                    quickAddManager = quickAddManager,
-                    systemTray = systemTray,
-                )
-            }
-
-            // ── Global dialogs (rendered above everything) ──
-            GlobalDialogs(
-                showNewTransactionDialog = showNewTransactionDialog,
-                showFeedbackDialog = showFeedbackDialog,
-                showShortcutsHelp = showShortcutsHelp,
-                onDismissNewTransaction = { showNewTransactionDialog = false },
-                onDismissFeedback = { showFeedbackDialog = false },
-                onDismissShortcutsHelp = { showShortcutsHelp = false },
-            )
         }
     }
+}
 }
 
 /**
