@@ -55,7 +55,7 @@
 		# instantiation (sqlite-wasm) via the dedicated `wasm-unsafe-eval`
 		# directive. `wasm-unsafe-eval` does NOT enable JS `eval()` — it is
 		# the least-privilege grant for WebAssembly instantiation.
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'"
 
 		# Remove server identification
 		-Server

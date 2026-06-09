@@ -6,7 +6,16 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { ICON_TOKENS, LUCIDE_MAPPING } from './tokens';
+import {
+  FLUENT_FILLED_MAPPING,
+  FLUENT_REGULAR_MAPPING,
+  ICON_TOKENS,
+  LUCIDE_MAPPING,
+  MATERIAL_SYMBOLS_OUTLINED_MAPPING,
+  MATERIAL_SYMBOLS_ROUNDED_MAPPING,
+  MATERIAL_SYMBOLS_SHARP_MAPPING,
+  type IconMapping,
+} from './tokens';
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 const kmpIconTokenPath = resolve(
@@ -28,13 +37,27 @@ function readKmpIconTokens(): string[] {
     .filter(Boolean);
 }
 
+function expectCompleteMapping(name: string, mapping: IconMapping): void {
+  expect(Object.keys(mapping).sort(), `${name} keys`).toEqual([...ICON_TOKENS].sort());
+  expect(
+    Object.values(mapping).every((value) => value.length > 0),
+    `${name} values`,
+  ).toBe(true);
+}
+
 describe('IconToken web mirror', () => {
   it('matches the KMP IconToken enum names', () => {
     expect(ICON_TOKENS).toEqual(readKmpIconTokens());
   });
 
-  it('has a complete Lucide mapping', () => {
-    expect(Object.keys(LUCIDE_MAPPING).sort()).toEqual([...ICON_TOKENS].sort());
-    expect(Object.values(LUCIDE_MAPPING).every((value) => value.length > 0)).toBe(true);
+  it.each([
+    ['Lucide', LUCIDE_MAPPING],
+    ['Material Symbols Outlined', MATERIAL_SYMBOLS_OUTLINED_MAPPING],
+    ['Material Symbols Rounded', MATERIAL_SYMBOLS_ROUNDED_MAPPING],
+    ['Material Symbols Sharp', MATERIAL_SYMBOLS_SHARP_MAPPING],
+    ['Fluent Regular', FLUENT_REGULAR_MAPPING],
+    ['Fluent Filled', FLUENT_FILLED_MAPPING],
+  ])('has a complete %s mapping', (name, mapping) => {
+    expectCompleteMapping(name, mapping);
   });
 });

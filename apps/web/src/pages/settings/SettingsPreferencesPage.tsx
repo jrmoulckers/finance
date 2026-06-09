@@ -7,6 +7,7 @@ import { SettingInfoWidget } from '../../components/settings';
 import { CurrencyRatesSettings } from '../../components/settings/CurrencyRatesSettings';
 import '../../components/settings/currency-rates-settings.css';
 import { useTheme } from '../../hooks/useTheme';
+import { AppearanceSettings } from './AppearanceSettings';
 import type { ThemeValue } from '../../hooks/useTheme';
 import {
   loadBnplStackingThresholdCents,
@@ -198,6 +199,8 @@ export const SettingsPreferencesPage: React.FC = () => {
           </SettingInfoWidget>
         </div>
       </section>
+
+      <AppearanceSettings />
 
       <section aria-label="Display" className="page-section">
         <div className="settings-group">
