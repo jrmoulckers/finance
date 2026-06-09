@@ -59,6 +59,20 @@ describe('networkOnlyNoStore (service worker auth bypass)', () => {
     expect(mockCache.put).not.toHaveBeenCalled();
   });
 
+  it('keeps all non-sync API responses out of Cache Storage', async () => {
+    const successResponse = new Response(JSON.stringify({ balance: 123 }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    globalThis.fetch = vi.fn().mockResolvedValue(successResponse);
+
+    await networkOnlyNoStore(new Request('http://localhost/api/accounts'));
+
+    expect(openMock).not.toHaveBeenCalled();
+    expect(mockCache.put).not.toHaveBeenCalled();
+    expect(mockCache.match).not.toHaveBeenCalled();
+  });
+
   it('returns 503 JSON with Cache-Control: no-store when the network fails', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('offline'));
 
