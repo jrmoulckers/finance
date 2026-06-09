@@ -66,7 +66,7 @@
 	}
 
 	# -------------------------------------------------------------------------
-	# /api/auth/* and /api/account/* — same-origin façade for Edge Functions.
+	# /api/auth/*, /api/account/*, and /api/feedback — same-origin façade for Edge Functions.
 	# Mirrors the Vite dev proxy (apps/web/vite.config.ts). Without these
 	# rewrites the client fetches fall through to the SPA fallback and
 	# silently "succeed" with an HTML body — see #1960.
@@ -83,7 +83,15 @@
 	handle @apiAccountRoot {
 		uri replace /api/account /functions/v1/account-delete
 		reverse_proxy edge-functions:9000 {
-			header_up X-Real-IP {remote_host}
+		      header_up X-Real-IP {remote_host}
+		}
+	}
+
+	@apiFeedback path /api/feedback
+	handle @apiFeedback {
+		uri replace /api/feedback /functions/v1/feedback
+		reverse_proxy edge-functions:9000 {
+		      header_up X-Real-IP {remote_host}
 		}
 	}
 

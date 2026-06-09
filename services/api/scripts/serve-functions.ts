@@ -45,6 +45,7 @@ import { handler as authResetPassword } from '../supabase/functions/auth-reset-p
 import { handler as authOAuthStart } from '../supabase/functions/auth-oauth-start/index.ts';
 import { handler as authOAuthCallback } from '../supabase/functions/auth-oauth-callback/index.ts';
 import { handler as accountDeleteHandler } from '../supabase/functions/account-delete/index.ts';
+import { handler as feedbackHandler } from '../supabase/functions/feedback/index.ts';
 import { handler as passkeyRegister } from '../supabase/functions/passkey-register/index.ts';
 import { handler as passkeyAuthenticate } from '../supabase/functions/passkey-authenticate/index.ts';
 
@@ -62,6 +63,7 @@ const routes: Record<string, Handler> = {
   'auth-oauth-start': authOAuthStart,
   'auth-oauth-callback': authOAuthCallback,
   'account-delete': accountDeleteHandler,
+  feedback: feedbackHandler,
   'passkey-register': passkeyRegister,
   'passkey-authenticate': passkeyAuthenticate,
 };

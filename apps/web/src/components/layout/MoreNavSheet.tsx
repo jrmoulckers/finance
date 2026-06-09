@@ -36,6 +36,8 @@ export interface MoreNavSheetProps {
   onNavigate: (path: string) => void;
   /** Optional: open the keyboard-shortcuts modal. */
   onOpenShortcuts?: () => void;
+  /** Optional: open the feedback dialog. */
+  onOpenFeedback?: () => void;
   /** Optional: sign-out handler. */
   onSignOut?: () => void | Promise<void>;
 }
@@ -59,6 +61,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
   activePath,
   onNavigate,
   onOpenShortcuts,
+  onOpenFeedback,
   onSignOut,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -232,6 +235,29 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
                       <span className="more-sheet__item-label">Keyboard shortcuts</span>
                       <span className="more-sheet__item-description">
                         Speed up navigation and common actions.
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ) : null}
+              {onOpenFeedback ? (
+                <li>
+                  <button
+                    type="button"
+                    className="more-sheet__item"
+                    aria-label="Send feedback"
+                    onClick={() => {
+                      onClose();
+                      onOpenFeedback();
+                    }}
+                  >
+                    <span className="more-sheet__item-icon" aria-hidden="true">
+                      <KeyboardIcon />
+                    </span>
+                    <span className="more-sheet__item-text">
+                      <span className="more-sheet__item-label">Send feedback</span>
+                      <span className="more-sheet__item-description">
+                        Report bugs, ideas, and beta feedback.
                       </span>
                     </span>
                   </button>

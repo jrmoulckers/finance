@@ -58,3 +58,6 @@ verify_jwt = false
 
 [functions.auth-oauth-callback]
 verify_jwt = false
+
+[functions.feedback]
+verify_jwt = false

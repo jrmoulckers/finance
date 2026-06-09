@@ -192,6 +192,11 @@ export default defineConfig({
             .replace(/^\/api\/account\/delete-account$/, '/account-delete')
             .replace(/^\/api\/account\//, '/account-'),
       },
+      '/api/feedback': {
+        target: authProxyTarget,
+        changeOrigin: true,
+        rewrite: () => '/feedback',
+      },
     },
     headers: {
       // Strict CSP - no inline scripts, no eval

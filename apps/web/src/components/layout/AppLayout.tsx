@@ -2,6 +2,7 @@
 
 import React, { useCallback, useState } from 'react';
 
+import FeedbackDialog from '../FeedbackDialog';
 import { KeyboardShortcutsModal, SyncStatusBar } from '../common';
 import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
 import { useKeyboardShortcuts } from '../../hooks';
@@ -32,6 +33,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   });
   const { conflictCount } = useSyncStatus();
   const [showConflicts, setShowConflicts] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   // Navigate back on Escape key for detail pages (#1523)
   useEscapeBack();
@@ -56,6 +58,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     setShowConflicts(false);
   }, []);
 
+  const openFeedbackDialog = useCallback(() => {
+    setShowFeedback(true);
+  }, []);
+
+  const closeFeedbackDialog = useCallback(() => {
+    setShowFeedback(false);
+  }, []);
+
   return (
     <div className="app-layout">
       <a href="#main-content" className="skip-link">
@@ -65,6 +75,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         activePath={activePath}
         onNavigate={onNavigate}
         onOpenShortcuts={openKeyboardShortcuts}
+        onOpenFeedback={openFeedbackDialog}
       />
       <div className="app-shell">
         <SyncStatusBar />
@@ -141,11 +152,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         <footer className="app-footer">
           <LegalLinks />
         </footer>
-        <BottomNavigation activePath={activePath} onNavigate={onNavigate} />
+        <BottomNavigation
+          activePath={activePath}
+          onNavigate={onNavigate}
+          onOpenFeedback={openFeedbackDialog}
+        />
       </div>
       <InstallBanner />
       <KeyboardShortcutsModal isOpen={showHelp} onClose={closeKeyboardShortcuts} />
       <ConflictResolutionDialog isOpen={showConflicts} onClose={closeConflictDialog} />
+      <FeedbackDialog isOpen={showFeedback} onClose={closeFeedbackDialog} />
     </div>
   );
 };

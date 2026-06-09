@@ -83,6 +83,7 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
   activePath,
   onNavigate,
   onOpenShortcuts,
+  onOpenFeedback,
 }) => {
   const { logout } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -140,6 +141,7 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
         activePath={activePath}
         onNavigate={onNavigate}
         onOpenShortcuts={onOpenShortcuts}
+        onOpenFeedback={onOpenFeedback}
         onSignOut={handleSignOut}
       />
     </>
