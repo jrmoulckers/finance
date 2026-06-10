@@ -11,10 +11,11 @@ import {
 } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
-import type { Goal } from '../../kmp/bridge';
 import type { GoalContributionInput } from '../../db/repositories/goals';
-import { useMoneyDisplay } from '../../lib/display-settings';
+import { useAmountInput } from '../../hooks/useAmountInput';
+import type { Goal } from '../../kmp/bridge';
 import { ConfirmDialog, CurrencyDisplay } from '../common';
+import { AmountInput } from '../forms/AmountInput';
 import '../forms/forms.css';
 
 export interface GoalContributionDialogProps {
@@ -22,35 +23,6 @@ export interface GoalContributionDialogProps {
   goal: Goal | null;
   onSubmit: (input: GoalContributionInput) => Promise<void> | void;
   onCancel: () => void;
-}
-
-function parseContributionAmount(value: string, decimalPlaces = 2): number | null {
-  const normalized = value
-    .replace(/,/g, '')
-    .replace(/[^0-9.-]/g, '')
-    .trim();
-  const parsed = Number.parseFloat(normalized);
-
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-
-  return Math.round(parsed * Math.pow(10, decimalPlaces));
-}
-
-function formatInputAmount(
-  amountInMinorUnits: number,
-  currency: string,
-  decimalPlaces: number,
-  currencyDisplay: Intl.NumberFormatOptions['currencyDisplay'],
-): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    currencyDisplay,
-    minimumFractionDigits: decimalPlaces,
-    maximumFractionDigits: decimalPlaces,
-  }).format(amountInMinorUnits / Math.pow(10, decimalPlaces));
 }
 
 export function GoalContributionDialog({
@@ -63,9 +35,12 @@ export function GoalContributionDialog({
   const amountInputRef = useRef<HTMLInputElement>(null);
   const amountErrorId = useId();
   const titleId = useId();
-  const displaySettings = useMoneyDisplay();
 
-  const [amount, setAmount] = useState('');
+  const amountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: goal?.currency.decimalPlaces ?? 2,
+    allowNegative: false,
+  });
   const [note, setNote] = useState('');
   const [amountError, setAmountError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -79,7 +54,7 @@ export function GoalContributionDialog({
       return;
     }
 
-    setAmount('');
+    amountInput.reset(0);
     setNote('');
     setAmountError(null);
     setSubmitError(null);
@@ -108,7 +83,7 @@ export function GoalContributionDialog({
 
       try {
         await onSubmit(input);
-        setAmount('');
+        amountInput.reset(0);
         setNote('');
         setPendingInput(null);
         onCancel();
@@ -126,8 +101,8 @@ export function GoalContributionDialog({
       return null;
     }
 
-    const amountInMinorUnits = parseContributionAmount(amount, goal.currency.decimalPlaces);
-    if (amountInMinorUnits === null) {
+    const amountInMinorUnits = amountInput.cents;
+    if (amountInMinorUnits <= 0) {
       setAmountError('Enter a positive contribution amount.');
       return null;
     }
@@ -138,7 +113,7 @@ export function GoalContributionDialog({
       amount: { amount: amountInMinorUnits },
       note: note.trim() || null,
     };
-  }, [amount, goal, note]);
+  }, [amountInput.cents, goal, note]);
 
   const handleSubmit = useCallback(
     async (event: FormEvent) => {
@@ -171,43 +146,6 @@ export function GoalContributionDialog({
     setPendingInput(null);
   }, []);
 
-  const handleAmountBlur = useCallback(() => {
-    if (!goal) {
-      return;
-    }
-
-    const amountInMinorUnits = parseContributionAmount(amount, goal.currency.decimalPlaces);
-    if (amountInMinorUnits === null) {
-      return;
-    }
-
-    setAmount(
-      formatInputAmount(
-        amountInMinorUnits,
-        goal.currency.code,
-        goal.currency.decimalPlaces,
-        displaySettings.currencyDisplay,
-      ),
-    );
-  }, [amount, displaySettings.currencyDisplay, goal]);
-
-  const handleAmountFocus = useCallback(() => {
-    if (!goal) {
-      return;
-    }
-
-    const amountInMinorUnits = parseContributionAmount(amount, goal.currency.decimalPlaces);
-    if (amountInMinorUnits === null) {
-      return;
-    }
-
-    setAmount(
-      (amountInMinorUnits / Math.pow(10, goal.currency.decimalPlaces)).toFixed(
-        goal.currency.decimalPlaces,
-      ),
-    );
-  }, [amount, goal]);
-
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       if (event.key === 'Escape') {
@@ -223,10 +161,10 @@ export function GoalContributionDialog({
   }
 
   const hasAmountError = amountError !== null;
-  const projectedAmount = (() => {
-    const parsed = parseContributionAmount(amount, goal.currency.decimalPlaces);
-    return parsed === null ? goal.currentAmount.amount : goal.currentAmount.amount + parsed;
-  })();
+  const projectedAmount =
+    amountInput.cents <= 0
+      ? goal.currentAmount.amount
+      : goal.currentAmount.amount + amountInput.cents;
 
   return (
     <>
@@ -280,22 +218,13 @@ export function GoalContributionDialog({
                 >
                   Amount
                 </label>
-                <input
+                <AmountInput
                   ref={amountInputRef}
                   id="goal-contribution-amount"
+                  amountInput={amountInput}
                   className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
-                  type="text"
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  onBlur={handleAmountBlur}
-                  onFocus={handleAmountFocus}
-                  placeholder={formatInputAmount(
-                    0,
-                    goal.currency.code,
-                    goal.currency.decimalPlaces,
-                    displaySettings.currencyDisplay,
-                  )}
+                  placeholder={amountInput.placeholderValue}
+                  displayLabel="Contribution amount"
                   aria-invalid={hasAmountError}
                   aria-describedby={hasAmountError ? amountErrorId : undefined}
                   aria-required="true"
@@ -338,7 +267,7 @@ export function GoalContributionDialog({
                 disabled={submitting}
                 aria-busy={submitting}
               >
-                {submitting ? 'Contributing…' : 'Submit'}
+                {submitting ? 'ContributingΓÇª' : 'Submit'}
               </button>
             </div>
           </form>
@@ -348,7 +277,7 @@ export function GoalContributionDialog({
       <ConfirmDialog
         isOpen={pendingInput !== null}
         title="Contribution exceeds goal"
-        message="This would exceed your goal — still contribute?"
+        message="This would exceed your goal ΓÇö still contribute?"
         confirmLabel="Still Contribute"
         cancelLabel="Go Back"
         variant="warning"

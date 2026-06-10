@@ -18,12 +18,16 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
+  ConfirmDialog,
   CurrencyDisplay,
   EmptyState,
   ErrorBanner,
   LoadingSpinner,
-  ConfirmDialog,
 } from '../components/common';
+import { AmountInput } from '../components/forms/AmountInput';
+import '../components/forms/forms.css';
+import { AppIcon } from '../components/icons';
+import { useAmountInput } from '../hooks/useAmountInput';
 import { useCategories } from '../hooks/useCategories';
 import {
   useSpendingWatchlists,
@@ -34,7 +38,6 @@ import {
 } from '../hooks/useSpendingWatchlists';
 
 import '../styles/watchlists.css';
-import { AppIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Subcomponents
@@ -92,7 +95,7 @@ const AlertCard: React.FC<AlertCardProps> = ({ alert, onDismiss }) => (
       onClick={() => onDismiss(alert.watchlist.id)}
       aria-label={`Dismiss ${alert.watchlist.categoryName} alert`}
     >
-      ✕
+      Γ£ò
     </button>
   </div>
 );
@@ -187,7 +190,11 @@ export const WatchlistsPage: React.FC = () => {
 
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [thresholdInput, setThresholdInput] = useState('');
+  const thresholdInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: 2,
+    allowNegative: false,
+  });
   const [periodInput, setPeriodInput] = useState<'monthly' | 'weekly'>('monthly');
   const [removingWatchlist, setRemovingWatchlist] = useState<Watchlist | null>(null);
 
@@ -214,10 +221,9 @@ export const WatchlistsPage: React.FC = () => {
       e.preventDefault();
 
       const category = categories.find((c) => c.id === selectedCategoryId);
-      if (!category || !thresholdInput) return;
+      if (!category || thresholdInput.cents <= 0) return;
 
-      const thresholdCents = Math.round(parseFloat(thresholdInput) * 100);
-      if (Number.isNaN(thresholdCents) || thresholdCents <= 0) return;
+      const thresholdCents = thresholdInput.cents;
 
       const input: CreateWatchlistInput = {
         categoryId: category.id,
@@ -229,7 +235,7 @@ export const WatchlistsPage: React.FC = () => {
       addWatchlist(input);
       setIsAddFormOpen(false);
       setSelectedCategoryId('');
-      setThresholdInput('');
+      thresholdInput.reset(0);
     },
     [addWatchlist, categories, periodInput, selectedCategoryId, thresholdInput],
   );
@@ -326,7 +332,7 @@ export const WatchlistsPage: React.FC = () => {
                 required
                 aria-required="true"
               >
-                <option value="">Select category…</option>
+                <option value="">Select categoryΓÇª</option>
                 {availableCategories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -336,16 +342,14 @@ export const WatchlistsPage: React.FC = () => {
             </div>
             <div className="watchlist-form__field">
               <label htmlFor="wl-threshold">Spending Limit ($)</label>
-              <input
+              <AmountInput
                 id="wl-threshold"
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={thresholdInput}
-                onChange={(e) => setThresholdInput(e.target.value)}
+                amountInput={thresholdInput}
+                className="form-input"
+                displayLabel="Spending limit"
                 required
                 aria-required="true"
-                placeholder="e.g. 500.00"
+                placeholder="$0.00"
               />
             </div>
             <div className="watchlist-form__field">
