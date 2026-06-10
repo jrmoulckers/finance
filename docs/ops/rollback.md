@@ -91,7 +91,7 @@ For Android/iOS/web/Windows staged releases, use `Staged Rollout` only to advanc
 
 ## Validation log
 
-| Date | Type | Triggered by | Outcome | Run |
-|---|---|---|---|---|
-| 2026-06-10 | Dry-run (main baseline) | Copilot | Unexpected: invalid version passed `prepare` and reached production approval; approval was rejected and the run was cancelled before production steps ran | [27282796603](https://github.com/jrmoulckers/finance/actions/runs/27282796603) |
-| 2026-06-10 | Dry-run (PR branch after hardening) | Copilot | Failed-as-expected at `prepare` version resolve with `Could not resolve`; production deploy jobs were skipped | [27283195075](https://github.com/jrmoulckers/finance/actions/runs/27283195075) |
+| Date       | Type                                | Triggered by | Outcome                                                                                                                                                   | Run                                                                            |
+| ---------- | ----------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 2026-06-10 | Dry-run (main baseline)             | Copilot      | Unexpected: invalid version passed `prepare` and reached production approval; approval was rejected and the run was cancelled before production steps ran | [27282796603](https://github.com/jrmoulckers/finance/actions/runs/27282796603) |
+| 2026-06-10 | Dry-run (PR branch after hardening) | Copilot      | Failed-as-expected at `prepare` version resolve with `Could not resolve`; production deploy jobs were skipped                                             | [27283195075](https://github.com/jrmoulckers/finance/actions/runs/27283195075) |
