@@ -145,8 +145,8 @@ describe('TransactionEditPanel', () => {
     const amountInput = screen.getByLabelText(/amount/i) as HTMLInputElement;
     expect(amountInput.value).toBe('-$25.00');
 
-    const dateInput = screen.getByLabelText(/date/i, { selector: 'input' }) as HTMLInputElement;
-    expect(dateInput.value).toBe('03/15/2024');
+    const dateInput = screen.getByLabelText(/date/i) as HTMLInputElement;
+    expect(dateInput.value).toBe('2024-03-15');
   });
 
   it('calls onClose when close button is clicked', () => {

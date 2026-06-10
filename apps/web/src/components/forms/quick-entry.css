@@ -177,29 +177,24 @@
 
 .quick-entry__amount-row {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spacing-3);
   margin-bottom: var(--spacing-3);
 }
 
-.quick-entry__currency-symbol {
-  font-size: 1.5rem;
-  font-weight: var(--font-weight-semibold);
-  color: var(--semantic-text-secondary);
-}
-
 .quick-entry__amount-input {
-  flex: 1;
   width: 100%;
   padding: var(--spacing-3);
   border: 1px solid var(--semantic-border-default);
   border-radius: var(--border-radius-md);
   background: var(--semantic-background-primary);
   color: var(--semantic-text-primary);
-  font-size: 1.5rem;
-  font-weight: var(--font-weight-semibold);
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
   font-family: inherit;
-  text-align: right;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   appearance: textfield;
 }
 

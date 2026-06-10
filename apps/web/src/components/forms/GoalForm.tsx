@@ -280,7 +280,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
   const minimumTargetDate = isEditing ? undefined : tomorrowISO();
   const dialogTitle = isEditing ? 'Edit Goal' : 'Create Goal';
   const submitLabel = isEditing ? 'Update Goal' : 'Create Goal';
-  const submittingLabel = isEditing ? 'Updating…' : 'Creating…';
+  const submittingLabel = isEditing ? 'UpdatingΓÇª' : 'CreatingΓÇª';
 
   return (
     <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>

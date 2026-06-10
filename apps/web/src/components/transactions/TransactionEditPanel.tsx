@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * TransactionEditPanel — Slide-over panel for editing transactions.
+ * TransactionEditPanel ╬ô├ç├╢ Slide-over panel for editing transactions.
  *
  * Desktop: slide-over drawer from the right side.
  * Mobile: full-screen modal.
@@ -14,7 +14,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
-import { DatePicker } from '../common/DatePicker';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
 import { useAmountInput } from '../../hooks/useAmountInput';
 import type { Account, Category, Transaction } from '../../kmp/bridge';
@@ -193,7 +192,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
             aria-label="Close edit panel"
             disabled={submitting}
           >
-            <span aria-hidden="true">✕</span>
+            <span aria-hidden="true">╬ô┬ú├▓</span>
           </button>
         </header>
 
@@ -248,11 +247,12 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
               >
                 Date
               </label>
-              <DatePicker
+              <input
                 id="edit-panel-date"
+                type="date"
                 className="form-input"
                 value={date}
-                onChange={setDate}
+                onChange={(e) => setDate(e.target.value)}
                 required
                 aria-required="true"
                 disabled={submitting}
@@ -360,7 +360,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
             disabled={submitting}
             aria-busy={submitting}
           >
-            {submitting ? 'Saving…' : 'Save'}
+            {submitting ? 'Saving╬ô├ç┬¬' : 'Save'}
           </button>
         </footer>
       </div>

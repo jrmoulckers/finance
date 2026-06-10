@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * Quick Entry — floating action button that expands to a compact transaction form.
+ * Quick Entry ΓÇö floating action button that expands to a compact transaction form.
  *
  * Provides a keyboard-first, accessible way to quickly log transactions.
  * The FAB shows a "+" icon; clicking or pressing "n" expands the form.
@@ -14,6 +14,8 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
+import { AmountDisplay } from '../common/AmountDisplay';
+import { useAmountInput } from '../../hooks/useAmountInput';
 import { useQuickEntry } from '../../hooks/useQuickEntry';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 
@@ -59,7 +61,12 @@ export const QuickEntry: React.FC<QuickEntryProps> = ({ className = '' }) => {
   const titleId = useId();
 
   // Form state
-  const [amount, setAmount] = useState('');
+  const amountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: 2,
+    mode: 'incremental',
+    maxCents: 99_999_999,
+  });
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
@@ -72,7 +79,7 @@ export const QuickEntry: React.FC<QuickEntryProps> = ({ className = '' }) => {
   // Reset form and auto-focus amount field when panel opens
   useEffect(() => {
     if (isOpen) {
-      setAmount('');
+      amountInput.reset(0);
       setDescription('');
       setCategoryId('');
       setAccountId(accounts.length > 0 ? accounts[0].id : '');
@@ -89,24 +96,23 @@ export const QuickEntry: React.FC<QuickEntryProps> = ({ className = '' }) => {
   // Auto-suggest category when description changes
   useEffect(() => {
     if (description.trim().length > 2) {
-      const suggestion = suggestCategory(description);
+      const suggestion = suggestCategory(description, amountInput.cents || undefined);
       if (suggestion) {
         setCategoryId(suggestion.categoryId);
       }
     }
-  }, [description, suggestCategory]);
+  }, [amountInput.cents, description, suggestCategory]);
 
   const validate = useCallback((): FormErrors => {
     const errs: FormErrors = {};
-    const parsed = parseFloat(amount);
-    if (!amount.trim() || isNaN(parsed) || parsed <= 0) {
+    if (amountInput.cents <= 0) {
       errs.amount = 'Amount must be a positive number';
     }
     if (!accountId) {
       errs.accountId = 'Please select an account';
     }
     return errs;
-  }, [amount, accountId]);
+  }, [accountId, amountInput.cents]);
 
   const handleSubmit = useCallback(
     (e: FormEvent) => {
@@ -126,7 +132,7 @@ export const QuickEntry: React.FC<QuickEntryProps> = ({ className = '' }) => {
         householdId,
         accountId,
         categoryId: categoryId || null,
-        amount: { amount: Math.round(parseFloat(amount) * 100) },
+        amount: { amount: amountInput.cents },
         type: 'EXPENSE',
         date: new Date().toISOString().slice(0, 10),
         note: description.trim() || null,
@@ -139,7 +145,16 @@ export const QuickEntry: React.FC<QuickEntryProps> = ({ className = '' }) => {
         close();
       }, 300);
     },
-    [validate, accounts, accountId, categoryId, amount, description, submitTransaction, close],
+    [
+      validate,
+      accounts,
+      accountId,
+      categoryId,
+      amountInput.cents,
+      description,
+      submitTransaction,
+      close,
+    ],
   );
 
   const handleKeyDown = useCallback(
@@ -152,7 +167,19 @@ export const QuickEntry: React.FC<QuickEntryProps> = ({ className = '' }) => {
     [close],
   );
 
+  const handleAmountKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (errors.amount && (event.key === 'Backspace' || /^\d$/.test(event.key))) {
+        setErrors((current) => ({ ...current, amount: undefined }));
+      }
+
+      amountInput.handleKeyDown(event);
+    },
+    [amountInput, errors.amount],
+  );
+
   const amountErrorId = `${titleId}-amount-error`;
+  const amountHelpId = `${titleId}-amount-help`;
   const accountErrorId = `${titleId}-account-error`;
 
   return (
@@ -196,21 +223,29 @@ export const QuickEntry: React.FC<QuickEntryProps> = ({ className = '' }) => {
 
           <form onSubmit={handleSubmit} noValidate>
             {/* Amount */}
-            <div className="quick-entry-field">
+            <div className="quick-entry-field quick-entry-field--amount">
               <label htmlFor={`${titleId}-amount`}>Amount</label>
+              <AmountDisplay
+                value={amountInput.displayValue}
+                empty={amountInput.isEmpty}
+                placeholder={amountInput.placeholderValue}
+                className="quick-entry-field__amount-display"
+              />
+              <p id={amountHelpId} className="quick-entry-field__hint">
+                Type digits only. The decimal is placed automatically.
+              </p>
               <input
                 ref={amountRef}
                 id={`${titleId}-amount`}
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
+                type="text"
+                inputMode="numeric"
+                value={amountInput.inputValue}
+                onKeyDown={handleAmountKeyDown}
+                onChange={amountInput.handleChange}
+                placeholder={amountInput.placeholderValue}
                 aria-required="true"
                 aria-invalid={!!errors.amount}
-                aria-describedby={errors.amount ? amountErrorId : undefined}
+                aria-describedby={`${amountHelpId}${errors.amount ? ` ${amountErrorId}` : ''}`}
                 data-testid="quick-entry-amount"
               />
               {errors.amount && (
@@ -301,7 +336,7 @@ export const QuickEntry: React.FC<QuickEntryProps> = ({ className = '' }) => {
                 aria-busy={saving}
                 data-testid="quick-entry-save"
               >
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? 'SavingΓÇª' : 'Save'}
               </button>
             </div>
           </form>

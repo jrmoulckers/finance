@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: BUSL-1.1 */
 
 /**
- * Quick Entry — floating action button + compact transaction form.
+ * Quick Entry ΓÇö floating action button + compact transaction form.
  *
  * Uses design tokens for all visual values. Respects prefers-reduced-motion
  * and prefers-color-scheme. See tokens.css for available custom properties.
  */
 
 /* ==========================================================================
- * FAB — Floating Action Button
+ * FAB ΓÇö Floating Action Button
  * ========================================================================== */
 
 .quick-entry-fab {
@@ -112,11 +112,30 @@
   transition: border-color var(--duration-fast, 150ms) var(--easing-standard, ease);
 }
 
+.quick-entry-field--amount {
+  gap: var(--spacing-2, 8px);
+}
+
+.quick-entry-field__amount-display {
+  margin-bottom: 0;
+}
+
+.quick-entry-field__hint {
+  margin: 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--semantic-text-secondary, #555);
+}
+
 .quick-entry-field input:focus,
 .quick-entry-field select:focus {
   outline: none;
   border-color: var(--semantic-action-primary, #6366f1);
   box-shadow: 0 0 0 2px var(--semantic-focus-ring, rgba(99, 102, 241, 0.3));
+}
+
+.quick-entry-field--amount input {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .quick-entry-field input[aria-invalid='true'],

@@ -53,7 +53,6 @@ import {
 } from '../../lib/mood-tags';
 import { transactionSchema } from '../../lib/validation';
 import { AmountInput } from './AmountInput';
-import { DatePicker } from '../common/DatePicker';
 import { CounterpartyInput } from '../transactions/CounterpartyInput';
 
 import './forms.css';
@@ -398,7 +397,7 @@ export function TransactionForm({
   const isEditMode = initialData !== undefined;
   const dialogTitle = isEditMode ? 'Edit Transaction' : 'New Transaction';
   const submitButtonLabel = isEditMode ? 'Update Transaction' : 'Add Transaction';
-  const submittingLabel = isEditMode ? 'Updating…' : 'Adding…';
+  const submittingLabel = isEditMode ? 'Updating╬ô├ç┬¬' : 'Adding╬ô├ç┬¬';
   const submitFailureMessage = isEditMode
     ? 'Failed to update transaction.'
     : 'Failed to add transaction.';
@@ -646,7 +645,7 @@ export function TransactionForm({
                 Payee
               </label>
               <p id="txn-description-help" className="form-group__help">
-                What appears on your statement (e.g. “AMZN MKTPL*XYZ”).
+                What appears on your statement (e.g. ╬ô├ç┬úAMZN MKTPL*XYZ╬ô├ç┬Ñ).
               </p>
               <input
                 id="txn-description"
@@ -668,7 +667,7 @@ export function TransactionForm({
               )}
             </div>
 
-            {/* Type – radio group */}
+            {/* Type ╬ô├ç├┤ radio group */}
             <fieldset className="form-radio-group">
               <legend className="form-radio-group__legend">Type</legend>
               <div className="form-radio-group__options" role="radiogroup">
@@ -712,7 +711,7 @@ export function TransactionForm({
                 Counterparty
               </label>
               <p id="txn-counterparty-help" className="form-group__help">
-                The actual merchant or person (e.g. “Amazon”, “Sarah Lee”).
+                The actual merchant or person (e.g. ╬ô├ç┬úAmazon╬ô├ç┬Ñ, ╬ô├ç┬úSarah Lee╬ô├ç┬Ñ).
               </p>
               <CounterpartyInput
                 id="txn-counterparty"
@@ -761,7 +760,7 @@ export function TransactionForm({
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
               >
-                <option value="">— None —</option>
+                <option value="">╬ô├ç├╢ None ╬ô├ç├╢</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -822,7 +821,13 @@ export function TransactionForm({
               <label htmlFor="txn-date" className="form-group__label">
                 Date
               </label>
-              <DatePicker id="txn-date" className="form-input" value={date} onChange={setDate} />
+              <input
+                id="txn-date"
+                className="form-input"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
             </div>
 
             {/* Notes */}
@@ -900,7 +905,7 @@ export function TransactionForm({
               </fieldset>
             )}
 
-            {/* Additional Details — expandable section */}
+            {/* Additional Details ╬ô├ç├╢ expandable section */}
             <fieldset className="form-group" style={{ border: 'none', padding: 0, margin: 0 }}>
               <legend style={{ display: 'contents' }}>
                 <button
@@ -931,7 +936,7 @@ export function TransactionForm({
                       transform: additionalOpen ? 'rotate(90deg)' : 'rotate(0deg)',
                     }}
                   >
-                    ▶
+                    ╬ô├╗Γòó
                   </span>
                   Additional Details
                 </button>
@@ -1045,7 +1050,7 @@ export function TransactionForm({
                     />
                   </div>
 
-                  {/* Custom fields — key/value pairs */}
+                  {/* Custom fields ╬ô├ç├╢ key/value pairs */}
                   <div className="form-group">
                     <label className="form-group__label">Custom Fields</label>
                     {customFieldEntries.map((entry, idx) => (
@@ -1095,7 +1100,7 @@ export function TransactionForm({
                           className="icon-button"
                           style={{ flexShrink: 0 }}
                         >
-                          <span aria-hidden="true">✕</span>
+                          <span aria-hidden="true">╬ô┬ú├▓</span>
                         </button>
                       </div>
                     ))}
@@ -1134,7 +1139,7 @@ export function TransactionForm({
 
           {hasValidationErrors && (
             <div className="form-submit-summary" role="status" aria-live="polite">
-              Some fields need attention — see highlighted errors above.
+              Some fields need attention ╬ô├ç├╢ see highlighted errors above.
             </div>
           )}
 

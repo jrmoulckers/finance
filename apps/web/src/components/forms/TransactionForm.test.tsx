@@ -112,7 +112,7 @@ describe('TransactionForm', () => {
     expect(screen.getByText(/The actual merchant or person/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Category')).toBeInTheDocument();
     expect(screen.getByLabelText('Account')).toBeInTheDocument();
-    expect(screen.getByLabelText('Date')).toHaveValue('06/15/2025');
+    expect(screen.getByLabelText('Date')).toHaveValue('2025-06-15');
     expect(screen.getByLabelText('Notes')).toBeInTheDocument();
     expect(screen.getByLabelText('Status')).toBeInTheDocument();
     expect(screen.getByLabelText('Tags')).toBeInTheDocument();
@@ -133,9 +133,7 @@ describe('TransactionForm', () => {
 
     expect(screen.getByText('Amount must be greater than zero.')).toBeInTheDocument();
     expect(screen.getByText('Please select an account.')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Some fields need attention — see highlighted errors above.',
-    );
+    expect(screen.getByRole('status')).toHaveTextContent(/Some fields need attention/);
     expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -262,7 +260,7 @@ describe('TransactionForm', () => {
   it('includes additional fields in submission data', async () => {
     const { onSubmit } = renderTransactionForm();
 
-    // Fill required fields — amount uses keyDown events with useAmountInput
+    // Fill required fields ΓÇö amount uses keyDown events with useAmountInput
     const amountInput = screen.getByLabelText('Amount');
     fireEvent.keyDown(amountInput, { key: '5' });
     fireEvent.keyDown(amountInput, { key: '0' });

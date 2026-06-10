@@ -63,7 +63,7 @@ function setupMock(overrides: Partial<ReturnType<typeof useQuickEntry>> = {}) {
         id: 'cat-1',
         householdId: 'hh-1',
         name: 'Food',
-        icon: '🍔',
+        icon: '≡ƒìö',
         color: '#f00',
         parentId: null,
         sortOrder: 0,
@@ -79,6 +79,16 @@ function setupMock(overrides: Partial<ReturnType<typeof useQuickEntry>> = {}) {
     suggestCategory: vi.fn(),
     ...overrides,
   });
+}
+
+function enterIncrementalAmount(centsDigits: string) {
+  const amountInput = screen.getByTestId('quick-entry-amount');
+
+  centsDigits.split('').forEach((digit) => {
+    fireEvent.keyDown(amountInput, { key: digit });
+  });
+
+  return amountInput;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,25 +133,19 @@ describe('QuickEntry', () => {
     expect(screen.getByText('Amount must be a positive number')).toBeInTheDocument();
   });
 
-  it('shows validation error for negative amount', () => {
+  it('shows placeholder display before digits are entered', () => {
     setupMock({ isOpen: true });
     render(<QuickEntry />);
 
-    const amountInput = screen.getByTestId('quick-entry-amount');
-    fireEvent.change(amountInput, { target: { value: '-5' } });
-
-    const saveBtn = screen.getByTestId('quick-entry-save');
-    fireEvent.click(saveBtn);
-
-    expect(screen.getByText('Amount must be a positive number')).toBeInTheDocument();
+    expect(screen.getByText('$0.00')).toBeInTheDocument();
+    expect(screen.getByTestId('quick-entry-amount')).toHaveValue('');
   });
 
   it('submits valid form data', () => {
     setupMock({ isOpen: true });
     render(<QuickEntry />);
 
-    const amountInput = screen.getByTestId('quick-entry-amount');
-    fireEvent.change(amountInput, { target: { value: '12.50' } });
+    enterIncrementalAmount('1250');
 
     const accountSelect = screen.getByTestId('quick-entry-account');
     fireEvent.change(accountSelect, { target: { value: 'acc-1' } });
@@ -179,6 +183,18 @@ describe('QuickEntry', () => {
 
     const amountInput = screen.getByTestId('quick-entry-amount');
     expect(amountInput).toHaveAttribute('aria-required', 'true');
+    expect(amountInput).toHaveAttribute('inputmode', 'numeric');
+  });
+
+  it('builds the displayed amount incrementally and backspaces digits', () => {
+    setupMock({ isOpen: true });
+    render(<QuickEntry />);
+
+    const amountInput = enterIncrementalAmount('1234');
+    expect(screen.getByText('$12.34')).toBeInTheDocument();
+
+    fireEvent.keyDown(amountInput, { key: 'Backspace' });
+    expect(screen.getByText('$1.23')).toBeInTheDocument();
   });
 
   it('shows submit error from hook', () => {

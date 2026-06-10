@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useId, useMemo, useState } from 'react';
-import { DatePicker } from '../components/common/DatePicker';
 import { AmountInput } from '../components/forms/AmountInput';
 import { AppIcon } from '../components/icons';
 import '../components/forms/forms.css';
@@ -146,7 +145,7 @@ export const ReceiptOcrPage: React.FC = () => {
 
       {status === 'processing' && (
         <div role="status" aria-live="polite" className="import-progress">
-          Reading receipt on device…
+          Reading receipt on device╬ô├ç┬¬
         </div>
       )}
 
@@ -196,7 +195,7 @@ export const ReceiptOcrPage: React.FC = () => {
           />
           <label className="import-account-selector__label">
             Date
-            <DatePicker value={date} onChange={setDate} />
+            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
           <p>OCR confidence: {Math.round(receipt.confidence)}%</p>
 
@@ -210,7 +209,7 @@ export const ReceiptOcrPage: React.FC = () => {
                     checked={item.accepted}
                     onChange={() => toggleLineItem(index)}
                   />
-                  {item.description} — ${(item.total / 100).toFixed(2)}
+                  {item.description} ╬ô├ç├╢ ${(item.total / 100).toFixed(2)}
                   {item.suggestedCategory === null ? '' : ` (${item.suggestedCategory})`}
                 </label>
               ))}

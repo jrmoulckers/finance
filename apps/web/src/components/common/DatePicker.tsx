@@ -426,35 +426,31 @@ export function DatePicker({
       return;
     }
 
-    let nextDate: Date | null = null;
+    const nextDate = (() => {
+      switch (event.key) {
+        case 'ArrowLeft':
+          return addDays(currentDate, -1);
+        case 'ArrowRight':
+          return addDays(currentDate, 1);
+        case 'ArrowUp':
+          return addDays(currentDate, -7);
+        case 'ArrowDown':
+          return addDays(currentDate, 7);
+        case 'Home':
+          return addDays(currentDate, -currentDate.getDay());
+        case 'End':
+          return addDays(currentDate, 6 - currentDate.getDay());
+        case 'PageUp':
+          return moveMonthPreservingDay(currentDate, -1, event.shiftKey ? -1 : 0);
+        case 'PageDown':
+          return moveMonthPreservingDay(currentDate, 1, event.shiftKey ? 1 : 0);
+        default:
+          return null;
+      }
+    })();
 
-    switch (event.key) {
-      case 'ArrowLeft':
-        nextDate = addDays(currentDate, -1);
-        break;
-      case 'ArrowRight':
-        nextDate = addDays(currentDate, 1);
-        break;
-      case 'ArrowUp':
-        nextDate = addDays(currentDate, -7);
-        break;
-      case 'ArrowDown':
-        nextDate = addDays(currentDate, 7);
-        break;
-      case 'Home':
-        nextDate = addDays(currentDate, -currentDate.getDay());
-        break;
-      case 'End':
-        nextDate = addDays(currentDate, 6 - currentDate.getDay());
-        break;
-      case 'PageUp':
-        nextDate = moveMonthPreservingDay(currentDate, -1, event.shiftKey ? -1 : 0);
-        break;
-      case 'PageDown':
-        nextDate = moveMonthPreservingDay(currentDate, 1, event.shiftKey ? 1 : 0);
-        break;
-      default:
-        return;
+    if (nextDate === null) {
+      return;
     }
 
     event.preventDefault();
