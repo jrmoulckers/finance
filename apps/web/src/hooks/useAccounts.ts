@@ -15,130 +15,89 @@
  * References: issue #443
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import {
   createAccount as repoCreateAccount,
   deleteAccount as repoDeleteAccount,
-  getAllAccounts,
+  mapAccount,
   updateAccount as repoUpdateAccount,
   type CreateAccountInput,
   type UpdateAccountInput,
 } from '../db/repositories/accounts';
+import type { Row } from '../db/sqlite-wasm';
 import type { Account, SyncId } from '../kmp/bridge';
+import { useRealtimeTable } from './useRealtimeTable';
 
-// ---------------------------------------------------------------------------
-// Public interface
-// ---------------------------------------------------------------------------
-
-/** Shape returned by {@link useAccounts}. */
 export interface UseAccountsResult {
-  /** All non-deleted accounts ordered by sort order and name. */
   accounts: Account[];
-  /** `true` while the initial or refresh load is in progress. */
   loading: boolean;
-  /** Human-readable error message from the last failed operation, or `null`. */
   error: string | null;
-  /** Trigger a re-fetch of all accounts from the local database. */
   refresh: () => void;
-  /**
-   * Create a new account and automatically refresh the list.
-   * @returns The created account, or `null` if creation failed.
-   */
   createAccount: (input: CreateAccountInput) => Account | null;
-  /**
-   * Update an existing account and automatically refresh the list.
-   * @returns The updated account, or `null` if the account was not found or update failed.
-   */
   updateAccount: (accountId: SyncId, updates: UpdateAccountInput) => Account | null;
-  /**
-   * Soft-delete an account and automatically refresh the list.
-   * @returns `true` if deletion succeeded, `false` otherwise.
-   */
   deleteAccount: (accountId: SyncId) => boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
-/** Load all accounts from the local database and expose CRUD operations. */
 export function useAccounts(): UseAccountsResult {
   const db = useDatabase();
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const {
+    rows,
+    loading,
+    error: liveError,
+    refresh,
+  } = useRealtimeTable<Row>('account', {
+    where: 'deleted_at IS NULL',
+    orderBy: 'sort_order ASC, name ASC',
+  });
 
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState(0);
-
-  /** Increment the refresh token to trigger a data re-fetch. */
-  const refresh = useCallback(() => {
-    setLoading(true);
-    setRefreshToken((t) => t + 1);
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = getAllAccounts(db);
-      setAccounts(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load accounts.');
-      setAccounts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [db, refreshToken]);
+  const accounts = useMemo(() => rows.map((row) => mapAccount(row)), [rows]);
+  const error = mutationError ?? liveError;
 
   const createAccount = useCallback(
     (input: CreateAccountInput): Account | null => {
       try {
-        const created = repoCreateAccount(db, input);
-        refresh();
-        return created;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create account.');
-        setLoading(false);
+        setMutationError(null);
+        return repoCreateAccount(db, input);
+      } catch (accountError) {
+        setMutationError(
+          accountError instanceof Error ? accountError.message : 'Failed to create account.',
+        );
         return null;
       }
     },
-    [db, refresh],
+    [db],
   );
 
   const updateAccount = useCallback(
     (accountId: SyncId, updates: UpdateAccountInput): Account | null => {
       try {
-        const updated = repoUpdateAccount(db, accountId, updates);
-        if (updated !== null) {
-          refresh();
-        }
-        return updated;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to update account.');
-        setLoading(false);
+        setMutationError(null);
+        return repoUpdateAccount(db, accountId, updates);
+      } catch (accountError) {
+        setMutationError(
+          accountError instanceof Error ? accountError.message : 'Failed to update account.',
+        );
         return null;
       }
     },
-    [db, refresh],
+    [db],
   );
 
   const deleteAccount = useCallback(
     (accountId: SyncId): boolean => {
       try {
-        const deleted = repoDeleteAccount(db, accountId);
-        if (deleted) {
-          refresh();
-        }
-        return deleted;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete account.');
-        setLoading(false);
+        setMutationError(null);
+        return repoDeleteAccount(db, accountId);
+      } catch (accountError) {
+        setMutationError(
+          accountError instanceof Error ? accountError.message : 'Failed to delete account.',
+        );
         return false;
       }
     },
-    [db, refresh],
+    [db],
   );
 
   return {

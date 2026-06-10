@@ -57,7 +57,7 @@ export interface UpdateCategoryInput {
   isBiometricProtected?: boolean;
 }
 
-function mapCategory(row: Row): Category {
+export function mapCategory(row: Row): Category {
   return {
     id: requireString(row.id, 'category.id'),
     householdId: requireString(row.household_id, 'category.household_id'),

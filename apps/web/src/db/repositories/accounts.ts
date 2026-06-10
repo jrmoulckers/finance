@@ -61,7 +61,7 @@ export interface UpdateAccountInput {
   color?: string | null;
 }
 
-function mapAccount(row: Row): Account {
+export function mapAccount(row: Row): Account {
   return {
     id: requireString(row.id, 'account.id'),
     householdId: requireString(row.household_id, 'account.household_id'),

@@ -15,50 +15,36 @@
  * References: issue #443
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { useDatabase } from '../db/DatabaseProvider';
+import { useCallback } from 'react';
 import { getAllAccounts } from '../db/repositories/accounts';
 import { getBudgetWithSpending, getBudgetsByPeriod } from '../db/repositories/budgets';
 import { getRecentTransactions, getTransactionsByDateRange } from '../db/repositories/transactions';
+import type { SqliteDb } from '../db/sqlite-wasm';
 import type { Budget, Transaction } from '../kmp/bridge';
+import { useLiveQuery } from './useLiveQuery';
 
-/** Summary of total balance grouped by account type. */
 export interface DashboardAccountSummary {
   type: string;
   total: number;
 }
 
-/** Aggregated financial snapshot for the dashboard. Monetary values are in cents. */
 export interface DashboardData {
-  /** Sum of all account balances in cents. */
   netWorth: number;
-  /** Total expense amount for the current month in cents. */
   spentThisMonth: number;
-  /** Total income amount for the current month in cents. */
   incomeThisMonth: number;
-  /** Total amount budgeted for active monthly budgets this month in cents. */
   monthlyBudget: number;
-  /** Total spending against active monthly budgets this month in cents. */
   budgetSpent: number;
-  /** Most recent transactions, newest first. */
   recentTransactions: Transaction[];
-  /** Account totals grouped by account type in cents. */
   accountSummary: DashboardAccountSummary[];
 }
 
-/** Shape returned by {@link useDashboardData}. */
 export interface UseDashboardDataResult {
-  /** Aggregated dashboard metrics, or `null` before the first successful load. */
   data: DashboardData | null;
-  /** `true` while the initial or refresh load is in progress. */
   loading: boolean;
-  /** Human-readable error message if aggregation failed, or `null`. */
   error: string | null;
-  /** Trigger a full re-aggregation of all dashboard metrics. */
   refresh: () => void;
 }
 
-/** Return ISO-8601 local-date strings for the first and last day of the current calendar month. */
 function getCurrentMonthBounds(): { startDate: string; endDate: string } {
   const now = new Date();
   const year = now.getFullYear();
@@ -73,7 +59,6 @@ function getCurrentMonthBounds(): { startDate: string; endDate: string } {
   };
 }
 
-/** Return `true` when a monthly budget overlaps the current month bounds. */
 function isBudgetActiveInMonth(budget: Budget, startDate: string, endDate: string): boolean {
   if (budget.startDate > endDate) {
     return false;
@@ -86,8 +71,7 @@ function isBudgetActiveInMonth(budget: Budget, startDate: string, endDate: strin
   return true;
 }
 
-/** Aggregate dashboard metrics from the database using targeted repository queries. */
-function aggregateDashboardData(db: ReturnType<typeof useDatabase>): DashboardData {
+function aggregateDashboardData(db: SqliteDb): DashboardData {
   const accounts = getAllAccounts(db);
   const netWorth = accounts.reduce((sum, account) => sum + account.currentBalance.amount, 0);
 
@@ -139,34 +123,20 @@ function aggregateDashboardData(db: ReturnType<typeof useDatabase>): DashboardDa
   };
 }
 
-/** Aggregate and return the financial summary data needed by the dashboard. */
 export function useDashboardData(): UseDashboardDataResult {
-  const db = useDatabase();
-
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState(0);
-
-  /** Trigger a full re-aggregation of all dashboard metrics. */
-  const refresh = useCallback(() => {
-    setLoading(true);
-    setRefreshToken((currentValue) => currentValue + 1);
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      setData(aggregateDashboardData(db));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data.');
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [db, refreshToken]);
+  const runDashboardQuery = useCallback(
+    (database: SqliteDb) => aggregateDashboardData(database),
+    [],
+  );
+  const { data, error, loading, refresh } = useLiveQuery<DashboardData | null>(
+    'SELECT id FROM account WHERE deleted_at IS NULL',
+    [],
+    {
+      initialData: null,
+      tables: ['account', 'transaction', 'budget'],
+      queryFn: runDashboardQuery,
+    },
+  );
 
   return { data, loading, error, refresh };
 }

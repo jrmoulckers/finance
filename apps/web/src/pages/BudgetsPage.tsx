@@ -10,6 +10,7 @@ import {
   ErrorBanner,
   LoadingSpinner,
   SortableList,
+  SyncIndicator,
 } from '../components/common';
 import { BudgetForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
@@ -173,14 +174,17 @@ export const BudgetsPage: React.FC = () => {
         >
           Budgets
         </h2>
-        <button
-          type="button"
-          className="form-button form-button--primary"
-          onClick={handleAddBudget}
-          aria-label="Add budget"
-        >
-          + Add Budget
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
+          <SyncIndicator />
+          <button
+            type="button"
+            className="form-button form-button--primary"
+            onClick={handleAddBudget}
+            aria-label="Add budget"
+          >
+            + Add Budget
+          </button>
+        </div>
       </div>
 
       <BudgetForm

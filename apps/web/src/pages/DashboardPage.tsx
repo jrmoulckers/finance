@@ -9,9 +9,15 @@ import {
   type TimePeriod,
   type ViewType,
 } from '../components/charts';
-import { CoachCard, CoachPanel } from '../components/coaching';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { QueryEngine } from '../components/ai/QueryEngine';
+import { CoachCard, CoachPanel } from '../components/coaching';
+import {
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  LoadingSpinner,
+  SyncIndicator,
+} from '../components/common';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { useCategories, useCoachAlerts, useDashboardData, useTransactions } from '../hooks';
 import type { DashboardData } from '../hooks/useDashboardData';
@@ -274,15 +280,26 @@ export const DashboardPage: React.FC = () => {
   return (
     <>
       <OfflineBanner />
-      <h2
+      <div
         style={{
-          fontSize: 'var(--type-scale-headline-font-size)',
-          fontWeight: 'var(--type-scale-headline-font-weight)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 'var(--spacing-4)',
+          flexWrap: 'wrap',
           marginBottom: 'var(--spacing-6)',
         }}
       >
-        Dashboard
-      </h2>
+        <h2
+          style={{
+            fontSize: 'var(--type-scale-headline-font-size)',
+            fontWeight: 'var(--type-scale-headline-font-weight)',
+          }}
+        >
+          Dashboard
+        </h2>
+        <SyncIndicator />
+      </div>
       {isLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
           <LoadingSpinner label="Loading dashboard" />

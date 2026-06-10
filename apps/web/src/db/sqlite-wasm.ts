@@ -16,6 +16,7 @@
  */
 
 import { getAccessTokenSync } from '../auth/token-storage';
+import { extractTablesFromSql, isMutationSql, notifyDataChange } from '../lib/sync/crossTab';
 import { getOrCreateSessionStoragePassphrase, isEncryptionSupported } from './encryption';
 
 // ---------------------------------------------------------------------------
@@ -1435,4 +1436,8 @@ export function queryOne<T = Row>(db: SqliteDb, sql: string, params?: unknown[])
  */
 export function execute(db: SqliteDb, sql: string, params?: unknown[]): void {
   db.exec(sql, params);
+
+  if (isMutationSql(sql)) {
+    notifyDataChange(extractTablesFromSql(sql));
+  }
 }

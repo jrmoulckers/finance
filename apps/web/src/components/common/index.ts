@@ -26,6 +26,7 @@ export { Icon } from './Icon';
 export type { IconProps } from './Icon';
 export { LoadingSpinner } from './LoadingSpinner';
 export type { LoadingSpinnerProps } from './LoadingSpinner';
+export { SyncIndicator } from './SyncIndicator';
 export { SyncStatusBar } from './SyncStatusBar';
 export { SyncStatusPanel } from './SyncStatusPanel';
 export { UpdateBanner } from './UpdateBanner';

@@ -13,6 +13,7 @@ import {
   EmptyState,
   ErrorBanner,
   LoadingSpinner,
+  SyncIndicator,
   useToast,
 } from '../components/common';
 import { SwipeableRow } from '../components/common/SwipeableRow';
@@ -653,6 +654,7 @@ export const TransactionsPage: React.FC = () => {
             >
               Transactions
             </h2>
+            <SyncIndicator className="transactions-page-header__sync-indicator" />
             {!isSimplified ? (
               <>
                 <button
