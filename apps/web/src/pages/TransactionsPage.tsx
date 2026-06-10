@@ -10,7 +10,9 @@ import {
   EmptyState,
   ErrorBanner,
   LoadingSpinner,
+  useToast,
 } from '../components/common';
+import { SwipeableRow } from '../components/common/SwipeableRow';
 import { TransactionForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
 import {
@@ -23,6 +25,7 @@ import type { AdvancedFilters } from '../components/transactions';
 import type { SortConfig, SortField } from '../components/transactions';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts } from '../hooks/useAccounts';
+import { useAutoCategory } from '../hooks/useAutoCategory';
 import { useCategories } from '../hooks/useCategories';
 import { useTransactions } from '../hooks/useTransactions';
 import type { Transaction } from '../kmp/bridge';
@@ -133,6 +136,14 @@ function getTransactionLabel(transaction: Transaction): string {
     transaction.note?.trim() ||
     (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction')
   );
+}
+
+function useOptionalToast(): ReturnType<typeof useToast> | null {
+  try {
+    return useToast();
+  } catch {
+    return null;
+  }
 }
 
 function PlusIcon() {
@@ -316,12 +327,32 @@ export const TransactionsPage: React.FC = () => {
     () => new Map(accounts.map((account) => [account.id, account.name])),
     [accounts],
   );
+  const { suggestCategory } = useAutoCategory(categories);
+  const toast = useOptionalToast();
 
   // Apply advanced local filters, then sort
   const transactions = useMemo(() => {
     const filtered = applyAdvancedFilters(rawTransactions, advancedFilters);
     return sortTransactions(filtered, sortConfig, categoryNames);
   }, [rawTransactions, advancedFilters, sortConfig, categoryNames]);
+
+  useEffect(() => {
+    if (transactions.length === 0 || toast === null || typeof window === 'undefined') {
+      return;
+    }
+
+    const tipStorageKey = 'transactions-swipe-actions-tip-shown';
+    if (window.localStorage.getItem(tipStorageKey) === 'true') {
+      return;
+    }
+
+    toast.showToast({
+      type: 'info',
+      message: 'Tip: swipe right to triage quickly, or swipe left for more actions.',
+      duration: 7000,
+    });
+    window.localStorage.setItem(tipStorageKey, 'true');
+  }, [toast, transactions.length]);
 
   // Group by date for display
   const groupedTransactions = useMemo(() => {
@@ -456,6 +487,51 @@ export const TransactionsPage: React.FC = () => {
     }
   }, [deleteTransaction, deletingTransaction, refreshTransactions]);
 
+  const handleQuickCategorize = useCallback(
+    (transaction: Transaction, categoryId: string, categoryName: string) => {
+      const result = updateTransaction(transaction.id, { categoryId });
+      if (result === null) {
+        toast?.showToast({
+          type: 'error',
+          message: `Could not categorize ${getTransactionLabel(transaction)}.`,
+        });
+        return;
+      }
+
+      refreshTransactions();
+      toast?.showToast({
+        type: 'success',
+        message: `Categorized ${getTransactionLabel(transaction)} as ${categoryName}.`,
+      });
+    },
+    [refreshTransactions, toast, updateTransaction],
+  );
+
+  const handleMarkReviewed = useCallback(
+    (transaction: Transaction) => {
+      const nextStatus = transaction.status === 'PENDING' ? 'CLEARED' : 'RECONCILED';
+      if (nextStatus === transaction.status) {
+        return;
+      }
+
+      const result = updateTransaction(transaction.id, { status: nextStatus });
+      if (result === null) {
+        toast?.showToast({
+          type: 'error',
+          message: `Could not mark ${getTransactionLabel(transaction)} as reviewed.`,
+        });
+        return;
+      }
+
+      refreshTransactions();
+      toast?.showToast({
+        type: 'success',
+        message: `Marked ${getTransactionLabel(transaction)} as reviewed.`,
+      });
+    },
+    [refreshTransactions, toast, updateTransaction],
+  );
+
   const hasActiveFilters =
     query.trim() !== '' ||
     advancedFilters.startDate !== '' ||
@@ -587,58 +663,135 @@ export const TransactionsPage: React.FC = () => {
                 <ul className="list-group" role="list">
                   {group.transactions.map((transaction) => {
                     const transactionLabel = getTransactionLabel(transaction);
+                    const autoCategory = suggestCategory(
+                      transaction.payee?.trim() ||
+                        transaction.note?.trim() ||
+                        transaction.counterpartyName?.trim() ||
+                        '',
+                      Math.abs(transaction.amount.amount),
+                    );
+                    const canQuickCategorize =
+                      autoCategory !== null && autoCategory.categoryId !== transaction.categoryId;
+                    const leftSwipeActions = [
+                      ...(canQuickCategorize && autoCategory !== null
+                        ? [
+                            {
+                              id: 'categorize',
+                              label: `Categorize`,
+                              icon: <AppIcon name="tag" />,
+                              variant: 'success' as const,
+                              onAction: () =>
+                                handleQuickCategorize(
+                                  transaction,
+                                  autoCategory.categoryId,
+                                  autoCategory.categoryName,
+                                ),
+                            },
+                          ]
+                        : []),
+                      {
+                        id: 'edit',
+                        label: 'Edit',
+                        icon: <AppIcon name="edit" />,
+                        onAction: () => handleEditTransaction(transaction),
+                      },
+                      {
+                        id: 'delete',
+                        label: 'Delete',
+                        icon: <AppIcon name="trash" />,
+                        variant: 'danger' as const,
+                        onAction: () => setDeletingTransaction(transaction),
+                      },
+                    ];
+                    const rightSwipeActions =
+                      canQuickCategorize && autoCategory !== null
+                        ? [
+                            {
+                              id: 'categorize',
+                              label: `Categorize`,
+                              icon: <AppIcon name="tag" />,
+                              variant: 'success' as const,
+                              quick: true,
+                              onAction: () =>
+                                handleQuickCategorize(
+                                  transaction,
+                                  autoCategory.categoryId,
+                                  autoCategory.categoryName,
+                                ),
+                            },
+                          ]
+                        : transaction.status !== 'RECONCILED'
+                          ? [
+                              {
+                                id: 'review',
+                                label: 'Mark reviewed',
+                                icon: <AppIcon name="check-circle" />,
+                                variant: 'default' as const,
+                                quick: true,
+                                onAction: () => handleMarkReviewed(transaction),
+                              },
+                            ]
+                          : [];
 
                     return (
-                      <li key={transaction.id} className="list-item" role="listitem">
-                        <div className="list-item__content">
-                          <Link
-                            to={`/transactions/${transaction.id}`}
-                            style={{ textDecoration: 'none', color: 'inherit' }}
-                            aria-label={`View details for ${transactionLabel}`}
-                          >
-                            <p className="list-item__primary">{transactionLabel}</p>
-                          </Link>
-                          <p className="list-item__secondary">
-                            {transaction.counterpartyName
-                              ? `${transaction.counterpartyName} · `
-                              : ''}
-                            {transaction.categoryId !== null
-                              ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
-                              : 'Uncategorized'}{' '}
-                            &middot; {accountNames.get(transaction.accountId) ?? 'Unknown account'}
-                          </p>
-                        </div>
-                        <div className="list-item__trailing transaction-list-item__trailing">
-                          <div className="transaction-list-item__amount">
-                            <CurrencyDisplay
-                              amount={getTransactionDisplayAmount(transaction)}
-                              currency={transaction.currency.code}
-                              colorize
-                              showSign
-                            />
-                          </div>
-                          <div
-                            className="transaction-item__actions"
-                            aria-label="Transaction actions"
-                          >
-                            <button
-                              type="button"
-                              className="icon-button transaction-item__action"
-                              onClick={() => handleEditTransaction(transaction)}
-                              aria-label={`Edit ${transactionLabel}`}
+                      <li key={transaction.id} role="listitem">
+                        <SwipeableRow
+                          aria-label={`Actions for ${transactionLabel}`}
+                          contentClassName="list-item"
+                          leftActions={leftSwipeActions}
+                          rightActions={rightSwipeActions}
+                        >
+                          <div className="list-item__content">
+                            <Link
+                              to={`/transactions/${transaction.id}`}
+                              style={{ textDecoration: 'none', color: 'inherit' }}
+                              aria-label={`View details for ${transactionLabel}`}
                             >
-                              <AppIcon name="edit" />
-                            </button>
-                            <button
-                              type="button"
-                              className="icon-button transaction-item__action transaction-item__action--delete"
-                              onClick={() => setDeletingTransaction(transaction)}
-                              aria-label={`Delete ${transactionLabel}`}
-                            >
-                              <AppIcon name="trash" />
-                            </button>
+                              <p className="list-item__primary">{transactionLabel}</p>
+                            </Link>
+                            <p className="list-item__secondary">
+                              {transaction.counterpartyName
+                                ? `${transaction.counterpartyName} · `
+                                : ''}
+                              {transaction.categoryId !== null
+                                ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
+                                : 'Uncategorized'}{' '}
+                              &middot;{' '}
+                              {accountNames.get(transaction.accountId) ?? 'Unknown account'}
+                            </p>
                           </div>
-                        </div>
+                          <div className="list-item__trailing transaction-list-item__trailing">
+                            <div className="transaction-list-item__amount">
+                              <CurrencyDisplay
+                                amount={getTransactionDisplayAmount(transaction)}
+                                currency={transaction.currency.code}
+                                colorize
+                                showSign
+                              />
+                            </div>
+                            <div
+                              className="transaction-item__actions"
+                              aria-label="Transaction actions"
+                            >
+                              <button
+                                type="button"
+                                className="icon-button transaction-item__action"
+                                onClick={() => handleEditTransaction(transaction)}
+                                aria-label={`Edit ${transactionLabel}`}
+                              >
+                                <AppIcon name="edit" />
+                              </button>
+                              <button
+                                type="button"
+                                className="icon-button transaction-item__action transaction-item__action--delete"
+                                onClick={() => setDeletingTransaction(transaction)}
+                                aria-label={`Delete ${transactionLabel}`}
+                              >
+                                <AppIcon name="trash" />
+                              </button>
+                            </div>
+                          </div>
+                        </SwipeableRow>
                       </li>
                     );
                   })}
