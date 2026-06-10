@@ -14,6 +14,10 @@ vi.mock('../hooks', () => ({
   useTransactions: vi.fn(),
 }));
 
+vi.mock('../components/ai/QueryEngine', () => ({
+  QueryEngine: () => <div data-testid="ai-query-engine">AI query engine</div>,
+}));
+
 // Chart components depend on Recharts canvas APIs unavailable in jsdom.
 // Stub them so the render test stays provider/canvas-free.
 vi.mock('../components/charts', () => ({
@@ -266,5 +270,15 @@ describe('DashboardPage', () => {
     );
     expect(screen.getByRole('region', { name: /financial summary/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /recent transactions/i })).toBeInTheDocument();
+  });
+
+  it('includes the AI query engine entry point', () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('ai-query-engine')).toBeInTheDocument();
   });
 });
