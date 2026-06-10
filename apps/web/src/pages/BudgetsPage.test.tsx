@@ -3,16 +3,18 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { useBudgets, useCategories } from '../hooks';
+import { useBudgets, useCategories, useSyncStatus } from '../hooks';
 import { BudgetsPage } from './BudgetsPage';
 
 vi.mock('../hooks', () => ({
   useBudgets: vi.fn(),
   useCategories: vi.fn(),
+  useSyncStatus: vi.fn(),
 }));
 
 const mockedUseBudgets = vi.mocked(useBudgets);
 const mockedUseCategories = vi.mocked(useCategories);
+const mockedUseSyncStatus = vi.mocked(useSyncStatus);
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-01T00:00:00Z',
@@ -23,6 +25,17 @@ const syncMetadata = {
 
 describe('BudgetsPage', () => {
   beforeEach(() => {
+    mockedUseSyncStatus.mockReturnValue({
+      isOnline: true,
+      isOffline: false,
+      pendingMutations: 0,
+      lastSyncTime: null,
+      isSyncing: false,
+      syncNow: vi.fn(),
+      authError: false,
+      conflictCount: 0,
+    });
+
     mockedUseBudgets.mockReturnValue({
       budgets: [
         {

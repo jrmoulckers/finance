@@ -4,7 +4,13 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AppIcon, type IconName } from '../components/icons';
 
-import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  ConfirmDialog,
+  CurrencyDisplay,
+  ErrorBanner,
+  ExplainThis,
+  LoadingSpinner,
+} from '../components/common';
 import { BudgetForm } from '../components/forms';
 import type { CreateBudgetInput } from '../db/repositories/budgets';
 import { useBudgets, useCategories } from '../hooks';
@@ -178,7 +184,21 @@ export const BudgetDetailPage: React.FC = () => {
       >
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-4)' }}>
           <div>
-            <dt className="card__title">Category</dt>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
+              }}
+            >
+              <dt className="card__title" style={{ margin: 0 }}>
+                Category
+              </dt>
+              <ExplainThis
+                tipKey="budgetSinkingFund"
+                buttonLabel="Explain sinking funds for budget categories"
+              />
+            </div>
             <dd>{category?.name ?? 'Uncategorized'}</dd>
           </div>
           <div>

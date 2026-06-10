@@ -13,7 +13,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { CurrencyDisplay, EmptyState } from '../components/common';
+import { CurrencyDisplay, EmptyState, ExplainThis } from '../components/common';
 import './DebtPage.css';
 import type {
   Debt,
@@ -145,8 +145,12 @@ function PayoffPlannerPanel(): React.ReactElement {
               <div className="debt-list__name">{debt.name}</div>
               <div className="debt-list__details">
                 <CurrencyDisplay amount={debt.balanceCents} context="balance" />
-                <span className="debt-list__rate">
+                <span
+                  className="debt-list__rate"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-2)' }}
+                >
                   {(debt.annualRateBps / 100).toFixed(2)}% APR
+                  <ExplainThis tipKey="aprVsApy" buttonLabel="Explain APR versus APY" />
                 </span>
                 <CurrencyDisplay amount={debt.minimumPaymentCents} context="minimum payment" />
               </div>

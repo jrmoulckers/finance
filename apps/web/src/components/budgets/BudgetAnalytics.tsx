@@ -14,7 +14,7 @@
  */
 
 import React from 'react';
-import { CurrencyDisplay } from '../common';
+import { CurrencyDisplay, ExplainThis } from '../common';
 import {
   buildCategoryTrends,
   calculateSavingsRate,
@@ -139,7 +139,16 @@ export const BudgetAnalytics: React.FC<BudgetAnalyticsProps> = ({
     <section className="budget-analytics" aria-label="Budget analytics">
       {/* Savings Rate Card */}
       <article className="analytics-card" aria-label="Savings rate">
-        <h3 className="analytics-card__title">Savings Rate</h3>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-2)',
+          }}
+        >
+          <h3 className="analytics-card__title">Savings Rate</h3>
+          <ExplainThis tipKey="goodSavingsRate" />
+        </div>
         <p className="analytics-card__value">{savingsRate}%</p>
         <p className="analytics-card__detail">
           {savingsRate >= 0

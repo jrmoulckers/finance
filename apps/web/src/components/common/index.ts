@@ -2,6 +2,8 @@
 
 export { ConfirmDialog } from './ConfirmDialog';
 export type { ConfirmDialogProps } from './ConfirmDialog';
+export { ExplainThis } from './ExplainThis';
+export type { ExplainThisProps } from './ExplainThis';
 export { ConflictResolutionDialog } from './ConflictResolutionDialog';
 export type { ConflictResolutionDialogProps } from './ConflictResolutionDialog';
 export { CurrencyDisplay } from './CurrencyDisplay';

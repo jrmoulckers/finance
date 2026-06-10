@@ -12,6 +12,7 @@ import {
   DraggableTransaction,
   EmptyState,
   ErrorBanner,
+  ExplainThis,
   LoadingSpinner,
   SyncIndicator,
   useToast,
@@ -646,14 +647,27 @@ export const TransactionsPage: React.FC = () => {
         <OfflineBanner />
         <div className={`transactions-page${isSimplified ? ' transactions-page--simplified' : ''}`}>
           <div className="transactions-page-header">
-            <h2
+            <div
               style={{
-                fontSize: 'var(--type-scale-headline-font-size)',
-                fontWeight: 'var(--type-scale-headline-font-weight)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
               }}
             >
-              Transactions
-            </h2>
+              <h2
+                style={{
+                  fontSize: 'var(--type-scale-headline-font-size)',
+                  fontWeight: 'var(--type-scale-headline-font-weight)',
+                  margin: 0,
+                }}
+              >
+                Transactions
+              </h2>
+              <ExplainThis
+                tipKey="fixedVsVariableExpenses"
+                buttonLabel="Explain fixed versus variable expenses"
+              />
+            </div>
             <SyncIndicator className="transactions-page-header__sync-indicator" />
             {!isSimplified ? (
               <>

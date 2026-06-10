@@ -14,7 +14,13 @@
  */
 
 import React from 'react';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  ExplainThis,
+  LoadingSpinner,
+} from '../components/common';
 import { AppIcon } from '../components/icons';
 import { useNetWorth } from '../hooks/useNetWorth';
 import type { AssetClassBreakdown, NetWorthMilestone } from '../lib/analytics/net-worth';
@@ -129,14 +135,34 @@ export const NetWorthPage: React.FC = () => {
   return (
     <div className="analytics-page">
       <div className="analytics-page__header">
-        <h2 className="analytics-page__title">Net Worth</h2>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-2)',
+          }}
+        >
+          <h2 className="analytics-page__title" style={{ margin: 0 }}>
+            Net Worth
+          </h2>
+          <ExplainThis glossaryKey="netWorth" />
+        </div>
       </div>
 
       {/* Key figures */}
       <section className="analytics-section" aria-label="Net worth summary">
         <div className="analytics-metrics-grid">
           <article className="analytics-metric-card" aria-label="Net worth">
-            <p className="analytics-metric-card__label">Net Worth</p>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
+              }}
+            >
+              <p className="analytics-metric-card__label">Net Worth</p>
+              <ExplainThis glossaryKey="netWorth" />
+            </div>
             <p
               className={`analytics-metric-card__value ${
                 currentNetWorth.netWorth >= 0
@@ -148,13 +174,31 @@ export const NetWorthPage: React.FC = () => {
             </p>
           </article>
           <article className="analytics-metric-card" aria-label="Total assets">
-            <p className="analytics-metric-card__label">Total Assets</p>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
+              }}
+            >
+              <p className="analytics-metric-card__label">Total Assets</p>
+              <ExplainThis glossaryKey="asset" buttonLabel="Explain what counts as an asset" />
+            </div>
             <p className="analytics-metric-card__value analytics-metric-card__value--positive">
               <CurrencyDisplay amount={currentNetWorth.assets} />
             </p>
           </article>
           <article className="analytics-metric-card" aria-label="Total liabilities">
-            <p className="analytics-metric-card__label">Total Liabilities</p>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
+              }}
+            >
+              <p className="analytics-metric-card__label">Total Liabilities</p>
+              <ExplainThis glossaryKey="liability" />
+            </div>
             <p className="analytics-metric-card__value analytics-metric-card__value--negative">
               <CurrencyDisplay amount={currentNetWorth.liabilities} />
             </p>

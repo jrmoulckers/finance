@@ -8,6 +8,7 @@ import {
   CurrencyDisplay,
   EmptyState,
   ErrorBanner,
+  ExplainThis,
   LoadingSpinner,
   SortableList,
   SyncIndicator,
@@ -166,14 +167,24 @@ export const BudgetsPage: React.FC = () => {
           flexWrap: 'wrap',
         }}
       >
-        <h2
+        <div
           style={{
-            fontSize: 'var(--type-scale-headline-font-size)',
-            fontWeight: 'var(--type-scale-headline-font-weight)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-2)',
           }}
         >
-          Budgets
-        </h2>
+          <h2
+            style={{
+              fontSize: 'var(--type-scale-headline-font-size)',
+              fontWeight: 'var(--type-scale-headline-font-weight)',
+              margin: 0,
+            }}
+          >
+            Budgets
+          </h2>
+          <ExplainThis tipKey="budget503020Rule" />
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
           <SyncIndicator />
           <button
@@ -261,6 +272,22 @@ export const BudgetsPage: React.FC = () => {
             previousCategorySpending={new Map()}
           />
           <section aria-label="Budget categories">
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
+                marginBottom: 'var(--spacing-3)',
+              }}
+            >
+              <h3 style={{ margin: 0, fontWeight: 'var(--font-weight-semibold)' }}>
+                Budget Categories
+              </h3>
+              <ExplainThis
+                tipKey="budgetSinkingFund"
+                buttonLabel="Explain sinking funds for budget categories"
+              />
+            </div>
             <SortableList
               items={budgets}
               getItemId={(budget) => budget.id}

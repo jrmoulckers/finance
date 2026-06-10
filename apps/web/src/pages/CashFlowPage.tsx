@@ -14,7 +14,13 @@
  */
 
 import React, { useState } from 'react';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  ExplainThis,
+  LoadingSpinner,
+} from '../components/common';
 import { useCashFlow } from '../hooks/useCashFlow';
 import type { MonthlyAggregate, IncomeSource } from '../lib/analytics/cash-flow';
 import { CHART_COLORS } from '../components/charts/chart-palette';
@@ -161,7 +167,18 @@ export const CashFlowPage: React.FC = () => {
   return (
     <div className="analytics-page">
       <div className="analytics-page__header">
-        <h2 className="analytics-page__title">Cash Flow</h2>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-2)',
+          }}
+        >
+          <h2 className="analytics-page__title" style={{ margin: 0 }}>
+            Cash Flow
+          </h2>
+          <ExplainThis glossaryKey="cashFlow" buttonLabel="Explain cash flow" />
+        </div>
         <div className="analytics-page__actions">
           <PeriodSelector value={period} onChange={setPeriod} />
           <button
