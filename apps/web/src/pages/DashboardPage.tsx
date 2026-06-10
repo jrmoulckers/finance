@@ -10,6 +10,7 @@ import {
   type ViewType,
 } from '../components/charts';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { QueryEngine } from '../components/ai/QueryEngine';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { useCategories, useDashboardData, useTransactions } from '../hooks';
 import type { DashboardData } from '../hooks/useDashboardData';
@@ -430,6 +431,7 @@ export const DashboardPage: React.FC = () => {
           </section>
         </>
       )}
+      <QueryEngine />
     </>
   );
 };

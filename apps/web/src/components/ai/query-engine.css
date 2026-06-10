@@ -1,0 +1,203 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.ai-query-engine__fab {
+  position: fixed;
+  right: var(--spacing-5);
+  bottom: calc(var(--spacing-5) + env(safe-area-inset-bottom, 0px));
+  z-index: 180;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+  color: #fff;
+  padding: 0.9rem 1.25rem;
+  font-weight: 600;
+  box-shadow: 0 16px 32px rgba(29, 78, 216, 0.24);
+  cursor: pointer;
+}
+
+.ai-query-engine__fab:focus-visible,
+.ai-query-engine__chip:focus-visible,
+.ai-query-engine__close:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+.ai-query-engine__dialog {
+  z-index: 210;
+}
+
+.ai-query-engine__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  max-width: 860px;
+  width: min(100%, 860px);
+  max-height: min(90dvh, 820px);
+}
+
+.ai-query-engine__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+}
+
+.ai-query-engine__eyebrow {
+  margin: 0 0 var(--spacing-1);
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ai-query-engine__title {
+  margin-bottom: var(--spacing-1);
+}
+
+.ai-query-engine__meta,
+.ai-query-engine__loading,
+.ai-query-engine__empty-hint,
+.ai-query-engine__thinking {
+  margin: 0;
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.ai-query-engine__messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  min-height: 260px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: var(--spacing-1);
+}
+
+.ai-query-engine__message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.ai-query-engine__message--user {
+  align-items: flex-end;
+}
+
+.ai-query-engine__bubble {
+  margin: 0;
+  max-width: 75%;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--border-radius-lg, 16px);
+  background: var(--semantic-background-secondary, #f3f4f6);
+  color: var(--semantic-text-primary, #111827);
+}
+
+.ai-query-engine__message--user .ai-query-engine__bubble {
+  background: #dbeafe;
+}
+
+.ai-query-engine__card {
+  border: 1px solid var(--semantic-border-default, #d1d5db);
+  border-radius: var(--border-radius-lg, 16px);
+  background: var(--semantic-background-secondary, #f8fafc);
+  padding: var(--spacing-4);
+}
+
+.ai-query-engine__card--positive {
+  border-color: #16a34a;
+}
+
+.ai-query-engine__card--warning {
+  border-color: #f59e0b;
+}
+
+.ai-query-engine__card-title,
+.ai-query-engine__card-summary {
+  margin: 0 0 var(--spacing-2);
+}
+
+.ai-query-engine__highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-2);
+  margin: 0 0 var(--spacing-3);
+}
+
+.ai-query-engine__highlight {
+  background: var(--semantic-background-primary, #fff);
+  border-radius: var(--border-radius-md, 12px);
+  padding: var(--spacing-3);
+}
+
+.ai-query-engine__highlight dt {
+  margin: 0 0 var(--spacing-1);
+  color: var(--semantic-text-secondary, #6b7280);
+  font-size: 0.8rem;
+}
+
+.ai-query-engine__highlight dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ai-query-engine__details {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: var(--spacing-1);
+}
+
+.ai-query-engine__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.ai-query-engine__chip {
+  border: 1px solid var(--semantic-border-default, #cbd5e1);
+  border-radius: 999px;
+  background: var(--semantic-background-primary, #fff);
+  color: var(--semantic-text-primary, #111827);
+  padding: 0.55rem 0.9rem;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.ai-query-engine__chip:disabled,
+.ai-query-engine__fab:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-query-engine__composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--spacing-3);
+  align-items: start;
+}
+
+.ai-query-engine__input {
+  min-height: 3rem;
+}
+
+.ai-query-engine__composer-actions {
+  display: flex;
+  align-items: stretch;
+}
+
+@media (max-width: 720px) {
+  .ai-query-engine__fab {
+    left: var(--spacing-4);
+    right: var(--spacing-4);
+    bottom: calc(var(--spacing-4) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ai-query-engine__header,
+  .ai-query-engine__composer {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .ai-query-engine__bubble {
+    max-width: 100%;
+  }
+}
