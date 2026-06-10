@@ -398,7 +398,7 @@ export function TransactionForm({
   const isEditMode = initialData !== undefined;
   const dialogTitle = isEditMode ? 'Edit Transaction' : 'New Transaction';
   const submitButtonLabel = isEditMode ? 'Update Transaction' : 'Add Transaction';
-  const submittingLabel = isEditMode ? 'Updating…' : 'Adding…';
+  const submittingLabel = isEditMode ? 'UpdatingΓÇª' : 'AddingΓÇª';
   const submitFailureMessage = isEditMode
     ? 'Failed to update transaction.'
     : 'Failed to add transaction.';
@@ -646,7 +646,7 @@ export function TransactionForm({
                 Payee
               </label>
               <p id="txn-description-help" className="form-group__help">
-                What appears on your statement (e.g. “AMZN MKTPL*XYZ”).
+                What appears on your statement (e.g. ΓÇ£AMZN MKTPL*XYZΓÇ¥).
               </p>
               <input
                 id="txn-description"
@@ -668,7 +668,7 @@ export function TransactionForm({
               )}
             </div>
 
-            {/* Type – radio group */}
+            {/* Type ΓÇô radio group */}
             <fieldset className="form-radio-group">
               <legend className="form-radio-group__legend">Type</legend>
               <div className="form-radio-group__options" role="radiogroup">
@@ -712,7 +712,7 @@ export function TransactionForm({
                 Counterparty
               </label>
               <p id="txn-counterparty-help" className="form-group__help">
-                The actual merchant or person (e.g. “Amazon”, “Sarah Lee”).
+                The actual merchant or person (e.g. ΓÇ£AmazonΓÇ¥, ΓÇ£Sarah LeeΓÇ¥).
               </p>
               <CounterpartyInput
                 id="txn-counterparty"
@@ -761,7 +761,7 @@ export function TransactionForm({
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
               >
-                <option value="">— None —</option>
+                <option value="">ΓÇö None ΓÇö</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -900,7 +900,7 @@ export function TransactionForm({
               </fieldset>
             )}
 
-            {/* Additional Details — expandable section */}
+            {/* Additional Details ΓÇö expandable section */}
             <fieldset className="form-group" style={{ border: 'none', padding: 0, margin: 0 }}>
               <legend style={{ display: 'contents' }}>
                 <button
@@ -931,7 +931,7 @@ export function TransactionForm({
                       transform: additionalOpen ? 'rotate(90deg)' : 'rotate(0deg)',
                     }}
                   >
-                    ▶
+                    Γû╢
                   </span>
                   Additional Details
                 </button>
@@ -1045,7 +1045,7 @@ export function TransactionForm({
                     />
                   </div>
 
-                  {/* Custom fields — key/value pairs */}
+                  {/* Custom fields ΓÇö key/value pairs */}
                   <div className="form-group">
                     <label className="form-group__label">Custom Fields</label>
                     {customFieldEntries.map((entry, idx) => (
@@ -1095,7 +1095,7 @@ export function TransactionForm({
                           className="icon-button"
                           style={{ flexShrink: 0 }}
                         >
-                          <span aria-hidden="true">✕</span>
+                          <span aria-hidden="true">Γ£ò</span>
                         </button>
                       </div>
                     ))}
@@ -1134,7 +1134,7 @@ export function TransactionForm({
 
           {hasValidationErrors && (
             <div className="form-submit-summary" role="status" aria-live="polite">
-              Some fields need attention — see highlighted errors above.
+              Some fields need attention ΓÇö see highlighted errors above.
             </div>
           )}
 

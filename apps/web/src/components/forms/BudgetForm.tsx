@@ -4,14 +4,14 @@
  * Accessible budget create/edit form.
  *
  * Renders a modal dialog with fields for creating or editing a budget:
- * category (required select), amount (required, dollars → cents),
+ * category (required select), amount (required, dollars ΓåÆ cents),
  * period (select, default Monthly), and start date (default first of current
  * month).
  *
  * Validates input client-side with accessible error messages using
  * `aria-invalid` and `aria-describedby`. The `householdId` and budget `name`
  * are derived from the selected category, so no separate household prop is
- * needed. Amount is stored as integer cents — never as a float.
+ * needed. Amount is stored as integer cents ΓÇö never as a float.
  *
  * Keyboard support: Tab navigation, Enter submits via the form element,
  * Escape cancels. Focus is trapped within the dialog and the first field
@@ -328,7 +328,7 @@ export function BudgetForm({
               )}
             </div>
 
-            {/* Amount (dollars — converted to cents on submit) */}
+            {/* Amount (dollars ΓÇö converted to cents on submit) */}
             <div className="form-group">
               <label
                 htmlFor="budget-amount"
@@ -404,8 +404,8 @@ export function BudgetForm({
             >
               {submitting
                 ? isEditMode
-                  ? 'Updating…'
-                  : 'Creating…'
+                  ? 'UpdatingΓÇª'
+                  : 'CreatingΓÇª'
                 : isEditMode
                   ? 'Update Budget'
                   : 'Create Budget'}
