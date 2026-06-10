@@ -564,6 +564,12 @@ echo '*/30 * * * * [ $(df / --output=pcent | tail -1 | tr -d " %%") -gt 80 ] && 
 
 ## Updating & Migrations
 
+### Production GitHub Actions deploys
+
+Pushing a semver tag like `v1.2.3` to `main` now auto-triggers
+`deploy-production.yml` (with the existing manual approval gate). Manual
+`workflow_dispatch` deploys and rollbacks remain available.
+
 ### Updating Service Images
 
 ```bash

@@ -1,23 +1,24 @@
-# =============================================================================
-# Production Deployment — Manual trigger with human approval
-# =============================================================================
+# Deploys a specific version to production. Triggers:
+#   1. Manual workflow_dispatch trigger (version/component/rollback/reason)
+#   2. Push of a global semver tag (v1.2.3, v1.2.3-rc.1)
 #
-# Deploys a specific version to production. Requires:
-#   1. Manual workflow_dispatch trigger
-#   2. Required CI workflows green on the exact SHA being deployed
-#   3. Human approval via "production" GitHub environment
+# Gates (all triggers):
+#   - Required CI workflows green on the exact SHA being deployed
+#   - Human approval via "production" GitHub environment
 #
-# Rollbacks skip smoke tests and the CI wait gate so an already-known version can
-# be restored quickly; all non-rollback production deploys always gate on CI.
+# Rollbacks (workflow_dispatch with rollback=true) skip smoke tests and the CI
+# wait gate so an already-known version can be restored quickly. Tag-triggered
+# deploys always gate on CI and always run smoke tests.
 #
 # Features:
 #   - Version selection (tag or commit SHA)
+#   - Automated semver tag deploys for release parity with staging
 #   - Pre-deployment smoke tests
 #   - Rollback support (re-deploy previous version)
 #   - GitHub Deployment status tracking
 #   - Deployment notifications
 #
-# Issues: #886, #2060
+# Issues: #886, #2057, #2060
 # =============================================================================
 
 name: Deploy — Production
@@ -46,6 +47,15 @@ on:
         description: 'Deployment reason (for audit trail)'
         required: true
         type: string
+  push:
+    tags:
+      # Global semver release tags only; platform tags (v1.2.3-web, etc.) stay on release-*.yml.
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+      - '!v[0-9]+.[0-9]+.[0-9]+-web'
+      - '!v[0-9]+.[0-9]+.[0-9]+-ios'
+      - '!v[0-9]+.[0-9]+.[0-9]+-android'
+      - '!v[0-9]+.[0-9]+.[0-9]+-windows'
 
 concurrency:
   group: deploy-production
@@ -72,6 +82,10 @@ jobs:
       sha: ${{ steps.resolve.outputs.sha }}
       sha_short: ${{ steps.resolve.outputs.sha_short }}
       version: ${{ steps.resolve.outputs.version }}
+      component: ${{ steps.deployment.outputs.component }}
+      rollback: ${{ steps.deployment.outputs.rollback }}
+      reason: ${{ steps.deployment.outputs.reason }}
+      actor: ${{ steps.deployment.outputs.actor }}
       deploy_web: ${{ steps.components.outputs.web }}
       deploy_backend: ${{ steps.components.outputs.backend }}
     steps:
@@ -80,13 +94,51 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve deployment inputs
+        id: deployment
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_COMPONENT: ${{ github.event.inputs.component }}
+          INPUT_ROLLBACK: ${{ github.event.inputs.rollback }}
+          INPUT_REASON: ${{ github.event.inputs.reason }}
+          ACTOR_NAME: ${{ github.actor }}
+        run: |
+          if [ "$EVENT_NAME" = "push" ]; then
+            VERSION="$REF_NAME"
+            COMPONENT="all"
+            ROLLBACK="false"
+            REASON="Automated deploy for tag $REF_NAME"
+            ACTOR="$ACTOR_NAME (tag push)"
+          else
+            VERSION="$INPUT_VERSION"
+            COMPONENT="$INPUT_COMPONENT"
+            ROLLBACK="$INPUT_ROLLBACK"
+            REASON="$INPUT_REASON"
+            ACTOR="$ACTOR_NAME"
+          fi
+
+          {
+            echo "version=$VERSION"
+            echo "component=$COMPONENT"
+            echo "rollback=$ROLLBACK"
+            echo "reason=$REASON"
+            echo "actor=$ACTOR"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Resolve version to commit SHA
         id: resolve
+        env:
+          VERSION: ${{ steps.deployment.outputs.version }}
+          COMPONENT: ${{ steps.deployment.outputs.component }}
+          ROLLBACK: ${{ steps.deployment.outputs.rollback }}
+          REASON: ${{ steps.deployment.outputs.reason }}
+          ACTOR: ${{ steps.deployment.outputs.actor }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
-
-          # Try to resolve as a git ref (tag or branch)
-          SHA=$(git rev-parse "$VERSION" 2>/dev/null || echo "")
+          # Try to resolve as a git ref (tag, branch, or commit SHA). Peel
+          # annotated tags to the commit so deploy jobs always checkout a tree.
+          SHA=$(git rev-parse "$VERSION^{commit}" 2>/dev/null || echo "")
 
           if [ -z "$SHA" ]; then
             echo "::error::Could not resolve '$VERSION' to a commit"
@@ -105,15 +157,15 @@ jobs:
           echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Version | \`$VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Commit | \`$SHA_SHORT\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Component | ${{ github.event.inputs.component }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Rollback | ${{ github.event.inputs.rollback }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Reason | ${{ github.event.inputs.reason }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Triggered by | @${{ github.actor }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Component | $COMPONENT |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Rollback | $ROLLBACK |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Reason | $REASON |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Triggered by | $ACTOR |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Determine components to deploy
         id: components
         run: |
-          COMPONENT="${{ github.event.inputs.component }}"
+          COMPONENT="${{ steps.deployment.outputs.component }}"
           if [ "$COMPONENT" = "all" ] || [ "$COMPONENT" = "web" ]; then
             echo "web=true" >> "$GITHUB_OUTPUT"
           else
@@ -151,7 +203,7 @@ jobs:
   smoke-tests:
     name: Pre-deploy Smoke Tests
     needs: prepare
-    if: github.event.inputs.rollback != 'true'
+    if: needs.prepare.outputs.rollback != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -380,9 +432,9 @@ jobs:
           echo "| Commit | \`${{ needs.prepare.outputs.sha_short }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Web | ${{ needs.deploy-web.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Backend | ${{ needs.deploy-backend.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Rollback | ${{ github.event.inputs.rollback }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Reason | ${{ github.event.inputs.reason }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Deployed by | @${{ github.actor }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Rollback | ${{ needs.prepare.outputs.rollback }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Reason | ${{ needs.prepare.outputs.reason }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Deployed by | ${{ needs.prepare.outputs.actor }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Timestamp | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fail if any deployment failed
