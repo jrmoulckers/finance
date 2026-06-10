@@ -7,9 +7,11 @@
 #     from a bind mount at https://finance.jrmoulckers.com.
 #   - Backend: Update Docker Compose services on the same staging VM.
 #
-# This workflow creates GitHub Deployment records for tracking.
+# This workflow creates GitHub Deployment records for tracking. Before deploying,
+# it waits for required CI workflows to be green on the exact commit being deployed;
+# manual staging re-runs may skip this only via the emergency skip_ci_gate override.
 #
-# Issues: #886 (original), #1952 (canonical alpha host moved to Azure VM)
+# Issues: #886 (original), #1952 (canonical alpha host moved to Azure VM), #2060
 # =============================================================================
 
 name: Deploy — Staging
@@ -24,8 +26,15 @@ on:
       - 'services/**'
       - 'deploy/**'
 
-  # Allow manual re-deploy
+  # Allow manual re-deploy. skip_ci_gate is only for emergency staging
+  # rollbacks/recovery when required CI is unavailable; push deploys always gate.
   workflow_dispatch:
+    inputs:
+      skip_ci_gate:
+        description: 'Emergency override: skip waiting for CI before staging deploy'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-staging
@@ -33,6 +42,8 @@ concurrency:
 
 permissions:
   contents: read
+  checks: read
+  statuses: read
   deployments: write
 
 env:
@@ -74,6 +85,26 @@ jobs:
           echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
   # ---------------------------------------------------------------------------
+  # Gate: wait for required CI workflows on the deploy SHA
+  # ---------------------------------------------------------------------------
+  verify-ci-green:
+    name: Verify CI green on SHA
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [pre-deploy-checks]
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.skip_ci_gate != 'true' }}
+    steps:
+      - name: Wait for CI workflows
+        uses: lewagon/wait-on-check-action@0dceb95e7c4cad8cc7422aee3885998f5cab9c79 # v1.4.0
+        with:
+          ref: ${{ github.sha }}
+          running-workflow-name: 'Verify CI green on SHA'
+          check-regexp: '^(Web CI|Android CI|iOS CI|Windows CI|Lint & Format|CI — Shared Packages|Security Scanning)$'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+          allowed-conclusions: success,skipped
+
+  # ---------------------------------------------------------------------------
   # Web (VM): Build apps/web/dist on the staging VM and let Caddy serve it
   # ---------------------------------------------------------------------------
   #
@@ -88,9 +119,11 @@ jobs:
     # `~/finance/.git` directory — both jobs run `git pull origin main` and
     # without serialization the second loser hits:
     #   error: cannot lock ref 'refs/remotes/origin/main'
-    needs: [pre-deploy-checks, deploy-backend]
+    needs: [pre-deploy-checks, verify-ci-green, deploy-backend]
     if: |
       always() &&
+      needs.pre-deploy-checks.result == 'success' &&
+      (needs.verify-ci-green.result == 'success' || needs.verify-ci-green.result == 'skipped') &&
       (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped') &&
       (needs.pre-deploy-checks.outputs.web_changed == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
@@ -236,8 +269,12 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-backend:
     name: Deploy Backend (Staging)
-    needs: pre-deploy-checks
-    if: needs.pre-deploy-checks.outputs.backend_changed == 'true' || github.event_name == 'workflow_dispatch'
+    needs: [pre-deploy-checks, verify-ci-green]
+    if: |
+      always() &&
+      needs.pre-deploy-checks.result == 'success' &&
+      (needs.verify-ci-green.result == 'success' || needs.verify-ci-green.result == 'skipped') &&
+      (needs.pre-deploy-checks.outputs.backend_changed == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:

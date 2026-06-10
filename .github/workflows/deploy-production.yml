@@ -4,7 +4,11 @@
 #
 # Deploys a specific version to production. Requires:
 #   1. Manual workflow_dispatch trigger
-#   2. Human approval via "production" GitHub environment
+#   2. Required CI workflows green on the exact SHA being deployed
+#   3. Human approval via "production" GitHub environment
+#
+# Rollbacks skip smoke tests and the CI wait gate so an already-known version can
+# be restored quickly; all non-rollback production deploys always gate on CI.
 #
 # Features:
 #   - Version selection (tag or commit SHA)
@@ -13,7 +17,7 @@
 #   - GitHub Deployment status tracking
 #   - Deployment notifications
 #
-# Issue: #886
+# Issues: #886, #2060
 # =============================================================================
 
 name: Deploy — Production
@@ -34,7 +38,7 @@ on:
           - web
           - backend
       rollback:
-        description: 'Is this a rollback? (skips smoke tests)'
+        description: 'Is this a rollback? (skips smoke tests and CI gate)'
         required: false
         type: boolean
         default: false
@@ -49,6 +53,8 @@ concurrency:
 
 permissions:
   contents: read
+  checks: read
+  statuses: read
   deployments: write
 
 env:
@@ -120,6 +126,26 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
+  # Gate: wait for required CI workflows on the resolved deploy SHA
+  # ---------------------------------------------------------------------------
+  verify-ci-green:
+    name: Verify CI green on SHA
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [prepare]
+    if: github.event.inputs.rollback != 'true'
+    steps:
+      - name: Wait for CI workflows
+        uses: lewagon/wait-on-check-action@0dceb95e7c4cad8cc7422aee3885998f5cab9c79 # v1.4.0
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          running-workflow-name: 'Verify CI green on SHA'
+          check-regexp: '^(Web CI|Android CI|iOS CI|Windows CI|Lint & Format|CI — Shared Packages|Security Scanning)$'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+          allowed-conclusions: success,skipped
+
+  # ---------------------------------------------------------------------------
   # Smoke tests (skipped on rollback)
   # ---------------------------------------------------------------------------
   smoke-tests:
@@ -176,8 +202,13 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-web:
     name: Deploy Web (Production)
-    needs: [prepare, smoke-tests]
-    if: always() && needs.prepare.outputs.deploy_web == 'true' && (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped')
+    needs: [prepare, verify-ci-green, smoke-tests]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.deploy_web == 'true' &&
+      (needs.verify-ci-green.result == 'success' || needs.verify-ci-green.result == 'skipped') &&
+      (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -250,8 +281,13 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-backend:
     name: Deploy Backend (Production)
-    needs: [prepare, smoke-tests]
-    if: always() && needs.prepare.outputs.deploy_backend == 'true' && (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped')
+    needs: [prepare, verify-ci-green, smoke-tests]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.deploy_backend == 'true' &&
+      (needs.verify-ci-green.result == 'success' || needs.verify-ci-green.result == 'skipped') &&
+      (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
