@@ -10,10 +10,32 @@ import type { SqliteDb } from '../db/sqlite-wasm';
 import { DatabaseContext, type DatabaseContextValue } from '../db/DatabaseProvider';
 
 function createMockDb(): SqliteDb {
+  const accountRows = [
+    {
+      id: 'acc-1',
+      household_id: 'hh-1',
+      name: 'Checking',
+      type: 'CHECKING',
+      currency: 'USD',
+      current_balance: 100000,
+      is_archived: 0,
+      sort_order: 0,
+      icon: null,
+      color: null,
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+      deleted_at: null,
+      sync_version: 1,
+      is_synced: 0,
+    },
+  ];
+
   return {
     exec: vi.fn(),
-    close: vi.fn(),
-  } as unknown as SqliteDb;
+    selectAll: vi.fn((sql: string) => (/FROM "?account"?/i.test(sql) ? accountRows : [])),
+    selectOne: vi.fn(() => null),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
 }
 
 vi.mock('../db/repositories/accounts', () => ({
