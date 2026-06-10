@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 val LocalIconPack = staticCompositionLocalOf { IconPacks.defaultFor(Platform.ANDROID) }
+val LocalIconFontResourcesEnabled = staticCompositionLocalOf { true }
 
 class IconPreferenceManager(private val prefs: SharedPreferences) {
     val availablePacks: List<IconPack> = IconPacks.forPlatform(Platform.ANDROID)
@@ -83,21 +84,30 @@ fun IconView(
         IconPacks.MaterialSymbolsOutlined,
         IconPacks.MaterialSymbolsRounded,
         IconPacks.MaterialSymbolsSharp -> {
-            val (fontFamily, symbolName) = materialSymbolFontAndName(token, pack.id)
-            Box(
-                modifier = modifier
-                    .size(size)
-                    .semantics { contentDescription = token.name.lowercase() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = symbolName,
-                    color = tint,
-                    fontFamily = fontFamily,
-                    fontSize = size.value.sp,
-                    lineHeight = size.value.sp,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
+            if (LocalIconFontResourcesEnabled.current) {
+                val (fontFamily, symbolName) = materialSymbolFontAndName(token, pack.id)
+                Box(
+                    modifier = modifier
+                        .size(size)
+                        .semantics { contentDescription = token.name.lowercase() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = symbolName,
+                        color = tint,
+                        fontFamily = fontFamily,
+                        fontSize = size.value.sp,
+                        lineHeight = size.value.sp,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                    )
+                }
+            } else {
+                Icon(
+                    imageVector = lucideImageVector(token),
+                    contentDescription = null,
+                    modifier = modifier.size(size),
+                    tint = tint,
                 )
             }
         }

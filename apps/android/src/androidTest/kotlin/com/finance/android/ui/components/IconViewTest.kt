@@ -5,7 +5,7 @@ package com.finance.android.ui.components
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.test.assertExists
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -39,7 +39,7 @@ class IconViewTest {
                 }
             }
 
-            composeRule.onNodeWithTag(pack.id).assertExists()
+            composeRule.onNodeWithTag(pack.id).assertIsDisplayed()
         }
     }
 }

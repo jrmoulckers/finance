@@ -12,7 +12,10 @@ import androidx.compose.ui.unit.Density
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.ide.common.rendering.api.SessionParams
+import com.finance.android.ui.components.LocalIconFontResourcesEnabled
+import com.finance.android.ui.components.LocalIconPack
 import com.finance.android.ui.theme.FinanceTheme
+import com.finance.core.icons.IconPacks
 
 /**
  * Shared Paparazzi configuration for snapshot tests.
@@ -75,7 +78,13 @@ fun SnapshotThemeWrapper(
         density = currentDensity.density,
         fontScale = fontScale.scale,
     )
-    CompositionLocalProvider(LocalDensity provides scaledDensity) {
+    CompositionLocalProvider(
+        LocalDensity provides scaledDensity,
+        // Paparazzi cannot resolve Android downloadable font providers, so keep
+        // screen snapshots on bundled vector icons.
+        LocalIconFontResourcesEnabled provides false,
+        LocalIconPack provides IconPacks.StandardLucide,
+    ) {
         FinanceTheme(
             darkTheme = themeMode.darkTheme,
             highContrast = themeMode.highContrast,
