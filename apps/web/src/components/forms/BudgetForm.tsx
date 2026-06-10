@@ -33,8 +33,11 @@ import {
 
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateBudgetInput } from '../../db/repositories/budgets';
+import { useAmountInput } from '../../hooks/useAmountInput';
 import type { Budget, BudgetPeriod, Category } from '../../kmp/bridge';
 import { budgetSchema } from '../../lib/validation';
+import { DatePicker } from '../common/DatePicker';
+import { AmountInput } from './AmountInput';
 
 import './forms.css';
 
@@ -84,12 +87,6 @@ function firstOfCurrentMonthISO(): string {
   return `${year}-${month}-01`;
 }
 
-/** Convert a stored cents amount into a decimal string for the amount input. */
-function formatBudgetAmountForInput(budget: Budget): string {
-  const divisor = Math.pow(10, budget.currency.decimalPlaces);
-  return (budget.amount.amount / divisor).toFixed(budget.currency.decimalPlaces);
-}
-
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -99,11 +96,11 @@ interface FormErrors {
   amount?: string;
 }
 
-function validate(categoryId: string, amountStr: string, period: BudgetPeriod): FormErrors {
+function validate(categoryId: string, amountCents: number, period: BudgetPeriod): FormErrors {
   const errors: FormErrors = {};
   const result = budgetSchema.safeParse({
     categoryId,
-    amount: parseFloat(amountStr),
+    amount: amountCents / 100,
     period,
   });
 
@@ -146,7 +143,12 @@ export function BudgetForm({
 
   // -- state ---------------------------------------------------------------
   const [categoryId, setCategoryId] = useState('');
-  const [amount, setAmount] = useState('');
+  const decimalPlaces = initialData?.currency.decimalPlaces ?? 2;
+  const amountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces,
+    allowNegative: false,
+  });
   const [period, setPeriod] = useState<BudgetPeriod>('MONTHLY');
   const [startDate, setStartDate] = useState(firstOfCurrentMonthISO);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -171,7 +173,7 @@ export function BudgetForm({
   useEffect(() => {
     if (isOpen) {
       setCategoryId(initialData?.categoryId ?? '');
-      setAmount(initialData ? formatBudgetAmountForInput(initialData) : '');
+      amountInput.setCents(initialData?.amount.amount ?? 0);
       setPeriod(initialData?.period ?? 'MONTHLY');
       setStartDate(initialData?.startDate ?? firstOfCurrentMonthISO());
       setErrors({});
@@ -200,7 +202,7 @@ export function BudgetForm({
     async (e: FormEvent) => {
       e.preventDefault();
 
-      const fieldErrors = validate(categoryId, amount, period);
+      const fieldErrors = validate(categoryId, amountInput.cents, period);
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
@@ -214,14 +216,11 @@ export function BudgetForm({
         return;
       }
 
-      // Convert dollars to integer cents — never store floats as money.
-      const amountCents = Math.round(parseFloat(amount) * 100);
-
       const input: CreateBudgetInput = {
         householdId: selectedCategory.householdId,
         categoryId,
         name: selectedCategory.name,
-        amount: { amount: amountCents },
+        amount: { amount: amountInput.cents },
         period,
         startDate,
         endDate: null,
@@ -234,7 +233,7 @@ export function BudgetForm({
       try {
         await onSubmit(input);
         setCategoryId('');
-        setAmount('');
+        amountInput.reset(0);
         setPeriod('MONTHLY');
         setStartDate(firstOfCurrentMonthISO());
         setErrors({});
@@ -250,7 +249,7 @@ export function BudgetForm({
         setSubmitting(false);
       }
     },
-    [categoryId, amount, period, startDate, categories, isEditMode, onSubmit],
+    [categoryId, amountInput, period, startDate, categories, isEditMode, onSubmit],
   );
 
   // -- render --------------------------------------------------------------
@@ -328,16 +327,11 @@ export function BudgetForm({
               >
                 Amount
               </label>
-              <input
+              <AmountInput
                 id="budget-amount"
+                amountInput={amountInput}
                 className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
-                type="number"
-                step="0.01"
-                min="0.01"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
+                placeholder="$0.00"
                 aria-invalid={hasAmountError}
                 aria-describedby={hasAmountError ? 'budget-amount-error' : undefined}
                 aria-required="true"
@@ -374,12 +368,11 @@ export function BudgetForm({
               <label htmlFor="budget-start-date" className="form-group__label">
                 Start Date
               </label>
-              <input
+              <DatePicker
                 id="budget-start-date"
                 className="form-input"
-                type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={setStartDate}
               />
             </div>
           </div>

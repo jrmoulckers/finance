@@ -52,6 +52,8 @@ import {
   normalizeMoodTag,
 } from '../../lib/mood-tags';
 import { transactionSchema } from '../../lib/validation';
+import { AmountInput } from './AmountInput';
+import { DatePicker } from '../common/DatePicker';
 import { CounterpartyInput } from '../transactions/CounterpartyInput';
 
 import './forms.css';
@@ -120,6 +122,18 @@ function parseTags(input: string): string[] {
     .filter((t) => t.length > 0);
 }
 
+function normalizeTransactionAmount(amountCents: number, type: TransactionType): number {
+  if (type === 'EXPENSE') {
+    return amountCents > 0 ? -amountCents : amountCents;
+  }
+
+  if (type === 'INCOME') {
+    return Math.abs(amountCents);
+  }
+
+  return amountCents;
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -138,9 +152,10 @@ function validate(
   date: string,
 ): FormErrors {
   const errors: FormErrors = {};
+  const normalizedAmountCents = normalizeTransactionAmount(amountCents, type);
   const result = transactionSchema.safeParse({
     description: description.trim(),
-    amount: amountCents / 100,
+    amount: Math.abs(normalizedAmountCents) / 100,
     type,
     accountId,
     date,
@@ -162,8 +177,8 @@ function validate(
     }
   }
 
-  // Extra check: cents must be > 0
-  if (amountCents <= 0 && !errors.amount) {
+  // Extra check: magnitude must be > 0
+  if (normalizedAmountCents === 0 && !errors.amount) {
     errors.amount = 'Amount must be greater than zero.';
   }
 
@@ -194,9 +209,13 @@ export function TransactionForm({
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   // -- state ---------------------------------------------------------------
-  const amountInput = useAmountInput({ currencySymbol: '$', decimalPlaces: 2 });
-  const [description, setDescription] = useState('');
   const [transactionType, setTransactionType] = useState<TransactionType>('EXPENSE');
+  const amountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: 2,
+    allowNegative: transactionType !== 'INCOME',
+  });
+  const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TransactionStatus>('PENDING');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
@@ -276,7 +295,7 @@ export function TransactionForm({
     }
 
     if (initialData) {
-      amountInput.setCents(Math.abs(initialData.amount.amount));
+      amountInput.setCents(initialData.amount.amount);
     } else {
       amountInput.reset(0);
     }
@@ -318,6 +337,20 @@ export function TransactionForm({
     setAdditionalOpen(false);
   }, [initialData, isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (transactionType === 'EXPENSE') {
+      amountInput.setSign('negative');
+    }
+
+    if (transactionType === 'INCOME') {
+      amountInput.setSign('positive');
+    }
+  }, [amountInput, isOpen, transactionType]);
+
   // -- auto-suggest category when description changes ----------------------
   useEffect(() => {
     if (!isOpen || !description.trim()) {
@@ -325,7 +358,7 @@ export function TransactionForm({
       return;
     }
 
-    const amountCents = amountInput.cents > 0 ? amountInput.cents : undefined;
+    const amountCents = Math.abs(amountInput.cents) > 0 ? Math.abs(amountInput.cents) : undefined;
     const result = autoSuggest(description, amountCents);
     setSuggestion(result);
   }, [description, amountInput.cents, isOpen, autoSuggest]);
@@ -398,8 +431,9 @@ export function TransactionForm({
     async (e: FormEvent) => {
       e.preventDefault();
 
+      const normalizedAmountCents = normalizeTransactionAmount(amountInput.cents, transactionType);
       const fieldErrors = validate(
-        amountInput.cents,
+        normalizedAmountCents,
         description,
         accountId,
         transactionType,
@@ -439,7 +473,7 @@ export function TransactionForm({
         accountId,
         type: transactionType,
         status,
-        amount: { amount: amountInput.cents },
+        amount: { amount: normalizedAmountCents },
         currency: selectedAccount.currency,
         payee: description.trim(),
         date,
@@ -475,6 +509,7 @@ export function TransactionForm({
         await onSubmit(input);
         // Reset form on success
         amountInput.reset(0);
+        amountInput.setSign('negative');
         setDescription('');
         setTransactionType('EXPENSE');
         setStatus('PENDING');
@@ -580,20 +615,20 @@ export function TransactionForm({
               <label htmlFor="txn-amount" className="form-group__label form-group__label--required">
                 Amount
               </label>
-              <input
+              <p id="txn-amount-help" className="form-group__help">
+                Type digits only. The decimal is applied automatically from the right.
+              </p>
+              <AmountInput
                 ref={firstInputRef}
                 id="txn-amount"
+                amountInput={amountInput}
                 className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
-                type="text"
-                inputMode="numeric"
-                value={amountInput.displayValue}
-                onKeyDown={amountInput.handleKeyDown}
-                onChange={amountInput.handleChange}
                 placeholder="$0.00"
                 aria-invalid={hasAmountError}
-                aria-describedby={hasAmountError ? 'txn-amount-error' : undefined}
+                aria-describedby={`txn-amount-help${hasAmountError ? ' txn-amount-error' : ''}`}
                 aria-required="true"
                 autoComplete="off"
+                toggleLabel="Toggle transaction amount sign"
               />
               {hasAmountError && (
                 <span id="txn-amount-error" className="form-error" role="alert">
@@ -787,13 +822,7 @@ export function TransactionForm({
               <label htmlFor="txn-date" className="form-group__label">
                 Date
               </label>
-              <input
-                id="txn-date"
-                className="form-input"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
+              <DatePicker id="txn-date" className="form-input" value={date} onChange={setDate} />
             </div>
 
             {/* Notes */}

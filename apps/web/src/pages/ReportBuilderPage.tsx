@@ -37,6 +37,7 @@ import type {
   DatePreset,
 } from '../hooks/useReportBuilder';
 import { CHART_COLORS, formatChartCurrency } from '../components/charts/chart-palette';
+import { DatePicker } from '../components/common/DatePicker';
 
 import './ReportBuilderPage.css';
 
@@ -338,24 +339,22 @@ export function ReportBuilderPage() {
               <label htmlFor="report-start-date" className="report-filter-group__label">
                 Start Date
               </label>
-              <input
+              <DatePicker
                 id="report-start-date"
                 className="report-input"
-                type="date"
                 value={config.startDate ?? ''}
-                onChange={(e) => setDateRange(e.target.value || null, config.endDate)}
+                onChange={(nextDate) => setDateRange(nextDate || null, config.endDate)}
               />
             </div>
             <div className="report-filter-group">
               <label htmlFor="report-end-date" className="report-filter-group__label">
                 End Date
               </label>
-              <input
+              <DatePicker
                 id="report-end-date"
                 className="report-input"
-                type="date"
                 value={config.endDate ?? ''}
-                onChange={(e) => setDateRange(config.startDate, e.target.value || null)}
+                onChange={(nextDate) => setDateRange(config.startDate, nextDate || null)}
               />
             </div>
           </div>

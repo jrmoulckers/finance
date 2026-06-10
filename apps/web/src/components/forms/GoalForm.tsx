@@ -32,8 +32,11 @@ import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateGoalInput } from '../../db/repositories/goals';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
+import { useAmountInput } from '../../hooks/useAmountInput';
 import type { Goal, GoalStatus, SyncId } from '../../kmp/bridge';
 import { goalSchema } from '../../lib/validation';
+import { DatePicker } from '../common/DatePicker';
+import { AmountInput } from './AmountInput';
 
 import './forms.css';
 
@@ -77,23 +80,18 @@ function tomorrowISO(): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Format a stored currency amount for a decimal text input. */
-function formatAmountForInput(amountInMinorUnits: number, decimalPlaces = 2): string {
-  const divisor = Math.pow(10, decimalPlaces);
-  return (amountInMinorUnits / divisor).toFixed(decimalPlaces);
-}
-
 function validate(
   name: string,
-  targetAmountStr: string,
-  currentAmountStr: string,
+  targetAmountCents: number,
+  currentAmountCents: number,
   targetDate: string,
   requireFutureTargetDate: boolean,
 ): FormErrors {
   const errors: FormErrors = {};
   const result = goalSchema.safeParse({
     name: name.trim(),
-    targetAmount: parseFloat(targetAmountStr),
+    targetAmount: targetAmountCents / 100,
+    currentAmount: currentAmountCents / 100,
   });
 
   if (!result.success) {
@@ -108,11 +106,8 @@ function validate(
     }
   }
 
-  if (currentAmountStr.trim() !== '') {
-    const parsedCurrentAmount = parseFloat(currentAmountStr);
-    if (Number.isNaN(parsedCurrentAmount) || parsedCurrentAmount < 0) {
-      errors.currentAmount = 'Current amount must be zero or greater.';
-    }
+  if (currentAmountCents < 0) {
+    errors.currentAmount = 'Current amount must be zero or greater.';
   }
 
   if (requireFutureTargetDate && targetDate && targetDate <= todayISO()) {
@@ -151,8 +146,17 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
   const isEditing = initialData !== undefined;
 
   const [name, setName] = useState('');
-  const [targetAmount, setTargetAmount] = useState('');
-  const [currentAmount, setCurrentAmount] = useState('0.00');
+  const decimalPlaces = initialData?.currency.decimalPlaces ?? 2;
+  const targetAmountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces,
+    allowNegative: false,
+  });
+  const currentAmountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces,
+    allowNegative: false,
+  });
   const [targetDate, setTargetDate] = useState('');
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -177,21 +181,15 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
       return;
     }
 
-    const decimalPlaces = initialData?.currency.decimalPlaces ?? 2;
-
     setName(initialData?.name ?? '');
-    setTargetAmount(
-      initialData ? formatAmountForInput(initialData.targetAmount.amount, decimalPlaces) : '',
-    );
-    setCurrentAmount(
-      initialData ? formatAmountForInput(initialData.currentAmount.amount, decimalPlaces) : '0.00',
-    );
+    targetAmountInput.setCents(initialData?.targetAmount.amount ?? 0);
+    currentAmountInput.setCents(initialData?.currentAmount.amount ?? 0);
     setTargetDate(initialData?.targetDate ?? '');
     setDescription(initialData?.description ?? '');
     setErrors({});
     setSubmitting(false);
     setSubmitError(null);
-  }, [initialData, isOpen]);
+  }, [currentAmountInput, initialData, isOpen, targetAmountInput]);
 
   const handleCancel = useCallback(() => {
     onCancel();
@@ -211,7 +209,13 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
     async (event: FormEvent) => {
       event.preventDefault();
 
-      const fieldErrors = validate(name, targetAmount, currentAmount, targetDate, !isEditing);
+      const fieldErrors = validate(
+        name,
+        targetAmountInput.cents,
+        currentAmountInput.cents,
+        targetDate,
+        !isEditing,
+      );
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
@@ -228,8 +232,8 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
         householdId,
         name: name.trim(),
         description: description.trim() || null,
-        targetAmount: { amount: Math.round(parseFloat(targetAmount) * 100) },
-        currentAmount: { amount: Math.round(parseFloat(currentAmount || '0') * 100) },
+        targetAmount: { amount: targetAmountInput.cents },
+        currentAmount: { amount: currentAmountInput.cents },
         targetDate: targetDate || null,
         status: initialData?.status ?? DEFAULT_GOAL_STATUS,
       };
@@ -253,14 +257,14 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
       }
     },
     [
-      currentAmount,
+      currentAmountInput,
       db,
       description,
       initialData,
       isEditing,
       name,
       onSubmit,
-      targetAmount,
+      targetAmountInput,
       targetDate,
     ],
   );
@@ -332,16 +336,11 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
               >
                 Target Amount
               </label>
-              <input
+              <AmountInput
                 id="goal-target-amount"
+                amountInput={targetAmountInput}
                 className={`form-input${hasTargetAmountError ? ' form-input--error' : ''}`}
-                type="number"
-                step="0.01"
-                min="0.01"
-                inputMode="decimal"
-                value={targetAmount}
-                onChange={(event) => setTargetAmount(event.target.value)}
-                placeholder="0.00"
+                placeholder="$0.00"
                 aria-invalid={hasTargetAmountError}
                 aria-describedby={hasTargetAmountError ? 'goal-target-amount-error' : undefined}
                 aria-required="true"
@@ -358,16 +357,11 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
               <label htmlFor="goal-current-amount" className="form-group__label">
                 Current Amount
               </label>
-              <input
+              <AmountInput
                 id="goal-current-amount"
+                amountInput={currentAmountInput}
                 className={`form-input${hasCurrentAmountError ? ' form-input--error' : ''}`}
-                type="number"
-                step="0.01"
-                min="0"
-                inputMode="decimal"
-                value={currentAmount}
-                onChange={(event) => setCurrentAmount(event.target.value)}
-                placeholder="0.00"
+                placeholder="$0.00"
                 aria-invalid={hasCurrentAmountError}
                 aria-describedby={hasCurrentAmountError ? 'goal-current-amount-error' : undefined}
                 autoComplete="off"
@@ -383,13 +377,12 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
               <label htmlFor="goal-target-date" className="form-group__label">
                 Target Date
               </label>
-              <input
+              <DatePicker
                 id="goal-target-date"
                 className={`form-input${hasTargetDateError ? ' form-input--error' : ''}`}
-                type="date"
                 min={minimumTargetDate}
                 value={targetDate}
-                onChange={(event) => setTargetDate(event.target.value)}
+                onChange={setTargetDate}
                 aria-invalid={hasTargetDateError}
                 aria-describedby={hasTargetDateError ? 'goal-target-date-error' : undefined}
               />

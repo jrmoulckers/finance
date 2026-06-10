@@ -14,8 +14,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
-import type { Account, Category, Transaction } from '../../kmp/bridge';
+import { AmountDisplay } from '../common/AmountDisplay';
+import { DatePicker } from '../common/DatePicker';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
+import { useAmountInput } from '../../hooks/useAmountInput';
+import type { Account, Category, Transaction } from '../../kmp/bridge';
 import './transaction-edit-panel.css';
 
 // ---------------------------------------------------------------------------
@@ -53,7 +56,12 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
 
   // Form state
   const [payee, setPayee] = useState('');
-  const [amount, setAmount] = useState('');
+  const amountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: 2,
+    mode: 'incremental',
+    maxCents: 99_999_999,
+  });
   const [date, setDate] = useState('');
   const [type, setType] = useState<'EXPENSE' | 'INCOME' | 'TRANSFER'>('EXPENSE');
   const [categoryId, setCategoryId] = useState('');
@@ -66,7 +74,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
   useEffect(() => {
     if (transaction) {
       setPayee(transaction.payee ?? '');
-      setAmount((Math.abs(transaction.amount.amount) / 100).toFixed(2));
+      amountInput.setCents(Math.abs(transaction.amount.amount));
       setDate(transaction.date);
       setType(transaction.type);
       setCategoryId(transaction.categoryId ?? '');
@@ -106,12 +114,17 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
       setSubmitError(null);
 
       try {
+        if (amountInput.cents <= 0) {
+          setSubmitError('Amount must be greater than zero.');
+          return;
+        }
+
         const data: CreateTransactionInput = {
           householdId: transaction.householdId,
           accountId,
           categoryId: categoryId || null,
           type,
-          amount: { amount: Math.round(parseFloat(amount) * 100) },
+          amount: { amount: amountInput.cents },
           currency: transaction.currency,
           payee: payee || null,
           note: note || null,
@@ -126,7 +139,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
         setSubmitting(false);
       }
     },
-    [transaction, accountId, categoryId, type, amount, payee, note, date, onSave],
+    [transaction, accountId, amountInput.cents, categoryId, type, payee, note, date, onSave],
   );
 
   if (!isOpen) return null;
@@ -187,14 +200,21 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
               >
                 Amount
               </label>
+              <AmountDisplay
+                value={amountInput.displayValue}
+                empty={amountInput.isEmpty}
+                placeholder={amountInput.placeholderValue}
+                label="Current amount"
+              />
               <input
                 id="edit-panel-amount"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 className="form-input"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                min="0"
-                step="0.01"
+                value={amountInput.inputValue}
+                onKeyDown={amountInput.handleKeyDown}
+                onChange={amountInput.handleChange}
+                placeholder={amountInput.placeholderValue}
                 required
                 aria-required="true"
                 disabled={submitting}
@@ -209,12 +229,11 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
               >
                 Date
               </label>
-              <input
+              <DatePicker
                 id="edit-panel-date"
-                type="date"
                 className="form-input"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={setDate}
                 required
                 aria-required="true"
                 disabled={submitting}
