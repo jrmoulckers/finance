@@ -7,6 +7,7 @@ import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
 import { ErrorBoundary, ToastProvider, UpdateBanner } from './components/common';
+import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { ScrollToTop } from './components/navigation/ScrollToTop';
 import { DatabaseProvider } from './db/DatabaseProvider';
 import { MoneyDisplayProvider } from './lib/display-settings';
@@ -168,13 +169,15 @@ createRoot(rootElement).render(
       <ToastProvider>
         <AuthProvider config={authConfig}>
           <MoneyDisplayProvider>
-            <BrowserRouter>
-              <ScrollToTop />
-              <UpdateBanner />
-              <DatabaseGate>
-                <App />
-              </DatabaseGate>
-            </BrowserRouter>
+            <AccessibilityProvider>
+              <BrowserRouter>
+                <ScrollToTop />
+                <UpdateBanner />
+                <DatabaseGate>
+                  <App />
+                </DatabaseGate>
+              </BrowserRouter>
+            </AccessibilityProvider>
           </MoneyDisplayProvider>
         </AuthProvider>
       </ToastProvider>

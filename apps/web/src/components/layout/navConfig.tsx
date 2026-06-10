@@ -254,28 +254,56 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
 /** How many priority items show on the mobile bottom-nav (the 5th slot is "More"). */
 export const BOTTOM_NAV_PRIORITY_COUNT = 4;
 
+/** Primary destinations that remain visible in simplified accessibility mode. */
+export const SIMPLIFIED_NAV_ITEM_IDS = [
+  'dashboard',
+  'accounts',
+  'transactions',
+  'budgets',
+  'bills',
+] as const;
+
+const SIMPLIFIED_NAV_ITEM_ID_SET = new Set<string>(SIMPLIFIED_NAV_ITEM_IDS);
+
+export function getVisibleNavItems(simplified: boolean): readonly NavConfigItem[] {
+  return simplified
+    ? NAV_CONFIG.filter((item) => SIMPLIFIED_NAV_ITEM_ID_SET.has(item.id))
+    : NAV_CONFIG;
+}
+
+export function getBottomNavPriorityItems(simplified = false): readonly NavConfigItem[] {
+  return [...getVisibleNavItems(simplified)]
+    .sort((a, b) => a.mobilePriority - b.mobilePriority)
+    .slice(0, BOTTOM_NAV_PRIORITY_COUNT);
+}
+
 /**
  * Bottom-nav priority items, sorted by `mobilePriority`. The bottom-nav
  * appends a "More" button so all remaining items are still reachable.
  */
-export const BOTTOM_NAV_PRIORITY_ITEMS: readonly NavConfigItem[] = [...NAV_CONFIG]
-  .sort((a, b) => a.mobilePriority - b.mobilePriority)
-  .slice(0, BOTTOM_NAV_PRIORITY_COUNT);
+export const BOTTOM_NAV_PRIORITY_ITEMS: readonly NavConfigItem[] = getBottomNavPriorityItems();
+
+export function getPinnedNavItems(simplified = false): readonly NavConfigItem[] {
+  return getVisibleNavItems(simplified).filter((item) => item.group === undefined);
+}
 
 /** Destinations pinned above the grouped sections in the sidebar. */
-export const PINNED_NAV_ITEMS: readonly NavConfigItem[] = NAV_CONFIG.filter(
-  (item) => item.group === undefined,
-);
+export const PINNED_NAV_ITEMS: readonly NavConfigItem[] = getPinnedNavItems();
 
 /** Destinations bucketed by group, preserving config order within each. */
-export function getItemsByGroup(group: NavGroup): readonly NavConfigItem[] {
-  return NAV_CONFIG.filter((item) => item.group === group);
+export function getItemsByGroup(group: NavGroup, simplified = false): readonly NavConfigItem[] {
+  return getVisibleNavItems(simplified).filter((item) => item.group === group);
+}
+
+export function getMoreSheetItems(simplified = false): readonly NavConfigItem[] {
+  const priorityItems = getBottomNavPriorityItems(simplified);
+  return getVisibleNavItems(simplified).filter(
+    (item) => !priorityItems.some((priorityItem) => priorityItem.id === item.id),
+  );
 }
 
 /**
  * Items shown inside the mobile "More" sheet — everything that is not a
  * bottom-nav priority item, grouped for scanning.
  */
-export const MORE_SHEET_ITEMS: readonly NavConfigItem[] = NAV_CONFIG.filter(
-  (item) => !BOTTOM_NAV_PRIORITY_ITEMS.some((p) => p.id === item.id),
-);
+export const MORE_SHEET_ITEMS: readonly NavConfigItem[] = getMoreSheetItems();

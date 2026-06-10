@@ -16,12 +16,14 @@
 
 import React, { useCallback, useEffect, useRef } from 'react';
 
+import { useAccessibility } from '../../hooks/useAccessibility';
 import { Icon } from '../common/Icon';
 import { IconToken } from '../../icons/tokens';
 import {
   MORE_SHEET_ITEMS,
   NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
+  getMoreSheetItems,
   type NavConfigItem,
   type NavGroup,
 } from './navConfig';
@@ -66,6 +68,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
   onOpenFeedback,
   onSignOut,
 }) => {
+  const { isSimplified } = useAccessibility();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -125,7 +128,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
 
   if (!open) return null;
 
-  const buckets = bucketByGroup(MORE_SHEET_ITEMS);
+  const buckets = bucketByGroup(isSimplified ? getMoreSheetItems(true) : MORE_SHEET_ITEMS);
 
   return (
     <div className="more-sheet" role="dialog" aria-modal="true" aria-labelledby="more-sheet-title">
@@ -218,7 +221,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
                   </span>
                 </button>
               </li>
-              {onOpenShortcuts ? (
+              {onOpenShortcuts && !isSimplified ? (
                 <li>
                   <button
                     type="button"
@@ -242,7 +245,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
                   </button>
                 </li>
               ) : null}
-              {onOpenFeedback ? (
+              {onOpenFeedback && !isSimplified ? (
                 <li>
                   <button
                     type="button"

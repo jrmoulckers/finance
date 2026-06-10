@@ -6,6 +6,7 @@ import FeedbackDialog from '../FeedbackDialog';
 import { KeyboardShortcutsModal, SyncStatusBar } from '../common';
 import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
 import { useKeyboardShortcuts } from '../../hooks';
+import { useAccessibility } from '../../hooks/useAccessibility';
 import { usePrivacyMode } from '../../contexts/PrivacyModeContext';
 import { useEscapeBack } from '../../hooks/useEscapeBack';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
@@ -28,6 +29,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   children,
 }) => {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  const { isSimplified } = useAccessibility();
   const { showHelp, setShowHelp } = useKeyboardShortcuts({
     onTogglePrivacyMode: togglePrivacyMode,
   });
@@ -77,7 +79,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         onOpenShortcuts={openKeyboardShortcuts}
         onOpenFeedback={openFeedbackDialog}
       />
-      <div className="app-shell">
+      <div className={`app-shell${isSimplified ? ' app-shell--simplified' : ''}`}>
         <SyncStatusBar />
         <header className="app-header" aria-label="App header">
           <h1 className="app-header__title">{pageTitle}</h1>
@@ -85,7 +87,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             {conflictCount > 0 && (
               <button
                 type="button"
-                className="icon-button icon-button--warning"
+                className={`icon-button icon-button--warning${isSimplified ? ' icon-button--labeled' : ''}`}
                 aria-label={`${conflictCount} sync conflict${conflictCount !== 1 ? 's' : ''} need attention`}
                 onClick={openConflictDialog}
               >
@@ -108,11 +110,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                     fill="none"
                   />
                 </svg>
+                {isSimplified ? <span className="icon-button__label">Review alerts</span> : null}
               </button>
             )}
             <button
               type="button"
-              className={`icon-button${isPrivacyMode ? ' icon-button--active' : ''}`}
+              className={`icon-button${isPrivacyMode ? ' icon-button--active' : ''}${isSimplified ? ' icon-button--labeled' : ''}`}
               aria-label={isPrivacyMode ? 'Turn privacy mode off' : 'Turn privacy mode on'}
               aria-pressed={isPrivacyMode}
               title="Privacy mode"
@@ -121,21 +124,28 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               <span className="icon-button__glyph" aria-hidden="true">
                 {isPrivacyMode ? '●' : '○'}
               </span>
+              {isSimplified ? (
+                <span className="icon-button__label">
+                  {isPrivacyMode ? 'Show amounts' : 'Hide amounts'}
+                </span>
+              ) : null}
             </button>
+            {!isSimplified ? (
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Keyboard shortcuts"
+                aria-keyshortcuts="Shift+/"
+                onClick={openKeyboardShortcuts}
+              >
+                <span className="icon-button__glyph" aria-hidden="true">
+                  ?
+                </span>
+              </button>
+            ) : null}
             <button
               type="button"
-              className="icon-button"
-              aria-label="Keyboard shortcuts"
-              aria-keyshortcuts="Shift+/"
-              onClick={openKeyboardShortcuts}
-            >
-              <span className="icon-button__glyph" aria-hidden="true">
-                ?
-              </span>
-            </button>
-            <button
-              type="button"
-              className="icon-button"
+              className={`icon-button${isSimplified ? ' icon-button--labeled' : ''}`}
               aria-label="Settings"
               onClick={goToSettings}
             >
@@ -143,6 +153,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                 <circle cx="12" cy="12" r="3" />
                 <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z" />
               </svg>
+              {isSimplified ? <span className="icon-button__label">Settings</span> : null}
             </button>
           </div>
         </header>

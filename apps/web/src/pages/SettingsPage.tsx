@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
+import { useAccessibility } from '../hooks/useAccessibility';
 import './settings/settings-shell.css';
 
 /**
@@ -36,7 +37,22 @@ const SETTINGS_SECTIONS: ReadonlyArray<{ to: string; label: string; description:
  * dedicated sub-pages under `apps/web/src/pages/settings/*`. This file
  * only handles layout, in-section navigation, and the page heading.
  */
+const SIMPLIFIED_SETTINGS_SECTIONS = new Set(['account', 'preferences', 'privacy', 'about']);
+
 export const SettingsPage: React.FC = () => {
+  const { isSimplified } = useAccessibility();
+  const location = useLocation();
+  const sections = useMemo(
+    () =>
+      SETTINGS_SECTIONS.filter(
+        (section) =>
+          !isSimplified ||
+          SIMPLIFIED_SETTINGS_SECTIONS.has(section.to) ||
+          location.pathname.endsWith(`/${section.to}`),
+      ),
+    [isSimplified, location.pathname],
+  );
+
   return (
     <>
       <h2
@@ -50,7 +66,7 @@ export const SettingsPage: React.FC = () => {
       </h2>
       <div className="settings-shell">
         <nav className="settings-nav" aria-label="Settings sections">
-          {SETTINGS_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <NavLink
               key={section.to}
               to={section.to}

@@ -273,3 +273,257 @@ textarea {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* -------------------------------------------------------------------
+ * 8. Simplified elder / caregiver mode
+ *
+ * Applied via the AccessibilityProvider using body classes and root
+ * data attributes. This mode favors larger tap targets, stronger
+ * contrast, clearer button labels, and fewer competing controls.
+ * ------------------------------------------------------------------- */
+
+html[data-accessibility-font-size='normal'] {
+  font-size: 16px;
+}
+
+html[data-accessibility-font-size='large'] {
+  font-size: 18px;
+}
+
+html[data-accessibility-font-size='extra-large'] {
+  font-size: 20px;
+}
+
+body.accessibility-high-contrast,
+body.accessibility-simplified {
+  --semantic-background-primary: #ffffff;
+  --semantic-background-secondary: #f3f4f6;
+  --semantic-background-elevated: #ffffff;
+  --semantic-text-primary: #111111;
+  --semantic-text-secondary: #1f2937;
+  --semantic-text-inverse: #ffffff;
+  --semantic-border-default: #111111;
+  --semantic-border-focus: #000000;
+  --semantic-border-error: #7f1d1d;
+  --semantic-interactive-default: #0037b3;
+  --semantic-interactive-hover: #002a87;
+  --semantic-interactive-pressed: #001d5f;
+  --semantic-status-positive: #14532d;
+  --semantic-status-negative: #7f1d1d;
+  --semantic-status-warning: #78350f;
+  --semantic-status-info: #1d4ed8;
+  --semantic-amount-positive: #14532d;
+  --semantic-amount-negative: #7f1d1d;
+}
+
+body.accessibility-simplified {
+  --accessibility-target-size: 56px;
+  --type-scale-body-font-size: 1.125rem;
+  --type-scale-label-font-size: 1rem;
+  --type-scale-caption-font-size: 0.95rem;
+}
+
+body.accessibility-simplified,
+body.accessibility-simplified .settings-group,
+body.accessibility-simplified .card,
+body.accessibility-simplified .more-sheet__panel {
+  box-shadow: none;
+}
+
+body.accessibility-simplified :focus-visible,
+body.accessibility-high-contrast :focus-visible {
+  outline-width: 3px;
+  outline-offset: 3px;
+}
+
+body.accessibility-simplified button,
+body.accessibility-simplified a,
+body.accessibility-simplified [role='button'],
+body.accessibility-simplified [role='link'],
+body.accessibility-simplified [role='menuitem'],
+body.accessibility-simplified summary,
+body.accessibility-simplified input,
+body.accessibility-simplified select,
+body.accessibility-simplified textarea {
+  min-height: var(--accessibility-target-size, 56px);
+}
+
+body.accessibility-simplified button,
+body.accessibility-simplified a,
+body.accessibility-simplified [role='button'],
+body.accessibility-simplified [role='link'],
+body.accessibility-simplified [role='menuitem'],
+body.accessibility-simplified summary {
+  min-width: var(--accessibility-target-size, 56px);
+}
+
+body.accessibility-simplified .add-button,
+body.accessibility-simplified .sidebar-nav__item,
+body.accessibility-simplified .nav-item,
+body.accessibility-simplified .settings-nav__link,
+body.accessibility-simplified .more-sheet__item,
+body.accessibility-simplified .settings-item__select,
+body.accessibility-simplified .settings-item__input,
+body.accessibility-simplified .transaction-item__text-action,
+body.accessibility-simplified .icon-button {
+  font-size: 1rem;
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+body.accessibility-simplified .icon-button--labeled {
+  width: auto;
+  padding-inline: var(--spacing-4, 16px);
+  gap: var(--spacing-2, 8px);
+}
+
+.icon-button__label {
+  display: none;
+}
+
+body.accessibility-simplified .icon-button__label {
+  display: inline;
+}
+
+body.accessibility-simplified .app-header__actions,
+body.accessibility-simplified .transactions-page-header,
+body.accessibility-simplified .accessibility-preview__actions,
+body.accessibility-simplified .accessibility-preview__amount-row {
+  flex-wrap: wrap;
+}
+
+body.accessibility-high-contrast svg,
+body.accessibility-simplified svg {
+  stroke-width: 2.4;
+}
+
+body.accessibility-reduced-motion *,
+body.accessibility-reduced-motion *::before,
+body.accessibility-reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+.accessibility-preview-row {
+  grid-template-columns: 1fr;
+}
+
+.accessibility-preview {
+  width: 100%;
+  padding: var(--spacing-3, 12px);
+  border: 1px solid var(--semantic-border-default, #111111);
+  border-radius: var(--border-radius-lg, 12px);
+  background: var(--semantic-background-secondary, #f3f4f6);
+}
+
+.accessibility-preview--simplified {
+  padding: var(--spacing-4, 16px);
+}
+
+.accessibility-preview--contrast {
+  border-width: 2px;
+}
+
+.accessibility-preview--large {
+  font-size: 1.05rem;
+}
+
+.accessibility-preview--extra-large {
+  font-size: 1.125rem;
+}
+
+.accessibility-preview__card {
+  display: grid;
+  gap: var(--spacing-3, 12px);
+}
+
+.accessibility-preview__eyebrow {
+  color: var(--semantic-text-secondary, #1f2937);
+  font-size: 0.875em;
+  font-weight: var(--font-weight-semibold, 600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.accessibility-preview__title {
+  font-size: 1.1em;
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.accessibility-preview__amount-row,
+.accessibility-preview__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+}
+
+.accessibility-preview__amount {
+  font-size: 1.35em;
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.accessibility-preview__note {
+  color: var(--semantic-text-secondary, #1f2937);
+  line-height: 1.6;
+}
+
+body.accessibility-simplified .transactions-page--simplified .list-item {
+  align-items: flex-start;
+  gap: var(--spacing-4, 16px);
+}
+
+body.accessibility-simplified .transactions-page--simplified .list-item__primary {
+  font-size: 1.1rem;
+  white-space: normal;
+}
+
+body.accessibility-simplified .transactions-page--simplified .list-item__secondary,
+body.accessibility-simplified .transactions-page--simplified .transaction-list-item__support {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+body.accessibility-simplified .transactions-page--simplified .transaction-list-item__support {
+  margin-top: var(--spacing-1, 4px);
+  color: var(--semantic-text-secondary, #1f2937);
+}
+
+body.accessibility-simplified .transactions-page--simplified .transaction-list-item__trailing {
+  display: grid;
+  justify-items: end;
+  gap: var(--spacing-2, 8px);
+}
+
+body.accessibility-simplified .transactions-page--simplified .transaction-list-item__amount {
+  font-size: 1.15rem;
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.transaction-item__text-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border: 1px solid var(--semantic-border-default, #111111);
+  border-radius: var(--border-radius-md, 8px);
+  background: var(--semantic-background-primary, #ffffff);
+  color: var(--semantic-text-primary, #111111);
+  font: inherit;
+  cursor: pointer;
+}
+
+.transaction-item__text-action--danger {
+  border-color: var(--semantic-border-error, #7f1d1d);
+  color: var(--semantic-status-negative, #7f1d1d);
+}
+
+.transactions-page__speech-button,
+.accessibility-preview__speak-button {
+  background: var(--semantic-background-secondary, #f3f4f6);
+}
+
+body.accessibility-simplified .transaction-item__actions {
+  opacity: 1;
+}

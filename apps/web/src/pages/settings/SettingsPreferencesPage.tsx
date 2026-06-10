@@ -6,8 +6,10 @@ import { CurrencyDisplay } from '../../components/common/CurrencyDisplay';
 import { SettingInfoWidget } from '../../components/settings';
 import { CurrencyRatesSettings } from '../../components/settings/CurrencyRatesSettings';
 import '../../components/settings/currency-rates-settings.css';
+import { useAccessibility } from '../../hooks/useAccessibility';
 import { useTheme } from '../../hooks/useTheme';
 import { AppearanceSettings } from './AppearanceSettings';
+import type { AccessibilityFontSize } from '../../contexts/AccessibilityContext';
 import type { ThemeValue } from '../../hooks/useTheme';
 import {
   loadBnplStackingThresholdCents,
@@ -65,12 +67,32 @@ const CURRENCY_DISPLAY_OPTIONS: Array<{ value: CurrencyDisplayMode; label: strin
   { value: 'name', label: 'Name (US Dollar)' },
 ];
 
+const ACCESSIBILITY_FONT_SIZE_LABELS: Record<AccessibilityFontSize, string> = {
+  normal: 'Normal (16px)',
+  large: 'Large (18px)',
+  'extra-large': 'Extra large (20px)',
+};
+
 /**
  * Preferences sub-page — locale/currency/theme/notifications,
  * money display formatting, and currency-rate management.
  */
 export const SettingsPreferencesPage: React.FC = () => {
   const { theme, setTheme, themes } = useTheme();
+  const {
+    accessibilityMode,
+    fontSize,
+    reduceMotion,
+    effectiveReduceMotion,
+    highContrast,
+    speakAmounts,
+    setAccessibilityMode,
+    setFontSize,
+    setReduceMotion,
+    setHighContrast,
+    setSpeakAmounts,
+    speakAmount,
+  } = useAccessibility();
   const displaySettings = useMoneyDisplay();
   const [currency, setCurrency] = useState<CurrencyPreference>(
     () => (localStorage.getItem(CURRENCY_STORAGE_KEY) as CurrencyPreference) || 'USD',
@@ -109,6 +131,30 @@ export const SettingsPreferencesPage: React.FC = () => {
       saveBnplStackingThresholdCents(cents);
     }
   }, []);
+
+  const handleAccessibilityModeChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setAccessibilityMode(event.target.checked ? 'simplified' : 'standard');
+    },
+    [setAccessibilityMode],
+  );
+
+  const handleFontSizeSettingChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setFontSize(event.target.value as AccessibilityFontSize);
+    },
+    [setFontSize],
+  );
+
+  const accessibilityPreviewClassName = [
+    'accessibility-preview',
+    accessibilityMode === 'simplified' ? 'accessibility-preview--simplified' : '',
+    highContrast ? 'accessibility-preview--contrast' : '',
+    effectiveReduceMotion ? 'accessibility-preview--reduced-motion' : '',
+    fontSize !== 'normal' ? `accessibility-preview--${fontSize}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <>
@@ -197,6 +243,146 @@ export const SettingsPreferencesPage: React.FC = () => {
               />
             </div>
           </SettingInfoWidget>
+        </div>
+      </section>
+
+      <section aria-label="Accessibility" className="page-section">
+        <div className="settings-group">
+          <h3 className="settings-group__title">Accessibility</h3>
+          <p className="settings-group__description">
+            Simplified mode enlarges text, increases contrast, reduces motion, and keeps only
+            essential navigation visible for elderly users and caregivers.
+          </p>
+
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-accessibility-simplified">
+              Simplified mode
+            </label>
+            <input
+              type="checkbox"
+              id="settings-accessibility-simplified"
+              checked={accessibilityMode === 'simplified'}
+              onChange={handleAccessibilityModeChange}
+              aria-label="Simplified mode"
+              className="settings-item__checkbox"
+            />
+            <p className="settings-item__description">
+              Uses larger text, 56px touch targets, calmer motion, and simplified navigation.
+            </p>
+          </div>
+
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-accessibility-font-size">
+              Font size
+            </label>
+            <div className="settings-item__control">
+              <select
+                id="settings-accessibility-font-size"
+                aria-label="Accessibility font size"
+                className="settings-item__select"
+                value={fontSize}
+                onChange={handleFontSizeSettingChange}
+              >
+                {Object.entries(ACCESSIBILITY_FONT_SIZE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-accessibility-contrast">
+              High contrast
+            </label>
+            <input
+              type="checkbox"
+              id="settings-accessibility-contrast"
+              checked={highContrast}
+              onChange={(event) => setHighContrast(event.target.checked)}
+              aria-label="High contrast"
+              className="settings-item__checkbox"
+            />
+          </div>
+
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-accessibility-motion">
+              Reduce motion
+            </label>
+            <input
+              type="checkbox"
+              id="settings-accessibility-motion"
+              checked={reduceMotion}
+              onChange={(event) => setReduceMotion(event.target.checked)}
+              aria-label="Reduce motion"
+              className="settings-item__checkbox"
+            />
+            <p className="settings-item__description">
+              {effectiveReduceMotion && !reduceMotion
+                ? 'Currently reduced because your device already prefers less motion.'
+                : 'Turns off animations and movement-heavy transitions.'}
+            </p>
+          </div>
+
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-accessibility-speech">
+              Read amounts aloud
+            </label>
+            <input
+              type="checkbox"
+              id="settings-accessibility-speech"
+              checked={speakAmounts}
+              onChange={(event) => setSpeakAmounts(event.target.checked)}
+              aria-label="Read amounts aloud"
+              className="settings-item__checkbox"
+            />
+            <p className="settings-item__description">
+              Adds a read-aloud control for key amounts using the Web Speech API in supported
+              browsers.
+            </p>
+          </div>
+
+          <div className="settings-item settings-item--static accessibility-preview-row">
+            <div
+              className={accessibilityPreviewClassName}
+              role="group"
+              aria-label="Simplified mode preview"
+            >
+              <div className="accessibility-preview__card">
+                <p className="accessibility-preview__eyebrow">Mode preview</p>
+                <p className="accessibility-preview__title">Monthly essentials</p>
+                <div className="accessibility-preview__amount-row">
+                  <CurrencyDisplay
+                    amount={248000}
+                    currency={currency}
+                    colorize
+                    className="accessibility-preview__amount"
+                    context="Available for groceries, medications, and household bills"
+                  />
+                  {speakAmounts ? (
+                    <button
+                      type="button"
+                      className="transaction-item__text-action accessibility-preview__speak-button"
+                      onClick={() =>
+                        speakAmount(
+                          248000,
+                          currency,
+                          'Available for groceries, medications, and household bills',
+                        )
+                      }
+                    >
+                      Read amount aloud
+                    </button>
+                  ) : null}
+                </div>
+                <p className="accessibility-preview__note">
+                  Essential pages stay visible, controls become larger, and buttons use clearer
+                  labels.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

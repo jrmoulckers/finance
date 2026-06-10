@@ -33,6 +33,8 @@ export { useAutoCategory } from './useAutoCategory';
 export type { UseAutoCategoryResult } from './useAutoCategory';
 export { useTheme } from './useTheme';
 export type { ThemeValue, ResolvedTheme, UseThemeResult } from './useTheme';
+export { useAccessibility } from './useAccessibility';
+export type { UseAccessibilityResult } from './useAccessibility';
 export { useWebVitals } from './useWebVitals';
 export type { UseWebVitalsResult } from './useWebVitals';
 export { useQuickEntry } from './useQuickEntry';
