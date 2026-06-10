@@ -35,7 +35,9 @@ const databaseContextValue: DatabaseContextValue = {
 };
 
 function renderWithDatabase(ui: ReactNode) {
-  return render(<DatabaseContext.Provider value={databaseContextValue}>{ui}</DatabaseContext.Provider>);
+  return render(
+    <DatabaseContext.Provider value={databaseContextValue}>{ui}</DatabaseContext.Provider>,
+  );
 }
 
 function mockResult(overrides: Partial<UseDataImportWizardResult> = {}): UseDataImportWizardResult {

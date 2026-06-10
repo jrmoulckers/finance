@@ -20,7 +20,11 @@ function parseDateString(value: string): Date {
   const day = Number(dayText);
   const parsed = new Date(year, monthIndex, day);
 
-  if (parsed.getFullYear() !== year || parsed.getMonth() !== monthIndex || parsed.getDate() !== day) {
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== monthIndex ||
+    parsed.getDate() !== day
+  ) {
     return new Date(Number.NaN);
   }
 
