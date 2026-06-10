@@ -138,7 +138,7 @@ jobs:
         run: |
           # Try to resolve as a git ref (tag, branch, or commit SHA). Peel
           # annotated tags to the commit so deploy jobs always checkout a tree.
-          SHA=$(git rev-parse "$VERSION^{commit}" 2>/dev/null || echo "")
+          SHA=$(git rev-parse --verify --quiet "$VERSION^{commit}" || echo "")
 
           if [ -z "$SHA" ]; then
             echo "::error::Could not resolve '$VERSION' to a commit"
