@@ -317,12 +317,12 @@ CI health is monitored through three complementary mechanisms:
 
 ### Beta uptime checks
 
-The beta uptime monitor lives at `.github/workflows/uptime-check.yml` and runs every 15 minutes (`*/15 * * * *`). It curls the public Caddy health route:
+The beta uptime monitor lives at `.github/workflows/uptime-check.yml` and runs every 15 minutes (`*/15 * * * *`). It curls the public beta web URL with up to 3 attempts (10-second delay between retries):
 
-- Default URL: `https://finance.jrmoulckers.com/health`
-- Override: set repository or environment secret `DEPLOY_HOST` to a host or full URL when beta moves
+- Default URL: `https://finance-staging.vercel.app`
+- Override: set repository variable `BETA_UPTIME_URL` to the full beta URL to monitor (for example a custom domain or a dedicated `/health` endpoint)
 
-On timeout, connection failure, or HTTP 5xx, the workflow opens a GitHub issue labeled `uptime` and `beta`. If an open `uptime` + `beta` issue already exists, the workflow adds a new failure comment instead of creating duplicates.
+On timeout, DNS failure, or any non-2xx/3xx response after the retry budget is exhausted, the workflow opens a GitHub issue labeled `uptime` and `beta`. If an open `uptime` + `beta` issue already exists, the workflow adds a new failure comment instead of creating duplicates.
 
 ### Monitored Workflows
 
