@@ -56,7 +56,7 @@ describe('AccountForm', () => {
     expect(screen.getByLabelText('Account Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Account Type')).toHaveValue('CHECKING');
     expect(screen.getByLabelText('Currency')).toHaveValue('USD');
-    expect(screen.getByLabelText('Initial Balance')).toHaveValue(0);
+    expect(screen.getByLabelText('Initial Balance')).toHaveValue('');
 
     rerender(
       <AccountForm

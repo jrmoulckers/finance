@@ -79,7 +79,7 @@ describe('BudgetForm', () => {
     expect(screen.getByLabelText('Category')).toBeInTheDocument();
     expect(screen.getByLabelText('Amount')).toBeInTheDocument();
     expect(screen.getByLabelText('Period')).toHaveValue('MONTHLY');
-    expect(screen.getByLabelText('Start Date')).toHaveValue('2025-06-01');
+    expect(screen.getByLabelText('Start Date')).toHaveValue('06/01/2025');
     expect(screen.getByRole('button', { name: 'Create Budget' })).toBeInTheDocument();
   });
 

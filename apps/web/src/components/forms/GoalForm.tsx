@@ -189,7 +189,7 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
     setErrors({});
     setSubmitting(false);
     setSubmitError(null);
-  }, [currentAmountInput, initialData, isOpen, targetAmountInput]);
+  }, [currentAmountInput.setCents, initialData, isOpen, targetAmountInput.setCents]);
 
   const handleCancel = useCallback(() => {
     onCancel();
@@ -257,14 +257,14 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
       }
     },
     [
-      currentAmountInput,
+      currentAmountInput.cents,
       db,
       description,
       initialData,
       isEditing,
       name,
       onSubmit,
-      targetAmountInput,
+      targetAmountInput.cents,
       targetDate,
     ],
   );

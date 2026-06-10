@@ -31,9 +31,11 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateAccountInput } from '../../db/repositories/accounts';
+import { useAmountInput } from '../../hooks/useAmountInput';
 import type { Account, AccountType, SyncId } from '../../kmp/bridge';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import { accountSchema } from '../../lib/validation';
+import { AmountInput } from './AmountInput';
 
 import './forms.css';
 
@@ -87,14 +89,8 @@ interface FormErrors {
   balance?: string;
 }
 
-function validate(
-  name: string,
-  balanceStr: string,
-  accountType: AccountType,
-  currencyCode: string,
-): FormErrors {
+function validate(name: string, accountType: AccountType, currencyCode: string): FormErrors {
   const errors: FormErrors = {};
-  const parsedBalance = parseFloat(balanceStr);
   const result = accountSchema.safeParse({
     name: name.trim(),
     type: accountType,
@@ -107,10 +103,6 @@ function validate(
         errors.name = 'Account name is required.';
       }
     }
-  }
-
-  if (balanceStr.trim() !== '' && Number.isNaN(parsedBalance)) {
-    errors.balance = 'Initial balance must be a valid number.';
   }
 
   return errors;
@@ -142,7 +134,7 @@ function getInitialFormValues(initialData?: Account) {
       name: '',
       accountType: 'CHECKING' as AccountType,
       currency: 'USD',
-      balance: '0.00',
+      balanceCents: 0,
     };
   }
 
@@ -150,9 +142,7 @@ function getInitialFormValues(initialData?: Account) {
     name: initialData.name,
     accountType: initialData.type,
     currency: initialData.currency.code,
-    balance: (
-      initialData.currentBalance.amount / Math.pow(10, initialData.currency.decimalPlaces)
-    ).toFixed(initialData.currency.decimalPlaces),
+    balanceCents: initialData.currentBalance.amount,
   };
 }
 
@@ -176,7 +166,12 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   const [name, setName] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('CHECKING');
   const [currency, setCurrency] = useState('USD');
-  const [balance, setBalance] = useState('0.00');
+  const decimalPlaces = currency === 'JPY' ? 0 : 2;
+  const balanceInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces,
+    allowNegative: true,
+  });
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -205,12 +200,12 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
       setName(initialValues.name);
       setAccountType(initialValues.accountType);
       setCurrency(initialValues.currency);
-      setBalance(initialValues.balance);
+      balanceInput.setCents(initialValues.balanceCents);
       setErrors({});
       setSubmitting(false);
       setSubmitError(null);
     }
-  }, [initialData, isOpen]);
+  }, [balanceInput.setCents, initialData, isOpen]);
 
   // -- handlers ------------------------------------------------------------
 
@@ -232,7 +227,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
     async (e: FormEvent) => {
       e.preventDefault();
 
-      const fieldErrors = validate(name, balance, accountType, currency);
+      const fieldErrors = validate(name, accountType, currency);
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
@@ -246,8 +241,6 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
       }
 
       const currencyObj = CURRENCY_OPTIONS.find((c) => c.code === currency);
-      const decimalPlaces = currency === 'JPY' ? 0 : 2;
-      const balanceCents = Math.round(parseFloat(balance || '0') * Math.pow(10, decimalPlaces));
 
       const input: CreateAccountInput = {
         householdId,
@@ -257,7 +250,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
           code: currencyObj?.code ?? currency,
           decimalPlaces,
         },
-        currentBalance: { amount: balanceCents },
+        currentBalance: { amount: balanceInput.cents },
       };
 
       setSubmitting(true);
@@ -269,7 +262,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         setName(initialValues.name);
         setAccountType(initialValues.accountType);
         setCurrency(initialValues.currency);
-        setBalance(initialValues.balance);
+        balanceInput.reset(initialValues.balanceCents);
         setErrors({});
       } catch (err) {
         setSubmitError(
@@ -283,7 +276,16 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         setSubmitting(false);
       }
     },
-    [name, balance, accountType, currency, db, initialData, onSubmit],
+    [
+      name,
+      accountType,
+      balanceInput.cents,
+      balanceInput.reset,
+      currency,
+      db,
+      initialData,
+      onSubmit,
+    ],
   );
 
   // -- render --------------------------------------------------------------
@@ -391,15 +393,11 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
               <label htmlFor="account-balance" className="form-group__label">
                 Initial Balance
               </label>
-              <input
+              <AmountInput
                 id="account-balance"
+                amountInput={balanceInput}
                 className={`form-input${hasBalanceError ? ' form-input--error' : ''}`}
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                value={balance}
-                onChange={(e) => setBalance(e.target.value)}
-                placeholder="0.00"
+                placeholder="$0.00"
                 aria-invalid={hasBalanceError}
                 aria-describedby={hasBalanceError ? 'account-balance-error' : undefined}
                 autoComplete="off"

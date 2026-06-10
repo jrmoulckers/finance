@@ -349,7 +349,7 @@ export function TransactionForm({
     if (transactionType === 'INCOME') {
       amountInput.setSign('positive');
     }
-  }, [amountInput, isOpen, transactionType]);
+  }, [amountInput.setSign, isOpen, transactionType]);
 
   // -- auto-suggest category when description changes ----------------------
   useEffect(() => {

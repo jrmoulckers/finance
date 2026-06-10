@@ -112,7 +112,7 @@ describe('TransactionForm', () => {
     expect(screen.getByText(/The actual merchant or person/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Category')).toBeInTheDocument();
     expect(screen.getByLabelText('Account')).toBeInTheDocument();
-    expect(screen.getByLabelText('Date')).toHaveValue('2025-06-15');
+    expect(screen.getByLabelText('Date')).toHaveValue('06/15/2025');
     expect(screen.getByLabelText('Notes')).toBeInTheDocument();
     expect(screen.getByLabelText('Status')).toBeInTheDocument();
     expect(screen.getByLabelText('Tags')).toBeInTheDocument();

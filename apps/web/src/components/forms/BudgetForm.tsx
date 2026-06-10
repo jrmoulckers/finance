@@ -249,7 +249,16 @@ export function BudgetForm({
         setSubmitting(false);
       }
     },
-    [categoryId, amountInput, period, startDate, categories, isEditMode, onSubmit],
+    [
+      categoryId,
+      amountInput.cents,
+      amountInput.reset,
+      period,
+      startDate,
+      categories,
+      isEditMode,
+      onSubmit,
+    ],
   );
 
   // -- render --------------------------------------------------------------

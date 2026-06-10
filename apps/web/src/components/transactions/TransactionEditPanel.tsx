@@ -14,11 +14,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
-import { AmountDisplay } from '../common/AmountDisplay';
 import { DatePicker } from '../common/DatePicker';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
 import { useAmountInput } from '../../hooks/useAmountInput';
 import type { Account, Category, Transaction } from '../../kmp/bridge';
+import { AmountInput } from '../forms/AmountInput';
 import './transaction-edit-panel.css';
 
 // ---------------------------------------------------------------------------
@@ -36,6 +36,18 @@ export interface TransactionEditPanelProps {
   onSave: (id: string, data: CreateTransactionInput) => Promise<void>;
   /** Callback to close the panel. */
   onClose: () => void;
+}
+
+function normalizeTransactionAmount(amountCents: number, type: 'EXPENSE' | 'INCOME' | 'TRANSFER') {
+  if (type === 'EXPENSE') {
+    return amountCents > 0 ? -amountCents : amountCents;
+  }
+
+  if (type === 'INCOME') {
+    return Math.abs(amountCents);
+  }
+
+  return amountCents;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,14 +68,15 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
 
   // Form state
   const [payee, setPayee] = useState('');
+  const [type, setType] = useState<'EXPENSE' | 'INCOME' | 'TRANSFER'>('EXPENSE');
   const amountInput = useAmountInput({
     currencySymbol: '$',
     decimalPlaces: 2,
     mode: 'incremental',
     maxCents: 99_999_999,
+    allowNegative: type !== 'INCOME',
   });
   const [date, setDate] = useState('');
-  const [type, setType] = useState<'EXPENSE' | 'INCOME' | 'TRANSFER'>('EXPENSE');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [note, setNote] = useState('');
@@ -74,7 +87,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
   useEffect(() => {
     if (transaction) {
       setPayee(transaction.payee ?? '');
-      amountInput.setCents(Math.abs(transaction.amount.amount));
+      amountInput.setCents(transaction.amount.amount);
       setDate(transaction.date);
       setType(transaction.type);
       setCategoryId(transaction.categoryId ?? '');
@@ -83,6 +96,20 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
       setSubmitError(null);
     }
   }, [transaction]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (type === 'EXPENSE') {
+      amountInput.setSign('negative');
+    }
+
+    if (type === 'INCOME') {
+      amountInput.setSign('positive');
+    }
+  }, [amountInput.setSign, isOpen, type]);
 
   // Escape key closes
   useEffect(() => {
@@ -114,7 +141,8 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
       setSubmitError(null);
 
       try {
-        if (amountInput.cents <= 0) {
+        const normalizedAmountCents = normalizeTransactionAmount(amountInput.cents, type);
+        if (normalizedAmountCents === 0) {
           setSubmitError('Amount must be greater than zero.');
           return;
         }
@@ -124,7 +152,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
           accountId,
           categoryId: categoryId || null,
           type,
-          amount: { amount: amountInput.cents },
+          amount: { amount: normalizedAmountCents },
           currency: transaction.currency,
           payee: payee || null,
           note: note || null,
@@ -200,24 +228,15 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
               >
                 Amount
               </label>
-              <AmountDisplay
-                value={amountInput.displayValue}
-                empty={amountInput.isEmpty}
-                placeholder={amountInput.placeholderValue}
-                label="Current amount"
-              />
-              <input
+              <AmountInput
                 id="edit-panel-amount"
-                type="text"
-                inputMode="numeric"
+                amountInput={amountInput}
                 className="form-input"
-                value={amountInput.inputValue}
-                onKeyDown={amountInput.handleKeyDown}
-                onChange={amountInput.handleChange}
-                placeholder={amountInput.placeholderValue}
+                placeholder="$0.00"
                 required
                 aria-required="true"
                 disabled={submitting}
+                toggleLabel="Toggle sign"
               />
             </div>
 

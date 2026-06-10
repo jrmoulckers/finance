@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 import { TransactionEditPanel } from './TransactionEditPanel';
@@ -88,6 +88,12 @@ const mockCategories: Category[] = [
   },
 ] as unknown as Category[];
 
+function enterIncrementalAmount(input: HTMLElement, centsDigits: string) {
+  centsDigits.split('').forEach((digit) => {
+    fireEvent.keyDown(input, { key: digit });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -137,10 +143,10 @@ describe('TransactionEditPanel', () => {
     expect(payeeInput.value).toBe('Grocery Store');
 
     const amountInput = screen.getByLabelText(/amount/i) as HTMLInputElement;
-    expect(amountInput.value).toBe('25.00');
+    expect(amountInput.value).toBe('-$25.00');
 
-    const dateInput = screen.getByLabelText(/date/i) as HTMLInputElement;
-    expect(dateInput.value).toBe('2024-03-15');
+    const dateInput = screen.getByLabelText(/date/i, { selector: 'input' }) as HTMLInputElement;
+    expect(dateInput.value).toBe('03/15/2024');
   });
 
   it('calls onClose when close button is clicked', () => {
@@ -207,6 +213,38 @@ describe('TransactionEditPanel', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('submits updated incremental amount values', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <TransactionEditPanel
+        transaction={mockTransaction}
+        accounts={mockAccounts}
+        categories={mockCategories}
+        onSave={onSave}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const amountInput = screen.getByLabelText(/amount/i);
+    fireEvent.keyDown(amountInput, { key: 'Backspace' });
+    fireEvent.keyDown(amountInput, { key: 'Backspace' });
+    fireEvent.keyDown(amountInput, { key: 'Backspace' });
+    fireEvent.keyDown(amountInput, { key: 'Backspace' });
+    enterIncrementalAmount(amountInput, '1234');
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        'txn-1',
+        expect.objectContaining({
+          amount: { amount: -1234 },
+        }),
+      );
+    });
   });
 
   it('has proper aria attributes for accessibility', () => {

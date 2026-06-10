@@ -76,6 +76,16 @@ function renderQuickEntry(overrides = {}) {
   return { ...render(<QuickEntry {...props} />), props };
 }
 
+function enterIncrementalAmount(centsDigits: string) {
+  const amountInput = screen.getByLabelText('Amount');
+
+  centsDigits.split('').forEach((digit) => {
+    fireEvent.keyDown(amountInput, { key: digit });
+  });
+
+  return amountInput;
+}
+
 describe('QuickEntry', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -163,7 +173,7 @@ describe('QuickEntry', () => {
 
   it('shows error when submitting empty description', () => {
     renderQuickEntry();
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5.00' } });
+    enterIncrementalAmount('500');
     fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a description');
   });
@@ -171,7 +181,7 @@ describe('QuickEntry', () => {
   it('calls onSubmit with correct data on valid submission', () => {
     const { props } = renderQuickEntry();
 
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '12.50' } });
+    enterIncrementalAmount('1250');
     fireEvent.change(screen.getByLabelText('Description'), {
       target: { value: 'Coffee' },
     });
@@ -179,7 +189,7 @@ describe('QuickEntry', () => {
 
     expect(props.onSubmit).toHaveBeenCalledOnce();
     const submitted = props.onSubmit.mock.calls[0][0];
-    expect(submitted.amount.amount).toBe(1250);
+    expect(submitted.amount.amount).toBe(-1250);
     expect(submitted.payee).toBe('Coffee');
     expect(submitted.type).toBe('EXPENSE');
     expect(submitted.accountId).toBe('acc-1');
@@ -188,13 +198,13 @@ describe('QuickEntry', () => {
   it('clears form after successful submission', () => {
     renderQuickEntry();
 
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5.00' } });
+    enterIncrementalAmount('500');
     fireEvent.change(screen.getByLabelText('Description'), {
       target: { value: 'Snack' },
     });
     fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
 
-    expect(screen.getByLabelText('Amount')).toHaveValue(null);
+    expect(screen.getByLabelText('Amount')).toHaveValue('');
     expect(screen.getByLabelText('Description')).toHaveValue('');
   });
 
@@ -202,7 +212,7 @@ describe('QuickEntry', () => {
     renderQuickEntry();
 
     // First submission
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '3.00' } });
+    enterIncrementalAmount('300');
     fireEvent.change(screen.getByLabelText('Description'), {
       target: { value: 'Item 1' },
     });
@@ -211,7 +221,7 @@ describe('QuickEntry', () => {
     expect(screen.getByText('1 added')).toBeInTheDocument();
 
     // Second submission
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '4.00' } });
+    enterIncrementalAmount('400');
     fireEvent.change(screen.getByLabelText('Description'), {
       target: { value: 'Item 2' },
     });
@@ -243,7 +253,7 @@ describe('QuickEntry', () => {
 
     // Switch to second account
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'acc-2' } });
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '1.00' } });
+    enterIncrementalAmount('100');
     fireEvent.change(screen.getByLabelText('Description'), {
       target: { value: 'Test' },
     });
@@ -256,7 +266,7 @@ describe('QuickEntry', () => {
     renderQuickEntry();
 
     fireEvent.click(screen.getByRole('radio', { name: 'Income' }));
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '1.00' } });
+    enterIncrementalAmount('100');
     fireEvent.change(screen.getByLabelText('Description'), {
       target: { value: 'Test' },
     });
@@ -315,6 +325,18 @@ describe('QuickEntry', () => {
   it('amount input has aria-required', () => {
     renderQuickEntry();
     expect(screen.getByLabelText('Amount')).toHaveAttribute('aria-required', 'true');
+    expect(screen.getByLabelText('Amount')).toHaveAttribute('inputmode', 'numeric');
+    expect(screen.getByText('$0.00')).toBeInTheDocument();
+  });
+
+  it('builds and backspaces the amount display incrementally', () => {
+    renderQuickEntry();
+
+    const amountInput = enterIncrementalAmount('1234');
+    expect(screen.getByText('-$12.34')).toBeInTheDocument();
+
+    fireEvent.keyDown(amountInput, { key: 'Backspace' });
+    expect(screen.getByText('-$1.23')).toBeInTheDocument();
   });
 
   it('description input has aria-required', () => {
@@ -324,7 +346,7 @@ describe('QuickEntry', () => {
 
   it('success counter uses aria-live for screen reader updates', () => {
     renderQuickEntry();
-    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '1.00' } });
+    enterIncrementalAmount('100');
     fireEvent.change(screen.getByLabelText('Description'), {
       target: { value: 'Test' },
     });
