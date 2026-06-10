@@ -14,10 +14,10 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { useCategories, useDashboardData, useTransactions } from '../hooks';
+import { useCategories, useCoachAlerts, useDashboardData, useTransactions } from '../hooks';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SpendingBarChart, type SpendingCategory } from '../components/charts/SpendingBarChart';
 import {
@@ -55,6 +55,7 @@ beforeAll(() => {
 vi.mock('../hooks', () => ({
   useDashboardData: vi.fn(),
   useCategories: vi.fn(),
+  useCoachAlerts: vi.fn(),
   useTransactions: vi.fn(),
 }));
 
@@ -90,6 +91,7 @@ vi.mock('recharts', async () => {
 
 const mockedUseDashboardData = vi.mocked(useDashboardData);
 const mockedUseCategories = vi.mocked(useCategories);
+const mockedUseCoachAlerts = vi.mocked(useCoachAlerts);
 const mockedUseTransactions = vi.mocked(useTransactions);
 
 const syncMetadata = {
@@ -184,6 +186,75 @@ function setupDefaultMocks() {
     refresh: vi.fn(),
   });
 
+  mockedUseCoachAlerts.mockReturnValue({
+    analysis: {
+      velocities: [],
+      cashFlow: {
+        currentBalanceCents: 2475000,
+        projectedRecurringIncomeCents: 450000,
+        projectedRecurringExpenseCents: 90000,
+        projectedDiscretionaryExpenseCents: 125000,
+        projectedEndBalanceCents: 2710000,
+        daysRemaining: 10,
+        willOverdraft: false,
+        balanceSnapshots: [],
+        recurringItems: [],
+      },
+      anomalies: [],
+      alerts: [
+        {
+          id: 'alert:budget:food',
+          severity: 'warning',
+          type: 'budget-velocity',
+          title: 'Food is ahead of budget pace',
+          message: 'Food is tracking above the monthly plan.',
+          actionLabel: 'Review budgets',
+          actionRoute: '/budgets',
+          sortValue: 100,
+        },
+      ],
+      suggestions: [
+        {
+          id: 'suggestion:food',
+          severity: 'warning',
+          title: 'Slow Food spending pace',
+          description: 'Trim daily Food spending for the rest of the month.',
+          actionLabel: 'Review budgets',
+          actionRoute: '/budgets',
+        },
+      ],
+    },
+    alerts: [
+      {
+        id: 'alert:budget:food',
+        severity: 'warning',
+        type: 'budget-velocity',
+        title: 'Food is ahead of budget pace',
+        message: 'Food is tracking above the monthly plan.',
+        actionLabel: 'Review budgets',
+        actionRoute: '/budgets',
+        sortValue: 100,
+      },
+    ],
+    topAlerts: [
+      {
+        id: 'alert:budget:food',
+        severity: 'warning',
+        type: 'budget-velocity',
+        title: 'Food is ahead of budget pace',
+        message: 'Food is tracking above the monthly plan.',
+        actionLabel: 'Review budgets',
+        actionRoute: '/budgets',
+        sortValue: 100,
+      },
+    ],
+    loading: false,
+    error: null,
+    dismissAlert: vi.fn(),
+    clearDismissedAlerts: vi.fn(),
+    dismissedAlertIds: new Set(),
+  });
+
   mockedUseCategories.mockReturnValue({
     categories: [
       {
@@ -263,6 +334,7 @@ describe('DashboardPage rendering with data (#1334)', () => {
     expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(screen.getByText('Spent This Month')).toBeInTheDocument();
     expect(screen.getByText('Budget Health')).toBeInTheDocument();
+    expect(screen.getByText('What needs attention now')).toBeInTheDocument();
   });
 
   it('displays budget health percentage', () => {
@@ -309,8 +381,10 @@ describe('DashboardPage rendering with data (#1334)', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('list')).toBeInTheDocument();
-    const items = screen.getAllByRole('listitem');
+    const recentTransactionsSection = screen.getByRole('region', { name: /recent transactions/i });
+    const list = within(recentTransactionsSection).getByRole('list');
+    expect(list).toBeInTheDocument();
+    const items = within(list).getAllByRole('listitem');
     expect(items.length).toBeGreaterThanOrEqual(2);
   });
 });

@@ -176,6 +176,8 @@ export type {
 } from './useHousehold';
 export { useCashFlow } from './useCashFlow';
 export type { UseCashFlowResult } from './useCashFlow';
+export { useCoachAlerts } from './useCoachAlerts';
+export type { UseCoachAlertsResult } from './useCoachAlerts';
 export { useNetWorth } from './useNetWorth';
 export type { UseNetWorthResult } from './useNetWorth';
 export { useSubscriptions } from './useSubscriptions';

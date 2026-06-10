@@ -9,9 +9,10 @@ import {
   type TimePeriod,
   type ViewType,
 } from '../components/charts';
+import { CoachCard, CoachPanel } from '../components/coaching';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { OfflineBanner } from '../components/OfflineBanner';
-import { useCategories, useDashboardData, useTransactions } from '../hooks';
+import { useCategories, useCoachAlerts, useDashboardData, useTransactions } from '../hooks';
 import type { DashboardData } from '../hooks/useDashboardData';
 import type { Transaction } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
@@ -133,6 +134,12 @@ export const DashboardPage: React.FC = () => {
     error: categoriesError,
     refresh: refreshCategories,
   } = useCategories();
+  const {
+    analysis: coachAnalysis,
+    topAlerts,
+    loading: coachLoading,
+    dismissAlert,
+  } = useCoachAlerts();
 
   // Spending trend chart state
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('30d');
@@ -330,6 +337,12 @@ export const DashboardPage: React.FC = () => {
                 </div>
               </article>
             </div>
+          </section>
+          <section className="page-section" aria-label="Financial coach">
+            <CoachCard alerts={topAlerts} loading={coachLoading} onDismiss={dismissAlert} />
+          </section>
+          <section className="page-section" aria-label="Coach insights">
+            <CoachPanel analysis={coachAnalysis} loading={coachLoading} />
           </section>
           {hasChartData ? (
             <section className="page-section dashboard-charts" aria-label="Financial charts">
