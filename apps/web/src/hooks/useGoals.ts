@@ -22,6 +22,7 @@ import {
   createGoal as repoCreateGoal,
   deleteGoal as repoDeleteGoal,
   getAllGoals,
+  reorderGoals as repoReorderGoals,
   updateGoal as repoUpdateGoal,
   type CreateGoalInput,
   type GoalContributionInput,
@@ -66,6 +67,8 @@ export interface UseGoalsResult {
    * @returns `true` if deletion succeeded, `false` otherwise.
    */
   deleteGoal: (goalId: SyncId) => boolean;
+  /** Reorder goals and persist the updated sort order. */
+  reorderGoals: (fromIndex: number, toIndex: number) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,7 +108,10 @@ export function useGoals(): UseGoalsResult {
   const createGoal = useCallback(
     (input: CreateGoalInput): Goal | null => {
       try {
-        const created = repoCreateGoal(db, input);
+        const created = repoCreateGoal(db, {
+          ...input,
+          sortOrder: goals.length,
+        });
         refresh();
         return created;
       } catch (err) {
@@ -114,7 +120,7 @@ export function useGoals(): UseGoalsResult {
         return null;
       }
     },
-    [db, refresh],
+    [db, goals.length, refresh],
   );
 
   const updateGoal = useCallback(
@@ -168,6 +174,39 @@ export function useGoals(): UseGoalsResult {
     [db, refresh],
   );
 
+  const reorderGoals = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (
+        fromIndex === toIndex ||
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= goals.length ||
+        toIndex >= goals.length
+      ) {
+        return;
+      }
+
+      const reorderedGoals = [...goals];
+      const [movedGoal] = reorderedGoals.splice(fromIndex, 1);
+      if (!movedGoal) {
+        return;
+      }
+      reorderedGoals.splice(toIndex, 0, movedGoal);
+
+      try {
+        repoReorderGoals(
+          db,
+          reorderedGoals.map((goal) => goal.id),
+        );
+        refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to reorder goals.');
+        setLoading(false);
+      }
+    },
+    [db, goals, refresh],
+  );
+
   return {
     goals,
     loading,
@@ -177,5 +216,6 @@ export function useGoals(): UseGoalsResult {
     updateGoal,
     contributeToGoal,
     deleteGoal,
+    reorderGoals,
   };
 }

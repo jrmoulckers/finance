@@ -31,6 +31,12 @@ export { SyncStatusPanel } from './SyncStatusPanel';
 export { UpdateBanner } from './UpdateBanner';
 export { SkipLink } from './SkipLink';
 export type { SkipLinkProps } from './SkipLink';
+export { SortableList } from './SortableList';
+export type {
+  SortableListProps,
+  SortableListItemProps,
+  SortableListRenderProps,
+} from './SortableList';
 
 // Skeleton loading
 export { Skeleton, AccountsSkeleton, TransactionsSkeleton, DashboardSkeleton } from './Skeleton';

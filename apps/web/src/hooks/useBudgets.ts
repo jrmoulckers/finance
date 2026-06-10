@@ -22,6 +22,7 @@ import {
   deleteBudget as repoDeleteBudget,
   getAllBudgets,
   getBudgetWithSpending,
+  reorderBudgets as repoReorderBudgets,
   updateBudget as repoUpdateBudget,
   type BudgetWithSpending,
   type CreateBudgetInput,
@@ -61,6 +62,8 @@ export interface UseBudgetsResult {
    * @returns `true` if deletion succeeded, `false` otherwise.
    */
   deleteBudget: (budgetId: SyncId) => boolean;
+  /** Reorder budgets and persist the updated sort order. */
+  reorderBudgets: (fromIndex: number, toIndex: number) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +131,10 @@ export function useBudgets(): UseBudgetsResult {
   const createBudget = useCallback(
     (input: CreateBudgetInput): Budget | null => {
       try {
-        const created = repoCreateBudget(db, input);
+        const created = repoCreateBudget(db, {
+          ...input,
+          sortOrder: budgets.length,
+        });
         refresh();
         return created;
       } catch (err) {
@@ -137,7 +143,7 @@ export function useBudgets(): UseBudgetsResult {
         return null;
       }
     },
-    [db, refresh],
+    [budgets.length, db, refresh],
   );
 
   const updateBudget = useCallback(
@@ -174,6 +180,39 @@ export function useBudgets(): UseBudgetsResult {
     [db, refresh],
   );
 
+  const reorderBudgets = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (
+        fromIndex === toIndex ||
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= budgets.length ||
+        toIndex >= budgets.length
+      ) {
+        return;
+      }
+
+      const reorderedIds = [...budgets];
+      const [movedBudget] = reorderedIds.splice(fromIndex, 1);
+      if (!movedBudget) {
+        return;
+      }
+      reorderedIds.splice(toIndex, 0, movedBudget);
+
+      try {
+        repoReorderBudgets(
+          db,
+          reorderedIds.map((budget) => budget.id),
+        );
+        refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to reorder budgets.');
+        setLoading(false);
+      }
+    },
+    [budgets, db, refresh],
+  );
+
   return {
     budgets,
     loading,
@@ -182,5 +221,6 @@ export function useBudgets(): UseBudgetsResult {
     createBudget,
     updateBudget,
     deleteBudget,
+    reorderBudgets,
   };
 }

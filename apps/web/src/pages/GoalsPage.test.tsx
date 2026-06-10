@@ -97,6 +97,7 @@ describe('GoalsPage', () => {
       updateGoal: vi.fn(),
       contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
+      reorderGoals: vi.fn(),
     });
   });
 

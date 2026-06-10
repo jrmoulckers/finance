@@ -10,6 +10,7 @@ import {
   mapCurrency,
   mapSyncMetadata,
   optionalString,
+  requireNumber,
   requireString,
 } from './helpers';
 
@@ -26,6 +27,7 @@ const GOAL_COLUMNS = [
   'icon',
   'color',
   'account_id',
+  'sort_order',
   'created_at',
   'updated_at',
   'deleted_at',
@@ -48,6 +50,7 @@ export interface CreateGoalInput {
   icon?: string | null;
   color?: string | null;
   accountId?: SyncId | null;
+  sortOrder?: number;
 }
 
 /** Input used when updating an existing goal record. */
@@ -63,6 +66,7 @@ export interface UpdateGoalInput {
   icon?: string | null;
   color?: string | null;
   accountId?: SyncId | null;
+  sortOrder?: number;
 }
 
 /** Input used when adding progress to an existing goal. */
@@ -86,15 +90,16 @@ function mapGoal(row: Row): Goal {
     icon: optionalString(row.icon),
     color: optionalString(row.color),
     accountId: optionalString(row.account_id),
+    sortOrder: row.sort_order == null ? 0 : requireNumber(row.sort_order, 'goal.sort_order'),
     ...mapSyncMetadata(row),
   };
 }
 
-/** Return all non-deleted goals ordered by target date and name. */
+/** Return all non-deleted goals ordered by persisted sort order. */
 export function getAllGoals(db: SqliteDb): Goal[] {
   return query<Row>(
     db,
-    `${GOAL_BASE_QUERY} ORDER BY (target_date IS NULL) ASC, target_date ASC, name ASC`,
+    `${GOAL_BASE_QUERY} ORDER BY sort_order ASC, (target_date IS NULL) ASC, target_date ASC, name ASC`,
   ).rows.map(mapGoal);
 }
 
@@ -108,6 +113,7 @@ export function getGoalById(db: SqliteDb, goalId: SyncId): Goal | null {
 export function createGoal(db: SqliteDb, input: CreateGoalInput): Goal {
   const id = crypto.randomUUID();
   const currency = input.currency ?? Currencies.USD;
+  const sortOrder = input.sortOrder ?? 0;
 
   execute(
     db,
@@ -124,13 +130,14 @@ export function createGoal(db: SqliteDb, input: CreateGoalInput): Goal {
       icon,
       color,
       account_id,
+      sort_order,
       created_at,
       updated_at,
       deleted_at,
       sync_version,
       is_synced
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
       NULL,
@@ -150,6 +157,7 @@ export function createGoal(db: SqliteDb, input: CreateGoalInput): Goal {
       input.icon ?? null,
       input.color ?? null,
       input.accountId ?? null,
+      sortOrder,
     ],
   );
 
@@ -181,6 +189,7 @@ export function updateGoal(db: SqliteDb, goalId: SyncId, updates: UpdateGoalInpu
     icon: updates.icon !== undefined ? updates.icon : existingGoal.icon,
     color: updates.color !== undefined ? updates.color : existingGoal.color,
     accountId: updates.accountId !== undefined ? updates.accountId : existingGoal.accountId,
+    sortOrder: updates.sortOrder ?? existingGoal.sortOrder ?? 0,
   };
 
   execute(
@@ -197,6 +206,7 @@ export function updateGoal(db: SqliteDb, goalId: SyncId, updates: UpdateGoalInpu
             icon = ?,
             color = ?,
             account_id = ?,
+            sort_order = ?,
             updated_at = ${SQLITE_NOW_EXPRESSION},
             sync_version = 1,
             is_synced = 0
@@ -214,6 +224,7 @@ export function updateGoal(db: SqliteDb, goalId: SyncId, updates: UpdateGoalInpu
       mergedGoal.icon,
       mergedGoal.color,
       mergedGoal.accountId,
+      mergedGoal.sortOrder,
       goalId,
     ],
   );
@@ -302,6 +313,22 @@ export function contributeToGoal(
   return updatedGoal;
 }
 
+export function reorderGoals(db: SqliteDb, orderedGoalIds: readonly SyncId[]): void {
+  for (const [sortOrder, goalId] of orderedGoalIds.entries()) {
+    execute(
+      db,
+      `UPDATE goal
+          SET sort_order = ?,
+              updated_at = ${SQLITE_NOW_EXPRESSION},
+              sync_version = 1,
+              is_synced = 0
+        WHERE id = ?
+          AND deleted_at IS NULL`,
+      [sortOrder, goalId],
+    );
+  }
+}
+
 /** Soft-delete a goal row by marking its deleted timestamp. */
 export function deleteGoal(db: SqliteDb, goalId: SyncId): boolean {
   const existingGoal = getGoalById(db, goalId);
@@ -329,14 +356,16 @@ export function deleteGoal(db: SqliteDb, goalId: SyncId): boolean {
 export function getActiveGoals(db: SqliteDb): Goal[] {
   return query<Row>(
     db,
-    `${GOAL_BASE_QUERY} AND status = ? ORDER BY (target_date IS NULL) ASC, target_date ASC, name ASC`,
+    `${GOAL_BASE_QUERY} AND status = ? ORDER BY sort_order ASC, (target_date IS NULL) ASC, target_date ASC, name ASC`,
     ['ACTIVE'],
   ).rows.map(mapGoal);
 }
 
 /** Return goals that have been completed. */
 export function getCompletedGoals(db: SqliteDb): Goal[] {
-  return query<Row>(db, `${GOAL_BASE_QUERY} AND status = ? ORDER BY updated_at DESC, name ASC`, [
-    'COMPLETED',
-  ]).rows.map(mapGoal);
+  return query<Row>(
+    db,
+    `${GOAL_BASE_QUERY} AND status = ? ORDER BY sort_order ASC, updated_at DESC, name ASC`,
+    ['COMPLETED'],
+  ).rows.map(mapGoal);
 }

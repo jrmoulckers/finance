@@ -372,6 +372,7 @@ export const MIGRATIONS: Migration[] = [
         start_date   TEXT    NOT NULL,
         end_date     TEXT,
         is_rollover  INTEGER NOT NULL DEFAULT 0,
+        sort_order   INTEGER NOT NULL DEFAULT 0,
         created_at   TEXT    NOT NULL,
         updated_at   TEXT    NOT NULL,
         deleted_at   TEXT,
@@ -397,6 +398,7 @@ export const MIGRATIONS: Migration[] = [
         icon           TEXT,
         color          TEXT,
         account_id     TEXT,
+        sort_order     INTEGER NOT NULL DEFAULT 0,
         created_at     TEXT    NOT NULL,
         updated_at     TEXT    NOT NULL,
         deleted_at     TEXT,
@@ -551,6 +553,42 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_goal_progress_contribution_goal ON goal_progress_contribution (goal_id);`,
       `CREATE INDEX IF NOT EXISTS idx_goal_progress_contribution_household ON goal_progress_contribution (household_id);`,
       `CREATE INDEX IF NOT EXISTS idx_goal_progress_contribution_sync ON goal_progress_contribution (is_synced);`,
+    ],
+  },
+  {
+    version: 8,
+    label: 'add-sort-order-to-budget-and-goal',
+    up: [
+      `ALTER TABLE budget ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;`,
+      `WITH ordered_budget AS (
+        SELECT id,
+               ROW_NUMBER() OVER (ORDER BY start_date DESC, name ASC, id ASC) - 1 AS sort_order
+          FROM budget
+         WHERE deleted_at IS NULL
+      )
+      UPDATE budget
+         SET sort_order = (
+           SELECT ordered_budget.sort_order
+             FROM ordered_budget
+            WHERE ordered_budget.id = budget.id
+         )
+       WHERE id IN (SELECT id FROM ordered_budget);`,
+      `ALTER TABLE goal ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;`,
+      `WITH ordered_goal AS (
+        SELECT id,
+               ROW_NUMBER() OVER (
+                 ORDER BY (target_date IS NULL) ASC, target_date ASC, name ASC, id ASC
+               ) - 1 AS sort_order
+          FROM goal
+         WHERE deleted_at IS NULL
+      )
+      UPDATE goal
+         SET sort_order = (
+           SELECT ordered_goal.sort_order
+             FROM ordered_goal
+            WHERE ordered_goal.id = goal.id
+         )
+       WHERE id IN (SELECT id FROM ordered_goal);`,
     ],
   },
 ];

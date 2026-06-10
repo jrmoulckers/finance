@@ -8,6 +8,7 @@ import {
   EmptyState,
   ErrorBanner,
   LoadingSpinner,
+  SortableList,
   useToast,
 } from '../components/common';
 import { GoalContributionDialog } from '../components/goals/GoalContributionDialog';
@@ -48,8 +49,17 @@ export const GoalsPage: React.FC = () => {
   const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null);
   const [contributingGoal, setContributingGoal] = useState<Goal | null>(null);
   const [isDeletingGoal, setIsDeletingGoal] = useState(false);
-  const { goals, loading, error, refresh, createGoal, updateGoal, contributeToGoal, deleteGoal } =
-    useGoals();
+  const {
+    goals,
+    loading,
+    error,
+    refresh,
+    createGoal,
+    updateGoal,
+    contributeToGoal,
+    deleteGoal,
+    reorderGoals,
+  } = useGoals();
   const toast = useOptionalToast();
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount.amount, 0);
   const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount.amount, 0);
@@ -205,8 +215,14 @@ export const GoalsPage: React.FC = () => {
             </div>
           </section>
           <section aria-label="Goal list">
-            <div className="card-grid">
-              {goals.map((goal) => {
+            <SortableList
+              items={goals}
+              getItemId={(goal) => goal.id}
+              getItemLabel={(goal) => goal.name}
+              onReorder={reorderGoals}
+              className="card-grid"
+              ariaLabel="Goal list"
+              renderItem={(goal, { itemProps, dragHandleProps }) => {
                 const percentComplete =
                   goal.targetAmount.amount > 0
                     ? Math.round((goal.currentAmount.amount / goal.targetAmount.amount) * 100)
@@ -232,8 +248,10 @@ export const GoalsPage: React.FC = () => {
 
                 return (
                   <article
+                    {...itemProps}
                     key={goal.id}
-                    className="card"
+                    className={`${itemProps.className} card`}
+                    role="listitem"
                     aria-label={`${goal.name}: ${percentComplete}%, ${goalStatus.label}`}
                   >
                     <div
@@ -261,6 +279,14 @@ export const GoalsPage: React.FC = () => {
                           gap: 'var(--spacing-2)',
                         }}
                       >
+                        <button
+                          {...dragHandleProps}
+                          className={`${dragHandleProps.className ?? ''} icon-button`.trim()}
+                          aria-label={`Reorder ${goal.name}`}
+                          title="Reorder goal"
+                        >
+                          <span aria-hidden="true">⋮⋮</span>
+                        </button>
                         <span
                           style={{
                             fontSize: 'var(--type-scale-caption-font-size)',
@@ -384,8 +410,8 @@ export const GoalsPage: React.FC = () => {
                     </div>
                   </article>
                 );
-              })}
-            </div>
+              }}
+            />
           </section>
         </>
       )}

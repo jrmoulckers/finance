@@ -92,6 +92,7 @@ describe('BudgetsPage', () => {
       createBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      reorderBudgets: vi.fn(),
     });
     mockedUseCategories.mockReturnValue({
       categories: [

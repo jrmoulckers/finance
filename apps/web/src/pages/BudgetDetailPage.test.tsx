@@ -68,6 +68,7 @@ describe('BudgetDetailPage', () => {
       createBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      reorderBudgets: vi.fn(),
     });
 
     mockedUseCategories.mockReturnValue({
@@ -107,6 +108,7 @@ describe('BudgetDetailPage', () => {
       createBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      reorderBudgets: vi.fn(),
     });
 
     renderWithRoute();
@@ -143,6 +145,7 @@ describe('BudgetDetailPage', () => {
       createBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      reorderBudgets: vi.fn(),
     });
 
     renderWithRoute();
@@ -160,6 +163,7 @@ describe('BudgetDetailPage', () => {
       createBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      reorderBudgets: vi.fn(),
     });
 
     renderWithRoute();
@@ -270,6 +274,7 @@ describe('BudgetDetailPage', () => {
       createBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      reorderBudgets: vi.fn(),
     });
 
     renderWithRoute();
@@ -303,6 +308,7 @@ describe('BudgetDetailPage', () => {
       createBudget: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      reorderBudgets: vi.fn(),
     });
 
     renderWithRoute();

@@ -9,6 +9,7 @@ import {
   deleteBudget,
   getAllBudgets,
   getBudgetById,
+  reorderBudgets,
   type CreateBudgetInput,
 } from './budgets';
 
@@ -107,14 +108,14 @@ describe('budgets repository', () => {
       );
     });
 
-    it('should order by start_date DESC and name ASC', () => {
+    it('should order by sort_order ASC before fallback fields', () => {
       mockQuery.mockReturnValue({ columns: [], rows: [] });
 
       getAllBudgets(mockDb);
 
       expect(mockQuery).toHaveBeenCalledWith(
         mockDb,
-        expect.stringContaining('ORDER BY start_date DESC, name ASC'),
+        expect.stringContaining('ORDER BY sort_order ASC, start_date DESC, name ASC'),
       );
     });
 
@@ -362,6 +363,26 @@ describe('budgets repository', () => {
         const params = mockExecute.mock.calls[0][2] as unknown[];
         expect(params[6]).toBe(period);
       });
+    });
+  });
+
+  describe('reorderBudgets', () => {
+    it('updates persisted sort order for each budget id', () => {
+      reorderBudgets(mockDb, ['budget-2', 'budget-1']);
+
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+      expect(mockExecute).toHaveBeenNthCalledWith(
+        1,
+        mockDb,
+        expect.stringContaining('SET sort_order = ?'),
+        [0, 'budget-2'],
+      );
+      expect(mockExecute).toHaveBeenNthCalledWith(
+        2,
+        mockDb,
+        expect.stringContaining('SET sort_order = ?'),
+        [1, 'budget-1'],
+      );
     });
   });
 

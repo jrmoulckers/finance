@@ -9,6 +9,7 @@ import {
   EmptyState,
   ErrorBanner,
   LoadingSpinner,
+  SortableList,
 } from '../components/common';
 import { BudgetForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
@@ -36,8 +37,16 @@ function getBudgetIcon(iconName: string | null | undefined): IconName {
 }
 
 export const BudgetsPage: React.FC = () => {
-  const { budgets, loading, error, refresh, createBudget, updateBudget, deleteBudget } =
-    useBudgets();
+  const {
+    budgets,
+    loading,
+    error,
+    refresh,
+    createBudget,
+    updateBudget,
+    deleteBudget,
+    reorderBudgets,
+  } = useBudgets();
   const {
     categories,
     loading: categoriesLoading,
@@ -248,8 +257,14 @@ export const BudgetsPage: React.FC = () => {
             previousCategorySpending={new Map()}
           />
           <section aria-label="Budget categories">
-            <div className="card-grid card-grid--2">
-              {budgets.map((budget) => {
+            <SortableList
+              items={budgets}
+              getItemId={(budget) => budget.id}
+              getItemLabel={(budget) => budget.name}
+              onReorder={reorderBudgets}
+              className="card-grid card-grid--2"
+              ariaLabel="Budget categories"
+              renderItem={(budget, { itemProps, dragHandleProps }) => {
                 const percentUsed =
                   budget.amount.amount > 0
                     ? Math.round((budget.spentAmount.amount / budget.amount.amount) * 100)
@@ -265,8 +280,10 @@ export const BudgetsPage: React.FC = () => {
 
                 return (
                   <article
+                    {...itemProps}
                     key={budget.id}
-                    className="card"
+                    className={`${itemProps.className} card`}
+                    role="listitem"
                     aria-label={`${budget.name}: ${percentUsed}% used, ${budgetStatus.label}`}
                     style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-4)' }}
                   >
@@ -344,6 +361,14 @@ export const BudgetsPage: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
                           <button
+                            {...dragHandleProps}
+                            className={`${dragHandleProps.className ?? ''} icon-button`.trim()}
+                            aria-label={`Reorder ${budget.name}`}
+                            title="Reorder budget"
+                          >
+                            <span aria-hidden="true">⋮⋮</span>
+                          </button>
+                          <button
                             type="button"
                             className="icon-button"
                             onClick={() => handleEditBudget(budget)}
@@ -396,8 +421,8 @@ export const BudgetsPage: React.FC = () => {
                     </div>
                   </article>
                 );
-              })}
-            </div>
+              }}
+            />
           </section>
         </>
       )}
