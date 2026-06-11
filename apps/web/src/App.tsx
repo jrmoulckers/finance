@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { FC } from 'react';
+import { useEffect, useRef, type FC } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MilestoneToast } from './components/celebrations';
-import { AppLayout } from './components/layout';
 import { ConsentDialog } from './components/gdpr';
+import { AppLayout } from './components/layout';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
+import { useBudgets } from './hooks';
+import { useHaptics } from './hooks/useHaptics';
 import { useMilestoneCheck } from './hooks/useMilestoneCheck';
 import { useRouteAnnouncer } from './hooks/useRouteAnnouncer';
+import { useSpendingPace } from './hooks/useSpendingPace';
+import type { HapticEventType } from './lib/haptics/types';
+import type { DetectedMilestone } from './lib/milestones';
 import { AppRoutes } from './routes';
 
 /**
@@ -87,8 +92,133 @@ function derivePageTitle(pathname: string): string {
   return PAGE_TITLES[firstSegment] ?? 'Finance';
 }
 
+function getBudgetThresholdHapticEvent(
+  previousPercent: number,
+  currentPercent: number,
+): HapticEventType | null {
+  if (previousPercent < 100 && currentPercent >= 100) {
+    return 'budget_exceeded';
+  }
+
+  if (previousPercent < 90 && currentPercent >= 90) {
+    return 'budget_critical';
+  }
+
+  if (previousPercent < 75 && currentPercent >= 75) {
+    return 'budget_warning';
+  }
+
+  return null;
+}
+
+function getSpendingAlertHapticEvent(percentUsed: number): HapticEventType {
+  if (percentUsed >= 100) {
+    return 'budget_exceeded';
+  }
+
+  if (percentUsed >= 90) {
+    return 'budget_critical';
+  }
+
+  return 'budget_warning';
+}
+
+function getMilestoneHapticEvent(milestone: DetectedMilestone): HapticEventType {
+  return milestone.category === 'goal-progress' && milestone.badge === '100%'
+    ? 'goal_reached'
+    : 'savings_milestone';
+}
+
+function rankHapticEvent(eventType: HapticEventType): number {
+  switch (eventType) {
+    case 'budget_exceeded':
+      return 3;
+    case 'budget_critical':
+    case 'goal_reached':
+      return 2;
+    case 'budget_warning':
+    case 'savings_milestone':
+      return 1;
+  }
+}
+
+function selectMostUrgentEvent(
+  current: HapticEventType | null,
+  candidate: HapticEventType | null,
+): HapticEventType | null {
+  if (!candidate) {
+    return current;
+  }
+
+  if (!current) {
+    return candidate;
+  }
+
+  return rankHapticEvent(candidate) > rankHapticEvent(current) ? candidate : current;
+}
+
+const BudgetHapticNotifier: FC = () => {
+  const { budgets } = useBudgets();
+  const { paces } = useSpendingPace(budgets);
+  const { trigger } = useHaptics();
+  const budgetPercentsRef = useRef<Map<string, number>>(new Map());
+  const overspendingRef = useRef<Map<string, boolean>>(new Map());
+
+  useEffect(() => {
+    let nextEvent: HapticEventType | null = null;
+    const nextBudgetPercents = new Map<string, number>();
+
+    for (const budget of budgets) {
+      const currentPercent =
+        budget.amount.amount > 0
+          ? Math.round((budget.spentAmount.amount / budget.amount.amount) * 100)
+          : 0;
+      nextBudgetPercents.set(budget.id, currentPercent);
+
+      const previousPercent = budgetPercentsRef.current.get(budget.id);
+      if (previousPercent !== undefined) {
+        nextEvent = selectMostUrgentEvent(
+          nextEvent,
+          getBudgetThresholdHapticEvent(previousPercent, currentPercent),
+        );
+      }
+    }
+
+    budgetPercentsRef.current = nextBudgetPercents;
+
+    const nextOverspending = new Map<string, boolean>();
+    for (const pace of paces) {
+      nextOverspending.set(pace.budgetId, pace.willOverspend);
+
+      const wasOverspending = overspendingRef.current.get(pace.budgetId);
+      if (wasOverspending === false && pace.willOverspend) {
+        nextEvent = selectMostUrgentEvent(nextEvent, getSpendingAlertHapticEvent(pace.percentUsed));
+      }
+    }
+
+    overspendingRef.current = nextOverspending;
+
+    if (nextEvent) {
+      trigger(nextEvent);
+    }
+  }, [budgets, paces, trigger]);
+
+  return null;
+};
+
 const MilestoneNotifier: FC = () => {
   const { activeMilestone, dismissMilestone } = useMilestoneCheck();
+  const { trigger } = useHaptics();
+  const lastMilestoneIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!activeMilestone || lastMilestoneIdRef.current === activeMilestone.id) {
+      return;
+    }
+
+    lastMilestoneIdRef.current = activeMilestone.id;
+    trigger(getMilestoneHapticEvent(activeMilestone));
+  }, [activeMilestone, trigger]);
 
   if (!activeMilestone) {
     return null;
@@ -131,6 +261,7 @@ export const App: FC = () => {
       >
         <AppRoutes />
       </AppLayout>
+      <BudgetHapticNotifier />
       <MilestoneNotifier />
     </PrivacyModeProvider>
   );

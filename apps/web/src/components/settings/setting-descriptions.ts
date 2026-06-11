@@ -37,6 +37,14 @@ export const SETTING_DESCRIPTIONS: Record<string, SettingDescription> = {
       'When enabled, the app may request notification permission from your browser. No data is sent to external servers.',
     recommendation: 'Enable for timely bill reminders and budget warnings.',
   },
+  haptics: {
+    summary:
+      'Controls vibration feedback for budget warnings and milestone celebrations on supported mobile devices.',
+    impact:
+      'Haptic intensity is stored only on this device. No vibration events or preference data are sent to external services.',
+    recommendation:
+      'Use Medium for distinct threshold warnings without making every alert feel urgent.',
+  },
   'bnpl-stacking-threshold': {
     summary: 'Sets the unpaid BNPL installment total that triggers a stacking alert.',
     impact:

@@ -155,6 +155,8 @@ export type { UseAnnouncerResult, UseAnnouncerOptions } from './useAnnouncer';
 export { useRouteAnnouncer } from './useRouteAnnouncer';
 export { useFontScale } from './useFontScale';
 export type { UseFontScaleResult } from './useFontScale';
+export { useHaptics } from './useHaptics';
+export type { UseHapticsResult } from './useHaptics';
 export { useNotifications } from './useNotifications';
 export type { UseNotificationsResult } from './useNotifications';
 export { useNotificationPreferences } from './useNotificationPreferences';

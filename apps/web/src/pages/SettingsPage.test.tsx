@@ -259,6 +259,15 @@ describe('SettingsPage', () => {
       const link = screen.getByRole('link', { name: /^Preferences/i });
       expect(link).toHaveAttribute('aria-current', 'page');
     });
+
+    it('shows local haptic controls on the preferences page', () => {
+      renderSettingsAt('/settings/preferences');
+
+      expect(screen.getByLabelText('Haptic feedback')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /test budget warning haptic/i }),
+      ).toBeInTheDocument();
+    });
   });
 
   describe('Account sub-page', () => {
