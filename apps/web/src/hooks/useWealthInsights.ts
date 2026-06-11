@@ -14,6 +14,7 @@ import {
   type GoalProgressUpdate,
   type WealthDigest,
 } from '../lib/insights';
+import { buildAlignmentSpendingSnapshot } from '../lib/alignment';
 import { toLocalDate } from '../lib/insights/helpers';
 import {
   analyzeMoodSpendingCorrelation,
@@ -172,6 +173,7 @@ function buildDigest(
   savingsRate: WealthDigest['savingsRate'],
   goals: readonly GoalProgressUpdate[],
   healthScore: WealthDigest['healthScore'],
+  alignmentSnapshot: WealthDigest['alignmentSnapshot'],
   generatedAt: string,
 ): WealthDigest {
   const digest: WealthDigest = {
@@ -183,6 +185,7 @@ function buildDigest(
     savingsRate,
     goals,
     healthScore,
+    alignmentSnapshot,
     highlights: [],
   };
 
@@ -339,6 +342,12 @@ export function useWealthInsights(initialPeriod: DigestPeriod = 'weekly'): UseWe
       annualizedIncome,
     });
 
+    const alignmentSnapshot = buildAlignmentSpendingSnapshot(
+      transactionsState.transactions,
+      categoriesState.categories,
+      Math.max(monthlySavingsRate.currentSavings, 0),
+      now,
+    );
     const goalUpdates = buildGoalProgressUpdates(
       goalsState.goals,
       Math.max(monthlySavingsRate.currentSavings, 0),
@@ -355,6 +364,7 @@ export function useWealthInsights(initialPeriod: DigestPeriod = 'weekly'): UseWe
         weeklySavingsRate,
         goalUpdates,
         healthScore,
+        alignmentSnapshot,
         generatedAt,
       ),
       monthly: buildDigest(
@@ -365,6 +375,7 @@ export function useWealthInsights(initialPeriod: DigestPeriod = 'weekly'): UseWe
         monthlySavingsRate,
         goalUpdates,
         healthScore,
+        alignmentSnapshot,
         generatedAt,
       ),
     };

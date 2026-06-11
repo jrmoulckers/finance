@@ -181,7 +181,8 @@
 
 .wealth-digest__totals-grid,
 .wealth-digest__metrics,
-.wealth-digest__insights-grid {
+.wealth-digest__insights-grid,
+.wealth-digest__alignment-grid {
   display: grid;
   gap: var(--spacing-3);
 }
@@ -213,6 +214,15 @@
 
 .wealth-digest__metrics {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wealth-digest__alignment-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.wealth-digest__alignment-grid--secondary {
+  margin-top: var(--spacing-4);
 }
 
 .health-score-badge {
@@ -368,7 +378,8 @@
 
 @media (max-width: 900px) {
   .wealth-digest__hero,
-  .wealth-digest__metrics {
+  .wealth-digest__metrics,
+  .wealth-digest__alignment-grid {
     grid-template-columns: 1fr;
   }
 }

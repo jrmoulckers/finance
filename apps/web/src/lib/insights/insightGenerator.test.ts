@@ -72,6 +72,12 @@ function makeDigest(overrides: Partial<WealthDigest> = {}): WealthDigest {
         debtToIncomeRatio: 18,
       },
     },
+    alignmentSnapshot: {
+      categories: [],
+      totalInputAmount: 0,
+      totalMappedAmount: 0,
+      unmappedAmount: 0,
+    },
     highlights: [],
     ...overrides,
   };
