@@ -134,6 +134,8 @@ export type {
 export { useUndo } from './useUndo';
 export type { UseUndoResult, UseUndoOptions, UndoableAction, UndoExecuteInput } from './useUndo';
 export { useEscapeBack } from './useEscapeBack';
+export { useNavigationGuard } from './useNavigationGuard';
+export type { UseNavigationGuardResult } from './useNavigationGuard';
 export { useScenarioModeler } from './useScenarioModeler';
 export type { UseScenarioModelerResult } from './useScenarioModeler';
 export { useRetirementPlanner } from './useRetirementPlanner';
@@ -192,6 +194,8 @@ export { useNetWorth } from './useNetWorth';
 export type { UseNetWorthResult } from './useNetWorth';
 export { useSubscriptions } from './useSubscriptions';
 export type { UseSubscriptionsResult } from './useSubscriptions';
+export { useRecommendations } from './useRecommendations';
+export type { UseRecommendationsResult } from './useRecommendations';
 export { useBankConnections } from './useBankConnections';
 export type {
   UseBankConnectionsResult,

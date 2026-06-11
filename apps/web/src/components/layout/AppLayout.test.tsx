@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../../accessibility/CognitiveAccessibilityProvider', () => ({
   useCognitiveAccessibility: () => ({
@@ -49,6 +50,23 @@ vi.mock('../common/InstallBanner', () => ({
   InstallBanner: () => <div data-testid="install-banner">Install Banner</div>,
 }));
 
+vi.mock('./Navigation', () => ({
+  SidebarNavigation: () => <nav aria-label="Primary">Sidebar</nav>,
+  BottomNavigation: () => <nav aria-label="Main navigation">Bottom</nav>,
+}));
+
+vi.mock('./navConfig', () => ({
+  getVisibleNavItems: () => [
+    { id: 'dashboard', label: 'Dashboard', href: '/dashboard' },
+    { id: 'accounts', label: 'Accounts', href: '/accounts' },
+  ],
+}));
+
+vi.mock('../navigation', () => ({
+  Breadcrumbs: () => null,
+  NavShortcuts: () => null,
+}));
+
 vi.mock('../../contexts/PrivacyModeContext', () => ({
   usePrivacyMode: () => ({
     isPrivacyMode: false,
@@ -65,6 +83,7 @@ const mockSetShowHelp = vi.fn();
 
 describe('AppLayout', () => {
   beforeEach(() => {
+    sessionStorage.clear();
     vi.mocked(useKeyboardShortcuts).mockReturnValue({
       showHelp: false,
       setShowHelp: mockSetShowHelp,
@@ -80,21 +99,28 @@ describe('AppLayout', () => {
     children: <div>Page content</div>,
   };
 
+  const renderLayout = (props: Partial<typeof defaultProps> = {}) =>
+    render(
+      <MemoryRouter>
+        <AppLayout {...defaultProps} {...props} />
+      </MemoryRouter>,
+    );
+
   it('renders children inside the main content area', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     const main = screen.getByRole('main');
     expect(main).toHaveTextContent('Page content');
   });
 
   it('renders the page title in the header', () => {
-    render(<AppLayout {...defaultProps} pageTitle="Accounts" />);
+    renderLayout({ pageTitle: 'Accounts' });
 
     expect(screen.getByRole('heading', { level: 1, name: 'Accounts' })).toBeInTheDocument();
   });
 
   it('renders a skip-to-content link targeting #main-content', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     const skipLink = screen.getByText('Skip to main content');
     expect(skipLink).toBeInTheDocument();
@@ -102,7 +128,7 @@ describe('AppLayout', () => {
   });
 
   it('renders a main landmark with the page title as aria-label', () => {
-    render(<AppLayout {...defaultProps} pageTitle="Budgets" />);
+    renderLayout({ pageTitle: 'Budgets' });
 
     const main = screen.getByRole('main', { name: 'Budgets' });
     expect(main).toBeInTheDocument();
@@ -110,19 +136,19 @@ describe('AppLayout', () => {
   });
 
   it('renders the sidebar navigation', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     expect(screen.getByRole('navigation', { name: 'Primary' })).toBeInTheDocument();
   });
 
   it('renders the bottom navigation', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
   });
 
   it('renders hosted legal links in the app footer', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     const legalNav = screen.getByRole('navigation', { name: 'Legal links' });
     expect(within(legalNav).getByRole('link', { name: 'Legal' })).toHaveAttribute('href', '/legal');
@@ -141,7 +167,7 @@ describe('AppLayout', () => {
   });
 
   it('renders a Settings button in the header', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     const header = screen.getByRole('banner', { name: 'App header' });
     expect(within(header).getByRole('button', { name: 'Settings' })).toBeInTheDocument();
@@ -149,7 +175,7 @@ describe('AppLayout', () => {
 
   it('navigates to /settings when the header Settings button is clicked', () => {
     const onNavigate = vi.fn();
-    render(<AppLayout {...defaultProps} onNavigate={onNavigate} />);
+    renderLayout({ onNavigate });
 
     const header = screen.getByRole('banner', { name: 'App header' });
     fireEvent.click(within(header).getByRole('button', { name: 'Settings' }));
@@ -158,7 +184,7 @@ describe('AppLayout', () => {
   });
 
   it('renders a Keyboard shortcuts button in the header', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     const shortcutsButton = screen.getByRole('button', { name: 'Keyboard shortcuts' });
     expect(shortcutsButton).toBeInTheDocument();
@@ -166,7 +192,7 @@ describe('AppLayout', () => {
   });
 
   it('opens keyboard shortcuts modal when the header button is clicked', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     fireEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts' }));
 
@@ -174,19 +200,19 @@ describe('AppLayout', () => {
   });
 
   it('renders the header with an accessible label', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     expect(screen.getByRole('banner', { name: 'App header' })).toBeInTheDocument();
   });
 
   it('renders without the removed OfflineBanner (offline state handled by SyncStatusBar)', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     expect(screen.queryByTestId('offline-banner')).not.toBeInTheDocument();
   });
 
   it('renders the InstallBanner', () => {
-    render(<AppLayout {...defaultProps} />);
+    renderLayout();
 
     expect(screen.getByTestId('install-banner')).toBeInTheDocument();
   });

@@ -18,6 +18,7 @@
 
 import type React from 'react';
 
+import { ensureStableNavOrder } from '../../lib/navigation/guardrails';
 import { Icon } from '../common/Icon';
 import { IconToken } from '../../icons/tokens';
 
@@ -33,7 +34,12 @@ export const NAV_GROUP_LABELS: Record<NavGroup, string> = {
 };
 
 /** Sidebar render order for groups. */
-export const NAV_GROUP_ORDER: NavGroup[] = ['money', 'plan', 'insights', 'connect'];
+export const NAV_GROUP_ORDER: readonly NavGroup[] = Object.freeze([
+  'money',
+  'plan',
+  'insights',
+  'connect',
+]);
 
 /** A single destination in the primary navigation. */
 export interface NavConfigItem {
@@ -60,7 +66,7 @@ export interface NavConfigItem {
  * Every destination reachable from the primary navigation.
  * Order within each group controls render order in the sidebar.
  */
-export const NAV_CONFIG: readonly NavConfigItem[] = [
+export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
   // ── pinned (no group) ────────────────────────────────────────────────
   {
     id: 'dashboard',
@@ -147,12 +153,21 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     description: 'Long-range projections and what-ifs.',
   },
   {
+    id: 'learning',
+    label: 'Learning',
+    href: '/learning',
+    icon: <Icon name={IconToken.CATEGORY_EDUCATION} />,
+    group: 'plan',
+    mobilePriority: 15,
+    description: 'Personalized financial literacy modules and quizzes.',
+  },
+  {
     id: 'categories',
     label: 'Categories',
     href: '/categories',
     icon: <Icon name={IconToken.FILTER} />,
     group: 'plan',
-    mobilePriority: 15,
+    mobilePriority: 16,
     description: 'Customise how transactions are classified.',
   },
 
@@ -249,7 +264,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     mobilePriority: 33,
     description: 'Consent, data export and deletion.',
   },
-];
+]);
 
 /** How many priority items show on the mobile bottom-nav (the 5th slot is "More"). */
 export const BOTTOM_NAV_PRIORITY_COUNT = 4;

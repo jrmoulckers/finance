@@ -22,6 +22,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -32,6 +33,7 @@ import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateAccountInput } from '../../db/repositories/accounts';
 import { useAmountInput } from '../../hooks/useAmountInput';
+import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type { Account, AccountType, SyncId } from '../../kmp/bridge';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import { accountSchema } from '../../lib/validation';
@@ -178,6 +180,17 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
 
   // -- database ------------------------------------------------------------
   const db = useDatabase();
+  const initialValues = useMemo(() => getInitialFormValues(initialData), [initialData]);
+  const isDirty =
+    isOpen &&
+    (name !== initialValues.name ||
+      accountType !== initialValues.accountType ||
+      currency !== initialValues.currency ||
+      balanceInput.cents !== initialValues.balanceCents);
+  const { confirmNavigation } = useNavigationGuard({
+    when: isDirty,
+    message: 'Discard the account changes you have not saved yet?',
+  });
 
   // -- focus trap -----------------------------------------------------------
   useFocusTrap(panelRef, { active: isOpen, restoreFocus: true });
@@ -196,7 +209,6 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   // -- reset on open -------------------------------------------------------
   useEffect(() => {
     if (isOpen) {
-      const initialValues = getInitialFormValues(initialData);
       setName(initialValues.name);
       setAccountType(initialValues.accountType);
       setCurrency(initialValues.currency);
@@ -205,13 +217,17 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
       setSubmitting(false);
       setSubmitError(null);
     }
-  }, [balanceInput.setCents, initialData, isOpen]);
+  }, [balanceInput.setCents, initialValues, isOpen]);
 
   // -- handlers ------------------------------------------------------------
 
   const handleCancel = useCallback(() => {
+    if (!confirmNavigation()) {
+      return;
+    }
+
     onCancel();
-  }, [onCancel]);
+  }, [confirmNavigation, onCancel]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

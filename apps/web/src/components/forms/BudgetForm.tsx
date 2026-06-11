@@ -25,6 +25,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -34,6 +35,7 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateBudgetInput } from '../../db/repositories/budgets';
 import { useAmountInput } from '../../hooks/useAmountInput';
+import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type { Budget, BudgetPeriod, Category } from '../../kmp/bridge';
 import { budgetSchema } from '../../lib/validation';
 import { DatePicker } from '../common/DatePicker';
@@ -155,6 +157,25 @@ export function BudgetForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const isEditMode = initialData !== undefined;
+  const initialValues = useMemo(
+    () => ({
+      categoryId: initialData?.categoryId ?? '',
+      amountCents: initialData?.amount.amount ?? 0,
+      period: initialData?.period ?? 'MONTHLY',
+      startDate: initialData?.startDate ?? firstOfCurrentMonthISO(),
+    }),
+    [initialData],
+  );
+  const isDirty =
+    isOpen &&
+    (categoryId !== initialValues.categoryId ||
+      amountInput.cents !== initialValues.amountCents ||
+      period !== initialValues.period ||
+      startDate !== initialValues.startDate);
+  const { confirmNavigation } = useNavigationGuard({
+    when: isDirty,
+    message: 'Discard the budget changes you have not saved yet?',
+  });
 
   // -- focus trap -----------------------------------------------------------
   useFocusTrap(panelRef, { active: isOpen, restoreFocus: true });
@@ -172,21 +193,25 @@ export function BudgetForm({
   // -- reset on open -------------------------------------------------------
   useEffect(() => {
     if (isOpen) {
-      setCategoryId(initialData?.categoryId ?? '');
-      amountInput.setCents(initialData?.amount.amount ?? 0);
-      setPeriod(initialData?.period ?? 'MONTHLY');
-      setStartDate(initialData?.startDate ?? firstOfCurrentMonthISO());
+      setCategoryId(initialValues.categoryId);
+      amountInput.setCents(initialValues.amountCents);
+      setPeriod(initialValues.period);
+      setStartDate(initialValues.startDate);
       setErrors({});
       setSubmitting(false);
       setSubmitError(null);
     }
-  }, [initialData, isOpen]);
+  }, [amountInput.setCents, initialValues, isOpen]);
 
   // -- handlers ------------------------------------------------------------
 
   const handleCancel = useCallback(() => {
+    if (!confirmNavigation()) {
+      return;
+    }
+
     onCancel();
-  }, [onCancel]);
+  }, [confirmNavigation, onCancel]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

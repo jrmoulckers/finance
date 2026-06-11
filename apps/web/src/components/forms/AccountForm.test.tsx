@@ -41,6 +41,7 @@ describe('AccountForm', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('renders when open and is hidden when closed', () => {
@@ -122,5 +123,18 @@ describe('AccountForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('prompts before closing a dirty form', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { onCancel } = renderAccountForm();
+
+    fireEvent.change(screen.getByLabelText('Account Name'), {
+      target: { value: 'Primary Checking' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Discard the account changes you have not saved yet?');
+    expect(onCancel).not.toHaveBeenCalled();
   });
 });

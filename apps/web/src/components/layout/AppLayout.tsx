@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
 import FeedbackDialog from '../FeedbackDialog';
-import { KeyboardShortcutsModal, SyncStatusBar } from '../common';
+import { SyncStatusBar } from '../common';
 import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
 import { useKeyboardShortcuts } from '../../hooks';
 import { useAccessibility } from '../../hooks/useAccessibility';
@@ -12,8 +12,10 @@ import { useEscapeBack } from '../../hooks/useEscapeBack';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
+import { getVisibleNavItems } from './navConfig';
 import { InstallBanner } from '../common/InstallBanner';
 import { LegalLinks } from '../legal/LegalLinks';
+import { Breadcrumbs, NavShortcuts } from '../navigation';
 
 export interface AppLayoutProps {
   activePath: string;
@@ -30,7 +32,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 }) => {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const { isSimplified } = useAccessibility();
+  const shortcutItems = useMemo(() => getVisibleNavItems(isSimplified), [isSimplified]);
   const { showHelp, setShowHelp } = useKeyboardShortcuts({
+    onNavigate,
     onTogglePrivacyMode: togglePrivacyMode,
   });
   const { conflictCount } = useSyncStatus();
@@ -82,7 +86,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       <div className={`app-shell${isSimplified ? ' app-shell--simplified' : ''}`}>
         <SyncStatusBar />
         <header className="app-header" aria-label="App header">
-          <h1 className="app-header__title">{pageTitle}</h1>
+          <div>
+            <h1 className="app-header__title">{pageTitle}</h1>
+            <Breadcrumbs currentPath={activePath} currentTitle={pageTitle} />
+          </div>
           <div className="app-header__actions">
             {conflictCount > 0 && (
               <button
@@ -170,7 +177,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         />
       </div>
       <InstallBanner />
-      <KeyboardShortcutsModal isOpen={showHelp} onClose={closeKeyboardShortcuts} />
+      <NavShortcuts
+        isOpen={showHelp}
+        onClose={closeKeyboardShortcuts}
+        onNavigate={onNavigate}
+        items={shortcutItems}
+      />
       <ConflictResolutionDialog isOpen={showConflicts} onClose={closeConflictDialog} />
       <FeedbackDialog isOpen={showFeedback} onClose={closeFeedbackDialog} />
     </div>

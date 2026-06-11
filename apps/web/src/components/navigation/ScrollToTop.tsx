@@ -12,24 +12,48 @@
  * References: issue #1451
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
+
+import { getScrollPosition, recordScrollPosition } from '../../lib/navigation/history';
 
 /**
  * Scrolls to the top of the page on forward navigation.
- * Does nothing on POP (back/forward) to preserve browser scroll restoration.
+ * Restores the last local scroll position on POP navigation.
  */
 export const ScrollToTop: React.FC = () => {
-  const { pathname } = useLocation();
+  const location = useLocation();
   const navigationType = useNavigationType();
+  const previousKeyRef = useRef(location.key);
 
   useEffect(() => {
-    // Only reset scroll on PUSH or REPLACE navigation (clicking links, programmatic navigation).
-    // On POP (browser back/forward), let the browser handle scroll restoration.
-    if (navigationType !== 'POP') {
+    recordScrollPosition(previousKeyRef.current, window.scrollX, window.scrollY);
+
+    const frame = window.requestAnimationFrame(() => {
+      if (navigationType === 'POP') {
+        const savedPosition = getScrollPosition(location.key);
+        if (savedPosition) {
+          window.scrollTo(savedPosition.x, savedPosition.y);
+          previousKeyRef.current = location.key;
+          return;
+        }
+      }
+
       window.scrollTo(0, 0);
-    }
-  }, [pathname, navigationType]);
+      previousKeyRef.current = location.key;
+    });
+
+    const handleBeforeUnload = () => {
+      recordScrollPosition(location.key, window.scrollX, window.scrollY);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      recordScrollPosition(location.key, window.scrollX, window.scrollY);
+    };
+  }, [location.key, navigationType]);
 
   return null;
 };

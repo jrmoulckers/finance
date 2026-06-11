@@ -8,7 +8,7 @@ import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
 import { ErrorBoundary, ToastProvider, UpdateBanner } from './components/common';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
-import { ScrollToTop } from './components/navigation/ScrollToTop';
+import { NavigationGuard, ScrollToTop } from './components/navigation';
 import { DatabaseProvider } from './db/DatabaseProvider';
 import { MoneyDisplayProvider } from './lib/display-settings';
 import { initMonitoring } from './lib/monitoring';
@@ -171,11 +171,13 @@ createRoot(rootElement).render(
           <MoneyDisplayProvider>
             <AccessibilityProvider>
               <BrowserRouter>
-                <ScrollToTop />
-                <UpdateBanner />
-                <DatabaseGate>
-                  <App />
-                </DatabaseGate>
+                <NavigationGuard>
+                  <ScrollToTop />
+                  <UpdateBanner />
+                  <DatabaseGate>
+                    <App />
+                  </DatabaseGate>
+                </NavigationGuard>
               </BrowserRouter>
             </AccessibilityProvider>
           </MoneyDisplayProvider>

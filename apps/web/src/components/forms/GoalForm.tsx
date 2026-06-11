@@ -22,6 +22,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -33,6 +34,7 @@ import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateGoalInput } from '../../db/repositories/goals';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import { useAmountInput } from '../../hooks/useAmountInput';
+import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type { Goal, GoalStatus, SyncId } from '../../kmp/bridge';
 import { goalSchema } from '../../lib/validation';
 import { DatePicker } from '../common/DatePicker';
@@ -164,6 +166,27 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const db = useDatabase();
+  const initialValues = useMemo(
+    () => ({
+      name: initialData?.name ?? '',
+      targetAmount: initialData?.targetAmount.amount ?? 0,
+      currentAmount: initialData?.currentAmount.amount ?? 0,
+      targetDate: initialData?.targetDate ?? '',
+      description: initialData?.description ?? '',
+    }),
+    [initialData],
+  );
+  const isDirty =
+    isOpen &&
+    (name !== initialValues.name ||
+      targetAmountInput.cents !== initialValues.targetAmount ||
+      currentAmountInput.cents !== initialValues.currentAmount ||
+      targetDate !== initialValues.targetDate ||
+      description !== initialValues.description);
+  const { confirmNavigation } = useNavigationGuard({
+    when: isDirty,
+    message: 'Discard the goal changes you have not saved yet?',
+  });
 
   useFocusTrap(panelRef, { active: isOpen, restoreFocus: true });
 
@@ -181,19 +204,23 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
       return;
     }
 
-    setName(initialData?.name ?? '');
-    targetAmountInput.setCents(initialData?.targetAmount.amount ?? 0);
-    currentAmountInput.setCents(initialData?.currentAmount.amount ?? 0);
-    setTargetDate(initialData?.targetDate ?? '');
-    setDescription(initialData?.description ?? '');
+    setName(initialValues.name);
+    targetAmountInput.setCents(initialValues.targetAmount);
+    currentAmountInput.setCents(initialValues.currentAmount);
+    setTargetDate(initialValues.targetDate);
+    setDescription(initialValues.description);
     setErrors({});
     setSubmitting(false);
     setSubmitError(null);
-  }, [currentAmountInput.setCents, initialData, isOpen, targetAmountInput.setCents]);
+  }, [currentAmountInput.setCents, initialValues, isOpen, targetAmountInput.setCents]);
 
   const handleCancel = useCallback(() => {
+    if (!confirmNavigation()) {
+      return;
+    }
+
     onCancel();
-  }, [onCancel]);
+  }, [confirmNavigation, onCancel]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {

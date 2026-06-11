@@ -24,6 +24,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -35,6 +36,7 @@ import type { CreateTransactionInput } from '../../db/repositories/transactions'
 import { useAutoCategory } from '../../hooks/useAutoCategory';
 import { useAmountInput } from '../../hooks/useAmountInput';
 import { useMerchants } from '../../hooks/useMerchants';
+import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type {
   Account,
   Category,
@@ -131,6 +133,35 @@ function normalizeTransactionAmount(amountCents: number, type: TransactionType):
   }
 
   return amountCents;
+}
+
+function buildTransactionSnapshot(initialData?: Transaction) {
+  return {
+    transactionType: initialData?.type ?? 'EXPENSE',
+    amountCents: initialData?.amount.amount ?? 0,
+    description: initialData?.payee ?? '',
+    status: initialData?.status ?? 'PENDING',
+    categoryId: initialData?.categoryId ?? '',
+    accountId: initialData?.accountId ?? '',
+    date: initialData?.date ?? todayISO(),
+    notes: initialData?.note ?? '',
+    tagsInput: initialData ? tagsToString(initialData.tags) : '',
+    moodTag: normalizeMoodTag(initialData?.moodTag),
+    counterpartyName: initialData?.counterpartyName ?? '',
+    isBnplLiability: initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.liabilityType] === 'BNPL',
+    bnplInstallmentCount:
+      initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.installmentCount] ?? '4',
+    merchantCity: initialData?.merchantCity ?? '',
+    merchantState: initialData?.merchantState ?? '',
+    merchantZip: initialData?.merchantZip ?? '',
+    merchantCountry: initialData?.merchantCountry ?? '',
+    statementDescription: initialData?.statementDescription ?? '',
+    externalReferenceId: initialData?.externalReferenceId ?? '',
+    extraNotes: initialData?.extraNotes ?? '',
+    customFieldEntries: initialData?.customFields
+      ? Object.entries(initialData.customFields).map(([key, value]) => ({ key, value }))
+      : [],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -244,6 +275,60 @@ export function TransactionForm({
     [],
   );
   const [extraNotes, setExtraNotes] = useState('');
+  const initialSnapshot = useMemo(() => buildTransactionSnapshot(initialData), [initialData]);
+  const currentSnapshot = useMemo(
+    () => ({
+      transactionType,
+      amountCents: amountInput.cents,
+      description,
+      status,
+      categoryId,
+      accountId,
+      date,
+      notes,
+      tagsInput,
+      moodTag,
+      counterpartyName,
+      isBnplLiability,
+      bnplInstallmentCount,
+      merchantCity,
+      merchantState,
+      merchantZip,
+      merchantCountry,
+      statementDescription,
+      externalReferenceId,
+      extraNotes,
+      customFieldEntries,
+    }),
+    [
+      accountId,
+      amountInput.cents,
+      bnplInstallmentCount,
+      categoryId,
+      counterpartyName,
+      customFieldEntries,
+      date,
+      description,
+      externalReferenceId,
+      extraNotes,
+      isBnplLiability,
+      merchantCity,
+      merchantCountry,
+      merchantState,
+      merchantZip,
+      moodTag,
+      notes,
+      statementDescription,
+      status,
+      tagsInput,
+      transactionType,
+    ],
+  );
+  const isDirty = isOpen && JSON.stringify(currentSnapshot) !== JSON.stringify(initialSnapshot);
+  const { confirmNavigation } = useNavigationGuard({
+    when: isDirty,
+    message: 'Discard the transaction changes you have not saved yet?',
+  });
 
   // -- auto-categorisation --------------------------------------------------
   const { suggestCategory: autoSuggest, learnCorrection } = useAutoCategory(categories);
@@ -294,47 +379,39 @@ export function TransactionForm({
     }
 
     if (initialData) {
-      amountInput.setCents(initialData.amount.amount);
+      amountInput.setCents(initialSnapshot.amountCents);
     } else {
       amountInput.reset(0);
     }
-    setDescription(initialData?.payee ?? '');
-    setTransactionType(initialData?.type ?? 'EXPENSE');
-    setStatus(initialData?.status ?? 'PENDING');
-    setCategoryId(initialData?.categoryId ?? '');
-    setAccountId(initialData?.accountId ?? '');
-    setDate(initialData?.date ?? todayISO());
-    setNotes(initialData?.note ?? '');
-    setTagsInput(initialData ? tagsToString(initialData.tags) : '');
-    setMoodTag(normalizeMoodTag(initialData?.moodTag));
-    setCounterpartyName(initialData?.counterpartyName ?? '');
+    setDescription(initialSnapshot.description);
+    setTransactionType(initialSnapshot.transactionType);
+    setStatus(initialSnapshot.status);
+    setCategoryId(initialSnapshot.categoryId);
+    setAccountId(initialSnapshot.accountId);
+    setDate(initialSnapshot.date);
+    setNotes(initialSnapshot.notes);
+    setTagsInput(initialSnapshot.tagsInput);
+    setMoodTag(initialSnapshot.moodTag);
+    setCounterpartyName(initialSnapshot.counterpartyName);
     setMerchantMatch(null);
-    setIsBnplLiability(
-      initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.liabilityType] === 'BNPL',
-    );
-    setBnplInstallmentCount(
-      initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.installmentCount] ?? '4',
-    );
+    setIsBnplLiability(initialSnapshot.isBnplLiability);
+    setBnplInstallmentCount(initialSnapshot.bnplInstallmentCount);
     setErrors({});
     setSubmitting(false);
     setSubmitError(null);
     setSuggestion(null);
 
     // Additional details
-    setMerchantCity(initialData?.merchantCity ?? '');
-    setMerchantState(initialData?.merchantState ?? '');
-    setMerchantZip(initialData?.merchantZip ?? '');
-    setMerchantCountry(initialData?.merchantCountry ?? '');
-    setStatementDescription(initialData?.statementDescription ?? '');
-    setExternalReferenceId(initialData?.externalReferenceId ?? '');
-    setExtraNotes(initialData?.extraNotes ?? '');
-    setCustomFieldEntries(
-      initialData?.customFields
-        ? Object.entries(initialData.customFields).map(([key, value]) => ({ key, value }))
-        : [],
-    );
+    setMerchantCity(initialSnapshot.merchantCity);
+    setMerchantState(initialSnapshot.merchantState);
+    setMerchantZip(initialSnapshot.merchantZip);
+    setMerchantCountry(initialSnapshot.merchantCountry);
+    setStatementDescription(initialSnapshot.statementDescription);
+    setExternalReferenceId(initialSnapshot.externalReferenceId);
+    setExtraNotes(initialSnapshot.extraNotes);
+    setCustomFieldEntries(initialSnapshot.customFieldEntries);
     setAdditionalOpen(false);
-  }, [initialData, isOpen]);
+  }, [amountInput.reset, amountInput.setCents, initialData, initialSnapshot, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -381,8 +458,12 @@ export function TransactionForm({
   // -- handlers ------------------------------------------------------------
 
   const handleCancel = useCallback(() => {
+    if (!confirmNavigation()) {
+      return;
+    }
+
     onCancel();
-  }, [onCancel]);
+  }, [confirmNavigation, onCancel]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
