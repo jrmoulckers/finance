@@ -22,7 +22,7 @@ export interface NotifyDataChangeOptions {
 const CHANNEL_NAME = 'finance-live-sync';
 const STORAGE_EVENT_KEY = 'finance-live-sync:event';
 const TABLE_REFERENCE_PATTERN =
-  /\b(?:FROM|JOIN|UPDATE|INTO|DELETE\s+FROM)\s+(["'`\[]?[a-zA-Z_][\w]*["'`\]]?)/gi;
+  /\b(?:FROM|JOIN|UPDATE|INTO|DELETE\s+FROM)\s+(["'`[]?[a-zA-Z_][\w]*["'`\]]?)/gi;
 const MUTATION_SQL_PATTERN = /^\s*(?:INSERT|UPDATE|DELETE|REPLACE)\b/i;
 
 const listeners = new Set<(event: DataChangeEvent) => void>();
@@ -36,7 +36,7 @@ let isInitialized = false;
 
 function normalizeTableName(table: string): string {
   return table
-    .replace(/["'`\[\]]/g, '')
+    .replace(/["'`[\]]/g, '')
     .trim()
     .toLowerCase();
 }
