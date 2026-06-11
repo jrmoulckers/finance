@@ -163,16 +163,16 @@ if (!kotlinChanged) {
 
 // ── Checks ───────────────────────────────────────────────────────────────────
 
-// 1. Prettier format check (mirrors lint-format.yml → "npx prettier --check .")
+// 1. Prettier format check (mirrors ci-lint.yml → "npx prettier --check .")
 step('Prettier format check', 'npx', ['prettier', '--check', '.']);
 
-// 2. ESLint (mirrors lint-format.yml → "npx eslint . --max-warnings 0")
+// 2. ESLint (mirrors ci-lint.yml → "npx eslint . --max-warnings 0")
 step('ESLint', 'npx', ['eslint', '.', '--max-warnings', '0']);
 
 // 3. TypeScript type check (mirrors turbo pipeline)
 step('TypeScript type check', 'npx', ['turbo', 'run', 'type-check']);
 
-// 4. KMP compilation (mirrors ci.yml → shared package build)
+// 4. KMP compilation (mirrors ci-shared.yml → shared package build)
 step(
   'KMP compilation',
   'node',
@@ -180,10 +180,10 @@ step(
   { skip: !kotlinChanged },
 );
 
-// 5. Web tests (mirrors web-ci.yml → "npm test -w apps/web")
+// 5. Web tests (mirrors ci-web.yml → "npm test -w apps/web")
 step('Web tests', 'npm', ['test', '-w', 'apps/web']);
 
-// 6. KMP tests (mirrors ci.yml → JVM tests)
+// 6. KMP tests (mirrors ci-shared.yml → JVM tests)
 step('KMP tests', 'node', ['tools/gradle.js', ':packages:core:jvmTest'], {
   skip: !kotlinChanged,
 });

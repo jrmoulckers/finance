@@ -1,4 +1,10 @@
 # =============================================================================
+# Preview Deployments — per-PR preview environments
+# =============================================================================
+#
+# Builds the web app for pull requests, deploys preview URLs, comments on the PR, and cleans up aliases when the PR closes.
+# =============================================================================
+# =============================================================================
 # Preview Deployments — Per-PR Staging URLs for Web App
 # =============================================================================
 #
@@ -16,7 +22,7 @@
 # Issue: #1018
 # =============================================================================
 
-name: Preview Deploy
+name: Deploy — Preview
 
 on:
   pull_request:
@@ -114,7 +120,7 @@ jobs:
           # check the exit code separately from the URL parse — piping into
           # `tail` previously swallowed Vercel failures silently.
           set -o pipefail
-          DEPLOY_LOG=$(mktemp)
+          DEPLOY_LOG="$RUNNER_TEMP/vercel-preview-${PR_NUM}.log"
           if ! vercel deploy \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID" \

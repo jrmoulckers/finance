@@ -4,12 +4,12 @@
 
 ## Environment overview
 
-| Environment   | Purpose                             | Trigger                                                                                    | Approval                                 | Notes                                                                                         |
-| ------------- | ----------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `development` | Local dev and feature-branch work   | Manual/local only                                                                          | None                                     | No audited workflow currently deploys to the `development` GitHub Environment.                |
-| `preview`     | PR validation for web changes       | `pull_request` on `apps/web/**` or `packages/**`                                           | None                                     | Vercel preview deploys plus Lighthouse/PR feedback.                                           |
-| `staging`     | Pre-production validation on `main` | Auto on push to `main` when `apps/**`, `packages/**`, `services/**`, or `deploy/**` change | None by default                          | Deploys the exact merged SHA after waiting for required CI. Manual reruns exist for recovery. |
-| `production`  | Live release                        | Semver tag push (`v*`) or manual dispatch                                                  | GitHub `production` environment approval | Non-rollback deploys also require CI green and smoke tests on the target SHA.                 |
+| Environment   | Purpose                             | Trigger                                                                                    | Approval                                 | Notes                                                                                                                       |
+| ------------- | ----------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `development` | Local dev and feature-branch work   | Manual/local only                                                                          | None                                     | No audited workflow currently deploys to the `development` GitHub Environment.                                              |
+| `preview`     | PR validation for web changes       | `pull_request` on `apps/web/**` or `packages/**`                                           | None                                     | Vercel preview deploys plus Lighthouse/PR feedback.                                                                         |
+| `staging`     | Pre-production validation on `main` | Auto on push to `main` when `apps/**`, `packages/**`, `services/**`, or `deploy/**` change | None by default                          | Deploys the exact merged SHA after waiting for required CI. Manual reruns exist for recovery.                               |
+| `production`  | Live release                        | Auto promotion from successful staging, semver tag push (`v*`), or manual dispatch         | GitHub `production` environment approval | Non-rollback deploys require CI green, post-deploy smoke tests, and automated promotions can auto-rollback/create releases. |
 
 Deployment flow is:
 
@@ -25,7 +25,7 @@ Workflow: `.github/workflows/deploy-staging.yml` (`Deploy — Staging`)
 - Supports manual `workflow_dispatch` reruns.
 - Manual reruns accept `skip_ci_gate`; this is an emergency-only override for staging recovery when required CI is unavailable.
 - `pre-deploy-checks` detects whether web and/or backend changed so unchanged components are skipped.
-- Normal runs wait for these checks on the exact deploy SHA: `Web CI`, `Android CI`, `iOS CI`, `Windows CI`, `Lint & Format`, `CI — Shared Packages`, and `Security Scanning`.
+- Normal runs wait for these checks on the exact deploy SHA: `CI — Web`, `CI — Android`, `CI — iOS`, `CI — Windows`, `CI — Lint`, `CI — Shared`, `CI — Security`, and `CI — Feature Flags`.
 - Backend staging deploys over SSH to the staging host, runs `git pull origin main`, refreshes Docker Compose services, and restarts Caddy if needed.
 - Web staging deploys over SSH to the same host, hard-resets to `origin/main`, runs `npm ci`, rebuilds `packages/design-tokens` and `apps/web`, and verifies the built env.
 - The web job is serialized after the backend job to avoid `.git` lock races on the shared VM checkout.
@@ -36,6 +36,7 @@ Workflow: `.github/workflows/deploy-production.yml` (`Deploy — Production`)
 
 ### Triggers
 
+- **Automated promotion:** `.github/workflows/deploy-promote-production.yml` listens for a successful `Deploy — Staging` run on `main`, then reuses `deploy-production.yml` to promote the exact staged SHA.
 - **Tag push:** any global semver tag matching `v*` (for example `v1.2.3` or `v1.2.3-rc.1`) triggers an automatic production deploy of **all** components.
 - **Manual dispatch:** operators can provide:
   - `version`: semver tag or commit SHA
@@ -51,7 +52,9 @@ Workflow: `.github/workflows/deploy-production.yml` (`Deploy — Production`)
 4. Protected jobs use the GitHub `production` environment, so release managers must approve before execution continues.
 5. Web deploys build `packages/design-tokens` + `apps/web` and publish the built bundle to Vercel.
 6. Backend deploys SSH to the production host, `git fetch origin`, `git checkout <resolved sha>`, then run `docker compose ... pull` and `up -d --remove-orphans`.
-7. The workflow writes a deployment summary including version, short SHA, components, rollback flag, reason, and actor.
+7. Post-deploy smoke tests verify the production homepage and `/health`; automated promotions roll back to the previous stable tag if those checks fail.
+8. Automated promotions create a GitHub Release and changelog after production smoke tests pass.
+9. The workflow writes a deployment summary including version, short SHA, components, rollback flag, reason, actor, smoke status, rollback status, and release status.
 
 ### Rollback behavior inside the production workflow
 
@@ -70,7 +73,7 @@ Key points:
   - `component`: `web`, `backend`, or `all`
   - `rollback`: `true`
   - `reason`: incident number, impact, and rollback target
-- For **cross-platform or store rollouts**, use `.github/workflows/rollback.yml` for the audited rollback flow and checklist.
+- For **cross-platform or store rollouts**, use `.github/workflows/deploy-rollback.yml` for the audited rollback flow and checklist.
 - After rollback, verify:
   1. the GitHub Actions run completed successfully,
   2. the public web app is serving the expected version,

@@ -243,4 +243,4 @@ The `setup_ci` helper in Fastfile creates a temporary keychain for CI environmen
 - **Match (git-based)** is chosen over manual certificate management for reproducibility and team sharing
 - **App Store Connect API key** is preferred over Apple ID + app-specific password for CI (no 2FA prompts)
 - **`readonly: true` in CI** prevents accidental certificate regeneration — certificates should only be created locally by an authorized team member
-- The existing `release-ios.yml` workflow handles signing via manual keychain setup; after match is configured, consider migrating to match-based signing in CI for consistency
+- The existing `release-platform.yml` workflow handles signing via manual keychain setup; after match is configured, consider migrating to match-based signing in CI for consistency

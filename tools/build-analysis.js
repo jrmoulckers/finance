@@ -209,7 +209,7 @@ function showRecommendations() {
     {
       title: 'Path-filtered CI triggers',
       check: () => {
-        const ciPath = join(ROOT, '.github', 'workflows', 'android-ci.yml');
+        const ciPath = join(ROOT, '.github', 'workflows', 'ci-android.yml');
         if (!existsSync(ciPath)) return false;
         return readFileSync(ciPath, 'utf-8').includes('paths:');
       },
@@ -218,7 +218,7 @@ function showRecommendations() {
     {
       title: 'Concurrency groups with cancel-in-progress',
       check: () => {
-        const ciPath = join(ROOT, '.github', 'workflows', 'ci.yml');
+        const ciPath = join(ROOT, '.github', 'workflows', 'ci-shared.yml');
         if (!existsSync(ciPath)) return false;
         return readFileSync(ciPath, 'utf-8').includes('cancel-in-progress');
       },
@@ -227,7 +227,7 @@ function showRecommendations() {
     {
       title: 'E2E Test Sharding',
       check: () => {
-        const webCi = join(ROOT, '.github', 'workflows', 'web-ci.yml');
+        const webCi = join(ROOT, '.github', 'workflows', 'ci-web.yml');
         if (!existsSync(webCi)) return false;
         return readFileSync(webCi, 'utf-8').includes('shard');
       },

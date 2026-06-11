@@ -47,7 +47,7 @@ export function normaliseDescription(description: string): string {
     .toLowerCase()
     .replace(/&/g, ' and ')
     .replace(/\+/g, ' plus ')
-    .replace(/[\/*#,:;()_.-]+/g, ' ')
+    .replace(/[/*#,:;()_.-]+/g, ' ')
     .replace(/\b\d{3,}\b/g, ' ')
     .replace(MERCHANT_NOISE_WORDS, ' ')
     .replace(/\s+/g, ' ')

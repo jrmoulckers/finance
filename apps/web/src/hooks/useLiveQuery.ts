@@ -29,7 +29,7 @@ function normalizeTables(tables: readonly string[]): string[] {
     new Set(
       tables.map((table) =>
         table
-          .replace(/["'`\[\]]/g, '')
+          .replace(/["'`[\]]/g, '')
           .trim()
           .toLowerCase(),
       ),
@@ -45,7 +45,7 @@ function intersects(watchedTables: ReadonlySet<string>, changedTables: readonly 
   return changedTables.some((table) =>
     watchedTables.has(
       table
-        .replace(/["'`\[\]]/g, '')
+        .replace(/["'`[\]]/g, '')
         .trim()
         .toLowerCase(),
     ),

@@ -480,11 +480,95 @@ jobs:
         run: rm -f ~/.ssh/deploy_key
 
   # ---------------------------------------------------------------------------
+  # Smoke tests: validate staging after deployment
+  # ---------------------------------------------------------------------------
+  smoke-tests:
+    name: Post-deploy Smoke Tests
+    needs: [pre-deploy-checks, deploy-web-vm, deploy-backend]
+    if: |
+      always() &&
+      needs.pre-deploy-checks.result == 'success' &&
+      needs.pre-deploy-checks.outputs.deploy_ready == 'true' &&
+      (needs.deploy-web-vm.result == 'success' || needs.deploy-web-vm.result == 'skipped') &&
+      (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: staging
+    steps:
+      - name: Resolve staging target
+        id: target
+        env:
+          CONFIGURED_URL: ${{ vars.STAGING_URL || secrets.STAGING_URL || 'https://finance-staging.jrmoulckers.com' }}
+        run: |
+          echo "url=${CONFIGURED_URL%/}" >> "$GITHUB_OUTPUT"
+
+      - name: Run staging smoke checks
+        env:
+          BASE_URL: ${{ steps.target.outputs.url }}
+        run: |
+          set -euo pipefail
+
+          HOME_RESPONSE="staging-home.html"
+          HEALTH_RESPONSE="staging-health.json"
+
+          check_homepage() {
+            local attempt http_code
+            for attempt in 1 2 3 4 5; do
+              http_code=$(curl -sSL -o "$HOME_RESPONSE" -w '%{http_code}' "$BASE_URL" || echo "000")
+              if [ "$http_code" = "200" ]; then
+                return 0
+              fi
+              echo "Homepage check attempt ${attempt}/5 returned HTTP ${http_code}; retrying in 10s"
+              sleep 10
+            done
+            return 1
+          }
+
+          check_health() {
+            local attempt http_code
+            for attempt in 1 2 3 4 5; do
+              http_code=$(curl -sSL -o "$HEALTH_RESPONSE" -w '%{http_code}' "$BASE_URL/health" || echo "000")
+              if [ "$http_code" = "200" ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"healthy"|healthy' "$HEALTH_RESPONSE"; then
+                return 0
+              fi
+              echo "Health check attempt ${attempt}/5 returned HTTP ${http_code}; retrying in 10s"
+              sleep 10
+            done
+            return 1
+          }
+
+          check_homepage || {
+            echo "::error::Staging homepage did not return HTTP 200"
+            test -f "$HOME_RESPONSE" && sed -n '1,40p' "$HOME_RESPONSE"
+            exit 1
+          }
+
+          grep -qi '<title>Finance</title>' "$HOME_RESPONSE" || grep -qi 'Finance' "$HOME_RESPONSE" || {
+            echo "::error::Staging homepage did not include the expected Finance marker"
+            sed -n '1,40p' "$HOME_RESPONSE"
+            exit 1
+          }
+
+          check_health || {
+            echo "::error::Staging health endpoint did not report healthy"
+            test -f "$HEALTH_RESPONSE" && cat "$HEALTH_RESPONSE"
+            exit 1
+          }
+
+          echo "### 🧪 Staging Smoke Tests Passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Homepage returned HTTP 200" >> "$GITHUB_STEP_SUMMARY"
+          echo "- /health returned healthy" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Basic page load marker detected" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: $BASE_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
   # Notify: Post deployment summary
   # ---------------------------------------------------------------------------
   notify:
     name: Deployment Summary
-    needs: [pre-deploy-checks, deploy-web-vm, deploy-backend]
+    needs: [pre-deploy-checks, deploy-web-vm, deploy-backend, smoke-tests]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -501,6 +585,7 @@ jobs:
           echo "|-----------|--------|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Web (Azure VM) | ${{ needs.deploy-web-vm.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Backend | ${{ needs.deploy-backend.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Post-deploy smoke tests | ${{ needs.smoke-tests.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Commit:** \`${SHA_SHORT}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "**Trigger:** ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"

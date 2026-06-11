@@ -176,30 +176,31 @@ are derived from the `name:` fields in each workflow YAML file.
 
 | Workflow file     | Workflow name        | Job key              | Job display name (= check name suffix)  | PR trigger                             |
 | ----------------- | -------------------- | -------------------- | --------------------------------------- | -------------------------------------- |
-| `lint-format.yml` | Lint & Format        | `eslint-prettier`    | ESLint & Prettier                       | All PRs to `main`                      |
-| `pr-title.yml`    | PR Title Check       | `check`              | check                                   | All PRs to `main`                      |
-| `ci.yml`          | CI — Shared Packages | `lint-and-test`      | Lint & Test (KMP)                       | `packages/`, `build-logic/`, `gradle/` |
-| `android-ci.yml`  | Android CI           | `build-and-test`     | Build & Test                            | `apps/android/`, `packages/`           |
-| `ios-ci.yml`      | iOS CI               | `build`              | Build & Test                            | `apps/ios/`, `packages/`               |
-| `web-ci.yml`      | Web CI               | `build`              | Build                                   | `apps/web/`, `packages/design-tokens/` |
-| `web-ci.yml`      | Web CI               | `unit-tests`         | Unit Tests                              | `apps/web/`, `packages/design-tokens/` |
-| `web-ci.yml`      | Web CI               | `e2e-tests`          | E2E Tests (shard N)                     | `apps/web/`, `packages/design-tokens/` |
-| `web-ci.yml`      | Web CI               | `lighthouse`         | Lighthouse Audit                        | `apps/web/`, `packages/design-tokens/` |
-| `windows-ci.yml`  | Windows CI           | `build`              | Build & Test                            | `apps/windows/`, `packages/`           |
-| `security.yml`    | Security Scanning    | `codeql-java-kotlin` | CodeQL Analysis (java-kotlin)           | All PRs to `main`                      |
-| `security.yml`    | Security Scanning    | `codeql-javascript`  | CodeQL Analysis (javascript-typescript) | All PRs to `main`                      |
-| `security.yml`    | Security Scanning    | `dependency-review`  | Dependency Review                       | All PRs to `main`                      |
-| `security.yml`    | Security Scanning    | `secret-scanning`    | Secret Detection                        | All PRs to `main`                      |
+| `ci-lint.yml`      | CI — Lint            | `eslint-prettier`    | ESLint & Prettier                       | All PRs to `main`                      |
+| `ci-lint.yml`      | CI — Lint            | `pr-title`           | Semantic PR Title                       | All PRs to `main`                      |
+| `ci-shared.yml`    | CI — Shared          | `lint-and-test`      | Lint & Test (KMP)                       | `packages/`, `build-logic/`, `gradle/` |
+| `ci-android.yml`   | CI — Android         | `build-and-test`     | Build & Test                            | `apps/android/`, `packages/`           |
+| `ci-android.yml`   | CI — Android         | `detekt`             | detekt Analysis                         | Kotlin and Gradle changes              |
+| `ci-ios.yml`       | CI — iOS             | `build`              | Build & Test                            | `apps/ios/`, `packages/`               |
+| `ci-web.yml`       | CI — Web             | `build`              | Build                                   | `apps/web/`, `packages/design-tokens/` |
+| `ci-web.yml`       | CI — Web             | `unit-tests`         | Unit Tests                              | `apps/web/`, `packages/design-tokens/` |
+| `ci-web.yml`       | CI — Web             | `e2e-tests`          | E2E Tests (${{ matrix.browser }})       | `apps/web/`, `packages/design-tokens/` |
+| `ci-web.yml`       | CI — Web             | `lighthouse`         | Lighthouse Audit (Informational)        | `apps/web/`, `packages/design-tokens/` |
+| `ci-windows.yml`   | CI — Windows         | `build`              | Build & Test                            | `apps/windows/`, `packages/`           |
+| `ci-security.yml`  | CI — Security        | `codeql-java-kotlin` | CodeQL Analysis (java-kotlin)           | All PRs to `main`                      |
+| `ci-security.yml`  | CI — Security        | `codeql-javascript`  | CodeQL Analysis (javascript-typescript) | All PRs to `main`                      |
+| `ci-security.yml`  | CI — Security        | `dependency-review`  | Dependency Review                       | All PRs to `main`                      |
+| `ci-security.yml`  | CI — Security        | `secret-scanning`    | Secret Detection                        | All PRs to `main`                      |
 
 ### Checks NOT required (and why)
 
 | Workflow                  | Why not required                                |
 | ------------------------- | ----------------------------------------------- |
 | `changesets.yml`          | Runs on push to `main` only, not on PRs         |
-| `release.yml`             | Triggered by tags, not PRs                      |
-| `pen-test.yml`            | Runs on push to `main` and manual dispatch only |
-| `stale-detection.yml`     | Scheduled job, not PR-related                   |
-| `auto-add-to-project.yml` | Project board automation, not a quality gate    |
+| `release-platform.yml`             | Triggered by tags, not PRs                      |
+| `nightly.yml`            | Runs on push to `main` and manual dispatch only |
+| `housekeeping.yml`     | Scheduled job, not PR-related                   |
+| `housekeeping.yml` | Project board automation, not a quality gate    |
 | `copilot-setup-steps.yml` | Tooling setup, not a quality gate               |
 
 ---

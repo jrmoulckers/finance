@@ -137,7 +137,7 @@ Each platform has a dedicated GitHub Actions workflow triggered by a platform-pr
 ### Android — Fastlane → Google Play Store
 
 **Tag trigger:** `android/v*` (e.g., `android/v1.3.0`)
-**Workflow:** `release-android.yml`
+**Workflow:** `release-platform.yml`
 **Runner:** `ubuntu-latest`
 
 ```
@@ -165,7 +165,7 @@ Manual promotion: internal → beta → production
 ### iOS — Fastlane → TestFlight → App Store
 
 **Tag trigger:** `ios/v*` (e.g., `ios/v1.3.0`)
-**Workflow:** `release-ios.yml`
+**Workflow:** `release-platform.yml`
 **Runner:** `macos-14` (Apple Silicon)
 
 ```
@@ -200,7 +200,7 @@ Manual promotion: TestFlight → App Store (via App Store Connect)
 ### Web — Vercel
 
 **Tag trigger:** `web/v*` (e.g., `web/v2.1.0`)
-**Workflow:** `release-web.yml`
+**Workflow:** `release-platform.yml`
 **Runner:** `ubuntu-latest`
 
 ```
@@ -228,7 +228,7 @@ Manual promotion: staging → production (or auto-deploy if configured)
 ### Windows — MSIX → Microsoft Store
 
 **Tag trigger:** `windows/v*` (e.g., `windows/v1.3.0`)
-**Workflow:** `release-windows.yml`
+**Workflow:** `release-platform.yml`
 **Runner:** `windows-latest`
 
 ```
@@ -355,7 +355,7 @@ Before triggering any platform release, every item below must be verified. A sin
 ### Security
 
 - [ ] Security audit critical items resolved — no FAIL items in the [OWASP MASVS L1 Security Checklist](../audits/security-checklist.md)
-- [ ] CodeQL scan passing — no high or critical findings ([`security.yml`](../../.github/workflows/security.yml))
+- [ ] CodeQL scan passing — no high or critical findings ([`ci-security.yml`](../../.github/workflows/ci-security.yml))
 - [ ] Dependency audit clean — no critical or high CVEs in production dependencies (Dependabot / `dependency-review.yml`)
 - [ ] Secret scanning — no alerts in GitHub Advanced Security push protection
 - [ ] Security checklist reviewed for any auth/data changes
@@ -391,7 +391,7 @@ Before triggering any platform release, every item below must be verified. A sin
 
 - [ ] Performance baselines measured — cold start, scroll FPS, SQLite aggregation, memory usage (see [performance guide](performance.md))
 - [ ] Performance benchmarks show no regressions vs. previous release
-- [ ] Lighthouse CI passing for web releases (see [`web-ci.yml`](../../.github/workflows/web-ci.yml))
+- [ ] Lighthouse CI passing for web releases (see [`ci-web.yml`](../../.github/workflows/ci-web.yml))
 - [ ] Bundle size within budget (no unexpected increases)
 
 ### Testing & Beta

@@ -37,7 +37,7 @@ bundle exec fastlane upload_internal
 ## CI Integration
 
 In CI (GitHub Actions), signing credentials are injected via environment
-variables and GitHub Secrets. The `release-android.yml` workflow handles
+variables and GitHub Secrets. The `release-platform.yml` workflow handles
 keystore decoding and Gradle property injection automatically.
 
 ### Required GitHub Secrets

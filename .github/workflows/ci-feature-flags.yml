@@ -1,4 +1,10 @@
 # =============================================================================
+# Feature Flag CI — validate flag schema, expiry, and usage
+# =============================================================================
+#
+# Checks feature flag configuration quality on pull requests and on a weekly schedule, including orphaned or expired flag reporting.
+# =============================================================================
+# =============================================================================
 # Feature Flag CI Integration — Validate flags on PR, detect orphans, report
 # =============================================================================
 #
@@ -11,7 +17,7 @@
 # Sprint: 11
 # =============================================================================
 
-name: Feature Flags CI
+name: CI — Feature Flags
 
 on:
   pull_request:
@@ -29,7 +35,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: feature-flags-${{ github.ref }}
+  group: ci-feature-flags-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:

@@ -1,4 +1,10 @@
-name: Web CI
+# =============================================================================
+# Web CI — build, test, E2E, and Lighthouse checks
+# =============================================================================
+#
+# Runs the web build/test pipeline for pull requests and main pushes while keeping the full nightly browser matrix in the dedicated nightly workflow.
+# =============================================================================
+name: CI — Web
 
 on:
   push:
@@ -7,8 +13,6 @@ on:
   pull_request:
     branches: [main]
     paths: ['apps/web/**', 'packages/design-tokens/**']
-  schedule:
-    - cron: '0 6 * * *'
 
 concurrency:
   group: web-${{ github.ref }}
@@ -54,6 +58,14 @@ jobs:
 
       - name: Verify web build env
         run: node tools/verify-build-env.mjs apps/web/dist
+
+      - name: Check source map configuration
+        run: |
+          if grep -r 'sourcemap\|sourceMap\|source-map' apps/web/vite.config.* 2>/dev/null | grep -v node_modules > /dev/null; then
+            echo 'Source maps configured in Vite.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '::warning::No source map configuration found in apps/web/vite.config.*'
+          fi
 
       - name: Report bundle size
         run: |
@@ -111,7 +123,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: ${{ fromJSON(github.event_name == 'pull_request' && '["chromium","webkit","firefox","chromium-edge","mobile-chrome"]' || '["chromium","webkit","firefox","chromium-edge","mobile-chrome","mobile-safari"]') }}
+        browser: [chromium, webkit, firefox, chromium-edge, mobile-chrome]
 
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3

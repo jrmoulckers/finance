@@ -74,14 +74,13 @@ function hasGhCli() {
 }
 
 const WORKFLOWS = [
-  { file: 'ci.yml', name: 'Shared Packages' },
-  { file: 'android-ci.yml', name: 'Android CI' },
-  { file: 'ios-ci.yml', name: 'iOS CI' },
-  { file: 'web-ci.yml', name: 'Web CI' },
-  { file: 'windows-ci.yml', name: 'Windows CI' },
-  { file: 'lint-format.yml', name: 'Lint & Format' },
-  { file: 'security.yml', name: 'Security Scan' },
-  { file: 'kotlin-lint.yml', name: 'Kotlin Lint' },
+  { file: 'ci-shared.yml', name: 'Shared Packages' },
+  { file: 'ci-android.yml', name: 'Android CI' },
+  { file: 'ci-ios.yml', name: 'iOS CI' },
+  { file: 'ci-web.yml', name: 'Web CI' },
+  { file: 'ci-windows.yml', name: 'Windows CI' },
+  { file: 'ci-lint.yml', name: 'Lint' },
+  { file: 'ci-security.yml', name: 'Security Scan' },
 ];
 
 function getWorkflowRuns(workflowFile) {

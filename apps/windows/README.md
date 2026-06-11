@@ -6,8 +6,8 @@ jpackage. There are three supported ways to produce an installable binary:
 | Flow                                                     | When to use                                                         | Trigger                                                               |
 | -------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | **Local build script** (`tools/windows/build-local.ps1`) | Day-to-day dev. Iterate on Windows-only bugs without waiting on CI. | `pwsh tools/windows/build-local.ps1 [flags]`                          |
-| **Rolling main build** (`build-windows-main.yml`)        | "I want the latest signed MSI from `main` right now."               | Auto-runs on every push to `main` that touches Windows-relevant code. |
-| **Tagged release** (`release-windows.yml`)               | Cutting a versioned release for testers / stores.                   | `git tag v1.2.3-windows && git push --tags` (or `workflow_dispatch`). |
+| **Rolling main build** (`ci-windows.yml`)        | "I want the latest signed MSI from `main` right now."               | Auto-runs on every push to `main` that touches Windows-relevant code. |
+| **Tagged release** (`release-platform.yml`)               | Cutting a versioned release for testers / stores.                   | `git tag v1.2.3-windows && git push --tags` (or `workflow_dispatch`). |
 
 The two CI flows are intentionally split: the rolling-main build is
 always-on with no approval gate, the tagged release goes through the
@@ -108,9 +108,9 @@ timestamped sibling directory mirroring the on-disk layout) or `-NoBackup`
 
 ---
 
-## 2. Rolling-main CI build — `build-windows-main.yml`
+## 2. Rolling-main CI build — `ci-windows.yml`
 
-[`.github/workflows/build-windows-main.yml`](../../.github/workflows/build-windows-main.yml)
+[`.github/workflows/ci-windows.yml`](../../.github/workflows/ci-windows.yml)
 auto-runs on every push to `main` that touches anything Windows could care
 about (`apps/windows/**`, `packages/**`, `build-logic/**`, `gradle/**`,
 top-level Gradle files, detekt config, or the workflow itself).
@@ -140,9 +140,9 @@ release.
 
 ---
 
-## 3. Tagged release — `release-windows.yml`
+## 3. Tagged release — `release-platform.yml`
 
-[`.github/workflows/release-windows.yml`](../../.github/workflows/release-windows.yml)
+[`.github/workflows/release-platform.yml`](../../.github/workflows/release-platform.yml)
 is reserved for cutting versioned releases. It triggers on `v*-windows` or
 `v*` tag pushes and on manual `workflow_dispatch`. Each tag produces its
 own permanent GitHub Release with auto-generated notes from the git log

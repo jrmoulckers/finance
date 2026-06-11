@@ -1,0 +1,44 @@
+# =============================================================================
+# Production Promotion — promote the last green staging commit to production
+# =============================================================================
+#
+# Reuses deploy-production.yml after a successful staging deployment so the exact staged SHA becomes the production candidate.
+# =============================================================================
+
+name: Deploy — Promote Production
+
+on:
+  workflow_run:
+    workflows: ['Deploy — Staging']
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: promote-production-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  checks: read
+  statuses: read
+  deployments: write
+
+jobs:
+  promote:
+    name: Promote green staging commit
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'workflow_run' &&
+      github.event.workflow_run.head_branch == 'main'
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      version: ${{ github.event.workflow_run.head_sha }}
+      component: all
+      rollback: false
+      reason: >-
+        Automated promotion after successful staging deploy run
+        ${{ github.event.workflow_run.id }} for
+        ${{ github.event.workflow_run.head_sha }}
+      create_release: true
+      auto_rollback: true
+    secrets: inherit

@@ -1,4 +1,10 @@
 # =============================================================================
+# Rollback Deployment — emergency rollback for production channels
+# =============================================================================
+#
+# Provides a production-gated rollback workflow for every platform and creates a tracking issue/checklist for follow-up actions.
+# =============================================================================
+# =============================================================================
 # Rollback — One-click rollback for any platform
 # =============================================================================
 #
@@ -16,7 +22,7 @@
 # Issue: #1147
 # =============================================================================
 
-name: Rollback
+name: Deploy — Rollback
 
 on:
   workflow_dispatch:
