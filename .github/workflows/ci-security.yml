@@ -185,40 +185,66 @@ jobs:
           npm audit --json > npm-audit.json 2>&1
           set -e
 
-          node -e "
-            const fs = require('fs');
-            const audit = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
-            const sarif = {
-              '$schema': 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json',
-              version: '2.1.0',
-              runs: [{ tool: { driver: { name: 'npm-audit', informationUri: 'https://docs.npmjs.com/cli/v10/commands/npm-audit', rules: [] } }, results: [] }]
-            };
-            const vulns = audit.vulnerabilities || {};
-            const ruleIds = new Set();
-            for (const [name, vuln] of Object.entries(vulns)) {
-              const via = Array.isArray(vuln.via) ? vuln.via : [vuln.via];
-              for (const v of via) {
-                if (typeof v !== 'object' || !v.url) continue;
-                const ruleId = v.source ? String(v.source) : name;
-                if (!ruleIds.has(ruleId)) {
-                  ruleIds.add(ruleId);
-                  sarif.runs[0].tool.driver.rules.push({
-                    id: ruleId,
-                    shortDescription: { text: v.title || name },
-                    helpUri: v.url || '',
-                    properties: { severity: v.severity || vuln.severity || 'info' }
-                  });
-                }
-                sarif.runs[0].results.push({
-                  ruleId,
-                  level: v.severity === 'critical' || v.severity === 'high' ? 'error' : v.severity === 'moderate' ? 'warning' : 'note',
-                  message: { text: `${v.title || 'Vulnerability'} in ${name}@${vuln.range || 'unknown'} — ${v.url || 'no advisory'}` },
-                  locations: [{ physicalLocation: { artifactLocation: { uri: 'package-lock.json' }, region: { startLine: 1 } } }]
+          node <<'NODE'
+          const fs = require('fs');
+          const audit = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
+          const sarif = {
+            $schema:
+              'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json',
+            version: '2.1.0',
+            runs: [
+              {
+                tool: {
+                  driver: {
+                    name: 'npm-audit',
+                    informationUri: 'https://docs.npmjs.com/cli/v10/commands/npm-audit',
+                    rules: [],
+                  },
+                },
+                results: [],
+              },
+            ],
+          };
+          const vulns = audit.vulnerabilities || {};
+          const ruleIds = new Set();
+          for (const [name, vuln] of Object.entries(vulns)) {
+            const via = Array.isArray(vuln.via) ? vuln.via : [vuln.via];
+            for (const v of via) {
+              if (typeof v !== 'object' || !v.url) continue;
+              const ruleId = v.source ? String(v.source) : name;
+              if (!ruleIds.has(ruleId)) {
+                ruleIds.add(ruleId);
+                sarif.runs[0].tool.driver.rules.push({
+                  id: ruleId,
+                  shortDescription: { text: v.title || name },
+                  helpUri: v.url || '',
+                  properties: { severity: v.severity || vuln.severity || 'info' },
                 });
               }
+              sarif.runs[0].results.push({
+                ruleId,
+                level:
+                  v.severity === 'critical' || v.severity === 'high'
+                    ? 'error'
+                    : v.severity === 'moderate'
+                      ? 'warning'
+                      : 'note',
+                message: {
+                  text: `${v.title || 'Vulnerability'} in ${name}@${vuln.range || 'unknown'} — ${v.url || 'no advisory'}`,
+                },
+                locations: [
+                  {
+                    physicalLocation: {
+                      artifactLocation: { uri: 'package-lock.json' },
+                      region: { startLine: 1 },
+                    },
+                  },
+                ],
+              });
             }
-            fs.writeFileSync('npm-audit.sarif', JSON.stringify(sarif, null, 2));
-          "
+          }
+          fs.writeFileSync('npm-audit.sarif', JSON.stringify(sarif, null, 2));
+          NODE
 
       - name: Upload npm audit SARIF
         if: always()
@@ -359,7 +385,16 @@ jobs:
 
   summary:
     name: Security Summary
-    needs: [codeql-java-kotlin, codeql-javascript, dependency-review, secret-scanning, npm-audit, gradle-dependency-check, license-check]
+    needs:
+      [
+        codeql-java-kotlin,
+        codeql-javascript,
+        dependency-review,
+        secret-scanning,
+        npm-audit,
+        gradle-dependency-check,
+        license-check,
+      ]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
