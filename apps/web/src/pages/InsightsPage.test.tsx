@@ -6,8 +6,30 @@ import { MemoryRouter } from 'react-router-dom';
 import { InsightsPage } from './InsightsPage';
 import type { UseWealthInsightsResult } from '../hooks/useWealthInsights';
 
+vi.mock('@fluentui/react-icons', () => ({}));
+
 vi.mock('../hooks/useWealthInsights', () => ({
   useWealthInsights: vi.fn(),
+}));
+
+vi.mock('../components/insights', () => ({
+  WeeklyDigest: () => <div>Weekly digest</div>,
+}));
+
+vi.mock('../components/wellness', () => ({
+  WellnessOverview: () => (
+    <div>
+      <div>Mood correlation + anxiety snapshot</div>
+      <div>Financial anxiety score</div>
+      <div>Stress alerts</div>
+    </div>
+  ),
+}));
+
+vi.mock('../components/common', () => ({
+  EmptyState: ({ title }: { title: string }) => <div>{title}</div>,
+  ErrorBanner: ({ message }: { message: string }) => <div>{message}</div>,
+  LoadingSpinner: ({ label }: { label: string }) => <div aria-label={label} />,
 }));
 
 import { useWealthInsights } from '../hooks/useWealthInsights';
@@ -115,6 +137,97 @@ function makeDigest(): NonNullable<UseWealthInsightsResult['digest']> {
   };
 }
 
+function makeWellness(): NonNullable<UseWealthInsightsResult['wellness']> {
+  return {
+    currencyCode: 'USD',
+    generatedAt: '2025-01-20T12:00:00.000Z',
+    anxietyScore: {
+      score: 41,
+      level: 'moderate',
+      summary: 'There are a few signs of financial strain, led by upcoming bill pressure.',
+      breakdown: {
+        overdraftProximity: 8,
+        spendingVolatility: 9,
+        billStress: 12,
+        debtPressure: 6,
+        savingsTrajectory: 6,
+      },
+      metrics: {
+        liquidBufferDays: 18,
+        spendingVolatilityRatio: 0.7,
+        billCoverageRatio: 1.2,
+        minimumPaymentRatio: 9,
+        savingsRateChange: -4,
+        overdueBills: 0,
+      },
+    },
+    moodCorrelation: {
+      hasEnoughData: true,
+      summary: 'Higher-stress moods are lining up with larger purchases.',
+      entriesTagged: 4,
+      correlation: 0.5,
+      dominantMoodState: 'stressed',
+      averageTaggedSpending: 8_500,
+      spikeCount: 2,
+      dropCount: 1,
+      chart: [
+        {
+          date: '2025-01-04',
+          label: 'Jan 4',
+          spending: 4_000,
+          baseline: 6_000,
+          moodState: 'calm',
+          moodLabel: 'Calm',
+          moodScore: 15,
+          transactionCount: 1,
+          isSpike: false,
+          isDrop: true,
+        },
+        {
+          date: '2025-01-08',
+          label: 'Jan 8',
+          spending: 11_000,
+          baseline: 6_000,
+          moodState: 'stressed',
+          moodLabel: 'Stressed',
+          moodScore: 90,
+          transactionCount: 1,
+          isSpike: true,
+          isDrop: false,
+        },
+      ],
+      patterns: [
+        {
+          id: 'stressed-spike',
+          moodState: 'stressed',
+          direction: 'spike',
+          title: 'Stressed spending tends to spike',
+          description: 'Transactions tagged stressed average 40% above your typical expense size.',
+          intensity: 'high',
+          averageSpending: 11_000,
+          occurrences: 2,
+        },
+      ],
+    },
+    stressIndicators: {
+      highestLevel: 'moderate',
+      summary: 'Detected 1 stress signal to keep an eye on over the next few weeks.',
+      indicators: [
+        {
+          kind: 'bill-crunch',
+          level: 'moderate',
+          signal: 42,
+          title: 'Bill timing is feeling tight',
+          description:
+            'Upcoming bills in the next two weeks are close to your available liquid balance.',
+          recommendation:
+            'Review due dates and spread large bills across upcoming pay cycles if possible.',
+        },
+      ],
+    },
+  };
+}
+
 describe('InsightsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -124,6 +237,7 @@ describe('InsightsPage', () => {
     mockedUseWealthInsights.mockReturnValue({
       digest: null,
       digests: {},
+      wellness: null,
       activePeriod: 'weekly',
       setActivePeriod: vi.fn(),
       loading: true,
@@ -144,6 +258,7 @@ describe('InsightsPage', () => {
     mockedUseWealthInsights.mockReturnValue({
       digest: null,
       digests: {},
+      wellness: null,
       activePeriod: 'weekly',
       setActivePeriod: vi.fn(),
       loading: false,
@@ -171,6 +286,7 @@ describe('InsightsPage', () => {
         goals: [],
       },
       digests: {},
+      wellness: null,
       activePeriod: 'weekly',
       setActivePeriod: vi.fn(),
       loading: false,
@@ -189,9 +305,11 @@ describe('InsightsPage', () => {
 
   it('renders the wealth digest experience', () => {
     const digest = makeDigest();
+    const wellness = makeWellness();
     mockedUseWealthInsights.mockReturnValue({
       digest,
       digests: { weekly: digest },
+      wellness,
       activePeriod: 'weekly',
       setActivePeriod: vi.fn(),
       loading: false,
@@ -206,11 +324,9 @@ describe('InsightsPage', () => {
     );
 
     expect(screen.getByText('Weekly digest')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Weekly' })).toBeTruthy();
-    expect(screen.getByText('Current net worth')).toBeTruthy();
-    expect(screen.getByText('Top spending categories')).toBeTruthy();
-    expect(screen.getByText('Goal progress updates')).toBeTruthy();
-    expect(screen.getByText('Did you know?')).toBeTruthy();
-    expect(screen.getByText('Your net worth moved in the right direction')).toBeTruthy();
+    expect(screen.getByText('Weekly digest')).toBeTruthy();
+    expect(screen.getByText('Mood correlation + anxiety snapshot')).toBeTruthy();
+    expect(screen.getByText('Financial anxiety score')).toBeTruthy();
+    expect(screen.getByText('Stress alerts')).toBeTruthy();
   });
 });

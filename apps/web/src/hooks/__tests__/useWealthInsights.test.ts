@@ -3,7 +3,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BudgetWithSpending } from '../../db/repositories/budgets';
-import type { Account, Category, Goal, Transaction } from '../../kmp/bridge';
+import type { Account, Bill, Category, Goal, Transaction } from '../../kmp/bridge';
 import { useWealthInsights } from '../useWealthInsights';
 
 const syncMetadata = {
@@ -16,12 +16,14 @@ const syncMetadata = {
 
 const mockUseAccounts = vi.fn();
 const mockUseTransactions = vi.fn();
+const mockUseBills = vi.fn();
 const mockUseBudgets = vi.fn();
 const mockUseGoals = vi.fn();
 const mockUseCategories = vi.fn();
 
 vi.mock('../useAccounts', () => ({ useAccounts: () => mockUseAccounts() }));
 vi.mock('../useTransactions', () => ({ useTransactions: () => mockUseTransactions() }));
+vi.mock('../useBills', () => ({ useBills: () => mockUseBills() }));
 vi.mock('../useBudgets', () => ({ useBudgets: () => mockUseBudgets() }));
 vi.mock('../useGoals', () => ({ useGoals: () => mockUseGoals() }));
 vi.mock('../useCategories', () => ({ useCategories: () => mockUseCategories() }));
@@ -73,6 +75,28 @@ function makeTransaction(overrides: Partial<Transaction> = {}): Transaction {
     extraNotes: null,
     counterpartyName: null,
     counterpartyAccountId: null,
+    ...syncMetadata,
+    ...overrides,
+  };
+}
+
+function makeBill(overrides: Partial<Bill> = {}): Bill {
+  return {
+    id: 'bill-1',
+    householdId: 'household-1',
+    name: 'Rent',
+    payee: 'Landlord',
+    amount: { amount: 45_000 },
+    currency: { code: 'USD', decimalPlaces: 2 },
+    dueDate: '2025-01-24',
+    frequency: 'MONTHLY',
+    status: 'UPCOMING',
+    categoryId: null,
+    accountId: null,
+    note: null,
+    isAutoPay: false,
+    reminderDaysBefore: 3,
+    lastPaidDate: null,
     ...syncMetadata,
     ...overrides,
   };
@@ -150,7 +174,12 @@ describe('useWealthInsights', () => {
     });
     mockUseTransactions.mockReturnValue({
       transactions: [
-        makeTransaction({ id: 'expense-current', amount: { amount: -10_000 }, date: '2025-01-10' }),
+        makeTransaction({
+          id: 'expense-current',
+          amount: { amount: -10_000 },
+          date: '2025-01-10',
+          moodTag: '😡',
+        }),
         makeTransaction({
           id: 'income-current',
           type: 'INCOME',
@@ -170,6 +199,19 @@ describe('useWealthInsights', () => {
       loading: false,
       error: null,
       refresh: vi.fn(),
+    });
+    mockUseBills.mockReturnValue({
+      bills: [makeBill()],
+      summary: { upcomingCount: 1, overdueCount: 0, totalUpcoming: 45_000, totalOverdue: 0 },
+      loading: false,
+      error: null,
+      notificationPermission: 'unsupported',
+      refresh: vi.fn(),
+      createBill: vi.fn(),
+      updateBill: vi.fn(),
+      deleteBill: vi.fn(),
+      markPaid: vi.fn(),
+      requestNotificationPermission: vi.fn(),
     });
     mockUseBudgets.mockReturnValue({
       budgets: [makeBudget()],
@@ -204,6 +246,8 @@ describe('useWealthInsights', () => {
     expect(result.current.digest?.currencyCode).toBe('USD');
     expect(result.current.digest?.spending.topCategories[0]?.categoryName).toBe('Food');
     expect(result.current.digest?.healthScore.score).toBeGreaterThan(0);
+    expect(result.current.wellness?.anxietyScore.score).toBeGreaterThanOrEqual(0);
+    expect(result.current.wellness?.moodCorrelation.entriesTagged).toBe(1);
     expect(result.current.digests.monthly?.period).toBe('monthly');
   });
 

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { WeeklyDigest } from '../components/insights';
+import { WellnessOverview } from '../components/wellness';
 import { EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useWealthInsights } from '../hooks/useWealthInsights';
 import './InsightsPage.css';
@@ -15,8 +16,18 @@ function isDigestEmpty(
   return netWorth === 0 && spending === 0 && income === 0 && goalCount === 0;
 }
 
+function isWellnessEmpty(wellness: ReturnType<typeof useWealthInsights>['wellness']): boolean {
+  return (
+    !wellness ||
+    (wellness.anxietyScore.score === 0 &&
+      wellness.moodCorrelation.entriesTagged === 0 &&
+      wellness.stressIndicators.indicators.length === 0)
+  );
+}
+
 export const InsightsPage: React.FC = () => {
-  const { digest, activePeriod, setActivePeriod, loading, error, refresh } = useWealthInsights();
+  const { digest, wellness, activePeriod, setActivePeriod, loading, error, refresh } =
+    useWealthInsights();
 
   if (loading) {
     return (
@@ -32,12 +43,13 @@ export const InsightsPage: React.FC = () => {
 
   if (
     !digest ||
-    isDigestEmpty(
+    (isDigestEmpty(
       digest.netWorth.current,
       digest.spending.totalCurrentSpending,
       digest.savingsRate.currentIncome,
       digest.goals.length,
-    )
+    ) &&
+      isWellnessEmpty(wellness))
   ) {
     return (
       <EmptyState
@@ -50,6 +62,7 @@ export const InsightsPage: React.FC = () => {
   return (
     <div className="wealth-insights-page">
       <WeeklyDigest digest={digest} activePeriod={activePeriod} onPeriodChange={setActivePeriod} />
+      {wellness ? <WellnessOverview overview={wellness} /> : null}
     </div>
   );
 };

@@ -41,6 +41,18 @@ export type {
   ChallengeProgress,
   LeaderboardEntry,
   PrivacySafeExport,
+  MoodState,
+  StressLevel,
+  AnxietyScoreBreakdown,
+  AnxietyScoreMetrics,
+  AnxietyScoreResult,
+  MoodSpendingPoint,
+  EmotionalSpendingPattern,
+  MoodCorrelationSummary,
+  StressIndicatorKind,
+  StressIndicator,
+  StressIndicatorSummary,
+  FinancialWellnessSnapshot,
 } from './types';
 
 // Scholarship tracker (#1765)
@@ -90,6 +102,11 @@ export {
   monthPeriod,
   weekPeriod,
 } from './mood-journal';
+
+// Financial wellness insights (#1656)
+export { calculateAnxietyScore, type AnxietyScoreInput } from './anxietyScore';
+export { analyzeMoodSpendingCorrelation, type MoodCorrelationInput } from './moodCorrelation';
+export { identifyStressIndicators, type StressIndicatorsInput } from './stressIndicators';
 
 // Estate inventory (#1774)
 export {

@@ -15,7 +15,14 @@ import {
   type WealthDigest,
 } from '../lib/insights';
 import { toLocalDate } from '../lib/insights/helpers';
+import {
+  analyzeMoodSpendingCorrelation,
+  calculateAnxietyScore,
+  identifyStressIndicators,
+  type FinancialWellnessSnapshot,
+} from '../lib/wellness';
 import { useAccounts } from './useAccounts';
+import { useBills } from './useBills';
 import { useBudgets } from './useBudgets';
 import { useCategories } from './useCategories';
 import { useGoals } from './useGoals';
@@ -24,6 +31,7 @@ import { useTransactions } from './useTransactions';
 export interface UseWealthInsightsResult {
   digest: WealthDigest | null;
   digests: Partial<Record<DigestPeriod, WealthDigest>>;
+  wellness: FinancialWellnessSnapshot | null;
   activePeriod: DigestPeriod;
   setActivePeriod: (period: DigestPeriod) => void;
   loading: boolean;
@@ -189,6 +197,7 @@ export function useWealthInsights(initialPeriod: DigestPeriod = 'weekly'): UseWe
 
   const accountsState = useAccounts();
   const transactionsState = useTransactions();
+  const billsState = useBills();
   const budgetsState = useBudgets();
   const goalsState = useGoals();
   const categoriesState = useCategories();
@@ -196,12 +205,14 @@ export function useWealthInsights(initialPeriod: DigestPeriod = 'weekly'): UseWe
   const loading =
     accountsState.loading ||
     transactionsState.loading ||
+    billsState.loading ||
     budgetsState.loading ||
     goalsState.loading ||
     categoriesState.loading;
   const error =
     accountsState.error ||
     transactionsState.error ||
+    billsState.error ||
     budgetsState.error ||
     goalsState.error ||
     categoriesState.error;
@@ -209,10 +220,55 @@ export function useWealthInsights(initialPeriod: DigestPeriod = 'weekly'): UseWe
   const refresh = useCallback(() => {
     accountsState.refresh();
     transactionsState.refresh();
+    billsState.refresh();
     budgetsState.refresh();
     goalsState.refresh();
     categoriesState.refresh();
-  }, [accountsState, budgetsState, categoriesState, goalsState, transactionsState]);
+  }, [accountsState, billsState, budgetsState, categoriesState, goalsState, transactionsState]);
+
+  const wellness = useMemo<FinancialWellnessSnapshot | null>(() => {
+    if (loading || error) {
+      return null;
+    }
+
+    if (
+      accountsState.accounts.length === 0 &&
+      transactionsState.transactions.length === 0 &&
+      billsState.bills.length === 0
+    ) {
+      return null;
+    }
+
+    const now = new Date();
+    const currencyCode = getCurrencyCode(accountsState.accounts, goalsState.goals);
+
+    return {
+      currencyCode,
+      generatedAt: now.toISOString(),
+      anxietyScore: calculateAnxietyScore({
+        accounts: accountsState.accounts,
+        transactions: transactionsState.transactions,
+        bills: billsState.bills,
+        now,
+      }),
+      moodCorrelation: analyzeMoodSpendingCorrelation({
+        transactions: transactionsState.transactions,
+      }),
+      stressIndicators: identifyStressIndicators({
+        accounts: accountsState.accounts,
+        transactions: transactionsState.transactions,
+        bills: billsState.bills,
+        now,
+      }),
+    };
+  }, [
+    accountsState.accounts,
+    billsState.bills,
+    error,
+    goalsState.goals,
+    loading,
+    transactionsState.transactions,
+  ]);
 
   const digests = useMemo<Partial<Record<DigestPeriod, WealthDigest>>>(() => {
     if (loading || error) {
@@ -314,6 +370,7 @@ export function useWealthInsights(initialPeriod: DigestPeriod = 'weekly'): UseWe
     };
   }, [
     accountsState.accounts,
+    billsState.bills,
     budgetsState.budgets,
     categoriesState.categories,
     error,
@@ -325,6 +382,7 @@ export function useWealthInsights(initialPeriod: DigestPeriod = 'weekly'): UseWe
   return {
     digest: digests[activePeriod] ?? null,
     digests,
+    wellness,
     activePeriod,
     setActivePeriod,
     loading,
