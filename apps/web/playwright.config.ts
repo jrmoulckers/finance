@@ -17,6 +17,9 @@ export default defineConfig({
     ? [['blob', { outputDir: 'blob-report' }], ['github']]
     : [['html', { open: 'never' }]],
 
+  // Reuse the same visual baselines across local and CI runs.
+  snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}',
+
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },

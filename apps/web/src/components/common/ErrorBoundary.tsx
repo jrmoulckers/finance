@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { Component, createRef, type ErrorInfo, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 import { captureError } from '../../lib/monitoring';
 import '../../styles/auth.css';
 import './error-boundary.css';
@@ -113,9 +112,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               <button type="button" className="auth-submit" onClick={this.handleRetry}>
                 Try Again
               </button>
-              <Link to="/dashboard" className="auth-footer__link error-boundary__secondary-action">
+              <a href="/dashboard" className="auth-footer__link error-boundary__secondary-action">
                 Return to Dashboard
-              </Link>
+              </a>
             </section>
           </div>
         </section>

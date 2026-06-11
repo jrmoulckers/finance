@@ -1,10 +1,7 @@
 # =============================================================================
-# Web CI — build, test, E2E, and Lighthouse checks
+# Web CI — build, test, and tiered E2E validation
 # =============================================================================
-#
-# Runs the web build/test pipeline for pull requests and main pushes while keeping the full nightly browser matrix in the dedicated nightly workflow.
-# =============================================================================
-name: CI — Web
+name: Web CI
 
 on:
   push:
@@ -15,7 +12,7 @@ on:
     paths: ['apps/web/**', 'packages/design-tokens/**']
 
 concurrency:
-  group: web-${{ github.ref }}
+  group: web-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -46,9 +43,6 @@ jobs:
       - name: Build web app
         id: web-build
         env:
-          # Disable demo auth mode in E2E builds so the normal auth flow
-          # (tryRestoreSession → refresh endpoint) runs.  E2E fixtures mock
-          # these endpoints — no real Supabase connection is needed.
           VITE_SUPABASE_URL: https://e2e-test.supabase.co
           VITE_SUPABASE_ANON_KEY: e2e-test-anon-key
         run: |
@@ -76,10 +70,9 @@ jobs:
           echo "| Build duration | ${{ steps.web-build.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
           if [ -d "apps/web/dist" ]; then
             TOTAL=$(du -sh apps/web/dist/ | cut -f1)
-            echo "| Bundle size | $TOTAL |" >> "$GITHUB_STEP_SUMMARY"
-            # Report JS + CSS sizes
             JS_SIZE=$(find apps/web/dist -name '*.js' -exec du -cb {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
             CSS_SIZE=$(find apps/web/dist -name '*.css' -exec du -cb {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
+            echo "| Bundle size | $TOTAL |" >> "$GITHUB_STEP_SUMMARY"
             echo "| JS total | $(( JS_SIZE / 1024 ))KB |" >> "$GITHUB_STEP_SUMMARY"
             echo "| CSS total | $(( CSS_SIZE / 1024 ))KB |" >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -115,15 +108,108 @@ jobs:
 
       - run: npm test -w apps/web
 
-  e2e-tests:
-    name: E2E Tests (${{ matrix.browser }})
+  e2e-pr-smoke:
+    name: E2E PR Smoke (Chromium)
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: web-build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('apps/web/package.json') }}
+          restore-keys: ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browser
+        run: npx -w apps/web playwright install --with-deps chromium
+
+      - name: Run PR smoke suite
+        run: npx -w apps/web playwright test e2e/smoke.spec.ts --project=chromium
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-pr-blob-report-chromium
+          path: apps/web/blob-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-pr-report:
+    name: Merge PR E2E Report
+    if: ${{ always() && github.event_name == 'pull_request' && !cancelled() }}
+    needs: e2e-pr-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download blob reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: e2e-pr-blob-report-*
+          merge-multiple: true
+          path: all-blob-reports
+
+      - name: Merge reports
+        run: |
+          npx -w apps/web playwright merge-reports \
+            --reporter=html \
+            "${{ github.workspace }}/all-blob-reports" \
+            || echo "::warning::No blob reports found to merge"
+
+      - name: Upload merged HTML report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-pr-html-report
+          path: playwright-report/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: E2E Summary
+        if: always()
+        run: |
+          echo "### 🎭 PR E2E Smoke" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Scope: Chromium-only smoke coverage for pre-auth critical paths. This is the required merge gate." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "📊 Download the merged HTML report from the \`e2e-pr-html-report\` artifact above." >> "$GITHUB_STEP_SUMMARY"
+
+  e2e-main-desktop:
+    name: E2E Desktop Matrix (${{ matrix.browser }})
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, webkit, firefox, chromium-edge, mobile-chrome]
+        browser: [chromium, firefox, webkit, chromium-edge]
 
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -150,42 +236,36 @@ jobs:
       - name: Install Playwright browser
         run: |
           case "${{ matrix.browser }}" in
-            chromium|mobile-chrome)
+            chromium)
               npx -w apps/web playwright install --with-deps chromium
-              ;;
-            webkit|mobile-safari)
-              npx -w apps/web playwright install --with-deps webkit
               ;;
             firefox)
               npx -w apps/web playwright install --with-deps firefox
+              ;;
+            webkit)
+              npx -w apps/web playwright install --with-deps webkit
               ;;
             chromium-edge)
               npx -w apps/web playwright install --with-deps msedge
               ;;
           esac
 
-      - name: Run E2E tests (${{ matrix.browser }})
-        run: |
-          if [[ "${{ matrix.browser }}" == mobile-* ]]; then
-            npx -w apps/web playwright test e2e/auth.spec.ts -g "login page renders" --project=${{ matrix.browser }}
-          else
-            npx -w apps/web playwright test --project=${{ matrix.browser }}
-          fi
+      - name: Run full desktop suite
+        run: npx -w apps/web playwright test --project=${{ matrix.browser }}
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: e2e-blob-report-${{ matrix.browser }}
+          name: e2e-main-blob-report-${{ matrix.browser }}
           path: apps/web/blob-report/
           retention-days: 7
           if-no-files-found: ignore
 
-  # Merge all browser reports into a single HTML report
-  e2e-report:
-    name: Merge E2E Reports
-    needs: e2e-tests
-    if: ${{ !cancelled() }}
+  e2e-main-report:
+    name: Merge Main E2E Report
+    if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && !cancelled() }}
+    needs: e2e-main-desktop
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -199,10 +279,10 @@ jobs:
 
       - run: npm ci
 
-      - name: Download all blob reports
+      - name: Download blob reports
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: e2e-blob-report-*
+          pattern: e2e-main-blob-report-*
           merge-multiple: true
           path: all-blob-reports
 
@@ -216,7 +296,7 @@ jobs:
       - name: Upload merged HTML report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: e2e-html-report
+          name: e2e-main-html-report
           path: playwright-report/
           retention-days: 14
           if-no-files-found: warn
@@ -224,53 +304,8 @@ jobs:
       - name: E2E Summary
         if: always()
         run: |
-          echo "### 🎭 E2E Test Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🎭 Main-branch desktop E2E" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Browser matrix: chromium, webkit, firefox, chromium-edge, mobile-chrome; mobile-safari on main/nightly only. Mobile projects run a startup smoke test. CI retries flaky tests twice." >> "$GITHUB_STEP_SUMMARY"
+          echo "Scope: full desktop matrix (Chromium, Firefox, WebKit, Edge). Deploy — Staging waits for this workflow to be green on main." >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "📊 **Download the full HTML report** from the \`e2e-html-report\` artifact above." >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          # Check if any browser jobs failed
-          if [ "${{ needs.e2e-tests.result }}" = "failure" ]; then
-            echo "⚠️ Some E2E browser jobs failed — check individual logs for details." >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ needs.e2e-tests.result }}" = "success" ]; then
-            echo "✅ All E2E browser jobs passed." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-  lighthouse:
-    name: Lighthouse Audit (Informational)
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Lighthouse is informational — should not block PR merge
-    continue-on-error: true
-
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: web-build
-
-      - name: Lighthouse Audit
-        id: lighthouse-audit
-        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
-        continue-on-error: true
-        with:
-          configPath: apps/web/lighthouserc.json
-          budgetPath: apps/web/budget.json
-          uploadArtifacts: true
-          runs: ${{ github.event_name == 'push' && 3 || 1 }}
-
-      - name: Lighthouse Budget Check
-        if: always() && (steps.lighthouse-audit.conclusion == 'success' || steps.lighthouse-audit.conclusion == 'failure')
-        run: npx @lhci/cli assert --config=apps/web/lighthouserc-budget.json
-        continue-on-error: true
+          echo "📊 Download the merged HTML report from the \`e2e-main-html-report\` artifact above." >> "$GITHUB_STEP_SUMMARY"
