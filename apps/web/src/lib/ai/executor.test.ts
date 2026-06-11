@@ -63,7 +63,8 @@ describe('executeFinancialQuery', () => {
     );
 
     expect(result.intent).toBe('spending_summary');
-    expect(result.data.totalCents).toBe(12345);
+    const data = result.data as { totalCents: number };
+    expect(data.totalCents).toBe(12345);
     expect(result.plan.sql).toContain('t.type = ?');
     expect(result.plan.sql).toContain("LOWER(COALESCE(c.name, '')) LIKE ?");
     expect(result.plan.sql).toContain('t.date >= ?');
@@ -108,7 +109,10 @@ describe('executeFinancialQuery', () => {
     );
 
     expect(result.intent).toBe('transaction_search');
-    expect(result.data.rows[0]).toMatchObject({
+    const data = result.data as {
+      rows: readonly { description: string; absoluteAmountCents: number }[];
+    };
+    expect(data.rows[0]).toMatchObject({
       description: 'Laptop Store',
       absoluteAmountCents: 250000,
     });
@@ -146,7 +150,8 @@ describe('executeFinancialQuery', () => {
     );
 
     expect(result.intent).toBe('goal_progress');
-    expect(result.data.rows[0]).toMatchObject({
+    const data = result.data as unknown as { rows: readonly Record<string, unknown>[] };
+    expect(data.rows[0]).toMatchObject({
       goalName: 'Emergency Fund',
       percentComplete: 40,
       remainingAmountCents: 600000,
@@ -182,7 +187,8 @@ describe('executeFinancialQuery', () => {
     );
 
     expect(result.intent).toBe('budget_status');
-    expect(result.data.rows[0]).toMatchObject({
+    const data = result.data as unknown as { rows: readonly Record<string, unknown>[] };
+    expect(data.rows[0]).toMatchObject({
       budgetName: 'Groceries',
       percentUsed: 90,
       remainingAmountCents: 5000,
@@ -220,9 +226,14 @@ describe('executeFinancialQuery', () => {
     );
 
     expect(result.intent).toBe('trend_analysis');
-    expect(result.data.averageMonthlyCents).toBe(123333);
-    expect(result.data.changePercent).toBeCloseTo(25, 3);
-    expect(result.data.trendDirection).toBe('up');
+    const data = result.data as {
+      averageMonthlyCents: number;
+      changePercent: number;
+      trendDirection: string;
+    };
+    expect(data.averageMonthlyCents).toBe(123333);
+    expect(data.changePercent).toBeCloseTo(25, 3);
+    expect(data.trendDirection).toBe('up');
     expect(result.plan.sql).toContain('GROUP BY SUBSTR(t.date, 1, 7)');
     expect(result.plan.params).toEqual(['EXPENSE', '2026-03-01', '2026-05-26']);
   });
