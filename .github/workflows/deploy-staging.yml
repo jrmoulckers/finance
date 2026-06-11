@@ -1,49 +1,46 @@
 # =============================================================================
-# Staging Deployment — Auto-deploy on merge to main
+# Staging Deployment — Auto-deploy the latest green commit on main
 # =============================================================================
 #
-# Deploys the latest main branch to the staging environment:
+# Deploys the latest main branch commit whose required CI workflows are green:
 #   - Web (Azure VM): Rebuild apps/web/dist on the staging VM; Caddy serves it
 #     from a bind mount at https://finance.jrmoulckers.com.
 #   - Backend: Update Docker Compose services on the same staging VM.
 #
-# This workflow creates GitHub Deployment records for tracking. Before deploying,
-# it waits for required CI workflows to be green on the exact commit being deployed;
-# manual staging re-runs may skip this only via the emergency skip_ci_gate override.
+# This workflow creates GitHub Deployment records for tracking. Automatic runs
+# trigger from CI workflow completion and only deploy the exact commit SHA that
+# is green; broken commits are skipped and staging stays on the previous deploy.
+# Manual staging re-runs may still use the emergency skip_ci_gate override.
 #
-# Issues: #886 (original), #1952 (canonical alpha host moved to Azure VM), #2060
+# Issues: #886 (original), #1952 (canonical alpha host moved to Azure VM), #2060,
+# #2102
 # =============================================================================
 
 name: Deploy — Staging
 
 on:
-  push:
+  workflow_run:
+    workflows: ['Lint & Format', 'Web CI']
+    types: [completed]
     branches: [main]
-    # Only deploy when app or service code changes (not docs/config only)
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'services/**'
-      - 'deploy/**'
 
   # Allow manual re-deploy. skip_ci_gate is only for emergency staging
-  # rollbacks/recovery when required CI is unavailable; push deploys always gate.
+  # rollbacks/recovery when required CI is unavailable.
   workflow_dispatch:
     inputs:
       skip_ci_gate:
-        description: 'Emergency override: skip waiting for CI before staging deploy'
+        description: 'Emergency override: skip green-CI verification before staging deploy'
         required: false
         type: boolean
         default: false
 
 concurrency:
   group: deploy-staging
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
+  actions: read
   contents: read
-  checks: read
-  statuses: read
   deployments: write
 
 env:
@@ -51,58 +48,177 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Gate: Run critical checks before deploying
+  # Prepare: resolve the exact deploy SHA, changed paths, and CI gate status
   # ---------------------------------------------------------------------------
   pre-deploy-checks:
     name: Pre-deploy Checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      web_changed: ${{ steps.changes.outputs.web }}
-      backend_changed: ${{ steps.changes.outputs.backend }}
+      web_changed: ${{ steps.meta.outputs.web_changed }}
+      backend_changed: ${{ steps.meta.outputs.backend_changed }}
+      requires_web_ci: ${{ steps.meta.outputs.requires_web_ci }}
+      deploy_sha: ${{ steps.meta.outputs.deploy_sha }}
       sha_short: ${{ steps.meta.outputs.sha_short }}
+      deploy_ready: ${{ steps.gate.outputs.deploy_ready }}
+      gate_reason: ${{ steps.gate.outputs.gate_reason }}
     steps:
-      - name: Checkout
+      - name: Checkout target commit
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 2
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Detect changed paths
-        id: changes
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        with:
-          filters: |
-            web:
-              - 'apps/web/**'
-              - 'packages/design-tokens/**'
-            backend:
-              - 'services/**'
-              - 'deploy/**'
-
-      - name: Extract metadata
+      - name: Detect changed paths and extract metadata
         id: meta
+        env:
+          TARGET_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
         run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
 
-  # ---------------------------------------------------------------------------
-  # Gate: wait for required CI workflows on the deploy SHA
-  # ---------------------------------------------------------------------------
-  verify-ci-green:
-    name: Verify CI green on SHA
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs: [pre-deploy-checks]
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.skip_ci_gate != 'true' }}
-    steps:
-      - name: Wait for CI workflows
-        uses: lewagon/wait-on-check-action@0dceb95e7c4cad8cc7422aee3885998f5cab9c79 # v1.4.0
+          if git rev-parse --verify "${TARGET_SHA}^" >/dev/null 2>&1; then
+            CHANGED_FILES="$(git diff --name-only "${TARGET_SHA}^" "${TARGET_SHA}")"
+          else
+            CHANGED_FILES="$(git show --pretty='' --name-only "${TARGET_SHA}")"
+          fi
+
+          echo "Changed files for ${TARGET_SHA}:"
+          echo "${CHANGED_FILES:-<none>}"
+
+          WEB_CHANGED=false
+          BACKEND_CHANGED=false
+          REQUIRES_WEB_CI=false
+
+          if printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(apps/web/|packages/design-tokens/)'; then
+            WEB_CHANGED=true
+            REQUIRES_WEB_CI=true
+          fi
+
+          if printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(services/|deploy/)'; then
+            BACKEND_CHANGED=true
+          fi
+
+          SHA_SHORT="$(git rev-parse --short "$TARGET_SHA")"
+
+          {
+            echo "deploy_sha=$TARGET_SHA"
+            echo "sha_short=$SHA_SHORT"
+            echo "web_changed=$WEB_CHANGED"
+            echo "backend_changed=$BACKEND_CHANGED"
+            echo "requires_web_ci=$REQUIRES_WEB_CI"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Verify green CI for target SHA
+        id: gate
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SKIP_CI_GATE: ${{ github.event.inputs.skip_ci_gate || 'false' }}
+          TARGET_SHA: ${{ steps.meta.outputs.deploy_sha }}
+          REQUIRES_WEB_CI: ${{ steps.meta.outputs.requires_web_ci }}
+          WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion || '' }}
         with:
-          ref: ${{ github.sha }}
-          running-workflow-name: 'Verify CI green on SHA'
-          check-regexp: '^(Web CI|Android CI|iOS CI|Windows CI|Lint & Format|CI — Shared Packages|Security Scanning)$'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-          allowed-conclusions: success,skipped
+          script: |
+            const eventName = process.env.EVENT_NAME;
+            const skipCiGate = process.env.SKIP_CI_GATE === 'true';
+            const targetSha = process.env.TARGET_SHA;
+            const requiresWebCi = process.env.REQUIRES_WEB_CI === 'true';
+            const workflowConclusion = process.env.WORKFLOW_CONCLUSION;
+            const required = ['Lint & Format'];
+
+            if (requiresWebCi) {
+              required.push('Web CI');
+            }
+
+            if (eventName === 'workflow_dispatch' && skipCiGate) {
+              core.setOutput('deploy_ready', 'true');
+              core.setOutput('gate_reason', `Manual override enabled for ${targetSha.slice(0, 7)}`);
+              return;
+            }
+
+            if (eventName === 'workflow_run' && workflowConclusion !== 'success') {
+              core.setOutput('deploy_ready', 'false');
+              core.setOutput(
+                'gate_reason',
+                `${context.payload.workflow_run.name} concluded ${workflowConclusion} for ${targetSha.slice(0, 7)}`,
+              );
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const runsResponse = await github.rest.actions.listWorkflowRunsForRepo({
+              owner,
+              repo,
+              branch: 'main',
+              head_sha: targetSha,
+              per_page: 100,
+            });
+
+            const latestByName = new Map();
+            const remember = (run) => {
+              if (!run || !required.includes(run.name)) {
+                return;
+              }
+
+              const current = latestByName.get(run.name);
+              if (!current) {
+                latestByName.set(run.name, run);
+                return;
+              }
+
+              const currentUpdated = Date.parse(current.updated_at || current.created_at || 0);
+              const candidateUpdated = Date.parse(run.updated_at || run.created_at || 0);
+              if ((run.run_attempt || 0) > (current.run_attempt || 0) || candidateUpdated > currentUpdated) {
+                latestByName.set(run.name, run);
+              }
+            };
+
+            if (eventName === 'workflow_run') {
+              remember(context.payload.workflow_run);
+            }
+
+            for (const run of runsResponse.data.workflow_runs) {
+              remember(run);
+            }
+
+            const unmet = [];
+            for (const name of required) {
+              const run = latestByName.get(name);
+              if (!run) {
+                unmet.push(`${name}: not completed yet`);
+                continue;
+              }
+              if (run.status !== 'completed') {
+                unmet.push(`${name}: ${run.status}`);
+                continue;
+              }
+              if (run.conclusion !== 'success') {
+                unmet.push(`${name}: ${run.conclusion}`);
+              }
+            }
+
+            if (unmet.length > 0) {
+              core.setOutput('deploy_ready', 'false');
+              core.setOutput('gate_reason', `Skipping ${targetSha.slice(0, 7)} until CI is green (${unmet.join(', ')})`);
+              return;
+            }
+
+            core.setOutput('deploy_ready', 'true');
+            core.setOutput('gate_reason', `Ready to deploy ${targetSha.slice(0, 7)} with ${required.join(', ')} green`);
+
+      - name: Pre-deploy summary
+        run: |
+          echo "### 🚦 Staging Pre-deploy Checks" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${{ steps.meta.outputs.sha_short }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Trigger | ${{ github.event_name }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Web changed | ${{ steps.meta.outputs.web_changed }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend changed | ${{ steps.meta.outputs.backend_changed }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Requires Web CI | ${{ steps.meta.outputs.requires_web_ci }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Deploy ready | ${{ steps.gate.outputs.deploy_ready }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Gate reason | ${{ steps.gate.outputs.gate_reason }} |" >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
   # Web (VM): Build apps/web/dist on the staging VM and let Caddy serve it
@@ -110,20 +226,18 @@ jobs:
   #
   # The Azure VM runs Caddy with a bind mount of `apps/web/dist` → /srv/web
   # (see deploy/docker-compose.yml). For Caddy to serve fresh bits, the VM
-  # filesystem path must be rebuilt — `git pull` alone does NOT do that.
-  # This job SSHes in and runs `npm ci && npm run build -w apps/web` so the
-  # bind-mounted directory is updated. No container restart needed.
+  # filesystem path must be rebuilt — `git fetch` + `reset --hard` to the exact
+  # green SHA, then `npm ci && npm run build -w apps/web`.
   deploy-web-vm:
     name: Deploy Web (Azure VM)
     # Serialized after deploy-backend to avoid a race on the VM's shared
-    # `~/finance/.git` directory — both jobs run `git pull origin main` and
-    # without serialization the second loser hits:
-    #   error: cannot lock ref 'refs/remotes/origin/main'
-    needs: [pre-deploy-checks, verify-ci-green, deploy-backend]
+    # `~/finance/.git` directory — both jobs fetch from origin and hard-reset the
+    # same working tree on the staging VM.
+    needs: [pre-deploy-checks, deploy-backend]
     if: |
       always() &&
       needs.pre-deploy-checks.result == 'success' &&
-      (needs.verify-ci-green.result == 'success' || needs.verify-ci-green.result == 'skipped') &&
+      needs.pre-deploy-checks.outputs.deploy_ready == 'true' &&
       (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped') &&
       (needs.pre-deploy-checks.outputs.web_changed == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
@@ -132,8 +246,10 @@ jobs:
       name: staging
 
     steps:
-      - name: Checkout
+      - name: Checkout target commit
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.pre-deploy-checks.outputs.deploy_sha }}
 
       - name: Rebuild apps/web/dist on staging VM
         env:
@@ -141,6 +257,7 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+          TARGET_SHA: ${{ needs.pre-deploy-checks.outputs.deploy_sha }}
           SHA_SHORT: ${{ needs.pre-deploy-checks.outputs.sha_short }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -174,14 +291,10 @@ jobs:
           BETA_ALLOWED_EMAILS_B64=$(printf '%s' "$BETA_ALLOWED_EMAILS" | base64 -w 0)
           SENTRY_DSN_B64=$(printf '%s' "$SENTRY_DSN" | base64 -w 0)
 
-          # SSH in and rebuild. Each line is a separate command so an early
-          # failure aborts the build (set -e inside the heredoc). Use
-          # `git fetch --force --prune` then `reset --hard` so we recover
-          # from any stale refs (e.g. if a prior backend deploy already
-          # advanced origin/main before this fetch read its expected value).
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            "SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' BETA_ALLOWED_EMAILS_B64='$BETA_ALLOWED_EMAILS_B64' SENTRY_DSN_B64='$SENTRY_DSN_B64' SHA_SHORT='$SHA_SHORT' bash -s" <<'DEPLOY'
+            "DEPLOY_PATH='$DEPLOY_PATH' SUPABASE_URL_B64='$SUPABASE_URL_B64' SUPABASE_ANON_KEY_B64='$SUPABASE_ANON_KEY_B64' POWERSYNC_URL_B64='$POWERSYNC_URL_B64' BETA_ALLOWED_EMAILS_B64='$BETA_ALLOWED_EMAILS_B64' SENTRY_DSN_B64='$SENTRY_DSN_B64' TARGET_SHA='$TARGET_SHA' SHA_SHORT='$SHA_SHORT' bash -s" <<'DEPLOY'
             set -euo pipefail
+            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#~}" ;; esac
             export VITE_SUPABASE_URL="$(printf '%s' "$SUPABASE_URL_B64" | base64 -d)"
             export VITE_SUPABASE_ANON_KEY="$(printf '%s' "$SUPABASE_ANON_KEY_B64" | base64 -d)"
             export VITE_POWERSYNC_URL="$(printf '%s' "$POWERSYNC_URL_B64" | base64 -d)"
@@ -189,11 +302,11 @@ jobs:
             export VITE_SENTRY_DSN="$(printf '%s' "$SENTRY_DSN_B64" | base64 -d)"
             export VITE_ENVIRONMENT=staging
             export VITE_APP_VERSION="$SHA_SHORT"
-            cd ~/finance
+            cd "$DEPLOY_PATH"
             echo "→ git fetch --force --prune origin main"
             git fetch --force --prune origin main
-            echo "→ git reset --hard origin/main"
-            git reset --hard origin/main
+            echo "→ git reset --hard $TARGET_SHA"
+            git reset --hard "$TARGET_SHA"
             echo "→ npm ci (this can take a few minutes on first run)"
             npm ci --no-audit --no-fund --silent
             echo "→ build design tokens"
@@ -269,11 +382,11 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-backend:
     name: Deploy Backend (Staging)
-    needs: [pre-deploy-checks, verify-ci-green]
+    needs: [pre-deploy-checks]
     if: |
       always() &&
       needs.pre-deploy-checks.result == 'success' &&
-      (needs.verify-ci-green.result == 'success' || needs.verify-ci-green.result == 'skipped') &&
+      needs.pre-deploy-checks.outputs.deploy_ready == 'true' &&
       (needs.pre-deploy-checks.outputs.backend_changed == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -281,8 +394,10 @@ jobs:
       name: staging
 
     steps:
-      - name: Checkout
+      - name: Checkout target commit
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.pre-deploy-checks.outputs.deploy_sha }}
 
       # Staging backend deployment is SSH-based to the staging server.
       # Secrets are scoped to the "staging" GitHub Environment.
@@ -292,6 +407,7 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+          TARGET_SHA: ${{ needs.pre-deploy-checks.outputs.deploy_sha }}
         run: |
           if [ -z "$DEPLOY_HOST" ]; then
             echo "::warning::DEPLOY_HOST not configured — skipping backend deployment"
@@ -306,14 +422,20 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          # Deploy via SSH: pull latest, rebuild containers, reload Caddy.
+          # Deploy via SSH: reset to the exact green SHA, rebuild containers, reload Caddy.
           # Note: deliberately NOT `set -e` — historical behaviour tolerates
           # transient compose healthcheck flakes (e.g. rest container reporting
           # unhealthy momentarily during startup); failing the deploy on those
           # would be a regression.
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << DEPLOY
-            cd $DEPLOY_PATH
-            git pull origin main
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' TARGET_SHA='$TARGET_SHA' bash -s" <<'DEPLOY'
+            set -u
+            case "$DEPLOY_PATH" in "~"|"~/"*) DEPLOY_PATH="${HOME}${DEPLOY_PATH#~}" ;; esac
+            cd "$DEPLOY_PATH" || exit 1
+            echo "→ git fetch --force --prune origin main"
+            git fetch --force --prune origin main || exit 1
+            echo "→ git reset --hard $TARGET_SHA"
+            git reset --hard "$TARGET_SHA" || exit 1
             docker compose -f deploy/docker-compose.yml pull
             docker compose -f deploy/docker-compose.yml up -d --remove-orphans \
               || echo "::warning::compose up reported non-zero (deps may be transiently unhealthy)"
@@ -369,6 +491,9 @@ jobs:
 
     steps:
       - name: Summary
+        env:
+          SHA_SHORT: ${{ needs.pre-deploy-checks.outputs.sha_short || github.event.workflow_run.head_sha || github.sha }}
+          GATE_REASON: ${{ needs.pre-deploy-checks.outputs.gate_reason || 'Staging deploy skipped before checks ran' }}
         run: |
           echo "### 📋 Staging Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
@@ -377,5 +502,6 @@ jobs:
           echo "| Web (Azure VM) | ${{ needs.deploy-web-vm.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Backend | ${{ needs.deploy-backend.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Commit:** \`${{ needs.pre-deploy-checks.outputs.sha_short }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** \`${SHA_SHORT}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "**Trigger:** ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Gate:** ${GATE_REASON}" >> "$GITHUB_STEP_SUMMARY"
