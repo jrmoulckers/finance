@@ -1,0 +1,54 @@
+.learning-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.learning-page__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.learning-page__eyebrow,
+.learning-page__focus-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: var(--semantic-text-secondary, #475569);
+}
+
+.learning-page__title {
+  margin: 0.35rem 0;
+}
+
+.learning-page__subtitle {
+  color: var(--semantic-text-secondary, #475569);
+  max-width: 60rem;
+}
+
+.learning-page__focus {
+  border: 1px solid var(--semantic-border-default, #d0d7de);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(180deg, #eff6ff, #ffffff);
+}
+
+.learning-page__focus h2 {
+  margin: 0.35rem 0;
+  font-size: 1.1rem;
+}
+
+.learning-page__loading {
+  min-height: 12rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 960px) {
+  .learning-page__header {
+    grid-template-columns: 1fr;
+  }
+}

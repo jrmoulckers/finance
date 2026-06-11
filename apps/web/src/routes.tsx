@@ -55,6 +55,7 @@ const Bills = lazy(() => import('./pages/BillsPage'));
 const BillDetail = lazy(() => import('./pages/BillDetailPage'));
 const CreateBill = lazy(() => import('./pages/CreateBillPage'));
 const Planning = lazy(() => import('./pages/PlanningPage'));
+const Learning = lazy(() => import('./pages/LearningPage'));
 const PrivacyDashboard = lazy(() => import('./pages/PrivacyDashboardPage'));
 const Onboarding = lazy(() => import('./pages/OnboardingPage'));
 const CashFlow = lazy(() => import('./pages/CashFlowPage'));
@@ -570,6 +571,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Receipt OCR">
             <ReceiptOcr />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/learning"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Learning">
+            <Learning />
           </RouteBoundary>
         </AuthenticatedRoute>
       }
