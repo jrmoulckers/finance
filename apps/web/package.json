@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test e2e/smoke.spec.ts --project=chromium",
+    "test:e2e:visual": "playwright test e2e/visual-regression.spec.ts --project=chromium",
     "test:e2e:ui": "playwright test --ui",
     "clean": "rimraf dist",
     "storybook": "storybook dev -p 6006",

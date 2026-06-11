@@ -8,7 +8,7 @@ name: Nightly
 
 on:
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 4 * * *'
   workflow_run:
     workflows: ['Deploy — Staging']
     types: [completed]
@@ -62,6 +62,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write
   pull-requests: write
   security-events: write
 
@@ -89,6 +90,8 @@ jobs:
           VITE_SUPABASE_URL: https://e2e-test.supabase.co
           VITE_SUPABASE_ANON_KEY: e2e-test-anon-key
         run: npm run build -w apps/web
+      - name: Verify web build env
+        run: node tools/verify-build-env.mjs apps/web/dist
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: nightly-web-build
@@ -105,7 +108,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, webkit, firefox, chromium-edge, mobile-chrome, mobile-safari]
+        browser: [chromium, firefox, webkit, chromium-edge, mobile-chrome, mobile-safari]
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -138,13 +141,8 @@ jobs:
               npx -w apps/web playwright install --with-deps msedge
               ;;
           esac
-      - name: Run E2E tests
-        run: |
-          if [[ "${{ matrix.browser }}" == mobile-* ]]; then
-            npx -w apps/web playwright test e2e/auth.spec.ts -g "login page renders" --project=${{ matrix.browser }}
-          else
-            npx -w apps/web playwright test --project=${{ matrix.browser }}
-          fi
+      - name: Run exhaustive E2E suite
+        run: npx -w apps/web playwright test --project=${{ matrix.browser }}
       - name: Upload blob report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -156,7 +154,7 @@ jobs:
 
   web-e2e-report:
     name: Merge Nightly E2E Reports
-    if: ${{ !cancelled() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.suites == 'all' || inputs.suites == 'e2e'))) }}
+    if: ${{ always() && !cancelled() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.suites == 'all' || inputs.suites == 'e2e'))) }}
     needs: web-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -181,6 +179,102 @@ jobs:
           path: playwright-report/
           retention-days: 14
           if-no-files-found: warn
+
+  web-visual-regression:
+    name: Visual Regression (Chromium)
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.suites == 'all' || inputs.suites == 'e2e'))
+    needs: web-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: nightly-web-build
+      - name: Cache Playwright browsers
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('apps/web/package.json') }}
+          restore-keys: ${{ runner.os }}-playwright-
+      - name: Install Playwright browser
+        run: npx -w apps/web playwright install --with-deps chromium
+      - name: Run visual regression suite
+        run: npx -w apps/web playwright test e2e/visual-regression.spec.ts --project=chromium
+      - name: Upload visual test artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-visual-test-results
+          path: apps/web/test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  web-lighthouse:
+    name: Lighthouse Audit (Nightly)
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.suites == 'all' || inputs.suites == 'e2e'))
+    needs: web-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: nightly-web-build
+      - name: Lighthouse Audit
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
+        with:
+          configPath: apps/web/lighthouserc.json
+          budgetPath: apps/web/budget.json
+          uploadArtifacts: true
+          runs: 3
+      - name: Lighthouse Budget Check
+        run: npx @lhci/cli assert --config=apps/web/lighthouserc-budget.json
+
+  web-nightly-issue:
+    name: Open Web Nightly Issue
+    if: ${{ always() && (needs.web-e2e-tests.result == 'failure' || needs.web-visual-regression.result == 'failure' || needs.web-lighthouse.result == 'failure') }}
+    needs: [web-e2e-tests, web-visual-regression, web-lighthouse]
+    runs-on: ubuntu-latest
+    env:
+      E2E_RESULT: ${{ needs.web-e2e-tests.result }}
+      VISUAL_RESULT: ${{ needs.web-visual-regression.result }}
+      LIGHTHOUSE_RESULT: ${{ needs.web-lighthouse.result }}
+    steps:
+      - name: Create nightly regression issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const title = `Nightly web regression (${new Date().toISOString().slice(0, 10)})`;
+            const body = [
+              'Nightly web quality checks failed.',
+              '',
+              `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `- Commit: ${context.sha}`,
+              `- E2E matrix: ${process.env.E2E_RESULT}`,
+              `- Visual regression: ${process.env.VISUAL_RESULT}`,
+              `- Lighthouse: ${process.env.LIGHTHOUSE_RESULT}`,
+              '',
+              'Artifacts include the merged Playwright HTML report, visual test results, and Lighthouse outputs.',
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ci'],
+            });
 
   load-test:
     name: k6 Load Tests (${{ github.event.inputs.scenario || 'all' }})

@@ -146,13 +146,21 @@ async function installAuthMocks(page: Page): Promise<void> {
     });
   });
 
-  // Mock Supabase Edge Function sync endpoint (used when a real Supabase
+  // Mock Supabase Edge Function sync endpoints (used when a real Supabase
   // project URL is configured via VITE_SUPABASE_URL).
   await page.route('**/functions/v1/sync-push', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ acknowledged: [], conflicts: [] }),
+    });
+  });
+
+  await page.route('**/functions/v1/sync-pull', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ changes: [], cursor: '0', hasMore: false }),
     });
   });
 
@@ -186,15 +194,17 @@ async function waitForAuthenticatedApp(page: Page): Promise<void> {
   // Wait for the DOM to be fully parsed.
   await page.waitForLoadState('domcontentloaded');
 
-  // Wait for the authenticated app shell to appear.  With the E2E stub DB
-  // (no real WASM init), this should complete in a few seconds.  Assert the
-  // authenticated route specifically so a login redirect cannot satisfy this.
+  // Wait for the authenticated shell to claim the dashboard route. Some
+  // pages render a route-level skeleton before data arrives, so use the main
+  // landmark / nav chrome instead of a page-specific heading.
   await page.waitForURL('**/dashboard', { timeout: 30_000 });
-  await page
-    .getByRole('main')
-    .getByRole('heading', { name: /dashboard/i })
-    .first()
-    .waitFor({ state: 'visible', timeout: 30_000 });
+  await Promise.any([
+    page.getByRole('main', { name: /dashboard/i }).waitFor({ state: 'visible', timeout: 30_000 }),
+    page
+      .locator('aside[aria-label="Main navigation"]')
+      .waitFor({ state: 'visible', timeout: 30_000 }),
+    page.locator('nav.bottom-nav').waitFor({ state: 'visible', timeout: 30_000 }),
+  ]);
 }
 
 // ---------------------------------------------------------------------------

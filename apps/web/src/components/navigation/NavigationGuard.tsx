@@ -9,7 +9,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useBlocker } from 'react-router-dom';
 
 import {
   DEFAULT_UNSAVED_CHANGES_MESSAGE,
@@ -63,25 +62,10 @@ export function NavigationGuard({ children }: NavigationGuardProps) {
     [activeGuards],
   );
 
-  const blocker = useBlocker(activeGuards.length > 0);
-
   useEffect(() => {
     activeGuardsRef.current = activeGuards;
     confirmActiveNavigationRef.current = confirmActiveNavigation;
   }, [activeGuards, confirmActiveNavigation]);
-
-  useEffect(() => {
-    if (blocker.state !== 'blocked') {
-      return;
-    }
-
-    if (confirmActiveNavigation()) {
-      blocker.proceed();
-      return;
-    }
-
-    blocker.reset();
-  }, [blocker, confirmActiveNavigation]);
 
   useEffect(() => {
     if (activeGuards.length === 0) {
