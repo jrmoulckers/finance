@@ -56,6 +56,7 @@ const BillDetail = lazy(() => import('./pages/BillDetailPage'));
 const CreateBill = lazy(() => import('./pages/CreateBillPage'));
 const Planning = lazy(() => import('./pages/PlanningPage'));
 const Learning = lazy(() => import('./pages/LearningPage'));
+const EstateInventory = lazy(() => import('./pages/EstateInventoryPage'));
 const PrivacyDashboard = lazy(() => import('./pages/PrivacyDashboardPage'));
 const Onboarding = lazy(() => import('./pages/OnboardingPage'));
 const CashFlow = lazy(() => import('./pages/CashFlowPage'));
@@ -520,6 +521,26 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Planning">
             <Planning />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/learning"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Learning">
+            <Learning />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/estate"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Estate Inventory">
+            <EstateInventory />
           </RouteBoundary>
         </AuthenticatedRoute>
       }

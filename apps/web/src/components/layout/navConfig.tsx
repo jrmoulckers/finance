@@ -162,12 +162,21 @@ export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
     description: 'Personalized financial literacy modules and quizzes.',
   },
   {
+    id: 'estate',
+    label: 'Estate Inventory',
+    href: '/estate',
+    icon: <Icon name={IconToken.SECURE} />,
+    group: 'plan',
+    mobilePriority: 16,
+    description: 'Estate and end-of-life inventory for beneficiaries.',
+  },
+  {
     id: 'categories',
     label: 'Categories',
     href: '/categories',
     icon: <Icon name={IconToken.FILTER} />,
     group: 'plan',
-    mobilePriority: 16,
+    mobilePriority: 17,
     description: 'Customise how transactions are classified.',
   },
 

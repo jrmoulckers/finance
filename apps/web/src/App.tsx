@@ -47,6 +47,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/privacy-dashboard': 'Privacy Dashboard',
   '/categories': 'Categories',
   '/planning': 'Financial Planning',
+  '/learning': 'Learning',
+  '/estate': 'Estate Inventory',
   '/cash-flow': 'Cash Flow',
   '/net-worth': 'Net Worth',
   '/subscriptions': 'Subscriptions',

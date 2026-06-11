@@ -142,6 +142,15 @@ const DATA_CATEGORY_DEFS: Omit<DataCategory, 'estimatedBytes'>[] = [
     icon: 'clipboard',
   },
   {
+    id: 'estate',
+    name: 'Estate Inventory',
+    description:
+      'Estate and end-of-life inventory entries, trusted contacts, and emergency instructions stored locally for beneficiaries.',
+    storageLocation: 'localStorage',
+    leavesDevice: false,
+    icon: 'shield',
+  },
+  {
     id: 'investments',
     name: 'Investments',
     description: 'Investment holdings, portfolio allocations, and performance history.',
@@ -223,11 +232,14 @@ export function usePrivacyDashboard(): UsePrivacyDashboardResult {
               bytes =
                 estimateLocalStorageBytes('finance-gdpr-consent') +
                 estimateLocalStorageBytes('finance-consent-history');
+            } else if (def.id === 'estate') {
+              bytes = estimateLocalStorageBytes('finance-estate-');
             } else if (def.id === 'settings') {
               bytes =
                 estimateTotalLocalStorageBytes() -
                 estimateLocalStorageBytes('finance-gdpr-consent') -
-                estimateLocalStorageBytes('finance-consent-history');
+                estimateLocalStorageBytes('finance-consent-history') -
+                estimateLocalStorageBytes('finance-estate-');
             }
           }
           // SQLite OPFS storage is estimated via the StorageManager API below.
