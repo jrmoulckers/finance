@@ -20,6 +20,7 @@ import {
 import { SwipeableRow } from '../components/common/SwipeableRow';
 import { BulkEditToolbar, TransactionForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { VoiceEntrySheet } from '../components/voice';
 import {
   TransactionFilters,
   TransactionSort,
@@ -281,6 +282,7 @@ export const TransactionsPage: React.FC = () => {
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [isVoiceEntryOpen, setIsVoiceEntryOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
 
   // Get filters/sort from URL params
@@ -428,6 +430,15 @@ export const TransactionsPage: React.FC = () => {
     setAddMenuOpen(false);
   }, []);
 
+  const handleOpenVoiceEntry = useCallback(() => {
+    setAddMenuOpen(false);
+    setIsVoiceEntryOpen(true);
+  }, []);
+
+  const handleCloseVoiceEntry = useCallback(() => {
+    setIsVoiceEntryOpen(false);
+  }, []);
+
   /** Navigate to the import wizard from the Add Transaction dropdown. */
   const handleImportFromFile = useCallback(() => {
     setAddMenuOpen(false);
@@ -491,6 +502,23 @@ export const TransactionsPage: React.FC = () => {
       refreshTransactions();
     },
     [updateTransaction, refreshTransactions],
+  );
+
+  const handleVoiceTransactionSubmit = useCallback(
+    async (data: CreateTransactionInput): Promise<void> => {
+      const result = createTransaction(data);
+      if (result === null) {
+        throw new Error('Failed to create transaction. Please try again.');
+      }
+
+      setIsVoiceEntryOpen(false);
+      refreshTransactions();
+      toast?.showToast({
+        type: 'success',
+        message: 'Voice transaction saved.',
+      });
+    },
+    [createTransaction, refreshTransactions, toast],
   );
 
   const handleEditPanelClose = useCallback(() => {
@@ -720,6 +748,14 @@ export const TransactionsPage: React.FC = () => {
                         type="button"
                         className="add-transaction-dropdown__item"
                         role="menuitem"
+                        onClick={handleOpenVoiceEntry}
+                      >
+                        <AppIcon name="mic" /> Voice Entry
+                      </button>
+                      <button
+                        type="button"
+                        className="add-transaction-dropdown__item"
+                        role="menuitem"
                         onClick={handleImportFromFile}
                       >
                         <AppIcon name="download" /> Import from File
@@ -729,10 +765,16 @@ export const TransactionsPage: React.FC = () => {
                 </div>
               </>
             ) : (
-              <button type="button" className="add-button" onClick={handleOpenCreateForm}>
-                <PlusIcon />
-                Add income or expense
-              </button>
+              <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
+                <button type="button" className="add-button" onClick={handleOpenCreateForm}>
+                  <PlusIcon />
+                  Add income or expense
+                </button>
+                <button type="button" className="add-button" onClick={handleOpenVoiceEntry}>
+                  <AppIcon name="mic" />
+                  Voice entry
+                </button>
+              </div>
             )}
           </div>
 
@@ -1031,6 +1073,18 @@ export const TransactionsPage: React.FC = () => {
           initialData={editingTransaction ?? undefined}
           onSubmit={handleTransactionSubmit}
           onCancel={handleFormCancel}
+        />
+
+        <VoiceEntrySheet
+          isOpen={isVoiceEntryOpen}
+          accounts={accounts}
+          categories={categories}
+          onSubmit={handleVoiceTransactionSubmit}
+          onClose={handleCloseVoiceEntry}
+          onRequestManualEntry={() => {
+            handleCloseVoiceEntry();
+            handleOpenCreateForm();
+          }}
         />
 
         <TransactionEditPanel

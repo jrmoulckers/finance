@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import type { ReactNode } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -18,6 +19,95 @@ vi.mock('../hooks/useCategories', () => ({ useCategories: vi.fn() }));
 vi.mock('../hooks/useAccounts', () => ({ useAccounts: vi.fn() }));
 vi.mock('../hooks/useBulkTransactions', () => ({ useBulkTransactions: vi.fn() }));
 
+vi.mock('../components/common', () => ({
+  CategoryDropZone: ({
+    categories,
+    onDropTransactions,
+  }: {
+    categories: Array<{ id: string; name: string }>;
+    onDropTransactions: (
+      transactionIds: readonly string[],
+      categoryId: string | null,
+      categoryName: string,
+    ) => boolean;
+  }) => (
+    <div>
+      {categories.map((category) => (
+        <div
+          key={category.id}
+          data-drop-target-id={category.id}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            const payload =
+              event.dataTransfer?.getData('application/x-finance-transaction-ids') ?? '';
+            const ids = payload ? (JSON.parse(payload) as string[]) : [];
+            onDropTransactions(ids, category.id, category.name);
+          }}
+        >
+          {category.name}
+        </div>
+      ))}
+    </div>
+  ),
+  ConfirmDialog: ({
+    isOpen,
+    title,
+    message,
+    onConfirm,
+  }: {
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }) =>
+    isOpen ? (
+      <div role="alertdialog" aria-label={title}>
+        <p>{message}</p>
+        <button type="button" onClick={onConfirm}>
+          Delete
+        </button>
+      </div>
+    ) : null,
+  CurrencyDisplay: ({ amount }: { amount: number }) => <span>{amount}</span>,
+  DragDropProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DraggableTransaction: ({
+    children,
+    dragTransactionIds,
+    label,
+  }: {
+    children: ReactNode;
+    dragTransactionIds: readonly string[];
+    label: string;
+  }) => (
+    <div
+      role="group"
+      aria-label={`Actions for ${label}`}
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer?.setData(
+          'application/x-finance-transaction-ids',
+          JSON.stringify(dragTransactionIds),
+        );
+      }}
+    >
+      {children}
+    </div>
+  ),
+  EmptyState: ({ title }: { title: string }) => <div>{title}</div>,
+  ErrorBanner: ({ message }: { message: string }) => <div>{message}</div>,
+  ExplainThis: () => null,
+  LoadingSpinner: ({ label }: { label: string }) => <div>{label}</div>,
+  SyncIndicator: () => null,
+  useToast: () => null,
+}));
+vi.mock('../components/common/SwipeableRow', () => ({
+  SwipeableRow: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+vi.mock('../components/OfflineBanner', () => ({
+  OfflineBanner: () => null,
+}));
+
 // TransactionForm renders unconditionally and calls useDatabase internally.
 // Stub it out so the test has no provider dependency while still allowing
 // the page to surface the open state in interaction tests.
@@ -31,6 +121,15 @@ vi.mock('../components/forms', () => ({
   BulkEditToolbar: ({ selectionCount }: { selectionCount: number }) =>
     selectionCount > 0 ? (
       <div data-testid="bulk-edit-toolbar">{selectionCount} selected</div>
+    ) : null,
+}));
+
+vi.mock('../components/voice', () => ({
+  VoiceEntrySheet: ({ isOpen }: { isOpen: boolean }) =>
+    isOpen ? (
+      <div role="dialog" aria-label="Voice transaction entry">
+        Voice transaction entry
+      </div>
     ) : null,
 }));
 
@@ -310,7 +409,7 @@ describe('TransactionsPage', () => {
     expect(screen.getByRole('dialog', { name: 'Transaction form' })).toBeInTheDocument();
   });
 
-  it('displays Add Transaction split-button menu with Manual Entry and Import options', () => {
+  it('displays Add Transaction split-button menu with Manual Entry, Voice Entry, and Import options', () => {
     render(
       <MemoryRouter>
         <TransactionsPage />
@@ -325,7 +424,21 @@ describe('TransactionsPage', () => {
     fireEvent.click(menuButton);
     expect(menuButton).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('menuitem', { name: /manual entry/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /voice entry/i })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /import from file/i })).toBeInTheDocument();
+  });
+
+  it('opens the voice entry sheet from the split-button menu', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /open transaction options/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /voice entry/i }));
+
+    expect(screen.getByRole('dialog', { name: /voice transaction entry/i })).toBeInTheDocument();
   });
 
   it('displays the search input', () => {
