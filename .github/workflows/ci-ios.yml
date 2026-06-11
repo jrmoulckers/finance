@@ -1,4 +1,10 @@
-name: iOS CI
+# =============================================================================
+# iOS CI — simulator build, tests, and coverage checks
+# =============================================================================
+#
+# Runs the iOS simulator build/test pipeline, enforces coverage thresholds, and uploads xcresult/coverage artifacts for pull requests.
+# =============================================================================
+name: CI — iOS
 
 on:
   push:

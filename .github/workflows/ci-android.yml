@@ -1,4 +1,10 @@
-name: Android CI
+# =============================================================================
+# Android CI — build, test, lint, and release-safety checks
+# =============================================================================
+#
+# Runs on Android and shared Kotlin changes, executes detekt plus Android build/test jobs, and publishes CI artifacts for PR review.
+# =============================================================================
+name: CI — Android
 
 on:
   push:
@@ -10,6 +16,10 @@ on:
       - 'gradle/**'
       - '*.gradle.kts'
       - 'gradle.properties'
+      - 'settings.gradle*'
+      - 'config/detekt/**'
+      - '**/*.kt'
+      - '**/*.kts'
   pull_request:
     branches: [main]
     paths:
@@ -19,15 +29,20 @@ on:
       - 'gradle/**'
       - '*.gradle.kts'
       - 'gradle.properties'
+      - 'settings.gradle*'
+      - 'config/detekt/**'
+      - '**/*.kt'
+      - '**/*.kts'
 
 concurrency:
-  group: android-${{ github.ref }}
+  group: ci-android-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
   checks: write
   pull-requests: write
+  security-events: write
 
 env:
   GRADLE_OPTS: >-
@@ -42,6 +57,98 @@ env:
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
 jobs:
+  detekt:
+    name: detekt Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+
+      - name: Cache Kotlin/Native prebuilt
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-konan-
+
+      - name: Run detekt
+        id: detekt
+        run: |
+          DETEKT_START=$SECONDS
+          ./gradlew detekt \
+            --parallel --build-cache --stacktrace \
+            --continue
+          echo "duration=$(( SECONDS - DETEKT_START ))" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Kotlin logging patterns
+        run: |
+          PRINTLN_HITS=$(grep -rn 'println\|System\.out\|System\.err' \
+            --include='*.kt' \
+            apps/ packages/ services/ 2>/dev/null \
+            | grep -v 'Test' \
+            | grep -v 'test' \
+            | grep -v 'build/' \
+            || echo "")
+
+          if [ -n "$PRINTLN_HITS" ]; then
+            COUNT=$(echo "$PRINTLN_HITS" | wc -l)
+            echo "::warning::Found $COUNT println/System.out usage(s) in Kotlin production code"
+            echo "### ⚠️ Kotlin logging guardrails" >> "$GITHUB_STEP_SUMMARY"
+            echo "Found $COUNT println/System.out usage(s) in Kotlin production code." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ✅ Kotlin logging guardrails" >> "$GITHUB_STEP_SUMMARY"
+            echo "No println/System.out usage found in Kotlin production code." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always() && (success() || failure())
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        continue-on-error: true
+        with:
+          sarif_file: build/reports/detekt/
+          category: detekt
+          wait-for-processing: false
+
+      - name: Upload detekt reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: detekt-reports
+          path: |
+            **/build/reports/detekt/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: CI Summary
+        if: always()
+        run: |
+          echo "### 🔍 Android Lint Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| detekt duration | ${{ steps.detekt.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Gradle cache | ${{ github.ref == 'refs/heads/main' && 'read-write' || 'read-only' }} |" >> "$GITHUB_STEP_SUMMARY"
+
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
@@ -157,7 +264,6 @@ jobs:
           echo "| Compile duration | ${{ steps.compile.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Unit test duration | ${{ steps.unit-tests.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Gradle cache | ${{ github.ref == 'refs/heads/main' && 'read-write' || 'read-only' }} |" >> "$GITHUB_STEP_SUMMARY"
-          # Report APK size if it exists
           APK=$(find apps/android/build/outputs/apk/debug -name '*.apk' 2>/dev/null | head -1)
           if [ -n "$APK" ]; then
             SIZE=$(du -sh "$APK" | cut -f1)
@@ -166,8 +272,6 @@ jobs:
 
   instrumented-tests:
     name: Instrumented Tests (E2E)
-    # DISABLED: Android emulator cannot connect to adb on GitHub-hosted ubuntu runners.
-    # Re-enable when self-hosted runners with hardware acceleration are available.
     if: false
     runs-on: ubuntu-latest
     needs: build-and-test

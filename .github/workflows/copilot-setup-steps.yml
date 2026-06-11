@@ -1,3 +1,9 @@
+# =============================================================================
+# Copilot Setup Steps — agent environment bootstrap
+# =============================================================================
+#
+# Validates the coding-agent environment and keeps the repo-specific setup steps discoverable in GitHub Actions.
+# =============================================================================
 name: 'Copilot Setup Steps'
 
 on:

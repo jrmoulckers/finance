@@ -1,4 +1,10 @@
-name: CI — Shared Packages
+# =============================================================================
+# Shared Packages CI — KMP package build, tests, and coverage
+# =============================================================================
+#
+# Validates shared Kotlin Multiplatform packages that feed multiple apps and publishes coverage plus JUnit artifacts.
+# =============================================================================
+name: CI — Shared
 
 on:
   push:
@@ -19,7 +25,7 @@ on:
       - 'gradle.properties'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-shared-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:

@@ -87,7 +87,7 @@ settings for automated signing in CI/CD:
 
 ## Existing CI/CD Integration
 
-The signing step is already integrated in `.github/workflows/release-windows.yml`:
+The signing step is already integrated in `.github/workflows/release-platform.yml`:
 
 ```yaml
 - name: Sign MSIX package
@@ -143,5 +143,5 @@ The following placeholders in `AppxManifest.xml` must be filled:
 - [ ] `WINDOWS_SIGNING_CERT_BASE64` set in GitHub Actions secrets
 - [ ] `WINDOWS_CERT_PASSWORD` set in GitHub Actions secrets
 - [ ] Local signing tested with `sign-msix.ps1`
-- [ ] CI signing tested via `release-windows.yml` (dry run)
+- [ ] CI signing tested via `release-platform.yml` (dry run)
 - [ ] WACK (Windows App Certification Kit) tests pass on signed package

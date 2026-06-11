@@ -1,3 +1,9 @@
+# =============================================================================
+# Changesets Automation — release PR and tag helper
+# =============================================================================
+#
+# Keeps changeset-based versioning automation available for package-version management outside the release-train flow.
+# =============================================================================
 name: Changesets
 
 on:

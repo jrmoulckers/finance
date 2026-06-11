@@ -10,17 +10,17 @@ These checks validate correctness and must pass before a PR can be merged:
 
 | Check Name                                  | Workflow               | Scope                            | Why Required                       |
 | ------------------------------------------- | ---------------------- | -------------------------------- | ---------------------------------- |
-| **ESLint & Prettier**                       | `lint-format.yml`      | All code changes                 | Enforces code style consistency    |
-| **PR Title Check**                          | `pr-title.yml`         | All PRs                          | Ensures conventional commit format |
-| **Lint & Test (KMP)**                       | `ci.yml`               | `packages/**`, `gradle/**`       | Validates shared Kotlin packages   |
-| **Build & Test** (Android)                  | `android-ci.yml`       | `apps/android/**`, `packages/**` | Validates Android builds           |
-| **Build & Test** (iOS)                      | `ios-ci.yml`           | `apps/ios/**`, `packages/**`     | Validates iOS builds               |
-| **Build** (Web)                             | `web-ci.yml`           | `apps/web/**`                    | Validates web builds               |
-| **Unit Tests** (Web)                        | `web-ci.yml`           | `apps/web/**`                    | Validates web unit tests           |
-| **Build & Test** (Windows)                  | `windows-ci.yml`       | `apps/windows/**`, `packages/**` | Validates Windows builds           |
-| **CodeQL Analysis (javascript-typescript)** | `security.yml`         | All code changes                 | SAST security scanning             |
-| **detekt Analysis**                         | `kotlin-lint.yml`      | `**/*.kt`, `**/*.kts`            | Kotlin static analysis             |
-| **License Compliance**                      | `dependency-audit.yml` | Dependency changes               | No GPL/AGPL in prod deps           |
+| **ESLint & Prettier**                       | `ci-lint.yml`      | All code changes                 | Enforces code style consistency    |
+| **PR Title Check**                          | `ci-lint.yml`         | All PRs                          | Ensures conventional commit format |
+| **Lint & Test (KMP)**                       | `ci-shared.yml`               | `packages/**`, `gradle/**`       | Validates shared Kotlin packages   |
+| **Build & Test** (Android)                  | `ci-android.yml`       | `apps/android/**`, `packages/**` | Validates Android builds           |
+| **Build & Test** (iOS)                      | `ci-ios.yml`           | `apps/ios/**`, `packages/**`     | Validates iOS builds               |
+| **Build** (Web)                             | `ci-web.yml`           | `apps/web/**`                    | Validates web builds               |
+| **Unit Tests** (Web)                        | `ci-web.yml`           | `apps/web/**`                    | Validates web unit tests           |
+| **Build & Test** (Windows)                  | `ci-windows.yml`       | `apps/windows/**`, `packages/**` | Validates Windows builds           |
+| **CodeQL Analysis (javascript-typescript)** | `ci-security.yml`      | All code changes                 | SAST security scanning             |
+| **detekt Analysis**                         | `ci-android.yml`       | `**/*.kt`, `**/*.kts`            | Kotlin static analysis             |
+| **License Compliance**                      | `ci-security.yml`      | Dependency changes               | No GPL/AGPL in prod deps           |
 
 ## Informational Checks (Non-Blocking)
 
@@ -28,16 +28,16 @@ These checks provide useful feedback but should NOT block merges:
 
 | Check Name                        | Workflow               | Why Informational                                |
 | --------------------------------- | ---------------------- | ------------------------------------------------ |
-| **npm Audit**                     | `dependency-audit.yml` | Transitive dep vulns often can't be fixed in PRs |
-| **Audit Summary**                 | `dependency-audit.yml` | Aggregation of audit results                     |
-| **Gradle Dependency Check**       | `dependency-audit.yml` | OWASP NVD may be unavailable                     |
-| **Lighthouse Audit**              | `web-ci.yml`           | Performance metrics are advisory                 |
-| **E2E Tests**                     | `web-ci.yml`           | May be flaky; sharded across runners             |
-| **CodeQL Analysis (java-kotlin)** | `security.yml`         | May fail without full toolchain                  |
-| **Dependency Review**             | `security.yml`         | Requires GitHub Advanced Security                |
-| **Secret Detection**              | `security.yml`         | Advisory; may have false positives               |
-| **CI Health Monitor**             | `ci-health.yml`        | Scheduled reporting only                         |
-| **Build Performance Monitor**     | `build-perf.yml`       | Scheduled reporting only                         |
+| **npm Audit**                     | `ci-security.yml` | Transitive dep vulns often can't be fixed in PRs |
+| **Audit Summary**                 | `ci-security.yml` | Aggregation of audit results                     |
+| **Gradle Dependency Check**       | `ci-security.yml` | OWASP NVD may be unavailable                     |
+| **Lighthouse Audit**              | `ci-web.yml`           | Performance metrics are advisory                 |
+| **E2E Tests**                     | `ci-web.yml`           | May be flaky; sharded across runners             |
+| **CodeQL Analysis (java-kotlin)** | `ci-security.yml`         | May fail without full toolchain                  |
+| **Dependency Review**             | `ci-security.yml`         | Requires GitHub Advanced Security                |
+| **Secret Detection**              | `ci-security.yml`         | Advisory; may have false positives               |
+| **Housekeeping**                  | `housekeeping.yml`    | Scheduled maintenance and uptime checks          |
+| **Nightly**                       | `nightly.yml`         | Scheduled validation suites and security checks  |
 
 ## GitHub Branch Protection Settings
 
@@ -75,9 +75,9 @@ Note: GitHub branch protection cannot conditionally require checks based on chan
 
 This means:
 
-- A web-only PR won't trigger `android-ci.yml`, and that check won't block merge
-- A Kotlin-only PR won't trigger `web-ci.yml`, and that check won't block merge
-- `lint-format.yml` and `pr-title.yml` run on all PRs and are always required
+- A web-only PR won't trigger `ci-android.yml`, and that check won't block merge
+- A Kotlin-only PR won't trigger `ci-web.yml`, and that check won't block merge
+- `ci-lint.yml` and `ci-lint.yml` run on all PRs and are always required
 
 ### Implementation Note
 

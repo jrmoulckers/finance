@@ -25,7 +25,7 @@ Workflow: `.github/workflows/deploy-staging.yml` (`Deploy — Staging`)
 - Supports manual `workflow_dispatch` reruns.
 - Manual reruns accept `skip_ci_gate`; this is an emergency-only override for staging recovery when required CI is unavailable.
 - `pre-deploy-checks` detects whether web and/or backend changed so unchanged components are skipped.
-- Normal runs wait for these checks on the exact deploy SHA: `Web CI`, `Android CI`, `iOS CI`, `Windows CI`, `Lint & Format`, `CI — Shared Packages`, and `Security Scanning`.
+- Normal runs wait for these checks on the exact deploy SHA: `CI — Web`, `CI — Android`, `CI — iOS`, `CI — Windows`, `CI — Lint`, `CI — Shared`, `CI — Security`, and `CI — Feature Flags`.
 - Backend staging deploys over SSH to the staging host, runs `git pull origin main`, refreshes Docker Compose services, and restarts Caddy if needed.
 - Web staging deploys over SSH to the same host, hard-resets to `origin/main`, runs `npm ci`, rebuilds `packages/design-tokens` and `apps/web`, and verifies the built env.
 - The web job is serialized after the backend job to avoid `.git` lock races on the shared VM checkout.
@@ -36,7 +36,7 @@ Workflow: `.github/workflows/deploy-production.yml` (`Deploy — Production`)
 
 ### Triggers
 
-- **Automated promotion:** `.github/workflows/promote-production.yml` listens for a successful `Deploy — Staging` run on `main`, then reuses `deploy-production.yml` to promote the exact staged SHA.
+- **Automated promotion:** `.github/workflows/deploy-promote-production.yml` listens for a successful `Deploy — Staging` run on `main`, then reuses `deploy-production.yml` to promote the exact staged SHA.
 - **Tag push:** any global semver tag matching `v*` (for example `v1.2.3` or `v1.2.3-rc.1`) triggers an automatic production deploy of **all** components.
 - **Manual dispatch:** operators can provide:
   - `version`: semver tag or commit SHA
@@ -73,7 +73,7 @@ Key points:
   - `component`: `web`, `backend`, or `all`
   - `rollback`: `true`
   - `reason`: incident number, impact, and rollback target
-- For **cross-platform or store rollouts**, use `.github/workflows/rollback.yml` for the audited rollback flow and checklist.
+- For **cross-platform or store rollouts**, use `.github/workflows/deploy-rollback.yml` for the audited rollback flow and checklist.
 - After rollback, verify:
   1. the GitHub Actions run completed successfully,
   2. the public web app is serving the expected version,

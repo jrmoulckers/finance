@@ -1,0 +1,211 @@
+# =============================================================================
+# Lint CI — formatting, semantic PR titles, and observability guardrails
+# =============================================================================
+#
+# Runs the monorepo lint/format checks, validates pull-request titles, and enforces lightweight logging/sourcemap guardrails previously handled by observability checks.
+# =============================================================================
+name: CI — Lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.jsx'
+      - '**/*.mjs'
+      - '**/*.cjs'
+      - '**/*.json'
+      - '**/*.css'
+      - '**/*.html'
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '.eslintrc*'
+      - 'eslint.config.*'
+      - '.prettierrc*'
+      - '.prettierignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'apps/**'
+      - 'packages/**'
+      - 'services/**'
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.js'
+      - '**/*.jsx'
+      - '**/*.mjs'
+      - '**/*.cjs'
+      - '**/*.json'
+      - '**/*.css'
+      - '**/*.html'
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '.eslintrc*'
+      - 'eslint.config.*'
+      - '.prettierrc*'
+      - '.prettierignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'apps/**'
+      - 'packages/**'
+      - 'services/**'
+
+concurrency:
+  group: ci-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
+jobs:
+  eslint-prettier:
+    name: ESLint & Prettier
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Cache ESLint results
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .eslintcache
+          key: eslint-${{ runner.os }}-${{ hashFiles('eslint.config.*', 'package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            eslint-${{ runner.os }}-${{ hashFiles('eslint.config.*', 'package-lock.json') }}-
+            eslint-${{ runner.os }}-
+
+      - name: ESLint
+        run: npx eslint . --max-warnings 0 --cache --cache-location .eslintcache
+
+      - name: Prettier
+        run: npx prettier --check .
+
+  pr-title:
+    name: Semantic PR Title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            test
+            chore
+            ci
+            perf
+          requireScope: false
+
+  observability-guardrails:
+    name: Observability Guardrails
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Check for console logging in production code
+        run: |
+          CONSOLE_HITS=$(grep -rn 'console\.log\|console\.warn\|console\.error' \
+            --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
+            apps/web/src/ services/api/src/ packages/*/src/ 2>/dev/null \
+            | grep -v '\.test\.' \
+            | grep -v '\.spec\.' \
+            | grep -v '__tests__' \
+            | grep -v 'node_modules' \
+            | grep -v '// eslint-disable' \
+            || echo "")
+
+          echo "### 📋 Observability Guardrails" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$CONSOLE_HITS" ]; then
+            COUNT=$(echo "$CONSOLE_HITS" | wc -l)
+            echo "⚠️ Found **$COUNT** raw console logging call(s) in production code." >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "$CONSOLE_HITS" | head -20 >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Found $COUNT raw console logging call(s) in production code"
+          else
+            echo "✅ No raw console logging found in production code." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Check for sensitive data logging
+        run: |
+          SENSITIVE_PATTERNS=(
+            'password'
+            'access_token'
+            'refresh_token'
+            'api_key'
+            'apiKey'
+            'secret'
+            'creditCard'
+            'credit_card'
+            'ssn'
+            'social_security'
+          )
+
+          SENSITIVE_VIOLATIONS=0
+          for pattern in "${SENSITIVE_PATTERNS[@]}"; do
+            HITS=$(grep -rn "console\.\|log\.\|logger\.\|Log\." \
+              --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
+              --include='*.kt' --include='*.swift' \
+              apps/ packages/ services/ 2>/dev/null \
+              | grep -i "$pattern" \
+              | grep -v '\.test\.' \
+              | grep -v '\.spec\.' \
+              | grep -v 'node_modules' \
+              | grep -v '// SAFE:' \
+              | grep -v '# nosec' \
+              || echo "")
+
+            if [ -n "$HITS" ]; then
+              COUNT=$(echo "$HITS" | wc -l)
+              SENSITIVE_VIOLATIONS=$((SENSITIVE_VIOLATIONS + COUNT))
+              echo "::error::Potential sensitive data in logs matching '$pattern' ($COUNT occurrences)"
+            fi
+          done
+
+          if [ "$SENSITIVE_VIOLATIONS" -eq 0 ]; then
+            echo "✅ No sensitive-data logging patterns found." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "❌ Sensitive-data logging patterns were detected ($SENSITIVE_VIOLATIONS occurrences)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Check source map configuration
+        run: |
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "#### Source map configuration" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if grep -r 'sourcemap\|sourceMap\|source-map' apps/web/vite.config.* 2>/dev/null | grep -v node_modules > /dev/null; then
+            echo "- ✅ Web: Source maps configured in Vite" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- ⚠️ Web: No source map configuration found" >> "$GITHUB_STEP_SUMMARY"
+          fi

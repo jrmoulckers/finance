@@ -1,7 +1,7 @@
 # Release Artifact Generation — Runbook
 
 > **Issue:** #772  
-> **Workflow:** `.github/workflows/release-artifacts.yml`
+> **Workflow:** `.github/workflows/release-platform.yml`
 
 ## Overview
 
@@ -12,8 +12,8 @@ published for every supported platform (Android, iOS, Web, Windows).
 
 ```
 Tag push (v*)
-  → release.yml creates GitHub Release
-    → release-artifacts.yml builds all platforms in parallel
+  → release-platform.yml creates GitHub Release
+    → release-platform.yml builds all platforms in parallel
       → Artifacts uploaded to GitHub Release (after human approval)
 ```
 

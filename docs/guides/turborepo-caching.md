@@ -34,8 +34,8 @@ The following workflows pass `TURBO_TOKEN` / `TURBO_TEAM` as environment variabl
 so every `npm run build|test|lint` call (which internally invokes `turbo run`)
 automatically participates in the remote cache:
 
-- `.github/workflows/web-ci.yml`
-- `.github/workflows/lint-format.yml`
+- `.github/workflows/ci-web.yml`
+- `.github/workflows/ci-lint.yml`
 
 If the secrets are not set, Turbo silently falls back to local-only caching — CI
 will still succeed, just without the speedup.

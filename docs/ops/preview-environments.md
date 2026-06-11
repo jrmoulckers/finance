@@ -14,7 +14,7 @@ Every pull request that modifies `apps/web/**` or `packages/**` automatically re
 
 ### Trigger
 
-The `preview-deploy.yml` workflow triggers on:
+The `deploy-preview.yml` workflow triggers on:
 
 - Pull requests modifying `apps/web/**` or `packages/**`
 - Only runs on `pull_request` events (not pushes to main)
@@ -92,7 +92,7 @@ Before merging, reviewers should verify on the preview URL:
 
 ### Preview deployment failed
 
-1. Check the `preview-deploy.yml` workflow run logs
+1. Check the `deploy-preview.yml` workflow run logs
 2. Common causes:
    - Build failure in shared packages
    - Vercel project configuration mismatch

@@ -197,7 +197,7 @@ export default defineConfig({
 #### Option B: CLI upload in CI
 
 ```yaml
-# In web-ci.yml or release.yml
+# In ci-web.yml or release-platform.yml
 - name: Upload source maps to Sentry
   run: |
     npx @sentry/cli releases files ${{ github.sha }} upload-sourcemaps ./apps/web/dist
@@ -311,13 +311,13 @@ When implementing native SDKs, preserve the same DSN gating, consent gating, `se
 
 CI health is monitored through three complementary mechanisms:
 
-1. **GitHub Actions workflows** — `ci-health.yml` and `build-perf.yml` run on schedule
+1. **GitHub Actions workflows** — `housekeeping.yml`, `nightly.yml`, and `ci-security.yml` run on schedule
 2. **Local tooling** — `tools/ci-health-dashboard.js` for on-demand checks
 3. **GitHub Security tab** — CodeQL and dependency scanning results
 
 ### Beta uptime checks
 
-The beta uptime monitor lives at `.github/workflows/uptime-check.yml` and runs every 15 minutes (`*/15 * * * *`). It curls the public beta web URL with up to 3 attempts (10-second delay between retries):
+The beta uptime monitor lives at `.github/workflows/housekeeping.yml` and runs every 15 minutes (`*/15 * * * *`). It curls the public beta web URL with up to 3 attempts (10-second delay between retries):
 
 - Default URL: `https://finance-staging.vercel.app`
 - Override: set repository variable `BETA_UPTIME_URL` to the full beta URL to monitor (for example a custom domain or a dedicated `/health` endpoint)
@@ -328,11 +328,9 @@ On timeout, DNS failure, or any non-2xx/3xx response after the retry budget is e
 
 | Workflow               | Schedule             | What it monitors                                 |
 | ---------------------- | -------------------- | ------------------------------------------------ |
-| `ci-health.yml`        | Weekly (Mon 7AM UTC) | Success rates, flaky tests, trend analysis       |
-| `build-perf.yml`       | Weekly (Tue 6AM UTC) | Build times, cache hit rates, P50/P90/P99        |
-| `dependency-audit.yml` | Weekly (Wed 5AM UTC) | npm + Gradle vulnerabilities, license compliance |
-| `security.yml`         | Weekly (Mon 6AM UTC) | CodeQL SAST, secret detection                    |
-| `stale-detection.yml`  | On schedule          | Stale issues and PRs                             |
+| `nightly.yml`       | Daily / post-staging | Full E2E, load tests, and penetration testing    |
+| `ci-security.yml`   | Weekly + PR/push     | CodeQL, secret scanning, dependency auditing     |
+| `housekeeping.yml`  | On schedule          | Uptime checks, stale issues, project automation  |
 
 ### Alerting Rules
 
@@ -427,11 +425,11 @@ node tools/worktree-cleanup.js
 
 | Metric          | Source                 | Healthy         | Warning         | Critical      |
 | --------------- | ---------------------- | --------------- | --------------- | ------------- |
-| CI success rate | `ci-health.yml`        | >= 95%          | 80-95%          | < 80%         |
-| Avg build time  | `build-perf.yml`       | < 10min         | 10-15min        | > 15min       |
-| Flaky test rate | `ci-health.yml`        | 0 re-runs       | 1-3 re-runs     | > 3 re-runs   |
-| npm audit       | `dependency-audit.yml` | 0 high/critical | moderate issues | high/critical |
-| CodeQL findings | `security.yml`         | 0 findings      | low severity    | high severity |
+| CI success rate | `housekeeping.yml` | >= 95%          | 80-95%          | < 80%         |
+| Avg build time  | `nightly.yml`      | < 10min         | 10-15min        | > 15min       |
+| Flaky test rate | `nightly.yml`      | 0 re-runs       | 1-3 re-runs     | > 3 re-runs   |
+| npm audit       | `ci-security.yml` | 0 high/critical | moderate issues | high/critical |
+| CodeQL findings | `ci-security.yml`         | 0 findings      | low severity    | high severity |
 
 ### Configuration
 

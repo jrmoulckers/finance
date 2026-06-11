@@ -1,4 +1,11 @@
-name: Promote to Production
+# =============================================================================
+# Production Promotion — promote the last green staging commit to production
+# =============================================================================
+#
+# Reuses deploy-production.yml after a successful staging deployment so the exact staged SHA becomes the production candidate.
+# =============================================================================
+
+name: Deploy — Promote Production
 
 on:
   workflow_run:
