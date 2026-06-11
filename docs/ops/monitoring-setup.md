@@ -326,11 +326,11 @@ On timeout, DNS failure, or any non-2xx/3xx response after the retry budget is e
 
 ### Monitored Workflows
 
-| Workflow               | Schedule             | What it monitors                                 |
-| ---------------------- | -------------------- | ------------------------------------------------ |
-| `nightly.yml`       | Daily / post-staging | Full E2E, load tests, and penetration testing    |
-| `ci-security.yml`   | Weekly + PR/push     | CodeQL, secret scanning, dependency auditing     |
-| `housekeeping.yml`  | On schedule          | Uptime checks, stale issues, project automation  |
+| Workflow           | Schedule             | What it monitors                                |
+| ------------------ | -------------------- | ----------------------------------------------- |
+| `nightly.yml`      | Daily / post-staging | Full E2E, load tests, and penetration testing   |
+| `ci-security.yml`  | Weekly + PR/push     | CodeQL, secret scanning, dependency auditing    |
+| `housekeeping.yml` | On schedule          | Uptime checks, stale issues, project automation |
 
 ### Alerting Rules
 
@@ -423,13 +423,13 @@ node tools/worktree-cleanup.js
 
 ### Dashboard Metrics Reference
 
-| Metric          | Source                 | Healthy         | Warning         | Critical      |
-| --------------- | ---------------------- | --------------- | --------------- | ------------- |
+| Metric          | Source             | Healthy         | Warning         | Critical      |
+| --------------- | ------------------ | --------------- | --------------- | ------------- |
 | CI success rate | `housekeeping.yml` | >= 95%          | 80-95%          | < 80%         |
 | Avg build time  | `nightly.yml`      | < 10min         | 10-15min        | > 15min       |
 | Flaky test rate | `nightly.yml`      | 0 re-runs       | 1-3 re-runs     | > 3 re-runs   |
-| npm audit       | `ci-security.yml` | 0 high/critical | moderate issues | high/critical |
-| CodeQL findings | `ci-security.yml`         | 0 findings      | low severity    | high severity |
+| npm audit       | `ci-security.yml`  | 0 high/critical | moderate issues | high/critical |
+| CodeQL findings | `ci-security.yml`  | 0 findings      | low severity    | high severity |
 
 ### Configuration
 

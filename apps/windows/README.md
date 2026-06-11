@@ -6,8 +6,8 @@ jpackage. There are three supported ways to produce an installable binary:
 | Flow                                                     | When to use                                                         | Trigger                                                               |
 | -------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | **Local build script** (`tools/windows/build-local.ps1`) | Day-to-day dev. Iterate on Windows-only bugs without waiting on CI. | `pwsh tools/windows/build-local.ps1 [flags]`                          |
-| **Rolling main build** (`ci-windows.yml`)        | "I want the latest signed MSI from `main` right now."               | Auto-runs on every push to `main` that touches Windows-relevant code. |
-| **Tagged release** (`release-platform.yml`)               | Cutting a versioned release for testers / stores.                   | `git tag v1.2.3-windows && git push --tags` (or `workflow_dispatch`). |
+| **Rolling main build** (`ci-windows.yml`)                | "I want the latest signed MSI from `main` right now."               | Auto-runs on every push to `main` that touches Windows-relevant code. |
+| **Tagged release** (`release-platform.yml`)              | Cutting a versioned release for testers / stores.                   | `git tag v1.2.3-windows && git push --tags` (or `workflow_dispatch`). |
 
 The two CI flows are intentionally split: the rolling-main build is
 always-on with no approval gate, the tagged release goes through the
