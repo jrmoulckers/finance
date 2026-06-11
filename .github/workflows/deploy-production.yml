@@ -1,29 +1,56 @@
+# =============================================================================
+# Production Deployment — gated production deploy and rollback entry point
+# =============================================================================
+#
+# Deploys tagged or manually selected revisions to production after CI and smoke-test gates, while supporting rapid rollback for known-good versions.
+# =============================================================================
 # Deploys a specific version to production. Triggers:
 #   1. Manual workflow_dispatch trigger (version/component/rollback/reason)
 #   2. Push of a global semver tag (v1.2.3, v1.2.3-rc.1)
+#   3. Reusable workflow_call from automated staging promotion
 #
-# Gates (all triggers):
-#   - Required CI workflows green on the exact SHA being deployed
-#   - Human approval via "production" GitHub environment
+# Gates:
+#   - Non-rollback deploys wait for required CI workflows on the exact SHA
+#   - Manual/tag deploys still respect the protected "production" environment
+#   - Automated promotions can optionally create a GitHub Release and auto-rollback
+#     to the previous stable tag if post-deploy smoke tests fail
 #
-# Rollbacks (workflow_dispatch with rollback=true) skip smoke tests and the CI
-# wait gate so an already-known version can be restored quickly. Tag-triggered
-# deploys always gate on CI and always run smoke tests.
-#
-# Features:
-#   - Version selection (tag or commit SHA)
-#   - Automated semver tag deploys for release parity with staging
-#   - Pre-deployment smoke tests
-#   - Rollback support (re-deploy previous version)
-#   - GitHub Deployment status tracking
-#   - Deployment notifications
-#
-# Issues: #886, #2057, #2060
+# Issues: #886, #2057, #2060, #2105
 # =============================================================================
 
 name: Deploy — Production
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version to deploy (tag like v1.0.0, or commit SHA)'
+        required: true
+        type: string
+      component:
+        description: 'Component to deploy'
+        required: false
+        default: all
+        type: string
+      rollback:
+        description: 'Is this a rollback? (skips smoke tests and CI gate)'
+        required: false
+        default: false
+        type: boolean
+      reason:
+        description: 'Deployment reason (for audit trail)'
+        required: true
+        type: string
+      create_release:
+        description: 'Create a GitHub Release after successful production smoke tests'
+        required: false
+        default: false
+        type: boolean
+      auto_rollback:
+        description: 'Automatically roll back to the previous stable tag if production smoke tests fail'
+        required: false
+        default: false
+        type: boolean
   workflow_dispatch:
     inputs:
       version:
@@ -49,7 +76,6 @@ on:
         type: string
   push:
     tags:
-      # Global semver release tags only; platform tags (v1.2.3-web, etc.) stay on release-*.yml.
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-*'
       - '!v[0-9]+.[0-9]+.[0-9]+-web'
@@ -59,21 +85,19 @@ on:
 
 concurrency:
   group: deploy-production
-  cancel-in-progress: false # Never cancel production deployments
+  cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
   checks: read
   statuses: read
   deployments: write
 
 env:
   ENVIRONMENT: production
+  DEFAULT_PRODUCTION_URL: https://finance.jrmoulckers.com
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Validate inputs and prepare deployment
-  # ---------------------------------------------------------------------------
   prepare:
     name: Prepare Deployment
     runs-on: ubuntu-latest
@@ -81,13 +105,16 @@ jobs:
     outputs:
       sha: ${{ steps.resolve.outputs.sha }}
       sha_short: ${{ steps.resolve.outputs.sha_short }}
-      version: ${{ steps.resolve.outputs.version }}
+      version: ${{ steps.deployment.outputs.version }}
       component: ${{ steps.deployment.outputs.component }}
       rollback: ${{ steps.deployment.outputs.rollback }}
       reason: ${{ steps.deployment.outputs.reason }}
       actor: ${{ steps.deployment.outputs.actor }}
       deploy_web: ${{ steps.components.outputs.web }}
       deploy_backend: ${{ steps.components.outputs.backend }}
+      create_release: ${{ steps.deployment.outputs.create_release }}
+      auto_rollback: ${{ steps.deployment.outputs.auto_rollback }}
+      previous_release_tag: ${{ steps.previous.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -103,20 +130,45 @@ jobs:
           INPUT_COMPONENT: ${{ github.event.inputs.component }}
           INPUT_ROLLBACK: ${{ github.event.inputs.rollback }}
           INPUT_REASON: ${{ github.event.inputs.reason }}
+          CALL_VERSION: ${{ inputs.version }}
+          CALL_COMPONENT: ${{ inputs.component }}
+          CALL_ROLLBACK: ${{ inputs.rollback }}
+          CALL_REASON: ${{ inputs.reason }}
+          CALL_CREATE_RELEASE: ${{ inputs.create_release }}
+          CALL_AUTO_ROLLBACK: ${{ inputs.auto_rollback }}
           ACTOR_NAME: ${{ github.actor }}
         run: |
-          if [ "$EVENT_NAME" = "push" ]; then
+          normalize_bool() {
+            case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+              true|1|yes) echo true ;;
+              *) echo false ;;
+            esac
+          }
+
+          if [ "$EVENT_NAME" = 'push' ]; then
             VERSION="$REF_NAME"
-            COMPONENT="all"
-            ROLLBACK="false"
+            COMPONENT='all'
+            ROLLBACK='false'
             REASON="Automated deploy for tag $REF_NAME"
             ACTOR="$ACTOR_NAME (tag push)"
+            CREATE_RELEASE='false'
+            AUTO_ROLLBACK='false'
+          elif [ "$EVENT_NAME" = 'workflow_call' ]; then
+            VERSION="$CALL_VERSION"
+            COMPONENT="${CALL_COMPONENT:-all}"
+            ROLLBACK="$(normalize_bool "${CALL_ROLLBACK:-false}")"
+            REASON="$CALL_REASON"
+            ACTOR="$ACTOR_NAME (automated promotion)"
+            CREATE_RELEASE="$(normalize_bool "${CALL_CREATE_RELEASE:-false}")"
+            AUTO_ROLLBACK="$(normalize_bool "${CALL_AUTO_ROLLBACK:-false}")"
           else
             VERSION="$INPUT_VERSION"
             COMPONENT="$INPUT_COMPONENT"
-            ROLLBACK="$INPUT_ROLLBACK"
+            ROLLBACK="$(normalize_bool "${INPUT_ROLLBACK:-false}")"
             REASON="$INPUT_REASON"
             ACTOR="$ACTOR_NAME"
+            CREATE_RELEASE='false'
+            AUTO_ROLLBACK='false'
           fi
 
           {
@@ -125,6 +177,8 @@ jobs:
             echo "rollback=$ROLLBACK"
             echo "reason=$REASON"
             echo "actor=$ACTOR"
+            echo "create_release=$CREATE_RELEASE"
+            echo "auto_rollback=$AUTO_ROLLBACK"
           } >> "$GITHUB_OUTPUT"
 
       - name: Resolve version to commit SHA
@@ -135,10 +189,10 @@ jobs:
           ROLLBACK: ${{ steps.deployment.outputs.rollback }}
           REASON: ${{ steps.deployment.outputs.reason }}
           ACTOR: ${{ steps.deployment.outputs.actor }}
+          CREATE_RELEASE: ${{ steps.deployment.outputs.create_release }}
+          AUTO_ROLLBACK: ${{ steps.deployment.outputs.auto_rollback }}
         run: |
-          # Try to resolve as a git ref (tag, branch, or commit SHA). Peel
-          # annotated tags to the commit so deploy jobs always checkout a tree.
-          SHA=$(git rev-parse --verify --quiet "$VERSION^{commit}" || echo "")
+          SHA=$(git rev-parse --verify --quiet "$VERSION^{commit}" || echo '')
 
           if [ -z "$SHA" ]; then
             echo "::error::Could not resolve '$VERSION' to a commit"
@@ -147,67 +201,74 @@ jobs:
 
           SHA_SHORT=$(echo "$SHA" | cut -c1-7)
 
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "sha_short=$SHA_SHORT" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          {
+            echo "sha=$SHA"
+            echo "sha_short=$SHA_SHORT"
+          } >> "$GITHUB_OUTPUT"
 
           echo "### 🚀 Production Deployment" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '| Key | Value |' >> "$GITHUB_STEP_SUMMARY"
+          echo '|-----|-------|' >> "$GITHUB_STEP_SUMMARY"
           echo "| Version | \`$VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Commit | \`$SHA_SHORT\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Component | $COMPONENT |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Rollback | $ROLLBACK |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Reason | $REASON |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Triggered by | $ACTOR |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Create release | $CREATE_RELEASE |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Auto-rollback | $AUTO_ROLLBACK |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Determine components to deploy
         id: components
         run: |
-          COMPONENT="${{ steps.deployment.outputs.component }}"
-          if [ "$COMPONENT" = "all" ] || [ "$COMPONENT" = "web" ]; then
-            echo "web=true" >> "$GITHUB_OUTPUT"
+          COMPONENT='${{ steps.deployment.outputs.component }}'
+          if [ "$COMPONENT" = 'all' ] || [ "$COMPONENT" = 'web' ]; then
+            echo 'web=true' >> "$GITHUB_OUTPUT"
           else
-            echo "web=false" >> "$GITHUB_OUTPUT"
-          fi
-          if [ "$COMPONENT" = "all" ] || [ "$COMPONENT" = "backend" ]; then
-            echo "backend=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "backend=false" >> "$GITHUB_OUTPUT"
+            echo 'web=false' >> "$GITHUB_OUTPUT"
           fi
 
-  # ---------------------------------------------------------------------------
-  # Gate: wait for required CI workflows on the resolved deploy SHA
-  # ---------------------------------------------------------------------------
+          if [ "$COMPONENT" = 'all' ] || [ "$COMPONENT" = 'backend' ]; then
+            echo 'backend=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'backend=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect previous stable release tag
+        id: previous
+        run: |
+          PREVIOUS_TAG=$(git tag --sort=-version:refname --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1 || true)
+          echo "tag=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Previous stable release: $PREVIOUS_TAG" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Previous stable release: none' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   verify-ci-green:
     name: Verify CI green on SHA
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [prepare]
-    if: github.event.inputs.rollback != 'true'
+    if: needs.prepare.outputs.rollback != 'true'
     steps:
       - name: Wait for CI workflows
         uses: lewagon/wait-on-check-action@0dceb95e7c4cad8cc7422aee3885998f5cab9c79 # v1.4.0
         with:
           ref: ${{ needs.prepare.outputs.sha }}
           running-workflow-name: 'Verify CI green on SHA'
-          check-regexp: '^(Web CI|Android CI|iOS CI|Windows CI|Lint & Format|CI — Shared Packages|Security Scanning)$'
+          check-regexp: '^(CI — Web|CI — Android|CI — iOS|CI — Windows|CI — Lint|CI — Shared|CI — Security|CI — Feature Flags)
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 30
           allowed-conclusions: success,skipped
 
-  # ---------------------------------------------------------------------------
-  # Smoke tests (skipped on rollback)
-  # ---------------------------------------------------------------------------
   smoke-tests:
     name: Pre-deploy Smoke Tests
     needs: prepare
     if: needs.prepare.outputs.rollback != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment:
-      name: production
     steps:
       - name: Checkout at deploy version
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -246,12 +307,9 @@ jobs:
 
       - name: Smoke test passed
         run: |
-          echo "### ✅ Smoke Tests Passed" >> "$GITHUB_STEP_SUMMARY"
+          echo '### ✅ Pre-deploy Smoke Tests Passed' >> "$GITHUB_STEP_SUMMARY"
           echo "Build and type-check succeeded at \`${{ needs.prepare.outputs.sha_short }}\`" >> "$GITHUB_STEP_SUMMARY"
 
-  # ---------------------------------------------------------------------------
-  # Deploy Web to production
-  # ---------------------------------------------------------------------------
   deploy-web:
     name: Deploy Web (Production)
     needs: [prepare, verify-ci-green, smoke-tests]
@@ -266,7 +324,6 @@ jobs:
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
-
     steps:
       - name: Checkout at deploy version
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -310,7 +367,8 @@ jobs:
           npm i -g vercel@latest
 
           set -o pipefail
-          DEPLOY_LOG=$(mktemp)
+          DEPLOY_LOG="$GITHUB_WORKSPACE/vercel-deploy.log"
+          rm -f "$DEPLOY_LOG"
           if ! vercel deploy \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID" \
@@ -318,19 +376,16 @@ jobs:
             --yes \
             --archive=tgz \
             apps/web/dist >"$DEPLOY_LOG" 2>&1; then
-            echo "::error::Vercel production deploy failed:"
+            echo '::error::Vercel production deploy failed:'
             cat "$DEPLOY_LOG"
             exit 1
           fi
           DEPLOY_URL=$(tail -1 "$DEPLOY_LOG")
 
           echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
-          echo "### 🌐 Web Production Deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo '### 🌐 Web Production Deployed' >> "$GITHUB_STEP_SUMMARY"
           echo "**URL:** $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
 
-  # ---------------------------------------------------------------------------
-  # Deploy Backend to production
-  # ---------------------------------------------------------------------------
   deploy-backend:
     name: Deploy Backend (Production)
     needs: [prepare, verify-ci-green, smoke-tests]
@@ -344,7 +399,6 @@ jobs:
     timeout-minutes: 15
     environment:
       name: production
-
     steps:
       - name: Checkout at deploy version
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -359,22 +413,20 @@ jobs:
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
         run: |
           if [ -z "$DEPLOY_HOST" ]; then
-            echo "::warning::DEPLOY_HOST not configured — skipping backend deployment"
-            echo "### ⚠️ Backend Production Skipped" >> "$GITHUB_STEP_SUMMARY"
-            echo "Configure DEPLOY_HOST, DEPLOY_SSH_KEY, and DEPLOY_USER secrets." >> "$GITHUB_STEP_SUMMARY"
+            echo '::warning::DEPLOY_HOST not configured — skipping backend deployment'
+            echo '### ⚠️ Backend Production Skipped' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Configure DEPLOY_HOST, DEPLOY_SSH_KEY, and DEPLOY_USER secrets.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
-          VERSION="${{ needs.prepare.outputs.version }}"
-          SHA="${{ needs.prepare.outputs.sha }}"
+          VERSION='${{ needs.prepare.outputs.version }}'
+          SHA='${{ needs.prepare.outputs.sha }}'
 
-          # Set up SSH
           mkdir -p ~/.ssh
           echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          # Deploy: checkout specific version, rebuild containers
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << DEPLOY
             cd $DEPLOY_PATH
             git fetch origin
@@ -382,9 +434,6 @@ jobs:
             docker compose -f deploy/docker-compose.yml pull
             docker compose -f deploy/docker-compose.yml up -d --remove-orphans
 
-            # Caddy serves the public site and can safely start before backend
-            # healthchecks settle. If compose left it Created because an
-            # upstream was unhealthy, explicitly start/recreate just Caddy.
             caddy_started=false
             for attempt in 1 2 3; do
               if docker compose -f deploy/docker-compose.yml up -d --no-deps caddy \
@@ -396,14 +445,14 @@ jobs:
               sleep 5
             done
             if [ "$caddy_started" != true ]; then
-              echo "::warning::caddy was not confirmed started after retries"
+              echo '::warning::caddy was not confirmed started after retries'
             fi
 
             docker compose -f deploy/docker-compose.yml ps
             echo "Deployed version: $VERSION ($SHA)"
           DEPLOY
 
-          echo "### 🐳 Backend Production Deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo '### 🐳 Backend Production Deployed' >> "$GITHUB_STEP_SUMMARY"
           echo "**Host:** \`$DEPLOY_HOST\`" >> "$GITHUB_STEP_SUMMARY"
           echo "**Version:** \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
 
@@ -411,34 +460,981 @@ jobs:
         if: always()
         run: rm -f ~/.ssh/deploy_key
 
-  # ---------------------------------------------------------------------------
-  # Post-deployment summary and audit trail
-  # ---------------------------------------------------------------------------
+  post-deploy-smoke:
+    name: Post-deploy Smoke Tests
+    needs: [prepare, deploy-web, deploy-backend]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.deploy-web.result == 'success' || needs.deploy-web.result == 'skipped') &&
+      (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+    steps:
+      - name: Resolve production target
+        id: target
+        env:
+          CONFIGURED_URL: ${{ vars.PRODUCTION_URL || 'https://finance.jrmoulckers.com' }}
+        run: |
+          echo "url=${CONFIGURED_URL%/}" >> "$GITHUB_OUTPUT"
+
+      - name: Run production smoke checks
+        env:
+          BASE_URL: ${{ steps.target.outputs.url }}
+        run: |
+          set -euo pipefail
+
+          HOME_RESPONSE='production-home.html'
+          HEALTH_RESPONSE='production-health.json'
+
+          check_homepage() {
+            local attempt http_code
+            for attempt in 1 2 3 4 5 6; do
+              http_code=$(curl -sSL -o "$HOME_RESPONSE" -w '%{http_code}' "$BASE_URL" || echo '000')
+              if [ "$http_code" = '200' ]; then
+                return 0
+              fi
+              echo "Homepage check attempt ${attempt}/6 returned HTTP ${http_code}; retrying in 10s"
+              sleep 10
+            done
+            return 1
+          }
+
+          check_health() {
+            local attempt http_code
+            for attempt in 1 2 3 4 5 6; do
+              http_code=$(curl -sSL -o "$HEALTH_RESPONSE" -w '%{http_code}' "$BASE_URL/health" || echo '000')
+              if [ "$http_code" = '200' ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"healthy"|healthy' "$HEALTH_RESPONSE"; then
+                return 0
+              fi
+              echo "Health check attempt ${attempt}/6 returned HTTP ${http_code}; retrying in 10s"
+              sleep 10
+            done
+            return 1
+          }
+
+          check_homepage || {
+            echo '::error::Production homepage did not return HTTP 200'
+            test -f "$HOME_RESPONSE" && sed -n '1,40p' "$HOME_RESPONSE"
+            exit 1
+          }
+
+          grep -qi '<title>Finance</title>' "$HOME_RESPONSE" || grep -qi 'Finance' "$HOME_RESPONSE" || {
+            echo '::error::Production homepage did not include the expected Finance marker'
+            sed -n '1,40p' "$HOME_RESPONSE"
+            exit 1
+          }
+
+          check_health || {
+            echo '::error::Production health endpoint did not report healthy'
+            test -f "$HEALTH_RESPONSE" && cat "$HEALTH_RESPONSE"
+            exit 1
+          }
+
+          echo '### ✅ Post-deploy Smoke Tests Passed' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Homepage returned HTTP 200' >> "$GITHUB_STEP_SUMMARY"
+          echo '- /health returned healthy' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Basic page load marker detected' >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: $BASE_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  auto-rollback:
+    name: Auto Rollback
+    needs: [prepare, post-deploy-smoke]
+    if: |
+      always() &&
+      needs.prepare.outputs.auto_rollback == 'true' &&
+      needs.post-deploy-smoke.result == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Resolve rollback target
+        id: rollback
+        env:
+          PREVIOUS_TAG: ${{ needs.prepare.outputs.previous_release_tag }}
+        run: |
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo '::error::No previous stable release tag is available for automatic rollback'
+            exit 1
+          fi
+
+          ROLLBACK_SHA=$(git rev-parse --verify --quiet "$PREVIOUS_TAG^{commit}" || echo '')
+          if [ -z "$ROLLBACK_SHA" ]; then
+            echo "::error::Could not resolve rollback target '$PREVIOUS_TAG'"
+            exit 1
+          fi
+
+          {
+            echo "tag=$PREVIOUS_TAG"
+            echo "sha=$ROLLBACK_SHA"
+            echo "sha_short=${ROLLBACK_SHA:0:7}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo '### 🔙 Automatic Rollback Initiated' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Current deployment failed smoke tests at \`${{ needs.prepare.outputs.sha_short }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Rolling back to \`$PREVIOUS_TAG\` (\`${ROLLBACK_SHA:0:7}\`)" >> "$GITHUB_STEP_SUMMARY"
+          echo '- Flow mirrors the documented rollback.yml web/backend recovery path.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout rollback target tree
+        run: git checkout '${{ steps.rollback.outputs.sha }}'
+
+      - name: Set up Node.js
+        if: needs.prepare.outputs.deploy_web == 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: needs.prepare.outputs.deploy_web == 'true'
+        run: npm ci
+
+      - name: Build rollback web bundle
+        if: needs.prepare.outputs.deploy_web == 'true'
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: ${{ steps.rollback.outputs.tag }}
+          VITE_ENVIRONMENT: production
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+        run: |
+          npm run build -w packages/design-tokens
+          npm run build -w apps/web
+
+      - name: Verify rollback web build env
+        if: needs.prepare.outputs.deploy_web == 'true'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node tools/verify-build-env.mjs --check-env apps/web/dist
+
+      - name: Roll back web deployment
+        if: needs.prepare.outputs.deploy_web == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm i -g vercel@latest
+
+          set -o pipefail
+          DEPLOY_LOG="$GITHUB_WORKSPACE/vercel-rollback.log"
+          rm -f "$DEPLOY_LOG"
+          if ! vercel deploy \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --prod \
+            --yes \
+            --archive=tgz \
+            apps/web/dist >"$DEPLOY_LOG" 2>&1; then
+            echo '::error::Vercel rollback deploy failed:'
+            cat "$DEPLOY_LOG"
+            exit 1
+          fi
+          DEPLOY_URL=$(tail -1 "$DEPLOY_LOG")
+          echo '### 🌐 Web Rollback Complete' >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Roll back backend deployment
+        if: needs.prepare.outputs.deploy_backend == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+          ROLLBACK_SHA: ${{ steps.rollback.outputs.sha }}
+          ROLLBACK_TAG: ${{ steps.rollback.outputs.tag }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo '::warning::DEPLOY_HOST not configured — skipping backend rollback'
+            exit 0
+          fi
+
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << DEPLOY
+            cd $DEPLOY_PATH
+            git fetch origin --tags
+            git checkout $ROLLBACK_SHA
+            docker compose -f deploy/docker-compose.yml pull
+            docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+
+            caddy_started=false
+            for attempt in 1 2 3; do
+              if docker compose -f deploy/docker-compose.yml up -d --no-deps caddy \
+                || docker compose -f deploy/docker-compose.yml start caddy; then
+                caddy_started=true
+                break
+              fi
+              echo "::warning::caddy start attempt ${attempt} failed; retrying"
+              sleep 5
+            done
+            if [ "$caddy_started" != true ]; then
+              echo '::warning::caddy was not confirmed started after retries'
+            fi
+
+            docker compose -f deploy/docker-compose.yml ps
+            echo "Rolled back version: $ROLLBACK_TAG ($ROLLBACK_SHA)"
+          DEPLOY
+
+          echo '### 🐳 Backend Rollback Complete' >> "$GITHUB_STEP_SUMMARY"
+          echo "**Host:** \`$DEPLOY_HOST\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Version:** \`${ROLLBACK_TAG}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify rolled back production health
+        env:
+          BASE_URL: ${{ vars.PRODUCTION_URL || 'https://finance.jrmoulckers.com' }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            HTTP_CODE=$(curl -sSL -o rollback-health.json -w '%{http_code}' "${BASE_URL%/}/health" || echo '000')
+            if [ "$HTTP_CODE" = '200' ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"healthy"|healthy' rollback-health.json; then
+              echo 'Rollback health check succeeded.'
+              exit 0
+            fi
+            echo "Rollback health check attempt ${attempt}/6 returned HTTP ${HTTP_CODE}; retrying in 10s"
+            sleep 10
+          done
+          echo '::error::Rolled back production health check did not recover'
+          test -f rollback-health.json && cat rollback-health.json
+          exit 1
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  create-release:
+    name: Create GitHub Release
+    needs: [prepare, post-deploy-smoke, auto-rollback]
+    if: |
+      always() &&
+      needs.prepare.outputs.create_release == 'true' &&
+      needs.prepare.outputs.rollback != 'true' &&
+      needs.post-deploy-smoke.result == 'success' &&
+      (needs.auto-rollback.result == 'skipped' || needs.auto-rollback.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout deployed commit
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Resolve release version
+        id: version
+        env:
+          PREVIOUS_TAG: ${{ needs.prepare.outputs.previous_release_tag }}
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version || ''")
+          PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
+          RELEASE_VERSION=''
+
+          if echo "$PACKAGE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$' \
+            && [ "$PACKAGE_VERSION" != '0.0.0' ] \
+            && ! git rev-parse -q --verify "refs/tags/v$PACKAGE_VERSION" >/dev/null; then
+            if [ -z "$PREVIOUS_VERSION" ] || [ "$(printf '%s\n%s\n' "$PREVIOUS_VERSION" "$PACKAGE_VERSION" | sort -V | tail -1)" = "$PACKAGE_VERSION" ]; then
+              RELEASE_VERSION="$PACKAGE_VERSION"
+            fi
+          fi
+
+          if [ -z "$RELEASE_VERSION" ]; then
+            if [ -n "$PREVIOUS_VERSION" ]; then
+              BASE_VERSION="${PREVIOUS_VERSION%%-*}"
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
+              RELEASE_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+            else
+              RELEASE_VERSION='0.1.0'
+            fi
+          fi
+
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changelog
+        env:
+          PREVIOUS_TAG: ${{ needs.prepare.outputs.previous_release_tag }}
+          TARGET_SHA: ${{ needs.prepare.outputs.sha }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if [ -n "$PREVIOUS_TAG" ]; then
+            node tools/generate-changelog.js --from "$PREVIOUS_TAG" --to "$TARGET_SHA" > release-notes.md
+          else
+            {
+              echo "## $RELEASE_TAG"
+              echo ''
+              git log --pretty=format:'- %s' "$TARGET_SHA"
+            } > release-notes.md
+          fi
+
+          if [ ! -s release-notes.md ]; then
+            {
+              echo "## $RELEASE_TAG"
+              echo ''
+              echo '- Automated production deployment'
+            } > release-notes.md
+          fi
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_TITLE: Release ${{ steps.version.outputs.tag }}
+          TARGET_SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          EXTRA_ARGS=''
+          if printf '%s' "$RELEASE_TAG" | grep -q '-'; then
+            EXTRA_ARGS='--prerelease'
+          fi
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes-file release-notes.md
+          else
+            gh release create "$RELEASE_TAG" --target "$TARGET_SHA" --title "$RELEASE_TITLE" --notes-file release-notes.md $EXTRA_ARGS
+          fi
+
+          echo '### 🏷️ GitHub Release Published' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag: \`$RELEASE_TAG\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '- Changelog generated from conventional commits since the previous stable tag.' >> "$GITHUB_STEP_SUMMARY"
+
   post-deploy:
     name: Post-deployment
-    needs: [prepare, deploy-web, deploy-backend]
+    needs: [prepare, deploy-web, deploy-backend, post-deploy-smoke, auto-rollback, create-release]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
     steps:
       - name: Deployment audit trail
         run: |
-          echo "### 📋 Production Deployment Record" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo '### 📋 Production Deployment Record' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '| Key | Value |' >> "$GITHUB_STEP_SUMMARY"
+          echo '|-----|-------|' >> "$GITHUB_STEP_SUMMARY"
           echo "| Version | \`${{ needs.prepare.outputs.version }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Commit | \`${{ needs.prepare.outputs.sha_short }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Web | ${{ needs.deploy-web.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Backend | ${{ needs.deploy-backend.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Post-deploy smoke | ${{ needs.post-deploy-smoke.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Auto-rollback | ${{ needs.auto-rollback.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| GitHub Release | ${{ needs.create-release.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Rollback | ${{ needs.prepare.outputs.rollback }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Reason | ${{ needs.prepare.outputs.reason }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Deployed by | ${{ needs.prepare.outputs.actor }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Timestamp | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Fail if any deployment failed
-        if: needs.deploy-web.result == 'failure' || needs.deploy-backend.result == 'failure'
+      - name: Fail if deployment or release workflow reported an error
+        if: |
+          needs.deploy-web.result == 'failure' ||
+          needs.deploy-backend.result == 'failure' ||
+          needs.post-deploy-smoke.result == 'failure' ||
+          needs.auto-rollback.result == 'failure' ||
+          needs.create-release.result == 'failure'
         run: |
-          echo "::error::One or more deployments failed — check logs above"
+          echo '::error::Production deployment pipeline did not complete cleanly — review the job results above'
+          exit 1
+
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+          allowed-conclusions: success,skipped
+
+  smoke-tests:
+    name: Pre-deploy Smoke Tests
+    needs: prepare
+    if: needs.prepare.outputs.rollback != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout at deploy version
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web (production config)
+        if: needs.prepare.outputs.deploy_web == 'true'
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: ${{ needs.prepare.outputs.version }}
+          VITE_ENVIRONMENT: production
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+        run: npm run build -w apps/web
+
+      - name: Verify web build env
+        if: needs.prepare.outputs.deploy_web == 'true'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node tools/verify-build-env.mjs --check-env apps/web/dist
+
+      - name: Type check
+        run: npm run type-check 2>/dev/null || true
+
+      - name: Smoke test passed
+        run: |
+          echo '### ✅ Pre-deploy Smoke Tests Passed' >> "$GITHUB_STEP_SUMMARY"
+          echo "Build and type-check succeeded at \`${{ needs.prepare.outputs.sha_short }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-web:
+    name: Deploy Web (Production)
+    needs: [prepare, verify-ci-green, smoke-tests]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.deploy_web == 'true' &&
+      (needs.verify-ci-green.result == 'success' || needs.verify-ci-green.result == 'skipped') &&
+      (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Checkout at deploy version
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: ${{ needs.prepare.outputs.version }}
+          VITE_ENVIRONMENT: production
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+        run: |
+          npm run build -w packages/design-tokens
+          npm run build -w apps/web
+
+      - name: Verify web build env
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node tools/verify-build-env.mjs --check-env apps/web/dist
+
+      - name: Deploy to Vercel (production)
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm i -g vercel@latest
+
+          set -o pipefail
+          DEPLOY_LOG="$GITHUB_WORKSPACE/vercel-deploy.log"
+          rm -f "$DEPLOY_LOG"
+          if ! vercel deploy \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --prod \
+            --yes \
+            --archive=tgz \
+            apps/web/dist >"$DEPLOY_LOG" 2>&1; then
+            echo '::error::Vercel production deploy failed:'
+            cat "$DEPLOY_LOG"
+            exit 1
+          fi
+          DEPLOY_URL=$(tail -1 "$DEPLOY_LOG")
+
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo '### 🌐 Web Production Deployed' >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-backend:
+    name: Deploy Backend (Production)
+    needs: [prepare, verify-ci-green, smoke-tests]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      needs.prepare.outputs.deploy_backend == 'true' &&
+      (needs.verify-ci-green.result == 'success' || needs.verify-ci-green.result == 'skipped') &&
+      (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+    steps:
+      - name: Checkout at deploy version
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Deploy to production server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo '::warning::DEPLOY_HOST not configured — skipping backend deployment'
+            echo '### ⚠️ Backend Production Skipped' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Configure DEPLOY_HOST, DEPLOY_SSH_KEY, and DEPLOY_USER secrets.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          VERSION='${{ needs.prepare.outputs.version }}'
+          SHA='${{ needs.prepare.outputs.sha }}'
+
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << DEPLOY
+            cd $DEPLOY_PATH
+            git fetch origin
+            git checkout $SHA
+            docker compose -f deploy/docker-compose.yml pull
+            docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+
+            caddy_started=false
+            for attempt in 1 2 3; do
+              if docker compose -f deploy/docker-compose.yml up -d --no-deps caddy \
+                || docker compose -f deploy/docker-compose.yml start caddy; then
+                caddy_started=true
+                break
+              fi
+              echo "::warning::caddy start attempt ${attempt} failed; retrying"
+              sleep 5
+            done
+            if [ "$caddy_started" != true ]; then
+              echo '::warning::caddy was not confirmed started after retries'
+            fi
+
+            docker compose -f deploy/docker-compose.yml ps
+            echo "Deployed version: $VERSION ($SHA)"
+          DEPLOY
+
+          echo '### 🐳 Backend Production Deployed' >> "$GITHUB_STEP_SUMMARY"
+          echo "**Host:** \`$DEPLOY_HOST\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Version:** \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  post-deploy-smoke:
+    name: Post-deploy Smoke Tests
+    needs: [prepare, deploy-web, deploy-backend]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.deploy-web.result == 'success' || needs.deploy-web.result == 'skipped') &&
+      (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+    steps:
+      - name: Resolve production target
+        id: target
+        env:
+          CONFIGURED_URL: ${{ vars.PRODUCTION_URL || 'https://finance.jrmoulckers.com' }}
+        run: |
+          echo "url=${CONFIGURED_URL%/}" >> "$GITHUB_OUTPUT"
+
+      - name: Run production smoke checks
+        env:
+          BASE_URL: ${{ steps.target.outputs.url }}
+        run: |
+          set -euo pipefail
+
+          HOME_RESPONSE='production-home.html'
+          HEALTH_RESPONSE='production-health.json'
+
+          check_homepage() {
+            local attempt http_code
+            for attempt in 1 2 3 4 5 6; do
+              http_code=$(curl -sSL -o "$HOME_RESPONSE" -w '%{http_code}' "$BASE_URL" || echo '000')
+              if [ "$http_code" = '200' ]; then
+                return 0
+              fi
+              echo "Homepage check attempt ${attempt}/6 returned HTTP ${http_code}; retrying in 10s"
+              sleep 10
+            done
+            return 1
+          }
+
+          check_health() {
+            local attempt http_code
+            for attempt in 1 2 3 4 5 6; do
+              http_code=$(curl -sSL -o "$HEALTH_RESPONSE" -w '%{http_code}' "$BASE_URL/health" || echo '000')
+              if [ "$http_code" = '200' ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"healthy"|healthy' "$HEALTH_RESPONSE"; then
+                return 0
+              fi
+              echo "Health check attempt ${attempt}/6 returned HTTP ${http_code}; retrying in 10s"
+              sleep 10
+            done
+            return 1
+          }
+
+          check_homepage || {
+            echo '::error::Production homepage did not return HTTP 200'
+            test -f "$HOME_RESPONSE" && sed -n '1,40p' "$HOME_RESPONSE"
+            exit 1
+          }
+
+          grep -qi '<title>Finance</title>' "$HOME_RESPONSE" || grep -qi 'Finance' "$HOME_RESPONSE" || {
+            echo '::error::Production homepage did not include the expected Finance marker'
+            sed -n '1,40p' "$HOME_RESPONSE"
+            exit 1
+          }
+
+          check_health || {
+            echo '::error::Production health endpoint did not report healthy'
+            test -f "$HEALTH_RESPONSE" && cat "$HEALTH_RESPONSE"
+            exit 1
+          }
+
+          echo '### ✅ Post-deploy Smoke Tests Passed' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Homepage returned HTTP 200' >> "$GITHUB_STEP_SUMMARY"
+          echo '- /health returned healthy' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Basic page load marker detected' >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: $BASE_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  auto-rollback:
+    name: Auto Rollback
+    needs: [prepare, post-deploy-smoke]
+    if: |
+      always() &&
+      needs.prepare.outputs.auto_rollback == 'true' &&
+      needs.post-deploy-smoke.result == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Resolve rollback target
+        id: rollback
+        env:
+          PREVIOUS_TAG: ${{ needs.prepare.outputs.previous_release_tag }}
+        run: |
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo '::error::No previous stable release tag is available for automatic rollback'
+            exit 1
+          fi
+
+          ROLLBACK_SHA=$(git rev-parse --verify --quiet "$PREVIOUS_TAG^{commit}" || echo '')
+          if [ -z "$ROLLBACK_SHA" ]; then
+            echo "::error::Could not resolve rollback target '$PREVIOUS_TAG'"
+            exit 1
+          fi
+
+          {
+            echo "tag=$PREVIOUS_TAG"
+            echo "sha=$ROLLBACK_SHA"
+            echo "sha_short=${ROLLBACK_SHA:0:7}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo '### 🔙 Automatic Rollback Initiated' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Current deployment failed smoke tests at \`${{ needs.prepare.outputs.sha_short }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Rolling back to \`$PREVIOUS_TAG\` (\`${ROLLBACK_SHA:0:7}\`)" >> "$GITHUB_STEP_SUMMARY"
+          echo '- Flow mirrors the documented rollback.yml web/backend recovery path.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout rollback target tree
+        run: git checkout '${{ steps.rollback.outputs.sha }}'
+
+      - name: Set up Node.js
+        if: needs.prepare.outputs.deploy_web == 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: needs.prepare.outputs.deploy_web == 'true'
+        run: npm ci
+
+      - name: Build rollback web bundle
+        if: needs.prepare.outputs.deploy_web == 'true'
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: ${{ steps.rollback.outputs.tag }}
+          VITE_ENVIRONMENT: production
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+        run: |
+          npm run build -w packages/design-tokens
+          npm run build -w apps/web
+
+      - name: Verify rollback web build env
+        if: needs.prepare.outputs.deploy_web == 'true'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node tools/verify-build-env.mjs --check-env apps/web/dist
+
+      - name: Roll back web deployment
+        if: needs.prepare.outputs.deploy_web == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm i -g vercel@latest
+
+          set -o pipefail
+          DEPLOY_LOG="$GITHUB_WORKSPACE/vercel-rollback.log"
+          rm -f "$DEPLOY_LOG"
+          if ! vercel deploy \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --prod \
+            --yes \
+            --archive=tgz \
+            apps/web/dist >"$DEPLOY_LOG" 2>&1; then
+            echo '::error::Vercel rollback deploy failed:'
+            cat "$DEPLOY_LOG"
+            exit 1
+          fi
+          DEPLOY_URL=$(tail -1 "$DEPLOY_LOG")
+          echo '### 🌐 Web Rollback Complete' >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Roll back backend deployment
+        if: needs.prepare.outputs.deploy_backend == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+          ROLLBACK_SHA: ${{ steps.rollback.outputs.sha }}
+          ROLLBACK_TAG: ${{ steps.rollback.outputs.tag }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo '::warning::DEPLOY_HOST not configured — skipping backend rollback'
+            exit 0
+          fi
+
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << DEPLOY
+            cd $DEPLOY_PATH
+            git fetch origin --tags
+            git checkout $ROLLBACK_SHA
+            docker compose -f deploy/docker-compose.yml pull
+            docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+
+            caddy_started=false
+            for attempt in 1 2 3; do
+              if docker compose -f deploy/docker-compose.yml up -d --no-deps caddy \
+                || docker compose -f deploy/docker-compose.yml start caddy; then
+                caddy_started=true
+                break
+              fi
+              echo "::warning::caddy start attempt ${attempt} failed; retrying"
+              sleep 5
+            done
+            if [ "$caddy_started" != true ]; then
+              echo '::warning::caddy was not confirmed started after retries'
+            fi
+
+            docker compose -f deploy/docker-compose.yml ps
+            echo "Rolled back version: $ROLLBACK_TAG ($ROLLBACK_SHA)"
+          DEPLOY
+
+          echo '### 🐳 Backend Rollback Complete' >> "$GITHUB_STEP_SUMMARY"
+          echo "**Host:** \`$DEPLOY_HOST\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Version:** \`${ROLLBACK_TAG}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify rolled back production health
+        env:
+          BASE_URL: ${{ vars.PRODUCTION_URL || 'https://finance.jrmoulckers.com' }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            HTTP_CODE=$(curl -sSL -o rollback-health.json -w '%{http_code}' "${BASE_URL%/}/health" || echo '000')
+            if [ "$HTTP_CODE" = '200' ] && grep -Eqi '"status"[[:space:]]*:[[:space:]]*"healthy"|healthy' rollback-health.json; then
+              echo 'Rollback health check succeeded.'
+              exit 0
+            fi
+            echo "Rollback health check attempt ${attempt}/6 returned HTTP ${HTTP_CODE}; retrying in 10s"
+            sleep 10
+          done
+          echo '::error::Rolled back production health check did not recover'
+          test -f rollback-health.json && cat rollback-health.json
+          exit 1
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  create-release:
+    name: Create GitHub Release
+    needs: [prepare, post-deploy-smoke, auto-rollback]
+    if: |
+      always() &&
+      needs.prepare.outputs.create_release == 'true' &&
+      needs.prepare.outputs.rollback != 'true' &&
+      needs.post-deploy-smoke.result == 'success' &&
+      (needs.auto-rollback.result == 'skipped' || needs.auto-rollback.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout deployed commit
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Resolve release version
+        id: version
+        env:
+          PREVIOUS_TAG: ${{ needs.prepare.outputs.previous_release_tag }}
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version || ''")
+          PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
+          RELEASE_VERSION=''
+
+          if echo "$PACKAGE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$' \
+            && [ "$PACKAGE_VERSION" != '0.0.0' ] \
+            && ! git rev-parse -q --verify "refs/tags/v$PACKAGE_VERSION" >/dev/null; then
+            if [ -z "$PREVIOUS_VERSION" ] || [ "$(printf '%s\n%s\n' "$PREVIOUS_VERSION" "$PACKAGE_VERSION" | sort -V | tail -1)" = "$PACKAGE_VERSION" ]; then
+              RELEASE_VERSION="$PACKAGE_VERSION"
+            fi
+          fi
+
+          if [ -z "$RELEASE_VERSION" ]; then
+            if [ -n "$PREVIOUS_VERSION" ]; then
+              BASE_VERSION="${PREVIOUS_VERSION%%-*}"
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
+              RELEASE_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+            else
+              RELEASE_VERSION='0.1.0'
+            fi
+          fi
+
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changelog
+        env:
+          PREVIOUS_TAG: ${{ needs.prepare.outputs.previous_release_tag }}
+          TARGET_SHA: ${{ needs.prepare.outputs.sha }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if [ -n "$PREVIOUS_TAG" ]; then
+            node tools/generate-changelog.js --from "$PREVIOUS_TAG" --to "$TARGET_SHA" > release-notes.md
+          else
+            {
+              echo "## $RELEASE_TAG"
+              echo ''
+              git log --pretty=format:'- %s' "$TARGET_SHA"
+            } > release-notes.md
+          fi
+
+          if [ ! -s release-notes.md ]; then
+            {
+              echo "## $RELEASE_TAG"
+              echo ''
+              echo '- Automated production deployment'
+            } > release-notes.md
+          fi
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_TITLE: Release ${{ steps.version.outputs.tag }}
+          TARGET_SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          EXTRA_ARGS=''
+          if printf '%s' "$RELEASE_TAG" | grep -q '-'; then
+            EXTRA_ARGS='--prerelease'
+          fi
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes-file release-notes.md
+          else
+            gh release create "$RELEASE_TAG" --target "$TARGET_SHA" --title "$RELEASE_TITLE" --notes-file release-notes.md $EXTRA_ARGS
+          fi
+
+          echo '### 🏷️ GitHub Release Published' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag: \`$RELEASE_TAG\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '- Changelog generated from conventional commits since the previous stable tag.' >> "$GITHUB_STEP_SUMMARY"
+
+  post-deploy:
+    name: Post-deployment
+    needs: [prepare, deploy-web, deploy-backend, post-deploy-smoke, auto-rollback, create-release]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Deployment audit trail
+        run: |
+          echo '### 📋 Production Deployment Record' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '| Key | Value |' >> "$GITHUB_STEP_SUMMARY"
+          echo '|-----|-------|' >> "$GITHUB_STEP_SUMMARY"
+          echo "| Version | \`${{ needs.prepare.outputs.version }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${{ needs.prepare.outputs.sha_short }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Web | ${{ needs.deploy-web.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend | ${{ needs.deploy-backend.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Post-deploy smoke | ${{ needs.post-deploy-smoke.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Auto-rollback | ${{ needs.auto-rollback.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| GitHub Release | ${{ needs.create-release.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Rollback | ${{ needs.prepare.outputs.rollback }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Reason | ${{ needs.prepare.outputs.reason }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Deployed by | ${{ needs.prepare.outputs.actor }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Timestamp | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail if deployment or release workflow reported an error
+        if: |
+          needs.deploy-web.result == 'failure' ||
+          needs.deploy-backend.result == 'failure' ||
+          needs.post-deploy-smoke.result == 'failure' ||
+          needs.auto-rollback.result == 'failure' ||
+          needs.create-release.result == 'failure'
+        run: |
+          echo '::error::Production deployment pipeline did not complete cleanly — review the job results above'
           exit 1
