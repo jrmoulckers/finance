@@ -12,8 +12,16 @@ vi.mock('../hooks/useWealthInsights', () => ({
   useWealthInsights: vi.fn(),
 }));
 
+vi.mock('../hooks/useRecommendations', () => ({
+  useRecommendations: vi.fn(),
+}));
+
 vi.mock('../components/insights', () => ({
   WeeklyDigest: () => <div>Weekly digest</div>,
+}));
+
+vi.mock('../components/recommendations', () => ({
+  RecommendationsFeed: () => <div>Recommendations feed</div>,
 }));
 
 vi.mock('../components/wellness', () => ({
@@ -32,7 +40,9 @@ vi.mock('../components/common', () => ({
   LoadingSpinner: ({ label }: { label: string }) => <div aria-label={label} />,
 }));
 
+import { useRecommendations } from '../hooks/useRecommendations';
 import { useWealthInsights } from '../hooks/useWealthInsights';
+const mockedUseRecommendations = vi.mocked(useRecommendations);
 const mockedUseWealthInsights = vi.mocked(useWealthInsights);
 
 function makeDigest(): NonNullable<UseWealthInsightsResult['digest']> {
@@ -259,6 +269,19 @@ function makeWellness(): NonNullable<UseWealthInsightsResult['wellness']> {
 describe('InsightsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedUseRecommendations.mockReturnValue({
+      recommendations: [],
+      summary: {
+        totalCount: 0,
+        criticalCount: 0,
+        highCount: 0,
+        estimatedMonthlySavingsCents: 0,
+        lastAnalyzedAt: '2025-01-20T12:00:00.000Z',
+      },
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
   });
 
   it('renders loading state', () => {
@@ -352,6 +375,7 @@ describe('InsightsPage', () => {
     );
 
     expect(screen.getByText('Weekly digest')).toBeTruthy();
+    expect(screen.getByText('Recommendations feed')).toBeTruthy();
     expect(screen.getByText('Mood correlation + anxiety snapshot')).toBeTruthy();
     expect(screen.getByText('Financial anxiety score')).toBeTruthy();
     expect(screen.getByText('Stress alerts')).toBeTruthy();

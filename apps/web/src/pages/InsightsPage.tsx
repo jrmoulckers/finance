@@ -2,8 +2,10 @@
 
 import React from 'react';
 import { WeeklyDigest } from '../components/insights';
+import { RecommendationsFeed } from '../components/recommendations';
 import { WellnessOverview } from '../components/wellness';
 import { EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { useRecommendations } from '../hooks/useRecommendations';
 import { useWealthInsights } from '../hooks/useWealthInsights';
 import './InsightsPage.css';
 
@@ -28,6 +30,13 @@ function isWellnessEmpty(wellness: ReturnType<typeof useWealthInsights>['wellnes
 export const InsightsPage: React.FC = () => {
   const { digest, wellness, activePeriod, setActivePeriod, loading, error, refresh } =
     useWealthInsights();
+  const {
+    recommendations,
+    summary: recommendationSummary,
+    loading: recommendationsLoading,
+    error: recommendationsError,
+    refresh: refreshRecommendations,
+  } = useRecommendations(6);
 
   if (loading) {
     return (
@@ -62,6 +71,13 @@ export const InsightsPage: React.FC = () => {
   return (
     <div className="wealth-insights-page">
       <WeeklyDigest digest={digest} activePeriod={activePeriod} onPeriodChange={setActivePeriod} />
+      <RecommendationsFeed
+        recommendations={recommendations}
+        summary={recommendationSummary}
+        loading={recommendationsLoading}
+        error={recommendationsError}
+        onRetry={refreshRecommendations}
+      />
       {wellness ? <WellnessOverview overview={wellness} /> : null}
     </div>
   );
