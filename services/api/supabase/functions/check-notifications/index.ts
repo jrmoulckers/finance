@@ -317,7 +317,7 @@ serve(async (req: Request): Promise<Response> => {
     if (req.method === 'POST') {
       const cronSecret = Deno.env.get('CRON_SECRET');
       if (!cronSecret) {
-        logger.error('CRON_SECRET not configured');
+        logger.error('Cron credential is not configured');
         return internalErrorResponse(req);
       }
 
