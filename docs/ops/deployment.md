@@ -36,7 +36,9 @@ Workflow: `.github/workflows/deploy-production.yml` (`Deploy — Production`)
 
 ### Triggers
 
-- **Automated promotion:** `.github/workflows/deploy-promote-production.yml` listens for a successful `Deploy — Staging` run on `main`, then reuses `deploy-production.yml` to promote the exact staged SHA.
+<<<<<<< HEAD
+
+- **Automated promotion:** `.github/workflows/promote-production.yml` listens for a successful `Deploy — Staging` run on `main`, then reuses `deploy-production.yml` to promote the exact staged SHA.
 - **Tag push:** any global semver tag matching `v*` (for example `v1.2.3` or `v1.2.3-rc.1`) triggers an automatic production deploy of **all** components.
 - **Manual dispatch:** operators can provide:
   - `version`: semver tag or commit SHA

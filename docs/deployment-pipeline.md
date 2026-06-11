@@ -14,7 +14,7 @@ green main commit
     → Deployment summary
 
 successful staging workflow_run
-  → deploy-promote-production.yml (auto)
+  → promote-production.yml (auto)
     → deploy-production.yml (reusable)
       → Version resolution (SHA or tag)
       → Deploy to production
