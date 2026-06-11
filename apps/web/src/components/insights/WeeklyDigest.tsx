@@ -1,9 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React from 'react';
-import { CurrencyDisplay } from '../common';
-import { AppIcon } from '../icons';
+import React, { useEffect, useMemo, useState } from 'react';
+
+import {
+  calculateAlignmentScore,
+  createDefaultValuePreferences,
+  DECISION_ALIGNMENT_STORAGE_KEY,
+  generateMisalignmentAlerts,
+  normalizeValuePreferences,
+  type UserValuePreference,
+} from '../../lib/alignment';
 import type { DigestPeriod, GoalProgressUpdate, WealthDigest } from '../../lib/insights';
+import { AlignmentRadar, AlignmentScore, MisalignmentAlerts, ValuesSetup } from '../alignment';
+import { CurrencyDisplay } from '../common/CurrencyDisplay';
+import { AppIcon } from '../icons';
 import { HealthScoreBadge } from './HealthScoreBadge';
 import { InsightCard } from './InsightCard';
 import { NetWorthChart } from './NetWorthChart';
@@ -13,6 +23,19 @@ export interface WeeklyDigestProps {
   digest: WealthDigest;
   activePeriod: DigestPeriod;
   onPeriodChange: (period: DigestPeriod) => void;
+}
+
+function loadAlignmentPreferences(): UserValuePreference[] {
+  if (typeof window === 'undefined') {
+    return createDefaultValuePreferences();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(DECISION_ALIGNMENT_STORAGE_KEY);
+    return normalizeValuePreferences(raw ? JSON.parse(raw) : null);
+  } catch {
+    return createDefaultValuePreferences();
+  }
 }
 
 function formatPercent(value: number): string {
@@ -60,6 +83,8 @@ export const WeeklyDigest: React.FC<WeeklyDigestProps> = ({
   activePeriod,
   onPeriodChange,
 }) => {
+  const [alignmentPreferences, setAlignmentPreferences] =
+    useState<UserValuePreference[]>(loadAlignmentPreferences);
   const periodLabel = activePeriod === 'weekly' ? 'Weekly' : 'Monthly';
   const netWorthTrendIcon =
     digest.netWorth.change.direction === 'down'
@@ -67,6 +92,30 @@ export const WeeklyDigest: React.FC<WeeklyDigestProps> = ({
       : digest.netWorth.change.direction === 'up'
         ? 'trending-up'
         : 'wallet';
+  const alignmentResult = useMemo(
+    () => calculateAlignmentScore(digest.alignmentSnapshot, alignmentPreferences),
+    [alignmentPreferences, digest.alignmentSnapshot],
+  );
+  const misalignmentAlerts = useMemo(
+    () =>
+      generateMisalignmentAlerts(digest.alignmentSnapshot, alignmentPreferences, alignmentResult),
+    [alignmentPreferences, alignmentResult, digest.alignmentSnapshot],
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        DECISION_ALIGNMENT_STORAGE_KEY,
+        JSON.stringify(alignmentPreferences),
+      );
+    } catch {
+      // Ignore storage failures in constrained browsers.
+    }
+  }, [alignmentPreferences]);
 
   return (
     <div className="wealth-digest">
@@ -75,7 +124,7 @@ export const WeeklyDigest: React.FC<WeeklyDigestProps> = ({
           <p className="wealth-digest__eyebrow">Personalized wealth insights</p>
           <h2 className="wealth-digest__title">{periodLabel} digest</h2>
           <p className="wealth-digest__subtitle">
-            Generated from your local accounts, transactions, budgets, and goals on{' '}
+            Generated from your local accounts, transactions, budgets, goals, and values on{' '}
             {formatDigestDate(digest.generatedAt)}.
           </p>
         </div>
@@ -226,6 +275,25 @@ export const WeeklyDigest: React.FC<WeeklyDigestProps> = ({
           <strong>{digest.healthScore.metrics.monthsOfExpensesSaved} months</strong>
           <span>{digest.healthScore.metrics.debtToIncomeRatio}% debt-to-income ratio</span>
         </article>
+      </section>
+
+      <section className="wealth-digest__section" aria-label="Decision alignment">
+        <div className="wealth-digest__section-header">
+          <h3>Financial decision alignment</h3>
+          <span>Local-first score based on your stated values and this month's cash flow</span>
+        </div>
+        <div className="wealth-digest__alignment-grid">
+          <ValuesSetup
+            preferences={alignmentPreferences}
+            onChange={setAlignmentPreferences}
+            onReset={() => setAlignmentPreferences(createDefaultValuePreferences())}
+          />
+          <AlignmentScore result={alignmentResult} currencyCode={digest.currencyCode} />
+        </div>
+        <div className="wealth-digest__alignment-grid wealth-digest__alignment-grid--secondary">
+          <AlignmentRadar result={alignmentResult} />
+          <MisalignmentAlerts alerts={misalignmentAlerts} />
+        </div>
       </section>
 
       <section className="wealth-digest__section" aria-label="Top spending categories">

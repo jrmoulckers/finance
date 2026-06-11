@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { GoalStatus } from '../../kmp/bridge';
+import type { AlignmentSpendingSnapshot } from '../alignment';
 
 export type DigestPeriod = 'weekly' | 'monthly';
 export type TrendDirection = 'up' | 'down' | 'flat';
@@ -129,5 +130,6 @@ export interface WealthDigest {
   readonly savingsRate: SavingsRateAnalysis;
   readonly goals: readonly GoalProgressUpdate[];
   readonly healthScore: HealthScoreResult;
+  readonly alignmentSnapshot: AlignmentSpendingSnapshot;
   readonly highlights: readonly GeneratedInsight[];
 }

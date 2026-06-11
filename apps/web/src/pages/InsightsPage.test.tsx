@@ -122,6 +122,34 @@ function makeDigest(): NonNullable<UseWealthInsightsResult['digest']> {
         debtToIncomeRatio: 19,
       },
     },
+    alignmentSnapshot: {
+      categories: [
+        {
+          categoryId: 'savings',
+          categoryName: 'Savings & investing',
+          amount: 60_000,
+          source: 'savings',
+          allocations: [
+            { valueId: 'security', weight: 0.6 },
+            { valueId: 'freedom', weight: 0.25 },
+            { valueId: 'growth', weight: 0.15 },
+          ],
+        },
+        {
+          categoryId: 'groceries',
+          categoryName: 'Groceries',
+          amount: 24_000,
+          source: 'expense',
+          allocations: [
+            { valueId: 'health', weight: 0.55 },
+            { valueId: 'family', weight: 0.45 },
+          ],
+        },
+      ],
+      totalInputAmount: 84_000,
+      totalMappedAmount: 84_000,
+      unmappedAmount: 0,
+    },
     highlights: [
       {
         id: 'net-worth-growth',
@@ -323,7 +351,6 @@ describe('InsightsPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Weekly digest')).toBeTruthy();
     expect(screen.getByText('Weekly digest')).toBeTruthy();
     expect(screen.getByText('Mood correlation + anxiety snapshot')).toBeTruthy();
     expect(screen.getByText('Financial anxiety score')).toBeTruthy();

@@ -246,6 +246,12 @@ describe('useWealthInsights', () => {
     expect(result.current.digest?.currencyCode).toBe('USD');
     expect(result.current.digest?.spending.topCategories[0]?.categoryName).toBe('Food');
     expect(result.current.digest?.healthScore.score).toBeGreaterThan(0);
+    expect(result.current.digest?.alignmentSnapshot.totalMappedAmount).toBeGreaterThan(0);
+    expect(
+      result.current.digest?.alignmentSnapshot.categories.some(
+        (category) => category.categoryName === 'Savings & investing',
+      ),
+    ).toBe(true);
     expect(result.current.wellness?.anxietyScore.score).toBeGreaterThanOrEqual(0);
     expect(result.current.wellness?.moodCorrelation.entriesTagged).toBe(1);
     expect(result.current.digests.monthly?.period).toBe('monthly');
