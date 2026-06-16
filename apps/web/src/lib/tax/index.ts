@@ -16,3 +16,7 @@ export * from './capital-gains';
 export * from './contribution-tracker';
 export * from './deduction-tagger';
 export * from './mileage-log';
+export * from './self-employment-income';
+export * from './home-office-deductions';
+export * from './charitable-donations';
+export * from './tax-document-export';
