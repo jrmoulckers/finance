@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import { createCatalogTranslator, type MessageCatalog as CatalogMessageMap } from './i18n/catalog-loader';
+import { getActiveCatalogs } from './i18n/locale-packs';
+import { getTextDirectionForLocale } from './i18n/rtl';
+
 export const DEFAULT_LOCALE = 'en-US';
 export const DEFAULT_TIME_ZONE = 'UTC';
 export const LOCALE_STORAGE_KEY = 'finance-locale-preference';
@@ -35,55 +39,14 @@ export const TIME_ZONE_OPTIONS: readonly string[] = [
   'Asia/Dubai',
 ] as const;
 
-export type MessageCatalog = Record<string, string>;
+export type { MessageCatalog } from './i18n/catalog-loader';
 
-const catalogs: Record<string, MessageCatalog> = {
-  'en-US': {
-    'settings.language': 'Language',
-    'settings.timeZone': 'Home time zone',
-    'settings.languageDescription': 'Detected from your browser; change it anytime.',
-    'tips.budget-create-first.title': 'Set up your first budget',
-    'tips.budget-create-first.description': 'Creating a budget helps you track spending and stay on target. Start with your largest expense category.',
-    'tips.budget-create-first.action': 'Create Budget',
-    'tips.account-create-first.title': 'Add your first account',
-    'tips.account-create-first.description': 'Adding accounts is the first step to getting a complete picture of your finances.',
-    'tips.account-create-first.action': 'Add Account',
-    'tips.spending-no-transactions.title': 'Start tracking your spending',
-    'tips.spending-no-transactions.description': 'You have no transactions recorded this month. Adding transactions helps you understand your spending patterns.',
-    'tips.spending-no-transactions.action': 'Add Transaction',
-    'tips.fallbackNotice': 'Shown in English until this education content is translated.',
-  },
-  'es-ES': {
-    'settings.language': 'Idioma',
-    'settings.timeZone': 'Zona horaria de casa',
-    'settings.languageDescription': 'Detectado desde tu navegador; puedes cambiarlo cuando quieras.',
-    'tips.budget-create-first.title': 'Configura tu primer presupuesto',
-    'tips.budget-create-first.description': 'Crear un presupuesto te ayuda a controlar gastos y mantenerte en objetivo. Empieza por tu categoría de gasto más grande.',
-    'tips.budget-create-first.action': 'Crear presupuesto',
-    'tips.account-create-first.title': 'Añade tu primera cuenta',
-    'tips.account-create-first.description': 'Añadir cuentas es el primer paso para tener una visión completa de tus finanzas.',
-    'tips.account-create-first.action': 'Añadir cuenta',
-    'tips.spending-no-transactions.title': 'Empieza a registrar tus gastos',
-    'tips.spending-no-transactions.description': 'No tienes transacciones registradas este mes. Añadir transacciones te ayuda a entender tus patrones de gasto.',
-    'tips.spending-no-transactions.action': 'Añadir transacción',
-    'tips.fallbackNotice': 'Se muestra en inglés hasta que este contenido educativo esté traducido.',
-  },
-  'de-DE': {
-    'settings.language': 'Sprache',
-    'settings.timeZone': 'Heimatzeitzone',
-    'settings.fallbackNotice': 'Bis zur Übersetzung wird dieser Inhalt auf Englisch angezeigt.',
-  },
-  'ja-JP': {
-    'settings.language': '言語',
-    'settings.timeZone': 'ホームタイムゾーン',
-    'tips.fallbackNotice': 'この教育コンテンツが翻訳されるまで英語で表示されます。',
-  },
-  ar: {
-    'settings.language': 'اللغة',
-    'settings.timeZone': 'المنطقة الزمنية الرئيسية',
-    'tips.fallbackNotice': 'يُعرض باللغة الإنجليزية إلى أن تتم ترجمة هذا المحتوى التعليمي.',
-  },
-};
+export const TRANSLATION_CATALOGS: Readonly<Record<string, CatalogMessageMap>> = getActiveCatalogs();
+
+const catalogTranslator = createCatalogTranslator({
+  defaultLocale: DEFAULT_LOCALE,
+  catalogs: TRANSLATION_CATALOGS,
+});
 
 function readStorage(key: string): string | null {
   try {
@@ -139,7 +102,7 @@ export function setLocalePreference(locale: string): string {
 }
 
 export function getLocaleDirection(locale: string = getCurrentLocale()): 'ltr' | 'rtl' {
-  return supportedByCode.get(normalizeLocale(locale) ?? DEFAULT_LOCALE)?.textDirection ?? 'ltr';
+  return getTextDirectionForLocale(normalizeLocale(locale) ?? locale ?? DEFAULT_LOCALE);
 }
 
 export function getCurrentTimeZone(): string {
@@ -160,14 +123,10 @@ export function translate(
   values: Record<string, string | number> = {},
   locale: string = getCurrentLocale(),
 ): { text: string; translated: boolean } {
-  const normalized = normalizeLocale(locale) ?? DEFAULT_LOCALE;
-  const localeCatalog = catalogs[normalized] ?? catalogs[DEFAULT_LOCALE];
-  const fallbackCatalog = catalogs[DEFAULT_LOCALE];
-  const template = localeCatalog[id] ?? fallbackCatalog[id] ?? id;
-  const translated = localeCatalog[id] !== undefined;
+  const result = catalogTranslator.translate(id, values, locale);
 
   return {
-    text: template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? `{${key}}`)),
-    translated,
+    text: result.text,
+    translated: result.translated,
   };
 }
