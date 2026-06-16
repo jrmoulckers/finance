@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import { getCurrencyFractionDigits, getSafeCurrencyCode, minorUnitFactor } from '../../currency-metadata';
+import { getCurrentLocale } from '../../i18n';
+
 /** Canonical privacy masking modes for every money-rendering surface. */
 export enum MaskingMode {
   Visible = 'Visible',
@@ -38,13 +41,15 @@ function currencyFormatter(
   locale: string,
   options: Required<Pick<FormatAmountOptions, 'currency'>> & FormatAmountOptions,
 ): Intl.NumberFormat {
+  const currency = getSafeCurrencyCode(options.currency);
+  const defaultFractionDigits = getCurrencyFractionDigits(currency);
   return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: options.currency,
+    currency,
     currencyDisplay: options.currencyDisplay ?? 'symbol',
     notation: options.compact ? 'compact' : 'standard',
-    minimumFractionDigits: options.minimumFractionDigits ?? (options.compact ? 0 : 2),
-    maximumFractionDigits: options.maximumFractionDigits ?? (options.compact ? 0 : 2),
+    minimumFractionDigits: options.minimumFractionDigits ?? (options.compact ? 0 : defaultFractionDigits),
+    maximumFractionDigits: options.maximumFractionDigits ?? (options.compact ? 0 : defaultFractionDigits),
     signDisplay: options.signDisplay ?? 'auto',
   });
 }
@@ -62,7 +67,7 @@ function formatCurrencyMajor(
 function formatCompactCurrency(valueMajor: number, locale: string, currency: string): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency,
+    currency: getSafeCurrencyCode(currency),
     notation: 'compact',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
@@ -87,7 +92,7 @@ function bucketBounds(absMajor: number): { min: number; max: number } {
 }
 
 function formatBucket(amountInCents: number, locale: string, currency: string): string {
-  const absMajor = Math.abs(amountInCents) / 100;
+  const absMajor = Math.abs(amountInCents) / minorUnitFactor(currency);
   const sign = amountInCents < 0 ? '-' : '';
   const { min, max } = bucketBounds(absMajor);
 
@@ -132,12 +137,16 @@ function formatPercent(
 export function formatAmount(
   amountInCents: number,
   mode: MaskingMode = MaskingMode.Visible,
-  locale = 'en-US',
+  locale = getCurrentLocale(),
   options: FormatAmountOptions = {},
 ): string {
   switch (mode) {
     case MaskingMode.Visible:
-      return formatCurrencyMajor(amountInCents / 100, locale, options);
+      return formatCurrencyMajor(
+        amountInCents / minorUnitFactor(options.currency),
+        locale,
+        options,
+      );
     case MaskingMode.Bucketed:
       return formatBucket(amountInCents, locale, options.currency ?? 'USD');
     case MaskingMode.Percent:
@@ -154,7 +163,7 @@ export function formatRange(
   minCents: number,
   maxCents: number,
   mode: MaskingMode = MaskingMode.Visible,
-  locale = 'en-US',
+  locale = getCurrentLocale(),
   options: FormatAmountOptions = {},
 ): string {
   if (mode === MaskingMode.Percent) {
