@@ -29,7 +29,7 @@ import type { ExchangeRateProvider } from './exchange-rate-types';
  *   - Development / testing without API keys
  *   - Fallback when the live provider is unavailable
  */
-const STATIC_USD_RATES: Record<string, number> = {
+export const STATIC_USD_RATES: Record<string, number> = {
   USD: 1.0,
   EUR: 0.92,
   GBP: 0.79,

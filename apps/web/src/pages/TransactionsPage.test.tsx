@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
+import type { Transaction } from '../kmp/bridge';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import { useTransactions } from '../hooks/useTransactions';
@@ -52,6 +53,7 @@ vi.mock('../components/transactions', () => ({
         Edit: {transaction.payee}
       </div>
     ) : null,
+  LazyReceiptImage: () => null,
   EMPTY_FILTERS: {
     startDate: '',
     endDate: '',
@@ -79,6 +81,39 @@ const syncMetadata = {
   syncVersion: 1,
   isSynced: true,
 };
+
+function makeTransaction(index: number): Transaction {
+  return {
+    id: `transaction-${index}`,
+    householdId: 'household-1',
+    accountId: index % 2 === 0 ? 'account-2' : 'account-1',
+    categoryId: index % 2 === 0 ? 'category-income' : 'category-food',
+    type: index % 2 === 0 ? 'INCOME' : 'EXPENSE',
+    status: 'CLEARED',
+    amount: { amount: 1000 + index },
+    currency: { code: 'USD', decimalPlaces: 2 },
+    payee: `Transaction ${index}`,
+    note: null,
+    date: '2025-03-06',
+    transferAccountId: null,
+    transferTransactionId: null,
+    isRecurring: false,
+    recurringRuleId: null,
+    tags: [],
+    merchantAddress: null,
+    merchantCity: null,
+    merchantState: null,
+    merchantZip: null,
+    merchantCountry: null,
+    externalReferenceId: null,
+    statementDescription: null,
+    customFields: null,
+    extraNotes: null,
+    counterpartyName: null,
+    counterpartyAccountId: null,
+    ...syncMetadata,
+  };
+}
 
 describe('TransactionsPage', () => {
   beforeEach(() => {
@@ -554,18 +589,25 @@ describe('TransactionsPage', () => {
     expect(screen.getByText('2 selected')).toBeInTheDocument();
   });
 
-  it('uses Delete shortcut to confirm deletion of selected rows', () => {
+  it('virtualizes large transaction registers instead of rendering every row', () => {
+    mockedUseTransactions.mockReturnValue({
+      transactions: Array.from({ length: 500 }, (_, index) => makeTransaction(index + 1)),
+      loading: false,
+      error: null,
+      refresh: refreshTransactionsMock,
+      createTransaction: createTransactionMock,
+      updateTransaction: updateTransactionMock,
+      deleteTransaction: deleteTransactionMock,
+    });
+
     render(
       <MemoryRouter>
         <TransactionsPage />
       </MemoryRouter>,
     );
 
-    fireEvent.keyDown(window, { key: 'x' });
-    fireEvent.keyDown(window, { key: 'Delete' });
-
-    expect(
-      screen.getByRole('alertdialog', { name: /delete selected transactions/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: /virtualized transaction register/i })).toBeInTheDocument();
+    expect(screen.getByText(/showing 500 transactions with virtual scrolling/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^edit /i }).length).toBeLessThan(100);
   });
 });

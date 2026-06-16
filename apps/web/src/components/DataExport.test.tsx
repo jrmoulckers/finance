@@ -326,7 +326,9 @@ describe('DataExport', () => {
     await user.click(screen.getByRole('button', { name: /request my data package/i }));
 
     expect(screen.getByRole('dialog', { name: /request your data package/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/include protected categories/i)).toBeChecked();
+    expect(screen.getByLabelText(/include protected categories/i)).not.toBeChecked();
+    expect(screen.getAllByText(/Data categories/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Accounts.*1 record/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/include mood tags/i)).not.toBeChecked();
     expect(
       screen.getByText(/Mood tag data can reveal sensitive wellbeing patterns/i),
@@ -339,6 +341,7 @@ describe('DataExport', () => {
     render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
 
     await user.click(screen.getByRole('button', { name: /request my data package/i }));
+    await user.click(screen.getByRole('button', { name: /verify identity for export/i }));
     await user.click(screen.getByRole('button', { name: /generate package/i }));
     expect(screen.getByRole('status')).toHaveTextContent(/pending/i);
 
@@ -355,11 +358,13 @@ describe('DataExport', () => {
 
     await user.click(screen.getByRole('button', { name: /request my data package/i }));
     await user.click(screen.getByLabelText(/include mood tags/i));
+    await user.click(screen.getByRole('button', { name: /verify identity for export/i }));
     await user.click(screen.getByRole('button', { name: /generate package/i }));
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/ready/i));
     expect(screen.getByText(/Package ready/i)).toBeInTheDocument();
     expect(screen.getByText(/mood tags included: yes/i)).toBeInTheDocument();
+    expect(screen.getByText(/redaction profile: full/i)).toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -368,6 +373,7 @@ describe('DataExport', () => {
     render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
 
     await user.click(screen.getByRole('button', { name: /request my data package/i }));
+    await user.click(screen.getByRole('button', { name: /verify identity for export/i }));
     await user.click(screen.getByRole('button', { name: /generate package/i }));
     await screen.findByText(/Package ready/i);
     await user.click(screen.getByRole('button', { name: /^download zip$/i }));
@@ -384,6 +390,7 @@ describe('DataExport', () => {
     render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
 
     await user.click(screen.getByRole('button', { name: /request my data package/i }));
+    await user.click(screen.getByRole('button', { name: /verify identity for export/i }));
     await user.click(screen.getByRole('button', { name: /generate package/i }));
     await screen.findByText(/Package ready/i);
 
@@ -415,6 +422,7 @@ describe('DataExport', () => {
     render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
 
     await user.click(screen.getByRole('button', { name: /request my data package/i }));
+    await user.click(screen.getByRole('button', { name: /verify identity for export/i }));
     await user.click(screen.getByRole('button', { name: /generate package/i }));
     await screen.findByText(/Package ready/i);
     await user.click(screen.getByRole('button', { name: /share my exported package/i }));
@@ -437,6 +445,7 @@ describe('DataExport', () => {
     render(<DataExport />, { wrapper: createTestWrapper(createMockDb()) });
 
     await user.click(screen.getByRole('button', { name: /request my data package/i }));
+    await user.click(screen.getByRole('button', { name: /verify identity for export/i }));
     await user.click(screen.getByRole('button', { name: /generate package/i }));
     await screen.findByText(/Package ready/i);
     await user.click(screen.getByRole('button', { name: /share my exported package/i }));

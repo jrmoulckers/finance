@@ -28,8 +28,8 @@ export interface ExchangeRate {
   readonly rate: number;
   /** ISO 8601 timestamp indicating when the rate was fetched or generated. */
   readonly timestamp: string;
-  /** Source of the rate: "static", "api", or "user-override". */
-  readonly source: 'static' | 'api' | 'user-override';
+  /** Source of the rate: "static", "stored", "api", or "user-override". */
+  readonly source: 'static' | 'stored' | 'api' | 'user-override';
 }
 
 /**

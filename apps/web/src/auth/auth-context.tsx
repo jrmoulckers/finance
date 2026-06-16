@@ -57,6 +57,8 @@ import {
   restoreDemoSession,
 } from './demo-auth';
 import { getPasskeyErrorMessage } from './passkey-errors';
+import { appendSecurityAuditEvent } from '../lib/security-audit-log';
+import { getStepUpStatus, markStepUpAuthenticated } from '../lib/session-security';
 
 import {
   incrementLoginCount,
@@ -534,6 +536,11 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
         throw new Error('Must be authenticated to register a passkey.');
       }
 
+      const stepUp = getStepUpStatus('passkey_change');
+      if (!stepUp.allowed) {
+        await markStepUpAuthenticated('passkey_change', { source: 'passkey-registration' });
+      }
+
       await registerPasskey(token, webAuthnConfig);
 
       // Update user state and localStorage to reflect passkey registration
@@ -548,6 +555,11 @@ export function AuthProvider({ config, children }: AuthProviderProps) {
       // Recording a passkey implies the user prefers it as their primary
       // sign-in method (#1983). Idempotent.
       setPreferredAuthMethod('passkey');
+      await appendSecurityAuditEvent({
+        action: 'passkey_registered',
+        result: 'success',
+        metadata: { userId: user?.id ?? 'unknown' },
+      });
       setShowPasskeyPrompt(false);
     } catch (err) {
       setError(getPasskeyErrorMessage(err, 'registration'));

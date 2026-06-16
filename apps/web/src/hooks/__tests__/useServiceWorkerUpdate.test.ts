@@ -200,6 +200,28 @@ describe('useServiceWorkerUpdate', () => {
     });
   });
 
+  it('does not activate a waiting worker while unsaved edits are present', async () => {
+    const mockPostMessage = vi.fn();
+    mockRegistration.waiting = {
+      state: 'installed',
+      postMessage: mockPostMessage,
+    } as unknown as ServiceWorker;
+
+    const { result } = renderHook(() => useServiceWorkerUpdate({ hasUnsavedChanges: true }));
+
+    await act(async () => {
+      registerPromiseResolve(mockRegistration);
+    });
+
+    expect(result.current.blockedByUnsavedChanges).toBe(true);
+
+    act(() => {
+      result.current.applyUpdate();
+    });
+
+    expect(mockPostMessage).not.toHaveBeenCalled();
+  });
+
   // -----------------------------------------------------------------------
   // Registration failure
   // -----------------------------------------------------------------------

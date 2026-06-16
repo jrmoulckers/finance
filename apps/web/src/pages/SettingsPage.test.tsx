@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -82,6 +82,7 @@ vi.mock('../components/gdpr', () => ({
     </section>
   ),
   CrashReportingSettings: () => <div>Crash Reporting Settings Mock</div>,
+  ThirdPartyPermissionReview: () => <div>Third Party Permission Review Mock</div>,
 }));
 
 const togglePrivacyModeMock = vi.fn();
@@ -136,7 +137,7 @@ vi.mock('../lib/display-settings', () => ({
       settings.currencyDisplay === 'code' ? `USD ${formattedNumber}` : `$${formattedNumber}`;
     if (amount >= 0) return formatted;
     if (settings.negativeFormat === 'parentheses') return `(${formatted})`;
-    if (settings.negativeFormat === 'color-only') return formatted;
+    if (settings.negativeFormat === 'color-only') return `Negative ${formatted}`;
     return `-${formatted}`;
   },
   getAmountColor: (amount: number) => {
@@ -434,9 +435,12 @@ describe('SettingsPage', () => {
       renderSettingsAt('/settings/preferences');
 
       const examples = screen.getByLabelText('Negative format examples');
-      expect(examples).toHaveTextContent('Standard-$1,234.56');
-      expect(examples).toHaveTextContent('Accounting($1,234.56)');
-      expect(examples).toHaveTextContent('Color Only$1,234.56');
+      expect(within(examples).getByText('Standard')).toBeInTheDocument();
+      expect(within(examples).getByText('-$1,234.56')).toBeInTheDocument();
+      expect(within(examples).getByText('Accounting')).toBeInTheDocument();
+      expect(within(examples).getByText('($1,234.56)')).toBeInTheDocument();
+      expect(within(examples).getByText('Text label')).toBeInTheDocument();
+      expect(within(examples).getByText('Negative $1,234.56')).toBeInTheDocument();
     });
 
     it('calls updateSettings when show decimals is toggled', () => {

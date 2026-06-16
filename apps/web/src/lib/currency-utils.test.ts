@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  calculateConvertedCurrencyTotal,
   countCurrencies,
   detectMixedCurrencies,
   formatCurrencyGroup,
@@ -61,6 +62,25 @@ describe('currency-utils', () => {
       const parts = result.split(' · ');
       expect(parts).toHaveLength(3);
       // EUR, GBP, USD alphabetical order
+    });
+  });
+
+  describe('calculateConvertedCurrencyTotal', () => {
+    it('labels source currencies and target display currency for converted totals', () => {
+      const result = calculateConvertedCurrencyTotal(
+        [
+          { amount: 10000, currency: 'USD' },
+          { amount: 10000, currency: 'EUR' },
+        ],
+        'USD',
+        (amount, from) => (from === 'EUR' ? Math.round(amount / 0.8) : amount),
+        'en-US',
+      );
+
+      expect(result.convertedAmount).toBe(22500);
+      expect(result.formattedSourceGroups).toContain('€100.00');
+      expect(result.formattedConvertedAmount).toBe('$225.00');
+      expect(result.ariaLabel).toContain('converted to approximately $225.00 USD');
     });
   });
 

@@ -59,6 +59,7 @@ const defaultConfig: ReportConfig = {
   exportFormat: 'csv',
   isScheduled: false,
   scheduleFrequency: 'monthly',
+  anomalyModules: [],
 };
 
 function mockResult(overrides: Partial<UseReportBuilderResult> = {}): UseReportBuilderResult {
@@ -67,6 +68,8 @@ function mockResult(overrides: Partial<UseReportBuilderResult> = {}): UseReportB
     availableFields: [
       { id: 'field-note', type: 'note', label: 'Note', visible: false, sortOrder: 5 },
     ],
+    availableCategories: [],
+    availableAccounts: [],
     preview: null,
     generating: false,
     error: null,
@@ -85,6 +88,7 @@ function mockResult(overrides: Partial<UseReportBuilderResult> = {}): UseReportB
     applyTemplate: vi.fn(),
     setScheduled: vi.fn(),
     setScheduleFrequency: vi.fn(),
+    toggleAnomalyModule: vi.fn(),
     generatePreview: vi.fn(),
     exportReport: vi.fn(),
     resetConfig: vi.fn(),
@@ -92,6 +96,11 @@ function mockResult(overrides: Partial<UseReportBuilderResult> = {}): UseReportB
     saveReport: vi.fn(),
     loadReport: vi.fn(),
     deleteSavedReport: vi.fn(),
+    duplicateSavedReport: vi.fn(),
+    renameSavedReport: vi.fn(),
+    getCategoryDrillDown: vi.fn(() => null),
+    anomalies: [],
+    markAnomaly: vi.fn(),
     ...overrides,
   };
 }
@@ -250,6 +259,7 @@ describe('ReportBuilderPage', () => {
             config: defaultConfig,
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            schemaVersion: 2,
           },
         ],
       }),

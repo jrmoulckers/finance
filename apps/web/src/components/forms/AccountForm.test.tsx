@@ -7,6 +7,7 @@ import { queryOne } from '../../db/sqlite-wasm';
 import { AccountForm, type AccountFormProps } from './AccountForm';
 
 vi.mock('../../accessibility/aria', () => ({
+  announce: vi.fn(),
   useFocusTrap: vi.fn(),
 }));
 
@@ -77,6 +78,12 @@ describe('AccountForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
 
     expect(screen.getByText('Account name is required.')).toBeInTheDocument();
+    const summary = screen.getByText('Some fields need attention').closest('.form-error-summary');
+    expect(summary).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('link', { name: /Account Name: Account name is required/i })).toHaveAttribute(
+      'href',
+      '#account-name',
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -102,6 +109,26 @@ describe('AccountForm', () => {
       currency: { code: 'EUR', decimalPlaces: 2 },
       currentBalance: { amount: 12550 },
     });
+  });
+
+  it('handles zero-decimal currency balances', async () => {
+    const { onSubmit } = renderAccountForm();
+
+    fireEvent.change(screen.getByLabelText('Account Name'), {
+      target: { value: 'Tokyo Cash' },
+    });
+    fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'JPY' } });
+    fireEvent.change(screen.getByLabelText('Initial Balance'), { target: { value: '1250' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currency: { code: 'JPY', decimalPlaces: 0 },
+        currentBalance: { amount: 1250 },
+      }),
+    );
   });
 
   it('shows a household error when no household is available', () => {

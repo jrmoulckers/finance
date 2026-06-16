@@ -3,7 +3,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ExchangeRateService } from './exchange-rate-service';
-import { clearRateCache } from './rate-cache';
+import type { ExchangeRateProvider } from './exchange-rate-types';
+import { clearRateCache, setCachedRates } from './rate-cache';
+import { LocalStoredRateProvider, saveLocalRateTable } from './local-stored-rate-provider';
 import { StaticRateProvider } from './static-rates';
 
 describe('ExchangeRateService', () => {
@@ -32,7 +34,7 @@ describe('ExchangeRateService', () => {
       expect(result.amount).toBe(9200);
       expect(result.rate.from).toBe('USD');
       expect(result.rate.to).toBe('EUR');
-      expect(result.rate.source).toBe('static');
+      expect(result.rate.source).toBe('stored');
     });
 
     it('converts EUR to USD correctly', async () => {
@@ -64,7 +66,7 @@ describe('ExchangeRateService', () => {
       expect(rate.rate).toBeCloseTo(0.92, 1);
       expect(rate.from).toBe('USD');
       expect(rate.to).toBe('EUR');
-      expect(rate.source).toBe('static');
+      expect(rate.source).toBe('stored');
       expect(rate.timestamp).toBeTruthy();
     });
 
@@ -120,14 +122,14 @@ describe('ExchangeRateService', () => {
       expect(rates['EUR'].rate).toBe(0.95);
       expect(rates['EUR'].source).toBe('user-override');
       // Other rates should be unaffected
-      expect(rates['GBP'].source).toBe('static');
+      expect(rates['GBP'].source).toBe('stored');
     });
 
     it('removes a user override', async () => {
       service.setUserOverride('USD', 'EUR', 0.95);
       service.removeUserOverride('USD', 'EUR');
       const rate = await service.getRate('USD', 'EUR');
-      expect(rate.source).toBe('static');
+      expect(rate.source).toBe('stored');
     });
 
     it('clears all overrides', () => {
@@ -138,9 +140,53 @@ describe('ExchangeRateService', () => {
     });
   });
 
+  describe('local stored provider', () => {
+    it('uses a stored local rate table when present', async () => {
+      saveLocalRateTable({
+        baseCurrency: 'USD',
+        rates: { EUR: 0.96 },
+        updatedAt: '2024-01-01T00:00:00.000Z',
+        source: 'test',
+      });
+      const localService = new ExchangeRateService(new LocalStoredRateProvider());
+
+      const result = await localService.convert(10000, 'USD', 'EUR');
+
+      expect(result.amount).toBe(9600);
+      expect(result.rate.source).toBe('stored');
+    });
+  });
+
+  describe('provider failure fallback', () => {
+    it('falls back to stale cached rates when the provider fails', async () => {
+      const staleTimestamp = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      setCachedRates('USD', {
+        EUR: { from: 'USD', to: 'EUR', rate: 0.91, timestamp: staleTimestamp, source: 'stored' },
+      });
+      const failingProvider: ExchangeRateProvider = {
+        name: 'Failing API',
+        fetchRates: async () => {
+          throw new Error('network unavailable');
+        },
+        fetchRate: async () => {
+          throw new Error('network unavailable');
+        },
+        isAvailable: async () => false,
+      };
+      const fallbackService = new ExchangeRateService(failingProvider, 0);
+
+      const rates = await fallbackService.getAllRates('USD');
+      const result = await fallbackService.convert(10000, 'USD', 'EUR');
+
+      expect(rates['EUR'].rate).toBe(0.91);
+      expect(result.amount).toBe(9100);
+      expect(result.rate.source).toBe('stored');
+    });
+  });
+
   describe('providerName', () => {
     it('returns the provider name', () => {
-      expect(service.providerName).toBe('Static Rates');
+      expect(service.providerName).toBe('Stored Exchange Rates');
     });
 
     it('returns custom provider name', () => {

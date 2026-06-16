@@ -2,3 +2,4 @@
 
 export * from './client-profitability';
 export * from './financial-statements';
+export * from './reporting-beta';

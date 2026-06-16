@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   clearOfflineNetworkFailure,
+  clearSlowNetworkDegradation,
   reportOfflineNetworkFailure,
+  reportSlowNetworkDegradation,
   useOfflineStatus,
 } from '../useOfflineStatus';
 
@@ -17,6 +19,7 @@ let onlineState: boolean;
 
 beforeEach(() => {
   clearOfflineNetworkFailure();
+  clearSlowNetworkDegradation();
   onlineState = true;
   vi.clearAllMocks();
 
@@ -207,5 +210,35 @@ describe('useOfflineStatus', () => {
 
     expect(result.current.isOnline).toBe(true);
     expect(result.current.hasNetworkFailure).toBe(false);
+  });
+
+  it('reports slow-network degradation separately from offline', () => {
+    onlineState = true;
+    const { result } = renderHook(() => useOfflineStatus());
+
+    act(() => {
+      reportSlowNetworkDegradation();
+    });
+
+    expect(result.current.isOnline).toBe(true);
+    expect(result.current.isOffline).toBe(false);
+    expect(result.current.hasSlowNetwork).toBe(true);
+    expect(result.current.isDegraded).toBe(true);
+    expect(result.current.degradedMessage).toMatch(/network is slow/i);
+  });
+
+  it('defers heavy assets on data saver connections', () => {
+    const connection = new EventTarget() as EventTarget & { saveData: boolean; effectiveType: string };
+    connection.saveData = true;
+    connection.effectiveType = '4g';
+    Object.defineProperty(navigator, 'connection', {
+      value: connection,
+      configurable: true,
+    });
+
+    const { result } = renderHook(() => useOfflineStatus());
+
+    expect(result.current.shouldDeferHeavyAssets).toBe(true);
+    expect(result.current.hasSlowNetwork).toBe(true);
   });
 });

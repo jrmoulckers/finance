@@ -7,6 +7,7 @@ import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { TransactionForm, type TransactionFormProps } from './TransactionForm';
 
 vi.mock('../../accessibility/aria', () => ({
+  announce: vi.fn(),
   useFocusTrap: vi.fn(),
 }));
 
@@ -153,6 +154,17 @@ describe('TransactionForm', () => {
 
     expect(screen.getByText('Amount must be greater than zero.')).toBeInTheDocument();
     expect(screen.getByText('Please select an account.')).toBeInTheDocument();
+    const summary = screen.getByText('Some fields need attention').closest('.form-error-summary');
+    expect(summary).toHaveAttribute('tabindex', '-1');
+    expect(summary).toHaveAttribute('aria-live', 'assertive');
+    expect(screen.getByRole('link', { name: /Amount: Amount must be greater than zero/i })).toHaveAttribute(
+      'href',
+      '#txn-amount',
+    );
+    expect(screen.getByRole('link', { name: /Account: Please select an account/i })).toHaveAttribute(
+      'href',
+      '#txn-account',
+    );
     expect(screen.getByRole('status')).toHaveTextContent(
       'Some fields need attention — see highlighted errors above.',
     );
@@ -276,7 +288,7 @@ describe('TransactionForm', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
     });
 
-    expect(screen.getByText(/Split amounts must equal the transaction total/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Split amounts must equal the transaction total/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Remaining: \$2\.34/i).length).toBeGreaterThan(0);
     expect(onSubmit).not.toHaveBeenCalled();
   });

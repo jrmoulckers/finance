@@ -10,6 +10,8 @@ import {
   type HouseholdDeletionImpact,
 } from '../../lib/account/account-deletion';
 import { wipeLocalData } from '../../storage/wipeLocalData';
+import { appendSecurityAuditEvent } from '../../lib/security-audit-log';
+import { getStepUpStatus, markStepUpAuthenticated } from '../../lib/session-security';
 
 /**
  * Tolerate missing DatabaseProvider (e.g. in some test harnesses).
@@ -81,6 +83,12 @@ export function useAccountDeletion(): {
     setIsDeleting(true);
 
     try {
+      const stepUp = getStepUpStatus('account_deletion');
+      if (!stepUp.allowed) {
+        await markStepUpAuthenticated('account_deletion', { source: 'account-deletion-modal' });
+      }
+      await appendSecurityAuditEvent({ action: 'account_deletion_attempted', result: 'warning' });
+
       const response = await fetch('/api/account', {
         method: 'DELETE',
         credentials: 'include',
@@ -106,6 +114,7 @@ export function useAccountDeletion(): {
       await clearLocalAccountData(db);
       await db?.close().catch(() => undefined);
       await wipeLocalData();
+      await appendSecurityAuditEvent({ action: 'account_deletion_completed', result: 'success' });
       try {
         await logout();
       } catch {

@@ -34,6 +34,8 @@ const defaultHookResult: UseExchangeRatesResult = {
   lastUpdated: '2025-01-15T12:00:00.000Z',
   providerName: 'Static Rates',
   isOffline: false,
+  isStale: false,
+  hasManualOverrides: false,
   convert: mockConvert,
   getRate: mockGetRate,
   setOverride: mockSetOverride,
@@ -108,6 +110,7 @@ describe('CurrencyRatesSettings', () => {
     hookResult = {
       ...defaultHookResult,
       overrides: { 'USD:EUR': 0.95 },
+      hasManualOverrides: true,
       rates: {
         ...defaultHookResult.rates,
         EUR: { ...defaultHookResult.rates['EUR']!, source: 'user-override', rate: 0.95 },
@@ -118,9 +121,17 @@ describe('CurrencyRatesSettings', () => {
     expect(screen.getByLabelText('Reset override for EUR')).toBeInTheDocument();
   });
 
-  it('shows the disclaimer about static rates', () => {
+  it('shows the disclaimer about estimate-grade rates', () => {
     render(<CurrencyRatesSettings />);
-    expect(screen.getByText(/Static rates are approximate/)).toBeInTheDocument();
+    expect(screen.getByText(/not settlement-grade exchange quotes/)).toBeInTheDocument();
+  });
+
+  it('warns when cached rates may be stale or manual overrides are active', () => {
+    hookResult = { ...defaultHookResult, isStale: true, hasManualOverrides: true };
+    render(<CurrencyRatesSettings />);
+
+    expect(screen.getByText(/Rates may be stale/)).toBeInTheDocument();
+    expect(screen.getByText(/Manual overrides are active/)).toBeInTheDocument();
   });
 
   it('has proper aria-label on the section', () => {

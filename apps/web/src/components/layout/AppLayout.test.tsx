@@ -89,6 +89,7 @@ describe('AppLayout', () => {
       showHelp: false,
       setShowHelp: mockSetShowHelp,
       shortcutCategories: [],
+      singleKeyShortcutsEnabled: true,
     });
     mockSetShowHelp.mockClear();
   });

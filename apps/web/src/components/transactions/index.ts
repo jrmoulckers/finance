@@ -10,5 +10,7 @@ export { TransactionEditPanel } from './TransactionEditPanel';
 export type { TransactionEditPanelProps } from './TransactionEditPanel';
 export { TransactionBulkActionsToolbar } from './TransactionBulkActionsToolbar';
 export type { TransactionBulkActionsToolbarProps } from './TransactionBulkActionsToolbar';
+export { LazyReceiptImage } from './LazyReceiptImage';
+export type { LazyReceiptImageProps } from './LazyReceiptImage';
 export { CounterpartyInput } from './CounterpartyInput';
 export type { CounterpartyInputProps } from './CounterpartyInput';
