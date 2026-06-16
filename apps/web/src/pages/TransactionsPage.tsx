@@ -18,6 +18,7 @@ import {
   TransactionFilters,
   TransactionSort,
   TransactionEditPanel,
+  LazyReceiptImage,
   DEFAULT_SORT,
 } from '../components/transactions';
 import type { AdvancedFilters } from '../components/transactions';
@@ -28,7 +29,9 @@ import { useAccounts } from '../hooks/useAccounts';
 import { useBulkTransactions } from '../hooks/useBulkTransactions';
 import { useCategories } from '../hooks/useCategories';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { recordPwaMeaningfulAction } from '../hooks/useInstallPrompt';
 import { useTransactions } from '../hooks/useTransactions';
+import { useVirtualList } from '../hooks/useVirtualList';
 import type { Transaction } from '../kmp/bridge';
 import {
   filterAccountsByPurpose,
@@ -142,6 +145,45 @@ function getTransactionLabel(transaction: Transaction): string {
     transaction.note?.trim() ||
     (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction')
   );
+}
+
+const VIRTUAL_REGISTER_THRESHOLD = 200;
+const VIRTUAL_REGISTER_ROW_HEIGHT = 76;
+const VIRTUAL_REGISTER_OVERSCAN = 16;
+
+interface TransactionRegisterHeaderRow {
+  readonly kind: 'header';
+  readonly id: string;
+  readonly label: string;
+}
+
+interface TransactionRegisterTransactionRow {
+  readonly kind: 'transaction';
+  readonly id: string;
+  readonly transaction: Transaction;
+  readonly transactionPosition: number;
+}
+
+type TransactionRegisterRow = TransactionRegisterHeaderRow | TransactionRegisterTransactionRow;
+
+function getRegisterViewportHeight(): number {
+  if (typeof window === 'undefined') return 640;
+  return Math.min(720, Math.max(360, window.innerHeight - 280));
+}
+
+function flattenTransactionGroups(
+  groups: Array<{ date: string; label: string; transactions: Transaction[] }>,
+): TransactionRegisterRow[] {
+  let transactionPosition = 0;
+  return groups.flatMap((group) => [
+    { kind: 'header' as const, id: `header-${group.date}`, label: group.label },
+    ...group.transactions.map((transaction) => ({
+      kind: 'transaction' as const,
+      id: transaction.id,
+      transaction,
+      transactionPosition: ++transactionPosition,
+    })),
+  ]);
 }
 
 function PlusIcon() {
@@ -276,7 +318,7 @@ export const TransactionsPage: React.FC = () => {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
-  const transactionRowRefs = useRef(new Map<string, HTMLLIElement>());
+  const transactionRowRefs = useRef(new Map<string, HTMLElement>());
 
   // Get filters/sort from URL params
   const advancedFilters = useMemo(() => filtersFromParams(searchParams), [searchParams]);
@@ -399,6 +441,36 @@ export const TransactionsPage: React.FC = () => {
     }));
   }, [transactions]);
 
+  const transactionRegisterRows = useMemo(
+    () => flattenTransactionGroups(groupedTransactions),
+    [groupedTransactions],
+  );
+  const [registerViewportHeight, setRegisterViewportHeight] = useState(getRegisterViewportHeight);
+  useEffect(() => {
+    const handleResize = () => setRegisterViewportHeight(getRegisterViewportHeight());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const virtualRegister = useVirtualList({
+    items: transactionRegisterRows,
+    itemHeight: VIRTUAL_REGISTER_ROW_HEIGHT,
+    containerHeight: registerViewportHeight,
+    overscan: VIRTUAL_REGISTER_OVERSCAN,
+  });
+  const useVirtualRegister = transactionRegisterRows.length > VIRTUAL_REGISTER_THRESHOLD;
+  const virtualRowIndexByTransactionId = useMemo(() => {
+    const indexes = new Map<string, number>();
+    transactionRegisterRows.forEach((row, index) => {
+      if (row.kind === 'transaction') indexes.set(row.transaction.id, index);
+    });
+    return indexes;
+  }, [transactionRegisterRows]);
+  const transactionPositionById = useMemo(
+    () => new Map(transactions.map((transaction, index) => [transaction.id, index + 1])),
+    [transactions],
+  );
+
   // Filter/Sort handlers
   const handleFiltersChange = useCallback(
     (newFilters: AdvancedFilters) => {
@@ -477,6 +549,7 @@ export const TransactionsPage: React.FC = () => {
         }
       }
 
+      recordPwaMeaningfulAction();
       handleFormCancel();
       refreshTransactions();
     },
@@ -495,6 +568,7 @@ export const TransactionsPage: React.FC = () => {
       if (result === null) {
         throw new Error('Failed to update transaction. Please try again.');
       }
+      recordPwaMeaningfulAction();
       setEditPanelTransaction(null);
       refreshTransactions();
     },
@@ -512,6 +586,7 @@ export const TransactionsPage: React.FC = () => {
 
     const deleted = deleteTransaction(deletingTransaction.id);
     if (deleted) {
+      recordPwaMeaningfulAction();
       setDeletingTransaction(null);
       refreshTransactions();
     }
@@ -519,6 +594,7 @@ export const TransactionsPage: React.FC = () => {
 
   const handleBulkDeleteConfirm = useCallback(() => {
     bulkTransactions.bulkDelete();
+    recordPwaMeaningfulAction();
     setBulkDeleteDialogOpen(false);
   }, [bulkTransactions]);
 
@@ -534,14 +610,23 @@ export const TransactionsPage: React.FC = () => {
     [bulkTransactions],
   );
 
-  const focusTransactionRow = useCallback((transactionId: string) => {
-    const focusRow = () => transactionRowRefs.current.get(transactionId)?.focus();
-    if (typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(focusRow);
-    } else {
-      focusRow();
-    }
-  }, []);
+  const focusTransactionRow = useCallback(
+    (transactionId: string) => {
+      const focusRow = () => transactionRowRefs.current.get(transactionId)?.focus();
+      if (useVirtualRegister && !transactionRowRefs.current.has(transactionId)) {
+        const virtualIndex = virtualRowIndexByTransactionId.get(transactionId);
+        if (virtualIndex !== undefined) {
+          virtualRegister.scrollToIndex(virtualIndex, 'center');
+        }
+      }
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(focusRow);
+      } else {
+        focusRow();
+      }
+    },
+    [useVirtualRegister, virtualRegister, virtualRowIndexByTransactionId],
+  );
 
   const handleListNavigate = useCallback(
     (direction: -1 | 1) => {
@@ -643,6 +728,116 @@ export const TransactionsPage: React.FC = () => {
     advancedFilters.amountMax !== '' ||
     advancedFilters.types.length > 0 ||
     advancedFilters.statuses.length > 0;
+
+  const renderTransactionRow = useCallback(
+    (transaction: Transaction, style?: React.CSSProperties, position?: number) => {
+      const transactionLabel = getTransactionLabel(transaction);
+      const isSelected = bulkTransactions.isSelected(transaction.id);
+      const isActive = activeTransactionId === transaction.id;
+
+      return (
+        <li
+          key={transaction.id}
+          ref={(node) => {
+            if (node) {
+              transactionRowRefs.current.set(transaction.id, node);
+            } else {
+              transactionRowRefs.current.delete(transaction.id);
+            }
+          }}
+          className={`list-item transaction-register__row${
+            isSelected ? ' transaction-register__row--selected' : ''
+          }${isActive ? ' transaction-register__row--active' : ''}`}
+          role="listitem"
+          aria-selected={isSelected}
+          aria-posinset={position}
+          aria-setsize={transactions.length}
+          tabIndex={isActive ? 0 : -1}
+          style={style}
+          onFocus={() => setActiveTransactionId(transaction.id)}
+          onClick={(event) => {
+            if (
+              (event.target as HTMLElement).closest('a,button,input,label,select,textarea')
+            ) {
+              return;
+            }
+            setActiveTransactionId(transaction.id);
+          }}
+        >
+          <div className="transaction-register__checkbox-cell">
+            <input
+              type="checkbox"
+              className="bulk-select-checkbox"
+              checked={isSelected}
+              readOnly
+              aria-label={`Select ${transactionLabel}`}
+              onClick={(event) =>
+                handleTransactionSelection(
+                  transaction,
+                  event.currentTarget.checked,
+                  event.shiftKey,
+                )
+              }
+            />
+          </div>
+          <LazyReceiptImage transaction={transaction} className="receipt-thumb" />
+          <div className="list-item__content">
+            <Link
+              to={`/transactions/${transaction.id}`}
+              style={{ textDecoration: 'none', color: 'inherit' }}
+              aria-label={`View details for ${transactionLabel}`}
+            >
+              <p className="list-item__primary">{transactionLabel}</p>
+            </Link>
+            <p className="list-item__secondary">
+              {transaction.counterpartyName ? `${transaction.counterpartyName} · ` : ''}
+              {transaction.categoryId !== null
+                ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
+                : 'Uncategorized'}{' '}
+              &middot; {accountNames.get(transaction.accountId) ?? 'Unknown account'}
+            </p>
+          </div>
+          <div className="list-item__trailing transaction-list-item__trailing">
+            <div className="transaction-list-item__amount">
+              <CurrencyDisplay
+                amount={getTransactionDisplayAmount(transaction)}
+                currency={transaction.currency.code}
+                colorize
+                showSign
+              />
+            </div>
+            <div className="transaction-item__actions" aria-label="Transaction actions">
+              <button
+                type="button"
+                className="icon-button transaction-item__action"
+                onClick={() => handleEditTransaction(transaction)}
+                aria-label={`Edit ${transactionLabel}`}
+              >
+                <AppIcon name="edit" />
+              </button>
+              <button
+                type="button"
+                className="icon-button transaction-item__action transaction-item__action--delete"
+                onClick={() => setDeletingTransaction(transaction)}
+                aria-label={`Delete ${transactionLabel}`}
+              >
+                <AppIcon name="trash" />
+              </button>
+            </div>
+          </div>
+        </li>
+      );
+    },
+    [
+      accountNames,
+      activeTransactionId,
+      bulkTransactions,
+      categoryNames,
+      handleEditTransaction,
+      handleTransactionSelection,
+      transactions.length,
+    ],
+  );
 
   return (
     <>
@@ -801,117 +996,79 @@ export const TransactionsPage: React.FC = () => {
             onRequestBulkDelete={() => setBulkDeleteDialogOpen(true)}
           />
 
-          {groupedTransactions.map((group) => (
-            <section key={group.date} className="page-section" aria-label={group.label}>
-              <h3 className="list-group__header">{group.label}</h3>
-              <div className="card">
-                <ul className="list-group" role="list">
-                  {group.transactions.map((transaction) => {
-                    const transactionLabel = getTransactionLabel(transaction);
+          {useVirtualRegister ? (
+            <div className="card">
+              <p className="sr-only" role="status">
+                Showing {transactions.length} transactions with virtual scrolling
+              </p>
+              <div
+                {...virtualRegister.containerProps}
+                ref={virtualRegister.containerRef}
+                className="transaction-register-virtual"
+                role="list"
+                aria-label="Virtualized transaction register"
+                aria-setsize={transactions.length}
+              >
+                <ul
+                  className="list-group"
+                  role="presentation"
+                  style={{
+                    ...virtualRegister.contentProps.style,
+                    listStyle: 'none',
+                    margin: 0,
+                    padding: 0,
+                  }}
+                >
+                  {virtualRegister.visibleItems.map(({ item, offsetTop }) => {
+                    const rowStyle: React.CSSProperties = {
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: VIRTUAL_REGISTER_ROW_HEIGHT,
+                      transform: `translateY(${offsetTop}px)`,
+                    };
 
-                    const isSelected = bulkTransactions.isSelected(transaction.id);
-                    const isActive = activeTransactionId === transaction.id;
+                    if (item.kind === 'header') {
+                      return (
+                        <li
+                          key={item.id}
+                          className="list-group__header transaction-register-virtual__header"
+                          role="presentation"
+                          style={rowStyle}
+                        >
+                          {item.label}
+                        </li>
+                      );
+                    }
 
-                    return (
-                      <li
-                        key={transaction.id}
-                        ref={(node) => {
-                          if (node) {
-                            transactionRowRefs.current.set(transaction.id, node);
-                          } else {
-                            transactionRowRefs.current.delete(transaction.id);
-                          }
-                        }}
-                        className={`list-item transaction-register__row${
-                          isSelected ? ' transaction-register__row--selected' : ''
-                        }${isActive ? ' transaction-register__row--active' : ''}`}
-                        role="listitem"
-                        aria-selected={isSelected}
-                        tabIndex={isActive ? 0 : -1}
-                        onFocus={() => setActiveTransactionId(transaction.id)}
-                        onClick={(event) => {
-                          if (
-                            (event.target as HTMLElement).closest(
-                              'a,button,input,label,select,textarea',
-                            )
-                          ) {
-                            return;
-                          }
-                          setActiveTransactionId(transaction.id);
-                        }}
-                      >
-                        <div className="transaction-register__checkbox-cell">
-                          <input
-                            type="checkbox"
-                            className="bulk-select-checkbox"
-                            checked={isSelected}
-                            readOnly
-                            aria-label={`Select ${transactionLabel}`}
-                            onClick={(event) =>
-                              handleTransactionSelection(
-                                transaction,
-                                event.currentTarget.checked,
-                                event.shiftKey,
-                              )
-                            }
-                          />
-                        </div>
-                        <div className="list-item__content">
-                          <Link
-                            to={`/transactions/${transaction.id}`}
-                            style={{ textDecoration: 'none', color: 'inherit' }}
-                            aria-label={`View details for ${transactionLabel}`}
-                          >
-                            <p className="list-item__primary">{transactionLabel}</p>
-                          </Link>
-                          <p className="list-item__secondary">
-                            {transaction.counterpartyName
-                              ? `${transaction.counterpartyName} · `
-                              : ''}
-                            {transaction.categoryId !== null
-                              ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
-                              : 'Uncategorized'}{' '}
-                            &middot; {accountNames.get(transaction.accountId) ?? 'Unknown account'}
-                          </p>
-                        </div>
-                        <div className="list-item__trailing transaction-list-item__trailing">
-                          <div className="transaction-list-item__amount">
-                            <CurrencyDisplay
-                              amount={getTransactionDisplayAmount(transaction)}
-                              currency={transaction.currency.code}
-                              colorize
-                              showSign
-                            />
-                          </div>
-                          <div
-                            className="transaction-item__actions"
-                            aria-label="Transaction actions"
-                          >
-                            <button
-                              type="button"
-                              className="icon-button transaction-item__action"
-                              onClick={() => handleEditTransaction(transaction)}
-                              aria-label={`Edit ${transactionLabel}`}
-                            >
-                              <AppIcon name="edit" />
-                            </button>
-                            <button
-                              type="button"
-                              className="icon-button transaction-item__action transaction-item__action--delete"
-                              onClick={() => setDeletingTransaction(transaction)}
-                              aria-label={`Delete ${transactionLabel}`}
-                            >
-                              <AppIcon name="trash" />
-                            </button>
-                          </div>
-                        </div>
-                      </li>
+                    return renderTransactionRow(
+                      item.transaction,
+                      rowStyle,
+                      item.transactionPosition,
                     );
                   })}
                 </ul>
               </div>
-            </section>
-          ))}
+            </div>
+          ) : (
+            groupedTransactions.map((group) => (
+              <section key={group.date} className="page-section" aria-label={group.label}>
+                <h3 className="list-group__header">{group.label}</h3>
+                <div className="card">
+                  <ul className="list-group" role="list">
+                    {group.transactions.map((transaction) =>
+                      renderTransactionRow(
+                        transaction,
+                        undefined,
+                        transactionPositionById.get(transaction.id),
+                      ),
+                    )}
+                  </ul>
+                </div>
+              </section>
+            ))
+          )}
         </div>
       )}
 

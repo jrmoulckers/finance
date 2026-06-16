@@ -18,7 +18,7 @@
  * References: issue #1340
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,10 +65,22 @@ export interface UseVirtualListResult<T> {
     style: React.CSSProperties;
   };
 
+  /** Ref for imperative scroll positioning. */
+  containerRef: React.RefObject<HTMLDivElement | null>;
+
   /** Props to spread on the inner content wrapper. */
   contentProps: {
     style: React.CSSProperties;
   };
+
+  /** First rendered index, including overscan. */
+  startIndex: number;
+
+  /** Exclusive rendered end index. */
+  endIndex: number;
+
+  /** Imperatively scroll an item into view without rendering all rows. */
+  scrollToIndex: (index: number, align?: 'start' | 'center' | 'end') => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -80,26 +92,28 @@ export interface UseVirtualListResult<T> {
  */
 export function useVirtualList<T>(options: UseVirtualListOptions<T>): UseVirtualListResult<T> {
   const { items, itemHeight, containerHeight, overscan = 5 } = options;
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
 
   const totalHeight = items.length * itemHeight;
+  const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
+  const visibleCount = Math.ceil(containerHeight / itemHeight);
+  const endIndex = Math.min(items.length, startIndex + visibleCount + overscan * 2);
 
   const visibleItems = useMemo(() => {
-    const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
-    const visibleCount = Math.ceil(containerHeight / itemHeight);
-    const endIndex = Math.min(items.length, startIndex + visibleCount + overscan * 2);
-
     const result: VirtualItem<T>[] = [];
     for (let i = startIndex; i < endIndex; i++) {
+      const item = items[i];
+      if (item === undefined) continue;
       result.push({
-        item: items[i],
+        item,
         index: i,
         offsetTop: i * itemHeight,
       });
     }
 
     return result;
-  }, [items, itemHeight, containerHeight, scrollTop, overscan]);
+  }, [items, itemHeight, startIndex, endIndex]);
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
     setScrollTop(e.currentTarget.scrollTop);
@@ -127,11 +141,33 @@ export function useVirtualList<T>(options: UseVirtualListOptions<T>): UseVirtual
     [totalHeight],
   );
 
+  const scrollToIndex = useCallback(
+    (index: number, align: 'start' | 'center' | 'end' = 'start') => {
+      const clampedIndex = Math.min(items.length - 1, Math.max(0, index));
+      let nextScrollTop = clampedIndex * itemHeight;
+      if (align === 'center') {
+        nextScrollTop -= (containerHeight - itemHeight) / 2;
+      } else if (align === 'end') {
+        nextScrollTop -= containerHeight - itemHeight;
+      }
+      nextScrollTop = Math.min(Math.max(0, nextScrollTop), Math.max(0, totalHeight - containerHeight));
+      setScrollTop(nextScrollTop);
+      if (containerRef.current) {
+        containerRef.current.scrollTop = nextScrollTop;
+      }
+    },
+    [containerHeight, itemHeight, items.length, totalHeight],
+  );
+
   return {
     visibleItems,
     totalHeight,
     scrollTop,
     containerProps,
+    containerRef,
     contentProps,
+    startIndex,
+    endIndex,
+    scrollToIndex,
   };
 }
