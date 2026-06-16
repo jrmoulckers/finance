@@ -65,10 +65,46 @@ export function groupByCurrency(amounts: ReadonlyArray<CurrencyAmount>): Record<
  * // (exact output depends on Intl formatting)
  * ```
  */
-export function formatCurrencyGroup(groups: Record<string, number>): string {
+export function formatCurrencyGroup(groups: Record<string, number>, locale?: string): string {
   const entries = Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
 
-  return entries.map(([currency, amount]) => formatCurrency(amount, { currency })).join(' · ');
+  return entries.map(([currency, amount]) => formatCurrency(amount, { currency, locale })).join(' · ');
+}
+
+export interface ConvertedCurrencyTotal {
+  readonly sourceGroups: Record<string, number>;
+  readonly targetCurrency: string;
+  readonly convertedAmount: number;
+  readonly formattedSourceGroups: string;
+  readonly formattedConvertedAmount: string;
+  readonly ariaLabel: string;
+}
+
+export function calculateConvertedCurrencyTotal(
+  amounts: ReadonlyArray<CurrencyAmount>,
+  targetCurrency: string,
+  convert: (amount: number, from: string, to: string) => number,
+  locale?: string,
+): ConvertedCurrencyTotal {
+  const sourceGroups = groupByCurrency(amounts);
+  const convertedAmount = Object.entries(sourceGroups).reduce(
+    (sum, [currency, amount]) => sum + convert(amount, currency, targetCurrency),
+    0,
+  );
+  const formattedSourceGroups = formatCurrencyGroup(sourceGroups, locale);
+  const formattedConvertedAmount = formatCurrency(convertedAmount, {
+    currency: targetCurrency,
+    locale,
+  });
+
+  return {
+    sourceGroups,
+    targetCurrency,
+    convertedAmount,
+    formattedSourceGroups,
+    formattedConvertedAmount,
+    ariaLabel: `${formattedSourceGroups} converted to approximately ${formattedConvertedAmount} ${targetCurrency}`,
+  };
 }
 
 /**
