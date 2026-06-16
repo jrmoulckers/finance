@@ -10,9 +10,12 @@
 export type {
   AlertType,
   AppNotification,
+  AccountTransactionThreshold,
   AlertChannelPreference,
   BalanceAlertConfig,
   BatchConfirmationSummary,
+  BillReminderConfig,
+  BillReminderLeadDays,
   BudgetAlertConfig,
   BudgetThreshold,
   GoalAlertConfig,
@@ -46,7 +49,30 @@ export {
   formatCentsForAlert,
   isInQuietHours,
   rateLimitNotifications,
+  shouldDeliverNotification,
 } from './alert-engine';
+
+export {
+  buildLargeTransactionNotification,
+  calculateSavingsStreak,
+  evaluateBalanceWarnings,
+  evaluateBillDueReminders,
+  evaluateGoalNudges,
+  evaluateGoalStreakCelebrations,
+  evaluateLargeTransactionConfirmations,
+} from './beta-alerts';
+
+export type {
+  BalanceWarningInput,
+  BalanceWarningOptions,
+  BillReminderEvalInput,
+  BillReminderEvalOptions,
+  GoalContributionRecord,
+  GoalMomentumInput,
+  GoalMomentumOptions,
+  LargeTransactionConfirmationConfig,
+  LargeTransactionConfirmationInput,
+} from './beta-alerts';
 
 export { detectScamAlerts, scamAlertsToNotifications } from './scam-alerts';
 export type { ScamAlertDetectionOptions, ScamAlertRule, ScamSpendingAlert } from './scam-alerts';
