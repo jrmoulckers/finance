@@ -14,6 +14,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import type { ExchangeRate } from '../../lib/currency/exchange-rate-types';
 import { STATIC_CURRENCY_CODES } from '../../lib/currency/static-rates';
 import { useExchangeRates } from '../../hooks/useExchangeRates';
+import { useLocalePreferences } from '../../hooks/useLocalePreferences';
 
 // ---------------------------------------------------------------------------
 // Source badge labels
@@ -21,6 +22,7 @@ import { useExchangeRates } from '../../hooks/useExchangeRates';
 
 const SOURCE_LABELS: Record<string, string> = {
   static: 'Static',
+  stored: 'Stored',
   api: 'API',
   'user-override': 'Manual',
 };
@@ -47,12 +49,16 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
     error,
     lastUpdated,
     providerName,
+    isOffline,
+    isStale,
+    hasManualOverrides,
     setOverride,
     removeOverride,
     overrides,
     refresh,
   } = useExchangeRates(baseCurrency);
 
+  const { locale, timeZone } = useLocalePreferences();
   const [editingPair, setEditingPair] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
@@ -107,7 +113,11 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
   const formatTimestamp = (ts: string | null): string => {
     if (!ts) return 'Never';
     try {
-      return new Date(ts).toLocaleString();
+      return new Intl.DateTimeFormat(locale, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone,
+      }).format(new Date(ts));
     } catch {
       return ts;
     }
@@ -174,6 +184,16 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
           <span className="settings-item__label">Base Currency</span>
           <span className="settings-item__value">{baseCurrency}</span>
         </div>
+        {(isOffline || isStale || hasManualOverrides) && (
+          <div className="settings-item settings-item--static" role="status" aria-live="polite">
+            <span className="settings-item__label">Rate freshness</span>
+            <span className="settings-item__value settings-item__value--muted">
+              {isOffline ? 'Offline fallback in use. ' : ''}
+              {isStale ? 'Rates may be stale. ' : ''}
+              {hasManualOverrides ? 'Manual overrides are active. ' : ''}
+            </span>
+          </div>
+        )}
 
         {/* Rate list */}
         <details className="currency-rates-disclosure">
@@ -287,8 +307,8 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
         {/* Disclaimer */}
         <div className="settings-item settings-item--static">
           <span className="settings-item__value settings-item__value--muted">
-            Static rates are approximate and not suitable for real financial transactions. Connect a
-            live exchange rate provider for accurate rates.
+            Converted values are estimates and not settlement-grade exchange quotes. Stored and
+            cached rates may differ from live market prices.
           </span>
         </div>
       </div>
