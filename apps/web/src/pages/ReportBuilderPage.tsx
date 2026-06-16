@@ -36,6 +36,7 @@ import type {
   ReportTemplate,
   DatePreset,
 } from '../hooks/useReportBuilder';
+import type { AnomalyModule, CategoryDrillDown } from '../lib/reports/reporting-beta';
 import { DateInput } from '../components/common';
 import { CHART_COLORS, formatChartCurrency } from '../components/charts/chart-palette';
 
@@ -96,6 +97,14 @@ const TEMPLATE_OPTIONS: readonly { value: ReportTemplate; label: string; descrip
   { value: 'custom', label: 'Custom Report', description: 'Build your own report from scratch' },
 ];
 
+const ANOMALY_OPTIONS: readonly { value: AnomalyModule; label: string }[] = [
+  { value: 'category-spend', label: 'Category spend spikes' },
+  { value: 'merchant-spike', label: 'Merchant spikes' },
+  { value: 'missing-income', label: 'Missing expected income' },
+  { value: 'duplicates', label: 'Duplicate-looking transactions' },
+  { value: 'net-worth', label: 'Unusual net-worth movement' },
+];
+
 const DATE_PRESET_OPTIONS: readonly { value: DatePreset; label: string }[] = [
   { value: 'this-month', label: 'This Month' },
   { value: 'last-month', label: 'Last Month' },
@@ -140,6 +149,8 @@ export function ReportBuilderPage() {
   const {
     config,
     availableFields,
+    availableCategories,
+    availableAccounts,
     preview,
     generating,
     error,
@@ -149,12 +160,15 @@ export function ReportBuilderPage() {
     reorderFields,
     setDateRange,
     applyDatePreset,
+    setCategoryFilter,
+    setAccountFilter,
     setGroupBy,
     setChartType,
     setExportFormat,
     applyTemplate,
     setScheduled,
     setScheduleFrequency,
+    toggleAnomalyModule,
     generatePreview,
     exportReport,
     resetConfig,
@@ -162,10 +176,16 @@ export function ReportBuilderPage() {
     saveReport,
     loadReport,
     deleteSavedReport,
+    duplicateSavedReport,
+    renameSavedReport,
+    getCategoryDrillDown,
+    anomalies,
+    markAnomaly,
   } = useReportBuilder();
 
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
+  const [chartDrillDown, setChartDrillDown] = useState<CategoryDrillDown | null>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
   const isBalanceSheet = isBalanceSheetTemplate(config.template);
   const summaryLabels = getSummaryLabels(config.template);
@@ -430,6 +450,50 @@ export function ReportBuilderPage() {
 
         <div className="report-filters-grid">
           <div className="report-filter-group">
+            <label htmlFor="report-categories" className="report-filter-group__label">
+              Categories
+            </label>
+            <select
+              id="report-categories"
+              className="report-select"
+              multiple
+              value={[...config.categoryIds]}
+              onChange={(e) =>
+                setCategoryFilter(Array.from(e.currentTarget.selectedOptions, (option) => option.value))
+              }
+              aria-label="Filter categories"
+            >
+              {availableCategories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="report-filter-group">
+            <label htmlFor="report-accounts" className="report-filter-group__label">
+              Accounts
+            </label>
+            <select
+              id="report-accounts"
+              className="report-select"
+              multiple
+              value={[...config.accountIds]}
+              onChange={(e) =>
+                setAccountFilter(Array.from(e.currentTarget.selectedOptions, (option) => option.value))
+              }
+              aria-label="Filter accounts"
+            >
+              {availableAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="report-filter-group">
             <label htmlFor="report-group-by" className="report-filter-group__label">
               Group By
             </label>
@@ -521,6 +585,27 @@ export function ReportBuilderPage() {
         </div>
       </section>
 
+      <section className="report-card" aria-labelledby="anomaly-title">
+        <h2 id="anomaly-title" className="report-card__title">
+          Anomaly Modules
+        </h2>
+        <p className="report-card__description">
+          Save these modules with the template so recurring reviews flag unusual activity automatically.
+        </p>
+        <div className="report-checkbox-grid">
+          {ANOMALY_OPTIONS.map((option) => (
+            <label key={option.value} className="report-checkbox-row">
+              <input
+                type="checkbox"
+                checked={config.anomalyModules.includes(option.value)}
+                onChange={() => toggleAnomalyModule(option.value)}
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      </section>
+
       {/* Actions */}
       <div className="report-actions">
         <button
@@ -569,6 +654,23 @@ export function ReportBuilderPage() {
           >
             <ReportChart chartType={config.chartType} data={preview.chartData} />
           </div>
+          {preview.chartData.length > 0 && (
+            <div className="report-chart-actions" role="list" aria-label="Chart drill-down actions">
+              {preview.chartData.map((point) => (
+                <button
+                  key={point.name}
+                  type="button"
+                  className="report-button report-button--secondary report-button--sm"
+                  onClick={() => setChartDrillDown(getCategoryDrillDown(point.name))}
+                >
+                  Drill into {point.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {chartDrillDown && (
+            <ReportDrillDown drillDown={chartDrillDown} onClose={() => setChartDrillDown(null)} />
+          )}
         </section>
       )}
 
@@ -601,6 +703,38 @@ export function ReportBuilderPage() {
               <span className="report-summary-stat__label">{summaryLabels.count}</span>
               <span className="report-summary-stat__value">{preview.summary.transactionCount}</span>
             </div>
+          </div>
+        </section>
+      )}
+
+      {anomalies.length > 0 && (
+        <section className="report-card" aria-labelledby="anomalies-title">
+          <h2 id="anomalies-title" className="report-card__title">
+            Anomaly Insights
+          </h2>
+          <div className="report-anomaly-list" role="list">
+            {anomalies.map((anomaly) => (
+              <article key={anomaly.id} className="report-anomaly" role="listitem">
+                <div>
+                  <h3>{anomaly.title}</h3>
+                  <p>{anomaly.explanation}</p>
+                  <p>
+                    Baseline {formatChartCurrency(anomaly.baseline, 'USD')} · Observed{' '}
+                    {formatChartCurrency(anomaly.observed, 'USD')} · Variance{' '}
+                    {formatChartCurrency(anomaly.variance, 'USD')}
+                  </p>
+                </div>
+                <select
+                  aria-label={`Status for ${anomaly.title}`}
+                  value={anomaly.status}
+                  onChange={(event) => markAnomaly(anomaly.id, event.target.value as typeof anomaly.status)}
+                >
+                  <option value="needs-review">Needs review</option>
+                  <option value="expected">Expected</option>
+                  <option value="ignored">Ignored</option>
+                </select>
+              </article>
+            ))}
           </div>
         </section>
       )}
@@ -665,6 +799,23 @@ export function ReportBuilderPage() {
                     Load
                   </button>
                   <button
+                    className="report-button report-button--secondary report-button--sm"
+                    onClick={() => duplicateSavedReport(report.id)}
+                    aria-label={`Duplicate report: ${report.name}`}
+                  >
+                    Duplicate
+                  </button>
+                  <button
+                    className="report-button report-button--secondary report-button--sm"
+                    onClick={() => {
+                      const nextName = window.prompt('Rename saved report', report.name);
+                      if (nextName) renameSavedReport(report.id, nextName);
+                    }}
+                    aria-label={`Rename report: ${report.name}`}
+                  >
+                    Rename
+                  </button>
+                  <button
                     className="report-button report-button--secondary report-button--sm report-button--danger"
                     onClick={() => deleteSavedReport(report.id)}
                     aria-label={`Delete report: ${report.name}`}
@@ -684,6 +835,61 @@ export function ReportBuilderPage() {
 // ---------------------------------------------------------------------------
 // ReportChart sub-component (Recharts)
 // ---------------------------------------------------------------------------
+
+interface ReportDrillDownProps {
+  drillDown: CategoryDrillDown;
+  onClose: () => void;
+}
+
+function ReportDrillDown({ drillDown, onClose }: ReportDrillDownProps) {
+  return (
+    <div className="report-drilldown" aria-label={`${drillDown.categoryName} report drill-down`}>
+      <div className="report-drilldown__header">
+        <h3>{drillDown.categoryName} details</h3>
+        <button type="button" className="report-button report-button--secondary report-button--sm" onClick={onClose}>
+          Back to chart
+        </button>
+      </div>
+      {drillDown.transactionCount === 0 ? (
+        <p>No transactions match this category after the report filters are applied.</p>
+      ) : (
+        <>
+          <div className="report-drilldown__stats">
+            <span>Total {formatChartCurrency(drillDown.total, 'USD')}</span>
+            <span>{drillDown.transactionCount} transactions</span>
+            <span>Average {formatChartCurrency(drillDown.averageTransaction, 'USD')}</span>
+          </div>
+          <div className="report-table-wrapper" role="region" tabIndex={0} aria-label="Report drill-down transactions">
+            <table className="report-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Payee</th>
+                  <th>Account</th>
+                  <th>Amount</th>
+                  <th>Tags</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {drillDown.transactions.map((tx) => (
+                  <tr key={tx.id}>
+                    <td>{tx.date}</td>
+                    <td>{tx.payee}</td>
+                    <td>{tx.accountName}</td>
+                    <td>{formatChartCurrency(tx.amount, 'USD')}</td>
+                    <td>{tx.tags.join(', ') || '—'}</td>
+                    <td>{tx.note || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 interface ReportChartProps {
   chartType: ChartType;
