@@ -6,6 +6,7 @@ import { AppIcon } from '../components/icons';
 
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { TransactionForm } from '../components/forms';
+import { LazyReceiptImage } from '../components/transactions';
 import { Breadcrumb } from '../components/navigation';
 import { TagList } from '../components/tags';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
@@ -335,6 +336,8 @@ export const TransactionDetailPage: React.FC = () => {
           )}
         </dl>
       </article>
+
+      <LazyReceiptImage transaction={transaction} className="receipt-detail-image" />
 
       {splitDetails.length > 0 && (
         <article
