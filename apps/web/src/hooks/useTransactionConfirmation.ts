@@ -20,9 +20,10 @@ import { useCallback } from 'react';
 import type {
   AppNotification,
   BatchConfirmationSummary,
+  LargeTransactionConfirmationInput,
   TransactionConfirmation,
 } from '../lib/notifications';
-import { formatCentsForAlert } from '../lib/notifications';
+import { evaluateLargeTransactionConfirmations, formatCentsForAlert } from '../lib/notifications';
 import { loadNotificationPreferences } from '../lib/notifications/preferences';
 
 // ---------------------------------------------------------------------------
@@ -41,6 +42,13 @@ export interface UseTransactionConfirmationResult {
    * @returns The notification to add to the notification center, or null if disabled.
    */
   confirmBatch: (summary: BatchConfirmationSummary) => AppNotification | null;
+  /**
+   * Generate confirmation prompts for transactions above configured thresholds.
+   */
+  confirmLargeTransactions: (
+    transactions: readonly LargeTransactionConfirmationInput[],
+    alreadyFiredKeys?: ReadonlySet<string>,
+  ) => AppNotification[];
 }
 
 // ---------------------------------------------------------------------------
@@ -105,5 +113,24 @@ export function useTransactionConfirmation(): UseTransactionConfirmationResult {
     };
   }, []);
 
-  return { confirmTransaction, confirmBatch };
+  const confirmLargeTransactions = useCallback(
+    (
+      transactions: readonly LargeTransactionConfirmationInput[],
+      alreadyFiredKeys: ReadonlySet<string> = new Set(),
+    ): AppNotification[] => {
+      const prefs = loadNotificationPreferences();
+      return evaluateLargeTransactionConfirmations(
+        transactions,
+        {
+          enabled: prefs.transactionConfirmations,
+          globalThresholdCents: prefs.largeTransactionThresholdCents,
+          accountThresholds: prefs.largeTransactionAccountThresholds,
+        },
+        alreadyFiredKeys,
+      );
+    },
+    [],
+  );
+
+  return { confirmTransaction, confirmBatch, confirmLargeTransactions };
 }
