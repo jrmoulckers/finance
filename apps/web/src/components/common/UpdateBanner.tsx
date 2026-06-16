@@ -6,7 +6,7 @@ import { useServiceWorkerUpdate } from '../../hooks/useServiceWorkerUpdate';
 
 /** Announce when a new service worker is ready and let the user update in place. */
 export const UpdateBanner: React.FC = () => {
-  const { updateAvailable, applyUpdate } = useServiceWorkerUpdate();
+  const { updateAvailable, applyUpdate, blockedByUnsavedChanges } = useServiceWorkerUpdate();
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -21,15 +21,22 @@ export const UpdateBanner: React.FC = () => {
 
   return (
     <div className="update-banner" role="status" aria-live="polite" aria-atomic="true">
-      <span className="update-banner__text">A new version of the app is available</span>
+      <span className="update-banner__text">
+        A new version is ready. Unsynced changes are preserved before reload.
+      </span>
       <div className="update-banner__actions">
         <button
           type="button"
           className="update-banner__action"
-          aria-label="Reload the page to install the new app version"
+          aria-label={
+            blockedByUnsavedChanges
+              ? 'Finish unsaved edits before installing the update'
+              : 'Reload the page to install the new app version'
+          }
           onClick={applyUpdate}
+          disabled={blockedByUnsavedChanges}
         >
-          Reload to update
+          {blockedByUnsavedChanges ? 'Finish edits first' : 'Reload to update'}
         </button>
         <button
           type="button"
