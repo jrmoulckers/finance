@@ -13,10 +13,11 @@
  * References: issue #1587
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useCashFlow } from '../hooks/useCashFlow';
 import type { MonthlyAggregate, IncomeSource } from '../lib/analytics/cash-flow';
+import { forecastMonthEndBalance } from '../lib/budgeting-beta';
 import { CHART_COLORS } from '../components/charts/chart-palette';
 import './analytics.css';
 
@@ -32,6 +33,12 @@ interface PeriodSelectorProps {
 }
 
 const PERIOD_OPTIONS: PeriodOption[] = [6, 12, 24];
+
+function formatLocalDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
+  ).padStart(2, '0')}`;
+}
 
 const PeriodSelector: React.FC<PeriodSelectorProps> = ({ value, onChange }) => (
   <div className="analytics-period-selector" role="tablist" aria-label="Time period">
@@ -133,6 +140,48 @@ export const CashFlowPage: React.FC = () => {
   const [period, setPeriod] = useState<PeriodOption>(12);
   const { aggregates, summary, incomeSources, loading, error, refresh, exportCsv } =
     useCashFlow(period);
+  const monthEndForecast = useMemo(() => {
+    const now = new Date();
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const currentAggregate = aggregates.length > 0 ? aggregates[aggregates.length - 1] : null;
+    const expectedIncomeRemaining = Math.max(
+      0,
+      summary.averageMonthlyIncome - (currentAggregate?.income ?? 0),
+    );
+    const upcomingOutflows = Math.max(
+      0,
+      summary.averageMonthlyExpenses - (currentAggregate?.expenses ?? 0),
+    );
+
+    return forecastMonthEndBalance({
+      currentBalanceCents: summary.totalNetIncome,
+      today: formatLocalDate(now),
+      monthEnd: formatLocalDate(monthEnd),
+      expectedIncome:
+        expectedIncomeRemaining > 0
+          ? [
+              {
+                id: 'average-income-remainder',
+                label: 'Expected income based on average',
+                date: formatLocalDate(monthEnd),
+                amountCents: expectedIncomeRemaining,
+              },
+            ]
+          : [],
+      scheduledOutflows:
+        upcomingOutflows > 0
+          ? [
+              {
+                id: 'average-expense-remainder',
+                label: 'Upcoming bills based on average expenses',
+                date: formatLocalDate(monthEnd),
+                amountCents: upcomingOutflows,
+              },
+            ]
+          : [],
+      remainingBudgetedSpendCents: 0,
+    });
+  }, [aggregates, summary]);
 
   if (loading) {
     return (
@@ -153,7 +202,7 @@ export const CashFlowPage: React.FC = () => {
     return (
       <EmptyState
         title="No cash flow data"
-        description="Start adding income and expense transactions to see your cash flow trends over time."
+        description="Start adding balances, income, and expense transactions to see cash flow trends and month-end forecast assumptions."
       />
     );
   }
@@ -173,6 +222,50 @@ export const CashFlowPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      <section className="analytics-section" aria-label="Month-end balance forecast">
+        <h3 className="analytics-section__title">Month-end balance forecast</h3>
+        <div className="analytics-metrics-grid">
+          <article className="analytics-metric-card" aria-label="Projected end-of-month balance">
+            <p className="analytics-metric-card__label">Projected EOM Balance</p>
+            <p
+              className={`analytics-metric-card__value ${
+                monthEndForecast.projectedEndBalanceCents >= 0
+                  ? 'analytics-metric-card__value--positive'
+                  : 'analytics-metric-card__value--negative'
+              }`}
+            >
+              <CurrencyDisplay amount={monthEndForecast.projectedEndBalanceCents} />
+            </p>
+          </article>
+          <article className="analytics-metric-card" aria-label="Lowest projected balance">
+            <p className="analytics-metric-card__label">
+              Lowest balance ({monthEndForecast.lowestBalanceDate})
+            </p>
+            <p
+              className={`analytics-metric-card__value ${
+                monthEndForecast.hasShortfall
+                  ? 'analytics-metric-card__value--negative'
+                  : 'analytics-metric-card__value--positive'
+              }`}
+            >
+              <CurrencyDisplay amount={monthEndForecast.lowestBalanceCents} />
+            </p>
+          </article>
+          <article className="analytics-metric-card" aria-label="Forecast confidence">
+            <p className="analytics-metric-card__label">Confidence</p>
+            <p className="analytics-metric-card__value">{monthEndForecast.confidence}</p>
+          </article>
+        </div>
+        <details style={{ marginTop: 'var(--spacing-3)' }}>
+          <summary>Forecast assumptions</summary>
+          <ul>
+            {monthEndForecast.assumptions.map((assumption) => (
+              <li key={assumption}>{assumption}</li>
+            ))}
+          </ul>
+        </details>
+      </section>
 
       {/* Summary metrics */}
       <section className="analytics-section" aria-label="Cash flow summary">
