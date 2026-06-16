@@ -77,6 +77,43 @@ export type {
 export { detectScamAlerts, scamAlertsToNotifications } from './scam-alerts';
 export type { ScamAlertDetectionOptions, ScamAlertRule, ScamSpendingAlert } from './scam-alerts';
 
+export {
+  buildUnusualSpendNotifications,
+  recordUnusualSpendReview,
+  summarizeUnusualSpendReviews,
+} from './unusual-spend';
+export type { UnusualSpendAlertOptions, UnusualSpendReviewOutcome, UnusualSpendReviewRecord } from './unusual-spend';
+
+export { buildSpendingDigestNotification, scheduleDigestDelivery } from './spending-digests';
+export type {
+  DigestBudgetSummary,
+  DigestCategoryChange,
+  DigestGoalProgress,
+  DigestUpcomingBill,
+  SpendingDigestCadence,
+  SpendingDigestInput,
+} from './spending-digests';
+
+export {
+  detectSubscriptionPriceChanges,
+  subscriptionPriceChangesToNotifications,
+} from './subscription-price-changes';
+export type {
+  SubscriptionCadence,
+  SubscriptionCharge,
+  SubscriptionPriceChangeAlert,
+  SubscriptionPriceChangeConfig,
+} from './subscription-price-changes';
+
+export {
+  canBypassQuietHours,
+  getDeliveryDecisions,
+  normalizeNotificationPreferences,
+  setAlertChannels,
+  validateQuietHours,
+} from './delivery-controls';
+export type { DeliveryDecision, QuietHoursValidationResult } from './delivery-controls';
+
 export type {
   BalanceEvalInput,
   BudgetEvalInput,
