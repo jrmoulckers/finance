@@ -46,7 +46,7 @@ export function setReducedMotionPreference(enabled: boolean): void {
 }
 
 export function applyStoredReducedMotionPreference(): void {
-  applyReducedMotionPreference(getStoredReducedMotionPreference());
+  applyReducedMotionPreference(getSystemReducedMotionPreference() || getStoredReducedMotionPreference());
 }
 
 /**

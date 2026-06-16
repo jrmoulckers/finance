@@ -108,6 +108,12 @@
   }
 }
 
+html[data-reduced-motion='true'] .skeleton {
+  animation: none;
+  background: var(--semantic-background-secondary);
+  background-size: auto;
+}
+
 /* --- Responsive: mobile ----------------------------------------------- */
 
 @media (max-width: 480px) {
