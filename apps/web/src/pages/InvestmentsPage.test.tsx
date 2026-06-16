@@ -10,6 +10,10 @@ vi.mock('../hooks', () => ({
   useInvestments: vi.fn(),
 }));
 
+vi.mock('../components/DataExport', () => ({
+  DataExport: () => <div data-testid="data-export" />,
+}));
+
 // Recharts uses DOM measurements that aren't available in jsdom.
 // Stub it out to avoid rendering errors.
 vi.mock('recharts', () => ({
@@ -93,6 +97,7 @@ describe('InvestmentsPage', () => {
   };
 
   beforeEach(() => {
+    window.localStorage.clear();
     mockedUseInvestments.mockReturnValue(baseMockReturn);
   });
 
@@ -116,9 +121,9 @@ describe('InvestmentsPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('AAPL')).toBeInTheDocument();
+    expect(screen.getAllByText('AAPL').length).toBeGreaterThan(0);
     expect(screen.getByText('Apple Inc.')).toBeInTheDocument();
-    expect(screen.getByText('VTI')).toBeInTheDocument();
+    expect(screen.getAllByText('VTI').length).toBeGreaterThan(0);
     expect(screen.getByText('Vanguard Total Stock Market ETF')).toBeInTheDocument();
   });
 
@@ -130,6 +135,41 @@ describe('InvestmentsPage', () => {
     );
 
     expect(screen.getByText('Asset Allocation')).toBeInTheDocument();
+  });
+
+  it('renders investing beta sections with accessible table fallbacks', () => {
+    window.localStorage.setItem(
+      'finance.investingBeta.cashAvailableCents.v1',
+      JSON.stringify(100000),
+    );
+
+    render(
+      <MemoryRouter>
+        <InvestmentsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Investing Beta Toolkit')).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'By asset class' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Rebalancing suggestions' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Manual dividend assumptions' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Lot-level cost basis' })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Expense ratio inputs and comparison' })).toBeInTheDocument();
+  });
+
+  it('hydrates investing beta inputs from local storage', () => {
+    window.localStorage.setItem(
+      'finance.investingBeta.cashAvailableCents.v1',
+      JSON.stringify(100000),
+    );
+
+    render(
+      <MemoryRouter>
+        <InvestmentsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByLabelText('New cash available')).toHaveValue(1000);
   });
 
   it('renders loading state', () => {

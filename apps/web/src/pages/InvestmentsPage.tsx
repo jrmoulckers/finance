@@ -12,6 +12,10 @@ import { Link } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { DataExport } from '../components/DataExport';
+import {
+  InvestingBetaFeaturesPanel,
+  useInvestingBetaFeatures,
+} from '../components/investments/InvestingBetaFeatures';
 import { useInvestments } from '../hooks';
 import { formatCurrency, formatGainLoss } from '../lib/currency';
 import type { Investment, InvestmentType } from '../kmp/bridge';
@@ -107,14 +111,24 @@ export const InvestmentsPage: React.FC = () => {
     () => investments.flatMap((investment) => getLots(investment.id)),
     [getLots, investments],
   );
+  const betaFeatures = useInvestingBetaFeatures({ investments, getLots });
   const investmentExport = useMemo(
     () => ({
       investments,
       lots: investmentLots,
-      realizedGains: optionalTaxData.realizedGains ?? [],
-      dividends: [...(optionalTaxData.dividends ?? []), ...(optionalTaxData.income ?? [])],
+      realizedGains: [
+        ...(optionalTaxData.realizedGains ?? []),
+        ...betaFeatures.realizedGainExportRows,
+      ],
+      dividends: [
+        ...(optionalTaxData.dividends ?? []),
+        ...(optionalTaxData.income ?? []),
+        ...betaFeatures.dividendExportRows,
+      ],
     }),
     [
+      betaFeatures.dividendExportRows,
+      betaFeatures.realizedGainExportRows,
       investments,
       investmentLots,
       optionalTaxData.dividends,
@@ -325,6 +339,8 @@ export const InvestmentsPage: React.FC = () => {
           )}
 
           {/* Holdings Table */}
+          <InvestingBetaFeaturesPanel investments={investments} features={betaFeatures} />
+
           <section aria-label="Investment holdings">
             <div className="card">
               <div style={{ overflowX: 'auto' }}>
