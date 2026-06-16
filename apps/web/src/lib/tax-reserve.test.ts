@@ -150,6 +150,51 @@ describe('tax reserve calculations', () => {
     expect(summary.quarterRecommendedCents).toBe(224000);
     expect(summary.recommendedPaymentCents).toBe(124000);
   });
+
+  it('uses rate breakdown, estimated payments, and tagged mixed-account income', () => {
+    const accounts = [account('personal', 'personal')];
+    const taggedIncome = {
+      ...transaction({
+        id: 'client',
+        accountId: 'personal',
+        type: 'INCOME',
+        amount: 600000,
+        date: '2025-03-06',
+      }),
+      customFields: { 'tax.selfEmploymentIncome': 'true' },
+    };
+
+    const summary = buildTaxReserveSummary({
+      currentMonthTransactions: [taggedIncome],
+      quarterTransactions: [taggedIncome],
+      accounts,
+      settings: {
+        rate: 0.28,
+        federalRate: 0.18,
+        stateRate: 0.05,
+        selfEmploymentRate: 0.153,
+        bucketBalanceCents: 50000,
+      },
+      estimatedPayments: [
+        {
+          id: 'q1-payment',
+          taxYear: 2025,
+          quarter: 'Q1',
+          paidDate: '2025-03-20',
+          amountCents: 75000,
+        },
+      ],
+      asOf: new Date(2025, 2, 10),
+    });
+
+    expect(summary.rate).toBeCloseTo(0.383);
+    expect(summary.quarterRecommendedCents).toBe(229800);
+    expect(summary.reserveShortfallCents).toBe(179800);
+    expect(summary.quarterPaidCents).toBe(75000);
+    expect(summary.remainingRecommendedPaymentCents).toBe(104800);
+    expect(summary.paymentPeriodLabel).toBe('Q1 2025: 2025-01-01 through 2025-03-31');
+    expect(summary.dueDateStatus).toBe('future');
+  });
 });
 
 describe('quarterly estimated tax due dates', () => {
