@@ -32,8 +32,10 @@ import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateAccountInput } from '../../db/repositories/accounts';
 import type { Account, AccountPurpose, AccountType, SyncId } from '../../kmp/bridge';
+import { getCurrencyMetadata, SUPPORTED_CURRENCY_METADATA } from '../../lib/currency-metadata';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import { accountSchema } from '../../lib/validation';
+import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
 import './forms.css';
 
@@ -59,14 +61,7 @@ const ACCOUNT_PURPOSES: readonly { value: AccountPurpose; label: string }[] = [
 ] as const;
 
 /** Common currency options. */
-const CURRENCY_OPTIONS: readonly { code: string; label: string }[] = [
-  { code: 'USD', label: 'USD – US Dollar' },
-  { code: 'EUR', label: 'EUR – Euro' },
-  { code: 'GBP', label: 'GBP – British Pound' },
-  { code: 'CAD', label: 'CAD – Canadian Dollar' },
-  { code: 'AUD', label: 'AUD – Australian Dollar' },
-  { code: 'JPY', label: 'JPY – Japanese Yen' },
-] as const;
+const CURRENCY_OPTIONS = SUPPORTED_CURRENCY_METADATA;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -179,6 +174,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   // -- refs ----------------------------------------------------------------
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   // -- state ---------------------------------------------------------------
   const [name, setName] = useState('');
@@ -246,6 +242,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
+        requestAnimationFrame(() => errorSummaryRef.current?.focus());
         return;
       }
 
@@ -255,8 +252,8 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         return;
       }
 
-      const currencyObj = CURRENCY_OPTIONS.find((c) => c.code === currency);
-      const decimalPlaces = currency === 'JPY' ? 0 : 2;
+      const currencyObj = getCurrencyMetadata(currency);
+      const decimalPlaces = currencyObj.decimalPlaces;
       const balanceCents = Math.round(parseFloat(balance || '0') * Math.pow(10, decimalPlaces));
 
       const input: CreateAccountInput = {
@@ -265,7 +262,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         type: accountType,
         purpose,
         currency: {
-          code: currencyObj?.code ?? currency,
+          code: currencyObj.code,
           decimalPlaces,
         },
         currentBalance: { amount: balanceCents },
@@ -306,6 +303,15 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
 
   const hasNameError = Boolean(errors.name);
   const hasBalanceError = Boolean(errors.balance);
+  const selectedCurrency = getCurrencyMetadata(currency);
+  const balanceStep = selectedCurrency.decimalPlaces === 0 ? '1' : `0.${'0'.repeat(Math.max(0, selectedCurrency.decimalPlaces - 1))}1`;
+  const balancePlaceholder = selectedCurrency.decimalPlaces === 0 ? '0' : `0.${'0'.repeat(selectedCurrency.decimalPlaces)}`;
+  const validationErrorItems: FormErrorSummaryItem[] = [
+    hasNameError ? { fieldId: 'account-name', label: 'Account Name', message: errors.name! } : null,
+    hasBalanceError
+      ? { fieldId: 'account-balance', label: 'Initial Balance', message: errors.balance! }
+      : null,
+  ].filter((item): item is FormErrorSummaryItem => item !== null);
 
   return (
     <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
@@ -330,8 +336,19 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
             {submitError}
           </div>
         )}
+        <FormErrorSummary
+          id="account-form-error-summary"
+          errors={validationErrorItems}
+          summaryRef={errorSummaryRef}
+        />
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          aria-describedby={
+            validationErrorItems.length > 0 ? 'account-form-error-summary' : undefined
+          }
+        >
           <div className="form-fields">
             {/* Name */}
             <div className="form-group">
@@ -426,11 +443,11 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
                 id="account-balance"
                 className={`form-input${hasBalanceError ? ' form-input--error' : ''}`}
                 type="number"
-                step="0.01"
+                step={balanceStep}
                 inputMode="decimal"
                 value={balance}
                 onChange={(e) => setBalance(e.target.value)}
-                placeholder="0.00"
+                placeholder={balancePlaceholder}
                 aria-invalid={hasBalanceError}
                 aria-describedby={hasBalanceError ? 'account-balance-error' : undefined}
                 autoComplete="off"
