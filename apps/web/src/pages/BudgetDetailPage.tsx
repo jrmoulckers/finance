@@ -12,6 +12,7 @@ import { useBudgets, useCategories } from '../hooks';
 import { isFoodMealBudgetParentCategory } from '../hooks/useCategories';
 import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
+import { calculateRolloverLedger, generateVarianceInsights } from '../lib/budgeting-beta';
 import '../styles/pages.css';
 
 const PERIOD_LABELS: Record<string, string> = {
@@ -150,6 +151,25 @@ export const BudgetDetailPage: React.FC = () => {
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (Math.min(percentUsed, 100) / 100) * circumference;
   const weeklyMealBudgetTarget = Math.round(budget.amount.amount / 4.33);
+  const rolloverPeriod = calculateRolloverLedger([
+    {
+      label: budget.startDate,
+      allocationCents: budget.amount.amount,
+      spentCents: budget.spentAmount.amount,
+    },
+  ])[0];
+  const varianceInsight = generateVarianceInsights(
+    [
+      {
+        categoryId: budget.categoryId,
+        name: budget.name,
+        budgetedCents: budget.amount.amount,
+        actualCents: budget.spentAmount.amount,
+        priorActualCents: null,
+      },
+    ],
+    1,
+  )[0];
 
   return (
     <>
@@ -335,6 +355,87 @@ export const BudgetDetailPage: React.FC = () => {
               )}
             </p>
           </div>
+        </div>
+      </section>
+
+      {budget.isRollover && (
+        <section aria-label="Rollover balance" style={{ marginTop: 'var(--spacing-6)' }}>
+          <h3
+            style={{
+              fontWeight: 'var(--font-weight-semibold)',
+              marginBottom: 'var(--spacing-3)',
+            }}
+          >
+            Rollover balance
+          </h3>
+          <div
+            className="card"
+            style={{
+              display: 'grid',
+              gap: 'var(--spacing-4)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))',
+            }}
+          >
+            <div>
+              <p className="card__title">Beginning carryover</p>
+              <p className="card__value">
+                <CurrencyDisplay
+                  amount={rolloverPeriod.beginningCarryoverCents}
+                  currency={budget.currency.code}
+                  colorize
+                />
+              </p>
+            </div>
+            <div>
+              <p className="card__title">Current allocation</p>
+              <p className="card__value">
+                <CurrencyDisplay amount={budget.amount.amount} currency={budget.currency.code} />
+              </p>
+            </div>
+            <div>
+              <p className="card__title">Spent</p>
+              <p className="card__value">
+                <CurrencyDisplay amount={budget.spentAmount.amount} currency={budget.currency.code} />
+              </p>
+            </div>
+            <div>
+              <p className="card__title">Ending balance</p>
+              <p className="card__value">
+                <CurrencyDisplay
+                  amount={rolloverPeriod.endingBalanceCents}
+                  currency={budget.currency.code}
+                  colorize
+                />
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section aria-label="Variance coaching" style={{ marginTop: 'var(--spacing-6)' }}>
+        <h3
+          style={{
+            fontWeight: 'var(--font-weight-semibold)',
+            marginBottom: 'var(--spacing-3)',
+          }}
+        >
+          Variance coaching
+        </h3>
+        <div className="card">
+          {varianceInsight ? (
+            <p>
+              {budget.name} is {varianceInsight.kind === 'over' ? 'over' : 'under'} by{' '}
+              <CurrencyDisplay
+                amount={Math.abs(varianceInsight.varianceCents)}
+                currency={budget.currency.code}
+              />{' '}
+              ({Math.abs(varianceInsight.variancePercent)}%). {varianceInsight.action}
+            </p>
+          ) : (
+            <p style={{ color: 'var(--semantic-text-secondary)' }}>
+              This category is on track for the current period.
+            </p>
+          )}
         </div>
       </section>
 
