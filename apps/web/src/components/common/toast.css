@@ -44,6 +44,12 @@
   margin-top: 2px;
 }
 
+.toast__type-label {
+  flex-shrink: 0;
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-primary);
+}
+
 .toast__message {
   flex: 1;
   margin: 0;
@@ -120,6 +126,11 @@
   }
 }
 
+html[data-reduced-motion='true'] .toast {
+  animation: none;
+  transition: none;
+}
+
 /* --- Responsive: mobile - full width --------------------------------- */
 
 @media (max-width: 480px) {
@@ -133,7 +144,7 @@
 
 /* --- High contrast --------------------------------------------------- */
 
-@media (prefers-contrast: more) {
+@media (prefers-contrast: more), (forced-colors: active) {
   .toast {
     border-width: 2px;
   }

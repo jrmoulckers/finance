@@ -151,6 +151,13 @@ interface ToastItemProps {
 }
 
 /** Icon SVGs for each toast type. */
+const TOAST_TYPE_LABELS: Record<ToastType, string> = {
+  success: 'Success',
+  error: 'Error',
+  warning: 'Warning',
+  info: 'Info',
+};
+
 const TOAST_ICONS: Record<ToastType, React.ReactNode> = {
   success: (
     <svg
@@ -255,8 +262,9 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   const role = toast.type === 'error' ? 'alert' : 'status';
 
   return (
-    <div className={`toast toast--${toast.type}`} role={role}>
+    <div className={`toast toast--${toast.type}`} role={role} aria-label={`${TOAST_TYPE_LABELS[toast.type]}: ${toast.message}`}>
       <span className="toast__icon">{TOAST_ICONS[toast.type]}</span>
+      <span className="toast__type-label">{TOAST_TYPE_LABELS[toast.type]}</span>
       <p className="toast__message">{toast.message}</p>
       <button
         type="button"
