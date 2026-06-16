@@ -9,6 +9,8 @@
  * All monetary values are in cents (integers).
  */
 
+import { DEFAULT_LOCALE, getCurrentLocale, translate } from '../../lib/i18n';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -43,6 +45,8 @@ export interface FinancialTip {
   readonly actionLabel?: string;
   /** Optional route to navigate to when action is clicked. */
   readonly actionRoute?: string;
+  /** True when this tip fell back to default-locale education copy. */
+  readonly untranslated?: boolean;
 }
 
 /** Financial data snapshot used to generate contextual tips. */
@@ -321,10 +325,31 @@ function generateGeneralTips(input: TipGeneratorInput): FinancialTip[] {
  * @param maxTips - Maximum number of tips to return (default: 3)
  * @returns Array of tips sorted by relevance score (highest first)
  */
+function localizeTip(tip: FinancialTip, locale: string): FinancialTip {
+  const title = translate(`tips.${tip.id}.title`, {}, locale);
+  const description = translate(`tips.${tip.id}.description`, {}, locale);
+  const action = tip.actionLabel ? translate(`tips.${tip.id}.action`, {}, locale) : null;
+  const untranslated = locale !== DEFAULT_LOCALE && (!title.translated || !description.translated);
+  const fallbackNotice = translate('tips.fallbackNotice', {}, locale).text;
+
+  return {
+    ...tip,
+    title: title.translated ? title.text : tip.title,
+    description: untranslated
+      ? `${tip.description} ${fallbackNotice}`
+      : description.translated
+        ? description.text
+        : tip.description,
+    actionLabel: action?.translated ? action.text : tip.actionLabel,
+    untranslated,
+  };
+}
+
 export function generateTips(
   input: TipGeneratorInput,
   context?: TipContext,
   maxTips: number = 3,
+  locale: string = getCurrentLocale(),
 ): FinancialTip[] {
   const allTips = [
     ...generateBudgetTips(input),
@@ -338,7 +363,10 @@ export function generateTips(
     ? allTips.filter((tip) => tip.context === context || tip.context === 'general')
     : allTips;
 
-  return filtered.sort((a, b) => b.score - a.score).slice(0, maxTips);
+  return filtered
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxTips)
+    .map((tip) => localizeTip(tip, locale));
 }
 
 /**
