@@ -24,6 +24,7 @@ import {
   type ConsentEvent,
 } from '../lib/consent-history';
 import { CURRENT_POLICY_VERSION, type ConsentCategory } from '../lib/consent-storage';
+import { appendSecurityAuditEvent } from '../lib/security-audit-log';
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -72,6 +73,11 @@ export function useConsentHistory(): UseConsentHistoryResult {
   const recordChange = useCallback(
     (category: ConsentCategory, granted: boolean, method: ConsentEvent['method'] = 'settings') => {
       recordConsentChange(category, granted, method, CURRENT_POLICY_VERSION);
+      void appendSecurityAuditEvent({
+        action: 'consent_changed',
+        result: 'success',
+        metadata: { category, granted, method },
+      });
       refresh();
     },
     [refresh],
@@ -83,6 +89,11 @@ export function useConsentHistory(): UseConsentHistoryResult {
       method: ConsentEvent['method'] = 'bulk',
     ) => {
       recordBulkConsentChanges(changes, method, CURRENT_POLICY_VERSION);
+      void appendSecurityAuditEvent({
+        action: 'consent_changed',
+        result: 'success',
+        metadata: { method, changes },
+      });
       refresh();
     },
     [refresh],

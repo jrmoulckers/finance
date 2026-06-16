@@ -3,7 +3,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useInstallPrompt } from '../useInstallPrompt';
+import { recordPwaMeaningfulAction, useInstallPrompt } from '../useInstallPrompt';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -49,8 +49,23 @@ describe('useInstallPrompt', () => {
     expect(result.current.dismissed).toBe(false);
   });
 
+  it('requires a meaningful finance action before showing install education', () => {
+    const { result } = renderHook(() => useInstallPrompt());
+
+    act(() => {
+      window.dispatchEvent(createBeforeInstallPromptEvent());
+    });
+    expect(result.current.canInstall).toBe(false);
+
+    act(() => {
+      recordPwaMeaningfulAction();
+    });
+    expect(result.current.hasMeaningfulAction).toBe(true);
+    expect(result.current.canInstall).toBe(true);
+  });
+
   it('reads dismissed state from localStorage on mount', () => {
-    localStorage.setItem('finance-install-dismissed', 'true');
+    localStorage.setItem('finance-install-dismissed', String(Date.now()));
 
     const { result } = renderHook(() => useInstallPrompt());
 
@@ -66,6 +81,7 @@ describe('useInstallPrompt', () => {
     const { result } = renderHook(() => useInstallPrompt());
 
     act(() => {
+      recordPwaMeaningfulAction();
       const event = createBeforeInstallPromptEvent();
       window.dispatchEvent(event);
     });
@@ -87,7 +103,7 @@ describe('useInstallPrompt', () => {
   });
 
   it('canInstall remains false when previously dismissed', () => {
-    localStorage.setItem('finance-install-dismissed', 'true');
+    localStorage.setItem('finance-install-dismissed', String(Date.now()));
 
     const { result } = renderHook(() => useInstallPrompt());
 
@@ -123,6 +139,7 @@ describe('useInstallPrompt', () => {
     const { result } = renderHook(() => useInstallPrompt());
 
     act(() => {
+      recordPwaMeaningfulAction();
       window.dispatchEvent(createBeforeInstallPromptEvent('accepted'));
     });
 
@@ -147,7 +164,7 @@ describe('useInstallPrompt', () => {
     });
 
     expect(result.current.dismissed).toBe(true);
-    expect(localStorage.getItem('finance-install-dismissed')).toBe('true');
+    expect(localStorage.getItem('finance-install-dismissed')).not.toBeNull();
   });
 
   it('does not set dismissed when user accepts the install prompt', async () => {
@@ -187,13 +204,14 @@ describe('useInstallPrompt', () => {
     });
 
     expect(result.current.dismissed).toBe(true);
-    expect(localStorage.getItem('finance-install-dismissed')).toBe('true');
+    expect(localStorage.getItem('finance-install-dismissed')).not.toBeNull();
   });
 
   it('dismiss hides the install banner even when prompt is available', () => {
     const { result } = renderHook(() => useInstallPrompt());
 
     act(() => {
+      recordPwaMeaningfulAction();
       window.dispatchEvent(createBeforeInstallPromptEvent());
     });
 
@@ -214,6 +232,7 @@ describe('useInstallPrompt', () => {
     const { result } = renderHook(() => useInstallPrompt());
 
     act(() => {
+      recordPwaMeaningfulAction();
       window.dispatchEvent(createBeforeInstallPromptEvent());
     });
 

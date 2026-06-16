@@ -6,9 +6,12 @@ import {
   buildAllCsvZip,
   buildDatedExportFileName,
   buildEntityCsvFiles,
+  buildExportManifest,
   buildFullJsonExport,
   buildGenericCsv,
+  buildPdfSummary,
   buildTransactionsCsv,
+  buildXlsxWorkbook,
   escapeCsvField,
   serializeFullJsonExport,
 } from './simple-export';
@@ -253,5 +256,55 @@ describe('simple-export', () => {
 
   it('returns an empty-marker CSV when the collection is empty', () => {
     expect(buildGenericCsv([])).toBe('(empty)\r\n');
+  });
+
+  it('builds an export manifest with scope filters', () => {
+    const exportData = buildFullJsonExport(createMockDb(), {
+      appVersion: '0.1.0',
+      generatedAt: new Date('2026-05-26T12:00:00Z'),
+    });
+
+    const manifest = buildExportManifest(exportData, {
+      entities: ['transactions', 'accounts'],
+      dateRange: { from: '2024-01-01', to: '2024-12-31' },
+      accountIds: ['acc-1'],
+    });
+
+    expect(manifest.filters.entities).toEqual(['transactions', 'accounts']);
+    expect(manifest.filters.dateRange).toEqual({ from: '2024-01-01', to: '2024-12-31' });
+    expect(manifest.filters.accountIds).toEqual(['acc-1']);
+  });
+
+  it('builds a minimal XLSX workbook with one sheet per selected entity', () => {
+    const exportData = buildFullJsonExport(createMockDb(), {
+      appVersion: '0.1.0',
+      generatedAt: new Date('2026-05-26T12:00:00Z'),
+    });
+
+    const xlsx = buildXlsxWorkbook(exportData, { entities: ['transactions', 'accounts'] });
+    const text = new TextDecoder().decode(xlsx);
+
+    expect(xlsx[0]).toBe(0x50);
+    expect(xlsx[1]).toBe(0x4b);
+    expect(text).toContain('xl/worksheets/sheet1.xml');
+    expect(text).toContain('Transactions');
+    expect(text).toContain('Grocery Store');
+  });
+
+  it('builds a PDF summary with metadata and empty-data support', () => {
+    const pdf = buildPdfSummary({
+      transactions: [],
+      accounts: [],
+      categories: [],
+      appVersion: '0.1.0',
+      generatedAt: new Date('2026-05-26T12:00:00Z'),
+      dateRange: { from: '2024-01-01', to: '2024-01-31' },
+    });
+    const text = new TextDecoder().decode(pdf);
+
+    expect(text.startsWith('%PDF-1.4')).toBe(true);
+    expect(text).toContain('Finance export summary');
+    expect(text).toContain('Transactions: 0');
+    expect(text).toContain('Date range: 2024-01-01 to 2024-01-31');
   });
 });

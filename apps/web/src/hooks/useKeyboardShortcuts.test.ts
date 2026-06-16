@@ -3,6 +3,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  SINGLE_KEY_SHORTCUTS_STORAGE_KEY,
+  setSingleKeyShortcutsPreference,
+} from '../lib/accessibility-preferences';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 
 // ---------------------------------------------------------------------------
@@ -34,6 +38,7 @@ function fireKeyDown(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
 });
 
 afterEach(() => {
@@ -425,5 +430,48 @@ describe('useKeyboardShortcuts', () => {
 
     expect(onNewTransaction).not.toHaveBeenCalled();
     document.body.removeChild(input);
+  });
+
+  it('honors the preference to disable character-key shortcuts', () => {
+    localStorage.setItem(SINGLE_KEY_SHORTCUTS_STORAGE_KEY, 'false');
+    const onNewTransaction = vi.fn();
+    const onNavigate = vi.fn();
+    const { result } = renderHook(() => useKeyboardShortcuts({ onNewTransaction, onNavigate }));
+
+    expect(result.current.singleKeyShortcutsEnabled).toBe(false);
+
+    act(() => {
+      fireKeyDown('n');
+      fireKeyDown('g');
+      fireKeyDown('d');
+      fireKeyDown('?');
+    });
+
+    expect(onNewTransaction).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(result.current.showHelp).toBe(false);
+  });
+
+  it('keeps modified shortcuts available when character-key shortcuts are disabled', () => {
+    localStorage.setItem(SINGLE_KEY_SHORTCUTS_STORAGE_KEY, 'false');
+    const onOpenCommandPalette = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onOpenCommandPalette }));
+
+    act(() => {
+      fireKeyDown('k', { ctrlKey: true });
+    });
+
+    expect(onOpenCommandPalette).toHaveBeenCalledTimes(1);
+  });
+
+  it('updates when the single-key shortcuts preference changes in the current tab', () => {
+    const { result } = renderHook(() => useKeyboardShortcuts());
+    expect(result.current.singleKeyShortcutsEnabled).toBe(true);
+
+    act(() => {
+      setSingleKeyShortcutsPreference(false);
+    });
+
+    expect(result.current.singleKeyShortcutsEnabled).toBe(false);
   });
 });

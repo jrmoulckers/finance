@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { useVirtualList } from './useVirtualList';
@@ -135,5 +135,25 @@ describe('useVirtualList', () => {
     // startIndex = max(0, floor(0/50) - 5) = 0
     // endIndex = min(100, 0 + 8 + 10) = 18
     expect(result.current.visibleItems.length).toBe(18);
+  });
+
+  it('scrolls directly to large-list indexes without rendering all rows', () => {
+    const items = createItems(50_000);
+    const { result } = renderHook(() =>
+      useVirtualList({
+        items,
+        itemHeight: 40,
+        containerHeight: 400,
+        overscan: 4,
+      }),
+    );
+
+    act(() => {
+      result.current.scrollToIndex(25_000, 'center');
+    });
+
+    expect(result.current.startIndex).toBeGreaterThan(24_980);
+    expect(result.current.endIndex).toBeLessThan(25_030);
+    expect(result.current.visibleItems.length).toBeLessThan(30);
   });
 });

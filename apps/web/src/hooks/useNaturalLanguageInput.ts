@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import { getCurrentLocale } from '../lib/i18n';
+
 /**
  * React hook for natural language transaction input.
  *
@@ -196,7 +198,7 @@ function parseLocaleAmount(text: string, locale: string): number | null {
  * - "Gas $45.00 01/15"
  * - "Kaffee bei Starbucks 4,50€" (locale-aware)
  */
-export function parseTransactionText(text: string, locale = 'en-US'): ParsedTransaction {
+export function parseTransactionText(text: string, locale = getCurrentLocale()): ParsedTransaction {
   const trimmed = text.trim();
   if (!trimmed) {
     return {

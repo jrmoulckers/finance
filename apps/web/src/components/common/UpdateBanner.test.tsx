@@ -12,6 +12,8 @@ vi.mock('../../hooks/useServiceWorkerUpdate', () => ({
   useServiceWorkerUpdate: () => swUpdateMock,
 }));
 
+const updateMessage = 'A new version is ready. Unsynced changes are preserved before reload.';
+
 import { UpdateBanner } from './UpdateBanner';
 
 describe('UpdateBanner', () => {
@@ -31,7 +33,7 @@ describe('UpdateBanner', () => {
 
     render(<UpdateBanner />);
 
-    expect(screen.getByText('A new version of the app is available')).toBeInTheDocument();
+    expect(screen.getByText(updateMessage)).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
         name: 'Reload the page to install the new app version',
@@ -59,11 +61,11 @@ describe('UpdateBanner', () => {
 
     render(<UpdateBanner />);
 
-    expect(screen.getByText('A new version of the app is available')).toBeInTheDocument();
+    expect(screen.getByText(updateMessage)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss update notification' }));
 
-    expect(screen.queryByText('A new version of the app is available')).not.toBeInTheDocument();
+    expect(screen.queryByText(updateMessage)).not.toBeInTheDocument();
   });
 
   it('has a polite live region for screen reader announcements', () => {
@@ -76,3 +78,4 @@ describe('UpdateBanner', () => {
     expect(banner).toHaveAttribute('aria-atomic', 'true');
   });
 });
+

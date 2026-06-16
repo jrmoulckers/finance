@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
@@ -40,6 +43,12 @@ describe('Skeleton', () => {
   it('has a visually hidden label for screen readers', () => {
     render(<Skeleton aria-label="Loading items" />);
     expect(screen.getByText('Loading items')).toBeInTheDocument();
+  });
+
+  it('has a static fallback for the app-level reduced-motion preference', () => {
+    const css = readFileSync(resolve(__dirname, './skeleton.css'), 'utf-8');
+    expect(css).toContain("html[data-reduced-motion='true'] .skeleton");
+    expect(css).toContain('animation: none');
   });
 });
 

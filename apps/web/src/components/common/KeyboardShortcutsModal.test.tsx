@@ -69,6 +69,19 @@ describe('KeyboardShortcutsModal', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
+  it('announces when character-key shortcuts are disabled', () => {
+    render(
+      <KeyboardShortcutsModal
+        isOpen={true}
+        onClose={vi.fn()}
+        singleKeyShortcutsEnabled={false}
+      />,
+    );
+
+    expect(screen.getByText(/character-key shortcuts are currently disabled/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Ctrl\/Cmd\+K/i).length).toBeGreaterThan(0);
+  });
+
   it('calls onClose when the Close button is clicked', () => {
     const onClose = vi.fn();
     render(<KeyboardShortcutsModal isOpen={true} onClose={onClose} />);

@@ -232,12 +232,12 @@ describe('Install prompt handling (#1329)', () => {
   });
 
   it('dismissed state persists in localStorage', () => {
-    localStorage.setItem('finance-install-dismissed', 'true');
-    expect(localStorage.getItem('finance-install-dismissed')).toBe('true');
+    localStorage.setItem('finance-install-dismissed', String(Date.now()));
+    expect(localStorage.getItem('finance-install-dismissed')).not.toBeNull();
   });
 
   it('dismissed flag can be cleared for re-prompting', () => {
-    localStorage.setItem('finance-install-dismissed', 'true');
+    localStorage.setItem('finance-install-dismissed', String(Date.now()));
     localStorage.removeItem('finance-install-dismissed');
     expect(localStorage.getItem('finance-install-dismissed')).toBeNull();
   });

@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
+import { useLocalePreferences } from './useLocalePreferences';
 import { useDashboardData } from './useDashboardData';
 import { useGoals } from './useGoals';
 import { useBudgets } from './useBudgets';
@@ -55,6 +56,7 @@ export function useFinancialTips(
   context?: TipContext,
   maxTips: number = 3,
 ): UseFinancialTipsResult {
+  const { locale } = useLocalePreferences();
   const { data: dashboardData, loading: dashboardLoading } = useDashboardData();
   const { goals, loading: goalsLoading } = useGoals();
   const { budgets, loading: budgetsLoading } = useBudgets();
@@ -103,12 +105,12 @@ export function useFinancialTips(
       dayOfMonth: new Date().getDate(),
     };
 
-    const generated = generateTips(input, context, maxTips + dismissedIds.size);
+    const generated = generateTips(input, context, maxTips + dismissedIds.size, locale);
 
     return generated
       .filter((tip) => !dismissedIds.has(tip.id) && !isTipDismissed(tip.id))
       .slice(0, maxTips);
-  }, [loading, dashboardData, goals, budgets, context, maxTips, dismissedIds]);
+  }, [loading, dashboardData, goals, budgets, context, maxTips, dismissedIds, locale]);
 
   const handleDismissTip = useCallback((tipId: string) => {
     persistDismissTip(tipId);

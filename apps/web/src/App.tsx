@@ -5,6 +5,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout } from './components/layout';
 import { ConsentDialog } from './components/gdpr';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
+import { SessionSecurityBoundary } from './components/SessionSecurityBoundary';
 import { useRouteAnnouncer } from './hooks/useRouteAnnouncer';
 import { isOnboardingComplete } from './lib/local-only-mode';
 import { AppRoutes } from './routes';
@@ -141,7 +142,9 @@ export const App: FC = () => {
         onNavigate={(path) => navigate(path)}
         pageTitle={pageTitle}
       >
-        <AppRoutes />
+        <SessionSecurityBoundary>
+          <AppRoutes />
+        </SessionSecurityBoundary>
       </AppLayout>
     </PrivacyModeProvider>
   );

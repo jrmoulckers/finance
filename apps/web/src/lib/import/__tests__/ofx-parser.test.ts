@@ -152,6 +152,22 @@ INTU.BID:12345
     const result = parseOfx(noAmount);
     expect(result.errors.some((e) => e.message.includes('Missing TRNAMT'))).toBe(true);
   });
+
+  it('keeps valid records when another record is malformed', () => {
+    const partial = `<OFX>
+<STMTTRN><DTPOSTED>20240115<TRNAMT>-10.00<FITID>OK<NAME>Good</STMTTRN>
+<STMTTRN><TRNAMT>-2.00<NAME>Bad</STMTTRN>
+</OFX>`;
+    const result = parseOfx(partial);
+    expect(result.transactions).toHaveLength(1);
+    expect(result.errors.some((error) => error.message.includes('Missing DTPOSTED'))).toBe(true);
+  });
+
+  it('normalizes positive debit amounts from banks that omit signs', () => {
+    const debit = `<OFX><STMTTRN><TRNTYPE>DEBIT</TRNTYPE><DTPOSTED>20240115</DTPOSTED><TRNAMT>45.67</TRNAMT><FITID>001</FITID><NAME>POS</NAME></STMTTRN></OFX>`;
+    const result = parseOfx(debit);
+    expect(result.transactions[0].amountCents).toBe(-4567);
+  });
 });
 
 describe('parseOfxDate', () => {
@@ -165,6 +181,11 @@ describe('parseOfxDate', () => {
 
   it('handles timezone bracket notation', () => {
     expect(parseOfxDate('20240115120000[-5:EST]')).toBe('2024-01-15');
+  });
+
+  it('handles fractional seconds, ISO separators, and numeric timezone suffixes', () => {
+    expect(parseOfxDate('20240115120000.000[-5:EST]')).toBe('2024-01-15');
+    expect(parseOfxDate('2024-01-15T12:00:00-0500')).toBe('2024-01-15');
   });
 
   it('returns null for too-short strings', () => {

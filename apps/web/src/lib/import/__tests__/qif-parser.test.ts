@@ -115,6 +115,52 @@ PTest`;
     const result = parseQif(noTerminator);
     expect(result.transactions).toHaveLength(1);
   });
+
+  it('preserves account sections and mid-file account switches', () => {
+    const multi = `!Account
+NChecking
+TBank
+^
+!Type:Bank
+D01/15/2024
+T-10.00
+PCoffee
+^
+!Account
+NCredit Card
+TCCard
+^
+!Type:CCard
+D01/16/2024
+T-20.00
+PStore
+^`;
+    const result = parseQif(multi);
+    expect(result.accountId).toBe('Checking,Credit Card');
+    expect(result.transactions[0].rawFields.ACCOUNT).toBe('Checking');
+    expect(result.transactions[1].rawFields.ACCOUNT).toBe('Credit Card');
+    expect(result.transactions[1].type).toBe('CREDIT_CARD');
+  });
+
+  it('preserves multiline memo, address, cleared status, and split lines', () => {
+    const split = `!Type:Bank
+D01/15/2024
+T-100.00
+PBig Store
+MFirst memo
+MSecond memo
+C*
+A123 Main
+SFood
+$-60.00
+SHome
+$-40.00
+^`;
+    const result = parseQif(split);
+    expect(result.transactions[0].memo).toContain('First memo\nSecond memo\n123 Main');
+    expect(result.transactions[0].rawFields.C).toBe('*');
+    expect(result.transactions[0].rawFields.SPLITS).toContain('SFood');
+  });
 });
 
 describe('parseQifRecords', () => {

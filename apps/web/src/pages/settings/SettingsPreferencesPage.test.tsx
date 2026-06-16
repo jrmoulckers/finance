@@ -65,8 +65,8 @@ describe('SettingsPreferencesPage currency display polish', () => {
     expect(examples).toHaveTextContent('Standard-$1,234.56');
     expect(examples).toHaveTextContent('Accounting($1,234.56)');
 
-    const colorOnlyExample = within(examples).getByText('$1,234.56');
-    expect(colorOnlyExample).toHaveClass('negative-format-preview__amount--error');
+    const textLabelExample = within(examples).getByText('Negative $1,234.56');
+    expect(textLabelExample).toHaveClass('negative-format-preview__amount--error');
   });
 
   it('updates the live preview when currency display changes to code', () => {
@@ -90,6 +90,19 @@ describe('SettingsPreferencesPage currency display polish', () => {
     expect(document.documentElement.style.getPropertyValue('--finance-font-scale')).toBe('2');
   });
 
+  it('offers and persists language and timezone preferences', () => {
+    renderPreferences();
+
+    const languageSelect = screen.getByLabelText('Language');
+    fireEvent.change(languageSelect, { target: { value: 'es-ES' } });
+    expect(localStorage.getItem('finance-locale-preference')).toBe('es-ES');
+    expect(document.documentElement.lang).toBe('es-ES');
+
+    const timeZoneSelect = screen.getByLabelText('Home time zone');
+    fireEvent.change(timeZoneSelect, { target: { value: 'Asia/Tokyo' } });
+    expect(localStorage.getItem('finance-time-zone-preference')).toBe('Asia/Tokyo');
+  });
+
   it('offers and persists compact display density', () => {
     renderPreferences();
 
@@ -103,5 +116,18 @@ describe('SettingsPreferencesPage currency display polish', () => {
     expect(setDisplayDensityMock).toHaveBeenCalledWith('compact');
     expect(localStorage.getItem('finance-display-density-preference')).toBe('compact');
     expect(document.documentElement.getAttribute('data-density')).toBe('compact');
+  });
+
+  it('lets users disable single-key shortcuts while keeping modified shortcuts documented', () => {
+    renderPreferences();
+
+    const singleKeyShortcuts = screen.getByLabelText('Single-key shortcuts');
+    expect(singleKeyShortcuts).toBeChecked();
+    expect(screen.getByText(/Ctrl\/Cmd\+K remains available/i)).toBeInTheDocument();
+
+    fireEvent.click(singleKeyShortcuts);
+
+    expect(localStorage.getItem('finance-single-key-shortcuts-enabled')).toBe('false');
+    expect(singleKeyShortcuts).not.toBeChecked();
   });
 });

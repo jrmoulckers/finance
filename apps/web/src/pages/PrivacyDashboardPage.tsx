@@ -21,6 +21,7 @@ import { useConsent } from '../hooks/useConsent';
 import { useConsentHistory } from '../hooks/useConsentHistory';
 import { usePrivacyDashboard } from '../hooks/usePrivacyDashboard';
 import { ConsentHistoryViewer } from '../components/gdpr/ConsentHistoryViewer';
+import { SecurityAuditLogViewer, ThirdPartyPermissionReview } from '../components/gdpr';
 import {
   CONSENT_LABELS,
   CONSENT_DESCRIPTIONS,
@@ -265,6 +266,14 @@ const PrivacyDashboardPage: React.FC = () => {
       {/* Consent History */}
       <section className="privacy-dashboard__section" aria-label="Consent history">
         <ConsentHistoryViewer />
+      </section>
+
+      <section className="privacy-dashboard__section" aria-label="Sensitive action audit log">
+        <SecurityAuditLogViewer />
+      </section>
+
+      <section className="privacy-dashboard__section" aria-label="Third-party permission review">
+        <ThirdPartyPermissionReview />
       </section>
 
       {/* Data Actions */}

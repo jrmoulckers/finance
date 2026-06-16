@@ -10,7 +10,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import React from 'react';
 import type { Account } from '../kmp/bridge';
 
@@ -170,7 +170,8 @@ describe('DebtPage', () => {
     render(<DebtPage />);
 
     expect(screen.getByText('Debt-Free Date')).toBeDefined();
-    expect(screen.getByText('Interest saved')).toBeDefined();
+    const countdown = screen.getByRole('region', { name: 'Debt-free countdown' });
+    expect(within(countdown).getByText('Interest saved')).toBeDefined();
     expect(screen.getByText('Debt Milestones')).toBeDefined();
     expect(screen.getByText('Debt-to-Income Trend')).toBeDefined();
     expect(screen.getByText('Imported from Accounts')).toBeDefined();

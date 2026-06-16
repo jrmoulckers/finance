@@ -21,6 +21,7 @@ import {
   PRIVACY_STRINGS,
   type PrivacySnapshot,
 } from '../lib/ui/privacy';
+import { appendSecurityAuditEvent } from '../lib/security-audit-log';
 
 /** localStorage key for persisting privacy mode state. */
 const PRIVACY_STATE_STORAGE_KEY = 'finance-privacy-state-v1';
@@ -108,11 +109,23 @@ export const PrivacyModeProvider: FC<PrivacyModeProviderProps> = ({
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
 
-  const togglePrivacyMode = useCallback(() => stateRef.current!.togglePrivacyMode(), []);
-  const setPrivacyMode = useCallback(
-    (enabled: boolean) => stateRef.current!.setPrivacyMode(enabled),
-    [],
-  );
+  const togglePrivacyMode = useCallback(() => {
+    const nextEnabled = !stateRef.current!.getSnapshot().privacyMode;
+    stateRef.current!.togglePrivacyMode();
+    void appendSecurityAuditEvent({
+      action: 'privacy_mode_toggled',
+      result: 'success',
+      metadata: { enabled: nextEnabled, source: 'toggle' },
+    });
+  }, []);
+  const setPrivacyMode = useCallback((enabled: boolean) => {
+    stateRef.current!.setPrivacyMode(enabled);
+    void appendSecurityAuditEvent({
+      action: 'privacy_mode_toggled',
+      result: 'success',
+      metadata: { enabled, source: 'set' },
+    });
+  }, []);
   const setPersistence = useCallback(
     (option: PrivacyPersistenceOption) => stateRef.current!.setPersistence(option),
     [],

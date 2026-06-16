@@ -364,13 +364,18 @@ describe('detectDuplicates', () => {
     expect(matches[0].matchReasons).toContain('same amount');
   });
 
-  it('increases score when description also matches', () => {
+  it('increases score when payee also matches', () => {
+    const baselineRow = makeValidatedRow({ payee: null });
     const row = makeValidatedRow({ payee: 'Grocery Store' });
+
+    const baselineMatches = detectDuplicates([baselineRow], [existingTransaction]);
     const matches = detectDuplicates([row], [existingTransaction]);
 
+    expect(baselineMatches).toHaveLength(1);
     expect(matches).toHaveLength(1);
+    expect(matches[0].matchScore).toBeGreaterThan(baselineMatches[0].matchScore);
     expect(matches[0].matchScore).toBeGreaterThanOrEqual(0.9);
-    expect(matches[0].matchReasons).toContain('similar description');
+    expect(matches[0].matchReasons).toContain('similar payee');
   });
 
   it('increases score when category also matches', () => {
@@ -407,13 +412,14 @@ describe('detectDuplicates', () => {
     expect(matches).toHaveLength(0);
   });
 
-  it('uses fuzzy matching for descriptions', () => {
+  it('uses fuzzy matching for payees', () => {
     const row = makeValidatedRow({ payee: 'GROCERY STORE!!!' });
     const matches = detectDuplicates([row], [existingTransaction]);
 
     // Should still match because fuzzy normalisation strips punctuation.
     expect(matches).toHaveLength(1);
-    expect(matches[0].matchReasons).toContain('similar description');
+    expect(matches[0].matchScore).toBeGreaterThanOrEqual(0.9);
+    expect(matches[0].matchReasons).toContain('similar payee');
   });
 
   it('returns empty array when no existing transactions', () => {
@@ -455,25 +461,15 @@ describe('detectDuplicates', () => {
 
   it('sorts matches by score descending', () => {
     const row1 = makeValidatedRow({ payee: 'Grocery Store', categoryId: 'cat-1' }); // full match
-    const row2: ValidatedRow = {
-      data: {
-        householdId: 'hh-1',
-        accountId: 'acc-1',
-        type: 'EXPENSE',
-        status: 'CLEARED',
-        amount: { amount: 4250 },
-        date: '2024-03-15',
-        payee: 'Different Store',
-      },
-      rowIndex: 2,
-      warnings: [],
-    }; // date + amount only
+    const row2 = makeValidatedRow({ date: '2024-03-17', payee: 'Grocery Store' }); // posting-window match
+    row2.rowIndex = 2;
 
     const matches = detectDuplicates([row1, row2], [existingTransaction]);
 
-    expect(matches.length).toBeGreaterThanOrEqual(2);
-    // First match should have higher score
-    expect(matches[0].matchScore).toBeGreaterThanOrEqual(matches[1].matchScore);
+    expect(matches).toHaveLength(2);
+    expect(matches[0].importRow.rowIndex).toBe(1);
+    expect(matches[1].importRow.rowIndex).toBe(2);
+    expect(matches[0].matchScore).toBeGreaterThan(matches[1].matchScore);
   });
 });
 
@@ -561,12 +557,12 @@ describe('CSV import pipeline integration', () => {
 
     const duplicates = detectDuplicates(validation.valid, [existingTx]);
 
-    // Should detect the first row as a duplicate (same date + amount + description)
+    // Should detect the first row as a duplicate (same date + amount + payee).
     expect(duplicates).toHaveLength(1);
     expect(duplicates[0].importRow.rowIndex).toBe(1);
     expect(duplicates[0].matchReasons).toContain('exact date match');
     expect(duplicates[0].matchReasons).toContain('same amount');
-    expect(duplicates[0].matchReasons).toContain('similar description');
+    expect(duplicates[0].matchReasons).toContain('similar payee');
     expect(duplicates[0].matchScore).toBeGreaterThanOrEqual(0.9);
   });
 

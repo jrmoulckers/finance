@@ -2,6 +2,7 @@
 
 import type { Investment, InvestmentLot } from '../../kmp/bridge';
 import { buildZipArchive, type ZipEntry } from '../data-access-package';
+import { getCurrentLocale } from '../i18n';
 import { escapeCsvField } from './simple-export';
 
 export type ExportCell = string | number;
@@ -174,7 +175,10 @@ function centsValue(value: unknown): number | null {
 }
 
 function formatCents(cents: number): string {
-  return (cents / 100).toFixed(2);
+  return new Intl.NumberFormat(getCurrentLocale(), {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
 }
 
 function stringValue(value: unknown): string {

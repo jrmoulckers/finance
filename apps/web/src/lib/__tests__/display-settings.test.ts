@@ -108,9 +108,9 @@ describe('display-settings', () => {
       expect(formatAmountWithSettings(-123456, settings)).toBe('($1,234.56)');
     });
 
-    it('uses color-only format (no sign in text)', () => {
+    it('uses color-independent text label format', () => {
       const settings: MoneyDisplaySettings = { ...defaults, negativeFormat: 'color-only' };
-      expect(formatAmountWithSettings(-123456, settings)).toBe('$1,234.56');
+      expect(formatAmountWithSettings(-123456, settings)).toBe('Negative $1,234.56');
     });
 
     it('uses currency code display', () => {

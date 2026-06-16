@@ -154,6 +154,24 @@ describe('tips-engine', () => {
       const tips = generateTips(makeInput({ transactionCount: 0, dayOfMonth: 3 }), undefined, 10);
       expect(tips.some((t) => t.id === 'spending-no-transactions')).toBe(false);
     });
+
+    it('localizes translated education tips and marks fallback copy', () => {
+      const translated = generateTips(
+        makeInput({ accountCount: 0, budgetCount: 0, monthlyBudget: 0 }),
+        undefined,
+        10,
+        'es-ES',
+      );
+      expect(translated.find((tip) => tip.id === 'account-create-first')?.title).toBe(
+        'Añade tu primera cuenta',
+      );
+
+      const fallback = generateTips(makeInput({ goalsReached: 2 }), undefined, 10, 'es-ES').find(
+        (tip) => tip.id === 'goal-congratulations',
+      );
+      expect(fallback?.untranslated).toBe(true);
+      expect(fallback?.description).toContain('Se muestra en inglés');
+    });
   });
 
   describe('tip dismissal', () => {
