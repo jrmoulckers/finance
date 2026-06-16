@@ -28,10 +28,18 @@ import {
   type ChoreFrequency,
 } from '../hooks/householdKids';
 import {
+  buildRecurringBillReminders,
+  calculateGoalPledgeProgress,
+  calculateReconciliationSummary,
+  calculateShoppingBudgetSummary,
   createEqualSharedExpenseSplits,
   getHouseholdScorecardSeeds,
+  type HouseholdActivityType,
+  type PayerRotationMode,
+  type RecurringBillCadence,
   type SharedExpenseSplit,
   type SharedExpenseSplitMode,
+  type ShoppingTripAllocation,
   type TrustedHelperAccessMethod,
   useHousehold,
 } from '../hooks/useHousehold';
@@ -156,6 +164,12 @@ export function HouseholdPage() {
     sharedExpenseBalances,
     settleUpSuggestions,
     children,
+    activityEvents,
+    recurringBills,
+    goalPledges,
+    shoppingBudgets,
+    reconciliationPlans,
+    reconciliationSnapshots,
     loading,
     error,
     createHousehold,
@@ -170,6 +184,16 @@ export function HouseholdPage() {
     setSharedGoal,
     logSharedExpense,
     recordSharedSettlement,
+    createRecurringSharedBill,
+    setRecurringBillPaused,
+    updateRecurringBillCycle,
+    markRecurringBillCyclePaid,
+    setGoalContributionPledge,
+    recordGoalContribution,
+    createShoppingBudget,
+    logShoppingTrip,
+    setReconciliationPlan,
+    markReconciliationPeriodReconciled,
     createChildProfile,
     addChildChore,
     toggleChildChoreCompletion,
@@ -233,6 +257,29 @@ export function HouseholdPage() {
   >({});
   const [customSplitAmounts, setCustomSplitAmounts] = useState<Record<string, string>>({});
   const [sharedExpenseError, setSharedExpenseError] = useState<string | null>(null);
+
+  // -- Household beta form state -------------------------------------------
+  const [recurringBillName, setRecurringBillName] = useState('');
+  const [recurringBillAmount, setRecurringBillAmount] = useState('');
+  const [recurringBillDueDay, setRecurringBillDueDay] = useState('1');
+  const [recurringBillCadence, setRecurringBillCadence] = useState<RecurringBillCadence>('MONTHLY');
+  const [recurringBillPayer, setRecurringBillPayer] = useState('');
+  const [recurringBillRotation, setRecurringBillRotation] =
+    useState<PayerRotationMode>('ROUND_ROBIN');
+  const [goalPledgeGoalId, setGoalPledgeGoalId] = useState(DEMO_GOAL_IDS[0]);
+  const [goalPledgeMemberId, setGoalPledgeMemberId] = useState('');
+  const [goalPledgeAmount, setGoalPledgeAmount] = useState('');
+  const [shoppingBudgetName, setShoppingBudgetName] = useState('Groceries and supplies');
+  const [shoppingBudgetLimit, setShoppingBudgetLimit] = useState('600');
+  const [shoppingBudgetCategories, setShoppingBudgetCategories] = useState('groceries, household');
+  const [shoppingTripBudgetId, setShoppingTripBudgetId] = useState('');
+  const [shoppingTripStore, setShoppingTripStore] = useState('');
+  const [shoppingTripTotal, setShoppingTripTotal] = useState('');
+  const [shoppingTripPayer, setShoppingTripPayer] = useState('');
+  const [shoppingTripAllocation, setShoppingTripAllocation] =
+    useState<ShoppingTripAllocation>('SHARED');
+  const [activityFilter, setActivityFilter] = useState<HouseholdActivityType | 'ALL'>('ALL');
+  const [householdBetaError, setHouseholdBetaError] = useState<string | null>(null);
 
   // -- Kids & allowances form state ----------------------------------------
   const [childName, setChildName] = useState('');
@@ -427,6 +474,221 @@ export function HouseholdPage() {
       }
     },
     [recordSharedSettlement],
+  );
+
+  const handleCreateRecurringBill = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      setHouseholdBetaError(null);
+      const payer = recurringBillPayer || members[0]?.id || '';
+      const amount = Number(recurringBillAmount);
+      const dueDay = Number(recurringBillDueDay);
+      if (!recurringBillName.trim() || !Number.isFinite(amount) || amount <= 0 || !payer) {
+        setHouseholdBetaError('Recurring bill needs a name, amount, and payer.');
+        return;
+      }
+      const bill = createRecurringSharedBill({
+        name: recurringBillName,
+        estimatedAmount: amount,
+        dueDay,
+        cadence: recurringBillCadence,
+        splitMemberIds: members.map((member) => member.id),
+        defaultPayerMemberId: payer,
+        rotationMode: recurringBillRotation,
+        payerRotationMemberIds: members.map((member) => member.id),
+      });
+      if (!bill) {
+        setHouseholdBetaError('Failed to create recurring bill.');
+        return;
+      }
+      setRecurringBillName('');
+      setRecurringBillAmount('');
+      setRecurringBillDueDay('1');
+    },
+    [
+      createRecurringSharedBill,
+      members,
+      recurringBillAmount,
+      recurringBillCadence,
+      recurringBillDueDay,
+      recurringBillName,
+      recurringBillPayer,
+      recurringBillRotation,
+    ],
+  );
+
+  const handleSaveGoalPledge = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      setHouseholdBetaError(null);
+      const memberId = goalPledgeMemberId || members[0]?.id || '';
+      const amount = Number(goalPledgeAmount);
+      if (!goalPledgeGoalId || !memberId || !Number.isFinite(amount) || amount <= 0) {
+        setHouseholdBetaError('Goal pledge needs a goal, member, and amount.');
+        return;
+      }
+      const pledge = setGoalContributionPledge({
+        goalId: goalPledgeGoalId,
+        memberId,
+        pledgeType: 'FIXED',
+        pledgedAmount: amount,
+        cadence: 'MONTHLY',
+        nextDueDate: new Date().toISOString().slice(0, 10),
+      });
+      if (!pledge) {
+        setHouseholdBetaError('Failed to save goal pledge.');
+        return;
+      }
+      setGoalPledgeAmount('');
+    },
+    [goalPledgeAmount, goalPledgeGoalId, goalPledgeMemberId, members, setGoalContributionPledge],
+  );
+
+  const handleRecordGoalContribution = useCallback(
+    (goalId: string, memberId: string, remainingAmount: number) => {
+      setHouseholdBetaError(null);
+      const pledge = recordGoalContribution({
+        goalId,
+        memberId,
+        amount: Math.min(25, Math.max(1, remainingAmount || 25)),
+        note: 'Quick contribution from household page',
+      });
+      if (!pledge) {
+        setHouseholdBetaError('Failed to record goal contribution.');
+      }
+    },
+    [recordGoalContribution],
+  );
+
+  const handleCreateShoppingBudget = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      setHouseholdBetaError(null);
+      const monthlyLimit = Number(shoppingBudgetLimit);
+      if (!shoppingBudgetName.trim() || !Number.isFinite(monthlyLimit) || monthlyLimit <= 0) {
+        setHouseholdBetaError('Shopping budget needs a name and monthly limit.');
+        return;
+      }
+      const budget = createShoppingBudget({
+        budgetId: 'shopping-' + shoppingBudgetName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        name: shoppingBudgetName,
+        monthlyLimit,
+        categoryIds: shoppingBudgetCategories
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+      });
+      if (!budget) {
+        setHouseholdBetaError('Failed to create shopping budget.');
+        return;
+      }
+      setShoppingTripBudgetId(budget.id);
+    },
+    [createShoppingBudget, shoppingBudgetCategories, shoppingBudgetLimit, shoppingBudgetName],
+  );
+
+  const handleLogShoppingTrip = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      setHouseholdBetaError(null);
+      const budgetId = shoppingTripBudgetId || shoppingBudgets[0]?.id || '';
+      const payer = shoppingTripPayer || members[0]?.id || '';
+      const receiptTotal = Number(shoppingTripTotal);
+      if (!budgetId || !shoppingTripStore.trim() || !Number.isFinite(receiptTotal) || receiptTotal <= 0 || !payer) {
+        setHouseholdBetaError('Shopping trip needs a budget, store, total, and payer.');
+        return;
+      }
+      const trip = logShoppingTrip({
+        shoppingBudgetId: budgetId,
+        store: shoppingTripStore,
+        receiptTotal,
+        payerMemberId: payer,
+        allocation: shoppingTripAllocation,
+        generateSharedExpense: shoppingTripAllocation !== 'PERSONAL',
+        splitMemberIds: members.map((member) => member.id),
+      });
+      if (!trip) {
+        setHouseholdBetaError('Failed to log shopping trip.');
+        return;
+      }
+      setShoppingTripStore('');
+      setShoppingTripTotal('');
+    },
+    [
+      logShoppingTrip,
+      members,
+      shoppingBudgets,
+      shoppingTripAllocation,
+      shoppingTripBudgetId,
+      shoppingTripPayer,
+      shoppingTripStore,
+      shoppingTripTotal,
+    ],
+  );
+
+  const handleCreateReconciliationPlan = useCallback(() => {
+    setHouseholdBetaError(null);
+    const participantMemberIds = members.map((member) => member.id);
+    if (participantMemberIds.length === 0) {
+      setHouseholdBetaError('Add members before creating reconciliation.');
+      return;
+    }
+    const obligationSeeds = [
+      ...sharedBudgets.map((budget) => ({
+        label: DEMO_BUDGET_NAMES[budget.budgetId] ?? 'Shared budget',
+        amount: 300,
+        sourceId: budget.budgetId,
+        sourceType: 'BUDGET' as const,
+      })),
+      ...recurringBills.map((bill) => ({
+        label: bill.name,
+        amount: bill.estimatedAmount,
+        sourceId: bill.id,
+        sourceType: 'BILL' as const,
+      })),
+    ];
+    const obligations = (obligationSeeds.length
+      ? obligationSeeds
+      : [{ label: 'Shared household obligation', amount: 200, sourceId: 'demo-shared', sourceType: 'CATEGORY' as const }]
+    ).map((entry) => ({
+      ...entry,
+      memberIds: participantMemberIds,
+      shareMode: 'EQUAL' as const,
+      shares: [],
+    }));
+    const plan = setReconciliationPlan({
+      name: 'Current month true-up',
+      periodType: 'MONTHLY',
+      participantMemberIds,
+      obligations,
+      contributions: participantMemberIds.map((memberId) => ({
+        memberId,
+        amount: sharedExpenseBalances.find((balance) => balance.memberId === memberId)?.paid ?? 0,
+        label: 'Private-account aggregate payments',
+        visibility: 'AGGREGATE_ONLY',
+      })),
+    });
+    if (!plan) {
+      setHouseholdBetaError('Failed to create reconciliation plan.');
+    }
+  }, [members, recurringBills, setReconciliationPlan, sharedBudgets, sharedExpenseBalances]);
+
+  const handleMarkReconciled = useCallback(
+    (planId: string) => {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const snapshot = markReconciliationPeriodReconciled({
+        planId,
+        periodLabel: now.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+        startDate: start,
+        endDate: end,
+      });
+      if (!snapshot) {
+        setHouseholdBetaError('Failed to mark reconciliation complete.');
+      }
+    },
+    [markReconciliationPeriodReconciled],
   );
 
   const getChoreDraft = useCallback(
@@ -792,6 +1054,29 @@ export function HouseholdPage() {
     [budgetData.budgets, household.id, members, resolveMemberName],
   );
 
+  const recurringBillReminders = useMemo(
+    () => buildRecurringBillReminders(recurringBills),
+    [recurringBills],
+  );
+  const goalPledgeProgress = useMemo(
+    () => DEMO_GOAL_IDS.map((goalId) => calculateGoalPledgeProgress(goalPledges, goalId)),
+    [goalPledges],
+  );
+  const shoppingBudgetSummaries = useMemo(
+    () => shoppingBudgets.map((budget) => ({ budget, summary: calculateShoppingBudgetSummary(budget) })),
+    [shoppingBudgets],
+  );
+  const activeReconciliationPlan = reconciliationPlans[0] ?? null;
+  const activeReconciliationSummary = activeReconciliationPlan
+    ? calculateReconciliationSummary(activeReconciliationPlan)
+    : null;
+  const filteredActivityEvents = activityEvents.filter(
+    (event) => activityFilter === 'ALL' || event.type === activityFilter,
+  );
+  const activityFilterOptions = Array.from(
+    new Set<HouseholdActivityType>(activityEvents.map((event) => event.type)),
+  );
+
   // -- Household exists — full management UI --------------------------------
 
   return (
@@ -935,6 +1220,432 @@ export function HouseholdPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="household-card household-beta" aria-labelledby="household-beta-title">
+        <h2 id="household-beta-title" className="household-card__title">
+          Household Beta Tools
+        </h2>
+        <p className="household-card__description">
+          Coordinate month-end true-ups, recurring bills, goal pledges, shopping trips, and a
+          privacy-aware activity feed without exposing private transactions.
+        </p>
+        {householdBetaError && (
+          <div className="household-banner--error" role="alert">
+            {householdBetaError}
+          </div>
+        )}
+
+        <section className="household-beta-panel" aria-labelledby="reconciliation-title">
+          <div className="household-beta-panel__header">
+            <h3 id="reconciliation-title">Yours / Mine / Ours Reconciliation</h3>
+            <button
+              type="button"
+              className="household-button household-button--secondary household-button--small"
+              onClick={handleCreateReconciliationPlan}
+            >
+              Build monthly true-up
+            </button>
+          </div>
+          {activeReconciliationPlan && activeReconciliationSummary ? (
+            <div>
+              <p className="household-card__note">
+                {activeReconciliationPlan.periodType === 'MONTHLY' ? 'Monthly' : 'Custom'} period ·
+                private contributions are aggregate-only unless revealed.
+              </p>
+              <ul className="household-beta-list" role="list">
+                {activeReconciliationSummary.memberSummaries.map((summary) => {
+                  const member = members.find((entry) => entry.id === summary.memberId);
+                  const name = member ? resolveMemberName(member) : 'Unknown member';
+                  return (
+                    <li key={summary.memberId} className="household-beta-list__item">
+                      <span>
+                        <strong>{name}</strong> paid{' '}
+                        <CurrencyDisplay amount={dollarsToCents(summary.paidAmount)} /> · agreed{' '}
+                        <CurrencyDisplay amount={dollarsToCents(summary.agreedShare)} />
+                      </span>
+                      <span>{summary.privacyLabel}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {activeReconciliationSummary.trueUpSuggestions.length > 0 && (
+                <ul className="household-beta-list" role="list" aria-label="True-up suggestions">
+                  {activeReconciliationSummary.trueUpSuggestions.map((suggestion) => {
+                    const from = members.find((member) => member.id === suggestion.fromMemberId);
+                    const to = members.find((member) => member.id === suggestion.toMemberId);
+                    return (
+                      <li
+                        key={suggestion.fromMemberId + suggestion.toMemberId}
+                        className="household-beta-list__item"
+                      >
+                        <strong>
+                          {(from && resolveMemberName(from)) || 'Someone'} pays{' '}
+                          {(to && resolveMemberName(to)) || 'someone'}{' '}
+                          <CurrencyDisplay amount={dollarsToCents(suggestion.amount)} />
+                        </strong>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <button
+                type="button"
+                className="household-button household-button--primary household-button--small"
+                onClick={() => handleMarkReconciled(activeReconciliationPlan.id)}
+              >
+                Mark period reconciled
+              </button>
+              <p className="household-card__note">
+                {reconciliationSnapshots.length} immutable snapshot
+                {reconciliationSnapshots.length === 1 ? '' : 's'} saved.
+              </p>
+            </div>
+          ) : (
+            <p className="household-card__empty">
+              No reconciliation plan yet. Build one from shared budgets, bills, and aggregate paid
+              totals.
+            </p>
+          )}
+        </section>
+
+        <section className="household-beta-panel" aria-labelledby="recurring-bills-title">
+          <h3 id="recurring-bills-title">Recurring Shared Bills</h3>
+          <form onSubmit={handleCreateRecurringBill} className="household-beta-form" noValidate>
+            <input
+              className="household-form-input"
+              value={recurringBillName}
+              onChange={(e) => setRecurringBillName(e.target.value)}
+              placeholder="Internet, utilities, pet food"
+              aria-label="Recurring bill name"
+            />
+            <input
+              className="household-form-input"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={recurringBillAmount}
+              onChange={(e) => setRecurringBillAmount(e.target.value)}
+              placeholder="Estimated amount"
+              aria-label="Recurring bill amount"
+            />
+            <input
+              className="household-form-input"
+              type="number"
+              min="1"
+              max="31"
+              value={recurringBillDueDay}
+              onChange={(e) => setRecurringBillDueDay(e.target.value)}
+              aria-label="Recurring bill due day"
+            />
+            <select
+              className="household-form-select"
+              value={recurringBillCadence}
+              onChange={(e) => setRecurringBillCadence(e.target.value as RecurringBillCadence)}
+              aria-label="Recurring bill cadence"
+            >
+              <option value="MONTHLY">Monthly</option>
+              <option value="BIWEEKLY">Biweekly</option>
+              <option value="WEEKLY">Weekly</option>
+            </select>
+            <select
+              className="household-form-select"
+              value={recurringBillPayer || members[0]?.id || ''}
+              onChange={(e) => setRecurringBillPayer(e.target.value)}
+              aria-label="Recurring bill default payer"
+            >
+              {members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {resolveMemberName(member)}
+                </option>
+              ))}
+            </select>
+            <select
+              className="household-form-select"
+              value={recurringBillRotation}
+              onChange={(e) => setRecurringBillRotation(e.target.value as PayerRotationMode)}
+              aria-label="Payer rotation"
+            >
+              <option value="ROUND_ROBIN">Rotate each cycle</option>
+              <option value="FIXED">Fixed payer</option>
+              <option value="WEIGHTED">Weighted rotation</option>
+            </select>
+            <button type="submit" className="household-button household-button--primary">
+              Add recurring bill
+            </button>
+          </form>
+          {recurringBillReminders.length === 0 ? (
+            <p className="household-card__empty">No recurring bills yet.</p>
+          ) : (
+            <ul className="household-beta-list" role="list">
+              {recurringBillReminders.map((reminder) => {
+                const bill = recurringBills.find((entry) => entry.id === reminder.billId);
+                const payer = members.find((member) => member.id === reminder.payerMemberId);
+                return (
+                  <li key={reminder.billId} className="household-beta-list__item">
+                    <span>
+                      <strong>{reminder.name}</strong> due {reminder.dueDate} · payer{' '}
+                      {payer ? resolveMemberName(payer) : 'Unknown'} ·{' '}
+                      <CurrencyDisplay amount={dollarsToCents(reminder.amount)} />
+                      {reminder.paused ? ' · paused' : ''}
+                    </span>
+                    <span className="household-beta-list__actions">
+                      <button
+                        type="button"
+                        className="household-button household-button--secondary household-button--small"
+                        onClick={() => bill && setRecurringBillPaused(bill.id, !bill.paused)}
+                      >
+                        {bill?.paused ? 'Resume' : 'Pause'}
+                      </button>
+                      {reminder.cycleId && (
+                        <>
+                          <button
+                            type="button"
+                            className="household-button household-button--secondary household-button--small"
+                            onClick={() =>
+                              updateRecurringBillCycle({
+                                billId: reminder.billId,
+                                cycleId: reminder.cycleId!,
+                                status: 'SKIPPED',
+                                skippedReason: 'Skipped from household page',
+                              })
+                            }
+                          >
+                            Skip
+                          </button>
+                          <button
+                            type="button"
+                            className="household-button household-button--primary household-button--small"
+                            onClick={() =>
+                              markRecurringBillCyclePaid({
+                                billId: reminder.billId,
+                                cycleId: reminder.cycleId!,
+                              })
+                            }
+                          >
+                            Mark paid
+                          </button>
+                        </>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        <section className="household-beta-panel" aria-labelledby="goal-pledges-title">
+          <h3 id="goal-pledges-title">Goal Contribution Pledges</h3>
+          <form onSubmit={handleSaveGoalPledge} className="household-beta-form" noValidate>
+            <select
+              className="household-form-select"
+              value={goalPledgeGoalId}
+              onChange={(e) => setGoalPledgeGoalId(e.target.value)}
+              aria-label="Pledge goal"
+            >
+              {DEMO_GOAL_IDS.map((goalId) => (
+                <option key={goalId} value={goalId}>
+                  Pledge: {DEMO_GOAL_NAMES[goalId]}
+                </option>
+              ))}
+            </select>
+            <select
+              className="household-form-select"
+              value={goalPledgeMemberId || members[0]?.id || ''}
+              onChange={(e) => setGoalPledgeMemberId(e.target.value)}
+              aria-label="Pledge member"
+            >
+              {members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {resolveMemberName(member)}
+                </option>
+              ))}
+            </select>
+            <input
+              className="household-form-input"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={goalPledgeAmount}
+              onChange={(e) => setGoalPledgeAmount(e.target.value)}
+              placeholder="Monthly pledge"
+              aria-label="Monthly pledge amount"
+            />
+            <button type="submit" className="household-button household-button--primary">
+              Save pledge
+            </button>
+          </form>
+          <ul className="household-beta-list" role="list">
+            {goalPledgeProgress.map((progress) => (
+              <li key={progress.goalId} className="household-beta-list__item">
+                <span>
+                  <strong>Goal: {DEMO_GOAL_NAMES[progress.goalId]}</strong> pledged{' '}
+                  <CurrencyDisplay amount={dollarsToCents(progress.totalPledged)} /> · contributed{' '}
+                  <CurrencyDisplay amount={dollarsToCents(progress.totalContributed)} />
+                </span>
+                {progress.members.map((memberProgress) => (
+                  <button
+                    key={memberProgress.memberId}
+                    type="button"
+                    className="household-button household-button--secondary household-button--small"
+                    onClick={() =>
+                      handleRecordGoalContribution(
+                        progress.goalId,
+                        memberProgress.memberId,
+                        memberProgress.remainingAmount,
+                      )
+                    }
+                  >
+                    Record catch-up
+                  </button>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="household-beta-panel" aria-labelledby="shopping-budgets-title">
+          <h3 id="shopping-budgets-title">Shared Shopping Budgets</h3>
+          <form onSubmit={handleCreateShoppingBudget} className="household-beta-form" noValidate>
+            <input
+              className="household-form-input"
+              value={shoppingBudgetName}
+              onChange={(e) => setShoppingBudgetName(e.target.value)}
+              aria-label="Shopping budget name"
+            />
+            <input
+              className="household-form-input"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={shoppingBudgetLimit}
+              onChange={(e) => setShoppingBudgetLimit(e.target.value)}
+              aria-label="Shopping budget monthly limit"
+            />
+            <input
+              className="household-form-input"
+              value={shoppingBudgetCategories}
+              onChange={(e) => setShoppingBudgetCategories(e.target.value)}
+              aria-label="Shopping budget categories"
+            />
+            <button type="submit" className="household-button household-button--primary">
+              Save shopping budget
+            </button>
+          </form>
+          {shoppingBudgets.length > 0 && (
+            <form onSubmit={handleLogShoppingTrip} className="household-beta-form" noValidate>
+              <select
+                className="household-form-select"
+                value={shoppingTripBudgetId || shoppingBudgets[0]?.id || ''}
+                onChange={(e) => setShoppingTripBudgetId(e.target.value)}
+                aria-label="Shopping trip budget"
+              >
+                {shoppingBudgets.map((budget) => (
+                  <option key={budget.id} value={budget.id}>
+                    {budget.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="household-form-input"
+                value={shoppingTripStore}
+                onChange={(e) => setShoppingTripStore(e.target.value)}
+                placeholder="Store"
+                aria-label="Shopping trip store"
+              />
+              <input
+                className="household-form-input"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={shoppingTripTotal}
+                onChange={(e) => setShoppingTripTotal(e.target.value)}
+                placeholder="Receipt total"
+                aria-label="Shopping trip receipt total"
+              />
+              <select
+                className="household-form-select"
+                value={shoppingTripPayer || members[0]?.id || ''}
+                onChange={(e) => setShoppingTripPayer(e.target.value)}
+                aria-label="Shopping trip payer"
+              >
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {resolveMemberName(member)}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="household-form-select"
+                value={shoppingTripAllocation}
+                onChange={(e) => setShoppingTripAllocation(e.target.value as ShoppingTripAllocation)}
+                aria-label="Shopping trip allocation"
+              >
+                <option value="SHARED">Shared</option>
+                <option value="REIMBURSABLE">Reimbursable</option>
+                <option value="PERSONAL">Personal</option>
+              </select>
+              <button type="submit" className="household-button household-button--primary">
+                Log shopping trip
+              </button>
+            </form>
+          )}
+          <ul className="household-beta-list" role="list">
+            {shoppingBudgetSummaries.map(({ budget, summary }) => (
+              <li key={budget.id} className="household-beta-list__item">
+                <span>
+                  <strong>{budget.name}</strong> remaining{' '}
+                  <CurrencyDisplay amount={dollarsToCents(summary.remainingAmount)} /> · average trip{' '}
+                  <CurrencyDisplay amount={dollarsToCents(summary.averageTripSize)} /> · projected{' '}
+                  <CurrencyDisplay amount={dollarsToCents(summary.projectedMonthEndSpend)} />
+                </span>
+                <span>{summary.recentTrips[0]?.store ?? 'No trips yet'}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="household-beta-panel" aria-labelledby="activity-feed-title">
+          <div className="household-beta-panel__header">
+            <h3 id="activity-feed-title">Household Activity Feed</h3>
+            <select
+              className="household-form-select household-form-select--small"
+              value={activityFilter}
+              onChange={(e) => setActivityFilter(e.target.value as HouseholdActivityType | 'ALL')}
+              aria-label="Activity feed filter"
+            >
+              <option value="ALL">All events</option>
+              {activityFilterOptions.map((type) => (
+                <option key={type} value={type}>
+                  {type.toLowerCase()}
+                </option>
+              ))}
+            </select>
+          </div>
+          {filteredActivityEvents.length === 0 ? (
+            <p className="household-card__empty">No activity yet.</p>
+          ) : (
+            <ul className="household-beta-list" role="list" aria-label="Household activity feed">
+              {filteredActivityEvents.slice(0, 8).map((event) => {
+                const actor = event.actorMemberId
+                  ? members.find((member) => member.id === event.actorMemberId)
+                  : null;
+                return (
+                  <li key={event.id} className="household-beta-list__item">
+                    <span>
+                      <strong>{event.summary}</strong> · {event.type.toLowerCase()} ·{' '}
+                      {actor ? resolveMemberName(actor) : 'System'}
+                    </span>
+                    <span>
+                      {new Date(event.createdAt).toLocaleString()} · {event.privacy.toLowerCase()}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
       </section>
 
       {/* ----------------------------------------------------------------- */}
