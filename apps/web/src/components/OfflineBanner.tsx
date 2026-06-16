@@ -15,14 +15,15 @@ const cls = {
 
 /** Display a non-intrusive banner while the browser is offline. */
 export const OfflineBanner: React.FC = () => {
-  const { isOffline } = useOfflineStatus();
+  const { isOffline, isDegraded, degradedMessage } = useOfflineStatus();
 
   return (
     <div
-      className={`${cls.banner} ${isOffline ? '' : cls.bannerHidden}`.trim()}
+      className={`${cls.banner} ${isDegraded ? '' : cls.bannerHidden}`.trim()}
       role="status"
       aria-live="polite"
       aria-atomic="true"
+      data-network-state={isOffline ? 'offline' : isDegraded ? 'degraded' : 'online'}
     >
       <svg
         className={cls.icon}
@@ -48,9 +49,7 @@ export const OfflineBanner: React.FC = () => {
           strokeLinecap="round"
         />
       </svg>
-      <span className={cls.text}>
-        You are offline. Changes will sync when connectivity is restored.
-      </span>
+      <span className={cls.text}>{degradedMessage}</span>
     </div>
   );
 };

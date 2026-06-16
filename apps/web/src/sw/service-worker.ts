@@ -24,6 +24,13 @@ declare const self: ServiceWorkerGlobalScope;
 
 import { replayMutations } from '../db/sync/replayMutations';
 import { SYNC_TAG, type ClientToSwMessage, type SwToClientMessage } from '../db/sync/types';
+import { SLOW_NETWORK_TIMEOUT_MS } from '../lib/networkDegradation';
+import {
+  RECEIPT_CACHE_MAX_ENTRIES,
+  hasSensitiveReceiptToken,
+  isReceiptImagePath,
+  sanitizeReceiptCacheUrl,
+} from '../lib/receiptImagePolicy';
 
 // ---------------------------------------------------------------------------
 // Cache configuration
@@ -45,6 +52,7 @@ const CACHE_VERSION = 'v2';
 /** Cache bucket names. */
 const STATIC_CACHE = `finance-static-${CACHE_VERSION}`;
 const API_CACHE = `finance-api-${CACHE_VERSION}`;
+const RECEIPT_CACHE = `finance-receipts-${CACHE_VERSION}`;
 
 /**
  * Build-time precache manifest.
@@ -96,7 +104,7 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key !== STATIC_CACHE && key !== API_CACHE)
+            .filter((key) => key !== STATIC_CACHE && key !== API_CACHE && key !== RECEIPT_CACHE)
             .map((key) => caches.delete(key)),
         ),
       ),
@@ -138,6 +146,12 @@ self.addEventListener('fetch', (event: FetchEvent) => {
   // Other API requests -> stale-while-revalidate (serve cached, update in background)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(staleWhileRevalidate(request));
+    return;
+  }
+
+  // Receipt and attachment thumbnails need a privacy-aware cache key.
+  if (isReceiptImagePath(url.pathname)) {
+    event.respondWith(receiptImageCacheFirst(request));
     return;
   }
 
@@ -351,7 +365,6 @@ async function staleWhileRevalidate(request: Request): Promise<Response> {
   const cache = await caches.open(API_CACHE);
   const cached = await cache.match(request);
 
-  // Start the network request in the background
   const networkPromise = fetch(request)
     .then(async (response) => {
       if (response.ok) {
@@ -361,27 +374,89 @@ async function staleWhileRevalidate(request: Request): Promise<Response> {
     })
     .catch(() => null);
 
-  // If we have a cached response, return it immediately
   if (cached) {
-    // Fire-and-forget: update cache in background
     void networkPromise;
-    return cached;
+    return withCacheStatusHeaders(cached, 'stale');
   }
 
-  // No cached response — wait for network
-  const networkResponse = await networkPromise;
+  const networkResponse = await withTimeout(networkPromise, SLOW_NETWORK_TIMEOUT_MS);
   if (networkResponse) {
     return networkResponse;
   }
 
   return new Response(
-    JSON.stringify({ error: 'offline', message: 'No cached response available' }),
+    JSON.stringify({
+      error: 'slow_network',
+      message: 'Network did not respond quickly and no cached response is available',
+      retryAfterMs: SLOW_NETWORK_TIMEOUT_MS,
+    }),
     {
-      status: 503,
-      statusText: 'Service Unavailable',
-      headers: { 'Content-Type': 'application/json' },
+      status: 504,
+      statusText: 'Gateway Timeout',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        'X-Finance-Network-State': 'slow',
+      },
     },
   );
+}
+
+async function receiptImageCacheFirst(request: Request): Promise<Response> {
+  const requestUrl = new URL(request.url);
+  const cacheKey = sanitizeReceiptCacheUrl(requestUrl);
+  const cache = await caches.open(RECEIPT_CACHE);
+  const cached = await cache.match(cacheKey);
+
+  if (cached) {
+    return withCacheStatusHeaders(cached, 'cached');
+  }
+
+  try {
+    const response = await fetch(request);
+    if (response.ok && !hasSensitiveReceiptToken(requestUrl)) {
+      await cache.put(cacheKey, response.clone());
+      await trimCacheEntries(cache, RECEIPT_CACHE_MAX_ENTRIES);
+    }
+    return response;
+  } catch {
+    return new Response(
+      JSON.stringify({ error: 'offline', message: 'Receipt image is not cached on this device' }),
+      {
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      },
+    );
+  }
+}
+
+async function trimCacheEntries(cache: Cache, maxEntries: number): Promise<void> {
+  const keys = await cache.keys();
+  if (keys.length <= maxEntries) return;
+  await Promise.all(keys.slice(0, keys.length - maxEntries).map((key) => cache.delete(key)));
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<null>((resolve) => {
+    timeoutId = setTimeout(() => resolve(null), timeoutMs);
+  });
+
+  const result = await Promise.race([promise, timeoutPromise]);
+  if (timeoutId !== null) clearTimeout(timeoutId);
+  return result;
+}
+
+function withCacheStatusHeaders(response: Response, status: 'cached' | 'stale'): Response {
+  const headers = new Headers(response.headers);
+  headers.set('X-Finance-Cache-Status', status);
+  headers.set('X-Finance-Stale-At', new Date().toISOString());
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 /** Returns `true` when the pathname looks like a static asset. */
