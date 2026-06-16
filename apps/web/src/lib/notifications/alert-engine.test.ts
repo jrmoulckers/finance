@@ -21,6 +21,7 @@ import {
   formatCentsForAlert,
   isInQuietHours,
   rateLimitNotifications,
+  shouldDeliverNotification,
 } from './alert-engine';
 import type {
   BalanceAlertConfig,
@@ -102,6 +103,11 @@ describe('evaluateBudgetThresholds', () => {
     const alerts = evaluateBudgetThresholds(budget, config, fired);
     expect(alerts).toHaveLength(1);
     expect(alerts[0].deduplicationKey).toBe('budget-b1-75');
+  });
+
+  it('includes the budget period in dedupe keys so thresholds reset each period', () => {
+    const alerts = evaluateBudgetThresholds({ ...budget, periodKey: '2025-04' }, config);
+    expect(alerts[0].deduplicationKey).toBe('budget-b1-2025-04-50');
   });
 
   it('returns critical severity for 100% threshold', () => {
@@ -409,6 +415,57 @@ describe('isInQuietHours', () => {
     const evening = new Date('2025-01-15T20:00:00');
     expect(isInQuietHours(sameDay, noon)).toBe(true);
     expect(isInQuietHours(sameDay, evening)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// shouldDeliverNotification
+// ---------------------------------------------------------------------------
+
+describe('shouldDeliverNotification', () => {
+  const notification = {
+    id: 'n1',
+    type: 'budget_threshold' as const,
+    severity: 'warning' as const,
+    title: 'Budget',
+    message: 'Budget message',
+    createdAt: '2025-01-15T12:00:00Z',
+    status: 'unread' as const,
+  };
+
+  it('blocks globally disabled notifications and do-not-disturb', () => {
+    expect(
+      shouldDeliverNotification(notification, { ...DEFAULT_NOTIFICATION_PREFERENCES, enabled: false }),
+    ).toBe(false);
+    expect(
+      shouldDeliverNotification(notification, {
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
+        doNotDisturb: true,
+      }),
+    ).toBe(false);
+  });
+
+  it('honors per-alert channel preferences', () => {
+    expect(
+      shouldDeliverNotification(notification, {
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
+        channelPreferences: [{ alertType: 'budget_threshold', channels: ['email'] }],
+      }),
+    ).toBe(false);
+  });
+
+  it('allows critical alerts to bypass quiet hours', () => {
+    expect(
+      shouldDeliverNotification(
+        { ...notification, severity: 'critical' },
+        {
+          ...DEFAULT_NOTIFICATION_PREFERENCES,
+          quietHours: { enabled: true, startTime: '22:00', endTime: '07:00' },
+        },
+        'in_app',
+        new Date('2025-01-15T23:30:00'),
+      ),
+    ).toBe(true);
   });
 });
 
