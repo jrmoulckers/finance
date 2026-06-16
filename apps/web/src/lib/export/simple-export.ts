@@ -20,6 +20,7 @@ import { getAllInvestments } from '../../db/repositories/investments';
 import { getLotsByInvestment } from '../../db/repositories/investment-lots';
 import { getAllTransactions } from '../../db/repositories/transactions';
 import { buildZipArchive, type ZipEntry } from '../data-access-package';
+import { getCurrentLocale } from '../i18n';
 
 type HouseholdRecord = NonNullable<ReturnType<typeof getHouseholdById>>;
 
@@ -81,6 +82,35 @@ export interface TransactionsCsvInput {
   transactions: readonly CsvTransactionRecord[];
   accounts: readonly CsvAccountRecord[];
   categories: readonly CsvCategoryRecord[];
+}
+
+export interface ExportScopeOptions {
+  readonly appVersion?: string | null;
+  readonly generatedAt?: Date;
+  readonly entities?: readonly (keyof FullJsonExport)[];
+  readonly dateRange?: { readonly from?: string; readonly to?: string };
+  readonly accountIds?: readonly string[];
+  readonly categoryIds?: readonly string[];
+}
+
+export interface ExportManifest {
+  readonly schemaVersion: 1;
+  readonly generatedAt: string;
+  readonly appVersion: string | null;
+  readonly filters: {
+    readonly entities: readonly string[];
+    readonly dateRange: { readonly from: string | null; readonly to: string | null };
+    readonly accountIds: readonly string[];
+    readonly categoryIds: readonly string[];
+  };
+}
+
+export interface PdfSummaryInput extends TransactionsCsvInput {
+  readonly generatedAt?: Date;
+  readonly appVersion?: string | null;
+  readonly dateRange?: { readonly from?: string; readonly to?: string };
+  readonly accountIds?: readonly string[];
+  readonly categoryIds?: readonly string[];
 }
 
 export function buildFullJsonExport(
@@ -260,17 +290,70 @@ export function buildEntityCsvFiles(exportData: FullJsonExport): EntityCsvFile[]
 export function buildAllCsvZip(exportData: FullJsonExport): Uint8Array {
   const encoder = new TextEncoder();
   const csvFiles = buildEntityCsvFiles(exportData);
-  const manifest = {
-    schemaVersion: exportData.schemaVersion,
-    generatedAt: exportData.generatedAt,
-    appVersion: exportData.appVersion,
-    files: csvFiles.map((file) => ({ name: file.name })),
-  };
+  const manifest = buildExportManifest(exportData, { entities: [...FULL_EXPORT_ENTITY_KEYS] });
   const entries: ZipEntry[] = [
     { path: 'manifest.json', bytes: encoder.encode(`${JSON.stringify(manifest, null, 2)}\n`) },
     ...csvFiles.map((file) => ({ path: file.name, bytes: encoder.encode(file.contents) })),
   ];
   return buildZipArchive(entries);
+}
+
+export function buildExportManifest(
+  exportData: Pick<FullJsonExport, 'schemaVersion' | 'generatedAt' | 'appVersion'>,
+  options: ExportScopeOptions = {},
+): ExportManifest {
+  return {
+    schemaVersion: exportData.schemaVersion,
+    generatedAt: (options.generatedAt ?? new Date(exportData.generatedAt)).toISOString(),
+    appVersion: options.appVersion ?? exportData.appVersion,
+    filters: {
+      entities: options.entities?.map(String) ?? [...FULL_EXPORT_ENTITY_KEYS],
+      dateRange: { from: options.dateRange?.from ?? null, to: options.dateRange?.to ?? null },
+      accountIds: [...(options.accountIds ?? [])],
+      categoryIds: [...(options.categoryIds ?? [])],
+    },
+  };
+}
+
+export function buildXlsxWorkbook(exportData: FullJsonExport, options: ExportScopeOptions = {}): Uint8Array {
+  const encoder = new TextEncoder();
+  const entities = options.entities ?? FULL_EXPORT_ENTITY_KEYS;
+  const sheets = entities.map((key, index) => ({
+    key,
+    name: humanizeSheetName(String(key)),
+    id: index + 1,
+    records: (exportData[key] as readonly unknown[] | undefined) ?? [],
+  }));
+  const entries: ZipEntry[] = [
+    { path: '[Content_Types].xml', bytes: encoder.encode(renderXlsxContentTypes(sheets.length)) },
+    { path: '_rels/.rels', bytes: encoder.encode(renderXlsxRootRels()) },
+    { path: 'xl/workbook.xml', bytes: encoder.encode(renderWorkbookXml(sheets)) },
+    { path: 'xl/_rels/workbook.xml.rels', bytes: encoder.encode(renderWorkbookRels(sheets.length)) },
+    { path: 'docProps/core.xml', bytes: encoder.encode(renderCoreProperties(exportData, options)) },
+    { path: 'docProps/app.xml', bytes: encoder.encode(renderAppProperties(sheets.map((sheet) => sheet.name))) },
+    ...sheets.map((sheet) => ({
+      path: `xl/worksheets/sheet${sheet.id}.xml`,
+      bytes: encoder.encode(renderWorksheetXml(sheet.records)),
+    })),
+  ];
+  return buildZipArchive(entries);
+}
+
+export function buildPdfSummary(input: PdfSummaryInput): Uint8Array {
+  const generatedAt = input.generatedAt ?? new Date();
+  const rows = filterTransactions(input.transactions, input);
+  const totalCents = rows.reduce((sum, transaction) => sum + transaction.amount.amount, 0);
+  const byAccount = new Map(input.accounts.map((account) => [account.id, account.name]));
+  const lines = [
+    'Finance export summary',
+    `Generated: ${generatedAt.toISOString()}`,
+    `App version: ${input.appVersion ?? 'unknown'}`,
+    `Date range: ${input.dateRange?.from ?? 'beginning'} to ${input.dateRange?.to ?? 'end'}`,
+    `Accounts: ${(input.accountIds?.map((id) => byAccount.get(id) ?? id) ?? ['all']).join(', ')}`,
+    `Transactions: ${rows.length}`,
+    `Net total: ${formatCents(totalCents)}`,
+  ];
+  return renderSimplePdf(lines);
 }
 
 /**
@@ -342,10 +425,137 @@ export function escapeCsvField(value: unknown): string {
 
 export function buildDatedExportFileName(
   prefix: string,
-  extension: 'csv' | 'json' | 'zip' | 'xlsx',
+  extension: 'csv' | 'json' | 'zip' | 'xlsx' | 'pdf' | 'fbackup',
   generatedAt = new Date(),
 ): string {
   return `${prefix}-${generatedAt.toISOString().slice(0, 10)}.${extension}`;
+}
+
+function filterTransactions(
+  transactions: readonly CsvTransactionRecord[],
+  filters: Pick<PdfSummaryInput, 'accountIds' | 'categoryIds' | 'dateRange'>,
+): CsvTransactionRecord[] {
+  const accountIds = new Set(filters.accountIds ?? []);
+  const categoryIds = new Set(filters.categoryIds ?? []);
+  return transactions.filter((transaction) => {
+    if (accountIds.size > 0 && !accountIds.has(transaction.accountId)) return false;
+    if (categoryIds.size > 0 && (!transaction.categoryId || !categoryIds.has(transaction.categoryId))) {
+      return false;
+    }
+    if (filters.dateRange?.from && transaction.date < filters.dateRange.from) return false;
+    if (filters.dateRange?.to && transaction.date > filters.dateRange.to) return false;
+    return true;
+  });
+}
+
+function renderWorksheetXml(records: readonly unknown[]): string {
+  const headers = collectHeaders(records);
+  const rows = records.length === 0 ? [['(empty)']] : [headers, ...records.map((record) => {
+    const flat = isPlainRecord(record) ? flattenForCsv(record) : { value: stringify(record) };
+    return headers.map((header) => flat[header] ?? '');
+  })];
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows
+    .map(
+      (row, rowIndex) =>
+        `<row r="${rowIndex + 1}">${row
+          .map(
+            (cell, cellIndex) =>
+              `<c r="${columnName(cellIndex)}${rowIndex + 1}" t="inlineStr"><is><t>${escapeXml(cell)}</t></is></c>`,
+          )
+          .join('')}</row>`,
+    )
+    .join('')}</sheetData></worksheet>`;
+}
+
+function renderXlsxContentTypes(sheetCount: number): string {
+  const sheets = Array.from(
+    { length: sheetCount },
+    (_, index) =>
+      `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
+  ).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${sheets}</Types>`;
+}
+
+function renderXlsxRootRels(): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`;
+}
+
+function renderWorkbookXml(sheets: readonly { name: string; id: number }[]): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets
+    .map((sheet) => `<sheet name="${escapeXml(sheet.name)}" sheetId="${sheet.id}" r:id="rId${sheet.id}"/>`)
+    .join('')}</sheets></workbook>`;
+}
+
+function renderWorkbookRels(sheetCount: number): string {
+  const rels = Array.from(
+    { length: sheetCount },
+    (_, index) =>
+      `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`,
+  ).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels}</Relationships>`;
+}
+
+function renderCoreProperties(exportData: FullJsonExport, options: ExportScopeOptions): string {
+  const generatedAt = (options.generatedAt ?? new Date(exportData.generatedAt)).toISOString();
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/"><dc:title>Finance export</dc:title><dc:creator>Finance</dc:creator><dcterms:created>${generatedAt}</dcterms:created></cp:coreProperties>`;
+}
+
+function renderAppProperties(sheetNames: readonly string[]): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Finance</Application><TitlesOfParts><vt:vector xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes" size="${sheetNames.length}" baseType="lpstr">${sheetNames
+    .map((name) => `<vt:lpstr>${escapeXml(name)}</vt:lpstr>`)
+    .join('')}</vt:vector></TitlesOfParts></Properties>`;
+}
+
+function renderSimplePdf(lines: readonly string[]): Uint8Array {
+  const escapedLines = lines.map((line, index) => `BT /F1 12 Tf 72 ${760 - index * 18} Td (${escapePdfText(line)}) Tj ET`).join('\n');
+  const objects = [
+    '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+    '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj',
+    '4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj',
+    `5 0 obj << /Length ${escapedLines.length} >> stream\n${escapedLines}\nendstream endobj`,
+  ];
+  let body = '%PDF-1.4\n';
+  const offsets = [0];
+  for (const object of objects) {
+    offsets.push(body.length);
+    body += `${object}\n`;
+  }
+  const xrefOffset = body.length;
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets
+    .slice(1)
+    .map((offset) => `${String(offset).padStart(10, '0')} 00000 n `)
+    .join('\n')}\ntrailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return new TextEncoder().encode(body);
+}
+
+function columnName(index: number): string {
+  let value = '';
+  let current = index + 1;
+  while (current > 0) {
+    const remainder = (current - 1) % 26;
+    value = String.fromCharCode(65 + remainder) + value;
+    current = Math.floor((current - 1) / 26);
+  }
+  return value;
+}
+
+function humanizeSheetName(value: string): string {
+  return value.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase()).slice(0, 31);
+}
+
+function escapeXml(value: unknown): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function escapePdfText(value: string): string {
+  return value.replace(/[\\()]/g, (match) => `\\${match}`);
 }
 
 function readOptionalTable<T>(read: () => T[]): T[] {
@@ -397,5 +607,8 @@ function isPresent<T>(value: T | null | undefined): value is T {
 }
 
 function formatCents(cents: number): string {
-  return (cents / 100).toFixed(2);
+  return new Intl.NumberFormat(getCurrentLocale(), {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
 }
