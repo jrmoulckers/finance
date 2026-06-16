@@ -5,8 +5,13 @@ import { registerAppServiceWorker } from '../sw/register';
 
 import type { ClientToSwMessage } from '../db/sync/types';
 
+export interface UseServiceWorkerUpdateOptions {
+  readonly hasUnsavedChanges?: boolean;
+}
+
 export interface UseServiceWorkerUpdateResult {
   updateAvailable: boolean;
+  blockedByUnsavedChanges: boolean;
   applyUpdate: () => void;
 }
 
@@ -19,7 +24,9 @@ export interface UseServiceWorkerUpdateResult {
  * resulting Registration rather than registering its own, so the SW is
  * installed even on anonymous routes where this hook never mounts.
  */
-export function useServiceWorkerUpdate(): UseServiceWorkerUpdateResult {
+export function useServiceWorkerUpdate(
+  options: UseServiceWorkerUpdateOptions = {},
+): UseServiceWorkerUpdateResult {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
@@ -82,9 +89,11 @@ export function useServiceWorkerUpdate(): UseServiceWorkerUpdateResult {
     };
   }, []);
 
+  const blockedByUnsavedChanges = updateAvailable && options.hasUnsavedChanges === true;
+
   const applyUpdate = useCallback((): void => {
     const waitingWorker = registrationRef.current?.waiting;
-    if (!waitingWorker) {
+    if (!waitingWorker || options.hasUnsavedChanges === true) {
       return;
     }
 
@@ -98,7 +107,7 @@ export function useServiceWorkerUpdate(): UseServiceWorkerUpdateResult {
 
     const message: ClientToSwMessage = { type: 'SKIP_WAITING' };
     waitingWorker.postMessage(message);
-  }, []);
+  }, [options.hasUnsavedChanges]);
 
-  return { updateAvailable, applyUpdate };
+  return { updateAvailable, blockedByUnsavedChanges, applyUpdate };
 }
