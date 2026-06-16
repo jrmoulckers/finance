@@ -814,3 +814,160 @@
 .student-loan-checkbox input {
   width: auto;
 }
+
+/* Debt beta additions */
+.strategy-recommendation,
+.extra-payment-impact,
+.credit-utilization-overview,
+.credit-card-form-section {
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--semantic-background-primary, #fff);
+  padding: var(--spacing-4, 1rem);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.debt-milestones__summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 0.75rem);
+}
+
+.debt-milestones__summary label,
+.dti-card__inputs label,
+.extra-payment-impact__header label,
+.credit-card-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 0.5rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.debt-milestones__summary input,
+.dti-card__inputs input,
+.extra-payment-impact__header input,
+.credit-card-form input {
+  width: 100%;
+  padding: var(--spacing-3, 0.75rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-background-primary, #fff);
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.debt-milestones__interest {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-2, 0.5rem) var(--spacing-4, 1rem);
+  margin: 0;
+}
+
+.debt-milestones__celebration {
+  margin-top: 0;
+  color: var(--semantic-positive, #059669);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.dti-card__inputs,
+.extra-payment-impact__header {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-3, 0.75rem);
+  align-items: end;
+}
+
+.dti-table-wrap,
+.extra-payment-impact__table-wrap {
+  overflow-x: auto;
+  margin-top: var(--spacing-4, 1rem);
+}
+
+.dti-table,
+.extra-payment-impact__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.dti-table caption,
+.extra-payment-impact__table caption {
+  text-align: left;
+  font-weight: var(--font-weight-bold, 700);
+  margin-bottom: var(--spacing-2, 0.5rem);
+}
+
+.dti-table th,
+.dti-table td,
+.extra-payment-impact__table th,
+.extra-payment-impact__table td {
+  border-bottom: 1px solid var(--semantic-border, #e5e7eb);
+  padding: var(--spacing-2, 0.5rem);
+  text-align: left;
+  vertical-align: top;
+}
+
+.credit-card-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-3, 0.75rem);
+}
+
+.credit-card-form button {
+  grid-column: 1 / -1;
+}
+
+.credit-utilization-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--spacing-2, 0.5rem);
+}
+
+.credit-utilization {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) repeat(3, minmax(120px, 1fr));
+  gap: var(--spacing-3, 0.75rem);
+  padding: var(--spacing-3, 0.75rem);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-background-secondary, #f9fafb);
+}
+
+.credit-utilization--warning {
+  background: var(--semantic-warning-bg, #fef3c7);
+}
+
+.credit-utilization--high,
+.credit-utilization--critical {
+  background: var(--semantic-negative-bg, #fee2e2);
+}
+
+.credit-utilization--low {
+  background: var(--semantic-positive-bg, #d1fae5);
+}
+
+@media (max-width: 480px) {
+  .credit-utilization {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .strategy-recommendation,
+  .extra-payment-impact,
+  .credit-utilization-overview,
+  .credit-card-form-section {
+    background: var(--semantic-background-primary, #1f2937);
+    border-color: var(--semantic-border, #374151);
+  }
+}
+
+[data-theme='dark'] .strategy-recommendation,
+[data-theme='dark'] .extra-payment-impact,
+[data-theme='dark'] .credit-utilization-overview,
+[data-theme='dark'] .credit-card-form-section {
+  background: var(--semantic-background-primary, #1f2937);
+  border-color: var(--semantic-border, #374151);
+}
