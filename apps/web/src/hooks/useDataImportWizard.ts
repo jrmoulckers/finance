@@ -18,6 +18,13 @@ import {
   type ImportFormat as UniversalImportFormat,
   type NormalisedTransaction,
 } from '../lib/import/format-detector';
+import {
+  findRememberedColumnMapping,
+  forgetColumnMapping,
+  getBrowserMappingMemoryStore,
+  rememberColumnMapping,
+  type MappingMemoryMatch,
+} from '../lib/import/csv-mapping-memory';
 import { useTransactions } from './useTransactions';
 
 export type ImportWizardStep = 'upload' | 'mapping' | 'preview' | 'importing' | 'complete';
@@ -129,6 +136,7 @@ export interface UseDataImportWizardResult {
   unmappedFields: UnmappedField[];
   duplicateComparisons: DuplicateComparison[];
   duplicateActions: Record<number, DuplicateAction>;
+  mappingMemoryNotice: string | null;
   progress: ImportProgress | null;
   result: ImportResult | null;
   error: string | null;
@@ -141,6 +149,7 @@ export interface UseDataImportWizardResult {
   updatePreviewField: (rowIndex: number, field: string, value: string) => void;
   setDuplicateAction: (rowIndex: number, action: DuplicateAction) => void;
   mapUnmappedToNotes: () => void;
+  forgetSavedMapping: () => void;
   goToPreview: () => void;
   startImport: () => Promise<void>;
   goBack: () => void;
@@ -459,6 +468,26 @@ function autoMapColumns(headers: string[], format: DetectedFormat): ColumnMappin
   });
 }
 
+function applyRememberedMapping(
+  headers: readonly string[],
+  detectedSource: DetectedFormat,
+  fallback: readonly ColumnMapping[],
+): { mapping: ColumnMapping[]; match: MappingMemoryMatch | null } {
+  const match = findRememberedColumnMapping({
+    store: getBrowserMappingMemoryStore(),
+    headers,
+    detectedSource,
+  });
+  if (!match) return { mapping: [...fallback], match: null };
+
+  const byColumnName = new Map(match.entry.mapping.map((mapping) => [normalizeHeader(mapping.columnName), mapping]));
+  const mapping = fallback.map((item) => {
+    const remembered = byColumnName.get(normalizeHeader(item.columnName));
+    return remembered ? { ...item, mappedField: remembered.mappedField } : item;
+  });
+  return { mapping, match };
+}
+
 export function useDataImportWizard(): UseDataImportWizardResult {
   const [step, setStep] = useState<ImportWizardStep>('upload');
   const [detectedFormat, setDetectedFormat] = useState<DetectedFormat>('unknown');
@@ -470,11 +499,22 @@ export function useDataImportWizard(): UseDataImportWizardResult {
   const [error, setError] = useState<string | null>(null);
   const [fieldOverrides, setFieldOverrides] = useState<Record<string, Record<string, string>>>({});
   const [duplicateActions, setDuplicateActions] = useState<Record<number, DuplicateAction>>({});
+  const [mappingMemoryMatch, setMappingMemoryMatch] = useState<MappingMemoryMatch | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
 
   const { transactions: existingTransactions, createTransaction } = useTransactions();
   const detectedFormatLabel = FORMAT_DISPLAY_LABELS[detectedFormat];
+  const mappingMemoryNotice = useMemo(() => {
+    if (!mappingMemoryMatch) return null;
+    if (mappingMemoryMatch.confidence === 1) {
+      return 'Applied remembered column mapping from this browser.';
+    }
+    const changed = [...mappingMemoryMatch.missingHeaders, ...mappingMemoryMatch.addedHeaders];
+    return `Applied remembered mapping with ${Math.round(
+      mappingMemoryMatch.confidence * 100,
+    )}% confidence. Review changed columns: ${changed.join(', ') || 'none'}.`;
+  }, [mappingMemoryMatch]);
 
   const unmappedFields = useMemo((): UnmappedField[] => {
     return columnMappings
@@ -548,7 +588,13 @@ export function useDataImportWizard(): UseDataImportWizardResult {
 
       const isDuplicate =
         parsedDate !== null && amountCents !== null
-          ? checkDuplicate(parsedDate, payeeStr ?? '', amountCents, existingTransactions)
+          ? checkDuplicate(
+              parsedDate,
+              payeeStr ?? '',
+              amountCents,
+              existingTransactions,
+              values.externalReferenceId,
+            )
           : false;
 
       const errorMessage = Object.values(fieldErrors).join('; ') || null;
@@ -595,6 +641,7 @@ export function useDataImportWizard(): UseDataImportWizardResult {
     setProgress(null);
     setFieldOverrides({});
     setDuplicateActions({});
+    setMappingMemoryMatch(null);
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
       setError('File is too large. Maximum size is 10 MB.');
@@ -624,10 +671,12 @@ export function useDataImportWizard(): UseDataImportWizardResult {
         }
 
         const { headers, rows } = normaliseTransactionsForWizard(parsed.transactions);
+        const remembered = applyRememberedMapping(headers, detected, autoMapColumns(headers, detected));
         setCsvColumns(buildColumns(headers, rows));
         setCsvRows(rows);
         setDetectedFormat(detected);
-        setColumnMappings(autoMapColumns(headers, detected));
+        setColumnMappings(remembered.mapping);
+        setMappingMemoryMatch(remembered.match);
         setStep('mapping');
 
         if (parsed.errors.length > 0) {
@@ -647,10 +696,12 @@ export function useDataImportWizard(): UseDataImportWizardResult {
       }
 
       const csvFormat = detectFileFormat(file.name, text, headers);
+      const remembered = applyRememberedMapping(headers, csvFormat, autoMapColumns(headers, csvFormat));
       setCsvColumns(buildColumns(headers, rows));
       setCsvRows(rows);
       setDetectedFormat(csvFormat);
-      setColumnMappings(autoMapColumns(headers, csvFormat));
+      setColumnMappings(remembered.mapping);
+      setMappingMemoryMatch(remembered.match);
       setStep('mapping');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse the import file.');
@@ -683,6 +734,16 @@ export function useDataImportWizard(): UseDataImportWizardResult {
     );
   }, []);
 
+  const forgetSavedMapping = useCallback(() => {
+    forgetColumnMapping({
+      store: getBrowserMappingMemoryStore(),
+      headers: csvColumns.map((column) => column.name),
+      detectedSource: detectedFormat,
+    });
+    setMappingMemoryMatch(null);
+    setColumnMappings(autoMapColumns(csvColumns.map((column) => column.name), detectedFormat));
+  }, [csvColumns, detectedFormat]);
+
   const goToPreview = useCallback(() => {
     const hasDate = columnMappings.some((m) => m.mappedField === 'date');
     const hasAmount = columnMappings.some((m) => m.mappedField === 'amount');
@@ -696,9 +757,15 @@ export function useDataImportWizard(): UseDataImportWizardResult {
       return;
     }
 
+    rememberColumnMapping({
+      store: getBrowserMappingMemoryStore(),
+      headers: csvColumns.map((column) => column.name),
+      detectedSource: detectedFormat,
+      mapping: columnMappings,
+    });
     setError(null);
     setStep('preview');
-  }, [columnMappings, selectedAccountId]);
+  }, [columnMappings, csvColumns, detectedFormat, selectedAccountId]);
 
   const startImport = useCallback(async () => {
     if (selectedAccountId === null) {
@@ -778,6 +845,7 @@ export function useDataImportWizard(): UseDataImportWizardResult {
     setError(null);
     setFieldOverrides({});
     setDuplicateActions({});
+    setMappingMemoryMatch(null);
   }, []);
 
   return {
@@ -791,6 +859,7 @@ export function useDataImportWizard(): UseDataImportWizardResult {
     unmappedFields,
     duplicateComparisons,
     duplicateActions,
+    mappingMemoryNotice,
     progress,
     result,
     error,
@@ -803,6 +872,7 @@ export function useDataImportWizard(): UseDataImportWizardResult {
     updatePreviewField,
     setDuplicateAction,
     mapUnmappedToNotes,
+    forgetSavedMapping,
     goToPreview,
     startImport,
     goBack,
@@ -898,8 +968,17 @@ function checkDuplicate(
     date: string;
     payee?: string | null;
     amount: { amount: number };
+    externalReferenceId?: string | null;
   }[],
+  externalReferenceId?: string,
 ): boolean {
+  const trimmedSourceId = externalReferenceId?.trim();
+  if (trimmedSourceId) {
+    return existingTransactions.some(
+      (transaction) => transaction.externalReferenceId === trimmedSourceId,
+    );
+  }
+
   const target = duplicateKey(date, payee, amountCents);
   return existingTransactions.some(
     (transaction) =>
