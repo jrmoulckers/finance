@@ -21,6 +21,8 @@ import {
   useState,
 } from 'react';
 import type { FC, ReactNode } from 'react';
+import { getCurrencyFractionDigits, minorUnitFactor } from './currency-metadata';
+import { getCurrentLocale } from './i18n';
 import { formatAmount, MaskingMode } from './ui/privacy';
 
 // ---------------------------------------------------------------------------
@@ -162,16 +164,16 @@ export function formatAmountWithSettings(
   settings: MoneyDisplaySettings,
   options: { currency?: string; locale?: string; signDisplay?: string } = {},
 ): string {
-  const { currency = 'USD', locale = 'en-US' } = options;
+  const { currency = 'USD', locale = getCurrentLocale() } = options;
 
-  const fractionDigits = settings.showDecimals ? 2 : 0;
+  const fractionDigits = settings.showDecimals ? getCurrencyFractionDigits(currency) : 0;
 
   // Determine the absolute value for formatting when we need custom sign handling
   const isNegative = amountInCents < 0;
   const absAmountInCents = Math.abs(amountInCents);
-  const absValue = absAmountInCents / 100 || 0;
+  const absValue = absAmountInCents / minorUnitFactor(currency) || 0;
 
-  const formatted = formatAmount(Math.round(absValue * 100), MaskingMode.Visible, locale, {
+  const formatted = formatAmount(Math.round(absValue * minorUnitFactor(currency)), MaskingMode.Visible, locale, {
     currency,
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
@@ -188,9 +190,7 @@ export function formatAmountWithSettings(
     case 'parentheses':
       return `(${formatted})`;
     case 'color-only':
-      // Still provide a textual hint for accessibility — the aria-label
-      // on the component carries the sign, but the visual text is unsigned.
-      return formatted;
+      return `Negative ${formatted}`;
     case 'minus':
     default:
       return `-${formatted}`;

@@ -8,6 +8,7 @@ import { CurrencyRatesSettings } from '../../components/settings/CurrencyRatesSe
 import '../../components/settings/currency-rates-settings.css';
 import { useFontScale } from '../../hooks/useFontScale';
 import type { FontScalePreference } from '../../hooks/useFontScale';
+import { useLocalePreferences } from '../../hooks/useLocalePreferences';
 import { useTheme } from '../../hooks/useTheme';
 import type { DisplayDensity, ThemeValue } from '../../hooks/useTheme';
 import {
@@ -16,21 +17,22 @@ import {
 } from '../../lib/bnpl-liability';
 import type { CurrencyDisplayMode, NegativeFormat } from '../../lib/display-settings';
 import { formatAmountWithSettings, useMoneyDisplay } from '../../lib/display-settings';
+import {
+  getStoredSingleKeyShortcutsPreference,
+  setSingleKeyShortcutsPreference,
+} from '../../lib/accessibility-preferences';
+import { SUPPORTED_CURRENCY_METADATA } from '../../lib/currency-metadata';
+import { translate } from '../../lib/i18n';
 import { setOnboardingComplete } from '../../lib/local-only-mode';
 
 const CURRENCY_STORAGE_KEY = 'finance-currency';
 const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
 
-type CurrencyPreference = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
+type CurrencyPreference = string;
 
-const currencyOptions: Array<{ value: CurrencyPreference; label: string }> = [
-  { value: 'USD', label: 'USD ($)' },
-  { value: 'EUR', label: 'EUR (€)' },
-  { value: 'GBP', label: 'GBP (£)' },
-  { value: 'CAD', label: 'CAD (C$)' },
-  { value: 'AUD', label: 'AUD (A$)' },
-  { value: 'JPY', label: 'JPY (¥)' },
-];
+const currencyOptions: Array<{ value: CurrencyPreference; label: string }> = SUPPORTED_CURRENCY_METADATA.map(
+  ({ code, label }) => ({ value: code, label }),
+);
 
 /** Labels for theme select options. */
 const THEME_LABELS: Record<ThemeValue, string> = {
@@ -63,7 +65,7 @@ function resolveColorForPicker(color: string, fallback: string): string {
 const NEGATIVE_FORMAT_OPTIONS: Array<{ value: NegativeFormat; label: string }> = [
   { value: 'minus', label: 'Standard' },
   { value: 'parentheses', label: 'Accounting' },
-  { value: 'color-only', label: 'Color Only' },
+  { value: 'color-only', label: 'Text label' },
 ];
 
 /** Labels for currency display mode options. */
@@ -80,12 +82,16 @@ const CURRENCY_DISPLAY_OPTIONS: Array<{ value: CurrencyDisplayMode; label: strin
 export const SettingsPreferencesPage: React.FC = () => {
   const { theme, setTheme, themes, displayDensity, setDisplayDensity, densities } = useTheme();
   const fontScale = useFontScale();
+  const localePreferences = useLocalePreferences();
   const displaySettings = useMoneyDisplay();
   const [currency, setCurrency] = useState<CurrencyPreference>(
     () => (localStorage.getItem(CURRENCY_STORAGE_KEY) as CurrencyPreference) || 'USD',
   );
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     () => localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) !== 'false',
+  );
+  const [singleKeyShortcutsEnabled, setSingleKeyShortcutsEnabled] = useState(
+    getStoredSingleKeyShortcutsPreference,
   );
   const [bnplStackingThreshold, setBnplStackingThreshold] = useState(() =>
     String(loadBnplStackingThresholdCents() / 100),
@@ -111,6 +117,20 @@ export const SettingsPreferencesPage: React.FC = () => {
     setCurrency(nextCurrency);
   }, []);
 
+  const handleLocaleChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      localePreferences.setLocale(event.target.value);
+    },
+    [localePreferences],
+  );
+
+  const handleTimeZoneChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      localePreferences.setTimeZone(event.target.value);
+    },
+    [localePreferences],
+  );
+
   const handleFontScaleChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
       fontScale.setPreference(event.target.value as FontScalePreference);
@@ -122,6 +142,12 @@ export const SettingsPreferencesPage: React.FC = () => {
     const nextNotificationsEnabled = event.target.checked;
     localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, String(nextNotificationsEnabled));
     setNotificationsEnabled(nextNotificationsEnabled);
+  }, []);
+
+  const handleSingleKeyShortcutsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const enabled = event.target.checked;
+    setSingleKeyShortcutsPreference(enabled);
+    setSingleKeyShortcutsEnabled(enabled);
   }, []);
 
   const handleBnplThresholdChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,6 +186,53 @@ export const SettingsPreferencesPage: React.FC = () => {
                   {currencyOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </SettingInfoWidget>
+          <SettingInfoWidget settingKey="language">
+            <div className="settings-item settings-item--static">
+              <label className="settings-item__label" htmlFor="settings-language">
+                {translate('settings.language', {}, localePreferences.locale).text}
+              </label>
+              <div className="settings-item__control">
+                <select
+                  id="settings-language"
+                  aria-label="Language"
+                  className="settings-item__select"
+                  value={localePreferences.locale}
+                  onChange={handleLocaleChange}
+                >
+                  {localePreferences.supportedLocales.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.nativeLabel} — {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="settings-item__description">
+                {translate('settings.languageDescription', {}, localePreferences.locale).text}
+              </p>
+            </div>
+          </SettingInfoWidget>
+          <SettingInfoWidget settingKey="time-zone">
+            <div className="settings-item settings-item--static">
+              <label className="settings-item__label" htmlFor="settings-time-zone">
+                {translate('settings.timeZone', {}, localePreferences.locale).text}
+              </label>
+              <div className="settings-item__control">
+                <select
+                  id="settings-time-zone"
+                  aria-label="Home time zone"
+                  className="settings-item__select"
+                  value={localePreferences.timeZone}
+                  onChange={handleTimeZoneChange}
+                >
+                  {localePreferences.timeZoneOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
                     </option>
                   ))}
                 </select>
@@ -225,6 +298,23 @@ export const SettingsPreferencesPage: React.FC = () => {
               />
             </div>
           </SettingInfoWidget>
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-single-key-shortcuts">
+              Single-key shortcuts
+            </label>
+            <input
+              type="checkbox"
+              id="settings-single-key-shortcuts"
+              checked={singleKeyShortcutsEnabled}
+              onChange={handleSingleKeyShortcutsChange}
+              aria-describedby="settings-single-key-shortcuts-help"
+              className="settings-item__checkbox"
+            />
+            <p id="settings-single-key-shortcuts-help" className="settings-item__description">
+              Turn off character-key shortcuts like N, /, ?, and G then D if they conflict with
+              assistive technology. Ctrl/Cmd+K remains available.
+            </p>
+          </div>
         </div>
       </section>
 
