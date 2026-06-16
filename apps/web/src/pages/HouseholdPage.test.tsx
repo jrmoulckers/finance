@@ -164,6 +164,12 @@ function mockHouseholdResult(overrides: Partial<UseHouseholdResult> = {}): UseHo
     sharedExpenseBalances: [],
     settleUpSuggestions: [],
     children: [],
+    activityEvents: [],
+    recurringBills: [],
+    goalPledges: [],
+    shoppingBudgets: [],
+    reconciliationPlans: [],
+    reconciliationSnapshots: [],
     loading: false,
     error: null,
     createHousehold: vi.fn(),
@@ -181,6 +187,16 @@ function mockHouseholdResult(overrides: Partial<UseHouseholdResult> = {}): UseHo
     setSharedGoal: vi.fn(),
     logSharedExpense: vi.fn(),
     recordSharedSettlement: vi.fn(),
+    createRecurringSharedBill: vi.fn(),
+    setRecurringBillPaused: vi.fn(),
+    updateRecurringBillCycle: vi.fn(),
+    markRecurringBillCyclePaid: vi.fn(),
+    setGoalContributionPledge: vi.fn(),
+    recordGoalContribution: vi.fn(),
+    createShoppingBudget: vi.fn(),
+    logShoppingTrip: vi.fn(),
+    setReconciliationPlan: vi.fn(),
+    markReconciliationPeriodReconciled: vi.fn(),
     createChildProfile: vi.fn(),
     addChildChore: vi.fn(),
     toggleChildChoreCompletion: vi.fn(),
@@ -466,6 +482,12 @@ describe('HouseholdPage', () => {
     expect(screen.getByText('Shared Expenses / Settle Up')).toBeInTheDocument();
     expect(screen.getByText('Mid-Month Scorecard')).toBeInTheDocument();
     expect(screen.getByText('Kids & Allowances')).toBeInTheDocument();
+    expect(screen.getByText('Household Beta Tools')).toBeInTheDocument();
+    expect(screen.getByText('Yours / Mine / Ours Reconciliation')).toBeInTheDocument();
+    expect(screen.getByText('Recurring Shared Bills')).toBeInTheDocument();
+    expect(screen.getByText('Goal Contribution Pledges')).toBeInTheDocument();
+    expect(screen.getByText('Shared Shopping Budgets')).toBeInTheDocument();
+    expect(screen.getByText('Household Activity Feed')).toBeInTheDocument();
     expect(screen.getByText('Invite Member')).toBeInTheDocument();
     expect(screen.getByText('Account Sharing')).toBeInTheDocument();
     expect(screen.getByText('Shared Budgets')).toBeInTheDocument();

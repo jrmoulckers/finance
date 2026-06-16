@@ -4,7 +4,11 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  buildRecurringBillReminders,
+  calculateGoalPledgeProgress,
+  calculateReconciliationSummary,
   calculateSharedExpenseBalances,
+  calculateShoppingBudgetSummary,
   createEqualSharedExpenseSplits,
   simplifySettleUpBalances,
   useHousehold,
@@ -332,5 +336,172 @@ describe('shared expense settlement helpers', () => {
       { fromMemberId: 'alex', toMemberId: 'sam', amount: 20 },
       { fromMemberId: 'jordan', toMemberId: 'sam', amount: 15 },
     ]);
+  });
+});
+
+
+describe('household beta helpers and persistence', () => {
+  it('creates recurring bill reminders and marks a cycle paid into shared expenses', () => {
+    const { result } = renderHook(() => useHousehold());
+
+    act(() => {
+      result.current.createHousehold({ name: 'Beta Household' });
+    });
+    const ownerId = result.current.members[0]!.id;
+
+    act(() => {
+      result.current.addTrustedHelper({ name: 'Sam', accessMethod: 'READ_ONLY_SUMMARY' });
+    });
+    const helperId = result.current.members[1]!.id;
+
+    let billId = '';
+    let cycleId = '';
+    act(() => {
+      const bill = result.current.createRecurringSharedBill({
+        name: 'Internet',
+        estimatedAmount: 90,
+        dueDay: 15,
+        cadence: 'MONTHLY',
+        splitMemberIds: [ownerId, helperId],
+        defaultPayerMemberId: ownerId,
+        rotationMode: 'ROUND_ROBIN',
+        payerRotationMemberIds: [ownerId, helperId],
+      });
+      billId = bill!.id;
+      cycleId = bill!.cycles[0]!.id;
+    });
+
+    expect(buildRecurringBillReminders(result.current.recurringBills)[0]).toEqual(
+      expect.objectContaining({ name: 'Internet', payerMemberId: ownerId, amount: 90 }),
+    );
+
+    act(() => {
+      result.current.markRecurringBillCyclePaid({ billId, cycleId });
+    });
+
+    expect(result.current.sharedExpenses[0]).toEqual(
+      expect.objectContaining({ description: 'Internet recurring bill', paidByMemberId: ownerId }),
+    );
+    expect(result.current.recurringBills[0]?.cycles[0]?.status).toBe('PAID');
+    expect(result.current.activityEvents.some((event) => event.type === 'BILLS')).toBe(true);
+  });
+
+  it('tracks goal pledges, contributions, and catch-up recommendations', () => {
+    const { result } = renderHook(() => useHousehold());
+
+    act(() => {
+      result.current.createHousehold({ name: 'Goal Household' });
+    });
+    const memberId = result.current.members[0]!.id;
+
+    act(() => {
+      result.current.setGoalContributionPledge({
+        goalId: 'goal-vacation',
+        memberId,
+        pledgeType: 'FIXED',
+        pledgedAmount: 500,
+        cadence: 'MONTHLY',
+        nextDueDate: '2025-02-01',
+      });
+    });
+    act(() => {
+      result.current.recordGoalContribution({ goalId: 'goal-vacation', memberId, amount: 125 });
+    });
+
+    expect(calculateGoalPledgeProgress(result.current.goalPledges, 'goal-vacation')).toEqual(
+      expect.objectContaining({ totalPledged: 500, totalContributed: 125, totalRemaining: 375 }),
+    );
+  });
+
+  it('summarizes shopping trips and can generate a shared expense', () => {
+    const { result } = renderHook(() => useHousehold());
+
+    act(() => {
+      result.current.createHousehold({ name: 'Shopping Household' });
+    });
+    const memberId = result.current.members[0]!.id;
+    let shoppingBudgetId = '';
+
+    act(() => {
+      const budget = result.current.createShoppingBudget({
+        budgetId: 'budget-groceries',
+        name: 'Groceries',
+        categoryIds: ['groceries', 'household'],
+        monthlyLimit: 600,
+      });
+      shoppingBudgetId = budget!.id;
+    });
+    act(() => {
+      result.current.logShoppingTrip({
+        shoppingBudgetId,
+        store: 'Market',
+        receiptTotal: 120,
+        payerMemberId: memberId,
+        allocation: 'SHARED',
+        purchasedAt: '2025-01-10T12:00:00Z',
+        generateSharedExpense: true,
+        splitMemberIds: [memberId],
+      });
+    });
+
+    const summary = calculateShoppingBudgetSummary(
+      result.current.shoppingBudgets[0]!,
+      new Date('2025-01-15T12:00:00Z'),
+    );
+    expect(summary).toEqual(
+      expect.objectContaining({ spentThisMonth: 120, remainingAmount: 480, averageTripSize: 120 }),
+    );
+    expect(result.current.sharedExpenses[0]?.description).toBe('Market shopping trip');
+  });
+
+  it('calculates privacy-aware reconciliation true-up suggestions and snapshots a period', () => {
+    const { result } = renderHook(() => useHousehold());
+
+    act(() => {
+      result.current.createHousehold({ name: 'Reconcile Household' });
+    });
+    act(() => {
+      result.current.addTrustedHelper({ name: 'Sam', accessMethod: 'READ_ONLY_SUMMARY' });
+    });
+    const [alex, sam] = result.current.members.map((member) => member.id);
+    let planId = '';
+
+    act(() => {
+      const plan = result.current.setReconciliationPlan({
+        name: 'January true-up',
+        periodType: 'MONTHLY',
+        participantMemberIds: [alex!, sam!],
+        obligations: [
+          {
+            sourceType: 'BUDGET',
+            sourceId: 'budget-groceries',
+            label: 'Groceries',
+            amount: 300,
+            memberIds: [alex!, sam!],
+            shareMode: 'EQUAL',
+            shares: [],
+          },
+        ],
+        contributions: [
+          { memberId: alex!, amount: 250, label: 'Groceries aggregate', visibility: 'AGGREGATE_ONLY' },
+          { memberId: sam!, amount: 50, label: 'Shared card', visibility: 'DETAILS_REVEALED' },
+        ],
+      });
+      planId = plan!.id;
+    });
+
+    const summary = calculateReconciliationSummary(result.current.reconciliationPlans[0]!);
+    expect(summary.trueUpSuggestions).toEqual([{ fromMemberId: sam, toMemberId: alex, amount: 100 }]);
+    expect(summary.memberSummaries[0]?.privacyLabel).toMatch(/aggregate totals only/i);
+
+    act(() => {
+      result.current.markReconciliationPeriodReconciled({
+        planId,
+        periodLabel: 'January 2025',
+        startDate: '2025-01-01',
+        endDate: '2025-01-31',
+      });
+    });
+    expect(result.current.reconciliationSnapshots[0]?.periodLabel).toBe('January 2025');
   });
 });
