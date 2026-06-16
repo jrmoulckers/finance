@@ -24,6 +24,8 @@ export interface Debt {
   readonly balanceCents: number;
   /** Original balance before payoff progress, when known. */
   readonly originalBalanceCents?: number;
+  /** Historical interest already paid, when known or manually entered. */
+  readonly interestPaidToDateCents?: number;
   /** Annual interest rate as basis points (e.g., 1999 = 19.99%). */
   readonly annualRateBps: number;
   /** Minimum monthly payment in cents. */
@@ -112,10 +114,32 @@ export interface StrategyComparison {
   readonly timeSavingsMonths: number;
 }
 
+/** Recommendation copy for the avalanche/snowball optimizer. */
+export interface PayoffStrategyRecommendation {
+  readonly recommendedStrategy: PayoffStrategy;
+  readonly recommendationReason: string;
+  readonly snowballMotivationNote: string;
+  readonly interestSavingsCents: number;
+  readonly monthsSaved: number;
+}
+
+/** Impact of a modeled extra-payment amount versus minimum payments only. */
+export interface ExtraPaymentImpactScenario {
+  readonly extraPaymentCents: number;
+  readonly totalInterestCents: number;
+  readonly totalPaidCents: number;
+  readonly totalMonths: number;
+  readonly monthsSaved: number;
+  readonly interestSavedCents: number;
+  readonly incrementalInterestSavedCents: number;
+  readonly isDiminishingReturn: boolean;
+  readonly payoffOrder: string[];
+}
+
 /** Payoff milestone reached as principal is paid down. */
 export interface DebtMilestone {
   /** Milestone threshold percentage. */
-  readonly thresholdPercent: 25 | 50 | 75 | 100;
+  readonly thresholdPercent: 10 | 25 | 50 | 75 | 100;
   /** Whether the user has reached this threshold. */
   readonly isReached: boolean;
 }
@@ -128,10 +152,38 @@ export interface DebtMilestoneSummary {
   readonly currentDebtCents: number;
   /** Principal paid off so far. */
   readonly paidOffCents: number;
+  /** Historical interest paid to date, including manual entries. */
+  readonly totalInterestPaidToDateCents: number;
   /** Percent of original debt paid off, rounded to one decimal. */
   readonly percentPaidOff: number;
   /** Milestone badges. */
   readonly milestones: DebtMilestone[];
+}
+
+/** Lender-style DTI threshold status for a point in time. */
+export interface DebtToIncomeThresholdStatus {
+  readonly thresholdPercent: number;
+  readonly isAtOrBelow: boolean;
+}
+
+/** First month when a DTI threshold is reached. */
+export interface DebtToIncomeThresholdCrossing {
+  readonly thresholdPercent: number;
+  readonly month: number | null;
+}
+
+/** Manual income change used in DTI projections. */
+export interface DebtToIncomeIncomeChange {
+  readonly month: number;
+  readonly monthlyIncomeCents: number;
+}
+
+/** Options for DTI trend projection. */
+export interface DebtToIncomeTrendOptions {
+  readonly targetRatioPercent?: number;
+  readonly annualRaiseBps?: number;
+  readonly incomeChanges?: readonly DebtToIncomeIncomeChange[];
+  readonly paymentBasis?: 'minimum' | 'planned';
 }
 
 /** A single month in the debt-to-income payoff trend. */
@@ -140,8 +192,12 @@ export interface DebtToIncomeTrendPoint {
   readonly month: number;
   /** Required monthly debt payments still active in this month. */
   readonly requiredDebtPaymentCents: number;
+  /** Monthly income used for this projected point. */
+  readonly monthlyIncomeCents: number;
   /** Debt-to-income ratio as a percent, rounded to one decimal. */
   readonly ratioPercent: number;
+  /** Threshold status for common and user-selected thresholds. */
+  readonly thresholdStatuses: DebtToIncomeThresholdStatus[];
 }
 
 /** Debt-to-income summary and trend. */
@@ -152,6 +208,12 @@ export interface DebtToIncomeSummary {
   readonly projectedFinalRatioPercent: number;
   /** Whether projected required debt payments decline over time. */
   readonly isImproving: boolean;
+  /** Thresholds tracked in the projection. */
+  readonly thresholds: number[];
+  /** First month where each threshold is reached, if any. */
+  readonly thresholdCrossings: DebtToIncomeThresholdCrossing[];
+  /** Whether ratios use minimum required payments or planned payments. */
+  readonly paymentBasis: 'minimum' | 'planned';
   /** Month-by-month DTI trend. */
   readonly trend: DebtToIncomeTrendPoint[];
 }
@@ -410,7 +472,7 @@ export interface CreditCard {
   /** Current balance in cents (positive = amount owed). */
   readonly balanceCents: number;
   /** Credit limit in cents. */
-  readonly creditLimitCents: number;
+  readonly creditLimitCents?: number;
   /** Minimum payment due in cents. */
   readonly minimumPaymentCents: number;
   /** Payment due date (ISO date string). */
@@ -419,6 +481,38 @@ export interface CreditCard {
   readonly annualRateBps: number;
   /** Statement closing date (ISO date string). */
   readonly statementDate: string;
+}
+
+export type CreditUtilizationStatus = 'unknown_limit' | 'low' | 'warning' | 'high' | 'critical';
+
+/** Configurable credit-utilization thresholds. */
+export interface CreditUtilizationThresholds {
+  readonly warningPercent: number;
+  readonly highPercent: number;
+  readonly criticalPercent: number;
+}
+
+/** Per-card utilization result. */
+export interface CardUtilization {
+  readonly cardId: string;
+  readonly cardName: string;
+  readonly balanceCents: number;
+  readonly creditLimitCents: number | null;
+  readonly utilizationPercent: number | null;
+  readonly status: CreditUtilizationStatus;
+  readonly statementDate: string;
+  readonly message: string;
+}
+
+/** Aggregate credit-utilization summary. */
+export interface CreditUtilizationSummary {
+  readonly cards: CardUtilization[];
+  readonly aggregateBalanceCents: number;
+  readonly aggregateCreditLimitCents: number;
+  readonly aggregateUtilizationPercent: number | null;
+  readonly aggregateStatus: CreditUtilizationStatus;
+  readonly unknownLimitCount: number;
+  readonly thresholds: CreditUtilizationThresholds;
 }
 
 /** Payment reservation for a credit card. */

@@ -30,7 +30,9 @@ import type {
 import {
   calculateDebtMilestoneSummary,
   calculateDebtToIncomeTrend,
+  calculateExtraPaymentImpactScenarios,
   calculateInterestSavedCents,
+  calculatePayoffStrategyRecommendation,
   calculateStrategyResult,
   compareStrategies,
 } from '../lib/debt-payoff-engine';
@@ -44,7 +46,10 @@ import {
   calculateStudentLoanScenarioComparisons,
   calculateStudentLoanWhatIfScenario,
 } from '../lib/debt-student-loan-engine';
-import { calculateReservationSummary } from '../lib/debt-credit-card-engine';
+import {
+  calculateCreditUtilizationSummary,
+  calculateReservationSummary,
+} from '../lib/debt-credit-card-engine';
 import type { Account } from '../kmp/bridge';
 
 // ---------------------------------------------------------------------------
@@ -94,6 +99,16 @@ type StudentLoanScenarioFormState = {
   salaryRaisePlan: IdrPlanType;
 };
 
+type CreditCardFormState = {
+  name: string;
+  balance: string;
+  creditLimit: string;
+  minimumPayment: string;
+  rate: string;
+  dueDate: string;
+  statementDate: string;
+};
+
 const DEFAULT_DEBT_FORM: DebtFormState = {
   name: '',
   balance: '',
@@ -126,6 +141,16 @@ const DEFAULT_STUDENT_SCENARIOS: StudentLoanScenarioFormState = {
   refinanceTermMonths: '120',
   salaryRaise: '5000',
   salaryRaisePlan: 'PAYE',
+};
+
+const DEFAULT_CREDIT_CARD_FORM: CreditCardFormState = {
+  name: '',
+  balance: '',
+  creditLimit: '',
+  minimumPayment: '',
+  rate: '',
+  dueDate: '',
+  statementDate: '',
 };
 
 const STUDENT_LOAN_STATUS_LABELS: Record<StudentLoanStatus, string> = {
@@ -190,6 +215,18 @@ function formatCountdown(months: number): string {
   return `${parts.join(', ')} to debt-free`;
 }
 
+function formatStrategyName(strategy: PayoffStrategy): string {
+  return strategy === 'avalanche' ? 'Avalanche' : 'Snowball';
+}
+
+function parseScenarioAmounts(input: string, activeExtraPaymentCents: number): number[] {
+  const parsed = input
+    .split(',')
+    .map((value) => parseCurrencyInput(value.trim()))
+    .filter((amount) => amount > 0);
+  return Array.from(new Set([0, 2_500, 5_000, 10_000, activeExtraPaymentCents, ...parsed]));
+}
+
 function buildStudentLoanFormState(loan: StudentLoan): StudentLoanFormState {
   return {
     name: loan.name,
@@ -211,6 +248,10 @@ function createDebtId(): string {
 
 function createStudentLoanId(): string {
   return `student-loan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createCreditCardId(): string {
+  return 'credit-card-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 }
 
 function isDebtAccount(account: Account): boolean {
@@ -323,6 +364,10 @@ function PayoffPlannerPanel(): React.ReactElement {
   const [extraPayment, setExtraPayment] = useState('100');
   const [activeStrategy, setActiveStrategy] = useState<PayoffStrategy>('avalanche');
   const [monthlyIncome, setMonthlyIncome] = useState('5000');
+  const [manualInterestPaid, setManualInterestPaid] = useState('0');
+  const [dtiAnnualRaise, setDtiAnnualRaise] = useState('0');
+  const [dtiTarget, setDtiTarget] = useState('36');
+  const [impactScenarioInput, setImpactScenarioInput] = useState('25, 50, 100, 200');
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const importedDebts = useMemo(
@@ -345,24 +390,64 @@ function PayoffPlannerPanel(): React.ReactElement {
   );
   const extraPaymentCents = parseCurrencyInput(extraPayment);
   const monthlyIncomeCents = parseCurrencyInput(monthlyIncome);
+  const manualInterestPaidCents = parseCurrencyInput(manualInterestPaid);
+  const dtiAnnualRaiseBps = parseRateInput(dtiAnnualRaise);
+  const dtiTargetPercent = Number.parseFloat(dtiTarget);
 
   const comparison = useMemo<StrategyComparison | null>(
     () => (debts.length > 0 ? compareStrategies(debts, extraPaymentCents) : null),
     [debts, extraPaymentCents],
+  );
+  const recommendation = useMemo(
+    () => (comparison ? calculatePayoffStrategyRecommendation(comparison) : null),
+    [comparison],
   );
   const activeResult = useMemo(
     () =>
       debts.length > 0 ? calculateStrategyResult(debts, activeStrategy, extraPaymentCents) : null,
     [activeStrategy, debts, extraPaymentCents],
   );
+  const minimumOnlyResult = useMemo(
+    () => (debts.length > 0 ? calculateStrategyResult(debts, activeStrategy, 0) : null),
+    [activeStrategy, debts],
+  );
   const interestSavedCents = useMemo(
     () => calculateInterestSavedCents(debts, activeStrategy, extraPaymentCents),
     [activeStrategy, debts, extraPaymentCents],
   );
-  const milestones = useMemo(() => calculateDebtMilestoneSummary(debts), [debts]);
+  const milestones = useMemo(
+    () => calculateDebtMilestoneSummary(debts, manualInterestPaidCents),
+    [debts, manualInterestPaidCents],
+  );
   const dti = useMemo(
-    () => calculateDebtToIncomeTrend(debts, monthlyIncomeCents, activeStrategy, extraPaymentCents),
-    [activeStrategy, debts, extraPaymentCents, monthlyIncomeCents],
+    () =>
+      calculateDebtToIncomeTrend(debts, monthlyIncomeCents, activeStrategy, extraPaymentCents, {
+        annualRaiseBps: dtiAnnualRaiseBps,
+        targetRatioPercent: Number.isFinite(dtiTargetPercent) ? dtiTargetPercent : undefined,
+        paymentBasis: 'minimum',
+      }),
+    [
+      activeStrategy,
+      debts,
+      dtiAnnualRaiseBps,
+      dtiTargetPercent,
+      extraPaymentCents,
+      monthlyIncomeCents,
+    ],
+  );
+  const extraPaymentScenarios = useMemo(
+    () =>
+      debts.length > 0
+        ? calculateExtraPaymentImpactScenarios(
+            debts,
+            activeStrategy,
+            parseScenarioAmounts(impactScenarioInput, extraPaymentCents),
+          )
+        : [],
+    [activeStrategy, debts, extraPaymentCents, impactScenarioInput],
+  );
+  const diminishingReturnScenario = extraPaymentScenarios.find(
+    (scenario) => scenario.isDiminishingReturn,
   );
 
   const handleAdjustment = useCallback((debtId: string, patch: Partial<Debt>) => {
@@ -433,22 +518,70 @@ function PayoffPlannerPanel(): React.ReactElement {
           )}
 
           <section aria-label="Debt milestones" className="debt-milestones">
-            <div>
+            <div className="debt-milestones__summary">
               <h2>Debt Milestones</h2>
               <p>{milestones.percentPaidOff.toFixed(1)}% paid off — every payment is progress.</p>
+              <label>
+                Historical interest paid ($)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={manualInterestPaid}
+                  onChange={(event) => setManualInterestPaid(event.target.value)}
+                />
+              </label>
+              <dl className="debt-milestones__interest">
+                <dt>Interest paid to date</dt>
+                <dd>
+                  <CurrencyDisplay
+                    amount={milestones.totalInterestPaidToDateCents}
+                    context="interest paid to date"
+                  />
+                </dd>
+                <dt>Projected remaining interest</dt>
+                <dd>
+                  <CurrencyDisplay
+                    amount={activeResult?.totalInterestCents ?? 0}
+                    context="projected remaining interest"
+                  />
+                </dd>
+              </dl>
+              <p className="form-help">
+                Share-safe copy: I have paid off {milestones.percentPaidOff.toFixed(1)}% of my
+                starting debt and reached{' '}
+                {milestones.milestones.filter((milestone) => milestone.isReached).length} milestone
+                {milestones.milestones.filter((milestone) => milestone.isReached).length === 1
+                  ? ''
+                  : 's'}.
+              </p>
             </div>
-            <ul role="list" className="debt-milestones__badges">
-              {milestones.milestones.map((milestone) => (
-                <li
-                  key={milestone.thresholdPercent}
-                  className={`debt-milestone ${milestone.isReached ? 'debt-milestone--reached' : ''}`}
-                >
-                  <span aria-hidden="true">{milestone.isReached ? '🏆' : '○'}</span>
-                  <strong>{milestone.thresholdPercent}%</strong>
-                  <span>{milestone.isReached ? 'Celebrated' : 'On deck'}</span>
-                </li>
-              ))}
-            </ul>
+            <div>
+              <p role="status" aria-live="polite" className="debt-milestones__celebration">
+                {milestones.milestones.some((milestone) => milestone.isReached)
+                  ? 'Milestones reached: ' +
+                    milestones.milestones
+                      .filter((milestone) => milestone.isReached)
+                      .map((milestone) => milestone.thresholdPercent + '%')
+                      .join(', ') +
+                    '. Keep going!'
+                  : 'Your first 10% milestone is on deck.'}
+              </p>
+              <ul role="list" className="debt-milestones__badges">
+                {milestones.milestones.map((milestone) => (
+                  <li
+                    key={milestone.thresholdPercent}
+                    className={
+                      'debt-milestone ' + (milestone.isReached ? 'debt-milestone--reached' : '')
+                    }
+                  >
+                    <span aria-hidden="true">{milestone.isReached ? '🏆' : '○'}</span>
+                    <strong>{milestone.thresholdPercent}%</strong>
+                    <span>{milestone.isReached ? 'Celebrated' : 'On deck'}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </section>
 
           <section aria-label="Debt-to-income ratio" className="dti-card">
@@ -458,35 +591,97 @@ function PayoffPlannerPanel(): React.ReactElement {
                 <p>
                   {dti.isImproving
                     ? 'Your required debt payments trend downward as balances disappear.'
-                    : 'Add income or payoff progress to see the trend improve.'}
+                    : 'Add income or payoff progress to see the trend improve.'}{' '}
+                  Ratios use minimum required debt payments; accelerated payments affect when debts
+                  disappear.
                 </p>
               </div>
-              <label>
-                Monthly income ($)
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={monthlyIncome}
-                  onChange={(event) => setMonthlyIncome(event.target.value)}
-                />
-              </label>
+              <div className="dti-card__inputs">
+                <label>
+                  Monthly income ($)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={monthlyIncome}
+                    onChange={(event) => setMonthlyIncome(event.target.value)}
+                  />
+                </label>
+                <label>
+                  Annual raise (%)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={dtiAnnualRaise}
+                    onChange={(event) => setDtiAnnualRaise(event.target.value)}
+                  />
+                </label>
+                <label>
+                  Target DTI (%)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={dtiTarget}
+                    onChange={(event) => setDtiTarget(event.target.value)}
+                  />
+                </label>
+              </div>
             </div>
             <dl className="dti-card__stats">
               <dt>DTI ratio</dt>
               <dd>{dti.currentRatioPercent.toFixed(1)}%</dd>
               <dt>Projected final DTI</dt>
               <dd>{dti.projectedFinalRatioPercent.toFixed(1)}%</dd>
-              <dt>Trend</dt>
-              <dd>{dti.isImproving ? 'Improving' : 'Holding steady'}</dd>
+              <dt>Threshold crossings</dt>
+              <dd>
+                {dti.thresholdCrossings
+                  .map((crossing) =>
+                    crossing.month === null
+                      ? crossing.thresholdPercent + '%: not reached'
+                      : crossing.thresholdPercent + '%: month ' + crossing.month,
+                  )
+                  .join(' · ')}
+              </dd>
             </dl>
-            <ol className="dti-trend" aria-label="Monthly DTI trend preview">
-              {dti.trend.slice(0, 6).map((point) => (
-                <li key={point.month}>
-                  Month {point.month}: {point.ratioPercent.toFixed(1)}%
-                </li>
-              ))}
-            </ol>
+            <div className="dti-table-wrap">
+              <table className="dti-table">
+                <caption>Full monthly debt-to-income projection</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Month</th>
+                    <th scope="col">Required debt payments</th>
+                    <th scope="col">Income</th>
+                    <th scope="col">DTI</th>
+                    <th scope="col">Thresholds met</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dti.trend.map((point) => (
+                    <tr key={point.month}>
+                      <td>{point.month}</td>
+                      <td>
+                        <CurrencyDisplay
+                          amount={point.requiredDebtPaymentCents}
+                          context="required debt payments"
+                        />
+                      </td>
+                      <td>
+                        <CurrencyDisplay amount={point.monthlyIncomeCents} context="monthly income" />
+                      </td>
+                      <td>{point.ratioPercent.toFixed(1)}%</td>
+                      <td>
+                        {point.thresholdStatuses
+                          .filter((status) => status.isAtOrBelow)
+                          .map((status) => status.thresholdPercent + '%')
+                          .join(', ') || 'None'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
         </>
       )}
@@ -691,25 +886,115 @@ function PayoffPlannerPanel(): React.ReactElement {
           {comparison && (
             <section aria-label="Strategy comparison">
               <h2>Strategy Comparison</h2>
+              {recommendation && (
+                <article className="strategy-recommendation" aria-live="polite">
+                  <h3>Recommended: {formatStrategyName(recommendation.recommendedStrategy)}</h3>
+                  <p>{recommendation.recommendationReason}</p>
+                  <p>{recommendation.snowballMotivationNote}</p>
+                  <p>
+                    Minimum-only baseline for {formatStrategyName(activeStrategy)}:{' '}
+                    {minimumOnlyResult?.totalMonths ?? 0} months and{' '}
+                    <CurrencyDisplay
+                      amount={minimumOnlyResult?.totalInterestCents ?? 0}
+                      context="minimum only interest"
+                    />{' '}
+                    in interest.
+                  </p>
+                </article>
+              )}
               <div className="strategy-comparison">
                 <StrategyCard
                   title="Avalanche (Highest Rate First)"
                   result={comparison.avalanche}
-                  recommended={comparison.interestSavingsCents > 0}
+                  recommended={recommendation?.recommendedStrategy === 'avalanche'}
+                  baselineMonths={minimumOnlyResult?.totalMonths ?? comparison.avalanche.totalMonths}
+                  todayIso={todayIso}
                 />
                 <StrategyCard
                   title="Snowball (Smallest Balance First)"
                   result={comparison.snowball}
-                  recommended={comparison.interestSavingsCents < 0}
+                  recommended={recommendation?.recommendedStrategy === 'snowball'}
+                  baselineMonths={minimumOnlyResult?.totalMonths ?? comparison.snowball.totalMonths}
+                  todayIso={todayIso}
                 />
               </div>
               <p className="strategy-savings" aria-live="polite">
                 Your {activeStrategy} plan saves{' '}
                 <CurrencyDisplay amount={interestSavedCents} context="interest savings" /> in
-                interest versus minimum-only payments.
+                interest versus minimum-only payments and reaches debt-free{' '}
+                {Math.max(0, (minimumOnlyResult?.totalMonths ?? 0) - (activeResult?.totalMonths ?? 0))}{' '}
+                month
+                {Math.max(0, (minimumOnlyResult?.totalMonths ?? 0) - (activeResult?.totalMonths ?? 0)) ===
+                1
+                  ? ''
+                  : 's'}{' '}
+                sooner.
               </p>
             </section>
           )}
+
+          <section aria-label="Extra-payment impact visualizer" className="extra-payment-impact">
+            <div className="extra-payment-impact__header">
+              <div>
+                <h2>Extra-Payment Impact</h2>
+                <p>
+                  Compare custom monthly extras without changing the active {formatStrategyName(activeStrategy)} plan.
+                </p>
+              </div>
+              <label>
+                Scenarios ($, comma separated)
+                <input
+                  type="text"
+                  value={impactScenarioInput}
+                  onChange={(event) => setImpactScenarioInput(event.target.value)}
+                />
+              </label>
+            </div>
+            {diminishingReturnScenario && (
+              <p className="form-help" role="status">
+                Diminishing returns begin around{' '}
+                <CurrencyDisplay
+                  amount={diminishingReturnScenario.extraPaymentCents}
+                  context="diminishing return extra payment"
+                />{' '}
+                extra/month because incremental interest savings taper.
+              </p>
+            )}
+            <div className="extra-payment-impact__table-wrap">
+              <table className="extra-payment-impact__table">
+                <caption>Extra monthly payment scenarios versus minimum-only payoff</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Extra/month</th>
+                    <th scope="col">Debt-free date</th>
+                    <th scope="col">Months saved</th>
+                    <th scope="col">Interest saved</th>
+                    <th scope="col">Total paid</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {extraPaymentScenarios.map((scenario) => (
+                    <tr key={scenario.extraPaymentCents}>
+                      <td>
+                        <CurrencyDisplay amount={scenario.extraPaymentCents} context="extra payment" />
+                      </td>
+                      <td>{formatMonthYear(addMonthsToIsoDate(todayIso, scenario.totalMonths))}</td>
+                      <td>{scenario.monthsSaved}</td>
+                      <td>
+                        <CurrencyDisplay
+                          amount={scenario.interestSavedCents}
+                          context="scenario interest saved"
+                        />
+                      </td>
+                      <td>
+                        <CurrencyDisplay amount={scenario.totalPaidCents} context="scenario total paid" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </>
       )}
     </div>
@@ -724,9 +1009,17 @@ interface StrategyCardProps {
   title: string;
   result: StrategyComparison['avalanche'];
   recommended: boolean;
+  baselineMonths: number;
+  todayIso: string;
 }
 
-function StrategyCard({ title, result, recommended }: StrategyCardProps): React.ReactElement {
+function StrategyCard({
+  title,
+  result,
+  recommended,
+  baselineMonths,
+  todayIso,
+}: StrategyCardProps): React.ReactElement {
   return (
     <article
       className={`strategy-card ${recommended ? 'strategy-card--recommended' : ''}`}
@@ -754,6 +1047,10 @@ function StrategyCard({ title, result, recommended }: StrategyCardProps): React.
           {result.totalMonths} month{result.totalMonths !== 1 ? 's' : ''} (
           {(result.totalMonths / 12).toFixed(1)} years)
         </dd>
+        <dt>Payoff Date</dt>
+        <dd>{formatMonthYear(addMonthsToIsoDate(todayIso, result.totalMonths))}</dd>
+        <dt>Months Saved</dt>
+        <dd>{Math.max(0, baselineMonths - result.totalMonths)}</dd>
         <dt>Payoff Order</dt>
         <dd>
           <ol>
@@ -1439,83 +1736,238 @@ function StudentLoanPanel(): React.ReactElement {
 // ---------------------------------------------------------------------------
 
 function CreditCardPanel(): React.ReactElement {
-  const [cards] = useState<CreditCard[]>([]);
+  const [cards, setCards] = useState<CreditCard[]>([]);
+  const [cardForm, setCardForm] = useState<CreditCardFormState>(DEFAULT_CREDIT_CARD_FORM);
   const checkingBalanceCents = 0;
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  if (cards.length === 0) {
-    return (
-      <EmptyState
-        title="No credit cards"
-        description="Add your credit cards to track balances, reserve funds for payments, and get due date reminders."
-        action={<button>Add Credit Card</button>}
-      />
-    );
-  }
+  const summary = useMemo(
+    () => calculateReservationSummary(checkingBalanceCents, cards, today),
+    [cards, today],
+  );
+  const utilization = useMemo(() => calculateCreditUtilizationSummary(cards), [cards]);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const summary = calculateReservationSummary(checkingBalanceCents, cards, today);
+  const handleCardFieldChange = useCallback(
+    <K extends keyof CreditCardFormState>(field: K, value: CreditCardFormState[K]) => {
+      setCardForm((current) => ({ ...current, [field]: value }));
+    },
+    [],
+  );
+
+  const handleCardSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const card: CreditCard = {
+        id: createCreditCardId(),
+        name: cardForm.name.trim(),
+        balanceCents: parseCurrencyInput(cardForm.balance),
+        creditLimitCents: parseCurrencyInput(cardForm.creditLimit),
+        minimumPaymentCents: parseCurrencyInput(cardForm.minimumPayment),
+        dueDate: cardForm.dueDate,
+        annualRateBps: parseRateInput(cardForm.rate),
+        statementDate: cardForm.statementDate,
+      };
+
+      if (!card.name || card.balanceCents < 0 || card.minimumPaymentCents < 0) return;
+      setCards((current) => [...current, card]);
+      setCardForm(DEFAULT_CREDIT_CARD_FORM);
+    },
+    [cardForm],
+  );
 
   return (
     <div className="credit-card-dashboard">
-      <section aria-label="Balance after reservations">
-        <h2>Available Balance</h2>
-        <dl className="balance-summary">
-          <dt>Checking Balance</dt>
-          <dd>
-            <CurrencyDisplay amount={summary.checkingBalanceCents} context="checking balance" />
-          </dd>
-          <dt>Reserved for Payments</dt>
-          <dd>
-            <CurrencyDisplay
-              amount={summary.totalReservedCents}
-              context="total reserved"
-              colorize
-            />
-          </dd>
-          <dt>Available After Reservations</dt>
-          <dd>
-            <CurrencyDisplay
-              amount={summary.availableAfterReservationsCents}
-              context="available after reservations"
-              colorize
-            />
-          </dd>
-        </dl>
-      </section>
+      {cards.length === 0 ? (
+        <EmptyState
+          title="No credit cards"
+          description="Add your credit cards to track balances, reserve funds for payments, get due date reminders, and monitor utilization before statement close."
+          action={<button type="button">Add Credit Card</button>}
+        />
+      ) : (
+        <>
+          <section aria-label="Credit utilization overview" className="credit-utilization-overview">
+            <h2>Credit Utilization</h2>
+            <dl className="balance-summary">
+              <dt>Overall utilization</dt>
+              <dd>
+                {utilization.aggregateUtilizationPercent === null
+                  ? 'Add credit limits'
+                  : utilization.aggregateUtilizationPercent.toFixed(1) + '%'}
+              </dd>
+              <dt>Status</dt>
+              <dd>{utilization.aggregateStatus.replace('_', ' ')}</dd>
+              <dt>Thresholds</dt>
+              <dd>
+                Warning {utilization.thresholds.warningPercent}%, high{' '}
+                {utilization.thresholds.highPercent}%, critical{' '}
+                {utilization.thresholds.criticalPercent}%
+              </dd>
+            </dl>
+            {utilization.unknownLimitCount > 0 && (
+              <p role="alert" className="form-help">
+                {utilization.unknownLimitCount} card
+                {utilization.unknownLimitCount === 1 ? '' : 's'} need a credit limit before
+                utilization can be calculated.
+              </p>
+            )}
+            <ul role="list" className="credit-utilization-list">
+              {utilization.cards.map((card) => (
+                <li
+                  key={card.cardId}
+                  className={'credit-utilization credit-utilization--' + card.status}
+                >
+                  <strong>{card.cardName}</strong>
+                  <span>
+                    {card.utilizationPercent === null
+                      ? 'Limit needed'
+                      : card.utilizationPercent.toFixed(1) + '% utilized'}
+                  </span>
+                  <span>Statement closes: {card.statementDate || 'Not set'}</span>
+                  <span>{card.message}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
 
-      {summary.alerts.length > 0 && (
-        <section aria-label="Payment alerts">
-          <h2>Payment Reminders</h2>
-          <ul role="list" className="payment-alerts">
-            {summary.alerts.map((alert, i) => (
-              <li key={i} role="listitem" className={`payment-alert payment-alert--${alert.type}`}>
-                <span role="alert">{alert.message}</span>
-                <CurrencyDisplay amount={alert.amountDueCents} context="amount due" />
-              </li>
-            ))}
-          </ul>
-        </section>
+          <section aria-label="Balance after reservations">
+            <h2>Available Balance</h2>
+            <dl className="balance-summary">
+              <dt>Checking Balance</dt>
+              <dd>
+                <CurrencyDisplay amount={summary.checkingBalanceCents} context="checking balance" />
+              </dd>
+              <dt>Reserved for Payments</dt>
+              <dd>
+                <CurrencyDisplay
+                  amount={summary.totalReservedCents}
+                  context="total reserved"
+                  colorize
+                />
+              </dd>
+              <dt>Available After Reservations</dt>
+              <dd>
+                <CurrencyDisplay
+                  amount={summary.availableAfterReservationsCents}
+                  context="available after reservations"
+                  colorize
+                />
+              </dd>
+            </dl>
+          </section>
+
+          {summary.alerts.length > 0 && (
+            <section aria-label="Payment alerts">
+              <h2>Payment Reminders</h2>
+              <ul role="list" className="payment-alerts">
+                {summary.alerts.map((alert) => (
+                  <li
+                    key={alert.cardId + alert.type}
+                    role="listitem"
+                    className={'payment-alert payment-alert--' + alert.type}
+                  >
+                    <span role="alert">{alert.message}</span>
+                    <CurrencyDisplay amount={alert.amountDueCents} context="amount due" />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section aria-label="Payment reservations">
+            <h2>Payment Reservations</h2>
+            <ul role="list" className="reservation-list">
+              {summary.reservations.map((res) => (
+                <li key={res.cardId} role="listitem" className="reservation-list__item">
+                  <div className="reservation-list__card">{res.cardName}</div>
+                  <div className="reservation-list__details">
+                    <CurrencyDisplay
+                      amount={res.reservedAmountCents}
+                      context={res.cardName + ' reserved'}
+                    />
+                    <span>Due: {res.dueDate}</span>
+                    <span className="reservation-list__type">
+                      {res.isAutoCalculated ? 'Auto (full balance)' : 'Manual'}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
       )}
 
-      <section aria-label="Payment reservations">
-        <h2>Payment Reservations</h2>
-        <ul role="list" className="reservation-list">
-          {summary.reservations.map((res) => (
-            <li key={res.cardId} role="listitem" className="reservation-list__item">
-              <div className="reservation-list__card">{res.cardName}</div>
-              <div className="reservation-list__details">
-                <CurrencyDisplay
-                  amount={res.reservedAmountCents}
-                  context={`${res.cardName} reserved`}
-                />
-                <span>Due: {res.dueDate}</span>
-                <span className="reservation-list__type">
-                  {res.isAutoCalculated ? 'Auto (full balance)' : 'Manual'}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+      <section aria-label="Add credit card" className="credit-card-form-section">
+        <h2>Add Credit Card</h2>
+        <form className="credit-card-form" onSubmit={handleCardSubmit} noValidate>
+          <label>
+            Card name
+            <input
+              type="text"
+              value={cardForm.name}
+              onChange={(event) => handleCardFieldChange('name', event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Balance ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={cardForm.balance}
+              onChange={(event) => handleCardFieldChange('balance', event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Credit limit ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={cardForm.creditLimit}
+              onChange={(event) => handleCardFieldChange('creditLimit', event.target.value)}
+            />
+          </label>
+          <label>
+            Minimum payment ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={cardForm.minimumPayment}
+              onChange={(event) => handleCardFieldChange('minimumPayment', event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            APR (%)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={cardForm.rate}
+              onChange={(event) => handleCardFieldChange('rate', event.target.value)}
+            />
+          </label>
+          <label>
+            Due date
+            <input
+              type="date"
+              value={cardForm.dueDate}
+              onChange={(event) => handleCardFieldChange('dueDate', event.target.value)}
+            />
+          </label>
+          <label>
+            Statement date
+            <input
+              type="date"
+              value={cardForm.statementDate}
+              onChange={(event) => handleCardFieldChange('statementDate', event.target.value)}
+            />
+          </label>
+          <button type="submit">Add Credit Card</button>
+        </form>
       </section>
     </div>
   );
