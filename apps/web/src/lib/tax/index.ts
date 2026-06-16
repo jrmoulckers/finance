@@ -20,3 +20,6 @@ export * from './self-employment-income';
 export * from './home-office-deductions';
 export * from './charitable-donations';
 export * from './tax-document-export';
+export * from './tax-category-tagging';
+export * from './capital-gains-reporting';
+export * from './retirement-contribution-limits';
