@@ -17,6 +17,8 @@
  * References: issue #1351
  */
 
+import { getCurrentLocale } from './i18n';
+import { minorUnitFactor } from './currency-metadata';
 import { formatAmount, MaskingMode } from './ui/privacy';
 
 // ---------------------------------------------------------------------------
@@ -75,9 +77,9 @@ export function formatCurrency(
 ): string {
   const {
     currency = 'USD',
-    locale = 'en-US',
-    minimumFractionDigits = 2,
-    maximumFractionDigits = 2,
+    locale = getCurrentLocale(),
+    minimumFractionDigits,
+    maximumFractionDigits,
     signDisplay = 'auto',
   } = options;
 
@@ -109,12 +111,12 @@ export function formatCurrencyValue(
 ): string {
   const {
     currency = 'USD',
-    locale = 'en-US',
-    minimumFractionDigits = 2,
-    maximumFractionDigits = 2,
+    locale = getCurrentLocale(),
+    minimumFractionDigits,
+    maximumFractionDigits,
   } = options;
 
-  return formatAmount(Math.round(amountInMajorUnits * 100), MaskingMode.Visible, locale, {
+  return formatAmount(Math.round(amountInMajorUnits * minorUnitFactor(currency)), MaskingMode.Visible, locale, {
     currency,
     minimumFractionDigits,
     maximumFractionDigits,
@@ -185,10 +187,10 @@ export function formatCurrencyLabel(
 export function formatChartCurrency(
   valueInMajorUnits: number,
   currency = 'USD',
-  locale = 'en-US',
+  locale = getCurrentLocale(),
   mode: MaskingMode = MaskingMode.Visible,
 ): string {
-  return formatAmount(Math.round(valueInMajorUnits * 100), mode, locale, {
+  return formatAmount(Math.round(valueInMajorUnits * minorUnitFactor(currency)), mode, locale, {
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
