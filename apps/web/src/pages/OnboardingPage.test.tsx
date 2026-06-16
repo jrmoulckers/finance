@@ -183,6 +183,12 @@ const continuePastComfortStep = () => {
   fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
 };
 
+const continueToTemplateStep = () => {
+  continuePastComfortStep();
+  fireEvent.click(screen.getByRole('button', { name: /start local only/i }));
+  fireEvent.click(screen.getByRole('button', { name: /essential only/i }));
+};
+
 describe('OnboardingPage', () => {
   it('renders the comfort settings step first', () => {
     renderWithRouter(<OnboardingPage />);
@@ -314,6 +320,105 @@ describe('OnboardingPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /use student template/i })).toBeInTheDocument();
     expect(screen.getByText(/adjust these based on your income/i)).toBeInTheDocument();
+  });
+
+  it('persists life-stage selections and updates tailored guidance with analytics opt-in', () => {
+    mockedUseConsent.mockReturnValue({
+      ...defaultConsentReturn,
+      consent: {
+        ...defaultConsentReturn.consent,
+        categories: {
+          ...defaultConsentReturn.consent.categories,
+          analytics: true,
+        },
+      },
+    });
+
+    renderWithRouter(<OnboardingPage />);
+
+    continueToTemplateStep();
+    fireEvent.click(screen.getByLabelText(/freelancer/i));
+    fireEvent.click(screen.getByLabelText(/caregiver/i));
+
+    expect(localStorage.getItem('finance-onboarding-life-stages')).toContain('freelancer');
+    expect(localStorage.getItem('finance-onboarding-life-stages')).toContain('caregiver');
+    expect(screen.getByText(/estimate conservative income/i)).toBeInTheDocument();
+    expect(screen.getByText(/create a notes-first estimate/i)).toBeInTheDocument();
+    expect(localStorage.getItem('finance-onboarding-analytics-events')).toContain(
+      'onboarding_life_stage_updated',
+    );
+  });
+
+  it('shows glossary explainers from onboarding coach copy', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    continueToTemplateStep();
+    fireEvent.click(screen.getByRole('button', { name: /what is cash flow/i }));
+
+    expect(screen.getByRole('dialog', { name: /cash flow/i })).toBeInTheDocument();
+    expect(screen.getByText(/timing of money coming in and going out/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /close explainer/i }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('completes financial-literacy lessons and reflects progress in the checklist', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    continueToTemplateStep();
+    fireEvent.click(screen.getByRole('button', { name: /concert ticket/i }));
+    fireEvent.click(screen.getByRole('button', { name: /keep a small buffer/i }));
+    fireEvent.click(screen.getByRole('button', { name: /monthly phone bill/i }));
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+
+    expect(localStorage.getItem('finance-onboarding-completed-lessons')).toContain('needs-wants');
+    expect(screen.getByText(/education lessons 3\/3 complete/i)).toBeInTheDocument();
+  });
+
+  it('previews and saves an onboarding goal before checklist completion', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    continueToTemplateStep();
+    fireEvent.change(screen.getByLabelText(/goal name/i), { target: { value: 'Move fund' } });
+    fireEvent.change(screen.getByLabelText(/target amount/i), { target: { value: '1200' } });
+    fireEvent.change(screen.getByLabelText(/starting balance/i), { target: { value: '200' } });
+    fireEvent.click(screen.getByRole('button', { name: /preview goal/i }));
+
+    expect(screen.getByText(/confirm goal before saving/i)).toBeInTheDocument();
+    expect(screen.getByText(/estimated monthly contribution: \$1000/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /save goal/i }));
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+
+    expect(localStorage.getItem('finance-onboarding-goals')).toContain('Move fund');
+    expect(screen.getByText(/1 goal saved/i)).toBeInTheDocument();
+  });
+
+  it('lets users hide, restore, dismiss, and reopen post-onboarding setup help', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    continueToTemplateStep();
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+
+    expect(screen.getByRole('region', { name: /fully set-up progress checklist/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /first-run coach marks/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /hide checklist/i }));
+
+    expect(localStorage.getItem('finance-onboarding-checklist-hidden')).toBe('true');
+    expect(screen.getByText(/fully set-up checklist hidden/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /restore setup checklist/i }));
+    fireEvent.click(screen.getByRole('button', { name: /dismiss all coach marks/i }));
+
+    expect(localStorage.getItem('finance-onboarding-coach-marks-dismissed')).toBe('true');
+    expect(screen.getByRole('button', { name: /reopen coach marks/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /reopen coach marks/i }));
+
+    expect(localStorage.getItem('finance-onboarding-coach-marks-dismissed')).toBe('false');
+    expect(screen.getByText(/budget categories are planning buckets/i)).toBeInTheDocument();
   });
 
   it('creates the student starter budget before completing onboarding', () => {

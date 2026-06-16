@@ -570,6 +570,155 @@
   margin-top: var(--spacing-5);
 }
 
+.onboarding__stacked-section {
+  margin-top: var(--spacing-5);
+}
+
+.onboarding__choice-grid,
+.onboarding__lesson-grid,
+.onboarding__coachmark-grid,
+.onboarding__form-grid {
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.onboarding__choice-grid,
+.onboarding__lesson-grid,
+.onboarding__coachmark-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.onboarding__choice-card,
+.onboarding__lesson-card,
+.onboarding__coachmark-card,
+.onboarding__goal-review,
+.onboarding__checklist {
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--semantic-border-default);
+  background: var(--semantic-background-primary);
+}
+
+.onboarding__choice-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--spacing-3);
+  text-align: left;
+  cursor: pointer;
+}
+
+.onboarding__choice-card span,
+.onboarding__field {
+  display: grid;
+  gap: var(--spacing-1);
+}
+
+.onboarding__choice-card small,
+.onboarding__education-prompt,
+.onboarding__lesson-feedback {
+  color: var(--semantic-text-secondary);
+  line-height: 1.5;
+}
+
+.onboarding__section-title {
+  margin: 0 0 var(--spacing-2);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-lg-font-size, 1.125rem);
+}
+
+.onboarding__tailored-guidance,
+.onboarding__goal-review {
+  margin-top: var(--spacing-4);
+}
+
+.onboarding__inline-actions,
+.onboarding__lesson-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-3);
+}
+
+.onboarding__lesson-choices .onboarding__path-btn,
+.onboarding__inline-actions .onboarding__path-btn {
+  width: auto;
+}
+
+.onboarding__link-button {
+  border: 0;
+  padding: var(--spacing-1) 0;
+  background: transparent;
+  color: var(--semantic-interactive-default);
+  font: inherit;
+  font-weight: var(--font-weight-semibold, 600);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.onboarding__link-button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.onboarding__field input,
+.onboarding__field select {
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--semantic-border-default);
+  color: var(--semantic-text-primary);
+  background: var(--semantic-background-primary);
+}
+
+.onboarding__glossary {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: var(--spacing-4);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.onboarding__glossary-card {
+  width: min(100%, 28rem);
+  padding: var(--spacing-5);
+  border-radius: var(--card-border-radius, var(--border-radius-md));
+  background: var(--semantic-background-elevated, var(--semantic-background-secondary));
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+
+.onboarding__checklist,
+.onboarding__coachmarks {
+  margin: var(--spacing-5) auto;
+  text-align: left;
+}
+
+.onboarding__checklist-list {
+  display: grid;
+  gap: var(--spacing-2);
+  padding: 0;
+  margin: var(--spacing-4) 0;
+  list-style: none;
+}
+
+.onboarding__checklist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) 0;
+  border-bottom: 1px solid var(--semantic-border-default);
+}
+
+.onboarding__coachmark-card p,
+.onboarding__lesson-card p,
+.onboarding__goal-review p {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  line-height: 1.5;
+}
+
 /* Complete step */
 .onboarding__complete {
   text-align: center;

@@ -43,6 +43,150 @@ const SIMPLE_MODE_FONT_SCALE_INDEX = Math.max(
 
 type OnboardingStep = 'comfort' | 'choose' | 'privacy' | 'template' | 'complete';
 
+type LifeStageId = 'student' | 'first-job' | 'household' | 'caregiver' | 'freelancer' | 'retiree';
+type GlossaryTermId = 'cashFlow' | 'recurringExpense' | 'savingsGoal' | 'budgetVariance';
+
+type StoredGoal = {
+  id: string;
+  name: string;
+  goalType: string;
+  targetAmount: number;
+  startingBalance: number;
+  targetDate: string;
+  monthlyContribution: number;
+};
+
+type GoalDraft = {
+  name: string;
+  goalType: string;
+  targetAmount: string;
+  startingBalance: string;
+  targetDate: string;
+};
+
+type LessonChoice = {
+  label: string;
+  correct: boolean;
+  feedback: string;
+};
+
+type Lesson = {
+  id: string;
+  title: string;
+  scenario: string;
+  choices: LessonChoice[];
+};
+
+const LIFE_STAGE_STORAGE_KEY = 'finance-onboarding-life-stages';
+const LESSONS_STORAGE_KEY = 'finance-onboarding-completed-lessons';
+const GOALS_STORAGE_KEY = 'finance-onboarding-goals';
+const COACH_MARKS_STORAGE_KEY = 'finance-onboarding-coach-marks-dismissed';
+const CHECKLIST_HIDDEN_STORAGE_KEY = 'finance-onboarding-checklist-hidden';
+const ANALYTICS_EVENTS_STORAGE_KEY = 'finance-onboarding-analytics-events';
+
+const LIFE_STAGE_OPTIONS: Array<{
+  id: LifeStageId;
+  label: string;
+  setupCopy: string;
+  nextStep: string;
+  educationPrompt: string;
+}> = [
+  {
+    id: 'student',
+    label: 'Student',
+    setupCopy: 'Keep school expenses, part-time income, and semester timing visible.',
+    nextStep: 'Review flexible spending and textbook or supplies categories.',
+    educationPrompt: 'Try the needs vs wants lesson before editing categories.',
+  },
+  {
+    id: 'first-job',
+    label: 'First full-time job',
+    setupCopy: 'Plan around a paycheck rhythm, benefits deductions, and first emergency savings.',
+    nextStep: 'Add recurring paycheck and fixed bill estimates first.',
+    educationPrompt: 'Start with the cash-flow lesson to see how pay dates and bills line up.',
+  },
+  {
+    id: 'household',
+    label: 'Couple or household',
+    setupCopy: 'Coordinate shared bills while keeping room for individual spending choices.',
+    nextStep: 'List shared fixed expenses before deciding what to track together.',
+    educationPrompt: 'Use the recurring-expenses lesson to separate shared commitments from flexible spending.',
+  },
+  {
+    id: 'caregiver',
+    label: 'Caregiver',
+    setupCopy: 'Leave space for irregular care costs and reimbursements without judging the plan.',
+    nextStep: 'Create a notes-first estimate for medical, travel, or support costs.',
+    educationPrompt: 'Review the emergency-fund lesson for unpredictable timing examples.',
+  },
+  {
+    id: 'freelancer',
+    label: 'Freelancer',
+    setupCopy: 'Expect uneven income, taxes, and business expenses alongside personal categories.',
+    nextStep: 'Estimate conservative income and set aside tax or buffer categories.',
+    educationPrompt: 'The cash-flow lesson explains why timing matters when income varies.',
+  },
+  {
+    id: 'retiree',
+    label: 'Retiree',
+    setupCopy: 'Focus on predictable income streams, healthcare, giving, and drawdown timing.',
+    nextStep: 'Start with fixed monthly income and essential expenses.',
+    educationPrompt: 'Use the variance lesson to understand why actual spending can drift from plan.',
+  },
+];
+
+const FINANCIAL_LESSONS: Lesson[] = [
+  {
+    id: 'needs-wants',
+    title: 'Needs vs wants',
+    scenario: 'You have rent, groceries, streaming, and a concert ticket in this month\'s plan. Which one is usually flexible?',
+    choices: [
+      { label: 'Rent', correct: false, feedback: 'Rent is usually a fixed need.' },
+      { label: 'Groceries', correct: false, feedback: 'Groceries are a need, though the amount can flex.' },
+      { label: 'Concert ticket', correct: true, feedback: 'Right — optional fun spending is easier to adjust first.' },
+    ],
+  },
+  {
+    id: 'cash-flow',
+    title: 'Cash flow timing',
+    scenario: 'A bill is due two days before payday. What helps you avoid a shortfall?',
+    choices: [
+      { label: 'Ignore the due date', correct: false, feedback: 'Due dates are part of the plan.' },
+      { label: 'Keep a small buffer', correct: true, feedback: 'Right — a buffer helps bridge timing gaps.' },
+      { label: 'Delete the bill', correct: false, feedback: 'The bill still exists even if it is not tracked.' },
+    ],
+  },
+  {
+    id: 'recurring-expenses',
+    title: 'Recurring expenses',
+    scenario: 'Which item should usually be marked recurring?',
+    choices: [
+      { label: 'Monthly phone bill', correct: true, feedback: 'Right — repeated bills belong in the recurring plan.' },
+      { label: 'One-time gift', correct: false, feedback: 'A one-time gift belongs in this month only.' },
+      { label: 'Unexpected refund', correct: false, feedback: 'Refunds are not expenses.' },
+    ],
+  },
+];
+
+const GLOSSARY_TERMS: Record<GlossaryTermId, { title: string; body: string }> = {
+  cashFlow: {
+    title: 'Cash flow',
+    body: 'Cash flow is the timing of money coming in and going out. It is not advice — it simply helps you spot tight weeks before they happen.',
+  },
+  recurringExpense: {
+    title: 'Recurring expense',
+    body: 'A recurring expense is a cost that repeats on a schedule, like rent, a phone bill, or a subscription.',
+  },
+  savingsGoal: {
+    title: 'Savings goal',
+    body: 'A savings goal is a target you choose to track, such as a buffer or trip fund. Finance shows progress, but you decide what fits your situation.',
+  },
+  budgetVariance: {
+    title: 'Budget variance',
+    body: 'Budget variance is the difference between what you planned and what happened. It is a learning signal, not a grade.',
+  },
+};
+
 function firstOfCurrentMonthISO(): string {
   const date = new Date();
   const year = date.getFullYear();
@@ -67,6 +211,87 @@ function applyComfortPreferences(
   const nextTheme = highContrast ? 'high-contrast' : 'system';
   localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
   applyTheme(nextTheme);
+}
+
+function readStringArray(key: string): string[] {
+  try {
+    const stored = localStorage.getItem(key);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed.filter((value) => typeof value === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStringArray(key: string, values: string[]): void {
+  localStorage.setItem(key, JSON.stringify(values));
+}
+
+function readBoolean(key: string): boolean {
+  return localStorage.getItem(key) === 'true';
+}
+
+function writeBoolean(key: string, value: boolean): void {
+  localStorage.setItem(key, String(value));
+}
+
+function readGoals(): StoredGoal[] {
+  try {
+    const stored = localStorage.getItem(GOALS_STORAGE_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? (parsed as StoredGoal[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeGoals(goals: StoredGoal[]): void {
+  localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(goals));
+}
+
+function isLifeStageId(value: string): value is LifeStageId {
+  return LIFE_STAGE_OPTIONS.some((option) => option.id === value);
+}
+
+function calculateMonthlyContribution(draft: GoalDraft): number {
+  const targetAmount = Number(draft.targetAmount) || 0;
+  const startingBalance = Number(draft.startingBalance) || 0;
+  const remainingAmount = Math.max(targetAmount - startingBalance, 0);
+
+  if (!draft.targetDate) {
+    return remainingAmount;
+  }
+
+  const today = new Date();
+  const targetDate = new Date(`${draft.targetDate}T00:00:00`);
+  const monthDelta =
+    (targetDate.getFullYear() - today.getFullYear()) * 12 + targetDate.getMonth() - today.getMonth();
+  const months = Math.max(monthDelta, 1);
+
+  return Math.ceil(remainingAmount / months);
+}
+
+function trackOnboardingEvent(
+  analyticsEnabled: boolean,
+  eventName: string,
+  payload: Record<string, unknown> = {},
+): void {
+  if (!analyticsEnabled) {
+    return;
+  }
+
+  try {
+    const existing = localStorage.getItem(ANALYTICS_EVENTS_STORAGE_KEY);
+    const events = existing ? JSON.parse(existing) : [];
+    const nextEvents = Array.isArray(events) ? events : [];
+    nextEvents.push({ eventName, payload, timestamp: new Date().toISOString() });
+    localStorage.setItem(ANALYTICS_EVENTS_STORAGE_KEY, JSON.stringify(nextEvents));
+  } catch {
+    localStorage.setItem(
+      ANALYTICS_EVENTS_STORAGE_KEY,
+      JSON.stringify([{ eventName, payload, timestamp: new Date().toISOString() }]),
+    );
+  }
 }
 
 const FeatureRow: React.FC<{ feature: FeatureAvailability }> = ({ feature }) => (
@@ -102,7 +327,7 @@ const FeatureRow: React.FC<{ feature: FeatureAvailability }> = ({ feature }) => 
 const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
   const { features, enableLocalOnly, completeOnboarding } = useLocalOnlyMode();
-  const { acceptAll, rejectAll } = useConsent();
+  const { acceptAll, rejectAll, consent } = useConsent();
   const { recordBulkChanges } = useConsentHistory();
   const { createBudgetTemplate } = useBudgets();
 
@@ -118,6 +343,43 @@ const OnboardingPage: React.FC = () => {
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
   const [starterBudgetCreated, setStarterBudgetCreated] = useState(false);
+  const [selectedLifeStages, setSelectedLifeStages] = useState<LifeStageId[]>(() =>
+    readStringArray(LIFE_STAGE_STORAGE_KEY).filter(isLifeStageId),
+  );
+  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>(() =>
+    readStringArray(LESSONS_STORAGE_KEY),
+  );
+  const [lessonFeedback, setLessonFeedback] = useState<Record<string, string>>({});
+  const [activeGlossaryTerm, setActiveGlossaryTerm] = useState<GlossaryTermId | null>(null);
+  const [coachMarksDismissed, setCoachMarksDismissed] = useState(() =>
+    readBoolean(COACH_MARKS_STORAGE_KEY),
+  );
+  const [setupChecklistHidden, setSetupChecklistHidden] = useState(() =>
+    readBoolean(CHECKLIST_HIDDEN_STORAGE_KEY),
+  );
+  const [savedGoals, setSavedGoals] = useState<StoredGoal[]>(() => readGoals());
+  const [goalDraft, setGoalDraft] = useState<GoalDraft>({
+    name: 'Emergency buffer',
+    goalType: 'Emergency savings',
+    targetAmount: '1000',
+    startingBalance: '0',
+    targetDate: '',
+  });
+  const [goalReviewVisible, setGoalReviewVisible] = useState(false);
+
+  const analyticsEnabled = consent.categories.analytics;
+  const selectedLifeStageOptions = useMemo(
+    () => LIFE_STAGE_OPTIONS.filter((option) => selectedLifeStages.includes(option.id)),
+    [selectedLifeStages],
+  );
+  const selectedStageLabels = selectedLifeStageOptions.map((option) => option.label).join(', ');
+  const monthlyContribution = calculateMonthlyContribution(goalDraft);
+  const allLessonsComplete = FINANCIAL_LESSONS.every((lesson) =>
+    completedLessonIds.includes(lesson.id),
+  );
+  const fullySetUp =
+    (starterBudgetCreated || savedGoals.length > 0) &&
+    (allLessonsComplete || selectedLifeStages.length > 0);
 
   const onboardingClassName = [
     'onboarding',
@@ -176,6 +438,94 @@ const OnboardingPage: React.FC = () => {
     },
     [fontScaleValue, reducedMotion, simplifiedMode, updateComfortPreferences],
   );
+
+  const handleLifeStageToggle = useCallback(
+    (lifeStageId: LifeStageId) => {
+      setSelectedLifeStages((current) => {
+        const next = current.includes(lifeStageId)
+          ? current.filter((id) => id !== lifeStageId)
+          : [...current, lifeStageId];
+        writeStringArray(LIFE_STAGE_STORAGE_KEY, next);
+        trackOnboardingEvent(analyticsEnabled, 'onboarding_life_stage_updated', {
+          selectedLifeStages: next,
+        });
+        return next;
+      });
+    },
+    [analyticsEnabled],
+  );
+
+  const handleClearLifeStages = useCallback(() => {
+    setSelectedLifeStages([]);
+    writeStringArray(LIFE_STAGE_STORAGE_KEY, []);
+    trackOnboardingEvent(analyticsEnabled, 'onboarding_life_stage_cleared');
+  }, [analyticsEnabled]);
+
+  const handleLessonChoice = useCallback(
+    (lesson: Lesson, choice: LessonChoice) => {
+      setLessonFeedback((current) => ({ ...current, [lesson.id]: choice.feedback }));
+
+      if (!choice.correct) {
+        return;
+      }
+
+      setCompletedLessonIds((current) => {
+        const next = current.includes(lesson.id) ? current : [...current, lesson.id];
+        writeStringArray(LESSONS_STORAGE_KEY, next);
+        trackOnboardingEvent(analyticsEnabled, 'onboarding_lesson_completed', {
+          lessonId: lesson.id,
+        });
+        return next;
+      });
+    },
+    [analyticsEnabled],
+  );
+
+  const handleGoalDraftChange = useCallback((field: keyof GoalDraft, value: string) => {
+    setGoalDraft((current) => ({ ...current, [field]: value }));
+    setGoalReviewVisible(false);
+  }, []);
+
+  const handlePreviewGoal = useCallback(() => {
+    setGoalReviewVisible(true);
+  }, []);
+
+  const handleSaveGoal = useCallback(() => {
+    const nextGoal: StoredGoal = {
+      id: `goal-${Date.now()}`,
+      name: goalDraft.name.trim() || 'My goal',
+      goalType: goalDraft.goalType,
+      targetAmount: Number(goalDraft.targetAmount) || 0,
+      startingBalance: Number(goalDraft.startingBalance) || 0,
+      targetDate: goalDraft.targetDate,
+      monthlyContribution,
+    };
+
+    setSavedGoals((current) => {
+      const next = [...current, nextGoal];
+      writeGoals(next);
+      return next;
+    });
+    setGoalReviewVisible(false);
+    trackOnboardingEvent(analyticsEnabled, 'onboarding_goal_saved', {
+      goalType: nextGoal.goalType,
+    });
+  }, [analyticsEnabled, goalDraft, monthlyContribution]);
+
+  const handleCoachMarksDismiss = useCallback(() => {
+    setCoachMarksDismissed(true);
+    writeBoolean(COACH_MARKS_STORAGE_KEY, true);
+  }, []);
+
+  const handleCoachMarksRestore = useCallback(() => {
+    setCoachMarksDismissed(false);
+    writeBoolean(COACH_MARKS_STORAGE_KEY, false);
+  }, []);
+
+  const handleChecklistHiddenChange = useCallback((hidden: boolean) => {
+    setSetupChecklistHidden(hidden);
+    writeBoolean(CHECKLIST_HIDDEN_STORAGE_KEY, hidden);
+  }, []);
 
   const handleUseSimpleMode = useCallback(() => {
     setFontScaleValue(SIMPLE_MODE_FONT_SCALE_INDEX);
@@ -568,9 +918,85 @@ const OnboardingPage: React.FC = () => {
           <header className="onboarding__header">
             <h1 className="onboarding__title">Want a starter budget? Choose a template:</h1>
             <p className="onboarding__subtitle">
-              Start with a student-friendly budget you can edit any time as your income changes.
+              {selectedLifeStageOptions.length > 0
+                ? `Guidance is tailored for: ${selectedStageLabels}. You can change or skip this any time.`
+                : 'Start with optional guidance, short lessons, and a student-friendly budget you can edit any time.'}
             </p>
           </header>
+
+          <section className="onboarding__template-card" aria-label="Life-stage tailored setup">
+            <div className="onboarding__template-header">
+              <div>
+                <h2 className="onboarding__path-title">Tailor setup to your life stage</h2>
+                <p className="onboarding__path-description">
+                  Optional: this only changes guidance, examples, and next steps. It does not create
+                  budget templates, and local-only selections stay in this browser.
+                </p>
+              </div>
+              <span className="onboarding__template-badge">Optional</span>
+            </div>
+
+            <div className="onboarding__choice-grid" role="group" aria-label="Life stages">
+              {LIFE_STAGE_OPTIONS.map((option) => (
+                <label key={option.id} className="onboarding__choice-card">
+                  <input
+                    type="checkbox"
+                    checked={selectedLifeStages.includes(option.id)}
+                    onChange={() => handleLifeStageToggle(option.id)}
+                  />
+                  <span>
+                    <strong>{option.label}</strong>
+                    <small>{option.setupCopy}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="onboarding__tailored-guidance" aria-live="polite">
+              <h3 className="onboarding__section-title">Recommended next steps</h3>
+              {selectedLifeStageOptions.length > 0 ? (
+                <ul className="onboarding__template-list" role="list">
+                  {selectedLifeStageOptions.map((option) => (
+                    <li key={option.id} className="onboarding__template-item" role="listitem">
+                      <span>{option.nextStep}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="onboarding__path-description">
+                  Pick one or more stages for tailored setup copy, or skip and keep the default
+                  guidance.
+                </p>
+              )}
+              {selectedLifeStageOptions.length > 0 && (
+                <p className="onboarding__education-prompt">
+                  Education prompt: {selectedLifeStageOptions[0].educationPrompt}
+                </p>
+              )}
+            </div>
+
+            <div className="onboarding__inline-actions">
+              <button
+                type="button"
+                className="onboarding__link-button"
+                onClick={() => setActiveGlossaryTerm('cashFlow')}
+                aria-haspopup="dialog"
+              >
+                What is cash flow?
+              </button>
+              <button
+                type="button"
+                className="onboarding__link-button"
+                onClick={() => setActiveGlossaryTerm('recurringExpense')}
+                aria-haspopup="dialog"
+              >
+                What is a recurring expense?
+              </button>
+              <button type="button" className="onboarding__link-button" onClick={handleClearLifeStages}>
+                Clear selections
+              </button>
+            </div>
+          </section>
 
           {templateError && (
             <div className="onboarding__template-error" role="alert">
@@ -612,6 +1038,147 @@ const OnboardingPage: React.FC = () => {
             </div>
           </section>
 
+          <section className="onboarding__template-card onboarding__stacked-section" aria-label="Financial literacy lessons">
+            <div className="onboarding__template-header">
+              <div>
+                <h2 className="onboarding__path-title">Quick financial-literacy lessons</h2>
+                <p className="onboarding__path-description">
+                  Optional two-minute checks with plain-language examples. These are educational and
+                  not financial advice.
+                </p>
+              </div>
+              <span className="onboarding__template-badge">
+                {completedLessonIds.length}/{FINANCIAL_LESSONS.length} done
+              </span>
+            </div>
+
+            <div className="onboarding__lesson-grid">
+              {FINANCIAL_LESSONS.map((lesson) => {
+                const isComplete = completedLessonIds.includes(lesson.id);
+                return (
+                  <article key={lesson.id} className="onboarding__lesson-card">
+                    <h3 className="onboarding__section-title">{lesson.title}</h3>
+                    <p className="onboarding__path-description">{lesson.scenario}</p>
+                    <div className="onboarding__lesson-choices">
+                      {lesson.choices.map((choice) => (
+                        <button
+                          key={choice.label}
+                          type="button"
+                          className="onboarding__path-btn onboarding__path-btn--secondary"
+                          onClick={() => handleLessonChoice(lesson, choice)}
+                        >
+                          {choice.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="onboarding__lesson-feedback" aria-live="polite">
+                      {isComplete ? 'Completed. ' : ''}
+                      {lessonFeedback[lesson.id] ?? 'Choose an answer to check your understanding.'}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="onboarding__template-card onboarding__stacked-section" aria-label="Goal-setting wizard">
+            <div className="onboarding__template-header">
+              <div>
+                <h2 className="onboarding__path-title">Goal-setting wizard</h2>
+                <p className="onboarding__path-description">
+                  Add an optional goal, preview the monthly estimate, then explicitly save it.
+                </p>
+              </div>
+              <span className="onboarding__template-badge">{savedGoals.length} saved</span>
+            </div>
+
+            <div className="onboarding__form-grid">
+              <label className="onboarding__field">
+                <span>Goal name</span>
+                <input
+                  type="text"
+                  value={goalDraft.name}
+                  onChange={(event) => handleGoalDraftChange('name', event.target.value)}
+                />
+              </label>
+              <label className="onboarding__field">
+                <span>Goal type</span>
+                <select
+                  value={goalDraft.goalType}
+                  onChange={(event) => handleGoalDraftChange('goalType', event.target.value)}
+                >
+                  <option>Emergency savings</option>
+                  <option>Debt payoff</option>
+                  <option>Vacation</option>
+                  <option>Rent deposit</option>
+                  <option>Buffer building</option>
+                </select>
+              </label>
+              <label className="onboarding__field">
+                <span>Target amount</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={goalDraft.targetAmount}
+                  onChange={(event) => handleGoalDraftChange('targetAmount', event.target.value)}
+                />
+              </label>
+              <label className="onboarding__field">
+                <span>Starting balance</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={goalDraft.startingBalance}
+                  onChange={(event) => handleGoalDraftChange('startingBalance', event.target.value)}
+                />
+              </label>
+              <label className="onboarding__field">
+                <span>Target date</span>
+                <input
+                  type="date"
+                  value={goalDraft.targetDate}
+                  onChange={(event) => handleGoalDraftChange('targetDate', event.target.value)}
+                />
+              </label>
+            </div>
+
+            <div className="onboarding__inline-actions">
+              <button
+                type="button"
+                className="onboarding__path-btn onboarding__path-btn--secondary"
+                onClick={handlePreviewGoal}
+              >
+                Preview goal
+              </button>
+              <button
+                type="button"
+                className="onboarding__link-button"
+                onClick={() => setActiveGlossaryTerm('savingsGoal')}
+                aria-haspopup="dialog"
+              >
+                What is a savings goal?
+              </button>
+            </div>
+
+            {goalReviewVisible && (
+              <div className="onboarding__goal-review" role="status">
+                <h3 className="onboarding__section-title">Confirm goal before saving</h3>
+                <p>
+                  {goalDraft.name || 'My goal'}: save ${Number(goalDraft.targetAmount || 0).toFixed(0)}
+                  {goalDraft.targetDate ? ` by ${goalDraft.targetDate}` : ''}. Estimated monthly
+                  contribution: ${monthlyContribution.toFixed(0)}.
+                </p>
+                <button
+                  type="button"
+                  className="onboarding__path-btn onboarding__path-btn--primary"
+                  onClick={handleSaveGoal}
+                >
+                  Save goal
+                </button>
+              </div>
+            )}
+          </section>
+
           <div className="onboarding__template-actions">
             <button
               type="button"
@@ -630,6 +1197,24 @@ const OnboardingPage: React.FC = () => {
               Skip for now
             </button>
           </div>
+
+          {activeGlossaryTerm && (
+            <div className="onboarding__glossary" role="dialog" aria-modal="true" aria-labelledby="onboarding-glossary-title">
+              <div className="onboarding__glossary-card">
+                <h2 id="onboarding-glossary-title" className="onboarding__path-title">
+                  {GLOSSARY_TERMS[activeGlossaryTerm].title}
+                </h2>
+                <p className="onboarding__path-description">{GLOSSARY_TERMS[activeGlossaryTerm].body}</p>
+                <button
+                  type="button"
+                  className="onboarding__path-btn onboarding__path-btn--primary"
+                  onClick={() => setActiveGlossaryTerm(null)}
+                >
+                  Close explainer
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     );
@@ -667,12 +1252,161 @@ const OnboardingPage: React.FC = () => {
               to enable sync
             </p>
           </div>
+
+          {setupChecklistHidden ? (
+           <section className="onboarding__checklist" aria-label="Setup checklist hidden">
+             <p className="onboarding__path-description">
+               Fully set-up checklist hidden. You can restore it from help or settings.
+             </p>
+             <button
+               type="button"
+               className="onboarding__path-btn onboarding__path-btn--secondary"
+               onClick={() => handleChecklistHiddenChange(false)}
+             >
+               Restore setup checklist
+             </button>
+           </section>
+          ) : (
+           <section className="onboarding__checklist" aria-label="Fully set-up progress checklist">
+             <div className="onboarding__template-header">
+               <div>
+                 <h2 className="onboarding__path-title">Fully set-up progress checklist</h2>
+                 <p className="onboarding__path-description">
+                   Beta activation is complete when privacy is reviewed, setup has a first budget or
+                   goal, and at least one confidence task is done.
+                 </p>
+               </div>
+               <span className="onboarding__template-badge">
+                 {fullySetUp ? 'Fully set up' : 'In progress'}
+               </span>
+             </div>
+             <ul className="onboarding__checklist-list" role="list">
+               <li className="onboarding__checklist-item" role="listitem">
+                 <span>Privacy reviewed</span>
+                 <strong>Done</strong>
+               </li>
+               <li className="onboarding__checklist-item" role="listitem">
+                 <span>{starterBudgetCreated ? 'Starter budget created' : 'Starter budget skipped'}</span>
+                 <button type="button" className="onboarding__link-button" onClick={() => navigate('/budgets')}>
+                   Open budgets
+                 </button>
+               </li>
+               <li className="onboarding__checklist-item" role="listitem">
+                 <span>
+                   Life-stage guidance {selectedLifeStages.length > 0 ? `saved for ${selectedStageLabels}` : 'not selected'}
+                 </span>
+                 <button type="button" className="onboarding__link-button" onClick={() => setStep('template')}>
+                   Edit guidance
+                 </button>
+               </li>
+               <li className="onboarding__checklist-item" role="listitem">
+                 <span>
+                   Education lessons {completedLessonIds.length}/{FINANCIAL_LESSONS.length} complete
+                 </span>
+                 <button type="button" className="onboarding__link-button" onClick={() => setStep('template')}>
+                   Review lessons
+                 </button>
+               </li>
+               <li className="onboarding__checklist-item" role="listitem">
+                 <span>{savedGoals.length > 0 ? `${savedGoals.length} goal saved` : 'No goal saved yet'}</span>
+                 <button type="button" className="onboarding__link-button" onClick={() => navigate('/goals')}>
+                   Open goals
+                 </button>
+               </li>
+             </ul>
+             <button
+               type="button"
+               className="onboarding__link-button"
+               onClick={() => handleChecklistHiddenChange(true)}
+             >
+               Hide checklist
+             </button>
+           </section>
+          )}
+
+          <section className="onboarding__coachmarks" aria-label="First-run coach marks">
+           <div className="onboarding__template-header">
+             <div>
+               <h2 className="onboarding__path-title">First-run coach marks</h2>
+               <p className="onboarding__path-description">
+                 Plain-language tips for dashboard, budget, transactions, and goals. Dismiss once or
+                 reopen later from help.
+               </p>
+             </div>
+           </div>
+           {coachMarksDismissed ? (
+             <button
+               type="button"
+               className="onboarding__path-btn onboarding__path-btn--secondary"
+               onClick={handleCoachMarksRestore}
+             >
+               Reopen coach marks
+             </button>
+           ) : (
+             <>
+               <div className="onboarding__coachmark-grid">
+                 <article className="onboarding__coachmark-card">
+                   <strong>Dashboard</strong>
+                   <p>Your daily snapshot shows balances, upcoming bills, and setup nudges.</p>
+                 </article>
+                 <article className="onboarding__coachmark-card">
+                   <strong>Budget</strong>
+                   <p>Budget categories are planning buckets, not judgments.</p>
+                 </article>
+                 <article className="onboarding__coachmark-card">
+                   <strong>Transactions</strong>
+                   <p>Transactions explain what actually happened so you can compare to the plan.</p>
+                 </article>
+                 <article className="onboarding__coachmark-card">
+                   <strong>Goals</strong>
+                   <p>Goals connect saving or payoff progress to outcomes you choose.</p>
+                 </article>
+               </div>
+               <div className="onboarding__inline-actions">
+                 <button
+                   type="button"
+                   className="onboarding__link-button"
+                   onClick={() => setActiveGlossaryTerm('budgetVariance')}
+                   aria-haspopup="dialog"
+                 >
+                   Explain budget variance
+                 </button>
+                 <button
+                   type="button"
+                   className="onboarding__path-btn onboarding__path-btn--secondary"
+                   onClick={handleCoachMarksDismiss}
+                 >
+                   Dismiss all coach marks
+                 </button>
+               </div>
+             </>
+           )}
+          </section>
+
+          {activeGlossaryTerm && (
+           <div className="onboarding__glossary" role="dialog" aria-modal="true" aria-labelledby="onboarding-complete-glossary-title">
+             <div className="onboarding__glossary-card">
+               <h2 id="onboarding-complete-glossary-title" className="onboarding__path-title">
+                 {GLOSSARY_TERMS[activeGlossaryTerm].title}
+               </h2>
+               <p className="onboarding__path-description">{GLOSSARY_TERMS[activeGlossaryTerm].body}</p>
+               <button
+                 type="button"
+                 className="onboarding__path-btn onboarding__path-btn--primary"
+                 onClick={() => setActiveGlossaryTerm(null)}
+               >
+                 Close explainer
+               </button>
+             </div>
+           </div>
+          )}
+
           <button
-            type="button"
-            className="onboarding__path-btn onboarding__path-btn--primary"
-            onClick={handleGoToDashboard}
+           type="button"
+           className="onboarding__path-btn onboarding__path-btn--primary"
+           onClick={handleGoToDashboard}
           >
-            Go to Dashboard
+           Go to Dashboard
           </button>
         </div>
       </div>
