@@ -45,7 +45,7 @@
 }
 
 .currency-rates-disclosure {
-  border-bottom: 1px solid var(--semantic-border-default, var(--semantic-border-primary, #e0e0e0));
+  border-block-end: 1px solid var(--semantic-border-default, var(--semantic-border-primary, #e0e0e0));
 }
 
 .currency-rates-disclosure__summary {
@@ -53,7 +53,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-3, 12px);
-  padding: var(--spacing-3, 12px) var(--card-padding, 16px);
+  padding-block: var(--spacing-3, 12px);
+  padding-inline: var(--card-padding, 16px);
   cursor: pointer;
   list-style: none;
 }
@@ -88,11 +89,11 @@
 .currency-rates-disclosure__hint {
   color: var(--semantic-text-secondary, #666);
   font-size: var(--type-scale-caption-font-size, 0.75rem);
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .currency-rates-disclosure[open] .currency-rates-disclosure__summary {
-  border-bottom: 1px solid var(--semantic-border-default, var(--semantic-border-primary, #e0e0e0));
+  border-block-end: 1px solid var(--semantic-border-default, var(--semantic-border-primary, #e0e0e0));
 }
 
 .currency-rates-disclosure .currency-rates-table {
@@ -108,15 +109,15 @@
   border: 1px solid var(--semantic-border-primary, #e0e0e0);
   border-radius: var(--radius-2, 8px);
   overflow: hidden;
-  margin-top: var(--spacing-3, 12px);
-  margin-bottom: var(--spacing-3, 12px);
+  margin-block: var(--spacing-3, 12px);
 }
 
 .currency-rates-table__header {
   display: grid;
   grid-template-columns: 1fr 1.5fr 1fr 1.5fr;
   gap: var(--spacing-2, 8px);
-  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  padding-block: var(--spacing-3, 12px);
+  padding-inline: var(--spacing-4, 16px);
   background: var(--semantic-background-secondary, #f5f5f5);
   font-weight: var(--type-scale-label-font-weight, 600);
   font-size: var(--type-scale-caption-font-size, 0.75rem);
@@ -129,8 +130,9 @@
   display: grid;
   grid-template-columns: 1fr 1.5fr 1fr 1.5fr;
   gap: var(--spacing-2, 8px);
-  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
-  border-top: 1px solid var(--semantic-border-primary, #e0e0e0);
+  padding-block: var(--spacing-2, 8px);
+  padding-inline: var(--spacing-4, 16px);
+  border-block-start: 1px solid var(--semantic-border-primary, #e0e0e0);
   align-items: center;
   font-size: var(--type-scale-body-font-size, 0.875rem);
 }
@@ -227,7 +229,7 @@
   }
 
   .currency-rates-disclosure__hint {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 
   .currency-rates-table__header {

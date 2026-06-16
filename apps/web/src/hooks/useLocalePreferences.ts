@@ -10,6 +10,7 @@ import {
   SUPPORTED_LOCALES,
   TIME_ZONE_OPTIONS,
 } from '../lib/i18n';
+import { applyDocumentDirection } from '../lib/i18n/rtl';
 
 const PREFERENCE_EVENT = 'finance-locale-preference-change';
 
@@ -32,10 +33,13 @@ export function useLocalePreferences(): UseLocalePreferencesResult {
 
   useEffect(() => {
     const refresh = () => {
-      setLocaleState(getCurrentLocale());
+      const nextLocale = getCurrentLocale();
+      setLocaleState(nextLocale);
       setTimeZoneState(getCurrentTimeZone());
+      applyDocumentDirection(nextLocale);
     };
 
+    refresh();
     globalThis.addEventListener?.(PREFERENCE_EVENT, refresh);
     globalThis.addEventListener?.('storage', refresh);
     return () => {
@@ -47,7 +51,7 @@ export function useLocalePreferences(): UseLocalePreferencesResult {
   const setLocale = useCallback((nextLocale: string) => {
     const normalized = setLocalePreference(nextLocale);
     setLocaleState(normalized);
-    document.documentElement.lang = normalized;
+    applyDocumentDirection(normalized);
     notifyPreferenceChange();
   }, []);
 
