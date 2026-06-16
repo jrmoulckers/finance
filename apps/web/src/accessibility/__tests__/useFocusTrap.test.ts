@@ -213,6 +213,33 @@ describe('useFocusTrap', () => {
     document.body.removeChild(outsideButton);
   });
 
+  it('inerts and hides background siblings while active and restores them on cleanup', () => {
+    const wrapper = document.createElement('div');
+    const background = document.createElement('main');
+    const dialogRoot = document.createElement('div');
+    const panel = document.createElement('div');
+    dialogRoot.className = 'form-dialog';
+    dialogRoot.appendChild(panel);
+    wrapper.appendChild(background);
+    wrapper.appendChild(dialogRoot);
+    document.body.appendChild(wrapper);
+    addFocusableChildren(panel);
+
+    const ref = createRef<HTMLElement>() as RefObject<HTMLElement>;
+    Object.defineProperty(ref, 'current', { value: panel, writable: true });
+
+    const { unmount } = renderHook(() => useFocusTrap(ref, { active: true }));
+
+    expect(background).toHaveAttribute('aria-hidden', 'true');
+    expect(background.inert).toBe(true);
+
+    unmount();
+
+    expect(background).not.toHaveAttribute('aria-hidden');
+    expect(background.inert).toBe(false);
+    document.body.removeChild(wrapper);
+  });
+
   // -----------------------------------------------------------------------
   // Ignores non-Tab keys
   // -----------------------------------------------------------------------

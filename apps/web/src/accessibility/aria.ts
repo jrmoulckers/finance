@@ -155,6 +155,8 @@ export interface FocusTrapOptions {
   active?: boolean;
   restoreFocus?: boolean;
   initialFocusRef?: RefObject<HTMLElement | null>;
+  /** Hide and inert siblings behind the focus trap while a modal is open. */
+  inertBackground?: boolean;
 }
 
 const FOCUSABLE_SELECTOR = [
@@ -166,6 +168,48 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
+type InertSnapshot = {
+  element: HTMLElement;
+  ariaHidden: string | null;
+  inert: boolean;
+};
+
+function getFocusTrapRoot(container: HTMLElement): HTMLElement {
+  return (container.closest('.form-dialog, [data-focus-trap-root]') as HTMLElement | null) ?? container;
+}
+
+function inertSiblingsBehindTrap(container: HTMLElement): () => void {
+  const trapRoot = getFocusTrapRoot(container);
+  const parent = trapRoot.parentElement;
+  if (!parent) return () => {};
+
+  const snapshots: InertSnapshot[] = [];
+  Array.from(parent.children).forEach((sibling) => {
+    if (!(sibling instanceof HTMLElement) || sibling === trapRoot || sibling.contains(trapRoot)) {
+      return;
+    }
+
+    snapshots.push({
+      element: sibling,
+      ariaHidden: sibling.getAttribute('aria-hidden'),
+      inert: Boolean(sibling.inert),
+    });
+    sibling.setAttribute('aria-hidden', 'true');
+    sibling.inert = true;
+  });
+
+  return () => {
+    snapshots.forEach(({ element, ariaHidden, inert }) => {
+      if (ariaHidden === null) {
+        element.removeAttribute('aria-hidden');
+      } else {
+        element.setAttribute('aria-hidden', ariaHidden);
+      }
+      element.inert = inert;
+    });
+  };
+}
+
 /**
  * Hook that traps focus within a container (e.g. a modal dialog).
  * Tab / Shift+Tab cycle through focusable descendants without
@@ -175,13 +219,14 @@ export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   options: FocusTrapOptions = {},
 ): void {
-  const { active = true, restoreFocus = true, initialFocusRef } = options;
+  const { active = true, restoreFocus = true, initialFocusRef, inertBackground = true } = options;
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!active || !containerRef.current) return;
     previouslyFocusedRef.current = document.activeElement as HTMLElement;
     const container = containerRef.current;
+    const restoreBackground = inertBackground ? inertSiblingsBehindTrap(container) : () => {};
 
     const initialTarget =
       initialFocusRef?.current ?? container.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
@@ -208,9 +253,10 @@ export function useFocusTrap(
     container.addEventListener('keydown', handleKeyDown);
     return () => {
       container.removeEventListener('keydown', handleKeyDown);
+      restoreBackground();
       if (restoreFocus) previouslyFocusedRef.current?.focus();
     };
-  }, [active, containerRef, initialFocusRef, restoreFocus]);
+  }, [active, containerRef, inertBackground, initialFocusRef, restoreFocus]);
 }
 
 /* ------------------------------------------------------------------ */
