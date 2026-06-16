@@ -24,3 +24,5 @@ export { NaturalLanguageInput } from './NaturalLanguageInput';
 export type { NaturalLanguageInputProps } from './NaturalLanguageInput';
 export { FormField } from './FormField';
 export type { FormFieldProps } from './FormField';
+export { FormErrorSummary } from './FormErrorSummary';
+export type { FormErrorSummaryItem, FormErrorSummaryProps } from './FormErrorSummary';

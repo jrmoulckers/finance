@@ -194,6 +194,36 @@
   font-weight: var(--font-weight-medium);
 }
 
+.form-error-summary {
+  margin-bottom: var(--spacing-4);
+  padding: var(--spacing-3);
+  border: 2px solid var(--semantic-status-negative);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-primary);
+}
+
+.form-error-summary:focus-visible {
+  outline: 3px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.form-error-summary__title {
+  margin: 0 0 var(--spacing-2);
+  font-weight: var(--font-weight-semibold);
+}
+
+.form-error-summary__list {
+  margin: 0;
+  padding-inline-start: var(--spacing-5);
+}
+
+.form-error-summary__list a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* ---------------------------------------------------------------------------
  * Radio group (fieldset)
  * ------------------------------------------------------------------------- */

@@ -57,6 +57,7 @@ import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { transactionSchema } from '../../lib/validation';
 import { DateInput } from '../common';
 import { CounterpartyInput } from '../transactions/CounterpartyInput';
+import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
 import './forms.css';
 
@@ -242,6 +243,7 @@ export function TransactionForm({
   // -- refs ----------------------------------------------------------------
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   // -- state ---------------------------------------------------------------
   const amountInput = useAmountInput({ currencySymbol: '$', decimalPlaces: 2 });
@@ -507,6 +509,7 @@ export function TransactionForm({
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
+        requestAnimationFrame(() => errorSummaryRef.current?.focus());
         return;
       }
 
@@ -655,6 +658,14 @@ export function TransactionForm({
   const hasAccountError = Boolean(errors.accountId);
   const hasSplitError = Boolean(errors.splits);
   const hasValidationErrors = Object.keys(errors).length > 0;
+  const validationErrorItems: FormErrorSummaryItem[] = [
+    hasAmountError ? { fieldId: 'txn-amount', label: 'Amount', message: errors.amount! } : null,
+    hasDescriptionError
+      ? { fieldId: 'txn-description', label: 'Payee', message: errors.description! }
+      : null,
+    hasAccountError ? { fieldId: 'txn-account', label: 'Account', message: errors.accountId! } : null,
+    hasSplitError ? { fieldId: 'txn-splits-status', label: 'Splits', message: errors.splits! } : null,
+  ].filter((item): item is FormErrorSummaryItem => item !== null);
 
   return (
     <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
@@ -679,8 +690,19 @@ export function TransactionForm({
             {submitError}
           </div>
         )}
+        <FormErrorSummary
+          id="transaction-form-error-summary"
+          errors={validationErrorItems}
+          summaryRef={errorSummaryRef}
+        />
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          aria-describedby={
+            validationErrorItems.length > 0 ? 'transaction-form-error-summary' : undefined
+          }
+        >
           <div className="form-fields">
             {/* Amount (Venmo-style cents-first) */}
             <div className="form-group">
@@ -950,7 +972,7 @@ export function TransactionForm({
                 {hasSplitRows ? splitRemainderText : 'Unassigned: no split lines'}
               </div>
               {hasSplitError && (
-                <span className="form-error" role="alert">
+                <span id="txn-splits-error" className="form-error" role="alert">
                   {errors.splits}
                 </span>
               )}
