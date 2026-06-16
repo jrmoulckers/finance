@@ -61,6 +61,12 @@ describe('WatchlistsPage', () => {
       createCategory: vi.fn(),
       updateCategory: vi.fn(),
       deleteCategory: vi.fn(),
+      foodMealTemplate: {
+        parentCategory: null,
+        subcategories: [],
+        missingSubcategoryDefinitions: [],
+      },
+      ensureFoodMealCategories: vi.fn(),
     });
 
     mockedUseSpendingWatchlists.mockReturnValue({

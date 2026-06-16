@@ -1,0 +1,141 @@
+.client-profitability {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.client-profitability__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.client-profitability__eyebrow {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.client-profitability__title {
+  font-size: var(--type-scale-display-font-size);
+  font-weight: var(--type-scale-display-font-weight);
+  margin: 0;
+}
+
+.client-profitability__description {
+  color: var(--semantic-text-secondary);
+  margin: 0;
+  max-width: 72ch;
+}
+
+.client-profitability__card {
+  background: var(--semantic-surface-primary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-4);
+}
+
+.client-profitability__card-title {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+  margin: 0 0 var(--spacing-3);
+}
+
+.client-profitability__filters {
+  display: grid;
+  gap: var(--spacing-3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.client-profitability__filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.client-profitability__label {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+}
+
+.client-profitability__input {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--radius-md);
+  font: inherit;
+  padding: var(--spacing-2) var(--spacing-3);
+}
+
+.client-profitability__summary-grid {
+  display: grid;
+  gap: var(--spacing-3);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.client-profitability__metric {
+  border: 1px solid var(--semantic-border-muted, var(--semantic-border-default));
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+}
+
+.client-profitability__metric-label {
+  color: var(--semantic-text-secondary);
+  display: block;
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.client-profitability__metric-value {
+  display: block;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: 700;
+  margin-top: var(--spacing-1);
+}
+
+.client-profitability__metric-value--positive {
+  color: var(--semantic-success-text, #047857);
+}
+
+.client-profitability__metric-value--negative {
+  color: var(--semantic-danger-text, #b91c1c);
+}
+
+.client-profitability__chart {
+  height: 320px;
+  width: 100%;
+}
+
+.client-profitability__chart-caption {
+  color: var(--semantic-text-secondary);
+  margin: var(--spacing-3) 0 0;
+}
+
+.client-profitability__table-wrapper {
+  overflow-x: auto;
+}
+
+.client-profitability__table {
+  border-collapse: collapse;
+  min-width: 760px;
+  width: 100%;
+}
+
+.client-profitability__table th,
+.client-profitability__table td {
+  border-bottom: 1px solid var(--semantic-border-default);
+  padding: var(--spacing-2) var(--spacing-3);
+  text-align: right;
+}
+
+.client-profitability__table th:first-child,
+.client-profitability__table td:first-child {
+  text-align: left;
+}
+
+.client-profitability__empty {
+  color: var(--semantic-text-secondary);
+  margin: 0;
+}

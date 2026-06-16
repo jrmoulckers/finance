@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { type FC, type KeyboardEvent, useCallback } from 'react';
-import { moveFocusTo } from '../../accessibility/aria';
 
 export interface SkipToContentProps {
   targetId?: string;
@@ -12,28 +11,35 @@ export const SkipToContent: FC<SkipToContentProps> = ({
   targetId = 'main-content',
   label = 'Skip to main content',
 }) => {
-  const handleClick = useCallback(() => {
-    const target = document.getElementById(targetId);
-    moveFocusTo(target);
+  const moveFocusToTarget = useCallback(() => {
+    const target = document.getElementById(targetId) ?? document.querySelector<HTMLElement>('main');
+
+    if (!target) return;
+
+    if (!target.hasAttribute('tabindex')) {
+      target.setAttribute('tabindex', '-1');
+    }
+
+    target.focus();
   }, [targetId]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLAnchorElement>) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        handleClick();
+        moveFocusToTarget();
       }
     },
-    [handleClick],
+    [moveFocusToTarget],
   );
 
   return (
     <a
       href={`#${targetId}`}
-      className="skip-to-content"
+      className="skip-link"
       onClick={(e) => {
         e.preventDefault();
-        handleClick();
+        moveFocusToTarget();
       }}
       onKeyDown={handleKeyDown}
     >

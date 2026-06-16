@@ -17,7 +17,7 @@
  * References: issue #1471
  */
 
-import { type FC, useId, useMemo, useRef } from 'react';
+import { type FC, useId, useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -32,7 +32,11 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { CHART_COLORS, formatChartCurrency } from './chart-palette';
-import { useArrowKeyNavigation } from '../../accessibility/aria';
+import {
+  AccessibleChartDataTable,
+  CHART_KEYBOARD_INSTRUCTIONS,
+  useChartKeyboardNavigation,
+} from './chart-accessibility';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 import './spending-trend.css';
 
@@ -233,7 +237,6 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
   comparison,
 }) => {
   const chartId = useId();
-  const containerRef = useRef<HTMLDivElement>(null);
   const maskingMode = useEffectiveMaskingMode();
   const disableAnimation = prefersReducedMotion();
 
@@ -246,9 +249,21 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
     return `${title}: ${data.length} data points, range ${formatChartCurrency(min, currency, 'en-US', maskingMode)} to ${formatChartCurrency(max, currency, 'en-US', maskingMode)}, total ${formatChartCurrency(total, currency, 'en-US', maskingMode)}.`;
   }, [data, currency, title, maskingMode]);
 
-  const { handleKeyDown } = useArrowKeyNavigation(containerRef, {
-    orientation: 'horizontal',
-  });
+  const dataPointRows = useMemo(
+    () =>
+      data.map((point, index) => {
+        const formattedValue = formatChartCurrency(point.spending, currency, 'en-US', maskingMode);
+        return {
+          id: `${chartId}-point-${index}`,
+          rowHeader: point.label,
+          cells: [formattedValue],
+          ariaLabel: `${point.label}: ${formattedValue}`,
+        };
+      }),
+    [chartId, currency, data, maskingMode],
+  );
+
+  const { announcement, handleFocus, handleKeyDown } = useChartKeyboardNavigation(dataPointRows);
 
   const chartColor = CHART_COLORS[0];
   const chartProps = {
@@ -289,7 +304,7 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
     if (viewType === 'bar') {
       return (
         <ResponsiveContainer width="100%" height={height}>
-          <BarChart {...chartProps} role="img" aria-labelledby={`${chartId}-title`}>
+          <BarChart {...chartProps} role="img" aria-label={description}>
             {commonGrid}
             {commonXAxis}
             {commonYAxis}
@@ -309,7 +324,7 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
     if (viewType === 'area') {
       return (
         <ResponsiveContainer width="100%" height={height}>
-          <AreaChart {...chartProps} role="img" aria-labelledby={`${chartId}-title`}>
+          <AreaChart {...chartProps} role="img" aria-label={description}>
             {commonGrid}
             {commonXAxis}
             {commonYAxis}
@@ -329,10 +344,9 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
       );
     }
 
-    // Default: line chart
     return (
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart {...chartProps} role="img" aria-labelledby={`${chartId}-title`}>
+        <LineChart {...chartProps} role="img" aria-label={description}>
           {commonGrid}
           {commonXAxis}
           {commonYAxis}
@@ -354,12 +368,10 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
 
   return (
     <div
-      ref={containerRef}
       className="spending-trend"
       role="figure"
       aria-label={description}
       aria-roledescription="spending trend chart"
-      onKeyDown={handleKeyDown}
     >
       <div className="spending-trend__header">
         <h3 id={`${chartId}-title`} className="chart-title">
@@ -371,7 +383,6 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
         </div>
       </div>
 
-      {/* Annotations */}
       <div className="spending-trend__annotations" aria-live="polite">
         {averageDailySpending != null && (
           <span className="spending-trend__rate">
@@ -391,13 +402,45 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
       <p id={`${chartId}-desc`} className="sr-only">
         {description}
       </p>
+      <p id={`${chartId}-instructions`} className="sr-only">
+        {CHART_KEYBOARD_INSTRUCTIONS}
+      </p>
+      <div
+        id={`${chartId}-live`}
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {announcement}
+      </div>
 
       {data.length === 0 ? (
         <div className="spending-trend__empty" role="status">
           No spending data for this period.
         </div>
       ) : (
-        renderChart()
+        <>
+          <div
+            role="group"
+            aria-label={`${title} data navigator`}
+            aria-roledescription="interactive chart"
+            aria-describedby={`${chartId}-desc ${chartId}-instructions ${chartId}-table-caption ${chartId}-live`}
+            aria-keyshortcuts="ArrowLeft ArrowRight Home End"
+            tabIndex={0}
+            onFocus={handleFocus}
+            onKeyDown={handleKeyDown}
+          >
+            {renderChart()}
+          </div>
+          <AccessibleChartDataTable
+            captionId={`${chartId}-table-caption`}
+            title={title}
+            rowHeaderLabel="Period"
+            columns={[{ key: 'spending', header: 'Spending' }]}
+            rows={dataPointRows}
+          />
+        </>
       )}
     </div>
   );

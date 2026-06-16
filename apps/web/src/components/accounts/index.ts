@@ -2,3 +2,4 @@
 
 export { AccountDeleteDialog } from './AccountDeleteDialog';
 export type { AccountDeleteDialogProps } from './AccountDeleteDialog';
+export { AccountPurposeBadge, AccountPurposeFilterControl } from './AccountPurposeControls';

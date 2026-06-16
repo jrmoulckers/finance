@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AppIcon } from '../components/icons';
 
+import { AccountPurposeFilterControl } from '../components/accounts';
 import {
   ConfirmDialog,
   CurrencyDisplay,
@@ -21,11 +22,19 @@ import {
 } from '../components/transactions';
 import type { AdvancedFilters } from '../components/transactions';
 import type { SortConfig, SortField } from '../components/transactions';
+import { TransactionBulkActionsToolbar } from '../components/transactions/TransactionBulkActionsToolbar';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts } from '../hooks/useAccounts';
+import { useBulkTransactions } from '../hooks/useBulkTransactions';
 import { useCategories } from '../hooks/useCategories';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useTransactions } from '../hooks/useTransactions';
 import type { Transaction } from '../kmp/bridge';
+import {
+  filterAccountsByPurpose,
+  filterTransactionsByAccountPurpose,
+  type AccountPurposeFilter,
+} from '../lib/accountPurpose';
 
 // ---------------------------------------------------------------------------
 // URL param helpers for filter/sort persistence
@@ -259,10 +268,15 @@ export const TransactionsPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editPanelTransaction, setEditPanelTransaction] = useState<Transaction | null>(null);
+  const [selectedPurposeFilter, setSelectedPurposeFilter] = useState<AccountPurposeFilter>('all');
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+  const transactionRowRefs = useRef(new Map<string, HTMLLIElement>());
 
   // Get filters/sort from URL params
   const advancedFilters = useMemo(() => filtersFromParams(searchParams), [searchParams]);
@@ -316,12 +330,50 @@ export const TransactionsPage: React.FC = () => {
     () => new Map(accounts.map((account) => [account.id, account.name])),
     [accounts],
   );
+  const visibleFilterAccounts = useMemo(
+    () => filterAccountsByPurpose(accounts, selectedPurposeFilter),
+    [accounts, selectedPurposeFilter],
+  );
 
-  // Apply advanced local filters, then sort
+  // Apply purpose filter, advanced local filters, then sort
   const transactions = useMemo(() => {
-    const filtered = applyAdvancedFilters(rawTransactions, advancedFilters);
+    const purposeFiltered = filterTransactionsByAccountPurpose(
+      rawTransactions,
+      accounts,
+      selectedPurposeFilter,
+    );
+    const filtered = applyAdvancedFilters(purposeFiltered, advancedFilters);
     return sortTransactions(filtered, sortConfig, categoryNames);
-  }, [rawTransactions, advancedFilters, sortConfig, categoryNames]);
+  }, [
+    rawTransactions,
+    accounts,
+    selectedPurposeFilter,
+    advancedFilters,
+    sortConfig,
+    categoryNames,
+  ]);
+
+  const bulkTransactions = useBulkTransactions(transactions, refreshTransactions);
+
+  const selectedTransactionTags = useMemo(() => {
+    const tags = new Set<string>();
+    for (const transaction of bulkTransactions.selectedTransactions) {
+      for (const tag of transaction.tags ?? []) {
+        tags.add(tag);
+      }
+    }
+    return Array.from(tags);
+  }, [bulkTransactions.selectedTransactions]);
+
+  const allVisibleSelected =
+    transactions.length > 0 && bulkTransactions.selectionCount === transactions.length;
+  const someVisibleSelected = bulkTransactions.selectionCount > 0 && !allVisibleSelected;
+
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = someVisibleSelected;
+    }
+  }, [someVisibleSelected]);
 
   // Group by date for display
   const groupedTransactions = useMemo(() => {
@@ -374,6 +426,15 @@ export const TransactionsPage: React.FC = () => {
     setIsFormOpen(true);
     setAddMenuOpen(false);
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('new') !== 'transaction') return;
+
+    handleOpenCreateForm();
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('new');
+    setSearchParams(nextParams, { replace: true });
+  }, [handleOpenCreateForm, searchParams, setSearchParams]);
 
   /** Navigate to the import wizard from the Add Transaction dropdown. */
   const handleImportFromFile = useCallback(() => {
@@ -456,7 +517,123 @@ export const TransactionsPage: React.FC = () => {
     }
   }, [deleteTransaction, deletingTransaction, refreshTransactions]);
 
+  const handleBulkDeleteConfirm = useCallback(() => {
+    bulkTransactions.bulkDelete();
+    setBulkDeleteDialogOpen(false);
+  }, [bulkTransactions]);
+
+  const handleTransactionSelection = useCallback(
+    (transaction: Transaction, selected: boolean, shiftKey: boolean) => {
+      setActiveTransactionId(transaction.id);
+      if (shiftKey) {
+        bulkTransactions.selectRange(transaction.id, selected);
+      } else {
+        bulkTransactions.setSelection(transaction.id, selected);
+      }
+    },
+    [bulkTransactions],
+  );
+
+  const focusTransactionRow = useCallback((transactionId: string) => {
+    const focusRow = () => transactionRowRefs.current.get(transactionId)?.focus();
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(focusRow);
+    } else {
+      focusRow();
+    }
+  }, []);
+
+  const handleListNavigate = useCallback(
+    (direction: -1 | 1) => {
+      if (transactions.length === 0) return;
+
+      const currentIndex = activeTransactionId
+        ? transactions.findIndex((transaction) => transaction.id === activeTransactionId)
+        : -1;
+      const nextIndex = Math.min(
+        transactions.length - 1,
+        Math.max(0, (currentIndex === -1 ? 0 : currentIndex) + direction),
+      );
+      const nextTransactionId = transactions[nextIndex].id;
+      setActiveTransactionId(nextTransactionId);
+      focusTransactionRow(nextTransactionId);
+    },
+    [activeTransactionId, focusTransactionRow, transactions],
+  );
+
+  const getKeyboardTargetTransaction = useCallback(() => {
+    if (transactions.length === 0) return null;
+    return (
+      transactions.find((transaction) => transaction.id === activeTransactionId) ?? transactions[0]
+    );
+  }, [activeTransactionId, transactions]);
+
+  const handleToggleActiveSelection = useCallback(() => {
+    const transaction = getKeyboardTargetTransaction();
+    if (!transaction) return;
+    setActiveTransactionId(transaction.id);
+    bulkTransactions.toggleSelection(transaction.id);
+  }, [bulkTransactions, getKeyboardTargetTransaction]);
+
+  const handleSelectAllVisible = useCallback(() => {
+    bulkTransactions.selectAll();
+    if (transactions[0]) {
+      setActiveTransactionId(transactions[0].id);
+    }
+  }, [bulkTransactions, transactions]);
+
+  const handleDeleteSelected = useCallback(() => {
+    if (bulkTransactions.selectionCount > 0) {
+      setBulkDeleteDialogOpen(true);
+    }
+  }, [bulkTransactions.selectionCount]);
+
+  const handleEditActiveTransaction = useCallback(() => {
+    const onlySelectedTransaction =
+      bulkTransactions.selectionCount === 1 ? bulkTransactions.selectedTransactions[0] : null;
+    const transaction = onlySelectedTransaction ?? getKeyboardTargetTransaction();
+    if (transaction) {
+      setActiveTransactionId(transaction.id);
+      handleEditTransaction(transaction);
+    }
+  }, [
+    bulkTransactions.selectedTransactions,
+    bulkTransactions.selectionCount,
+    getKeyboardTargetTransaction,
+    handleEditTransaction,
+  ]);
+
+  const handleOpenActiveTransaction = useCallback(() => {
+    const transaction = getKeyboardTargetTransaction();
+    if (transaction) {
+      navigate(`/transactions/${transaction.id}`);
+    }
+  }, [getKeyboardTargetTransaction, navigate]);
+
+  useEffect(() => {
+    if (transactions.length === 0) {
+      setActiveTransactionId(null);
+      return;
+    }
+    if (
+      !activeTransactionId ||
+      !transactions.some((transaction) => transaction.id === activeTransactionId)
+    ) {
+      setActiveTransactionId(transactions[0].id);
+    }
+  }, [activeTransactionId, transactions]);
+
+  useKeyboardShortcuts({
+    onListNavigate: handleListNavigate,
+    onListSelect: handleOpenActiveTransaction,
+    onListToggleSelection: handleToggleActiveSelection,
+    onListSelectAll: handleSelectAllVisible,
+    onListDeleteSelected: handleDeleteSelected,
+    onListEditSelected: handleEditActiveTransaction,
+  });
+
   const hasActiveFilters =
+    selectedPurposeFilter !== 'all' ||
     query.trim() !== '' ||
     advancedFilters.startDate !== '' ||
     advancedFilters.endDate !== '' ||
@@ -537,6 +714,12 @@ export const TransactionsPage: React.FC = () => {
         </div>
       </div>
 
+      <AccountPurposeFilterControl
+        value={selectedPurposeFilter}
+        onChange={setSelectedPurposeFilter}
+        label="Filter transactions by account purpose"
+      />
+
       <div className="search-bar" role="search">
         <input
           type="search"
@@ -557,7 +740,7 @@ export const TransactionsPage: React.FC = () => {
             isOpen={filtersOpen}
             onToggle={() => setFiltersOpen((o) => !o)}
             categories={categories}
-            accounts={accounts}
+            accounts={visibleFilterAccounts}
           />
         </div>
         <TransactionSort sort={sortConfig} onChange={handleSortChange} />
@@ -580,6 +763,44 @@ export const TransactionsPage: React.FC = () => {
         />
       ) : (
         <div>
+          <p className="sr-only" role="status" aria-live="polite">
+            {bulkTransactions.selectionCount === 0
+              ? 'No transactions selected'
+              : `${bulkTransactions.selectionCount} transaction${
+                  bulkTransactions.selectionCount === 1 ? '' : 's'
+                } selected`}
+          </p>
+          <label className="transaction-register__select-all">
+            <input
+              ref={selectAllCheckboxRef}
+              type="checkbox"
+              className="bulk-select-checkbox"
+              checked={allVisibleSelected}
+              onChange={(event) => {
+                if (event.currentTarget.checked) {
+                  bulkTransactions.selectAll();
+                } else {
+                  bulkTransactions.clearSelection();
+                }
+              }}
+              aria-label="Select all visible transactions"
+            />
+            Select all visible transactions
+          </label>
+
+          <TransactionBulkActionsToolbar
+            selectionCount={bulkTransactions.selectionCount}
+            totalCount={transactions.length}
+            categories={categories}
+            availableTags={selectedTransactionTags}
+            onSelectAll={bulkTransactions.selectAll}
+            onClearSelection={bulkTransactions.clearSelection}
+            onBulkUpdate={bulkTransactions.bulkUpdate}
+            onBulkAddTag={bulkTransactions.bulkAddTag}
+            onBulkRemoveTag={bulkTransactions.bulkRemoveTag}
+            onRequestBulkDelete={() => setBulkDeleteDialogOpen(true)}
+          />
+
           {groupedTransactions.map((group) => (
             <section key={group.date} className="page-section" aria-label={group.label}>
               <h3 className="list-group__header">{group.label}</h3>
@@ -588,8 +809,53 @@ export const TransactionsPage: React.FC = () => {
                   {group.transactions.map((transaction) => {
                     const transactionLabel = getTransactionLabel(transaction);
 
+                    const isSelected = bulkTransactions.isSelected(transaction.id);
+                    const isActive = activeTransactionId === transaction.id;
+
                     return (
-                      <li key={transaction.id} className="list-item" role="listitem">
+                      <li
+                        key={transaction.id}
+                        ref={(node) => {
+                          if (node) {
+                            transactionRowRefs.current.set(transaction.id, node);
+                          } else {
+                            transactionRowRefs.current.delete(transaction.id);
+                          }
+                        }}
+                        className={`list-item transaction-register__row${
+                          isSelected ? ' transaction-register__row--selected' : ''
+                        }${isActive ? ' transaction-register__row--active' : ''}`}
+                        role="listitem"
+                        aria-selected={isSelected}
+                        tabIndex={isActive ? 0 : -1}
+                        onFocus={() => setActiveTransactionId(transaction.id)}
+                        onClick={(event) => {
+                          if (
+                            (event.target as HTMLElement).closest(
+                              'a,button,input,label,select,textarea',
+                            )
+                          ) {
+                            return;
+                          }
+                          setActiveTransactionId(transaction.id);
+                        }}
+                      >
+                        <div className="transaction-register__checkbox-cell">
+                          <input
+                            type="checkbox"
+                            className="bulk-select-checkbox"
+                            checked={isSelected}
+                            readOnly
+                            aria-label={`Select ${transactionLabel}`}
+                            onClick={(event) =>
+                              handleTransactionSelection(
+                                transaction,
+                                event.currentTarget.checked,
+                                event.shiftKey,
+                              )
+                            }
+                          />
+                        </div>
                         <div className="list-item__content">
                           <Link
                             to={`/transactions/${transaction.id}`}
@@ -678,6 +944,18 @@ export const TransactionsPage: React.FC = () => {
         cancelLabel="Cancel"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeletingTransaction(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={bulkDeleteDialogOpen}
+        title="Delete Selected Transactions"
+        message={`Are you sure you want to delete ${bulkTransactions.selectionCount} selected transaction${
+          bulkTransactions.selectionCount === 1 ? '' : 's'
+        }?`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleBulkDeleteConfirm}
+        onCancel={() => setBulkDeleteDialogOpen(false)}
       />
     </>
   );

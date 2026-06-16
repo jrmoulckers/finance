@@ -81,12 +81,15 @@ export type AccountType =
   | 'LOAN'
   | 'OTHER';
 
+export type AccountPurpose = 'personal' | 'business' | 'both';
+
 /** Maps to KMP `com.finance.models.Account`. */
 export interface Account extends SyncMetadata {
   readonly id: SyncId;
   readonly householdId: SyncId;
   readonly name: string;
   readonly type: AccountType;
+  readonly purpose?: AccountPurpose;
   readonly currency: Currency;
   readonly currentBalance: Cents;
   readonly isArchived: boolean;
@@ -101,12 +104,21 @@ export type TransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 /** Maps to KMP `com.finance.models.TransactionStatus`. */
 export type TransactionStatus = 'PENDING' | 'CLEARED' | 'RECONCILED' | 'VOID';
 
+/** Multi-line category allocation for a transaction split. */
+export interface TransactionSplit {
+  readonly id?: SyncId;
+  readonly categoryId: SyncId | null;
+  readonly amount: Cents;
+  readonly note: string | null;
+}
+
 /** Maps to KMP `com.finance.models.Transaction`. */
 export interface Transaction extends SyncMetadata {
   readonly id: SyncId;
   readonly householdId: SyncId;
   readonly accountId: SyncId;
   readonly categoryId: SyncId | null;
+  readonly splits?: readonly TransactionSplit[];
   readonly type: TransactionType;
   readonly status: TransactionStatus;
   readonly amount: Cents;

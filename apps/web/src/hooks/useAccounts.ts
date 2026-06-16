@@ -15,7 +15,7 @@
  * References: issue #443
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import {
   createAccount as repoCreateAccount,
@@ -26,6 +26,7 @@ import {
   type UpdateAccountInput,
 } from '../db/repositories/accounts';
 import type { Account, SyncId } from '../kmp/bridge';
+import { filterAccountsByPurpose, type AccountPurposeFilter } from '../lib/accountPurpose';
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -58,12 +59,17 @@ export interface UseAccountsResult {
   deleteAccount: (accountId: SyncId) => boolean;
 }
 
+export interface UseAccountsFilters {
+  /** Restrict the returned accounts to a selected purpose scope. */
+  purpose?: AccountPurposeFilter;
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
 /** Load all accounts from the local database and expose CRUD operations. */
-export function useAccounts(): UseAccountsResult {
+export function useAccounts(filters: UseAccountsFilters = {}): UseAccountsResult {
   const db = useDatabase();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -141,8 +147,13 @@ export function useAccounts(): UseAccountsResult {
     [db, refresh],
   );
 
+  const visibleAccounts = useMemo(
+    () => filterAccountsByPurpose(accounts, filters.purpose ?? 'all'),
+    [accounts, filters.purpose],
+  );
+
   return {
-    accounts,
+    accounts: visibleAccounts,
     loading,
     error,
     refresh,

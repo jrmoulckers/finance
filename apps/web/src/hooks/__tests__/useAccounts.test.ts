@@ -48,6 +48,7 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
     type: 'CHECKING',
     currency: { code: 'USD', decimalPlaces: 2 },
     currentBalance: { amount: 100000 },
+    purpose: 'personal',
     isArchived: false,
     sortOrder: 1,
     icon: 'bank',
@@ -91,6 +92,21 @@ describe('useAccounts', () => {
     expect(result.current.accounts).toHaveLength(2);
     expect(result.current.accounts[0]?.name).toBe('Checking');
     expect(result.current.accounts[1]?.name).toBe('Savings');
+  });
+
+  it('filters accounts by purpose and includes shared accounts in scoped views', () => {
+    mockGetAllAccounts.mockReturnValue([
+      makeAccount({ id: 'acct-personal', purpose: 'personal' }),
+      makeAccount({ id: 'acct-business', name: 'Business Checking', purpose: 'business' }),
+      makeAccount({ id: 'acct-both', name: 'Shared Reserve', purpose: 'both' }),
+    ]);
+
+    const { result } = renderHook(() => useAccounts({ purpose: 'business' }));
+
+    expect(result.current.accounts.map((account) => account.name)).toEqual([
+      'Business Checking',
+      'Shared Reserve',
+    ]);
   });
 
   // -----------------------------------------------------------------------

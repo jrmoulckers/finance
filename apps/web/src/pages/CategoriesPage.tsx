@@ -51,8 +51,17 @@ function getUsageLabel(count: number): string {
 }
 
 export const CategoriesPage: React.FC = () => {
-  const { categories, loading, error, refresh, createCategory, updateCategory, deleteCategory } =
-    useCategories();
+  const {
+    categories,
+    loading,
+    error,
+    refresh,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    foodMealTemplate,
+    ensureFoodMealCategories,
+  } = useCategories();
   const {
     transactions,
     loading: transactionsLoading,
@@ -140,6 +149,16 @@ export const CategoriesPage: React.FC = () => {
     setDeleteError(null);
   }, []);
 
+  const handleAddFoodMealCategories = useCallback(() => {
+    const nextTemplateState = ensureFoodMealCategories();
+    if (!nextTemplateState) {
+      setDeleteError('Failed to add Food & Meals categories.');
+      return;
+    }
+
+    setDeleteError(null);
+  }, [ensureFoodMealCategories]);
+
   const handleCancelDelete = useCallback(() => {
     setDeletingCategory(null);
   }, []);
@@ -226,6 +245,61 @@ export const CategoriesPage: React.FC = () => {
       ) : (
         <>
           {deleteError && <ErrorBanner message={deleteError} />}
+          <section aria-label="Food & Meals setup" style={{ marginBottom: 'var(--spacing-6)' }}>
+            <div className="card">
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 'var(--spacing-4)',
+                  flexWrap: 'wrap',
+                  marginBottom: 'var(--spacing-3)',
+                }}
+              >
+                <div style={{ maxWidth: '40rem' }}>
+                  <p className="card__title">Food & Meals setup</p>
+                  <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                    Organize grocery and meal-planning spending under one parent category so food
+                    budgets can break down groceries, dining out, delivery, coffee, and meal prep.
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 'var(--type-scale-caption-font-size)',
+                      color: 'var(--semantic-text-secondary)',
+                      marginTop: 'var(--spacing-2)',
+                    }}
+                  >
+                    {foodMealTemplate.parentCategory
+                      ? `${foodMealTemplate.subcategories.length} of 5 subcategories ready under ${foodMealTemplate.parentCategory.name}.`
+                      : 'Create a Food & Meals parent category and all 5 subcategories in one step.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="form-button form-button--secondary"
+                  onClick={handleAddFoodMealCategories}
+                >
+                  {foodMealTemplate.missingSubcategoryDefinitions.length === 0 &&
+                  foodMealTemplate.parentCategory
+                    ? 'Food & Meals ready'
+                    : 'Add Food & Meals categories'}
+                </button>
+              </div>
+              <ul style={{ display: 'grid', gap: 'var(--spacing-2)', paddingLeft: '1.25rem' }}>
+                {foodMealTemplate.subcategories.map((category) => (
+                  <li key={category.id}>
+                    {category.icon} {category.name}
+                  </li>
+                ))}
+                {foodMealTemplate.missingSubcategoryDefinitions.map((subcategory) => (
+                  <li key={subcategory.name} style={{ color: 'var(--semantic-text-secondary)' }}>
+                    {subcategory.icon} {subcategory.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
           <p className="page-summary" aria-live="polite">
             {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} available for
             transaction organization.

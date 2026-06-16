@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { Budget, BudgetPeriod, Currency, SyncId } from '../../kmp/bridge';
+import type { Budget, BudgetPeriod, Category, Currency, SyncId } from '../../kmp/bridge';
 import { Currencies, cents } from '../../kmp/bridge';
+import {
+  getBudgetStarterTemplateById,
+  type BudgetStarterTemplateCategory,
+  type BudgetStarterTemplateId,
+} from '../../lib/budgeting/starter-budget-templates';
 import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { createCategory, getAllCategories } from './categories';
 import {
   SQLITE_NOW_EXPRESSION,
   mapCents,
@@ -64,6 +70,134 @@ export interface BudgetWithSpending extends Budget {
   readonly spentAmount: { amount: number };
   readonly remainingAmount: { amount: number };
 }
+
+/** Breakdown of spending within a budget's category tree. */
+export interface BudgetSpendingBreakdownItem {
+  readonly categoryId: SyncId;
+  readonly categoryName: string;
+  readonly spentAmount: { amount: number };
+}
+
+/** Input used when creating a starter budget template. */
+export interface CreateBudgetTemplateInput {
+  templateId: BudgetStarterTemplateId;
+  startDate: string;
+}
+
+function normalizeCategoryName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function findFirstHouseholdId(db: SqliteDb): SyncId | null {
+  const row = queryOne<Row>(
+    db,
+    'SELECT id FROM household WHERE deleted_at IS NULL ORDER BY created_at ASC LIMIT 1',
+  );
+  return row ? requireString(row.id, 'household.id') : null;
+}
+
+function resolveTemplateHouseholdId(db: SqliteDb, categories: Category[]): SyncId {
+  const existingHouseholdId =
+    categories.find((category) => category.isIncome === false)?.householdId ??
+    categories[0]?.householdId;
+
+  if (existingHouseholdId) {
+    return existingHouseholdId;
+  }
+
+  const householdId = findFirstHouseholdId(db);
+  if (!householdId) {
+    throw new Error('Cannot create a starter budget without a household.');
+  }
+
+  return householdId;
+}
+
+function findMatchingTemplateCategory(
+  categories: Category[],
+  householdId: SyncId,
+  name: string,
+  parentId: SyncId | null = null,
+): Category | null {
+  const normalizedName = normalizeCategoryName(name);
+  return (
+    categories.find(
+      (category) =>
+        category.householdId === householdId &&
+        category.parentId === parentId &&
+        normalizeCategoryName(category.name) === normalizedName &&
+        category.isIncome === false,
+    ) ?? null
+  );
+}
+
+function ensureTemplateCategory(
+  db: SqliteDb,
+  categories: Category[],
+  householdId: SyncId,
+  templateCategory: BudgetStarterTemplateCategory,
+  parentId: SyncId | null = null,
+): Category {
+  const existingCategory = findMatchingTemplateCategory(
+    categories,
+    householdId,
+    templateCategory.name,
+    parentId,
+  );
+  if (existingCategory) {
+    return existingCategory;
+  }
+
+  const sortOrder =
+    categories
+      .filter((category) => category.householdId === householdId)
+      .reduce((maxSortOrder, category) => Math.max(maxSortOrder, category.sortOrder), 0) + 1;
+
+  const createdCategory = createCategory(db, {
+    householdId,
+    name: templateCategory.name,
+    icon: templateCategory.icon,
+    color: templateCategory.color,
+    parentId,
+    sortOrder,
+  });
+
+  categories.push(createdCategory);
+  return createdCategory;
+}
+
+function buildBudgetCategoryScopeCte(): string {
+  return `WITH RECURSIVE budget_category_scope(id) AS (
+    SELECT category_id
+      FROM budget
+     WHERE id = ?
+       AND deleted_at IS NULL
+    UNION ALL
+    SELECT c.id
+      FROM category c
+      JOIN budget_category_scope scope
+        ON c.parent_id = scope.id
+     WHERE c.deleted_at IS NULL
+  )`;
+}
+
+const TRANSACTION_CATEGORY_AMOUNTS_CTE = `,
+transaction_category_amounts AS (
+  SELECT tx.household_id AS household_id,
+         tx.date AS date,
+         tx.type AS type,
+         CASE
+           WHEN split.value IS NULL THEN tx.category_id
+           ELSE json_extract(split.value, '$.categoryId')
+         END AS category_id,
+         CASE
+           WHEN split.value IS NULL THEN tx.amount
+           ELSE CAST(json_extract(split.value, '$.amount') AS INTEGER)
+         END AS amount
+    FROM "transaction" tx
+    LEFT JOIN json_each(COALESCE(NULLIF(tx.splits, ''), '[]')) AS split
+   WHERE tx.deleted_at IS NULL
+)`;
 
 function mapBudget(row: Row): Budget {
   return {
@@ -145,6 +279,61 @@ export function createBudget(db: SqliteDb, input: CreateBudgetInput): Budget {
   }
 
   return createdBudget;
+}
+
+/** Create a full starter budget from a named template. */
+export function createBudgetTemplate(db: SqliteDb, input: CreateBudgetTemplateInput): Budget[] {
+  const template = getBudgetStarterTemplateById(input.templateId);
+  if (!template || !template.isAvailable) {
+    throw new Error('Selected starter budget template is not available.');
+  }
+
+  const categories = getAllCategories(db);
+  const householdId = resolveTemplateHouseholdId(db, categories);
+  const templateCategoriesByName = new Map(
+    template.categories.map((category) => [normalizeCategoryName(category.name), category]),
+  );
+
+  return template.categories.flatMap((templateCategory) => {
+    const parentCategory = templateCategory.parentName
+      ? ensureTemplateCategory(
+          db,
+          categories,
+          householdId,
+          templateCategoriesByName.get(normalizeCategoryName(templateCategory.parentName)) ?? {
+            emoji: '🍽️',
+            name: templateCategory.parentName,
+            amountCents: 0,
+            icon: 'utensils',
+            color: '#16A34A',
+          },
+        )
+      : null;
+    const category = ensureTemplateCategory(
+      db,
+      categories,
+      householdId,
+      templateCategory,
+      parentCategory?.id ?? null,
+    );
+
+    if (templateCategory.createBudget === false) {
+      return [];
+    }
+
+    return [
+      createBudget(db, {
+        householdId,
+        categoryId: category.id,
+        name: templateCategory.name,
+        amount: { amount: templateCategory.amountCents },
+        period: 'MONTHLY',
+        startDate: input.startDate,
+        endDate: null,
+        isRollover: false,
+      }),
+    ];
+  });
 }
 
 /** Update a budget row and return the refreshed budget. */
@@ -237,7 +426,9 @@ export function getBudgetsByPeriod(db: SqliteDb, period: BudgetPeriod): Budget[]
 export function getBudgetWithSpending(db: SqliteDb, budgetId: SyncId): BudgetWithSpending | null {
   const row = queryOne<Row>(
     db,
-    `SELECT b.id AS id,
+    `${buildBudgetCategoryScopeCte()}
+     ${TRANSACTION_CATEGORY_AMOUNTS_CTE}
+     SELECT b.id AS id,
             b.household_id AS household_id,
             b.category_id AS category_id,
             b.name AS name,
@@ -262,10 +453,9 @@ export function getBudgetWithSpending(db: SqliteDb, budgetId: SyncId): BudgetWit
               0
             ) AS spent_amount
        FROM budget b
-       LEFT JOIN "transaction" t
-         ON t.category_id = b.category_id
+       LEFT JOIN transaction_category_amounts t
+         ON t.category_id IN (SELECT id FROM budget_category_scope)
         AND t.household_id = b.household_id
-        AND t.deleted_at IS NULL
         AND t.date >= b.start_date
         AND (b.end_date IS NULL OR t.date <= b.end_date)
       WHERE b.deleted_at IS NULL
@@ -285,7 +475,7 @@ export function getBudgetWithSpending(db: SqliteDb, budgetId: SyncId): BudgetWit
                b.deleted_at,
                b.sync_version,
                b.is_synced`,
-    [budgetId],
+    [budgetId, budgetId],
   );
 
   if (!row) {
@@ -300,4 +490,48 @@ export function getBudgetWithSpending(db: SqliteDb, budgetId: SyncId): BudgetWit
     spentAmount,
     remainingAmount: cents(budget.amount.amount - spentAmount.amount),
   };
+}
+
+/** Return spending grouped by category within the budget's category tree. */
+export function getBudgetSpendingBreakdown(
+  db: SqliteDb,
+  budgetId: SyncId,
+): BudgetSpendingBreakdownItem[] {
+  return query<Row>(
+    db,
+    `${buildBudgetCategoryScopeCte()}
+     ${TRANSACTION_CATEGORY_AMOUNTS_CTE}
+     SELECT c.id AS category_id,
+            c.name AS category_name,
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN t.type = 'EXPENSE' THEN ABS(t.amount)
+                  ELSE 0
+                END
+              ),
+              0
+            ) AS spent_amount
+       FROM budget b
+       JOIN budget_category_scope scope
+         ON 1 = 1
+       JOIN category c
+         ON c.id = scope.id
+        AND c.deleted_at IS NULL
+       LEFT JOIN transaction_category_amounts t
+         ON t.category_id = c.id
+        AND t.household_id = b.household_id
+        AND t.date >= b.start_date
+        AND (b.end_date IS NULL OR t.date <= b.end_date)
+      WHERE b.deleted_at IS NULL
+        AND b.id = ?
+      GROUP BY c.id, c.name
+      HAVING spent_amount > 0
+      ORDER BY spent_amount DESC, c.name ASC`,
+    [budgetId, budgetId],
+  ).rows.map((row) => ({
+    categoryId: requireString(row.category_id, 'budget_breakdown.category_id'),
+    categoryName: requireString(row.category_name, 'budget_breakdown.category_name'),
+    spentAmount: mapCents(row.spent_amount, 'budget_breakdown.spent_amount'),
+  }));
 }

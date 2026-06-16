@@ -54,6 +54,53 @@ export interface Recommendation {
   category?: string;
 }
 
+export interface SpendingBenchmarkDefinition {
+  key: string;
+  label: string;
+  aliases: string[];
+  minPercent: number;
+  maxPercent: number;
+  recommendedPercent?: number;
+  group: 'needs' | 'wants' | 'savings';
+  kind: 'expense' | 'savings';
+}
+
+export interface SpendingBenchmarkResult {
+  key: string;
+  label: string;
+  amount: number;
+  userPercent: number;
+  minPercent: number;
+  maxPercent: number;
+  recommendedPercent?: number;
+  benchmarkLabel: string;
+  status: 'good' | 'warning' | 'danger';
+  isOnTrack: boolean;
+  summary: string;
+  group: 'needs' | 'wants' | 'savings';
+  kind: 'expense' | 'savings';
+}
+
+export interface FinancialHealthScore {
+  score: number;
+  total: number;
+  percent: number;
+  label: string;
+}
+
+export interface BudgetRuleBucket {
+  key: 'needs' | 'wants' | 'savings';
+  label: string;
+  actualPercent: number;
+  targetPercent: number;
+  status: 'good' | 'warning' | 'danger';
+}
+
+export interface BudgetRuleOverview {
+  buckets: BudgetRuleBucket[];
+  summary: string;
+}
+
 /** Complete financial insights data. */
 export interface InsightsData {
   /** Spending by category, sorted by amount descending. */
@@ -84,6 +131,12 @@ export interface InsightsData {
   netCashFlow: number;
   /** Savings rate as a percentage (0-100). */
   savingsRate: number;
+  /** Spending benchmark comparison data. */
+  spendingBenchmarks: SpendingBenchmarkResult[];
+  /** Overall benchmark-based health score. */
+  financialHealthScore: FinancialHealthScore;
+  /** 50/30/20 budget rule overview. */
+  budgetRuleOverview: BudgetRuleOverview;
 }
 
 /** Shape returned by {@link useInsights}. */
@@ -97,6 +150,83 @@ export interface UseInsightsResult {
   /** Trigger a re-computation. */
   refresh: () => void;
 }
+
+export const SPENDING_BENCHMARKS: SpendingBenchmarkDefinition[] = [
+  {
+    key: 'housing',
+    label: 'Housing',
+    aliases: ['housing', 'rent', 'mortgage', 'home'],
+    minPercent: 25,
+    maxPercent: 35,
+    recommendedPercent: 30,
+    group: 'needs',
+    kind: 'expense',
+  },
+  {
+    key: 'food',
+    label: 'Food',
+    aliases: ['food', 'food & dining', 'dining', 'groceries', 'grocery'],
+    minPercent: 10,
+    maxPercent: 15,
+    group: 'needs',
+    kind: 'expense',
+  },
+  {
+    key: 'transportation',
+    label: 'Transportation',
+    aliases: ['transportation', 'transport', 'transit', 'travel', 'car'],
+    minPercent: 10,
+    maxPercent: 15,
+    group: 'needs',
+    kind: 'expense',
+  },
+  {
+    key: 'utilities',
+    label: 'Utilities',
+    aliases: ['utilities', 'utility', 'bills'],
+    minPercent: 5,
+    maxPercent: 10,
+    group: 'needs',
+    kind: 'expense',
+  },
+  {
+    key: 'insurance',
+    label: 'Insurance',
+    aliases: ['insurance'],
+    minPercent: 10,
+    maxPercent: 25,
+    group: 'needs',
+    kind: 'expense',
+  },
+  {
+    key: 'savings',
+    label: 'Savings',
+    aliases: ['savings'],
+    minPercent: 10,
+    maxPercent: 20,
+    recommendedPercent: 20,
+    group: 'savings',
+    kind: 'savings',
+  },
+  {
+    key: 'entertainment',
+    label: 'Entertainment',
+    aliases: ['entertainment', 'fun', 'recreation'],
+    minPercent: 5,
+    maxPercent: 10,
+    group: 'wants',
+    kind: 'expense',
+  },
+  {
+    key: 'personal',
+    label: 'Personal',
+    aliases: ['personal', 'personal care', 'shopping', 'clothing'],
+    minPercent: 5,
+    maxPercent: 10,
+    group: 'wants',
+    kind: 'expense',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -128,6 +258,18 @@ function makeComparison(current: number, previous: number): MonthComparison {
     changePercent,
     direction: changePercent > 0 ? 'up' : changePercent < 0 ? 'down' : 'flat',
   };
+}
+
+function normalizeCategoryName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function roundPercent(value: number): number {
+  return Math.round(value);
 }
 
 function buildCategorySpending(
@@ -187,7 +329,6 @@ function generateRecommendations(
 ): Recommendation[] {
   const recs: Recommendation[] = [];
 
-  // Warning if spending increased significantly
   if (spendingComparison.direction === 'up' && spendingComparison.changePercent > 20) {
     recs.push({
       id: 'spending-increased',
@@ -197,7 +338,6 @@ function generateRecommendations(
     });
   }
 
-  // Success if spending decreased
   if (spendingComparison.direction === 'down' && Math.abs(spendingComparison.changePercent) > 10) {
     recs.push({
       id: 'spending-decreased',
@@ -207,7 +347,6 @@ function generateRecommendations(
     });
   }
 
-  // Low savings rate warning
   if (savingsRate >= 0 && savingsRate < 10) {
     recs.push({
       id: 'low-savings-rate',
@@ -218,7 +357,6 @@ function generateRecommendations(
     });
   }
 
-  // Negative cash flow
   if (netCashFlow < 0) {
     recs.push({
       id: 'negative-cash-flow',
@@ -229,7 +367,6 @@ function generateRecommendations(
     });
   }
 
-  // High savings rate congratulation
   if (savingsRate >= 30) {
     recs.push({
       id: 'high-savings-rate',
@@ -239,7 +376,6 @@ function generateRecommendations(
     });
   }
 
-  // Dominant category warning (single category > 50% of spending)
   if (categorySpending.length > 0 && categorySpending[0].percentOfTotal > 50) {
     recs.push({
       id: 'dominant-category',
@@ -251,6 +387,198 @@ function generateRecommendations(
   }
 
   return recs;
+}
+
+function getExpenseBenchmarkStatus(
+  value: number,
+  benchmark: SpendingBenchmarkDefinition,
+): Pick<SpendingBenchmarkResult, 'status' | 'isOnTrack'> {
+  const effectiveMax = benchmark.recommendedPercent ?? benchmark.maxPercent;
+  if (value > benchmark.maxPercent + 5) {
+    return { status: 'danger', isOnTrack: false };
+  }
+  if (value > effectiveMax) {
+    return { status: 'warning', isOnTrack: false };
+  }
+  return { status: 'good', isOnTrack: true };
+}
+
+function getSavingsBenchmarkStatus(
+  value: number,
+  benchmark: SpendingBenchmarkDefinition,
+): Pick<SpendingBenchmarkResult, 'status' | 'isOnTrack'> {
+  if (value < benchmark.minPercent - 5) {
+    return { status: 'danger', isOnTrack: false };
+  }
+  if (value < benchmark.minPercent) {
+    return { status: 'warning', isOnTrack: false };
+  }
+  return { status: 'good', isOnTrack: true };
+}
+
+function buildBenchmarkSummary(benchmark: SpendingBenchmarkDefinition, value: number): string {
+  const rangeLabel = `${benchmark.minPercent}-${benchmark.maxPercent}%`;
+  const lowerLabel = benchmark.label.toLowerCase();
+
+  if (benchmark.kind === 'savings') {
+    if (value < benchmark.minPercent - 5) {
+      return `You save ${value}% of your income — significantly below the recommended ${rangeLabel} range.`;
+    }
+    if (value < benchmark.minPercent) {
+      return `You save ${value}% of your income — slightly below the recommended ${rangeLabel} range.`;
+    }
+    if (benchmark.recommendedPercent && value >= benchmark.recommendedPercent) {
+      return `You save ${value}% of your income — above the ${benchmark.recommendedPercent}% target.`;
+    }
+    return `You save ${value}% of your income — within the recommended ${rangeLabel} range, with ${benchmark.recommendedPercent}% as the ideal target.`;
+  }
+
+  if (value < benchmark.minPercent) {
+    return `You spend ${value}% on ${lowerLabel} — below the typical ${rangeLabel} range.`;
+  }
+  if (
+    benchmark.recommendedPercent &&
+    value > benchmark.recommendedPercent &&
+    value <= benchmark.maxPercent
+  ) {
+    return `You spend ${value}% on ${lowerLabel} — inside the ${rangeLabel} benchmark, but above the ideal ${benchmark.recommendedPercent}% target.`;
+  }
+  if (value <= benchmark.maxPercent) {
+    return `You spend ${value}% on ${lowerLabel} — that's within the recommended ${rangeLabel} range.`;
+  }
+  if (value <= benchmark.maxPercent + 5) {
+    return `You spend ${value}% on ${lowerLabel} — slightly above the recommended ${rangeLabel} range.`;
+  }
+  return `You spend ${value}% on ${lowerLabel} — significantly above the recommended ${rangeLabel} range.`;
+}
+
+function getBenchmarkLabel(benchmark: SpendingBenchmarkDefinition): string {
+  if (benchmark.recommendedPercent && benchmark.recommendedPercent !== benchmark.maxPercent) {
+    return `${benchmark.minPercent}-${benchmark.maxPercent}% (target ${benchmark.recommendedPercent}%)`;
+  }
+  return `${benchmark.minPercent}-${benchmark.maxPercent}%`;
+}
+
+function buildFinancialHealthScore(
+  spendingBenchmarks: SpendingBenchmarkResult[],
+): FinancialHealthScore {
+  const score = spendingBenchmarks.filter((benchmark) => benchmark.isOnTrack).length;
+  const total = spendingBenchmarks.length;
+  const percent = total > 0 ? Math.round((score / total) * 100) : 0;
+
+  let label = 'Needs attention';
+  if (percent >= 88) label = 'Excellent';
+  else if (percent >= 63) label = 'Good';
+  else if (percent >= 38) label = 'Fair';
+
+  return { score, total, percent, label };
+}
+
+function buildBudgetRuleOverview(
+  spendingBenchmarks: SpendingBenchmarkResult[],
+  savingsRate: number,
+): BudgetRuleOverview {
+  const actualByGroup = spendingBenchmarks.reduce<Record<'needs' | 'wants' | 'savings', number>>(
+    (acc, benchmark) => {
+      acc[benchmark.group] += benchmark.userPercent;
+      return acc;
+    },
+    { needs: 0, wants: 0, savings: 0 },
+  );
+
+  actualByGroup.savings = savingsRate;
+
+  const buckets: BudgetRuleBucket[] = [
+    {
+      key: 'needs',
+      label: 'Needs',
+      actualPercent: actualByGroup.needs,
+      targetPercent: 50,
+      status: actualByGroup.needs <= 50 ? 'good' : actualByGroup.needs <= 55 ? 'warning' : 'danger',
+    },
+    {
+      key: 'wants',
+      label: 'Wants',
+      actualPercent: actualByGroup.wants,
+      targetPercent: 30,
+      status: actualByGroup.wants <= 30 ? 'good' : actualByGroup.wants <= 35 ? 'warning' : 'danger',
+    },
+    {
+      key: 'savings',
+      label: 'Savings',
+      actualPercent: savingsRate,
+      targetPercent: 20,
+      status: savingsRate >= 20 ? 'good' : savingsRate >= 15 ? 'warning' : 'danger',
+    },
+  ];
+
+  const summary = buckets.every((bucket) => bucket.status === 'good')
+    ? `You're close to the 50/30/20 rule with ${actualByGroup.needs}% needs, ${actualByGroup.wants}% wants, and ${actualByGroup.savings}% savings.`
+    : `Your current split is ${actualByGroup.needs}% needs, ${actualByGroup.wants}% wants, and ${actualByGroup.savings}% savings. Focus on keeping needs near 50%, wants near 30%, and savings near 20%.`;
+
+  return { buckets, summary };
+}
+
+export function calculateSpendingBenchmarks(
+  categorySpending: CategorySpending[],
+  totalIncomeThisMonth: number,
+  savingsRate: number,
+): Pick<InsightsData, 'spendingBenchmarks' | 'financialHealthScore' | 'budgetRuleOverview'> {
+  const matchedTotals = new Map<string, number>();
+
+  for (const category of categorySpending) {
+    const normalized = normalizeCategoryName(category.categoryName);
+    const match = SPENDING_BENCHMARKS.find(
+      (benchmark) =>
+        benchmark.kind === 'expense' &&
+        benchmark.aliases.some((alias) => normalizeCategoryName(alias) === normalized),
+    );
+
+    if (match) {
+      matchedTotals.set(match.key, (matchedTotals.get(match.key) ?? 0) + category.amount);
+    }
+  }
+
+  const spendingBenchmarks = SPENDING_BENCHMARKS.map((benchmark): SpendingBenchmarkResult => {
+    const amount =
+      benchmark.kind === 'savings'
+        ? Math.round((totalIncomeThisMonth * savingsRate) / 100)
+        : (matchedTotals.get(benchmark.key) ?? 0);
+
+    const userPercent =
+      benchmark.kind === 'savings'
+        ? savingsRate
+        : totalIncomeThisMonth > 0
+          ? roundPercent((amount / totalIncomeThisMonth) * 100)
+          : 0;
+
+    const statusData =
+      benchmark.kind === 'savings'
+        ? getSavingsBenchmarkStatus(userPercent, benchmark)
+        : getExpenseBenchmarkStatus(userPercent, benchmark);
+
+    return {
+      key: benchmark.key,
+      label: benchmark.label,
+      amount,
+      userPercent,
+      minPercent: benchmark.minPercent,
+      maxPercent: benchmark.maxPercent,
+      recommendedPercent: benchmark.recommendedPercent,
+      benchmarkLabel: getBenchmarkLabel(benchmark),
+      status: statusData.status,
+      isOnTrack: statusData.isOnTrack,
+      summary: buildBenchmarkSummary(benchmark, userPercent),
+      group: benchmark.group,
+      kind: benchmark.kind,
+    };
+  });
+
+  return {
+    spendingBenchmarks,
+    financialHealthScore: buildFinancialHealthScore(spendingBenchmarks),
+    budgetRuleOverview: buildBudgetRuleOverview(spendingBenchmarks, savingsRate),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -293,7 +621,6 @@ export function useInsights(): UseInsightsResult {
 
       const categories = getAllCategories(db);
 
-      // Current month aggregates
       let totalSpentThisMonth = 0;
       let totalIncomeThisMonth = 0;
       for (const tx of currentTransactions) {
@@ -301,7 +628,6 @@ export function useInsights(): UseInsightsResult {
         else if (tx.type === 'INCOME') totalIncomeThisMonth += tx.amount.amount;
       }
 
-      // Previous month aggregates
       let totalSpentLastMonth = 0;
       let totalIncomeLastMonth = 0;
       for (const tx of previousTransactions) {
@@ -333,6 +659,8 @@ export function useInsights(): UseInsightsResult {
         savingsRate,
         netCashFlow,
       );
+      const { spendingBenchmarks, financialHealthScore, budgetRuleOverview } =
+        calculateSpendingBenchmarks(categorySpending, totalIncomeThisMonth, savingsRate);
 
       setInsights({
         categorySpending,
@@ -349,6 +677,9 @@ export function useInsights(): UseInsightsResult {
         recommendations,
         netCashFlow,
         savingsRate,
+        spendingBenchmarks,
+        financialHealthScore,
+        budgetRuleOverview,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to compute insights.');

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../accessibility/CognitiveAccessibilityProvider', () => ({
   useCognitiveAccessibility: () => ({
@@ -35,6 +35,24 @@ describe('BottomNavigation', () => {
     onNavigate: vi.fn(),
   };
 
+  let originalRequestAnimationFrame: typeof globalThis.requestAnimationFrame;
+  let originalCancelAnimationFrame: typeof globalThis.cancelAnimationFrame;
+
+  beforeEach(() => {
+    originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+    originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
+    globalThis.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    globalThis.cancelAnimationFrame = vi.fn();
+  });
+
+  afterEach(() => {
+    globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+    globalThis.cancelAnimationFrame = originalCancelAnimationFrame;
+  });
+
   it('renders the priority destinations plus a More button', () => {
     render(<BottomNavigation {...defaultProps} />);
 
@@ -59,6 +77,18 @@ describe('BottomNavigation', () => {
     expect(moreButton).toBeInTheDocument();
     expect(moreButton).toHaveAttribute('aria-haspopup', 'dialog');
     expect(moreButton).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('promotes Debt to the bottom nav instead of the More sheet', () => {
+    render(<BottomNavigation {...defaultProps} />);
+
+    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    expect(within(nav).getByRole('button', { name: 'Debt' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'More destinations' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).queryByRole('button', { name: 'Debt' })).not.toBeInTheDocument();
   });
 
   it('marks the active item with aria-current="page"', () => {
@@ -106,6 +136,33 @@ describe('BottomNavigation', () => {
     // The sheet is a dialog with the title "All destinations".
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('All destinations')).toBeInTheDocument();
+  });
+
+  it('traps focus inside the More sheet and restores it to the trigger on close', () => {
+    render(<BottomNavigation {...defaultProps} />);
+
+    const moreButton = screen.getByRole('button', { name: 'More destinations' });
+    moreButton.focus();
+
+    fireEvent.click(moreButton);
+
+    const dialog = screen.getByRole('dialog', { name: 'All destinations' });
+    const closeButton = within(dialog).getByRole('button', { name: 'Close menu' });
+    const signOutButton = within(dialog).getByRole('button', { name: 'Sign out' });
+
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(closeButton).toHaveFocus();
+
+    signOutButton.focus();
+    fireEvent.keyDown(signOutButton, { key: 'Tab' });
+    expect(closeButton).toHaveFocus();
+
+    fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true });
+    expect(signOutButton).toHaveFocus();
+
+    fireEvent.keyDown(signOutButton, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(moreButton).toHaveFocus();
   });
 
   it('every destination not on the bottom-nav is reachable from the More sheet', () => {
@@ -165,6 +222,18 @@ describe('SidebarNavigation', () => {
     render(<SidebarNavigation {...defaultProps} activePath="/budgets" />);
 
     expect(screen.getByRole('button', { name: 'Budgets' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('renders Debt in the primary Plan navigation', () => {
+    const onNavigate = vi.fn();
+    render(<SidebarNavigation {...defaultProps} onNavigate={onNavigate} activePath="/debt" />);
+
+    const debtButton = screen.getByRole('button', { name: 'Debt' });
+    expect(debtButton).toHaveAttribute('aria-current', 'page');
+
+    fireEvent.click(debtButton);
+
+    expect(onNavigate).toHaveBeenCalledWith('/debt');
   });
 
   it('marks Settings as active when activePath is /settings', () => {

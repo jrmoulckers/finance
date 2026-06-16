@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from '../../accessibility/aria';
 import type { Account, Category, Transaction } from '../../kmp/bridge';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
+import { DateInput } from '../common';
 import './transaction-edit-panel.css';
 
 // ---------------------------------------------------------------------------
@@ -209,9 +210,8 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
               >
                 Date
               </label>
-              <input
+              <DateInput
                 id="edit-panel-date"
-                type="date"
                 className="form-input"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}

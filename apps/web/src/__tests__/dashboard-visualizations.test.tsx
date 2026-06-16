@@ -17,7 +17,19 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { useCategories, useDashboardData, useTransactions } from '../hooks';
+import {
+  useAccounts,
+  useBills,
+  useBudgets,
+  useCategories,
+  useDashboardData,
+  useGoals,
+  usePredictiveBalance,
+  useRetirementPlanner,
+  useRmdTracking,
+  useSpendingPace,
+  useTransactions,
+} from '../hooks';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SpendingBarChart, type SpendingCategory } from '../components/charts/SpendingBarChart';
 import {
@@ -54,7 +66,15 @@ beforeAll(() => {
 
 vi.mock('../hooks', () => ({
   useDashboardData: vi.fn(),
+  useAccounts: vi.fn(),
+  useBills: vi.fn(),
+  useBudgets: vi.fn(),
   useCategories: vi.fn(),
+  useGoals: vi.fn(),
+  usePredictiveBalance: vi.fn(),
+  useRetirementPlanner: vi.fn(),
+  useRmdTracking: vi.fn(),
+  useSpendingPace: vi.fn(),
   useTransactions: vi.fn(),
 }));
 
@@ -89,7 +109,15 @@ vi.mock('recharts', async () => {
 });
 
 const mockedUseDashboardData = vi.mocked(useDashboardData);
+const mockedUseAccounts = vi.mocked(useAccounts);
+const mockedUseBills = vi.mocked(useBills);
+const mockedUseBudgets = vi.mocked(useBudgets);
+const mockedUseGoals = vi.mocked(useGoals);
+const mockedUsePredictiveBalance = vi.mocked(usePredictiveBalance);
+const mockedUseSpendingPace = vi.mocked(useSpendingPace);
 const mockedUseCategories = vi.mocked(useCategories);
+const mockedUseRetirementPlanner = vi.mocked(useRetirementPlanner);
+const mockedUseRmdTracking = vi.mocked(useRmdTracking);
 const mockedUseTransactions = vi.mocked(useTransactions);
 
 const syncMetadata = {
@@ -184,6 +212,31 @@ function setupDefaultMocks() {
     refresh: vi.fn(),
   });
 
+  mockedUseAccounts.mockReturnValue({
+    accounts: [
+      {
+        id: 'acct-1',
+        householdId: 'hh-1',
+        name: 'Checking',
+        type: 'CHECKING',
+        purpose: 'personal',
+        currency: { code: 'USD', decimalPlaces: 2 },
+        currentBalance: { amount: 1200000 },
+        isArchived: false,
+        sortOrder: 1,
+        icon: 'bank',
+        color: '#2563EB',
+        ...syncMetadata,
+      },
+    ],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    createAccount: vi.fn(),
+    updateAccount: vi.fn(),
+    deleteAccount: vi.fn(),
+  });
+
   mockedUseCategories.mockReturnValue({
     categories: [
       {
@@ -217,6 +270,64 @@ function setupDefaultMocks() {
     createCategory: vi.fn(),
     updateCategory: vi.fn(),
     deleteCategory: vi.fn(),
+    foodMealTemplate: {
+      parentCategory: null,
+      subcategories: [],
+      missingSubcategoryDefinitions: [],
+    },
+    ensureFoodMealCategories: vi.fn(),
+  });
+
+  mockedUseRetirementPlanner.mockReturnValue({
+    params: {
+      currentAge: 30,
+      retirementAge: 65,
+      planningHorizonAge: 90,
+      currentSavingsCents: 0,
+      monthlyContributionCents: 50000,
+      annualReturnRate: 0.07,
+      annualInflationRate: 0.03,
+      desiredMonthlySpendingCents: 400000,
+      monthlyRetirementIncomeCents: 0,
+      annualReturnStdDev: 0.15,
+    },
+    readiness: null,
+    incomeProjection: {
+      points: [],
+      depletionAge: null,
+      lastsThroughHorizon: true,
+      finalBalanceCents: 0,
+      horizonAge: 90,
+    },
+    computing: false,
+    setCurrentAge: vi.fn(),
+    setRetirementAge: vi.fn(),
+    setPlanningHorizonAge: vi.fn(),
+    setMonthlyContribution: vi.fn(),
+    setDesiredSpending: vi.fn(),
+    setRetirementIncome: vi.fn(),
+    setAnnualReturn: vi.fn(),
+    setInflationRate: vi.fn(),
+    simulateAtSpending: vi.fn(() => ({
+      iterations: 0,
+      successRate: 0,
+      medianFinalCents: 0,
+      p10FinalCents: 0,
+      p90FinalCents: 0,
+      medianPath: [],
+      p10Path: [],
+      p90Path: [],
+    })),
+    resetToDefaults: vi.fn(),
+  });
+
+  mockedUseRmdTracking.mockReturnValue({
+    statuses: [],
+    reminders: [],
+    dueCount: 0,
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
   });
 
   mockedUseTransactions.mockReturnValue({
@@ -228,6 +339,34 @@ function setupDefaultMocks() {
     updateTransaction: vi.fn(),
     deleteTransaction: vi.fn(),
   });
+  mockedUseBills.mockReturnValue({
+    bills: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  } as unknown as ReturnType<typeof useBills>);
+  mockedUseBudgets.mockReturnValue({
+    budgets: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  } as unknown as ReturnType<typeof useBudgets>);
+  mockedUseGoals.mockReturnValue({
+    goals: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  } as unknown as ReturnType<typeof useGoals>);
+  mockedUsePredictiveBalance.mockReturnValue({
+    prediction: null,
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  } as unknown as ReturnType<typeof usePredictiveBalance>);
+  mockedUseSpendingPace.mockReturnValue({
+    paces: [],
+    isLoading: false,
+  } as unknown as ReturnType<typeof useSpendingPace>);
 }
 
 // ---------------------------------------------------------------------------
@@ -283,7 +422,7 @@ describe('DashboardPage rendering with data (#1334)', () => {
       </MemoryRouter>,
     );
 
-    const progressBar = screen.getByRole('progressbar');
+    const progressBar = screen.getByRole('progressbar', { name: /Budget 67 percent used/i });
     expect(progressBar).toBeInTheDocument();
     expect(progressBar).toHaveAttribute('aria-valuenow', '67');
     expect(progressBar).toHaveAttribute('aria-valuemin', '0');
@@ -410,6 +549,15 @@ describe('DashboardPage empty state (#1334)', () => {
       error: null,
       refresh: vi.fn(),
     });
+    mockedUseAccounts.mockReturnValue({
+      accounts: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
 
     render(
       <MemoryRouter>
@@ -469,6 +617,12 @@ describe('DashboardPage error state (#1334)', () => {
       createCategory: vi.fn(),
       updateCategory: vi.fn(),
       deleteCategory: vi.fn(),
+      foodMealTemplate: {
+        parentCategory: null,
+        subcategories: [],
+        missingSubcategoryDefinitions: [],
+      },
+      ensureFoodMealCategories: vi.fn(),
     });
 
     render(

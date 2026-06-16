@@ -493,6 +493,43 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_goal_progress_contribution_sync ON goal_progress_contribution (is_synced);`,
     ],
   },
+  {
+    version: 8,
+    label: 'add-account-purpose',
+    up: [`ALTER TABLE account ADD COLUMN purpose TEXT NOT NULL DEFAULT 'personal';`],
+  },
+  {
+    version: 9,
+    label: 'add-account-reconciliation-history',
+    up: [
+      `CREATE TABLE IF NOT EXISTS account_reconciliation (
+        id                        TEXT    NOT NULL PRIMARY KEY,
+        account_id                TEXT    NOT NULL,
+        household_id              TEXT    NOT NULL,
+        statement_date            TEXT    NOT NULL,
+        statement_balance         INTEGER NOT NULL,
+        starting_balance          INTEGER NOT NULL,
+        cleared_transaction_count INTEGER NOT NULL DEFAULT 0,
+        transaction_ids           TEXT    NOT NULL DEFAULT '[]',
+        created_by                TEXT    NOT NULL,
+        created_at                TEXT    NOT NULL,
+        updated_at                TEXT    NOT NULL,
+        deleted_at                TEXT,
+        sync_version              INTEGER NOT NULL DEFAULT 0,
+        is_synced                 INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (account_id)   REFERENCES account(id),
+        FOREIGN KEY (household_id) REFERENCES household(id)
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_account_reconciliation_account ON account_reconciliation (account_id);`,
+      `CREATE INDEX IF NOT EXISTS idx_account_reconciliation_statement_date ON account_reconciliation (statement_date);`,
+      `CREATE INDEX IF NOT EXISTS idx_account_reconciliation_sync ON account_reconciliation (is_synced);`,
+    ],
+  },
+  {
+    version: 10,
+    label: 'add-transaction-splits',
+    up: [`ALTER TABLE "transaction" ADD COLUMN splits TEXT;`],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection

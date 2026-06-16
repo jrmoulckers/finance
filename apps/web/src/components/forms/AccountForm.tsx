@@ -31,7 +31,7 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateAccountInput } from '../../db/repositories/accounts';
-import type { Account, AccountType, SyncId } from '../../kmp/bridge';
+import type { Account, AccountPurpose, AccountType, SyncId } from '../../kmp/bridge';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import { accountSchema } from '../../lib/validation';
 
@@ -50,6 +50,12 @@ const ACCOUNT_TYPES: readonly { value: AccountType; label: string }[] = [
   { value: 'INVESTMENT', label: 'Investment' },
   { value: 'LOAN', label: 'Loan' },
   { value: 'OTHER', label: 'Other' },
+] as const;
+
+const ACCOUNT_PURPOSES: readonly { value: AccountPurpose; label: string }[] = [
+  { value: 'personal', label: '🏠 Personal' },
+  { value: 'business', label: '💼 Business' },
+  { value: 'both', label: '🏠💼 Both' },
 ] as const;
 
 /** Common currency options. */
@@ -143,6 +149,7 @@ function getInitialFormValues(initialData?: Account) {
       accountType: 'CHECKING' as AccountType,
       currency: 'USD',
       balance: '0.00',
+      purpose: 'personal' as AccountPurpose,
     };
   }
 
@@ -153,6 +160,7 @@ function getInitialFormValues(initialData?: Account) {
     balance: (
       initialData.currentBalance.amount / Math.pow(10, initialData.currency.decimalPlaces)
     ).toFixed(initialData.currency.decimalPlaces),
+    purpose: initialData.purpose ?? 'personal',
   };
 }
 
@@ -175,6 +183,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   // -- state ---------------------------------------------------------------
   const [name, setName] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('CHECKING');
+  const [purpose, setPurpose] = useState<AccountPurpose>('personal');
   const [currency, setCurrency] = useState('USD');
   const [balance, setBalance] = useState('0.00');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -204,6 +213,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
       const initialValues = getInitialFormValues(initialData);
       setName(initialValues.name);
       setAccountType(initialValues.accountType);
+      setPurpose(initialValues.purpose);
       setCurrency(initialValues.currency);
       setBalance(initialValues.balance);
       setErrors({});
@@ -253,6 +263,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         householdId,
         name: name.trim(),
         type: accountType,
+        purpose,
         currency: {
           code: currencyObj?.code ?? currency,
           decimalPlaces,
@@ -268,6 +279,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         const initialValues = getInitialFormValues();
         setName(initialValues.name);
         setAccountType(initialValues.accountType);
+        setPurpose(initialValues.purpose);
         setCurrency(initialValues.currency);
         setBalance(initialValues.balance);
         setErrors({});
@@ -283,7 +295,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         setSubmitting(false);
       }
     },
-    [name, balance, accountType, currency, db, initialData, onSubmit],
+    [name, balance, accountType, purpose, currency, db, initialData, onSubmit],
   );
 
   // -- render --------------------------------------------------------------
@@ -362,6 +374,25 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
                 {ACCOUNT_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>
                     {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Account Purpose */}
+            <div className="form-group">
+              <label htmlFor="account-purpose" className="form-group__label">
+                Account Purpose
+              </label>
+              <select
+                id="account-purpose"
+                className="form-select"
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value as AccountPurpose)}
+              >
+                {ACCOUNT_PURPOSES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>

@@ -6,8 +6,15 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DataExport } from './DataExport';
+import {
+  buildInvestmentCsvFiles,
+  buildInvestmentExportSheets,
+  buildInvestmentXlsx,
+  type InvestmentExportInput,
+} from '../lib/export/investment-export';
 import type { SqliteDb } from '../db/sqlite-wasm';
 import { DatabaseContext, type DatabaseContextValue } from '../db/DatabaseProvider';
+import type { Investment, InvestmentLot } from '../kmp/bridge';
 
 function createMockDb(): SqliteDb {
   return {
@@ -124,6 +131,64 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function createInvestmentExportInput(): InvestmentExportInput {
+  const investment = {
+    id: 'inv-1',
+    householdId: 'hh-1',
+    accountId: 'acc-1',
+    symbol: 'AC,ME',
+    name: 'Acme "Growth" Fund',
+    type: 'STOCK',
+    shares: 1.5,
+    costBasisPerShare: { amount: 10000 },
+    currentPricePerShare: { amount: 12500 },
+    currency: { code: 'USD', symbol: '$', name: 'US Dollar', decimalPlaces: 2 },
+    lastPriceUpdate: '2024-03-01T00:00:00Z',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    deletedAt: null,
+    syncVersion: 1,
+    isSynced: false,
+  } as Investment;
+  const lot = {
+    id: 'lot-1',
+    investmentId: 'inv-1',
+    purchaseDate: '2023-01-02',
+    shares: 1.25,
+    costPerShare: { amount: 10000 },
+    totalCost: { amount: 12500 },
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    deletedAt: null,
+    syncVersion: 1,
+    isSynced: false,
+  } as InvestmentLot;
+
+  return {
+    investments: [investment],
+    lots: [lot],
+    realizedGains: [
+      {
+        symbol: 'AC,ME',
+        soldDate: '2024-04-05',
+        proceeds: { amount: 20000 },
+        basis: { amount: 15000 },
+        term: 'LONG_TERM',
+      },
+    ],
+    dividends: [
+      {
+        symbol: 'AC,ME',
+        date: '2024-02-03',
+        type: 'Dividend',
+        amount: { amount: 1234 },
+        currency: 'USD',
+        description: 'Quarterly "special"\nline',
+      },
+    ],
+  };
+}
+
 describe('DataExport', () => {
   const createTestWrapper = (db: SqliteDb | null) => {
     const contextValue: DatabaseContextValue | null = db
@@ -199,6 +264,59 @@ describe('DataExport', () => {
     );
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
     expect(screen.getByText(/Transactions CSV download started/i)).toBeInTheDocument();
+  });
+
+  it('shapes investment export sheets with headers and rows', () => {
+    const sheets = buildInvestmentExportSheets(createInvestmentExportInput());
+
+    expect(sheets.find((sheet) => sheet.name === 'Holdings')).toMatchObject({
+      headers: ['symbol', 'shares', 'cost_basis', 'current_value', 'unrealized_gain'],
+      rows: [['AC,ME', 1.5, '150.00', '187.50', '37.50']],
+    });
+    expect(sheets.find((sheet) => sheet.name === 'Tax Lots')).toMatchObject({
+      headers: ['symbol', 'acquired_date', 'shares', 'cost_basis'],
+      rows: [['AC,ME', '2023-01-02', 1.25, '125.00']],
+    });
+    expect(sheets.find((sheet) => sheet.name === 'Realized Gains')).toMatchObject({
+      rows: [['AC,ME', '2024-04-05', '200.00', '150.00', 'LT', '50.00']],
+    });
+  });
+
+  it('builds correctly escaped investment CSV files', () => {
+    const files = buildInvestmentCsvFiles(createInvestmentExportInput());
+    const holdings = files.find((file) => file.name === 'investment_holdings.csv');
+    const dividends = files.find((file) => file.name === 'investment_dividends_income.csv');
+
+    expect(holdings?.contents).toBe(
+      'symbol,shares,cost_basis,current_value,unrealized_gain\r\n' +
+        '"AC,ME",1.5,150.00,187.50,37.50\r\n',
+    );
+    expect(dividends?.contents).toContain(
+      '"AC,ME",2024-02-03,Dividend,12.34,USD,"Quarterly ""special""\nline"',
+    );
+  });
+
+  it('downloads investment CSV ZIP and XLSX exports from supplied investment data', async () => {
+    const user = userEvent.setup();
+    render(
+      <DataExport showFinanceExports={false} investmentExport={createInvestmentExportInput()} />,
+      { wrapper: createTestWrapper(createMockDb()) },
+    );
+
+    await user.click(screen.getByRole('button', { name: /download investment csvs \(zip\)/i }));
+    await user.click(
+      screen.getByRole('button', { name: /download investment workbook \(xlsx\)/i }),
+    );
+
+    const csvZipBlob = vi.mocked(URL.createObjectURL).mock.calls[0][0] as Blob;
+    const xlsxBlob = vi.mocked(URL.createObjectURL).mock.calls[1][0] as Blob;
+    expect(csvZipBlob.type).toBe('application/zip');
+    expect(xlsxBlob.type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    const xlsxBytes = new Uint8Array(await xlsxBlob.arrayBuffer());
+    expect(xlsxBytes[0]).toBe(0x50);
+    expect(xlsxBytes[1]).toBe(0x4b);
+    expect(xlsxBytes).toHaveLength(buildInvestmentXlsx(createInvestmentExportInput()).length);
+    expect(screen.getByText(/Investment XLSX download started/i)).toBeInTheDocument();
   });
 
   it('shows a confirmation modal with protected-category and mood-tag choices', async () => {

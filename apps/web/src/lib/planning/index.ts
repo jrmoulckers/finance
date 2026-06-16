@@ -33,10 +33,22 @@ export {
   normalRandom,
   projectSavings,
   calculateTargetNestEgg,
+  calculateNetRetirementSpending,
   runMonteCarlo,
   calculateContributionGap,
   assessRetirementReadiness,
 } from './monte-carlo';
+
+// Healthcare projection
+export type {
+  HealthcareCostProjectionParams,
+  HealthcareCostProjectionYear,
+  HealthcareCostProjectionResult,
+} from './healthcare-projection';
+export {
+  calculateIrmaaMonthlySurchargeCents,
+  projectRetirementHealthcareCosts,
+} from './healthcare-projection';
 
 // Scenario modeler
 export type { BaselineSnapshot } from './scenario-modeler';

@@ -23,12 +23,18 @@ export { useInstallPrompt } from './useInstallPrompt';
 export type { UseInstallPromptResult } from './useInstallPrompt';
 export { useTransactions } from './useTransactions';
 export type { TransactionFilters } from './useTransactions';
+export { usePredictiveBalance } from './usePredictiveBalance';
+export type { UsePredictiveBalanceResult } from './usePredictiveBalance';
+export { useAccountReconciliation } from './useReconciliation';
+export type { UseAccountReconciliationResult } from './useReconciliation';
+export { useTaxReserve } from './useTaxReserve';
+export type { UseTaxReserveInput, UseTaxReserveResult } from './useTaxReserve';
 export { useImport } from './useImport';
 export type { ImportStep, UseImportResult, ImportProgress, ImportSummary } from './useImport';
 export { useAutoCategory } from './useAutoCategory';
 export type { UseAutoCategoryResult } from './useAutoCategory';
 export { useTheme } from './useTheme';
-export type { ThemeValue, ResolvedTheme, UseThemeResult } from './useTheme';
+export type { ThemeValue, ResolvedTheme, DisplayDensity, UseThemeResult } from './useTheme';
 export { useWebVitals } from './useWebVitals';
 export type { UseWebVitalsResult } from './useWebVitals';
 export { useQuickEntry } from './useQuickEntry';
@@ -126,6 +132,8 @@ export { useScenarioModeler } from './useScenarioModeler';
 export type { UseScenarioModelerResult } from './useScenarioModeler';
 export { useRetirementPlanner } from './useRetirementPlanner';
 export type { UseRetirementPlannerResult } from './useRetirementPlanner';
+export { useRmdTracking } from './useRmdTracking';
+export type { UseRmdTrackingResult } from './useRmdTracking';
 export { useLinkedGoals } from './useLinkedGoals';
 export type { UseLinkedGoalsResult } from './useLinkedGoals';
 export { useSweepRules } from './useSweepRules';
@@ -170,8 +178,19 @@ export type {
   SetSharedBudgetInput,
   SetSharedGoalInput,
 } from './useHousehold';
+export type {
+  AddChildChoreInput,
+  AllowanceDay,
+  ChildProfile,
+  Chore,
+  ChoreFrequency,
+  CreateChildProfileInput,
+  RecordChildWithdrawalInput,
+} from './householdKids';
 export { useCashFlow } from './useCashFlow';
 export type { UseCashFlowResult } from './useCashFlow';
+export { useInvoices } from './useInvoices';
+export type { UseInvoicesResult } from './useInvoices';
 export { useNetWorth } from './useNetWorth';
 export type { UseNetWorthResult } from './useNetWorth';
 export { useSubscriptions } from './useSubscriptions';

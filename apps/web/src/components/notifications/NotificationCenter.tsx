@@ -81,6 +81,35 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const firstItemRef = useRef<HTMLLIElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  const closePanel = useCallback(() => {
+    setIsOpen(false);
+    requestAnimationFrame(() => {
+      triggerRef.current?.focus();
+    });
+  }, []);
+
+  const openPanel = useCallback(() => {
+    triggerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : buttonRef.current;
+    setIsOpen(true);
+  }, []);
+
+  // Move focus into the panel when it opens.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const frame = requestAnimationFrame(() => {
+      const focusTarget = firstItemRef.current ?? headingRef.current ?? panelRef.current;
+      focusTarget?.focus();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [isOpen]);
 
   // Close on Escape
   useEffect(() => {
@@ -88,14 +117,13 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setIsOpen(false);
-        buttonRef.current?.focus();
+        closePanel();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [closePanel, isOpen]);
 
   // Close on outside click
   useEffect(() => {
@@ -103,17 +131,22 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
 
     const handleClick = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+        closePanel();
       }
     };
 
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen]);
+  }, [closePanel, isOpen]);
 
   const togglePanel = useCallback(() => {
-    setIsOpen((prev) => !prev);
-  }, []);
+    if (isOpen) {
+      closePanel();
+      return;
+    }
+
+    openPanel();
+  }, [closePanel, isOpen, openPanel]);
 
   const handleItemClick = useCallback(
     (notification: AppNotification) => {
@@ -166,9 +199,18 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
       </button>
 
       {isOpen && (
-        <div className="notification-panel" role="region" aria-label="Notification center">
+        <div
+          ref={panelRef}
+          className="notification-panel"
+          role="region"
+          aria-label="Notifications"
+          aria-live="polite"
+          tabIndex={-1}
+        >
           <div className="notification-panel__header">
-            <h2 className="notification-panel__title">Notifications</h2>
+            <h2 ref={headingRef} className="notification-panel__title" tabIndex={-1}>
+              Notifications
+            </h2>
             <div className="notification-panel__actions">
               {unreadCount > 0 && (
                 <button
@@ -191,9 +233,10 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({
             </div>
           ) : (
             <ul className="notification-panel__list" role="list" aria-label="Notification list">
-              {visibleNotifications.map((notification) => (
+              {visibleNotifications.map((notification, index) => (
                 <li
                   key={notification.id}
+                  ref={index === 0 ? firstItemRef : undefined}
                   role="listitem"
                   className={`notification-item ${
                     notification.status === 'unread' ? 'notification-item--unread' : ''

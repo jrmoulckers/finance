@@ -7,7 +7,7 @@
  * from this config so every route is reachable on every viewport (#1930).
  *
  * Conventions:
- *   - `mobilePriority` < 99 surfaces the item on the bottom-nav tab bar
+ *   - `mobilePriority` ranks items for the bottom-nav tab bar
  *     (lower = higher priority). The bottom-nav reserves 4 slots for the
  *     top-priority items and 1 slot for the "More" button.
  *   - `group` clusters items in the sidebar and the "More" sheet. Items
@@ -23,9 +23,11 @@ import {
   AccountsIcon,
   TransactionsIcon,
   BillsIcon,
+  InvoicesIcon,
   InvestmentsIcon,
   SubscriptionsIcon,
   BudgetsIcon,
+  DebtIcon,
   GoalsIcon,
   PlanningIcon,
   CategoriesIcon,
@@ -68,8 +70,8 @@ export interface NavConfigItem {
   /** Group bucket; omit for pinned/top-level destinations. */
   group?: NavGroup;
   /**
-   * Position on the mobile bottom-nav (lower = higher priority).
-   * Items with priority >= 99 only appear in the "More" sheet.
+   * Sort position for mobile bottom-nav eligibility (lower = higher priority).
+   * Items outside the top priority slots appear in the "More" sheet.
    */
   mobilePriority: number;
   /** One-line helper text shown in the "More" sheet. */
@@ -111,6 +113,15 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     description: 'Every debit and credit, across all accounts.',
   },
   {
+    id: 'safety',
+    label: 'Safety',
+    href: '/safety',
+    icon: <PrivacyIcon />,
+    group: 'money',
+    mobilePriority: 9,
+    description: 'Plain-English scam checks and safety tips.',
+  },
+  {
     id: 'bills',
     label: 'Bills',
     href: '/bills',
@@ -118,6 +129,15 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     group: 'money',
     mobilePriority: 10,
     description: 'Upcoming and recurring bill reminders.',
+  },
+  {
+    id: 'invoices',
+    label: 'Invoices',
+    href: '/invoices',
+    icon: <InvoicesIcon />,
+    group: 'money',
+    mobilePriority: 13,
+    description: 'Freelance invoice pipeline and expected income.',
   },
   {
     id: 'investments',
@@ -129,12 +149,21 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     description: 'Holdings, performance and watchlists.',
   },
   {
+    id: 'tax-center',
+    label: 'Tax Center',
+    href: '/investments/tax',
+    icon: <ReportsIcon />,
+    group: 'money',
+    mobilePriority: 12,
+    description: 'Lot-level gains, estimated taxes and wash-sale guardrails.',
+  },
+  {
     id: 'subscriptions',
     label: 'Subscriptions',
     href: '/subscriptions',
     icon: <SubscriptionsIcon />,
     group: 'money',
-    mobilePriority: 12,
+    mobilePriority: 13,
     description: 'Recurring memberships and renewals.',
   },
 
@@ -145,8 +174,17 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     href: '/budgets',
     icon: <BudgetsIcon />,
     group: 'plan',
-    mobilePriority: 3,
+    mobilePriority: 4,
     description: 'Track spending against monthly limits.',
+  },
+  {
+    id: 'debt',
+    label: 'Debt',
+    href: '/debt',
+    icon: <DebtIcon />,
+    group: 'plan',
+    mobilePriority: 3,
+    description: 'Payoff planner, BNPL, student loans and credit cards.',
   },
   {
     id: 'goals',
@@ -214,12 +252,21 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     description: 'Build and export custom reports.',
   },
   {
+    id: 'client-profitability',
+    label: 'Client Profitability',
+    href: '/client-profitability',
+    icon: <ReportsIcon />,
+    group: 'insights',
+    mobilePriority: 24,
+    description: 'Revenue, cost and margin by client/project tag.',
+  },
+  {
     id: 'achievements',
     label: 'Achievements',
     href: '/achievements',
     icon: <AchievementsIcon />,
     group: 'insights',
-    mobilePriority: 24,
+    mobilePriority: 25,
     description: 'Milestones and streaks you have earned.',
   },
   {
@@ -228,7 +275,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     href: '/watchlists',
     icon: <WatchlistsIcon />,
     group: 'insights',
-    mobilePriority: 25,
+    mobilePriority: 26,
     description: 'Symbols and markets you follow.',
   },
 

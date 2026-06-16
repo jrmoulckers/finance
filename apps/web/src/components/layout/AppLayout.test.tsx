@@ -23,6 +23,26 @@ vi.mock('../../auth/auth-context', () => ({
 
 vi.mock('../../hooks', () => ({
   useKeyboardShortcuts: vi.fn(),
+  useNotifications: () => ({
+    notifications: [],
+    unreadCount: 0,
+    loading: false,
+    markAsRead: vi.fn(),
+    markAllAsRead: vi.fn(),
+    dismiss: vi.fn(),
+    clearDismissed: vi.fn(),
+    addNotification: vi.fn(),
+    addNotifications: vi.fn(),
+  }),
+  useTransactions: () => ({
+    transactions: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    createTransaction: vi.fn(),
+    updateTransaction: vi.fn(),
+    deleteTransaction: vi.fn(),
+  }),
 }));
 
 vi.mock('../../hooks/useEscapeBack', () => ({
@@ -107,6 +127,7 @@ describe('AppLayout', () => {
     const main = screen.getByRole('main', { name: 'Budgets' });
     expect(main).toBeInTheDocument();
     expect(main).toHaveAttribute('id', 'main-content');
+    expect(main).toHaveAttribute('tabindex', '-1');
   });
 
   it('renders the sidebar navigation', () => {

@@ -29,6 +29,7 @@ const DEFAULT_PARAMS: RetirementParams = {
   annualReturnRate: 0.07,
   annualInflationRate: 0.03,
   desiredMonthlySpendingCents: 400000, // $4,000/month
+  monthlyRetirementIncomeCents: 0,
   annualReturnStdDev: 0.15,
 };
 
@@ -146,8 +147,11 @@ describe('runMonteCarlo', () => {
       retirementAge: 65,
     };
     const result = runMonteCarlo(params, 100);
+    // Already retired: no accumulation phase, but the remaining horizon
+    // (planningHorizonAge - currentAge) is still modeled as a drawdown.
+    const expectedYears = params.planningHorizonAge - params.currentAge;
     expect(result.successRate).toBe(0);
-    expect(result.medianPath).toHaveLength(0);
+    expect(result.medianPath).toHaveLength(expectedYears);
   });
 
   it('higher contributions produce higher success rates on average', () => {

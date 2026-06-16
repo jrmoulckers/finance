@@ -3,7 +3,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useHousehold } from '../useHousehold';
+import {
+  calculateSharedExpenseBalances,
+  createEqualSharedExpenseSplits,
+  simplifySettleUpBalances,
+  useHousehold,
+} from '../useHousehold';
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -112,6 +117,40 @@ describe('useHousehold', () => {
     expect(revoked!).toBe(true);
   });
 
+  it('adds and revokes a trusted helper as a read-only VIEWER member', () => {
+    const { result } = renderHook(() => useHousehold());
+
+    act(() => {
+      result.current.createHousehold({ name: 'Test Household' });
+    });
+
+    let helper!: ReturnType<typeof result.current.addTrustedHelper>;
+    act(() => {
+      helper = result.current.addTrustedHelper({
+        name: 'Aunt Maria',
+        accessMethod: 'READ_ONLY_SUMMARY',
+      });
+    });
+
+    expect(helper).not.toBeNull();
+    expect(helper?.displayName).toBe('Aunt Maria');
+    expect(helper?.role).toBe('VIEWER');
+    expect(result.current.members).toHaveLength(2);
+    expect(result.current.members[1]).toEqual(expect.objectContaining({ role: 'VIEWER' }));
+    expect(result.current.checkPermission('VIEWER', 'VIEW_SHARED_ACCOUNTS')).toBe(true);
+    expect(result.current.checkPermission('VIEWER', 'ADD_TRANSACTIONS')).toBe(false);
+    expect(result.current.checkPermission('VIEWER', 'EDIT_SHARED_ACCOUNTS')).toBe(false);
+    expect(result.current.checkPermission('VIEWER', 'MANAGE_ROLES')).toBe(false);
+
+    let removed: boolean;
+    act(() => {
+      removed = result.current.removeMember(helper!.id);
+    });
+
+    expect(removed!).toBe(true);
+    expect(result.current.members.some((member) => member.id === helper?.id)).toBe(false);
+  });
+
   it('updates a member role', () => {
     const { result } = renderHook(() => useHousehold());
 
@@ -187,6 +226,36 @@ describe('useHousehold', () => {
     expect(result2.current.members).toHaveLength(1);
   });
 
+  it('links and persists a college fund goal for an existing child profile', () => {
+    const { result, unmount } = renderHook(() => useHousehold());
+
+    act(() => {
+      result.current.createHousehold({ name: 'College Family' });
+    });
+
+    let childId!: string;
+    act(() => {
+      const child = result.current.createChildProfile({
+        name: 'Maya',
+        age: 12,
+        weeklyAllowance: 10,
+        allowanceDay: 'friday',
+      });
+      childId = child!.id;
+    });
+
+    act(() => {
+      result.current.linkChildCollegeFundGoal({ childId, goalId: 'goal-college-1' });
+    });
+
+    expect(result.current.children[0]?.collegeFundGoalId).toBe('goal-college-1');
+
+    unmount();
+
+    const { result: result2 } = renderHook(() => useHousehold());
+    expect(result2.current.children[0]?.collegeFundGoalId).toBe('goal-college-1');
+  });
+
   it('checks permissions correctly', () => {
     const { result } = renderHook(() => useHousehold());
 
@@ -194,5 +263,74 @@ describe('useHousehold', () => {
     expect(result.current.checkPermission('VIEWER', 'MANAGE_MEMBERS')).toBe(false);
     expect(result.current.checkPermission('MEMBER', 'ADD_TRANSACTIONS')).toBe(true);
     expect(result.current.checkPermission('VIEWER', 'ADD_TRANSACTIONS')).toBe(false);
+  });
+});
+
+describe('shared expense settlement helpers', () => {
+  it('splits equal expenses in cents without losing pennies', () => {
+    expect(createEqualSharedExpenseSplits(100, ['alex', 'sam', 'jordan'])).toEqual([
+      { memberId: 'alex', amount: 33.34 },
+      { memberId: 'sam', amount: 33.33 },
+      { memberId: 'jordan', amount: 33.33 },
+    ]);
+  });
+
+  it('computes net balances from expenses and settlements', () => {
+    const expense = {
+      id: 'expense-1',
+      householdId: 'hh-1',
+      description: 'Groceries',
+      amount: 90,
+      paidByMemberId: 'sam',
+      splitMode: 'EQUAL' as const,
+      splits: createEqualSharedExpenseSplits(90, ['alex', 'sam', 'jordan']),
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+      deletedAt: null,
+      syncVersion: 1,
+      isSynced: false,
+    };
+
+    const balances = calculateSharedExpenseBalances(['alex', 'sam', 'jordan'], [expense], []);
+    expect(balances).toEqual([
+      expect.objectContaining({ memberId: 'alex', netBalance: -30 }),
+      expect.objectContaining({ memberId: 'sam', netBalance: 60 }),
+      expect.objectContaining({ memberId: 'jordan', netBalance: -30 }),
+    ]);
+
+    const settled = calculateSharedExpenseBalances(
+      ['alex', 'sam', 'jordan'],
+      [expense],
+      [
+        {
+          id: 'settlement-1',
+          householdId: 'hh-1',
+          fromMemberId: 'alex',
+          toMemberId: 'sam',
+          amount: 30,
+          createdAt: '2025-01-02T00:00:00Z',
+          updatedAt: '2025-01-02T00:00:00Z',
+          deletedAt: null,
+          syncVersion: 1,
+          isSynced: false,
+        },
+      ],
+    );
+
+    expect(settled.find((balance) => balance.memberId === 'alex')?.netBalance).toBe(0);
+    expect(settled.find((balance) => balance.memberId === 'sam')?.netBalance).toBe(30);
+  });
+
+  it('simplifies settle-up balances with largest debtor to largest creditor greedy matching', () => {
+    expect(
+      simplifySettleUpBalances([
+        { memberId: 'alex', netBalance: -20 },
+        { memberId: 'jordan', netBalance: -15 },
+        { memberId: 'sam', netBalance: 35 },
+      ]),
+    ).toEqual([
+      { fromMemberId: 'alex', toMemberId: 'sam', amount: 20 },
+      { fromMemberId: 'jordan', toMemberId: 'sam', amount: 15 },
+    ]);
   });
 });

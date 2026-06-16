@@ -47,8 +47,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // Clean up data-theme attribute
+  // Clean up root attributes
   document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('data-density');
   vi.restoreAllMocks();
 });
 
@@ -133,7 +134,62 @@ describe('useTheme', () => {
   it('provides available theme options', () => {
     const { result } = renderHook(() => useTheme());
 
-    expect(result.current.themes).toEqual(['system', 'light', 'dark', 'dark-oled']);
+    expect(result.current.themes).toEqual([
+      'system',
+      'light',
+      'dark',
+      'dark-oled',
+      'high-contrast',
+    ]);
+  });
+
+  it('defaults to comfortable density when nothing stored', () => {
+    const { result } = renderHook(() => useTheme());
+
+    expect(result.current.displayDensity).toBe('comfortable');
+    expect(document.documentElement.hasAttribute('data-density')).toBe(false);
+  });
+
+  it('reads stored compact density from localStorage', () => {
+    mockStorage['finance-display-density-preference'] = 'compact';
+
+    const { result } = renderHook(() => useTheme());
+
+    expect(result.current.displayDensity).toBe('compact');
+    expect(document.documentElement.getAttribute('data-density')).toBe('compact');
+  });
+
+  it('persists compact density and applies data-density to document root', () => {
+    const { result } = renderHook(() => useTheme());
+
+    act(() => {
+      result.current.setDisplayDensity('compact');
+    });
+
+    expect(mockStorage['finance-display-density-preference']).toBe('compact');
+    expect(result.current.displayDensity).toBe('compact');
+    expect(document.documentElement.getAttribute('data-density')).toBe('compact');
+  });
+
+  it('removes data-density when returning to comfortable density', () => {
+    const { result } = renderHook(() => useTheme());
+
+    act(() => {
+      result.current.setDisplayDensity('compact');
+    });
+    expect(document.documentElement.getAttribute('data-density')).toBe('compact');
+
+    act(() => {
+      result.current.setDisplayDensity('comfortable');
+    });
+
+    expect(document.documentElement.hasAttribute('data-density')).toBe(false);
+  });
+
+  it('provides available density options', () => {
+    const { result } = renderHook(() => useTheme());
+
+    expect(result.current.densities).toEqual(['comfortable', 'compact']);
   });
 
   it('updates resolvedTheme when OS preference changes', () => {

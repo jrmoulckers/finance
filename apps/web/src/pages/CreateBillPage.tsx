@@ -8,6 +8,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { DateInput } from '../components/common';
 import { useDatabase } from '../db/DatabaseProvider';
 import { queryOne, type Row } from '../db/sqlite-wasm';
 import { useBills } from '../hooks';
@@ -254,9 +255,8 @@ export const CreateBillPage: React.FC = () => {
             >
               Due Date
             </label>
-            <input
+            <DateInput
               id="bill-due-date"
-              type="date"
               className="form-input"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}

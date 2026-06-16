@@ -3,11 +3,13 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { useGoals } from '../hooks';
+import { useAccounts, useGoals, useTransactions } from '../hooks';
 import { GoalsPage } from './GoalsPage';
 
 vi.mock('../hooks', () => ({
+  useAccounts: vi.fn(),
   useGoals: vi.fn(),
+  useTransactions: vi.fn(),
 }));
 
 // GoalForm renders unconditionally and calls useDatabase internally.
@@ -16,7 +18,9 @@ vi.mock('../components/forms', () => ({
   GoalForm: () => null,
 }));
 
+const mockedUseAccounts = vi.mocked(useAccounts);
 const mockedUseGoals = vi.mocked(useGoals);
+const mockedUseTransactions = vi.mocked(useTransactions);
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-01T00:00:00Z',
@@ -27,6 +31,71 @@ const syncMetadata = {
 
 describe('GoalsPage', () => {
   beforeEach(() => {
+    window.localStorage.clear();
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        {
+          id: 'account-1',
+          householdId: 'household-1',
+          name: 'Business Checking',
+          type: 'CHECKING',
+          purpose: 'business',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: 1250000 },
+          isArchived: false,
+          sortOrder: 1,
+          icon: null,
+          color: null,
+          ...syncMetadata,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+    mockedUseTransactions.mockReturnValue({
+      transactions: [
+        {
+          id: 'income-1',
+          householdId: 'household-1',
+          accountId: 'account-1',
+          categoryId: null,
+          type: 'INCOME',
+          status: 'CLEARED',
+          amount: { amount: 500000 },
+          currency: { code: 'USD', decimalPlaces: 2 },
+          payee: 'Client Retainer',
+          note: null,
+          date: '2025-03-06',
+          transferAccountId: null,
+          transferTransactionId: null,
+          isRecurring: false,
+          recurringRuleId: null,
+          tags: [],
+          merchantAddress: null,
+          merchantCity: null,
+          merchantState: null,
+          merchantZip: null,
+          merchantCountry: null,
+          externalReferenceId: null,
+          statementDescription: null,
+          customFields: null,
+          extraNotes: null,
+          counterpartyName: null,
+          counterpartyAccountId: null,
+          ...syncMetadata,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createTransaction: vi.fn(),
+      updateTransaction: vi.fn(),
+      deleteTransaction: vi.fn(),
+    });
     mockedUseGoals.mockReturnValue({
       goals: [
         {

@@ -32,7 +32,8 @@ export type AlertType =
   | 'spending_pace'
   | 'predictive_overspend'
   | 'transaction_confirmation'
-  | 'batch_confirmation';
+  | 'batch_confirmation'
+  | 'scam_check';
 
 /** Delivery channels for notifications. */
 export type NotificationChannel = 'in_app' | 'browser_push' | 'email';
@@ -260,6 +261,7 @@ export const DEFAULT_CHANNEL_PREFERENCES: readonly AlertChannelPreference[] = [
   { alertType: 'predictive_overspend', channels: ['in_app'] },
   { alertType: 'transaction_confirmation', channels: ['in_app'] },
   { alertType: 'batch_confirmation', channels: ['in_app'] },
+  { alertType: 'scam_check', channels: ['in_app'] },
 ];
 
 /** Default global budget thresholds. */

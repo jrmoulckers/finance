@@ -48,6 +48,9 @@ export {
   rateLimitNotifications,
 } from './alert-engine';
 
+export { detectScamAlerts, scamAlertsToNotifications } from './scam-alerts';
+export type { ScamAlertDetectionOptions, ScamAlertRule, ScamSpendingAlert } from './scam-alerts';
+
 export type {
   BalanceEvalInput,
   BudgetEvalInput,

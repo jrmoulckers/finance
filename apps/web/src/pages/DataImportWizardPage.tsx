@@ -11,10 +11,11 @@
  * References: issues #1076, #1468, #1469
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import type { DragEvent, ChangeEvent } from 'react';
 import { AppIcon } from '../components/icons';
 
+import { useAccounts } from '../hooks/useAccounts';
 import { useDataImportWizard } from '../hooks/useDataImportWizard';
 import type {
   TransactionField,
@@ -38,6 +39,8 @@ const FIELD_OPTIONS: readonly { value: TransactionField; label: string }[] = [
   { value: 'account', label: 'Account' },
   { value: 'note', label: 'Note' },
   { value: 'type', label: 'Type' },
+  { value: 'externalReferenceId', label: 'External Reference ID' },
+  { value: 'statementDescription', label: 'Statement Description' },
 ];
 
 const STEP_LABELS: Record<string, string> = {
@@ -343,6 +346,9 @@ export function DataImportWizardPage() {
     progress,
     result,
     error,
+    selectedAccountId,
+    setSelectedAccountId,
+    setSelectedHouseholdId,
     uploadFile,
     setColumnMapping,
     updatePreviewField,
@@ -355,15 +361,14 @@ export function DataImportWizardPage() {
   } = useDataImportWizard();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const accountSelectId = useId();
   const [dragActive, setDragActive] = useState(false);
+  const { accounts, loading: accountsLoading } = useAccounts();
 
   // -- File handling -------------------------------------------------------
 
   const handleFile = useCallback(
     async (file: File) => {
-      if (!file.name.endsWith('.csv') && file.type !== 'text/csv') {
-        return;
-      }
       await uploadFile(file);
     },
     [uploadFile],
@@ -375,6 +380,15 @@ export function DataImportWizardPage() {
       if (file) await handleFile(file);
     },
     [handleFile],
+  );
+
+  const handleAccountChange = useCallback(
+    (accountId: string) => {
+      setSelectedAccountId(accountId || null);
+      const account = accounts.find((candidate) => candidate.id === accountId);
+      setSelectedHouseholdId(account?.householdId ?? null);
+    },
+    [accounts, setSelectedAccountId, setSelectedHouseholdId],
   );
 
   const handleDragEnter = useCallback((e: DragEvent) => {
@@ -451,12 +465,35 @@ export function DataImportWizardPage() {
       {step === 'upload' && (
         <section className="import-card" aria-labelledby="upload-title">
           <h2 id="upload-title" className="import-card__title">
-            Upload CSV File
+            Upload Import File
           </h2>
           <p className="import-card__description">
-            Drag and drop a CSV file, or click to browse. Supports Mint, YNAB, Chase, American
-            Express, Wells Fargo, Citi, and custom formats.
+            Drag and drop a CSV, OFX/QFX, or QIF file, or click to browse. Supports Quicken, Mint,
+            YNAB, Chase, American Express, Wells Fargo, Citi, and custom CSV formats.
           </p>
+
+          <div className="import-account-selector">
+            <label htmlFor={accountSelectId} className="import-account-selector__label">
+              Import into account
+            </label>
+            <select
+              id={accountSelectId}
+              className="import-mapping-select"
+              value={selectedAccountId ?? ''}
+              onChange={(event) => handleAccountChange(event.target.value)}
+              disabled={accountsLoading}
+              aria-required="true"
+            >
+              <option value="" disabled>
+                {accountsLoading ? 'Loading accounts…' : 'Select an account'}
+              </option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div
             className={`import-dropzone ${dragActive ? 'import-dropzone--active' : ''}`}
@@ -467,7 +504,7 @@ export function DataImportWizardPage() {
             onClick={() => fileInputRef.current?.click()}
             role="button"
             tabIndex={0}
-            aria-label="Drop CSV file here or click to browse"
+            aria-label="Drop CSV, OFX, QFX, or QIF file here or click to browse"
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -479,18 +516,17 @@ export function DataImportWizardPage() {
               <AppIcon name="folder" />
             </span>
             <span className="import-dropzone__text">
-              {dragActive ? 'Drop your file here' : 'Click or drag CSV file here'}
+              {dragActive ? 'Drop your file here' : 'Click or drag import file here'}
             </span>
             <span className="import-dropzone__hint">
-              Supported: .csv files from Mint, YNAB, Chase, Amex, Wells Fargo, Citi, or custom
-              exports
+              Supported: .csv, .ofx, .qfx, and .qif files from Quicken and banks
             </span>
           </div>
 
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.ofx,.qfx,.qif,text/csv,application/x-ofx,application/vnd.intu.qfx"
             onChange={handleFileChange}
             className="import-hidden"
             aria-hidden="true"
@@ -590,7 +626,11 @@ export function DataImportWizardPage() {
             <button className="import-button import-button--secondary" onClick={goBack}>
               Back
             </button>
-            <button className="import-button import-button--primary" onClick={goToPreview}>
+            <button
+              className="import-button import-button--primary"
+              onClick={goToPreview}
+              disabled={selectedAccountId === null}
+            >
               Preview Import
             </button>
           </div>

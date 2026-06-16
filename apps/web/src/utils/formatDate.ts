@@ -16,7 +16,12 @@ export function formatDate(
 ): string {
   if (!date) return '';
 
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const dateObj =
+    typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? new Date(`${date}T00:00:00`)
+      : typeof date === 'string'
+        ? new Date(date)
+        : date;
 
   if (isNaN(dateObj.getTime())) {
     // Return raw value if date is invalid rather than showing "Invalid Date"

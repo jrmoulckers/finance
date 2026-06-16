@@ -6,7 +6,7 @@
  * @module components/charts/TrendLineChart
  */
 
-import { type FC, useId, useMemo, useRef } from 'react';
+import { type FC, useId, useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -18,7 +18,11 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { CHART_COLORS, formatChartCurrency } from './chart-palette';
-import { useArrowKeyNavigation } from '../../accessibility/aria';
+import {
+  AccessibleChartDataTable,
+  CHART_KEYBOARD_INSTRUCTIONS,
+  useChartKeyboardNavigation,
+} from './chart-accessibility';
 
 export interface TrendDataPoint {
   label: string;
@@ -51,7 +55,6 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
   title = 'Trend over time',
 }) => {
   const chartId = useId();
-  const containerRef = useRef<HTMLDivElement>(null);
   const disableAnimation = prefersReducedMotion();
 
   const description = useMemo(() => {
@@ -69,67 +72,118 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
     return `Line chart "${title}" with ${data.length} data points and ${series.length} series. ${seriesDesc}.`;
   }, [data, series, currency, title]);
 
-  const { handleKeyDown } = useArrowKeyNavigation(containerRef, {
-    orientation: 'horizontal',
-  });
+  const dataPointRows = useMemo(
+    () =>
+      data.map((point, index) => {
+        const values = series.map((trendSeries) => {
+          const rawValue =
+            typeof point[trendSeries.dataKey] === 'number' ? Number(point[trendSeries.dataKey]) : 0;
+          return {
+            name: trendSeries.name,
+            formattedValue: formatChartCurrency(rawValue, currency),
+          };
+        });
+
+        return {
+          id: `${chartId}-point-${index}`,
+          rowHeader: point.label,
+          cells: values.map((value) => value.formattedValue),
+          ariaLabel: `${point.label}: ${values.map((value) => `${value.name} ${value.formattedValue}`).join(', ')}`,
+        };
+      }),
+    [chartId, currency, data, series],
+  );
+
+  const { announcement, handleFocus, handleKeyDown } = useChartKeyboardNavigation(dataPointRows);
 
   return (
-    <div
-      ref={containerRef}
-      role="figure"
-      aria-label={description}
-      aria-roledescription="line chart"
-      onKeyDown={handleKeyDown}
-    >
+    <div role="figure" aria-label={description} aria-roledescription="line chart">
       <h3 id={`${chartId}-title`} className="chart-title">
         {title}
       </h3>
       <p id={`${chartId}-desc`} className="sr-only">
         {description}
       </p>
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart
-          data={data}
-          margin={{ top: 8, right: 16, bottom: 8, left: 16 }}
-          role="img"
-          aria-labelledby={`${chartId}-title`}
-          aria-describedby={`${chartId}-desc`}
+      <p id={`${chartId}-instructions`} className="sr-only">
+        {CHART_KEYBOARD_INSTRUCTIONS}
+      </p>
+      {data.length > 0 && (
+        <div
+          role="group"
+          aria-label={`${title} data navigator`}
+          aria-roledescription="interactive chart"
+          aria-describedby={`${chartId}-desc ${chartId}-instructions ${chartId}-table-caption ${chartId}-live`}
+          aria-keyshortcuts="ArrowLeft ArrowRight Home End"
+          tabIndex={0}
+          onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--semantic-border-default, #E5E7EB)" />
-          <XAxis
-            dataKey="label"
-            tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
-          />
-          <YAxis
-            tickFormatter={(v: number) => formatChartCurrency(v, currency)}
-            tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
-            width={80}
-          />
-          <Tooltip
-            formatter={(value) => formatChartCurrency(Number(value ?? 0), currency)}
-            contentStyle={{
-              background: 'var(--semantic-background-elevated, #FFFFFF)',
-              border: '1px solid var(--semantic-border-default, #E5E7EB)',
-              borderRadius: '0.375rem',
-            }}
-          />
-          <Legend />
-          {series.map((s, i) => (
-            <Line
-              key={s.dataKey}
-              type="monotone"
-              dataKey={s.dataKey}
-              name={s.name}
-              stroke={CHART_COLORS[i % CHART_COLORS.length]}
-              strokeWidth={2}
-              dot={{ r: 4, tabIndex: -1, 'data-chart-point': '' } as Record<string, unknown>}
-              activeDot={{ r: 6 }}
-              isAnimationActive={!disableAnimation}
-              animationDuration={600}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+          <ResponsiveContainer width="100%" height={height}>
+            <LineChart
+              data={data}
+              margin={{ top: 8, right: 16, bottom: 8, left: 16 }}
+              role="img"
+              aria-label={description}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="var(--semantic-border-default, #E5E7EB)"
+              />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
+              />
+              <YAxis
+                tickFormatter={(v: number) => formatChartCurrency(v, currency)}
+                tick={{ fill: 'var(--semantic-text-secondary, #6B7280)', fontSize: 12 }}
+                width={80}
+              />
+              <Tooltip
+                formatter={(value) => formatChartCurrency(Number(value ?? 0), currency)}
+                contentStyle={{
+                  background: 'var(--semantic-background-elevated, #FFFFFF)',
+                  border: '1px solid var(--semantic-border-default, #E5E7EB)',
+                  borderRadius: '0.375rem',
+                }}
+              />
+              <Legend />
+              {series.map((trendSeries, index) => (
+                <Line
+                  key={trendSeries.dataKey}
+                  type="monotone"
+                  dataKey={trendSeries.dataKey}
+                  name={trendSeries.name}
+                  stroke={CHART_COLORS[index % CHART_COLORS.length]}
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                  isAnimationActive={!disableAnimation}
+                  animationDuration={600}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div
+        id={`${chartId}-live`}
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {announcement}
+      </div>
+      <AccessibleChartDataTable
+        captionId={`${chartId}-table-caption`}
+        title={title}
+        rowHeaderLabel="Period"
+        columns={series.map((trendSeries) => ({
+          key: trendSeries.dataKey,
+          header: trendSeries.name,
+        }))}
+        rows={dataPointRows}
+      />
     </div>
   );
 };

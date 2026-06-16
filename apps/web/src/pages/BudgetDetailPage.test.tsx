@@ -16,6 +16,10 @@ vi.mock('../components/forms', () => ({
   BudgetForm: () => null,
 }));
 
+vi.mock('../components/charts', () => ({
+  BudgetDonutChart: ({ title }: { title: string }) => <div>{title}</div>,
+}));
+
 const mockedUseBudgets = vi.mocked(useBudgets);
 const mockedUseCategories = vi.mocked(useCategories);
 
@@ -66,8 +70,21 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn().mockReturnValue([
+        {
+          categoryId: 'category-groceries',
+          categoryName: 'Groceries',
+          spentAmount: { amount: 25000 },
+        },
+        {
+          categoryId: 'category-dining',
+          categoryName: 'Dining Out',
+          spentAmount: { amount: 17350 },
+        },
+      ]),
     });
 
     mockedUseCategories.mockReturnValue({
@@ -84,6 +101,18 @@ describe('BudgetDetailPage', () => {
           sortOrder: 1,
           ...syncMetadata,
         },
+        {
+          id: 'category-groceries',
+          householdId: 'household-1',
+          name: 'Groceries',
+          icon: '🛒',
+          color: '#16A34A',
+          parentId: 'category-food',
+          isIncome: false,
+          isSystem: false,
+          sortOrder: 2,
+          ...syncMetadata,
+        },
       ],
       loading: false,
       error: null,
@@ -91,6 +120,12 @@ describe('BudgetDetailPage', () => {
       createCategory: vi.fn(),
       updateCategory: vi.fn(),
       deleteCategory: vi.fn(),
+      foodMealTemplate: {
+        parentCategory: null,
+        subcategories: [],
+        missingSubcategoryDefinitions: [],
+      },
+      ensureFoodMealCategories: vi.fn(),
     });
   });
 
@@ -105,8 +140,10 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn(() => []),
     });
 
     renderWithRoute();
@@ -123,6 +160,12 @@ describe('BudgetDetailPage', () => {
       createCategory: vi.fn(),
       updateCategory: vi.fn(),
       deleteCategory: vi.fn(),
+      foodMealTemplate: {
+        parentCategory: null,
+        subcategories: [],
+        missingSubcategoryDefinitions: [],
+      },
+      ensureFoodMealCategories: vi.fn(),
     });
 
     renderWithRoute();
@@ -141,8 +184,10 @@ describe('BudgetDetailPage', () => {
       error: 'Failed to load budgets.',
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn(() => []),
     });
 
     renderWithRoute();
@@ -158,8 +203,10 @@ describe('BudgetDetailPage', () => {
       error: 'Database error',
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn(() => []),
     });
 
     renderWithRoute();
@@ -238,6 +285,16 @@ describe('BudgetDetailPage', () => {
     expect(progressBar).toHaveAttribute('aria-valuemax', '100');
   });
 
+  it('shows the weekly meal budget target and food breakdown for food budgets', () => {
+    renderWithRoute();
+
+    expect(screen.getByText('Weekly Meal Budget')).toBeInTheDocument();
+    expect(screen.getByText('$138.57')).toBeInTheDocument();
+    expect(screen.getByText('Subcategory spending')).toBeInTheDocument();
+    expect(screen.getByText(/Groceries/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dining Out/i)).toBeInTheDocument();
+  });
+
   it('displays spent and remaining labels', () => {
     renderWithRoute();
 
@@ -268,8 +325,10 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn().mockReturnValue([]),
     });
 
     renderWithRoute();
@@ -301,8 +360,10 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn().mockReturnValue([]),
     });
 
     renderWithRoute();

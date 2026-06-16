@@ -275,84 +275,168 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Student Loan Optimizer
+ * Student Loan Dashboard
  * ------------------------------------------------------------------------ */
 
-.recommendation-banner {
-  padding: var(--spacing-4, 1rem);
-  background: var(--semantic-primary-bg, #dbeafe);
-  border-radius: var(--radius-lg, 0.75rem);
-  margin-bottom: var(--spacing-4, 1rem);
-  text-align: center;
+.student-loan-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5, 1.25rem);
 }
 
-.recommendation-banner h2 {
-  color: var(--semantic-primary, #2563eb);
+.student-loan-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-4, 1rem);
+}
+
+.student-loan-stat-card,
+.student-loan-card,
+.student-loan-form,
+.student-loan-what-if {
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--semantic-background-primary, #fff);
+}
+
+.student-loan-stat-card {
+  padding: var(--spacing-4, 1rem);
+}
+
+.student-loan-stat-card--wide {
+  grid-column: 1 / -1;
+}
+
+.student-loan-stat-card h3,
+.student-loan-card h3,
+.student-loan-what-if h2 {
   margin: 0 0 var(--spacing-2, 0.5rem);
 }
 
-.plan-comparison {
-  overflow-x: auto;
-  margin-bottom: var(--spacing-4, 1rem);
-}
-
-.plan-comparison__header {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: var(--spacing-2, 0.5rem);
-  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
+.student-loan-stat-card__value {
+  margin: 0;
+  font-size: var(--font-size-xl, 1.25rem);
   font-weight: var(--font-weight-bold, 700);
-  font-size: var(--font-size-xs, 0.75rem);
-  text-transform: uppercase;
+}
+
+.student-loan-stat-card__hint,
+.student-loan-card__servicer,
+.student-loan-what-if__result {
+  margin: var(--spacing-2, 0.5rem) 0 0;
   color: var(--semantic-text-secondary, #666);
-  border-bottom: 2px solid var(--semantic-border, #e5e7eb);
 }
 
-.plan-comparison__row {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: var(--spacing-2, 0.5rem);
-  padding: var(--spacing-3, 0.75rem) var(--spacing-4, 1rem);
-  font-size: var(--font-size-sm, 0.875rem);
-  border-bottom: 1px solid var(--semantic-border, #e5e7eb);
-  font-variant-numeric: tabular-nums;
-}
-
-.plan-comparison__row--recommended {
-  background: var(--semantic-primary-bg, #dbeafe);
-  font-weight: var(--font-weight-medium, 500);
-}
-
-.tax-warning {
-  color: var(--semantic-warning, #d97706);
-  font-size: var(--font-size-xs, 0.75rem);
-}
-
-/* PSLF progress bar */
-.pslf-tracker {
-  margin-bottom: var(--spacing-4, 1rem);
-}
-
-.pslf-progress {
+.student-loan-progress {
   height: 12px;
   background: var(--semantic-border, #e5e7eb);
   border-radius: var(--radius-full, 9999px);
   overflow: hidden;
-  margin-bottom: var(--spacing-4, 1rem);
 }
 
-.pslf-progress__bar {
+.student-loan-progress__bar {
   height: 100%;
-  background: var(--semantic-primary, #2563eb);
+  background: linear-gradient(90deg, var(--semantic-primary, #2563eb), #60a5fa);
   border-radius: var(--radius-full, 9999px);
   transition: width 0.3s ease;
 }
 
-.pslf-details {
+.student-loan-what-if {
+  padding: var(--spacing-4, 1rem);
+}
+
+.student-loan-what-if input {
+  margin-top: var(--spacing-2, 0.5rem);
+  max-width: 220px;
+}
+
+.student-loan-card-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--spacing-4, 1rem);
+}
+
+.student-loan-card {
+  padding: var(--spacing-4, 1rem);
+  height: 100%;
+}
+
+.student-loan-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-3, 0.75rem);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.student-loan-card__stats {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--spacing-2, 0.5rem) var(--spacing-4, 1rem);
+  margin: 0 0 var(--spacing-4, 1rem);
   font-size: var(--font-size-sm, 0.875rem);
+}
+
+.student-loan-status {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1, 0.25rem) var(--spacing-2, 0.5rem);
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-bold, 700);
+  white-space: nowrap;
+}
+
+.student-loan-status--in-repayment {
+  color: var(--semantic-positive, #059669);
+  background: var(--semantic-positive-bg, #d1fae5);
+}
+
+.student-loan-status--in-grace,
+.student-loan-status--deferred {
+  color: var(--semantic-info, #2563eb);
+  background: var(--semantic-info-bg, #dbeafe);
+}
+
+.student-loan-status--forbearance {
+  color: var(--semantic-warning, #d97706);
+  background: var(--semantic-warning-bg, #fef3c7);
+}
+
+.student-loan-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-4, 1rem);
+  padding: var(--spacing-4, 1rem);
+}
+
+.student-loan-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 0.5rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.student-loan-form input,
+.student-loan-form select,
+.student-loan-what-if input {
+  width: 100%;
+  padding: var(--spacing-3, 0.75rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-background-primary, #fff);
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.student-loan-form__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--spacing-3, 0.75rem);
+  flex-wrap: wrap;
 }
 
 /* ---------------------------------------------------------------------------
@@ -439,19 +523,10 @@
     grid-template-columns: 1fr;
   }
 
-  .plan-comparison__header,
-  .plan-comparison__row {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .plan-comparison__header span:nth-child(n + 4),
-  .plan-comparison__row span:nth-child(n + 4) {
-    display: none;
-  }
-
   .debt-list__item,
   .bnpl-list__item,
-  .reservation-list__item {
+  .reservation-list__item,
+  .student-loan-card__header {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-2, 0.5rem);
@@ -459,8 +534,13 @@
 
   .debt-list__details,
   .bnpl-list__details,
-  .reservation-list__details {
+  .reservation-list__details,
+  .student-loan-form__actions {
     flex-wrap: wrap;
+  }
+
+  .student-loan-form {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -472,7 +552,11 @@
   .strategy-card,
   .debt-list__item,
   .bnpl-list__item,
-  .reservation-list__item {
+  .reservation-list__item,
+  .student-loan-stat-card,
+  .student-loan-card,
+  .student-loan-form,
+  .student-loan-what-if {
     background: var(--semantic-background-primary, #1f2937);
     border-color: var(--semantic-border, #374151);
   }
@@ -481,7 +565,11 @@
 [data-theme='dark'] .strategy-card,
 [data-theme='dark'] .debt-list__item,
 [data-theme='dark'] .bnpl-list__item,
-[data-theme='dark'] .reservation-list__item {
+[data-theme='dark'] .reservation-list__item,
+[data-theme='dark'] .student-loan-stat-card,
+[data-theme='dark'] .student-loan-card,
+[data-theme='dark'] .student-loan-form,
+[data-theme='dark'] .student-loan-what-if {
   background: var(--semantic-background-primary, #1f2937);
   border-color: var(--semantic-border, #374151);
 }
@@ -508,7 +596,11 @@
   .debt-list__item,
   .bnpl-list__item,
   .reservation-list__item,
-  .strategy-card {
+  .strategy-card,
+  .student-loan-stat-card,
+  .student-loan-card,
+  .student-loan-form,
+  .student-loan-what-if {
     border-width: 2px;
   }
 
@@ -516,4 +608,209 @@
   .payment-alert {
     border-left-width: 4px;
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * Debt motivation, connected accounts, milestones, and DTI
+ * ------------------------------------------------------------------------ */
+
+.payoff-planner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5, 1.25rem);
+}
+
+.debt-hero,
+.debt-milestones,
+.dti-card,
+.imported-debts,
+.payoff-controls,
+.debt-entry-form,
+.student-loan-scenarios {
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--semantic-background-primary, #fff);
+  padding: var(--spacing-4, 1rem);
+}
+
+.debt-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-4, 1rem);
+  background: linear-gradient(
+    135deg,
+    var(--semantic-positive-bg, #d1fae5),
+    var(--semantic-info-bg, #dbeafe)
+  );
+}
+
+.debt-hero__eyebrow,
+.debt-hero__savings span {
+  margin: 0 0 var(--spacing-1, 0.25rem);
+  color: var(--semantic-text-secondary, #666);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-bold, 700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.debt-hero h2,
+.debt-milestones h2,
+.dti-card h2,
+.imported-debts h2,
+.payoff-controls h2,
+.student-loan-scenarios h2 {
+  margin: 0 0 var(--spacing-2, 0.5rem);
+}
+
+.debt-hero__savings {
+  min-width: 190px;
+  text-align: right;
+}
+
+.debt-hero__savings strong {
+  display: block;
+  font-size: var(--font-size-2xl, 1.5rem);
+  color: var(--semantic-positive, #059669);
+}
+
+.debt-milestones {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-4, 1rem);
+  align-items: center;
+}
+
+.debt-milestones__badges {
+  display: flex;
+  gap: var(--spacing-2, 0.5rem);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.debt-milestone {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 76px;
+  padding: var(--spacing-2, 0.5rem);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-background-secondary, #f9fafb);
+  color: var(--semantic-text-secondary, #666);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.debt-milestone--reached {
+  background: var(--semantic-positive-bg, #d1fae5);
+  color: var(--semantic-positive, #059669);
+}
+
+.dti-card__header,
+.payoff-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-4, 1rem);
+  flex-wrap: wrap;
+}
+
+.dti-card label,
+.payoff-controls label,
+.debt-entry-form label,
+.debt-import-list__item label,
+.student-loan-scenario-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 0.5rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.dti-card input,
+.payoff-controls input,
+.payoff-controls select,
+.debt-entry-form input,
+.debt-entry-form select,
+.debt-import-list__item input,
+.student-loan-scenario-form input,
+.student-loan-scenario-form select {
+  width: 100%;
+  padding: var(--spacing-3, 0.75rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-background-primary, #fff);
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.dti-card__stats,
+.student-loan-scenario-card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-2, 0.5rem) var(--spacing-4, 1rem);
+}
+
+.dti-trend {
+  display: flex;
+  gap: var(--spacing-2, 0.5rem);
+  list-style: none;
+  padding: 0;
+  margin: var(--spacing-3, 0.75rem) 0 0;
+  flex-wrap: wrap;
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.dti-trend li {
+  padding: var(--spacing-1, 0.25rem) var(--spacing-2, 0.5rem);
+  border-radius: var(--radius-full, 9999px);
+  background: var(--semantic-info-bg, #dbeafe);
+}
+
+.debt-import-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--spacing-3, 0.75rem);
+}
+
+.debt-import-list__item,
+.debt-entry-form,
+.student-loan-scenario-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-3, 0.75rem);
+}
+
+.debt-import-list__item h3,
+.debt-entry-form button {
+  grid-column: 1 / -1;
+}
+
+.student-loan-scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-4, 1rem);
+  margin-top: var(--spacing-4, 1rem);
+}
+
+.student-loan-scenario-card {
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-lg, 0.75rem);
+  padding: var(--spacing-4, 1rem);
+  background: var(--semantic-background-secondary, #f9fafb);
+}
+
+.student-loan-scenario-card h3,
+.student-loan-scenario-card p {
+  margin: 0 0 var(--spacing-2, 0.5rem);
+}
+
+.student-loan-checkbox {
+  justify-content: center;
+}
+
+.student-loan-checkbox input {
+  width: auto;
 }

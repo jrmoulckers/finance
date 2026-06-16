@@ -15,7 +15,14 @@ import React from 'react';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useInsights } from '../hooks/useInsights';
 import { formatCurrency } from '../lib/currency';
-import type { InsightsData, MonthComparison, Recommendation } from '../hooks/useInsights';
+import type {
+  BudgetRuleOverview,
+  FinancialHealthScore,
+  InsightsData,
+  MonthComparison,
+  Recommendation,
+  SpendingBenchmarkResult,
+} from '../hooks/useInsights';
 import './InsightsPage.css';
 import { AppIcon, type IconName } from '../components/icons';
 
@@ -119,6 +126,117 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({ recommendation 
   );
 };
 
+interface FinancialHealthScoreCardProps {
+  score: FinancialHealthScore;
+}
+
+const FinancialHealthScoreCard: React.FC<FinancialHealthScoreCardProps> = ({ score }) => (
+  <article
+    className="insights-overview-card insights-health-score"
+    aria-label="Financial Health Score"
+  >
+    <div className="insights-overview-card__icon" aria-hidden="true">
+      <AppIcon name="medal" />
+    </div>
+    <div>
+      <p className="insights-overview-card__eyebrow">Financial Health Score</p>
+      <p className="insights-health-score__value">{score.score}/8</p>
+      <p className="insights-health-score__summary">
+        {score.label} — {score.percent}% of benchmark categories are on track.
+      </p>
+    </div>
+  </article>
+);
+
+interface BudgetRuleCardProps {
+  overview: BudgetRuleOverview;
+}
+
+const BudgetRuleCard: React.FC<BudgetRuleCardProps> = ({ overview }) => (
+  <article className="insights-overview-card insights-budget-rule" aria-label="50/30/20 rule">
+    <div className="insights-overview-card__icon" aria-hidden="true">
+      <AppIcon name="target" />
+    </div>
+    <div className="insights-budget-rule__content">
+      <p className="insights-overview-card__eyebrow">50/30/20 Rule</p>
+      <p className="insights-budget-rule__summary">{overview.summary}</p>
+      <div className="insights-budget-rule__buckets" role="list" aria-label="50/30/20 breakdown">
+        {overview.buckets.map((bucket) => (
+          <div
+            key={bucket.key}
+            className={`insights-budget-rule__bucket insights-budget-rule__bucket--${bucket.status}`}
+            role="listitem"
+          >
+            <span className="insights-budget-rule__bucket-label">{bucket.label}</span>
+            <span className="insights-budget-rule__bucket-value">
+              {bucket.actualPercent}% / {bucket.targetPercent}%
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </article>
+);
+
+interface BenchmarkCardProps {
+  benchmark: SpendingBenchmarkResult;
+}
+
+const BenchmarkCard: React.FC<BenchmarkCardProps> = ({ benchmark }) => {
+  const clampedPercent = Math.max(0, Math.min(benchmark.userPercent, 100));
+  const benchmarkStyle = {
+    '--benchmark-start': `${benchmark.minPercent}%`,
+    '--benchmark-width': `${Math.max(benchmark.maxPercent - benchmark.minPercent, 2)}%`,
+    '--benchmark-fill': `${clampedPercent}%`,
+    ...(benchmark.recommendedPercent
+      ? { '--benchmark-target': `${Math.min(benchmark.recommendedPercent, 100)}%` }
+      : {}),
+  } as React.CSSProperties;
+
+  return (
+    <article
+      className={`insights-benchmark-card insights-benchmark-card--${benchmark.status}`}
+      role="listitem"
+      aria-label={`${benchmark.label} benchmark`}
+    >
+      <div className="insights-benchmark-card__header">
+        <div>
+          <h4 className="insights-benchmark-card__title">{benchmark.label}</h4>
+          <p className="insights-benchmark-card__amount">
+            <CurrencyDisplay amount={benchmark.amount} />
+          </p>
+        </div>
+        <span
+          className={`insights-benchmark-card__badge insights-benchmark-card__badge--${benchmark.status}`}
+        >
+          {benchmark.userPercent}%
+        </span>
+      </div>
+
+      <div
+        className="insights-benchmark-card__track"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={clampedPercent}
+        aria-valuetext={`${benchmark.userPercent}% of income. Recommended ${benchmark.benchmarkLabel}.`}
+        aria-label={`${benchmark.label} comparison`}
+        style={benchmarkStyle}
+      >
+        <div className="insights-benchmark-card__zone" />
+        {benchmark.recommendedPercent ? <div className="insights-benchmark-card__target" /> : null}
+        <div className="insights-benchmark-card__fill" />
+      </div>
+
+      <div className="insights-benchmark-card__meta">
+        <span>Recommended {benchmark.benchmarkLabel}</span>
+        {benchmark.recommendedPercent ? <span>Target {benchmark.recommendedPercent}%</span> : null}
+      </div>
+      <p className="insights-benchmark-card__summary">{benchmark.summary}</p>
+    </article>
+  );
+};
+
 function isInsightsEmpty(data: InsightsData): boolean {
   return (
     data.totalSpentThisMonth === 0 &&
@@ -162,7 +280,6 @@ export const InsightsPage: React.FC = () => {
         <h2 className="insights-page__title">Financial Insights</h2>
       </div>
 
-      {/* Key metrics */}
       <section className="insights-section" aria-label="Key metrics">
         <div className="insights-metrics-grid">
           <MetricCard
@@ -194,7 +311,6 @@ export const InsightsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Category breakdown */}
       {insights.topCategories.length > 0 && (
         <section className="insights-section" aria-label="Spending by category">
           <h3 className="insights-section__title">Top Spending Categories</h3>
@@ -217,7 +333,23 @@ export const InsightsPage: React.FC = () => {
         </section>
       )}
 
-      {/* Daily spending trend */}
+      <section className="insights-section" aria-label="How do I compare">
+        <h3 className="insights-section__title">How Do I Compare?</h3>
+        <p className="insights-section__description">
+          Compare each category to student-friendly spending benchmarks and use the 50/30/20 rule as
+          a quick health check.
+        </p>
+        <div className="insights-benchmark-overview">
+          <FinancialHealthScoreCard score={insights.financialHealthScore} />
+          <BudgetRuleCard overview={insights.budgetRuleOverview} />
+        </div>
+        <div className="insights-benchmark-grid" role="list">
+          {insights.spendingBenchmarks.map((benchmark) => (
+            <BenchmarkCard key={benchmark.key} benchmark={benchmark} />
+          ))}
+        </div>
+      </section>
+
       {insights.dailySpending.length > 0 && (
         <section className="insights-section" aria-label="Daily spending trend">
           <h3 className="insights-section__title">Daily Spending Trend</h3>
@@ -245,7 +377,6 @@ export const InsightsPage: React.FC = () => {
         </section>
       )}
 
-      {/* Month-over-month comparison */}
       <section className="insights-section" aria-label="Month comparison">
         <h3 className="insights-section__title">Month-Over-Month</h3>
         <div className="insights-comparison">
@@ -276,7 +407,6 @@ export const InsightsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Recommendations */}
       {insights.recommendations.length > 0 && (
         <section className="insights-section" aria-label="Recommendations">
           <h3 className="insights-section__title">Recommendations</h3>

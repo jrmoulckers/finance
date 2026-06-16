@@ -12,10 +12,12 @@ import {
 } from '../components/common';
 import { BudgetForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
-import type { CreateBudgetInput } from '../db/repositories/budgets';
+import type { CreateBudgetInput, CreateBudgetTemplateInput } from '../db/repositories/budgets';
 import { useBudgets, useCategories } from '../hooks';
+import { FOOD_MEAL_SUBCATEGORY_DEFINITIONS } from '../hooks/useCategories';
 import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
+import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
 import { AppIcon, type IconName } from '../components/icons';
 
 function getBudgetIcon(iconName: string | null | undefined): IconName {
@@ -30,29 +32,55 @@ function getBudgetIcon(iconName: string | null | undefined): IconName {
       return 'film';
     case 'wallet':
       return 'wallet';
+    case 'package':
+      return 'package';
+    case 'heart-pulse':
+      return 'heart-pulse';
+    case 'tag':
+      return 'tag';
     default:
       return 'chart-bar';
   }
 }
 
+function renderBudgetIcon(iconName: string | null | undefined): React.ReactNode {
+  if (iconName && iconName.length <= 4) {
+    return <span aria-hidden="true">{iconName}</span>;
+  }
+
+  return <AppIcon name={getBudgetIcon(iconName)} />;
+}
+
 export const BudgetsPage: React.FC = () => {
-  const { budgets, loading, error, refresh, createBudget, updateBudget, deleteBudget } =
-    useBudgets();
+  const {
+    budgets,
+    loading,
+    error,
+    refresh,
+    createBudget,
+    createBudgetTemplate,
+    updateBudget,
+    deleteBudget,
+  } = useBudgets();
   const {
     categories,
     loading: categoriesLoading,
     error: categoriesError,
     refresh: refreshCategories,
+    foodMealTemplate,
+    ensureFoodMealCategories,
   } = useCategories();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [deletingBudget, setDeletingBudget] = useState<Budget | null>(null);
+  const [defaultCategoryId, setDefaultCategoryId] = useState<string | undefined>(undefined);
 
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
     [categories],
   );
+  const starterTemplates = useMemo(() => getBudgetStarterTemplates(), []);
 
   const isLoading = loading || categoriesLoading;
   const resolvedError = error ?? categoriesError;
@@ -64,12 +92,21 @@ export const BudgetsPage: React.FC = () => {
   /** Open the budget dialog in create mode. */
   const handleAddBudget = useCallback(() => {
     setEditingBudget(null);
+    setDefaultCategoryId(undefined);
     setIsFormOpen(true);
   }, []);
+
+  const handleUseFoodMealsTemplate = useCallback(() => {
+    const nextTemplateState = ensureFoodMealCategories();
+    setEditingBudget(null);
+    setDefaultCategoryId(nextTemplateState?.parentCategory?.id);
+    setIsFormOpen(true);
+  }, [ensureFoodMealCategories]);
 
   /** Open the budget dialog in edit mode for the selected budget. */
   const handleEditBudget = useCallback((budget: Budget) => {
     setEditingBudget(budget);
+    setDefaultCategoryId(undefined);
     setIsFormOpen(true);
   }, []);
 
@@ -82,6 +119,7 @@ export const BudgetsPage: React.FC = () => {
   const handleFormCancel = useCallback(() => {
     setIsFormOpen(false);
     setEditingBudget(null);
+    setDefaultCategoryId(undefined);
   }, []);
 
   /** Close the delete confirmation dialog without deleting. */
@@ -106,8 +144,23 @@ export const BudgetsPage: React.FC = () => {
 
       setIsFormOpen(false);
       setEditingBudget(null);
+      setDefaultCategoryId(undefined);
     },
     [createBudget, editingBudget, updateBudget],
+  );
+
+  const handleTemplateSubmit = useCallback(
+    async (data: CreateBudgetTemplateInput) => {
+      const createdBudgets = createBudgetTemplate(data);
+      if (!createdBudgets || createdBudgets.length === 0) {
+        throw new Error('Failed to create starter budget.');
+      }
+
+      setIsFormOpen(false);
+      setEditingBudget(null);
+      setDefaultCategoryId(undefined);
+    },
+    [createBudgetTemplate],
   );
 
   /** Delete the selected budget after the user confirms the action. */
@@ -174,12 +227,73 @@ export const BudgetsPage: React.FC = () => {
         </button>
       </div>
 
+      {!isLoading && !resolvedError && (
+        <section aria-label="Food & Meals template" style={{ marginBottom: 'var(--spacing-6)' }}>
+          <div className="card">
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: 'var(--spacing-4)',
+                flexWrap: 'wrap',
+                marginBottom: 'var(--spacing-3)',
+              }}
+            >
+              <div style={{ maxWidth: '40rem' }}>
+                <p className="card__title">Food & Meals template</p>
+                <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                  Create one monthly food budget, then track groceries, dining out, delivery,
+                  coffee, and meal prep underneath it.
+                </p>
+                <p
+                  style={{
+                    fontSize: 'var(--type-scale-caption-font-size)',
+                    color: 'var(--semantic-text-secondary)',
+                    marginTop: 'var(--spacing-2)',
+                  }}
+                >
+                  {foodMealTemplate.missingSubcategoryDefinitions.length === 0
+                    ? 'All food subcategories are ready to use.'
+                    : `${foodMealTemplate.missingSubcategoryDefinitions.length} subcategories will be added automatically when you start this budget.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="form-button form-button--secondary"
+                onClick={handleUseFoodMealsTemplate}
+              >
+                Use Food & Meals template
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
+              {FOOD_MEAL_SUBCATEGORY_DEFINITIONS.map((subcategory) => (
+                <span
+                  key={subcategory.name}
+                  style={{
+                    padding: 'var(--spacing-1) var(--spacing-2)',
+                    borderRadius: '999px',
+                    background: 'var(--semantic-background-secondary)',
+                    fontSize: 'var(--type-scale-caption-font-size)',
+                  }}
+                >
+                  {subcategory.icon} {subcategory.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <BudgetForm
         isOpen={isFormOpen}
         onCancel={handleFormCancel}
         onSubmit={handleFormSubmit}
+        onSubmitTemplate={editingBudget ? undefined : handleTemplateSubmit}
         categories={categories}
+        templates={starterTemplates}
         initialData={editingBudget ?? undefined}
+        defaultCategoryId={defaultCategoryId}
       />
       <ConfirmDialog
         isOpen={deletingBudget !== null}
@@ -322,7 +436,7 @@ export const BudgetsPage: React.FC = () => {
                               style={{ textDecoration: 'none', color: 'inherit' }}
                               aria-label={`View details for ${budget.name}`}
                             >
-                              <AppIcon name={getBudgetIcon(category?.icon)} /> {budget.name}
+                              {renderBudgetIcon(category?.icon)} {budget.name}
                             </Link>
                           </p>
                           <p

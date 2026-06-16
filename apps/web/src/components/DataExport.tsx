@@ -22,6 +22,11 @@ import {
   buildTransactionsCsv,
   serializeFullJsonExport,
 } from '../lib/export/simple-export';
+import {
+  buildInvestmentCsvZip,
+  buildInvestmentXlsx,
+  type InvestmentExportInput,
+} from '../lib/export/investment-export';
 import './data-export.css';
 
 type ExportStatus =
@@ -44,6 +49,8 @@ interface ExportData {
 
 export interface DataExportProps {
   className?: string;
+  investmentExport?: InvestmentExportInput;
+  showFinanceExports?: boolean;
 }
 
 const APP_VERSION = '0.1.0';
@@ -225,7 +232,11 @@ export async function shareZipPackage(
   }
 }
 
-export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
+export const DataExport: React.FC<DataExportProps> = ({
+  className = '',
+  investmentExport,
+  showFinanceExports = true,
+}) => {
   const db = useExportDatabase();
   const [status, setStatus] = useState<ExportStatus>('idle');
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -425,6 +436,46 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
     }
   }, [db]);
 
+  const downloadInvestmentCsvZip = useCallback(() => {
+    if (!investmentExport) return;
+    setErrorMessage('');
+    setSimpleDownloadMessage('');
+    try {
+      const generatedAt = new Date();
+      triggerBytesDownload(
+        buildInvestmentCsvZip(investmentExport),
+        buildDatedExportFileName('finance-investment-tax-exports', 'zip', generatedAt),
+        'application/zip',
+      );
+      setSimpleDownloadMessage('Investment CSV ZIP download started.');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to download investment CSVs.',
+      );
+    }
+  }, [investmentExport]);
+
+  const downloadInvestmentXlsx = useCallback(() => {
+    if (!investmentExport) return;
+    setErrorMessage('');
+    setSimpleDownloadMessage('');
+    try {
+      const generatedAt = new Date();
+      triggerBytesDownload(
+        buildInvestmentXlsx(investmentExport),
+        buildDatedExportFileName('finance-investment-tax-exports', 'xlsx', generatedAt),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      setSimpleDownloadMessage('Investment XLSX download started.');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to download investment XLSX.',
+      );
+    }
+  }, [investmentExport]);
+
   const downloadPackage = useCallback(() => {
     if (!packageResult) return;
     setErrorMessage('');
@@ -465,139 +516,191 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
   }, [packageResult]);
 
   const requestDisabled = dbUnavailable || status === 'pending' || status === 'generating';
+  const investmentDownloadDisabled = status === 'pending' || status === 'generating';
+  const showInvestmentExports = investmentExport !== undefined;
 
   return (
     <div className={`data-export ${className}`.trim()}>
       <p id="data-export-description" className="data-export__description">
-        {dbUnavailable
+        {showFinanceExports && dbUnavailable
           ? 'Database is not available. Please wait for it to initialize.'
-          : 'Download your data directly, or generate a signed ZIP package for sharing. Everything happens on this device — no server roundtrip.'}
+          : showFinanceExports
+            ? 'Download your data directly, or generate a signed ZIP package for sharing. Everything happens on this device — no server roundtrip.'
+            : 'Download investment and tax-ready exports generated on this device.'}
       </p>
 
-      <div className="data-export__group" role="group" aria-labelledby="data-export-direct-heading">
-        <h4 id="data-export-direct-heading" className="data-export__group-title">
-          Direct download
-        </h4>
-        <p className="data-export__group-help">
-          One-click downloads that work for both fresh and populated accounts.
-        </p>
-        <div className="data-export__button-row">
-          <button
-            type="button"
-            className="data-export__button"
-            disabled={requestDisabled}
-            onClick={downloadFullJson}
-            aria-describedby="data-export-description"
-          >
-            <DownloadIcon />
-            Download all data (JSON)
-          </button>
-          <button
-            type="button"
-            className="data-export__button"
-            disabled={requestDisabled}
-            onClick={downloadAllCsvZip}
-            aria-describedby="data-export-description"
-          >
-            <DownloadIcon />
-            Download all data (CSV ZIP)
-          </button>
-          <button
-            type="button"
-            className="data-export__button"
-            disabled={requestDisabled}
-            onClick={downloadTransactionsCsv}
-            aria-describedby="data-export-description"
-          >
-            <DownloadIcon />
-            Download transactions (CSV)
-          </button>
-        </div>
-      </div>
-
-      <div
-        className="data-export__group"
-        role="group"
-        aria-labelledby="data-export-package-heading"
-      >
-        <h4 id="data-export-package-heading" className="data-export__group-title">
-          Signed data package
-        </h4>
-        <p className="data-export__group-help">
-          A signed ZIP with a manifest, README, and per-entity JSON files. Kept on-device for 7
-          days.
-        </p>
-        <div className="data-export__button-row">
-          <button
-            type="button"
-            className="data-export__button"
-            disabled={requestDisabled}
-            onClick={startRequest}
-          >
-            <DownloadIcon />
-            {STRINGS.requestButton}
-          </button>
-          {(status === 'pending' || status === 'generating') && (
-            <button type="button" className="data-export__button" onClick={cancelRequest}>
-              Cancel request
-            </button>
-          )}
-          {packageResult && status !== 'pending' && status !== 'generating' && (
-            <>
-              <button
-                type="button"
-                className="data-export__button data-export__button--primary"
-                onClick={downloadPackage}
-              >
-                <DownloadIcon />
-                Download ZIP
-              </button>
-              {shareApiPresent && (
-                <button
-                  type="button"
-                  className="data-export__button"
-                  onClick={() => void sharePackage()}
-                  disabled={!shareSupported}
-                  aria-describedby="data-export-share-help"
-                  title={
-                    shareSupported
-                      ? undefined
-                      : "Sharing isn't available in this browser — use Download ZIP."
-                  }
-                >
-                  Share my exported package
-                </button>
-              )}
-            </>
-          )}
-          {!packageResult && shareApiPresent && (
+      {showFinanceExports && (
+        <div
+          className="data-export__group"
+          role="group"
+          aria-labelledby="data-export-direct-heading"
+        >
+          <h4 id="data-export-direct-heading" className="data-export__group-title">
+            Direct download
+          </h4>
+          <p className="data-export__group-help">
+            One-click downloads that work for both fresh and populated accounts.
+          </p>
+          <div className="data-export__button-row">
             <button
               type="button"
               className="data-export__button"
-              disabled
-              aria-describedby="data-export-share-help"
-              title="Generate a package first, then share."
+              disabled={requestDisabled}
+              onClick={downloadFullJson}
+              aria-describedby="data-export-description"
             >
-              Share my exported package
+              <DownloadIcon />
+              Download all data (JSON)
             </button>
+            <button
+              type="button"
+              className="data-export__button"
+              disabled={requestDisabled}
+              onClick={downloadAllCsvZip}
+              aria-describedby="data-export-description"
+            >
+              <DownloadIcon />
+              Download all data (CSV ZIP)
+            </button>
+            <button
+              type="button"
+              className="data-export__button"
+              disabled={requestDisabled}
+              onClick={downloadTransactionsCsv}
+              aria-describedby="data-export-description"
+            >
+              <DownloadIcon />
+              Download transactions (CSV)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showFinanceExports && (
+        <div
+          className="data-export__group"
+          role="group"
+          aria-labelledby="data-export-package-heading"
+        >
+          <h4 id="data-export-package-heading" className="data-export__group-title">
+            Signed data package
+          </h4>
+          <p className="data-export__group-help">
+            A signed ZIP with a manifest, README, and per-entity JSON files. Kept on-device for 7
+            days.
+          </p>
+          <div className="data-export__button-row">
+            <button
+              type="button"
+              className="data-export__button"
+              disabled={requestDisabled}
+              onClick={startRequest}
+            >
+              <DownloadIcon />
+              {STRINGS.requestButton}
+            </button>
+            {(status === 'pending' || status === 'generating') && (
+              <button type="button" className="data-export__button" onClick={cancelRequest}>
+                Cancel request
+              </button>
+            )}
+            {packageResult && status !== 'pending' && status !== 'generating' && (
+              <>
+                <button
+                  type="button"
+                  className="data-export__button data-export__button--primary"
+                  onClick={downloadPackage}
+                >
+                  <DownloadIcon />
+                  Download ZIP
+                </button>
+                {shareApiPresent && (
+                  <button
+                    type="button"
+                    className="data-export__button"
+                    onClick={() => void sharePackage()}
+                    disabled={!shareSupported}
+                    aria-describedby="data-export-share-help"
+                    title={
+                      shareSupported
+                        ? undefined
+                        : "Sharing isn't available in this browser — use Download ZIP."
+                    }
+                  >
+                    Share my exported package
+                  </button>
+                )}
+              </>
+            )}
+            {!packageResult && shareApiPresent && (
+              <button
+                type="button"
+                className="data-export__button"
+                disabled
+                aria-describedby="data-export-share-help"
+                title="Generate a package first, then share."
+              >
+                Share my exported package
+              </button>
+            )}
+          </div>
+          {shareApiPresent && (
+            <p id="data-export-share-help" className="data-export__group-help">
+              Opens your device's share sheet (Files, AirDrop, Messages, etc.).
+              {!packageResult && ' Generate a package first.'}
+            </p>
           )}
         </div>
-        {shareApiPresent && (
-          <p id="data-export-share-help" className="data-export__group-help">
-            Opens your device's share sheet (Files, AirDrop, Messages, etc.).
-            {!packageResult && ' Generate a package first.'}
-          </p>
-        )}
-      </div>
+      )}
 
-      <div className="data-export__progress" role="status" aria-live="polite">
-        <span>Status: {statusLabel(status)}</span>
-        {(status === 'pending' || status === 'generating') && (
-          <div className="progress-bar">
-            <div className="progress-bar__fill data-export__progress-fill" />
+      {showInvestmentExports && (
+        <div
+          className="data-export__group"
+          role="group"
+          aria-labelledby="data-export-investment-heading"
+        >
+          <h4 id="data-export-investment-heading" className="data-export__group-title">
+            Investment and tax exports
+          </h4>
+          <p className="data-export__group-help">
+            Holdings, tax lots, realized gains, and dividends/income for spreadsheet and tax
+            workflows.
+          </p>
+          <div className="data-export__button-row">
+            <button
+              type="button"
+              className="data-export__button"
+              disabled={investmentDownloadDisabled}
+              onClick={downloadInvestmentCsvZip}
+              aria-describedby="data-export-description"
+            >
+              <DownloadIcon />
+              Download investment CSVs (ZIP)
+            </button>
+            <button
+              type="button"
+              className="data-export__button"
+              disabled={investmentDownloadDisabled}
+              onClick={downloadInvestmentXlsx}
+              aria-describedby="data-export-description"
+            >
+              <DownloadIcon />
+              Download investment workbook (XLSX)
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {showFinanceExports && (
+        <div className="data-export__progress" role="status" aria-live="polite">
+          <span>Status: {statusLabel(status)}</span>
+          {(status === 'pending' || status === 'generating') && (
+            <div className="progress-bar">
+              <div className="progress-bar__fill data-export__progress-fill" />
+            </div>
+          )}
+        </div>
+      )}
 
       {simpleDownloadMessage && (
         <div

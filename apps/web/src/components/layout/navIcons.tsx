@@ -65,6 +65,16 @@ export const BillsIcon: FC<IconProps> = ({ className }) => (
   </Svg>
 );
 
+export const InvoicesIcon: FC<IconProps> = ({ className }) => (
+  <Svg className={className}>
+    <rect x="5" y="3" width="14" height="18" rx="2" />
+    <path d="M9 8h6" />
+    <path d="M9 12h6" />
+    <path d="M9 16h2" />
+    <path d="M14 16h1" />
+  </Svg>
+);
+
 export const InvestmentsIcon: FC<IconProps> = ({ className }) => (
   <Svg className={className}>
     <path d="M3 17l6-6 4 4 8-8" />
@@ -196,6 +206,15 @@ export const PrivacyIcon: FC<IconProps> = ({ className }) => (
   <Svg className={className}>
     <path d="M12 3l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z" />
     <path d="M9 12l2 2 4-4" />
+  </Svg>
+);
+
+export const DebtIcon: FC<IconProps> = ({ className }) => (
+  <Svg className={className}>
+    <rect x="4" y="5" width="16" height="14" rx="2" />
+    <path d="M4 10h16" />
+    <path d="M8 15h4" />
+    <path d="M15 16l2 2 4-4" />
   </Svg>
 );
 

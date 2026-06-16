@@ -46,6 +46,8 @@ export interface NormalisedTransaction {
   checkNum: string | null;
   /** Provider-specific transaction ID (for duplicate detection). */
   sourceTransactionId: string | null;
+  /** Source transaction type hint (for example OFX TRNTYPE). */
+  sourceType: string | null;
   /** Original source format. */
   sourceFormat: ImportFormat;
   /** Confidence score (0–100) for auto-mapped fields. */
@@ -147,6 +149,7 @@ function normaliseImportResult(
     memo: t.memo,
     checkNum: t.checkNumber,
     sourceTransactionId: t.sourceId,
+    sourceType: t.type,
     sourceFormat,
     confidence,
   }));
@@ -165,6 +168,7 @@ function normaliseMint(result: MintParseResult): NormalisedTransaction[] {
     memo: t.notes || null,
     checkNum: null,
     sourceTransactionId: null,
+    sourceType: null,
     sourceFormat: 'mint' as ImportFormat,
     confidence: 85,
   }));
@@ -183,6 +187,7 @@ function normaliseYnab(result: YnabParseResult): NormalisedTransaction[] {
     memo: t.memo || null,
     checkNum: null,
     sourceTransactionId: null,
+    sourceType: null,
     sourceFormat: 'ynab' as ImportFormat,
     confidence: 85,
   }));

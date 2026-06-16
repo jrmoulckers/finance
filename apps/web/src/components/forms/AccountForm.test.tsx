@@ -55,6 +55,7 @@ describe('AccountForm', () => {
     expect(screen.getByRole('dialog', { name: 'Create Account' })).toBeInTheDocument();
     expect(screen.getByLabelText('Account Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Account Type')).toHaveValue('CHECKING');
+    expect(screen.getByLabelText('Account Purpose')).toHaveValue('personal');
     expect(screen.getByLabelText('Currency')).toHaveValue('USD');
     expect(screen.getByLabelText('Initial Balance')).toHaveValue(0);
 
@@ -86,6 +87,7 @@ describe('AccountForm', () => {
       target: { value: 'Primary Savings' },
     });
     fireEvent.change(screen.getByLabelText('Account Type'), { target: { value: 'SAVINGS' } });
+    fireEvent.change(screen.getByLabelText('Account Purpose'), { target: { value: 'business' } });
     fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'EUR' } });
     fireEvent.change(screen.getByLabelText('Initial Balance'), { target: { value: '125.5' } });
     await act(async () => {
@@ -96,6 +98,7 @@ describe('AccountForm', () => {
       householdId: 'household-1',
       name: 'Primary Savings',
       type: 'SAVINGS',
+      purpose: 'business',
       currency: { code: 'EUR', decimalPlaces: 2 },
       currentBalance: { amount: 12550 },
     });

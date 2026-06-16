@@ -19,12 +19,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import {
   createBudget as repoCreateBudget,
+  createBudgetTemplate as repoCreateBudgetTemplate,
   deleteBudget as repoDeleteBudget,
   getAllBudgets,
+  getBudgetSpendingBreakdown as repoGetBudgetSpendingBreakdown,
   getBudgetWithSpending,
   updateBudget as repoUpdateBudget,
+  type BudgetSpendingBreakdownItem,
   type BudgetWithSpending,
   type CreateBudgetInput,
+  type CreateBudgetTemplateInput,
   type UpdateBudgetInput,
 } from '../db/repositories/budgets';
 import type { Budget, SyncId } from '../kmp/bridge';
@@ -52,6 +56,11 @@ export interface UseBudgetsResult {
    */
   createBudget: (input: CreateBudgetInput) => Budget | null;
   /**
+   * Create a full starter budget from a template and automatically refresh the list.
+   * @returns The created budgets, or `null` if creation failed.
+   */
+  createBudgetTemplate: (input: CreateBudgetTemplateInput) => Budget[] | null;
+  /**
    * Update an existing budget and automatically refresh the list.
    * @returns The updated budget, or `null` if the budget was not found or update failed.
    */
@@ -61,6 +70,76 @@ export interface UseBudgetsResult {
    * @returns `true` if deletion succeeded, `false` otherwise.
    */
   deleteBudget: (budgetId: SyncId) => boolean;
+  /** Read the current spending breakdown for a budget's category tree. */
+  getBudgetSpendingBreakdown: (budgetId: SyncId) => BudgetSpendingBreakdownItem[];
+}
+
+/** Normalised budget snapshot used by the household scorecard UI. */
+export interface ScorecardBudgetSnapshot {
+  readonly id: SyncId;
+  readonly householdId: SyncId;
+  readonly categoryId: SyncId;
+  readonly name: string;
+  readonly budgetAmount: number;
+  readonly spentAmount: number;
+}
+
+const SCORECARD_DEMO_BUDGETS: readonly Omit<ScorecardBudgetSnapshot, 'householdId'>[] = [
+  {
+    id: 'demo-budget-groceries',
+    categoryId: 'demo-category-groceries',
+    name: 'Groceries',
+    budgetAmount: 90000,
+    spentAmount: 36000,
+  },
+  {
+    id: 'demo-budget-dining-out',
+    categoryId: 'demo-category-dining-out',
+    name: 'Dining Out',
+    budgetAmount: 45000,
+    spentAmount: 28000,
+  },
+  {
+    id: 'demo-budget-entertainment',
+    categoryId: 'demo-category-entertainment',
+    name: 'Entertainment',
+    budgetAmount: 25000,
+    spentAmount: 9000,
+  },
+];
+
+/**
+ * Return budget snapshots for the household scorecard.
+ *
+ * If the current household has no matching budgets yet, the helper falls back
+ * to any loaded budgets and finally to deterministic demo data so the local-
+ * first household experience still has a useful scorecard.
+ */
+export function getScorecardBudgetSnapshots(
+  budgets: BudgetWithSpending[],
+  householdId?: SyncId | null,
+): ScorecardBudgetSnapshot[] {
+  const matchingBudgets = householdId
+    ? budgets.filter((budget) => budget.householdId === householdId)
+    : [];
+  const sourceBudgets = matchingBudgets.length > 0 ? matchingBudgets : budgets;
+
+  if (sourceBudgets.length > 0) {
+    return sourceBudgets.map((budget) => ({
+      id: budget.id,
+      householdId: budget.householdId,
+      categoryId: budget.categoryId,
+      name: budget.name,
+      budgetAmount: budget.amount.amount,
+      spentAmount: budget.spentAmount.amount,
+    }));
+  }
+
+  const fallbackHouseholdId = householdId ?? 'demo-household';
+  return SCORECARD_DEMO_BUDGETS.map((budget) => ({
+    ...budget,
+    householdId: fallbackHouseholdId,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -140,6 +219,21 @@ export function useBudgets(): UseBudgetsResult {
     [db, refresh],
   );
 
+  const createBudgetTemplate = useCallback(
+    (input: CreateBudgetTemplateInput): Budget[] | null => {
+      try {
+        const created = repoCreateBudgetTemplate(db, input);
+        refresh();
+        return created;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create starter budget.');
+        setLoading(false);
+        return null;
+      }
+    },
+    [db, refresh],
+  );
+
   const updateBudget = useCallback(
     (budgetId: SyncId, updates: UpdateBudgetInput): Budget | null => {
       try {
@@ -174,13 +268,28 @@ export function useBudgets(): UseBudgetsResult {
     [db, refresh],
   );
 
+  const getBudgetSpendingBreakdown = useCallback(
+    (budgetId: SyncId): BudgetSpendingBreakdownItem[] => {
+      try {
+        return repoGetBudgetSpendingBreakdown(db, budgetId);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load budget breakdown.');
+        setLoading(false);
+        return [];
+      }
+    },
+    [db],
+  );
+
   return {
     budgets,
     loading,
     error,
     refresh,
     createBudget,
+    createBudgetTemplate,
     updateBudget,
     deleteBudget,
+    getBudgetSpendingBreakdown,
   };
 }

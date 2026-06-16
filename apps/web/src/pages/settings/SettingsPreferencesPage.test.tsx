@@ -7,12 +7,24 @@ import { MoneyDisplayProvider } from '../../lib/display-settings';
 import { SettingsPreferencesPage } from './SettingsPreferencesPage';
 
 const setThemeMock = vi.fn();
+const setDisplayDensityMock = vi.fn();
+
+class ResizeObserverMock {
+  observe() {}
+  disconnect() {}
+  unobserve() {}
+}
+
+vi.stubGlobal('ResizeObserver', ResizeObserverMock);
 
 vi.mock('../../hooks/useTheme', () => ({
   useTheme: () => ({
     theme: 'system',
     setTheme: setThemeMock,
     themes: ['system', 'light', 'dark', 'dark-oled'],
+    displayDensity: 'comfortable',
+    setDisplayDensity: setDisplayDensityMock,
+    densities: ['comfortable', 'compact'],
   }),
 }));
 
@@ -31,7 +43,19 @@ function renderPreferences(): void {
 describe('SettingsPreferencesPage currency display polish', () => {
   beforeEach(() => {
     localStorage.clear();
+    document.documentElement.style.fontSize = '';
+    document.documentElement.style.removeProperty('--finance-font-scale');
+    document.documentElement.removeAttribute('data-font-scale');
+    document.documentElement.removeAttribute('data-density');
     vi.clearAllMocks();
+    setDisplayDensityMock.mockImplementation((value: string) => {
+      localStorage.setItem('finance-display-density-preference', value);
+      if (value === 'compact') {
+        document.documentElement.setAttribute('data-density', 'compact');
+      } else {
+        document.documentElement.removeAttribute('data-density');
+      }
+    });
   });
 
   it('renders accurate negative format examples', () => {
@@ -51,5 +75,33 @@ describe('SettingsPreferencesPage currency display polish', () => {
     fireEvent.change(screen.getByLabelText('Currency display mode'), { target: { value: 'code' } });
 
     expect(screen.getByRole('group', { name: /live preview/i })).toHaveTextContent('USD');
+  });
+
+  it('offers and persists very large text size preferences', () => {
+    renderPreferences();
+
+    const textSizeSelect = screen.getByLabelText('Text size');
+    expect(within(textSizeSelect).getByRole('option', { name: 'Huge (200%)' })).toBeInTheDocument();
+
+    fireEvent.change(textSizeSelect, { target: { value: 'huge' } });
+
+    expect(localStorage.getItem('finance-font-scale-preference')).toBe('huge');
+    expect(document.documentElement.style.fontSize).toBe('200%');
+    expect(document.documentElement.style.getPropertyValue('--finance-font-scale')).toBe('2');
+  });
+
+  it('offers and persists compact display density', () => {
+    renderPreferences();
+
+    const densitySelect = screen.getByLabelText('Display density');
+    expect(
+      within(densitySelect).getByRole('option', { name: 'Compact / Dense' }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(densitySelect, { target: { value: 'compact' } });
+
+    expect(setDisplayDensityMock).toHaveBeenCalledWith('compact');
+    expect(localStorage.getItem('finance-display-density-preference')).toBe('compact');
+    expect(document.documentElement.getAttribute('data-density')).toBe('compact');
   });
 });

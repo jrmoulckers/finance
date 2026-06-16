@@ -200,6 +200,7 @@ export const SYNC_RULES: readonly SyncRule[] = [
       'is_recurring',
       'recurring_rule_id',
       'tags',
+      'splits',
       'created_at',
       'updated_at',
       'deleted_at',

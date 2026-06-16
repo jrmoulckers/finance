@@ -381,8 +381,45 @@ describe('transactions repository', () => {
       createTransaction(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      const tagsParam = params[15]; // tags is last param
+      const tagsParam = params[15];
       expect(tagsParam).toBe('["food","restaurant","dinner"]');
+    });
+
+    it('should serialize balanced split lines as JSON', () => {
+      const input: CreateTransactionInput = {
+        householdId: 'hh-1',
+        accountId: 'acc-1',
+        type: 'EXPENSE' as TransactionType,
+        amount: { amount: 5000 },
+        date: '2024-01-15',
+        splits: [
+          { id: 'split-1', categoryId: 'cat-food', amount: { amount: 3200 }, note: 'Groceries' },
+          { id: 'split-2', categoryId: 'cat-home', amount: { amount: 1800 }, note: null },
+        ],
+      };
+
+      createTransaction(mockDb, input);
+
+      const params = mockExecute.mock.calls[0][2] as unknown[];
+      expect(params[16]).toBe(
+        '[{"id":"split-1","categoryId":"cat-food","amount":3200,"note":"Groceries"},{"id":"split-2","categoryId":"cat-home","amount":1800,"note":null}]',
+      );
+    });
+
+    it('should reject split lines that do not match the transaction total', () => {
+      const input: CreateTransactionInput = {
+        householdId: 'hh-1',
+        accountId: 'acc-1',
+        type: 'EXPENSE' as TransactionType,
+        amount: { amount: 5000 },
+        date: '2024-01-15',
+        splits: [{ categoryId: 'cat-food', amount: { amount: 3200 }, note: null }],
+      };
+
+      expect(() => createTransaction(mockDb, input)).toThrow(
+        'Split amounts must equal the transaction total.',
+      );
+      expect(mockExecute).not.toHaveBeenCalled();
     });
 
     it('should use ? placeholders not string interpolation', () => {

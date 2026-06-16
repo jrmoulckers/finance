@@ -36,6 +36,7 @@ import type {
   ReportTemplate,
   DatePreset,
 } from '../hooks/useReportBuilder';
+import { DateInput } from '../components/common';
 import { CHART_COLORS, formatChartCurrency } from '../components/charts/chart-palette';
 
 import './ReportBuilderPage.css';
@@ -67,6 +68,21 @@ const CHART_OPTIONS: readonly { value: ChartType; label: string }[] = [
 
 const TEMPLATE_OPTIONS: readonly { value: ReportTemplate; label: string; description: string }[] = [
   {
+    value: 'profit-and-loss',
+    label: 'Profit & Loss',
+    description: 'Income, expenses, and net income over a period',
+  },
+  {
+    value: 'cash-flow',
+    label: 'Cash Flow',
+    description: 'Cash inflows, outflows, and net cash change',
+  },
+  {
+    value: 'balance-sheet',
+    label: 'Balance Sheet',
+    description: 'Assets, liabilities, and net worth as of a date',
+  },
+  {
     value: 'monthly-summary',
     label: 'Monthly Summary',
     description: 'Overview of income and expenses by month',
@@ -89,6 +105,32 @@ const DATE_PRESET_OPTIONS: readonly { value: DatePreset; label: string }[] = [
   { value: 'last-year', label: 'Last Year' },
   { value: 'custom', label: 'Custom Range' },
 ];
+
+function isBalanceSheetTemplate(template: ReportTemplate): boolean {
+  return template === 'balance-sheet';
+}
+
+function getSummaryLabels(template: ReportTemplate): {
+  readonly income: string;
+  readonly expenses: string;
+  readonly net: string;
+  readonly count: string;
+} {
+  if (template === 'balance-sheet') {
+    return { income: 'Assets', expenses: 'Liabilities', net: 'Net Worth', count: 'Accounts' };
+  }
+
+  if (template === 'cash-flow') {
+    return {
+      income: 'Cash Inflows',
+      expenses: 'Cash Outflows',
+      net: 'Net Cash Change',
+      count: 'Transactions',
+    };
+  }
+
+  return { income: 'Income', expenses: 'Expenses', net: 'Net Income', count: 'Transactions' };
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -125,6 +167,8 @@ export function ReportBuilderPage() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
+  const isBalanceSheet = isBalanceSheetTemplate(config.template);
+  const summaryLabels = getSummaryLabels(config.template);
 
   const visibleFields = config.fields
     .filter((f) => f.visible)
@@ -319,46 +363,62 @@ export function ReportBuilderPage() {
           Date Range
         </h2>
 
-        <div className="report-date-presets" role="group" aria-label="Date range presets">
-          {DATE_PRESET_OPTIONS.map((preset) => (
-            <button
-              key={preset.value}
-              className={`report-date-preset ${config.datePreset === preset.value ? 'report-date-preset--active' : ''}`}
-              onClick={() => applyDatePreset(preset.value)}
-              aria-pressed={config.datePreset === preset.value}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-
-        {config.datePreset === 'custom' && (
+        {isBalanceSheet ? (
           <div className="report-filters-grid">
             <div className="report-filter-group">
-              <label htmlFor="report-start-date" className="report-filter-group__label">
-                Start Date
+              <label htmlFor="report-as-of-date" className="report-filter-group__label">
+                As of Date
               </label>
-              <input
-                id="report-start-date"
+              <DateInput
+                id="report-as-of-date"
                 className="report-input"
-                type="date"
-                value={config.startDate ?? ''}
-                onChange={(e) => setDateRange(e.target.value || null, config.endDate)}
-              />
-            </div>
-            <div className="report-filter-group">
-              <label htmlFor="report-end-date" className="report-filter-group__label">
-                End Date
-              </label>
-              <input
-                id="report-end-date"
-                className="report-input"
-                type="date"
                 value={config.endDate ?? ''}
-                onChange={(e) => setDateRange(config.startDate, e.target.value || null)}
+                onChange={(e) => setDateRange(null, e.target.value || null)}
               />
             </div>
           </div>
+        ) : (
+          <>
+            <div className="report-date-presets" role="group" aria-label="Date range presets">
+              {DATE_PRESET_OPTIONS.map((preset) => (
+                <button
+                  key={preset.value}
+                  className={`report-date-preset ${config.datePreset === preset.value ? 'report-date-preset--active' : ''}`}
+                  onClick={() => applyDatePreset(preset.value)}
+                  aria-pressed={config.datePreset === preset.value}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {config.datePreset === 'custom' && (
+              <div className="report-filters-grid">
+                <div className="report-filter-group">
+                  <label htmlFor="report-start-date" className="report-filter-group__label">
+                    Start Date
+                  </label>
+                  <DateInput
+                    id="report-start-date"
+                    className="report-input"
+                    value={config.startDate ?? ''}
+                    onChange={(e) => setDateRange(e.target.value || null, config.endDate)}
+                  />
+                </div>
+                <div className="report-filter-group">
+                  <label htmlFor="report-end-date" className="report-filter-group__label">
+                    End Date
+                  </label>
+                  <DateInput
+                    id="report-end-date"
+                    className="report-input"
+                    value={config.endDate ?? ''}
+                    onChange={(e) => setDateRange(config.startDate, e.target.value || null)}
+                  />
+                </div>
+              </div>
+            )}
+          </>
         )}
       </section>
 
@@ -520,25 +580,25 @@ export function ReportBuilderPage() {
           </h2>
           <div className="report-summary-grid" role="group" aria-label="Report summary statistics">
             <div className="report-summary-stat">
-              <span className="report-summary-stat__label">Income</span>
+              <span className="report-summary-stat__label">{summaryLabels.income}</span>
               <span className="report-summary-stat__value report-summary-stat__value--positive">
                 {formatChartCurrency(preview.summary.totalIncome, 'USD')}
               </span>
             </div>
             <div className="report-summary-stat">
-              <span className="report-summary-stat__label">Expenses</span>
+              <span className="report-summary-stat__label">{summaryLabels.expenses}</span>
               <span className="report-summary-stat__value report-summary-stat__value--negative">
                 {formatChartCurrency(preview.summary.totalExpenses, 'USD')}
               </span>
             </div>
             <div className="report-summary-stat">
-              <span className="report-summary-stat__label">Net</span>
+              <span className="report-summary-stat__label">{summaryLabels.net}</span>
               <span className="report-summary-stat__value">
                 {formatChartCurrency(preview.summary.netAmount, 'USD')}
               </span>
             </div>
             <div className="report-summary-stat">
-              <span className="report-summary-stat__label">Transactions</span>
+              <span className="report-summary-stat__label">{summaryLabels.count}</span>
               <span className="report-summary-stat__value">{preview.summary.transactionCount}</span>
             </div>
           </div>

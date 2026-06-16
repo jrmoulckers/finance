@@ -179,6 +179,127 @@
   margin-bottom: var(--spacing-3);
 }
 
+/* RMD tracking */
+.rmd-tracker__empty,
+.rmd-tracker__note,
+.rmd-account__detail {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.rmd-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  margin: var(--spacing-3) 0;
+  border: 1px solid var(--semantic-status-warning);
+  border-radius: var(--border-radius-md);
+  background: color-mix(in srgb, var(--semantic-status-warning) 12%, transparent);
+  color: var(--semantic-text-primary);
+  font-weight: 600;
+}
+
+.rmd-list {
+  display: grid;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-3);
+}
+
+.rmd-account {
+  padding: var(--spacing-4);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+}
+
+.rmd-account--due-soon {
+  border-color: var(--semantic-status-warning);
+}
+
+.rmd-account--overdue {
+  border-color: var(--semantic-status-negative);
+}
+
+.rmd-account__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+}
+
+.rmd-account__name {
+  margin: 0;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.rmd-account__badge {
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: 999px;
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+  background: var(--semantic-border-default);
+  color: var(--semantic-text-primary);
+}
+
+.rmd-account__badge--due-soon {
+  background: var(--semantic-status-warning);
+  color: var(--semantic-text-inverse);
+}
+
+.rmd-account__badge--overdue {
+  background: var(--semantic-status-negative);
+  color: var(--semantic-text-inverse);
+}
+
+.rmd-account__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--spacing-3);
+  margin: 0;
+}
+
+.rmd-account__metrics dt {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.rmd-account__metrics dd {
+  margin: var(--spacing-1) 0 0;
+  font-weight: 700;
+  color: var(--semantic-text-primary);
+}
+
+/* Retirement income projection */
+.retirement-income-answer {
+  border-left: 4px solid var(--semantic-interactive-default);
+}
+
+.retirement-income-answer--success {
+  border-left-color: var(--semantic-status-positive);
+}
+
+.retirement-income-answer--warning {
+  border-left-color: var(--semantic-status-warning);
+}
+
+.retirement-income-answer__text {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: 600;
+  color: var(--semantic-text-primary);
+  margin: var(--spacing-3) 0;
+}
+
+.retirement-income-answer__depletion {
+  padding: var(--spacing-3);
+  background: var(--semantic-background-default);
+  border: 1px solid var(--semantic-status-warning);
+  border-radius: var(--border-radius-md);
+  color: var(--semantic-text-primary);
+}
+
 /* Factors list */
 .factor-list {
   list-style: none;
@@ -476,6 +597,118 @@
   color: var(--semantic-text-inverse);
 }
 
+/* Life events timeline */
+.planning-card__description {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-body-font-size);
+  margin: var(--spacing-2) 0 var(--spacing-4);
+}
+
+.life-events-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+}
+
+.life-events-field {
+  display: grid;
+  gap: var(--spacing-1);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: 600;
+}
+
+.life-events-template-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.life-events-timeline {
+  position: relative;
+  display: flex;
+  gap: var(--spacing-4);
+  overflow-x: auto;
+  padding: var(--spacing-5) 0 var(--spacing-2);
+}
+
+.life-events-timeline::before {
+  content: '';
+  position: absolute;
+  top: 35px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--semantic-border-default);
+}
+
+.life-event {
+  position: relative;
+  min-width: 240px;
+  padding: var(--spacing-4);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+}
+
+.life-event__marker {
+  position: absolute;
+  top: -19px;
+  left: var(--spacing-4);
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--semantic-background-elevated);
+  border-radius: 50%;
+}
+
+.life-event__marker--positive {
+  background: var(--semantic-status-positive);
+}
+
+.life-event__marker--negative {
+  background: var(--semantic-status-warning);
+}
+
+.life-event__date,
+.life-event__cash-flow,
+.life-event__guidance-title,
+.life-events-cash-flow-list {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.life-event__name {
+  margin: var(--spacing-1) 0;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.life-event__delta {
+  font-weight: 700;
+  margin-bottom: var(--spacing-2);
+}
+
+.life-event__delta--positive {
+  color: var(--semantic-status-positive);
+}
+
+.life-event__delta--negative {
+  color: var(--semantic-status-negative);
+}
+
+.life-event__guidance ul,
+.life-events-cash-flow-list {
+  margin: var(--spacing-2) 0 var(--spacing-3);
+  padding-left: var(--spacing-5);
+}
+
+.life-event__guidance li,
+.life-events-cash-flow-list li {
+  margin-bottom: var(--spacing-1);
+}
+
 /* Scenario list */
 .scenario-list {
   display: grid;
@@ -607,6 +840,86 @@
   color: var(--semantic-text-primary);
 }
 
+/* Healthcare projection */
+.healthcare-projection__subtitle,
+.healthcare-projection__footnote {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+  margin-top: var(--spacing-1);
+}
+
+.healthcare-projection__gap {
+  padding: var(--spacing-3);
+  background: var(--semantic-background-subtle, var(--semantic-background-default));
+  border-left: 3px solid var(--semantic-status-warning);
+  border-radius: var(--border-radius-sm);
+  color: var(--semantic-text-primary);
+  margin-bottom: var(--spacing-4);
+}
+
+.healthcare-projection__components {
+  margin-bottom: var(--spacing-4);
+}
+
+.healthcare-projection__heading {
+  font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-primary);
+  margin-bottom: var(--spacing-2);
+}
+
+.healthcare-projection__component-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-3);
+  margin: 0;
+}
+
+.healthcare-projection__component-list div {
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+}
+
+.healthcare-projection__component-list dt {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.healthcare-projection__component-list dd {
+  margin: var(--spacing-1) 0 0;
+  font-weight: 600;
+  color: var(--semantic-text-primary);
+}
+
+.healthcare-projection__table-wrapper {
+  overflow-x: auto;
+  margin-bottom: var(--spacing-3);
+}
+
+.healthcare-projection__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.healthcare-projection__table caption {
+  text-align: left;
+  color: var(--semantic-text-secondary);
+  margin-bottom: var(--spacing-2);
+}
+
+.healthcare-projection__table th,
+.healthcare-projection__table td {
+  padding: var(--spacing-2);
+  border-bottom: 1px solid var(--semantic-border-default);
+  text-align: left;
+}
+
+.healthcare-projection__table th {
+  color: var(--semantic-text-primary);
+  font-weight: 600;
+}
+
 /* Empty state */
 .planning-empty {
   text-align: center;
@@ -652,6 +965,18 @@
   .sweep-rule {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .life-events-form {
+    grid-template-columns: 1fr;
+  }
+
+  .life-events-timeline {
+    padding-top: var(--spacing-6);
+  }
+
+  .life-event {
+    min-width: 220px;
   }
 }
 

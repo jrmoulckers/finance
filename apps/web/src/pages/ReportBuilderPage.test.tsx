@@ -208,6 +208,9 @@ describe('ReportBuilderPage', () => {
     mockedUseReportBuilder.mockReturnValue(mockResult());
 
     render(<ReportBuilderPage />);
+    expect(screen.getByText('Profit & Loss')).toBeInTheDocument();
+    expect(screen.getByText('Cash Flow')).toBeInTheDocument();
+    expect(screen.getByText('Balance Sheet')).toBeInTheDocument();
     expect(screen.getByText('Monthly Summary')).toBeInTheDocument();
     expect(screen.getByText('Category Breakdown')).toBeInTheDocument();
     expect(screen.getByText('Trend Analysis')).toBeInTheDocument();
@@ -281,7 +284,7 @@ describe('ReportBuilderPage', () => {
     expect(screen.getByText('Summary')).toBeInTheDocument();
     expect(screen.getByText('Income')).toBeInTheDocument();
     expect(screen.getByText('Expenses')).toBeInTheDocument();
-    expect(screen.getByText('Net')).toBeInTheDocument();
+    expect(screen.getByText('Net Income')).toBeInTheDocument();
   });
 
   it('renders bar chart when chart type is bar', () => {

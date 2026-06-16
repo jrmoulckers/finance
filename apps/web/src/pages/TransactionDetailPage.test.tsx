@@ -137,6 +137,18 @@ describe('TransactionDetailPage', () => {
           sortOrder: 1,
           ...syncMetadata,
         },
+        {
+          id: 'category-household',
+          householdId: 'household-1',
+          name: 'Household',
+          icon: 'home',
+          color: '#2563EB',
+          parentId: null,
+          isIncome: false,
+          isSystem: false,
+          sortOrder: 2,
+          ...syncMetadata,
+        },
       ],
       loading: false,
       error: null,
@@ -144,6 +156,12 @@ describe('TransactionDetailPage', () => {
       createCategory: vi.fn(),
       updateCategory: vi.fn(),
       deleteCategory: vi.fn(),
+      foodMealTemplate: {
+        parentCategory: null,
+        subcategories: [],
+        missingSubcategoryDefinitions: [],
+      },
+      ensureFoodMealCategories: vi.fn(),
     });
   });
 
@@ -270,6 +288,70 @@ describe('TransactionDetailPage', () => {
     renderWithRoute();
 
     expect(screen.getByText('Food')).toBeInTheDocument();
+  });
+
+  it('displays split line items with category amounts and notes', () => {
+    mockedUseTransactions.mockReturnValue({
+      transactions: [
+        {
+          id: 'transaction-1',
+          householdId: 'household-1',
+          accountId: 'account-1',
+          categoryId: 'category-food',
+          splits: [
+            {
+              id: 'split-1',
+              categoryId: 'category-food',
+              amount: { amount: 4242 },
+              note: 'Groceries',
+            },
+            {
+              id: 'split-2',
+              categoryId: 'category-household',
+              amount: { amount: 2500 },
+              note: 'Cleaning supplies',
+            },
+          ],
+          type: 'EXPENSE',
+          status: 'CLEARED',
+          amount: { amount: 6742 },
+          currency: { code: 'USD', decimalPlaces: 2 },
+          payee: 'Grocery Store',
+          note: 'Weekly groceries',
+          date: '2025-03-06',
+          transferAccountId: null,
+          transferTransactionId: null,
+          isRecurring: false,
+          recurringRuleId: null,
+          tags: [],
+          merchantAddress: null,
+          merchantCity: null,
+          merchantState: null,
+          merchantZip: null,
+          merchantCountry: null,
+          externalReferenceId: null,
+          statementDescription: null,
+          customFields: null,
+          extraNotes: null,
+          counterpartyName: null,
+          counterpartyAccountId: null,
+          ...syncMetadata,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: refreshTransactionsMock,
+      createTransaction: vi.fn(),
+      updateTransaction: updateTransactionMock,
+      deleteTransaction: deleteTransactionMock,
+    });
+
+    renderWithRoute();
+
+    expect(screen.getByText('Split (2 lines)')).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: /split details/i })).toBeInTheDocument();
+    expect(screen.getByText('Household')).toBeInTheDocument();
+    expect(screen.getByText('Cleaning supplies')).toBeInTheDocument();
   });
 
   it('displays formatted date', () => {

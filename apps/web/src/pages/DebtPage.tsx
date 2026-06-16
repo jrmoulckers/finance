@@ -12,25 +12,40 @@
  * References: issues #1662, #1685, #1690, #1681, #1761, #1569
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
+import { useAccounts } from '../hooks/useAccounts';
 import './DebtPage.css';
 import type {
   Debt,
+  PayoffStrategy,
   StrategyComparison,
   BnplObligation,
   StudentLoan,
-  IdrInput,
+  StudentLoanScenarioConfig,
+  StudentLoanStatus,
   CreditCard,
+  IdrPlanType,
 } from '../lib/debt-types';
-import { compareStrategies } from '../lib/debt-payoff-engine';
+import {
+  calculateDebtMilestoneSummary,
+  calculateDebtToIncomeTrend,
+  calculateInterestSavedCents,
+  calculateStrategyResult,
+  compareStrategies,
+} from '../lib/debt-payoff-engine';
 import {
   calculateBnplSummary,
   detectPaymentCollisions,
   calculateBnplRiskScore,
 } from '../lib/debt-bnpl-engine';
-import { compareRepaymentPlans } from '../lib/debt-student-loan-engine';
+import {
+  calculateStudentLoanDashboardSummary,
+  calculateStudentLoanScenarioComparisons,
+  calculateStudentLoanWhatIfScenario,
+} from '../lib/debt-student-loan-engine';
 import { calculateReservationSummary } from '../lib/debt-credit-card-engine';
+import type { Account } from '../kmp/bridge';
 
 // ---------------------------------------------------------------------------
 // Tab types
@@ -45,16 +60,212 @@ const TAB_LABELS: Record<DebtTab, string> = {
   'credit-cards': 'Credit Cards',
 };
 
+type DebtFormState = {
+  name: string;
+  balance: string;
+  originalBalance: string;
+  rate: string;
+  minimumPayment: string;
+  type: Debt['type'];
+};
+
+type StudentLoanFormState = {
+  name: string;
+  servicer: string;
+  balance: string;
+  originalBalance: string;
+  rate: string;
+  minimumPayment: string;
+  status: StudentLoanStatus;
+  isFederal: boolean;
+  isPslfEligible: boolean;
+  pslfPaymentsMade: string;
+};
+
+type StudentLoanScenarioFormState = {
+  annualIncome: string;
+  familySize: string;
+  filingStatus: 'single' | 'married_filing_jointly' | 'married_filing_separately';
+  idrPlan: IdrPlanType;
+  pslfPaymentsMade: string;
+  refinanceRate: string;
+  refinanceTermMonths: string;
+  salaryRaise: string;
+  salaryRaisePlan: IdrPlanType;
+};
+
+const DEFAULT_DEBT_FORM: DebtFormState = {
+  name: '',
+  balance: '',
+  originalBalance: '',
+  rate: '',
+  minimumPayment: '',
+  type: 'credit_card',
+};
+
+const DEFAULT_STUDENT_LOAN_FORM: StudentLoanFormState = {
+  name: '',
+  servicer: '',
+  balance: '',
+  originalBalance: '',
+  rate: '',
+  minimumPayment: '',
+  status: 'in_repayment',
+  isFederal: true,
+  isPslfEligible: false,
+  pslfPaymentsMade: '0',
+};
+
+const DEFAULT_STUDENT_SCENARIOS: StudentLoanScenarioFormState = {
+  annualIncome: '50000',
+  familySize: '1',
+  filingStatus: 'single',
+  idrPlan: 'PAYE',
+  pslfPaymentsMade: '0',
+  refinanceRate: '4.5',
+  refinanceTermMonths: '120',
+  salaryRaise: '5000',
+  salaryRaisePlan: 'PAYE',
+};
+
+const STUDENT_LOAN_STATUS_LABELS: Record<StudentLoanStatus, string> = {
+  in_repayment: 'In Repayment',
+  in_grace: 'In Grace',
+  deferred: 'Deferred',
+  forbearance: 'Forbearance',
+};
+
+const IDR_PLAN_LABELS: Record<IdrPlanType, string> = {
+  IBR: 'IBR',
+  PAYE: 'PAYE',
+  REPAYE: 'REPAYE',
+  ICR: 'ICR',
+};
+
+function parseCurrencyInput(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) : 0;
+}
+
+function parseRateInput(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) : 0;
+}
+
+function centsToInputValue(cents: number): string {
+  return (cents / 100).toFixed(2).replace(/\.00$/, '');
+}
+
+function bpsToInputValue(bps: number): string {
+  return (bps / 100).toFixed(2).replace(/\.00$/, '');
+}
+
+function formatRateBps(bps: number): string {
+  return `${(bps / 100).toFixed(2)}%`;
+}
+
+function formatMonthYear(dateIso: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${dateIso}T00:00:00.000Z`));
+}
+
+function addMonthsToIsoDate(todayIso: string, months: number): string {
+  const [year, month, day] = todayIso.split('-').map((value) => Number.parseInt(value, 10));
+  const date = new Date(Date.UTC(year, Math.max(0, month - 1), day));
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatCountdown(months: number): string {
+  if (months <= 0) return 'Debt-free today';
+  const years = Math.floor(months / 12);
+  const remainingMonths = months % 12;
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years} year${years === 1 ? '' : 's'}`);
+  if (remainingMonths > 0)
+    parts.push(`${remainingMonths} month${remainingMonths === 1 ? '' : 's'}`);
+  return `${parts.join(', ')} to debt-free`;
+}
+
+function buildStudentLoanFormState(loan: StudentLoan): StudentLoanFormState {
+  return {
+    name: loan.name,
+    servicer: loan.servicer,
+    balance: centsToInputValue(loan.balanceCents),
+    originalBalance: centsToInputValue(loan.originalBalanceCents),
+    rate: bpsToInputValue(loan.annualRateBps),
+    minimumPayment: centsToInputValue(loan.minimumPaymentCents),
+    status: loan.status,
+    isFederal: loan.isFederal,
+    isPslfEligible: loan.isPslfEligible,
+    pslfPaymentsMade: String(loan.pslfPaymentsMade),
+  };
+}
+
+function createDebtId(): string {
+  return `manual-debt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createStudentLoanId(): string {
+  return `student-loan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isDebtAccount(account: Account): boolean {
+  const name = account.name.toLowerCase();
+  return (
+    account.type === 'CREDIT_CARD' ||
+    account.type === 'LOAN' ||
+    /\b(debt|loan|mortgage|card|heloc)\b/.test(name)
+  );
+}
+
+function debtTypeFromAccount(account: Account): Debt['type'] {
+  const name = account.name.toLowerCase();
+  if (account.type === 'CREDIT_CARD' || name.includes('card')) return 'credit_card';
+  if (name.includes('student')) return 'student_loan';
+  if (name.includes('auto') || name.includes('car')) return 'auto_loan';
+  if (name.includes('mortgage')) return 'mortgage';
+  return account.type === 'LOAN' ? 'personal_loan' : 'other';
+}
+
+function defaultDebtRateBps(type: Debt['type']): number {
+  if (type === 'credit_card') return 1999;
+  if (type === 'mortgage') return 700;
+  if (type === 'student_loan') return 550;
+  if (type === 'auto_loan') return 650;
+  return 900;
+}
+
+function defaultMinimumPaymentCents(balanceCents: number, type: Debt['type']): number {
+  if (balanceCents <= 0) return 0;
+  const percent = type === 'credit_card' ? 0.03 : 0.015;
+  return Math.max(2_500, Math.round(balanceCents * percent));
+}
+
+function accountToDebt(account: Account): Debt | null {
+  const balanceCents = Math.abs(account.currentBalance.amount);
+  if (balanceCents <= 0 || !isDebtAccount(account)) return null;
+  const type = debtTypeFromAccount(account);
+  return {
+    id: `account-${account.id}`,
+    name: account.name,
+    balanceCents,
+    originalBalanceCents: balanceCents,
+    annualRateBps: defaultDebtRateBps(type),
+    minimumPaymentCents: defaultMinimumPaymentCents(balanceCents, type),
+    type,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
 /**
  * Debt management page — the central hub for all debt tracking features.
- *
- * This is a client-side-only page that uses the calculation engines
- * from `lib/debt-*` for all financial math. Data is loaded via hooks
- * when integrated with the database layer.
  */
 export function DebtPage(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<DebtTab>('payoff');
@@ -66,7 +277,6 @@ export function DebtPage(): React.ReactElement {
         <p className="debt-page__subtitle">Track, plan, and optimize your debt payoff strategy.</p>
       </header>
 
-      {/* Tab navigation */}
       <nav className="debt-page__tabs" aria-label="Debt management sections">
         <ul role="tablist" className="debt-page__tab-list">
           {(Object.keys(TAB_LABELS) as DebtTab[]).map((tab) => (
@@ -86,7 +296,6 @@ export function DebtPage(): React.ReactElement {
         </ul>
       </nav>
 
-      {/* Tab panels */}
       <div
         id={`debt-panel-${activeTab}`}
         role="tabpanel"
@@ -103,106 +312,405 @@ export function DebtPage(): React.ReactElement {
 }
 
 // ---------------------------------------------------------------------------
-// Payoff Planner panel (#1662)
+// Payoff Planner panel (#1662, #2154, #2157, #2165)
 // ---------------------------------------------------------------------------
 
-/**
- * Payoff planner with avalanche/snowball strategy comparison.
- *
- * Displays debt listing, strategy results side-by-side,
- * and a payoff timeline visualization.
- */
 function PayoffPlannerPanel(): React.ReactElement {
-  // TODO: Replace with useDebts() hook when database layer is ready
-  const [debts] = useState<Debt[]>([]);
-  const [extraPaymentCents, setExtraPaymentCents] = useState(0);
-  const [comparison, setComparison] = useState<StrategyComparison | null>(null);
+  const { accounts, loading, error } = useAccounts();
+  const [manualDebts, setManualDebts] = useState<Debt[]>([]);
+  const [debtAdjustments, setDebtAdjustments] = useState<Record<string, Partial<Debt>>>({});
+  const [manualForm, setManualForm] = useState<DebtFormState>(DEFAULT_DEBT_FORM);
+  const [extraPayment, setExtraPayment] = useState('100');
+  const [activeStrategy, setActiveStrategy] = useState<PayoffStrategy>('avalanche');
+  const [monthlyIncome, setMonthlyIncome] = useState('5000');
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  const handleCalculate = useCallback(() => {
-    if (debts.length === 0) return;
-    const result = compareStrategies(debts, extraPaymentCents);
-    setComparison(result);
-  }, [debts, extraPaymentCents]);
+  const importedDebts = useMemo(
+    () => accounts.map(accountToDebt).filter((debt): debt is Debt => debt !== null),
+    [accounts],
+  );
 
-  if (debts.length === 0) {
-    return (
-      <EmptyState
-        title="No debts added"
-        description="Add your debts to compare payoff strategies and see how extra payments can save you money."
-        action={<button>Add Debt</button>}
-      />
-    );
-  }
+  const confirmedImportedDebts = useMemo(
+    () =>
+      importedDebts.map((debt) => ({
+        ...debt,
+        ...debtAdjustments[debt.id],
+      })),
+    [debtAdjustments, importedDebts],
+  );
+
+  const debts = useMemo(
+    () => [...confirmedImportedDebts, ...manualDebts].filter((debt) => debt.balanceCents > 0),
+    [confirmedImportedDebts, manualDebts],
+  );
+  const extraPaymentCents = parseCurrencyInput(extraPayment);
+  const monthlyIncomeCents = parseCurrencyInput(monthlyIncome);
+
+  const comparison = useMemo<StrategyComparison | null>(
+    () => (debts.length > 0 ? compareStrategies(debts, extraPaymentCents) : null),
+    [debts, extraPaymentCents],
+  );
+  const activeResult = useMemo(
+    () =>
+      debts.length > 0 ? calculateStrategyResult(debts, activeStrategy, extraPaymentCents) : null,
+    [activeStrategy, debts, extraPaymentCents],
+  );
+  const interestSavedCents = useMemo(
+    () => calculateInterestSavedCents(debts, activeStrategy, extraPaymentCents),
+    [activeStrategy, debts, extraPaymentCents],
+  );
+  const milestones = useMemo(() => calculateDebtMilestoneSummary(debts), [debts]);
+  const dti = useMemo(
+    () => calculateDebtToIncomeTrend(debts, monthlyIncomeCents, activeStrategy, extraPaymentCents),
+    [activeStrategy, debts, extraPaymentCents, monthlyIncomeCents],
+  );
+
+  const handleAdjustment = useCallback((debtId: string, patch: Partial<Debt>) => {
+    setDebtAdjustments((current) => ({
+      ...current,
+      [debtId]: {
+        ...current[debtId],
+        ...patch,
+      },
+    }));
+  }, []);
+
+  const handleManualFieldChange = useCallback((field: keyof DebtFormState, value: string) => {
+    setManualForm((current) => ({ ...current, [field]: value }));
+  }, []);
+
+  const handleManualSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const balanceCents = parseCurrencyInput(manualForm.balance);
+      const originalInput = parseCurrencyInput(manualForm.originalBalance);
+      const minimumPaymentCents = parseCurrencyInput(manualForm.minimumPayment);
+      const debt: Debt = {
+        id: createDebtId(),
+        name: manualForm.name.trim(),
+        balanceCents,
+        originalBalanceCents: Math.max(balanceCents, originalInput || balanceCents),
+        annualRateBps: parseRateInput(manualForm.rate),
+        minimumPaymentCents,
+        type: manualForm.type,
+      };
+
+      if (!debt.name || debt.balanceCents <= 0 || debt.minimumPaymentCents <= 0) return;
+      setManualDebts((current) => [...current, debt]);
+      setManualForm(DEFAULT_DEBT_FORM);
+    },
+    [manualForm],
+  );
 
   return (
     <div className="payoff-planner">
-      {/* Debt listing */}
-      <section aria-label="Your debts">
-        <h2>Your Debts</h2>
-        <ul role="list" className="debt-list">
-          {debts.map((debt) => (
-            <li key={debt.id} role="listitem" className="debt-list__item">
-              <div className="debt-list__name">{debt.name}</div>
-              <div className="debt-list__details">
-                <CurrencyDisplay amount={debt.balanceCents} context="balance" />
-                <span className="debt-list__rate">
-                  {(debt.annualRateBps / 100).toFixed(2)}% APR
-                </span>
-                <CurrencyDisplay amount={debt.minimumPaymentCents} context="minimum payment" />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* Extra payment input */}
-      <section aria-label="Extra payment simulator">
-        <h2>Extra Monthly Payment</h2>
-        <label htmlFor="extra-payment">Additional payment beyond minimums ($/month):</label>
-        <input
-          id="extra-payment"
-          type="number"
-          min="0"
-          step="1"
-          value={extraPaymentCents / 100}
-          onChange={(e) =>
-            setExtraPaymentCents(Math.round(parseFloat(e.target.value || '0') * 100))
-          }
-          aria-describedby="extra-payment-help"
+      {debts.length === 0 ? (
+        <EmptyState
+          title="No debts added"
+          description="Add your debts or connect debt accounts to compare payoff strategies and see how extra payments can save you money."
+          action={<button type="button">Add Debt</button>}
         />
-        <p id="extra-payment-help" className="form-help">
-          This amount will be applied to the target debt each month.
-        </p>
-        <button onClick={handleCalculate}>Calculate Payoff</button>
+      ) : (
+        <>
+          {activeResult && (
+            <section className="debt-hero" aria-label="Debt-free countdown">
+              <div>
+                <p className="debt-hero__eyebrow">Debt-Free Date</p>
+                <h2>{formatCountdown(activeResult.totalMonths)}</h2>
+                <p>
+                  Keep going — this plan points to{' '}
+                  {formatMonthYear(addMonthsToIsoDate(todayIso, activeResult.totalMonths))}.
+                </p>
+              </div>
+              <div className="debt-hero__savings" aria-live="polite">
+                <span>Interest saved</span>
+                <strong>
+                  <CurrencyDisplay amount={interestSavedCents} context="interest saved" />
+                </strong>
+                <p>Compared with making minimum payments only.</p>
+              </div>
+            </section>
+          )}
+
+          <section aria-label="Debt milestones" className="debt-milestones">
+            <div>
+              <h2>Debt Milestones</h2>
+              <p>{milestones.percentPaidOff.toFixed(1)}% paid off — every payment is progress.</p>
+            </div>
+            <ul role="list" className="debt-milestones__badges">
+              {milestones.milestones.map((milestone) => (
+                <li
+                  key={milestone.thresholdPercent}
+                  className={`debt-milestone ${milestone.isReached ? 'debt-milestone--reached' : ''}`}
+                >
+                  <span aria-hidden="true">{milestone.isReached ? '🏆' : '○'}</span>
+                  <strong>{milestone.thresholdPercent}%</strong>
+                  <span>{milestone.isReached ? 'Celebrated' : 'On deck'}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section aria-label="Debt-to-income ratio" className="dti-card">
+            <div className="dti-card__header">
+              <div>
+                <h2>Debt-to-Income Trend</h2>
+                <p>
+                  {dti.isImproving
+                    ? 'Your required debt payments trend downward as balances disappear.'
+                    : 'Add income or payoff progress to see the trend improve.'}
+                </p>
+              </div>
+              <label>
+                Monthly income ($)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={monthlyIncome}
+                  onChange={(event) => setMonthlyIncome(event.target.value)}
+                />
+              </label>
+            </div>
+            <dl className="dti-card__stats">
+              <dt>DTI ratio</dt>
+              <dd>{dti.currentRatioPercent.toFixed(1)}%</dd>
+              <dt>Projected final DTI</dt>
+              <dd>{dti.projectedFinalRatioPercent.toFixed(1)}%</dd>
+              <dt>Trend</dt>
+              <dd>{dti.isImproving ? 'Improving' : 'Holding steady'}</dd>
+            </dl>
+            <ol className="dti-trend" aria-label="Monthly DTI trend preview">
+              {dti.trend.slice(0, 6).map((point) => (
+                <li key={point.month}>
+                  Month {point.month}: {point.ratioPercent.toFixed(1)}%
+                </li>
+              ))}
+            </ol>
+          </section>
+        </>
+      )}
+
+      <section aria-label="Imported debt accounts" className="imported-debts">
+        <h2>Imported from Accounts</h2>
+        {loading && <p>Loading accounts…</p>}
+        {error && <p role="alert">Could not load accounts: {error}</p>}
+        {!loading && importedDebts.length === 0 && (
+          <p className="form-help">
+            No credit card or loan accounts were found. You can add debts manually below.
+          </p>
+        )}
+        {confirmedImportedDebts.length > 0 && (
+          <ul role="list" className="debt-import-list">
+            {confirmedImportedDebts.map((debt) => (
+              <li key={debt.id} className="debt-import-list__item">
+                <h3>{debt.name}</h3>
+                <label>
+                  Balance ($)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={centsToInputValue(debt.balanceCents)}
+                    onChange={(event) =>
+                      handleAdjustment(debt.id, {
+                        balanceCents: parseCurrencyInput(event.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Original balance ($)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={centsToInputValue(debt.originalBalanceCents ?? debt.balanceCents)}
+                    onChange={(event) =>
+                      handleAdjustment(debt.id, {
+                        originalBalanceCents: Math.max(
+                          debt.balanceCents,
+                          parseCurrencyInput(event.target.value),
+                        ),
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  APR (%)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={bpsToInputValue(debt.annualRateBps)}
+                    onChange={(event) =>
+                      handleAdjustment(debt.id, {
+                        annualRateBps: parseRateInput(event.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Minimum payment ($)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={centsToInputValue(debt.minimumPaymentCents)}
+                    onChange={(event) =>
+                      handleAdjustment(debt.id, {
+                        minimumPaymentCents: parseCurrencyInput(event.target.value),
+                      })
+                    }
+                  />
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
-      {/* Strategy comparison */}
-      {comparison && (
-        <section aria-label="Strategy comparison">
-          <h2>Strategy Comparison</h2>
-          <div className="strategy-comparison">
-            <StrategyCard
-              title="Avalanche (Highest Rate First)"
-              result={comparison.avalanche}
-              recommended={comparison.interestSavingsCents > 0}
+      <section aria-label="Manual debt entry">
+        <h2>Add Debt Manually</h2>
+        <form className="debt-entry-form" onSubmit={handleManualSubmit} noValidate>
+          <label>
+            Debt name
+            <input
+              type="text"
+              value={manualForm.name}
+              onChange={(event) => handleManualFieldChange('name', event.target.value)}
+              required
             />
-            <StrategyCard
-              title="Snowball (Smallest Balance First)"
-              result={comparison.snowball}
-              recommended={comparison.interestSavingsCents < 0}
+          </label>
+          <label>
+            Debt balance ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={manualForm.balance}
+              onChange={(event) => handleManualFieldChange('balance', event.target.value)}
+              required
             />
-          </div>
-          {comparison.interestSavingsCents > 0 && (
-            <p className="strategy-savings" aria-live="polite">
-              Avalanche saves{' '}
-              <CurrencyDisplay
-                amount={comparison.interestSavingsCents}
-                context="interest savings"
-              />{' '}
-              in interest and {comparison.timeSavingsMonths} month(s) vs. snowball.
-            </p>
+          </label>
+          <label>
+            Original balance ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={manualForm.originalBalance}
+              onChange={(event) => handleManualFieldChange('originalBalance', event.target.value)}
+            />
+          </label>
+          <label>
+            APR (%)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={manualForm.rate}
+              onChange={(event) => handleManualFieldChange('rate', event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Minimum payment ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={manualForm.minimumPayment}
+              onChange={(event) => handleManualFieldChange('minimumPayment', event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Debt type
+            <select
+              value={manualForm.type}
+              onChange={(event) =>
+                handleManualFieldChange('type', event.target.value as Debt['type'])
+              }
+            >
+              <option value="credit_card">Credit card</option>
+              <option value="student_loan">Student loan</option>
+              <option value="auto_loan">Auto loan</option>
+              <option value="mortgage">Mortgage</option>
+              <option value="personal_loan">Personal loan</option>
+              <option value="medical">Medical</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <button type="submit">Add Debt</button>
+        </form>
+      </section>
+
+      {debts.length > 0 && (
+        <>
+          <section aria-label="Payoff controls" className="payoff-controls">
+            <h2>Payoff Plan</h2>
+            <label>
+              Active strategy
+              <select
+                value={activeStrategy}
+                onChange={(event) => setActiveStrategy(event.target.value as PayoffStrategy)}
+              >
+                <option value="avalanche">Avalanche (highest APR first)</option>
+                <option value="snowball">Snowball (smallest balance first)</option>
+              </select>
+            </label>
+            <label>
+              Extra monthly payment ($)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={extraPayment}
+                onChange={(event) => setExtraPayment(event.target.value)}
+              />
+            </label>
+          </section>
+
+          <section aria-label="Your debts">
+            <h2>Your Debts</h2>
+            <ul role="list" className="debt-list">
+              {debts.map((debt) => (
+                <li key={debt.id} role="listitem" className="debt-list__item">
+                  <div className="debt-list__name">{debt.name}</div>
+                  <div className="debt-list__details">
+                    <CurrencyDisplay amount={debt.balanceCents} context="balance" />
+                    <span className="debt-list__rate">{formatRateBps(debt.annualRateBps)} APR</span>
+                    <CurrencyDisplay amount={debt.minimumPaymentCents} context="minimum payment" />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {comparison && (
+            <section aria-label="Strategy comparison">
+              <h2>Strategy Comparison</h2>
+              <div className="strategy-comparison">
+                <StrategyCard
+                  title="Avalanche (Highest Rate First)"
+                  result={comparison.avalanche}
+                  recommended={comparison.interestSavingsCents > 0}
+                />
+                <StrategyCard
+                  title="Snowball (Smallest Balance First)"
+                  result={comparison.snowball}
+                  recommended={comparison.interestSavingsCents < 0}
+                />
+              </div>
+              <p className="strategy-savings" aria-live="polite">
+                Your {activeStrategy} plan saves{' '}
+                <CurrencyDisplay amount={interestSavedCents} context="interest savings" /> in
+                interest versus minimum-only payments.
+              </p>
+            </section>
           )}
-        </section>
+        </>
       )}
     </div>
   );
@@ -265,13 +773,9 @@ function StrategyCard({ title, result, recommended }: StrategyCardProps): React.
 // BNPL Dashboard panel (#1685, #1690)
 // ---------------------------------------------------------------------------
 
-/**
- * BNPL aggregation dashboard with collision alerts and risk scoring.
- */
 function BnplDashboardPanel(): React.ReactElement {
-  // TODO: Replace with useBnpl() hook when database layer is ready
   const [obligations] = useState<BnplObligation[]>([]);
-  const monthlyIncomeCents = 500_000; // TODO: get from user profile
+  const monthlyIncomeCents = 500_000;
 
   if (obligations.length === 0) {
     return (
@@ -289,7 +793,6 @@ function BnplDashboardPanel(): React.ReactElement {
 
   return (
     <div className="bnpl-dashboard">
-      {/* Risk score banner */}
       <section aria-label="BNPL risk assessment">
         <div
           className={`risk-badge risk-badge--${riskScore.category}`}
@@ -312,7 +815,6 @@ function BnplDashboardPanel(): React.ReactElement {
         )}
       </section>
 
-      {/* Alerts */}
       {alerts.length > 0 && (
         <section aria-label="BNPL alerts">
           <h2>Alerts</h2>
@@ -326,7 +828,6 @@ function BnplDashboardPanel(): React.ReactElement {
         </section>
       )}
 
-      {/* Summary stats */}
       <section aria-label="BNPL summary">
         <h2>Overview</h2>
         <dl className="bnpl-summary">
@@ -351,7 +852,6 @@ function BnplDashboardPanel(): React.ReactElement {
         </dl>
       </section>
 
-      {/* Obligation list */}
       <section aria-label="BNPL obligations">
         <h2>Obligations</h2>
         <ul role="list" className="bnpl-list">
@@ -377,167 +877,559 @@ function BnplDashboardPanel(): React.ReactElement {
 }
 
 // ---------------------------------------------------------------------------
-// Student Loan panel (#1681, #1761)
+// Student Loan panel (#1681, #1761, #2160)
 // ---------------------------------------------------------------------------
 
-/**
- * Student loan optimizer with IDR plan comparison and PSLF calculator.
- */
 function StudentLoanPanel(): React.ReactElement {
-  // TODO: Replace with useStudentLoans() hook when database layer is ready
-  const [loans] = useState<StudentLoan[]>([]);
+  const [loans, setLoans] = useState<StudentLoan[]>([]);
+  const [editingLoanId, setEditingLoanId] = useState<string | null>(null);
+  const [extraPayment, setExtraPayment] = useState('50');
+  const [formState, setFormState] = useState<StudentLoanFormState>(DEFAULT_STUDENT_LOAN_FORM);
+  const [scenarioForm, setScenarioForm] =
+    useState<StudentLoanScenarioFormState>(DEFAULT_STUDENT_SCENARIOS);
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  if (loans.length === 0) {
-    return (
-      <EmptyState
-        title="No student loans"
-        description="Add your student loans to compare repayment plans, track PSLF progress, and estimate forgiveness."
-        action={<button>Add Student Loan</button>}
-      />
-    );
-  }
+  const summary = useMemo(
+    () => calculateStudentLoanDashboardSummary(loans, todayIso),
+    [loans, todayIso],
+  );
+  const whatIfScenario = useMemo(
+    () => calculateStudentLoanWhatIfScenario(loans, parseCurrencyInput(extraPayment), todayIso),
+    [extraPayment, loans, todayIso],
+  );
+  const scenarioResults = useMemo(() => {
+    const annualIncomeCents = parseCurrencyInput(scenarioForm.annualIncome);
+    const idrInput = {
+      annualIncomeCents,
+      familySize: Math.max(1, Number.parseInt(scenarioForm.familySize, 10) || 1),
+      state: 'US',
+      filingStatus: scenarioForm.filingStatus,
+    };
+    const scenarios: StudentLoanScenarioConfig[] = [
+      {
+        id: 'idr-scenario',
+        label: `IDR (${scenarioForm.idrPlan})`,
+        type: 'idr',
+        idrPlan: scenarioForm.idrPlan,
+        idrInput,
+      },
+      {
+        id: 'pslf-scenario',
+        label: 'PSLF path',
+        type: 'pslf',
+        idrPlan: scenarioForm.idrPlan,
+        idrInput,
+        pslfQualifyingPayments: Math.max(
+          0,
+          Number.parseInt(scenarioForm.pslfPaymentsMade, 10) || 0,
+        ),
+      },
+      {
+        id: 'refinance-scenario',
+        label: 'Refinance',
+        type: 'refinance',
+        refinanceAnnualRateBps: parseRateInput(scenarioForm.refinanceRate),
+        refinanceTermMonths: Math.max(
+          1,
+          Number.parseInt(scenarioForm.refinanceTermMonths, 10) || 120,
+        ),
+      },
+      {
+        id: 'raise-scenario',
+        label: 'Salary raise',
+        type: 'salary_raise',
+        idrPlan: scenarioForm.salaryRaisePlan,
+        idrInput,
+        salaryRaiseAnnualCents: parseCurrencyInput(scenarioForm.salaryRaise),
+      },
+    ];
+    return calculateStudentLoanScenarioComparisons(loans, scenarios, todayIso);
+  }, [loans, scenarioForm, todayIso]);
 
-  // TODO: Get from user profile/settings
-  const idrInput: IdrInput = {
-    annualIncomeCents: 5_000_000,
-    familySize: 1,
-    state: 'CA',
-    filingStatus: 'single',
-  };
+  const resetForm = useCallback(() => {
+    setEditingLoanId(null);
+    setFormState(DEFAULT_STUDENT_LOAN_FORM);
+  }, []);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const comparison = compareRepaymentPlans(loans, idrInput, today);
+  const handleFieldChange = useCallback(
+    <K extends keyof StudentLoanFormState>(field: K, value: StudentLoanFormState[K]) => {
+      setFormState((current) => ({ ...current, [field]: value }));
+    },
+    [],
+  );
+
+  const handleScenarioFieldChange = useCallback(
+    <K extends keyof StudentLoanScenarioFormState>(
+      field: K,
+      value: StudentLoanScenarioFormState[K],
+    ) => {
+      setScenarioForm((current) => ({ ...current, [field]: value }));
+    },
+    [],
+  );
+
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      const balanceCents = parseCurrencyInput(formState.balance);
+      const originalBalanceInput = parseCurrencyInput(formState.originalBalance);
+      const originalBalanceCents = Math.max(balanceCents, originalBalanceInput || balanceCents);
+      const minimumPaymentCents = parseCurrencyInput(formState.minimumPayment);
+      const loan: StudentLoan = {
+        id: editingLoanId ?? createStudentLoanId(),
+        name: formState.name.trim(),
+        servicer: formState.servicer.trim(),
+        balanceCents,
+        annualRateBps: parseRateInput(formState.rate),
+        minimumPaymentCents,
+        status: formState.status,
+        originalBalanceCents,
+        isFederal: formState.isFederal,
+        isPslfEligible: formState.isPslfEligible,
+        pslfPaymentsMade: Math.max(0, Number.parseInt(formState.pslfPaymentsMade, 10) || 0),
+      };
+
+      if (!loan.name || !loan.servicer || loan.balanceCents <= 0 || loan.minimumPaymentCents <= 0) {
+        return;
+      }
+
+      setLoans((current) => {
+        if (editingLoanId) {
+          return current.map((existingLoan) =>
+            existingLoan.id === editingLoanId ? loan : existingLoan,
+          );
+        }
+        return [...current, loan];
+      });
+      resetForm();
+    },
+    [editingLoanId, formState, resetForm],
+  );
+
+  const handleEditLoan = useCallback((loan: StudentLoan) => {
+    setEditingLoanId(loan.id);
+    setFormState(buildStudentLoanFormState(loan));
+  }, []);
 
   return (
-    <div className="student-loan-optimizer">
-      {/* Recommendation banner */}
-      <section aria-label="Recommended repayment plan">
-        <div className="recommendation-banner" role="status" aria-live="polite">
-          <h2>Recommended Plan: {comparison.recommendedPlan}</h2>
-          {comparison.savingsVsStandardCents > 0 && (
-            <p>
-              Save{' '}
+    <div className="student-loan-dashboard">
+      {loans.length === 0 ? (
+        <EmptyState
+          title="No student loans"
+          description="Add a loan below to see payoff estimates, progress tracking, and extra-payment savings."
+        />
+      ) : (
+        <>
+          <section aria-label="Student loan dashboard overview">
+            <h2>Dashboard Overview</h2>
+            <div className="student-loan-summary-grid">
+              <article className="student-loan-stat-card">
+                <h3>Total Balance</h3>
+                <p className="student-loan-stat-card__value">
+                  <CurrencyDisplay
+                    amount={summary.totalBalanceCents}
+                    context="student loan balance"
+                  />
+                </p>
+              </article>
+              <article className="student-loan-stat-card">
+                <h3>Weighted Avg Rate</h3>
+                <p className="student-loan-stat-card__value">
+                  {formatRateBps(summary.weightedAverageRateBps)}
+                </p>
+              </article>
+              <article className="student-loan-stat-card">
+                <h3>Monthly Payment</h3>
+                <p className="student-loan-stat-card__value">
+                  <CurrencyDisplay
+                    amount={summary.monthlyPaymentCents}
+                    context="student loan payment"
+                  />
+                </p>
+              </article>
+              <article className="student-loan-stat-card">
+                <h3>Estimated Payoff</h3>
+                <p className="student-loan-stat-card__value">
+                  {summary.estimatedPayoffDate
+                    ? formatMonthYear(summary.estimatedPayoffDate)
+                    : 'Not amortizing'}
+                </p>
+                <p className="student-loan-stat-card__hint">
+                  Based on your current payment amount.
+                </p>
+              </article>
+              <article className="student-loan-stat-card">
+                <h3>Total Interest Remaining</h3>
+                <p className="student-loan-stat-card__value">
+                  <CurrencyDisplay
+                    amount={summary.totalInterestCents}
+                    context="remaining interest"
+                  />
+                </p>
+              </article>
+              <article className="student-loan-stat-card student-loan-stat-card--wide">
+                <h3>Paid Off Progress</h3>
+                <div
+                  className="student-loan-progress"
+                  role="progressbar"
+                  aria-label="Student loans paid off"
+                  aria-valuenow={summary.percentPaidOff}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className="student-loan-progress__bar"
+                    style={{ width: `${summary.percentPaidOff}%` }}
+                  />
+                </div>
+                <p className="student-loan-stat-card__hint">
+                  {summary.percentPaidOff.toFixed(1)}% paid off
+                </p>
+              </article>
+            </div>
+          </section>
+
+          <section aria-label="What-if calculator" className="student-loan-what-if">
+            <h2>What if?</h2>
+            <label htmlFor="student-loan-extra-payment">Extra payment each month ($)</label>
+            <input
+              id="student-loan-extra-payment"
+              type="number"
+              min="0"
+              step="0.01"
+              value={extraPayment}
+              onChange={(event) => setExtraPayment(event.target.value)}
+            />
+            <p className="student-loan-what-if__result" aria-live="polite">
+              Pay{' '}
+              <CurrencyDisplay amount={whatIfScenario.extraPaymentCents} context="extra payment" />{' '}
+              extra/month → save{' '}
               <CurrencyDisplay
-                amount={comparison.savingsVsStandardCents}
-                context="savings vs standard"
+                amount={whatIfScenario.interestSavedCents}
+                context="interest savings"
               />{' '}
-              compared to standard repayment.
+              in interest and pay off {whatIfScenario.monthsSaved} month
+              {whatIfScenario.monthsSaved === 1 ? '' : 's'} earlier.
             </p>
-          )}
-        </div>
-      </section>
+          </section>
 
-      {/* Plan comparison table */}
-      <section aria-label="Repayment plan comparison">
-        <h2>Plan Comparison</h2>
-        <div className="plan-comparison" role="table" aria-label="Repayment plan details">
-          <div role="rowgroup">
-            <div role="row" className="plan-comparison__header">
-              <span role="columnheader">Plan</span>
-              <span role="columnheader">Monthly Payment</span>
-              <span role="columnheader">Total Paid</span>
-              <span role="columnheader">Total Interest</span>
-              <span role="columnheader">Forgiven</span>
-              <span role="columnheader">Tax on Forgiveness</span>
-            </div>
-          </div>
-          <div role="rowgroup">
-            {/* Standard */}
-            <div role="row" className="plan-comparison__row">
-              <span role="cell">Standard (10-year)</span>
-              <span role="cell">
-                <CurrencyDisplay amount={comparison.standard.monthlyPaymentCents} />
-              </span>
-              <span role="cell">
-                <CurrencyDisplay amount={comparison.standard.totalPaidCents} />
-              </span>
-              <span role="cell">
-                <CurrencyDisplay amount={comparison.standard.totalInterestCents} />
-              </span>
-              <span role="cell">
-                <CurrencyDisplay amount={comparison.standard.forgivenAmountCents} />
-              </span>
-              <span role="cell">
-                <CurrencyDisplay amount={comparison.standard.estimatedTaxOnForgivenessCents} />
-              </span>
-            </div>
-            {/* IDR plans */}
-            {comparison.idrPlans.map((plan) => (
-              <div
-                key={plan.planType}
-                role="row"
-                className={`plan-comparison__row ${
-                  plan.planType === comparison.recommendedPlan
-                    ? 'plan-comparison__row--recommended'
-                    : ''
-                }`}
-              >
-                <span role="cell">
-                  {plan.planType}
-                  {plan.planType === comparison.recommendedPlan && ' ★'}
-                </span>
-                <span role="cell">
-                  <CurrencyDisplay amount={plan.monthlyPaymentCents} />
-                </span>
-                <span role="cell">
-                  <CurrencyDisplay amount={plan.totalPaidCents} />
-                </span>
-                <span role="cell">
-                  <CurrencyDisplay amount={plan.totalInterestCents} />
-                </span>
-                <span role="cell">
-                  <CurrencyDisplay amount={plan.forgivenAmountCents} />
-                </span>
-                <span role="cell">
-                  <CurrencyDisplay amount={plan.estimatedTaxOnForgivenessCents} />
-                  {plan.isForgivenessTaxable && <span className="tax-warning"> (taxable)</span>}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* PSLF tracker */}
-      {comparison.pslf && (
-        <section aria-label="PSLF progress">
-          <h2>Public Service Loan Forgiveness</h2>
-          <div className="pslf-tracker">
-            <div
-              className="pslf-progress"
-              role="progressbar"
-              aria-valuenow={comparison.pslf.progressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`PSLF progress: ${comparison.pslf.progressPercent}%`}
-            >
-              <div
-                className="pslf-progress__bar"
-                style={{ width: `${comparison.pslf.progressPercent}%` }}
-              />
-            </div>
-            <dl className="pslf-details">
-              <dt>Qualifying Payments</dt>
-              <dd>
-                {comparison.pslf.qualifyingPayments} / {120}
-              </dd>
-              <dt>Payments Remaining</dt>
-              <dd>{comparison.pslf.paymentsRemaining}</dd>
-              <dt>Estimated Forgiveness Date</dt>
-              <dd>{comparison.pslf.estimatedForgivenessDate}</dd>
-              <dt>Projected Forgiven Amount</dt>
-              <dd>
-                <CurrencyDisplay
-                  amount={comparison.pslf.projectedForgivenAmountCents}
-                  context="projected forgiveness"
+          <section aria-label="Student loan scenario editor" className="student-loan-scenarios">
+            <h2>Editable Scenario Comparison</h2>
+            <div className="student-loan-scenario-form">
+              <label>
+                Annual income ($)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={scenarioForm.annualIncome}
+                  onChange={(event) =>
+                    handleScenarioFieldChange('annualIncome', event.target.value)
+                  }
                 />
-              </dd>
-              <dt>Tax Treatment</dt>
-              <dd>{comparison.pslf.isTaxFree ? 'Tax-free ✓' : 'Taxable'}</dd>
-            </dl>
-          </div>
-        </section>
+              </label>
+              <label>
+                Family size
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={scenarioForm.familySize}
+                  onChange={(event) => handleScenarioFieldChange('familySize', event.target.value)}
+                />
+              </label>
+              <label>
+                Filing status
+                <select
+                  value={scenarioForm.filingStatus}
+                  onChange={(event) =>
+                    handleScenarioFieldChange(
+                      'filingStatus',
+                      event.target.value as StudentLoanScenarioFormState['filingStatus'],
+                    )
+                  }
+                >
+                  <option value="single">Single</option>
+                  <option value="married_filing_jointly">Married filing jointly</option>
+                  <option value="married_filing_separately">Married filing separately</option>
+                </select>
+              </label>
+              <label>
+                IDR plan
+                <select
+                  value={scenarioForm.idrPlan}
+                  onChange={(event) =>
+                    handleScenarioFieldChange('idrPlan', event.target.value as IdrPlanType)
+                  }
+                >
+                  {Object.entries(IDR_PLAN_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                PSLF payments made
+                <input
+                  type="number"
+                  min="0"
+                  max="120"
+                  step="1"
+                  value={scenarioForm.pslfPaymentsMade}
+                  onChange={(event) =>
+                    handleScenarioFieldChange('pslfPaymentsMade', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Refinance APR (%)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={scenarioForm.refinanceRate}
+                  onChange={(event) =>
+                    handleScenarioFieldChange('refinanceRate', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Refinance term (months)
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={scenarioForm.refinanceTermMonths}
+                  onChange={(event) =>
+                    handleScenarioFieldChange('refinanceTermMonths', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Salary raise ($/year)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={scenarioForm.salaryRaise}
+                  onChange={(event) => handleScenarioFieldChange('salaryRaise', event.target.value)}
+                />
+              </label>
+            </div>
+            <div className="student-loan-scenario-grid">
+              {scenarioResults.map((scenario) => (
+                <article key={scenario.id} className="student-loan-scenario-card">
+                  <h3>{scenario.label}</h3>
+                  <dl>
+                    <dt>Monthly payment</dt>
+                    <dd>
+                      <CurrencyDisplay
+                        amount={scenario.monthlyPaymentCents}
+                        context="scenario monthly payment"
+                      />
+                    </dd>
+                    <dt>Total paid</dt>
+                    <dd>
+                      <CurrencyDisplay
+                        amount={scenario.totalPaidCents}
+                        context="scenario total paid"
+                      />
+                    </dd>
+                    <dt>Payoff time</dt>
+                    <dd>
+                      {scenario.monthsToPayoff === null
+                        ? 'Not amortizing'
+                        : `${scenario.monthsToPayoff} months`}
+                    </dd>
+                    <dt>Forgiven</dt>
+                    <dd>
+                      <CurrencyDisplay
+                        amount={scenario.forgivenAmountCents}
+                        context="forgiven amount"
+                      />
+                    </dd>
+                  </dl>
+                  <p>{scenario.note}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section aria-label="Student loan cards">
+            <h2>Your Loans</h2>
+            <ul role="list" className="student-loan-card-grid">
+              {loans.map((loan) => (
+                <li key={loan.id} role="listitem">
+                  <article className="student-loan-card">
+                    <div className="student-loan-card__header">
+                      <div>
+                        <h3>{loan.name}</h3>
+                        <p className="student-loan-card__servicer">{loan.servicer}</p>
+                      </div>
+                      <span
+                        className={`student-loan-status student-loan-status--${loan.status.replace(/_/g, '-')}`}
+                      >
+                        {STUDENT_LOAN_STATUS_LABELS[loan.status]}
+                      </span>
+                    </div>
+                    <dl className="student-loan-card__stats">
+                      <dt>Balance</dt>
+                      <dd>
+                        <CurrencyDisplay
+                          amount={loan.balanceCents}
+                          context={`${loan.name} balance`}
+                        />
+                      </dd>
+                      <dt>Rate</dt>
+                      <dd>{formatRateBps(loan.annualRateBps)}</dd>
+                      <dt>Monthly Payment</dt>
+                      <dd>
+                        <CurrencyDisplay
+                          amount={loan.minimumPaymentCents}
+                          context={`${loan.name} payment`}
+                        />
+                      </dd>
+                      <dt>PSLF</dt>
+                      <dd>
+                        {loan.isPslfEligible
+                          ? `${loan.pslfPaymentsMade}/120 payments`
+                          : 'Not tracking'}
+                      </dd>
+                    </dl>
+                    <button type="button" onClick={() => handleEditLoan(loan)}>
+                      Edit Loan
+                    </button>
+                  </article>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
       )}
+
+      <section aria-label={editingLoanId ? 'Edit student loan' : 'Add student loan'}>
+        <h2>{editingLoanId ? 'Edit Student Loan' : 'Add Student Loan'}</h2>
+        <form className="student-loan-form" onSubmit={handleSubmit} noValidate>
+          <label>
+            Loan name
+            <input
+              type="text"
+              value={formState.name}
+              onChange={(event) => handleFieldChange('name', event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Servicer
+            <input
+              type="text"
+              value={formState.servicer}
+              onChange={(event) => handleFieldChange('servicer', event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Current balance ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formState.balance}
+              onChange={(event) => handleFieldChange('balance', event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Original balance ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formState.originalBalance}
+              onChange={(event) => handleFieldChange('originalBalance', event.target.value)}
+            />
+          </label>
+          <label>
+            Interest rate (%)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formState.rate}
+              onChange={(event) => handleFieldChange('rate', event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Minimum payment ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formState.minimumPayment}
+              onChange={(event) => handleFieldChange('minimumPayment', event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Status
+            <select
+              value={formState.status}
+              onChange={(event) =>
+                handleFieldChange('status', event.target.value as StudentLoanStatus)
+              }
+            >
+              {Object.entries(STUDENT_LOAN_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="student-loan-checkbox">
+            <input
+              type="checkbox"
+              checked={formState.isFederal}
+              onChange={(event) => handleFieldChange('isFederal', event.target.checked)}
+            />
+            Federal loan
+          </label>
+          <label className="student-loan-checkbox">
+            <input
+              type="checkbox"
+              checked={formState.isPslfEligible}
+              onChange={(event) => handleFieldChange('isPslfEligible', event.target.checked)}
+            />
+            PSLF eligible
+          </label>
+          <label>
+            Qualifying PSLF payments made
+            <input
+              type="number"
+              min="0"
+              max="120"
+              step="1"
+              value={formState.pslfPaymentsMade}
+              onChange={(event) => handleFieldChange('pslfPaymentsMade', event.target.value)}
+            />
+          </label>
+          <p className="form-help">
+            Leave original balance blank if you only know today&apos;s balance.
+          </p>
+          <div className="student-loan-form__actions">
+            <button type="submit">
+              {editingLoanId ? 'Update Student Loan' : 'Add Student Loan'}
+            </button>
+            {editingLoanId && (
+              <button type="button" onClick={resetForm}>
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+      </section>
     </div>
   );
 }
@@ -546,13 +1438,9 @@ function StudentLoanPanel(): React.ReactElement {
 // Credit Card panel (#1569)
 // ---------------------------------------------------------------------------
 
-/**
- * Credit card payment reservation dashboard.
- */
 function CreditCardPanel(): React.ReactElement {
-  // TODO: Replace with useCreditCards() hook when database layer is ready
   const [cards] = useState<CreditCard[]>([]);
-  const checkingBalanceCents = 0; // TODO: get from accounts hook
+  const checkingBalanceCents = 0;
 
   if (cards.length === 0) {
     return (
@@ -569,7 +1457,6 @@ function CreditCardPanel(): React.ReactElement {
 
   return (
     <div className="credit-card-dashboard">
-      {/* Available balance */}
       <section aria-label="Balance after reservations">
         <h2>Available Balance</h2>
         <dl className="balance-summary">
@@ -596,7 +1483,6 @@ function CreditCardPanel(): React.ReactElement {
         </dl>
       </section>
 
-      {/* Payment alerts */}
       {summary.alerts.length > 0 && (
         <section aria-label="Payment alerts">
           <h2>Payment Reminders</h2>
@@ -611,7 +1497,6 @@ function CreditCardPanel(): React.ReactElement {
         </section>
       )}
 
-      {/* Reservations list */}
       <section aria-label="Payment reservations">
         <h2>Payment Reservations</h2>
         <ul role="list" className="reservation-list">

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { useBudgets, useCategories } from '../hooks';
@@ -90,8 +90,10 @@ describe('BudgetsPage', () => {
       error: null,
       refresh: vi.fn(),
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn(),
     });
     mockedUseCategories.mockReturnValue({
       categories: [
@@ -150,6 +152,56 @@ describe('BudgetsPage', () => {
       createCategory: vi.fn(),
       updateCategory: vi.fn(),
       deleteCategory: vi.fn(),
+      foodMealTemplate: {
+        parentCategory: {
+          id: 'category-food',
+          householdId: 'household-1',
+          name: 'Food',
+          icon: 'utensils',
+          color: '#16A34A',
+          parentId: null,
+          isIncome: false,
+          isSystem: false,
+          sortOrder: 1,
+          ...syncMetadata,
+        },
+        subcategories: [
+          {
+            id: 'category-groceries',
+            householdId: 'household-1',
+            name: 'Groceries',
+            icon: '🛒',
+            color: '#16A34A',
+            parentId: 'category-food',
+            isIncome: false,
+            isSystem: false,
+            sortOrder: 5,
+            ...syncMetadata,
+          },
+        ],
+        missingSubcategoryDefinitions: [
+          { name: 'Dining Out', icon: '🍽️', color: '#F97316', description: 'Restaurants' },
+          { name: 'Delivery & Takeout', icon: '🥡', color: '#FB7185', description: 'Delivery' },
+          { name: 'Coffee & Snacks', icon: '☕', color: '#A16207', description: 'Coffee' },
+          { name: 'Meal Prep', icon: '🥗', color: '#0F766E', description: 'Meal prep' },
+        ],
+      },
+      ensureFoodMealCategories: vi.fn().mockReturnValue({
+        parentCategory: {
+          id: 'category-food',
+          householdId: 'household-1',
+          name: 'Food',
+          icon: 'utensils',
+          color: '#16A34A',
+          parentId: null,
+          isIncome: false,
+          isSystem: false,
+          sortOrder: 1,
+          ...syncMetadata,
+        },
+        subcategories: [],
+        missingSubcategoryDefinitions: [],
+      }),
     });
   });
 
@@ -186,6 +238,19 @@ describe('BudgetsPage', () => {
     expect(screen.getAllByText('Entertainment').length).toBeGreaterThanOrEqual(1);
   });
 
+  it('shows a starter template option in the budget creation flow', () => {
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /add budget/i }));
+
+    expect(screen.getByLabelText('Start from template')).toBeInTheDocument();
+    expect(screen.getByText(/templates give you a realistic starting point/i)).toBeInTheDocument();
+  });
+
   it('has accessible progress indicators', () => {
     render(
       <MemoryRouter>
@@ -195,5 +260,16 @@ describe('BudgetsPage', () => {
     const progressBars = screen.getAllByRole('progressbar');
     // 4 budget ring charts + 1 trajectory bar + 4 category trend bars = 9
     expect(progressBars.length).toBe(9);
+  });
+
+  it('shows the Food & Meals quick-start template card', () => {
+    render(
+      <MemoryRouter>
+        <BudgetsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Food & Meals template')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /use food & meals template/i })).toBeInTheDocument();
   });
 });

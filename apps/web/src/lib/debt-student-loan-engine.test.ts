@@ -19,6 +19,10 @@ import {
   calculateIdrPlanResult,
   calculatePslfTracker,
   calculateStandardPayment,
+  calculateStudentLoanDashboardSummary,
+  calculateStudentLoanPayoffMetrics,
+  calculateStudentLoanScenarioComparisons,
+  calculateStudentLoanWhatIfScenario,
   compareRepaymentPlans,
   FEDERAL_POVERTY_LEVELS,
   PSLF_REQUIRED_PAYMENTS,
@@ -40,8 +44,11 @@ const LOANS: StudentLoan[] = [
   {
     id: 'loan-1',
     name: 'Direct Subsidized',
+    servicer: 'MOHELA',
     balanceCents: 2_500_000, // $25,000
     annualRateBps: 500, // 5%
+    minimumPaymentCents: 30_000,
+    status: 'in_repayment',
     originalBalanceCents: 2_700_000,
     isFederal: true,
     isPslfEligible: true,
@@ -50,8 +57,11 @@ const LOANS: StudentLoan[] = [
   {
     id: 'loan-2',
     name: 'Direct Unsubsidized',
+    servicer: 'Aidvantage',
     balanceCents: 1_500_000, // $15,000
     annualRateBps: 650, // 6.5%
+    minimumPaymentCents: 18_000,
+    status: 'in_repayment',
     originalBalanceCents: 1_500_000,
     isFederal: true,
     isPslfEligible: true,
@@ -280,6 +290,52 @@ describe('calculatePslfTracker', () => {
 // Repayment plan comparison
 // ---------------------------------------------------------------------------
 
+describe('calculateStudentLoanPayoffMetrics', () => {
+  it('estimates payoff months and interest for amortizing payments', () => {
+    const result = calculateStudentLoanPayoffMetrics(4_000_000, 550, 48_000, '2025-01-15');
+    expect(result.monthsToPayoff).toBeGreaterThan(0);
+    expect(result.estimatedPayoffDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(result.totalInterestCents).toBeGreaterThan(0);
+  });
+
+  it('returns null payoff date when payment does not amortize', () => {
+    const result = calculateStudentLoanPayoffMetrics(4_000_000, 650, 5_000, '2025-01-15');
+    expect(result.monthsToPayoff).toBeNull();
+    expect(result.estimatedPayoffDate).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Student loan dashboard summary
+// ---------------------------------------------------------------------------
+
+describe('calculateStudentLoanDashboardSummary', () => {
+  it('aggregates balance, payment, and weighted rate', () => {
+    const summary = calculateStudentLoanDashboardSummary(LOANS, '2025-01-15');
+    expect(summary.totalBalanceCents).toBe(4_000_000);
+    expect(summary.monthlyPaymentCents).toBe(48_000);
+    expect(summary.weightedAverageRateBps).toBe(556);
+    expect(summary.percentPaidOff).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Student loan what-if calculator
+// ---------------------------------------------------------------------------
+
+describe('calculateStudentLoanWhatIfScenario', () => {
+  it('shows savings when paying extra each month', () => {
+    const scenario = calculateStudentLoanWhatIfScenario(LOANS, 10_000, '2025-01-15');
+    expect(scenario.newMonthlyPaymentCents).toBe(58_000);
+    expect(scenario.interestSavedCents).toBeGreaterThan(0);
+    expect(scenario.monthsSaved).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Repayment plan comparison
+// ---------------------------------------------------------------------------
+
 describe('compareRepaymentPlans', () => {
   it('compares all plan types', () => {
     const comparison = compareRepaymentPlans(LOANS, DEFAULT_INPUT, '2025-01-15');
@@ -320,5 +376,86 @@ describe('compareRepaymentPlans', () => {
 describe('PSLF_REQUIRED_PAYMENTS', () => {
   it('is 120', () => {
     expect(PSLF_REQUIRED_PAYMENTS).toBe(120);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Editable scenario comparisons
+// ---------------------------------------------------------------------------
+
+describe('calculateStudentLoanScenarioComparisons', () => {
+  it('calculates an IDR scenario', () => {
+    const [scenario] = calculateStudentLoanScenarioComparisons(
+      LOANS,
+      [{ id: 'idr', label: 'IDR', type: 'idr', idrPlan: 'PAYE', idrInput: DEFAULT_INPUT }],
+      '2025-01-15',
+    );
+
+    expect(scenario.type).toBe('idr');
+    expect(scenario.monthlyPaymentCents).toBeGreaterThan(0);
+    expect(scenario.note).toContain('PAYE');
+  });
+
+  it('calculates a PSLF path with forgiveness', () => {
+    const [scenario] = calculateStudentLoanScenarioComparisons(
+      LOANS,
+      [
+        {
+          id: 'pslf',
+          label: 'PSLF',
+          type: 'pslf',
+          idrPlan: 'REPAYE',
+          idrInput: { ...DEFAULT_INPUT, annualIncomeCents: 3_000_000 },
+          pslfQualifyingPayments: 60,
+        },
+      ],
+      '2025-01-15',
+    );
+
+    expect(scenario.type).toBe('pslf');
+    expect(scenario.monthsToPayoff).toBe(60);
+    expect(scenario.estimatedTaxCents).toBe(0);
+  });
+
+  it('calculates a refinance scenario at the edited rate and term', () => {
+    const [scenario] = calculateStudentLoanScenarioComparisons(
+      LOANS,
+      [
+        {
+          id: 'refi',
+          label: 'Refinance',
+          type: 'refinance',
+          refinanceAnnualRateBps: 350,
+          refinanceTermMonths: 84,
+        },
+      ],
+      '2025-01-15',
+    );
+
+    expect(scenario.type).toBe('refinance');
+    expect(scenario.monthlyPaymentCents).toBeGreaterThan(0);
+    expect(scenario.forgivenAmountCents).toBe(0);
+    expect(scenario.note).toContain('3.50%');
+  });
+
+  it('calculates salary raise effects as an editable IDR scenario', () => {
+    const [baseline, raise] = calculateStudentLoanScenarioComparisons(
+      LOANS,
+      [
+        { id: 'idr', label: 'IDR', type: 'idr', idrPlan: 'PAYE', idrInput: DEFAULT_INPUT },
+        {
+          id: 'raise',
+          label: 'Raise',
+          type: 'salary_raise',
+          idrPlan: 'PAYE',
+          idrInput: DEFAULT_INPUT,
+          salaryRaiseAnnualCents: 10_000_00,
+        },
+      ],
+      '2025-01-15',
+    );
+
+    expect(raise.type).toBe('salary_raise');
+    expect(raise.monthlyPaymentCents).toBeGreaterThanOrEqual(baseline.monthlyPaymentCents);
   });
 });

@@ -135,6 +135,45 @@
   outline-offset: -2px;
 }
 
+.bulk-edit-toolbar__dropdown-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.bulk-edit-toolbar__dropdown--wide {
+  min-width: 320px;
+  padding: var(--spacing-2, 8px);
+}
+
+.bulk-edit-toolbar__field-label {
+  display: block;
+  margin: var(--spacing-1, 4px) 0;
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  font-weight: 600;
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.bulk-edit-toolbar__inline-field {
+  display: flex;
+  gap: var(--spacing-1, 4px);
+  margin-bottom: var(--spacing-2, 8px);
+}
+
+.bulk-edit-toolbar__text-input {
+  min-width: 0;
+  flex: 1;
+  padding: var(--spacing-2, 8px);
+  border: 1px solid var(--semantic-border-default, #e5e7eb);
+  border-radius: var(--border-radius-sm, 4px);
+  background: var(--semantic-background-elevated, #fff);
+  color: var(--semantic-text-primary, inherit);
+}
+
+.bulk-edit-toolbar__text-input:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #3b82f6);
+  outline-offset: 1px;
+}
+
 /* Confirm inline */
 .bulk-edit-toolbar__confirm {
   display: flex;
@@ -164,7 +203,35 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Checkbox for transaction selection */
+/* Register selection */
+.transaction-register__select-all {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  margin-bottom: var(--spacing-3, 12px);
+  font-size: var(--type-scale-body-font-size, 0.875rem);
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.transaction-register__row {
+  gap: var(--spacing-3, 12px);
+}
+
+.transaction-register__row--selected {
+  background-color: var(--semantic-background-selected, rgba(59, 130, 246, 0.08));
+}
+
+.transaction-register__row--active {
+  outline: 2px solid var(--semantic-border-focus, #3b82f6);
+  outline-offset: -2px;
+}
+
+.transaction-register__checkbox-cell {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+}
+
 .bulk-select-checkbox {
   width: 20px;
   height: 20px;

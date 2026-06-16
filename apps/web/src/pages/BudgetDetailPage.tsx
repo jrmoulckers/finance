@@ -4,10 +4,12 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AppIcon, type IconName } from '../components/icons';
 
+import { BudgetDonutChart } from '../components/charts';
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { BudgetForm } from '../components/forms';
 import type { CreateBudgetInput } from '../db/repositories/budgets';
 import { useBudgets, useCategories } from '../hooks';
+import { isFoodMealBudgetParentCategory } from '../hooks/useCategories';
 import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
 import '../styles/pages.css';
@@ -37,6 +39,14 @@ function getBudgetIcon(iconName: string | null | undefined): IconName {
   }
 }
 
+function renderBudgetIcon(iconName: string | null | undefined): React.ReactNode {
+  if (iconName && iconName.length <= 4) {
+    return <span aria-hidden="true">{iconName}</span>;
+  }
+
+  return <AppIcon name={getBudgetIcon(iconName)} />;
+}
+
 /** Detail view for a single budget route. */
 export const BudgetDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,7 +55,15 @@ export const BudgetDetailPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deletingBudget, setDeletingBudget] = useState<Budget | null>(null);
 
-  const { budgets, loading, error, refresh, updateBudget, deleteBudget } = useBudgets();
+  const {
+    budgets,
+    loading,
+    error,
+    refresh,
+    updateBudget,
+    deleteBudget,
+    getBudgetSpendingBreakdown,
+  } = useBudgets();
   const { categories, loading: categoriesLoading } = useCategories();
 
   const isLoading = loading || categoriesLoading;
@@ -56,6 +74,8 @@ export const BudgetDetailPage: React.FC = () => {
     () => (budget ? (categories.find((c) => c.id === budget.categoryId) ?? null) : null),
     [budget, categories],
   );
+  const isFoodBudget = budget ? isFoodMealBudgetParentCategory(category, categories) : false;
+  const foodBudgetBreakdown = budget && isFoodBudget ? getBudgetSpendingBreakdown(budget.id) : [];
 
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
@@ -129,6 +149,7 @@ export const BudgetDetailPage: React.FC = () => {
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (Math.min(percentUsed, 100) / 100) * circumference;
+  const weeklyMealBudgetTarget = Math.round(budget.amount.amount / 4.33);
 
   return (
     <>
@@ -149,7 +170,7 @@ export const BudgetDetailPage: React.FC = () => {
 
       <div className="page-header">
         <h2 className="page-heading">
-          <AppIcon name={getBudgetIcon(category?.icon)} /> {budget.name}
+          {renderBudgetIcon(category?.icon)} {budget.name}
         </h2>
         <div className="page-actions">
           <button
@@ -316,6 +337,75 @@ export const BudgetDetailPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {isFoodBudget && (
+        <section aria-label="Food & Meals breakdown" style={{ marginTop: 'var(--spacing-6)' }}>
+          <h3
+            style={{
+              fontWeight: 'var(--font-weight-semibold)',
+              marginBottom: 'var(--spacing-3)',
+            }}
+          >
+            Food & Meals breakdown
+          </h3>
+          <div
+            className="card"
+            style={{
+              display: 'grid',
+              gap: 'var(--spacing-4)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(16rem, 1fr))',
+            }}
+          >
+            <div>
+              <p className="card__title">Weekly Meal Budget</p>
+              <p className="card__value">
+                <CurrencyDisplay amount={weeklyMealBudgetTarget} currency={budget.currency.code} />
+              </p>
+              <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                Based on 4.33 weeks in an average month.
+              </p>
+            </div>
+            <div>
+              {foodBudgetBreakdown.length > 0 ? (
+                <BudgetDonutChart
+                  data={foodBudgetBreakdown.map((entry) => ({
+                    name: entry.categoryName,
+                    value: entry.spentAmount.amount,
+                  }))}
+                  currency={budget.currency.code}
+                  height={260}
+                  title="Subcategory spending"
+                  centerLabel={`${foodBudgetBreakdown.length} groups`}
+                />
+              ) : (
+                <div>
+                  <p className="card__title">Subcategory spending</p>
+                  <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                    Add spending in Groceries, Dining Out, Delivery & Takeout, Coffee & Snacks, or
+                    Meal Prep to see a breakdown.
+                  </p>
+                </div>
+              )}
+            </div>
+            {foodBudgetBreakdown.length > 0 && (
+              <div>
+                <p className="card__title">Tracked spending</p>
+                <ul style={{ display: 'grid', gap: 'var(--spacing-2)', paddingLeft: '1.25rem' }}>
+                  {foodBudgetBreakdown.map((entry) => (
+                    <li key={entry.categoryId}>
+                      {entry.categoryName} —{' '}
+                      <CurrencyDisplay
+                        amount={entry.spentAmount.amount}
+                        currency={budget.currency.code}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <BudgetForm
         isOpen={isFormOpen}

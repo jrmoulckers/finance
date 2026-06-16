@@ -23,7 +23,18 @@
 
 import { useCallback, useMemo, useState } from 'react';
 
-import type { LocalDate, SyncId } from '../kmp/bridge';
+import type { Account, Category, LocalDate, SyncId, Transaction } from '../kmp/bridge';
+import {
+  generateBalanceSheet,
+  generateCashFlow,
+  generateProfitAndLoss,
+  type BalanceSheetReport,
+  type CashFlowReport,
+  type ProfitAndLossReport,
+} from '../lib/reports/financial-statements';
+import { useAccounts } from './useAccounts';
+import { useCategories } from './useCategories';
+import { useTransactions } from './useTransactions';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,7 +65,14 @@ export type GroupBy = 'none' | 'category' | 'account' | 'month' | 'week';
 
 export type ChartType = 'bar' | 'line' | 'pie' | 'none';
 
-export type ReportTemplate = 'monthly-summary' | 'category-breakdown' | 'trend-analysis' | 'custom';
+export type ReportTemplate =
+  | 'profit-and-loss'
+  | 'cash-flow'
+  | 'balance-sheet'
+  | 'monthly-summary'
+  | 'category-breakdown'
+  | 'trend-analysis'
+  | 'custom';
 
 export type DatePreset =
   | 'this-month'
@@ -213,6 +231,45 @@ function createDefaultConfig(): ReportConfig {
 
 function getTemplateConfig(template: ReportTemplate): Partial<ReportConfig> {
   switch (template) {
+    case 'profit-and-loss':
+      return {
+        name: 'Profit & Loss',
+        template: 'profit-and-loss',
+        groupBy: 'category',
+        chartType: 'bar',
+        datePreset: 'this-month',
+        fields: DEFAULT_FIELDS.map((f) =>
+          ['category', 'type', 'amount'].includes(f.type)
+            ? { ...f, visible: true }
+            : { ...f, visible: false },
+        ),
+      };
+    case 'cash-flow':
+      return {
+        name: 'Cash Flow Statement',
+        template: 'cash-flow',
+        groupBy: 'category',
+        chartType: 'bar',
+        datePreset: 'this-month',
+        fields: DEFAULT_FIELDS.map((f) =>
+          ['category', 'amount', 'type'].includes(f.type)
+            ? { ...f, visible: true }
+            : { ...f, visible: false },
+        ),
+      };
+    case 'balance-sheet':
+      return {
+        name: 'Balance Sheet',
+        template: 'balance-sheet',
+        groupBy: 'account',
+        chartType: 'bar',
+        datePreset: 'custom',
+        fields: DEFAULT_FIELDS.map((f) =>
+          ['account', 'type', 'balance'].includes(f.type)
+            ? { ...f, visible: true }
+            : { ...f, visible: false },
+        ),
+      };
     case 'monthly-summary':
       return {
         name: 'Monthly Summary',
@@ -319,125 +376,185 @@ function getDatePresetRange(preset: DatePreset): { start: string | null; end: st
 }
 
 // ---------------------------------------------------------------------------
-// Preview generation (mock data for demonstration)
+// Preview generation from real user data
 // ---------------------------------------------------------------------------
 
-function generateMockPreview(config: ReportConfig): ReportPreview {
-  const visibleFields = config.fields
-    .filter((f) => f.visible)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
-  const headers = visibleFields.map((f) => f.label);
-
-  const sampleData = [
+function profitAndLossPreview(report: ProfitAndLossReport): ReportPreview {
+  const headers = ['Section', 'Category', 'Amount', 'Transactions'];
+  const rows: ReportPreviewRow[] = [
+    ...report.income.map((line) => ({
+      Section: 'Income',
+      Category: line.label,
+      Amount: line.amount,
+      Transactions: line.transactionCount,
+    })),
+    { Section: 'Income', Category: 'Total Income', Amount: report.totalIncome, Transactions: '' },
+    ...report.expenses.map((line) => ({
+      Section: 'Expenses',
+      Category: line.label,
+      Amount: line.amount,
+      Transactions: line.transactionCount,
+    })),
     {
-      date: '2025-01-15',
-      payee: 'Grocery Store',
-      amount: -4520,
-      category: 'Groceries',
-      account: 'Checking',
-      type: 'EXPENSE',
-      note: 'Weekly shop',
-      balance: 245000,
-      tags: 'food',
+      Section: 'Expenses',
+      Category: 'Total Expenses',
+      Amount: report.totalExpenses,
+      Transactions: '',
     },
     {
-      date: '2025-01-14',
-      payee: 'Coffee Shop',
-      amount: -450,
-      category: 'Dining',
-      account: 'Checking',
-      type: 'EXPENSE',
-      note: 'Morning coffee',
-      balance: 249520,
-      tags: '',
-    },
-    {
-      date: '2025-01-13',
-      payee: 'Employer Inc',
-      amount: 350000,
-      category: 'Salary',
-      account: 'Checking',
-      type: 'INCOME',
-      note: 'Bi-weekly pay',
-      balance: 249970,
-      tags: 'income',
-    },
-    {
-      date: '2025-01-12',
-      payee: 'Electric Co',
-      amount: -12500,
-      category: 'Utilities',
-      account: 'Checking',
-      type: 'EXPENSE',
-      note: 'Monthly bill',
-      balance: -100030,
-      tags: 'bills',
-    },
-    {
-      date: '2025-01-11',
-      payee: 'Gas Station',
-      amount: -5500,
-      category: 'Transportation',
-      account: 'Credit Card',
-      type: 'EXPENSE',
-      note: 'Fill up',
-      balance: -105530,
-      tags: 'auto',
+      Section: 'Net Income',
+      Category: 'Income minus expenses',
+      Amount: report.netIncome,
+      Transactions: '',
     },
   ];
-
-  const fieldTypeKey: Record<ReportFieldType, string> = {
-    date: 'date',
-    payee: 'payee',
-    amount: 'amount',
-    category: 'category',
-    account: 'account',
-    type: 'type',
-    note: 'note',
-    balance: 'balance',
-    tags: 'tags',
-  };
-
-  const rows: ReportPreviewRow[] = sampleData.map((row) => {
-    const mapped: ReportPreviewRow = {};
-    for (const field of visibleFields) {
-      const key = fieldTypeKey[field.type];
-      mapped[field.label] = row[key as keyof typeof row];
-    }
-    return mapped;
-  });
-
-  // Generate chart data grouped by category
-  const chartMap = new Map<string, number>();
-  for (const row of sampleData) {
-    const existing = chartMap.get(row.category) ?? 0;
-    chartMap.set(row.category, existing + Math.abs(row.amount));
-  }
-  const chartData: ChartDataPoint[] = Array.from(chartMap.entries()).map(([name, value]) => ({
-    name,
-    value,
-  }));
-
-  // Summary stats
-  const totalIncome = sampleData
-    .filter((r) => r.type === 'INCOME')
-    .reduce((sum, r) => sum + r.amount, 0);
-  const totalExpenses = sampleData
-    .filter((r) => r.type === 'EXPENSE')
-    .reduce((sum, r) => sum + Math.abs(r.amount), 0);
 
   return {
     headers,
     rows,
     totalRows: rows.length,
-    chartData,
+    chartData: [
+      ...report.income.map((line) => ({ name: `Income: ${line.label}`, value: line.amount })),
+      ...report.expenses.map((line) => ({ name: `Expense: ${line.label}`, value: line.amount })),
+    ],
     summary: {
-      totalIncome,
-      totalExpenses,
-      netAmount: totalIncome - totalExpenses,
-      transactionCount: sampleData.length,
+      totalIncome: report.totalIncome,
+      totalExpenses: report.totalExpenses,
+      netAmount: report.netIncome,
+      transactionCount: report.transactionCount,
     },
   };
+}
+
+function cashFlowPreview(report: CashFlowReport): ReportPreview {
+  const headers = ['Section', 'Group', 'Category', 'Amount', 'Transactions'];
+  const rows: ReportPreviewRow[] = [
+    ...report.inflows.map((line) => ({
+      Section: 'Inflows',
+      Group: line.group,
+      Category: line.label,
+      Amount: line.amount,
+      Transactions: line.transactionCount,
+    })),
+    {
+      Section: 'Inflows',
+      Group: '',
+      Category: 'Total Inflows',
+      Amount: report.totalInflows,
+      Transactions: '',
+    },
+    ...report.outflows.map((line) => ({
+      Section: 'Outflows',
+      Group: line.group,
+      Category: line.label,
+      Amount: line.amount,
+      Transactions: line.transactionCount,
+    })),
+    {
+      Section: 'Outflows',
+      Group: '',
+      Category: 'Total Outflows',
+      Amount: report.totalOutflows,
+      Transactions: '',
+    },
+    {
+      Section: 'Net Change in Cash',
+      Group: '',
+      Category: 'Inflows minus outflows',
+      Amount: report.netChangeInCash,
+      Transactions: '',
+    },
+  ];
+
+  return {
+    headers,
+    rows,
+    totalRows: rows.length,
+    chartData: [
+      ...report.inflows.map((line) => ({ name: `Inflow: ${line.label}`, value: line.amount })),
+      ...report.outflows.map((line) => ({ name: `Outflow: ${line.label}`, value: line.amount })),
+    ],
+    summary: {
+      totalIncome: report.totalInflows,
+      totalExpenses: report.totalOutflows,
+      netAmount: report.netChangeInCash,
+      transactionCount: report.transactionCount,
+    },
+  };
+}
+
+function balanceSheetPreview(report: BalanceSheetReport): ReportPreview {
+  const headers = ['Section', 'Account', 'Type', 'Amount'];
+  const rows: ReportPreviewRow[] = [
+    ...report.assets.map((line) => ({
+      Section: 'Assets',
+      Account: line.label,
+      Type: line.accountType,
+      Amount: line.amount,
+    })),
+    { Section: 'Assets', Account: 'Total Assets', Type: '', Amount: report.totalAssets },
+    ...report.liabilities.map((line) => ({
+      Section: 'Liabilities',
+      Account: line.label,
+      Type: line.accountType,
+      Amount: line.amount,
+    })),
+    {
+      Section: 'Liabilities',
+      Account: 'Total Liabilities',
+      Type: '',
+      Amount: report.totalLiabilities,
+    },
+    {
+      Section: 'Net Worth',
+      Account: 'Assets minus liabilities',
+      Type: '',
+      Amount: report.netWorth,
+    },
+  ];
+
+  return {
+    headers,
+    rows,
+    totalRows: rows.length,
+    chartData: [
+      { name: 'Assets', value: report.totalAssets },
+      { name: 'Liabilities', value: report.totalLiabilities },
+      { name: 'Net Worth', value: report.netWorth },
+    ],
+    summary: {
+      totalIncome: report.totalAssets,
+      totalExpenses: report.totalLiabilities,
+      netAmount: report.netWorth,
+      transactionCount: report.accountCount,
+    },
+  };
+}
+
+function generateRealPreview(
+  config: ReportConfig,
+  transactions: readonly Transaction[],
+  accounts: readonly Account[],
+  categories: readonly Category[],
+): ReportPreview {
+  if (config.template === 'balance-sheet') {
+    return balanceSheetPreview(
+      generateBalanceSheet(accounts, transactions, { asOfDate: config.endDate ?? undefined }),
+    );
+  }
+
+  const periodOptions = {
+    startDate: config.startDate ?? undefined,
+    endDate: config.endDate ?? undefined,
+    categoryIds: config.categoryIds,
+    accountIds: config.accountIds,
+  };
+
+  if (config.template === 'cash-flow') {
+    return cashFlowPreview(generateCashFlow(transactions, accounts, categories, periodOptions));
+  }
+
+  return profitAndLossPreview(generateProfitAndLoss(transactions, categories, periodOptions));
 }
 
 // ---------------------------------------------------------------------------
@@ -499,6 +616,10 @@ export function useReportBuilder(): UseReportBuilderResult {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedReports, setSavedReports] = useState<SavedReport[]>(loadSavedReports);
+
+  const { transactions, error: transactionsError } = useTransactions();
+  const { accounts, error: accountsError } = useAccounts();
+  const { categories, error: categoriesError } = useCategories();
 
   const availableFields = useMemo(() => config.fields.filter((f) => !f.visible), [config.fields]);
 
@@ -611,14 +732,27 @@ export function useReportBuilder(): UseReportBuilderResult {
     setError(null);
 
     try {
-      const result = generateMockPreview(config);
+      const dataError = transactionsError ?? accountsError ?? categoriesError;
+      if (dataError) {
+        throw new Error(dataError);
+      }
+
+      const result = generateRealPreview(config, transactions, accounts, categories);
       setPreview(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate preview.');
     } finally {
       setGenerating(false);
     }
-  }, [config]);
+  }, [
+    accounts,
+    accountsError,
+    categories,
+    categoriesError,
+    config,
+    transactions,
+    transactionsError,
+  ]);
 
   const exportReport = useCallback((): string | null => {
     if (!preview) {

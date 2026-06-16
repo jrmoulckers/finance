@@ -24,6 +24,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -33,12 +34,13 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
 import { useAutoCategory } from '../../hooks/useAutoCategory';
-import { useAmountInput } from '../../hooks/useAmountInput';
+import { formatCentsDisplay, useAmountInput } from '../../hooks/useAmountInput';
 import { useMerchants } from '../../hooks/useMerchants';
 import type {
   Account,
   Category,
   Transaction,
+  TransactionSplit,
   TransactionStatus,
   TransactionType,
 } from '../../kmp/bridge';
@@ -51,7 +53,9 @@ import {
   isMoodTagsEnabled,
   normalizeMoodTag,
 } from '../../lib/mood-tags';
+import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { transactionSchema } from '../../lib/validation';
+import { DateInput } from '../common';
 import { CounterpartyInput } from '../transactions/CounterpartyInput';
 
 import './forms.css';
@@ -120,6 +124,44 @@ function parseTags(input: string): string[] {
     .filter((t) => t.length > 0);
 }
 
+function createSplitRowId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `split-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function formatSplitAmountInput(cents: number): string {
+  return (Math.abs(cents) / 100).toFixed(2);
+}
+
+function parseSplitAmountInput(value: string): number {
+  const normalized = value.replace(/[$,\s]/g, '');
+  if (!normalized) {
+    return 0;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+}
+
+function formatSplitRemainder(remainingCents: number): string {
+  if (remainingCents === 0) {
+    return 'Remaining: $0.00';
+  }
+
+  const label = remainingCents > 0 ? 'Remaining' : 'Overassigned';
+  return `${label}: ${formatCentsDisplay(Math.abs(remainingCents))}`;
+}
+
+function splitRowsToTransactionSplits(rows: readonly SplitFormRow[]): TransactionSplit[] {
+  return rows.map((row) => ({
+    id: row.id,
+    categoryId: row.categoryId || null,
+    amount: { amount: parseSplitAmountInput(row.amountInput) },
+    note: row.note.trim() || null,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -128,6 +170,14 @@ interface FormErrors {
   amount?: string;
   description?: string;
   accountId?: string;
+  splits?: string;
+}
+
+interface SplitFormRow {
+  id: string;
+  categoryId: string;
+  amountInput: string;
+  note: string;
 }
 
 function validate(
@@ -199,6 +249,7 @@ export function TransactionForm({
   const [transactionType, setTransactionType] = useState<TransactionType>('EXPENSE');
   const [status, setStatus] = useState<TransactionStatus>('PENDING');
   const [categoryId, setCategoryId] = useState('');
+  const [splitRows, setSplitRows] = useState<SplitFormRow[]>([]);
   const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState(todayISO);
   const [notes, setNotes] = useState('');
@@ -284,6 +335,14 @@ export function TransactionForm({
     setTransactionType(initialData?.type ?? 'EXPENSE');
     setStatus(initialData?.status ?? 'PENDING');
     setCategoryId(initialData?.categoryId ?? '');
+    setSplitRows(
+      initialData?.splits?.map((split) => ({
+        id: split.id ?? createSplitRowId(),
+        categoryId: split.categoryId ?? '',
+        amountInput: formatSplitAmountInput(split.amount.amount),
+        note: split.note ?? '',
+      })) ?? [],
+    );
     setAccountId(initialData?.accountId ?? '');
     setDate(initialData?.date ?? todayISO());
     setNotes(initialData?.note ?? '');
@@ -394,6 +453,41 @@ export function TransactionForm({
     [categories, categoryId],
   );
 
+  const transactionSplits = useMemo(() => splitRowsToTransactionSplits(splitRows), [splitRows]);
+  const splitValidation = useMemo(
+    () => validateTransactionSplits(amountInput.cents, transactionSplits),
+    [amountInput.cents, transactionSplits],
+  );
+  const hasSplitRows = splitRows.length > 0;
+  const splitRemainderText = formatSplitRemainder(splitValidation.remainingCents);
+
+  const updateSplitRow = useCallback((id: string, updates: Partial<SplitFormRow>) => {
+    setSplitRows((rows) => rows.map((row) => (row.id === id ? { ...row, ...updates } : row)));
+  }, []);
+
+  const addSplitRow = useCallback(() => {
+    setSplitRows((rows) => {
+      const currentSplits = splitRowsToTransactionSplits(rows);
+      const currentValidation = validateTransactionSplits(amountInput.cents, currentSplits);
+      const defaultAmountCents =
+        rows.length === 0 ? amountInput.cents : Math.max(currentValidation.remainingCents, 0);
+
+      return [
+        ...rows,
+        {
+          id: createSplitRowId(),
+          categoryId: '',
+          amountInput: defaultAmountCents > 0 ? formatSplitAmountInput(defaultAmountCents) : '',
+          note: '',
+        },
+      ];
+    });
+  }, [amountInput.cents]);
+
+  const removeSplitRow = useCallback((id: string) => {
+    setSplitRows((rows) => rows.filter((row) => row.id !== id));
+  }, []);
+
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
@@ -405,6 +499,11 @@ export function TransactionForm({
         transactionType,
         date,
       );
+
+      if (hasSplitRows && !splitValidation.isBalanced) {
+        fieldErrors.splits = `${splitValidation.error ?? 'Split amounts must equal the transaction total.'} ${splitRemainderText}`;
+      }
+
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
@@ -443,9 +542,11 @@ export function TransactionForm({
         currency: selectedAccount.currency,
         payee: description.trim(),
         date,
-        categoryId: categoryId || null,
+        categoryId:
+          categoryId || transactionSplits.find((split) => split.categoryId)?.categoryId || null,
         note: notes.trim() || null,
         tags: parseTags(tagsInput),
+        ...(hasSplitRows ? { splits: transactionSplits } : {}),
         ...(moodTagsEnabled ? { moodTag } : {}),
         merchantCity: merchantCity.trim() || null,
         merchantState: merchantState.trim() || null,
@@ -479,6 +580,7 @@ export function TransactionForm({
         setTransactionType('EXPENSE');
         setStatus('PENDING');
         setCategoryId('');
+        setSplitRows([]);
         setAccountId('');
         setDate(todayISO());
         setNotes('');
@@ -514,6 +616,10 @@ export function TransactionForm({
       status,
       date,
       categoryId,
+      transactionSplits,
+      hasSplitRows,
+      splitValidation,
+      splitRemainderText,
       notes,
       tagsInput,
       moodTag,
@@ -547,6 +653,7 @@ export function TransactionForm({
   const hasAmountError = Boolean(errors.amount);
   const hasDescriptionError = Boolean(errors.description);
   const hasAccountError = Boolean(errors.accountId);
+  const hasSplitError = Boolean(errors.splits);
   const hasValidationErrors = Object.keys(errors).length > 0;
 
   return (
@@ -751,6 +858,111 @@ export function TransactionForm({
               )}
             </div>
 
+            {/* Splits */}
+            <fieldset className="form-group form-fieldset" aria-describedby="txn-splits-status">
+              <legend className="form-group__label">Splits</legend>
+              <p className="form-group__help">
+                Allocate this transaction across multiple categories. Split amounts must add up to
+                the transaction total.
+              </p>
+              {splitRows.map((split, index) => (
+                <div
+                  key={split.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 9rem 1fr auto',
+                    gap: 'var(--spacing-2)',
+                    alignItems: 'end',
+                    marginBottom: 'var(--spacing-2)',
+                  }}
+                >
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor={`txn-split-${split.id}-category`} className="form-group__label">
+                      Split {index + 1} category
+                    </label>
+                    <select
+                      id={`txn-split-${split.id}-category`}
+                      className="form-select"
+                      value={split.categoryId}
+                      onChange={(event) =>
+                        updateSplitRow(split.id, { categoryId: event.target.value })
+                      }
+                    >
+                      <option value="">— None —</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor={`txn-split-${split.id}-amount`} className="form-group__label">
+                      Split {index + 1} amount
+                    </label>
+                    <input
+                      id={`txn-split-${split.id}-amount`}
+                      className={`form-input${hasSplitError ? ' form-input--error' : ''}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={split.amountInput}
+                      onChange={(event) =>
+                        updateSplitRow(split.id, { amountInput: event.target.value })
+                      }
+                      aria-invalid={hasSplitError}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor={`txn-split-${split.id}-note`} className="form-group__label">
+                      Split {index + 1} note
+                    </label>
+                    <input
+                      id={`txn-split-${split.id}-note`}
+                      className="form-input"
+                      type="text"
+                      value={split.note}
+                      onChange={(event) => updateSplitRow(split.id, { note: event.target.value })}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => removeSplitRow(split.id)}
+                    aria-label={`Remove split ${index + 1}`}
+                  >
+                    <span aria-hidden="true">✕</span>
+                  </button>
+                </div>
+              ))}
+              <div
+                id="txn-splits-status"
+                aria-live="polite"
+                style={{
+                  color:
+                    hasSplitRows && !splitValidation.isBalanced
+                      ? 'var(--semantic-text-danger)'
+                      : 'var(--semantic-text-secondary)',
+                  marginBottom: 'var(--spacing-2)',
+                }}
+              >
+                {hasSplitRows ? splitRemainderText : 'Unassigned: no split lines'}
+              </div>
+              {hasSplitError && (
+                <span className="form-error" role="alert">
+                  {errors.splits}
+                </span>
+              )}
+              <button
+                type="button"
+                className="form-button form-button--secondary"
+                onClick={addSplitRow}
+              >
+                Add split
+              </button>
+            </fieldset>
+
             {/* Account */}
             <div className="form-group">
               <label
@@ -787,10 +999,9 @@ export function TransactionForm({
               <label htmlFor="txn-date" className="form-group__label">
                 Date
               </label>
-              <input
+              <DateInput
                 id="txn-date"
                 className="form-input"
-                type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
               />
@@ -821,12 +1032,13 @@ export function TransactionForm({
                 type="text"
                 value={tagsInput}
                 onChange={(e) => setTagsInput(e.target.value)}
-                placeholder="Enter tags separated by commas"
+                placeholder="client:Acme, project:Website redesign"
                 autoComplete="off"
                 aria-describedby="txn-tags-hint"
               />
               <span id="txn-tags-hint" className="form-hint">
-                Separate multiple tags with commas
+                Separate multiple tags with commas. Use client: or project: tags for profitability
+                reporting.
               </span>
               {parseTags(tagsInput).length > 0 && (
                 <div className="form-tags" role="list" aria-label="Selected tags">

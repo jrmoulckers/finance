@@ -54,6 +54,7 @@ describe('AccountsPage', () => {
           type: 'CHECKING',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: 452000 },
+          purpose: 'personal',
           isArchived: false,
           sortOrder: 1,
           icon: 'bank',
@@ -67,6 +68,7 @@ describe('AccountsPage', () => {
           type: 'SAVINGS',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: 1500000 },
+          purpose: 'business',
           isArchived: false,
           sortOrder: 2,
           icon: 'piggy-bank',
@@ -80,6 +82,7 @@ describe('AccountsPage', () => {
           type: 'CREDIT_CARD',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: -125000 },
+          purpose: 'both',
           isArchived: false,
           sortOrder: 3,
           icon: 'credit-card',
@@ -93,6 +96,7 @@ describe('AccountsPage', () => {
           type: 'INVESTMENT',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: 1250000 },
+          purpose: 'personal',
           isArchived: false,
           sortOrder: 4,
           icon: 'chart',
@@ -118,19 +122,18 @@ describe('AccountsPage', () => {
     expect(screen.getByText('Accounts')).toBeInTheDocument();
   });
 
-  it('displays account categories', () => {
+  it('groups accounts by purpose', () => {
     render(
       <MemoryRouter>
         <AccountsPage />
       </MemoryRouter>,
     );
-    expect(screen.getByText('Checking')).toBeInTheDocument();
-    expect(screen.getByText('Savings')).toBeInTheDocument();
-    expect(screen.getByText('Credit Cards')).toBeInTheDocument();
-    expect(screen.getByText('Investments')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '🏠 Personal' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '💼 Business' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '🏠💼 Both' })).toBeInTheDocument();
   });
 
-  it('displays individual accounts', () => {
+  it('displays badges for account purposes', () => {
     render(
       <MemoryRouter>
         <AccountsPage />
@@ -139,7 +142,9 @@ describe('AccountsPage', () => {
     expect(screen.getByText('Primary Checking')).toBeInTheDocument();
     expect(screen.getByText('Emergency Fund')).toBeInTheDocument();
     expect(screen.getByText('Travel Card')).toBeInTheDocument();
-    expect(screen.getByText('Brokerage')).toBeInTheDocument();
+    expect(screen.getAllByText('🏠 Personal').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('💼 Business').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('🏠💼 Both').length).toBeGreaterThan(0);
   });
 
   it('shows net worth text', () => {
@@ -161,6 +166,7 @@ describe('AccountsPage', () => {
           type: 'CHECKING',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: 150000 },
+          purpose: 'personal',
           isArchived: false,
           sortOrder: 1,
           icon: null,
@@ -174,6 +180,7 @@ describe('AccountsPage', () => {
           type: 'CHECKING',
           currency: { code: 'EUR', decimalPlaces: 2 },
           currentBalance: { amount: 120000 },
+          purpose: 'business',
           isArchived: false,
           sortOrder: 2,
           icon: null,

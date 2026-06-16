@@ -10,6 +10,7 @@
  *   - Renders as `role="dialog"` with `aria-modal="true"`.
  *   - Focus is moved into the sheet on open and restored to the trigger
  *     on close.
+ *   - Tab and Shift+Tab stay within the sheet while it is open.
  *   - Escape closes the sheet.
  *   - The active route is marked with `aria-current="page"`.
  */
@@ -24,6 +25,12 @@ import {
   type NavGroup,
 } from './navConfig';
 import { CloseIcon, KeyboardIcon, SettingsIcon, SignOutIcon } from './navIcons';
+
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
+  return Array.from(container?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []);
+}
 
 export interface MoreNavSheetProps {
   /** Whether the sheet is open. */
@@ -62,7 +69,6 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
   onSignOut,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   // Focus management: remember the trigger, focus into the sheet on open,
@@ -70,28 +76,19 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
   useEffect(() => {
     if (!open) return;
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
-    // Defer to next frame so the dialog has rendered.
     const id = window.requestAnimationFrame(() => {
-      closeButtonRef.current?.focus();
+      const [firstFocusable] = getFocusableElements(dialogRef.current);
+      firstFocusable?.focus();
     });
     return () => {
       window.cancelAnimationFrame(id);
-      previouslyFocusedRef.current?.focus();
-    };
-  }, [open]);
-
-  // Escape to close.
-  useEffect(() => {
-    if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onClose();
+      const trigger = previouslyFocusedRef.current;
+      previouslyFocusedRef.current = null;
+      if (trigger?.isConnected) {
+        trigger.focus();
       }
     };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [open, onClose]);
+  }, [open]);
 
   // Lock body scroll while the sheet is open.
   useEffect(() => {
@@ -118,25 +115,72 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
     }
   }, [onClose, onSignOut]);
 
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const focusableElements = getFocusableElements(event.currentTarget);
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        event.currentTarget.focus();
+        return;
+      }
+
+      const firstFocusable = focusableElements[0];
+      const lastFocusable = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+
+      if (event.shiftKey) {
+        if (activeElement === firstFocusable || activeElement === event.currentTarget) {
+          event.preventDefault();
+          lastFocusable.focus();
+        }
+        return;
+      }
+
+      if (activeElement === lastFocusable) {
+        event.preventDefault();
+        firstFocusable.focus();
+      }
+    },
+    [onClose],
+  );
+
   if (!open) return null;
 
   const buckets = bucketByGroup(MORE_SHEET_ITEMS);
 
   return (
-    <div className="more-sheet" role="dialog" aria-modal="true" aria-labelledby="more-sheet-title">
+    <div className="more-sheet">
       <button
         type="button"
         className="more-sheet__scrim"
         aria-label="Close menu"
         onClick={onClose}
       />
-      <div className="more-sheet__panel" ref={dialogRef}>
+      <div
+        className="more-sheet__panel"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="more-sheet-title"
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
+      >
         <header className="more-sheet__header">
           <h2 id="more-sheet-title" className="more-sheet__title">
             All destinations
           </h2>
           <button
-            ref={closeButtonRef}
             type="button"
             className="more-sheet__close"
             aria-label="Close menu"

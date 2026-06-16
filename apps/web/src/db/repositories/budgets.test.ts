@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BudgetPeriod } from '../../kmp/bridge';
+import type { BudgetPeriod, Category } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
 import type { Row, SqliteDb } from '../sqlite-wasm';
-import {
-  createBudget,
-  deleteBudget,
-  getAllBudgets,
-  getBudgetById,
-  type CreateBudgetInput,
-} from './budgets';
 
 // Mock sqlite-wasm module
 vi.mock('../sqlite-wasm', () => ({
@@ -18,6 +11,25 @@ vi.mock('../sqlite-wasm', () => ({
   queryOne: vi.fn(),
   execute: vi.fn(),
 }));
+
+const mockGetAllCategories = vi.fn<(...args: unknown[]) => Category[]>();
+const mockCreateCategory = vi.fn<(...args: unknown[]) => Category>();
+
+vi.mock('./categories', () => ({
+  getAllCategories: (...args: unknown[]) => mockGetAllCategories(...args),
+  createCategory: (...args: unknown[]) => mockCreateCategory(...args),
+}));
+
+import {
+  createBudget,
+  createBudgetTemplate,
+  deleteBudget,
+  getAllBudgets,
+  getBudgetById,
+  getBudgetSpendingBreakdown,
+  getBudgetWithSpending,
+  type CreateBudgetInput,
+} from './budgets';
 
 // Import mocked functions
 import { execute, query, queryOne } from '../sqlite-wasm';
@@ -28,6 +40,13 @@ const mockExecute = vi.mocked(execute);
 
 describe('budgets repository', () => {
   const mockDb = {} as SqliteDb;
+  const syncMetadata = {
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    deletedAt: null,
+    syncVersion: 1,
+    isSynced: false,
+  } as const;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -200,6 +219,74 @@ describe('budgets repository', () => {
     });
   });
 
+  describe('getBudgetWithSpending', () => {
+    it('rolls up spending from child categories using the recursive scope query', () => {
+      mockQueryOne.mockReturnValue({
+        id: 'budget-1',
+        household_id: 'hh-1',
+        category_id: 'cat-food',
+        name: 'Food & Meals',
+        amount: 70000,
+        currency: 'USD',
+        period: 'MONTHLY',
+        start_date: '2025-03-01',
+        end_date: null,
+        is_rollover: 0,
+        created_at: '2025-03-01T00:00:00Z',
+        updated_at: '2025-03-01T00:00:00Z',
+        deleted_at: null,
+        sync_version: 1,
+        is_synced: 0,
+        spent_amount: 42350,
+      });
+
+      const budget = getBudgetWithSpending(mockDb, 'budget-1');
+
+      expect(budget?.spentAmount.amount).toBe(42350);
+      expect(budget?.remainingAmount.amount).toBe(27650);
+      expect(mockQueryOne).toHaveBeenCalledWith(
+        mockDb,
+        expect.stringContaining('WITH RECURSIVE budget_category_scope'),
+        ['budget-1', 'budget-1'],
+      );
+      expect(mockQueryOne.mock.calls[0]?.[1]).toContain(
+        't.category_id IN (SELECT id FROM budget_category_scope)',
+      );
+    });
+  });
+
+  describe('getBudgetSpendingBreakdown', () => {
+    it('returns grouped spending rows ordered by highest spend', () => {
+      mockQuery.mockReturnValue({
+        columns: [],
+        rows: [
+          { category_id: 'cat-groceries', category_name: 'Groceries', spent_amount: 25000 },
+          { category_id: 'cat-dining', category_name: 'Dining Out', spent_amount: 17350 },
+        ],
+      });
+
+      const breakdown = getBudgetSpendingBreakdown(mockDb, 'budget-1');
+
+      expect(breakdown).toEqual([
+        {
+          categoryId: 'cat-groceries',
+          categoryName: 'Groceries',
+          spentAmount: { amount: 25000 },
+        },
+        {
+          categoryId: 'cat-dining',
+          categoryName: 'Dining Out',
+          spentAmount: { amount: 17350 },
+        },
+      ]);
+      expect(mockQuery).toHaveBeenCalledWith(
+        mockDb,
+        expect.stringContaining('HAVING spent_amount > 0'),
+        ['budget-1', 'budget-1'],
+      );
+    });
+  });
+
   describe('createBudget', () => {
     beforeEach(() => {
       mockQueryOne.mockReturnValue({
@@ -365,6 +452,99 @@ describe('budgets repository', () => {
     });
   });
 
+  describe('createBudgetTemplate', () => {
+    it('creates all student starter budgets and only creates missing categories', () => {
+      mockGetAllCategories.mockReturnValue([
+        {
+          id: 'category-food-groceries',
+          householdId: 'hh-1',
+          name: 'Food & Groceries',
+          icon: 'utensils',
+          color: '#16A34A',
+          parentId: null,
+          isIncome: false,
+          isSystem: false,
+          sortOrder: 1,
+          ...syncMetadata,
+        },
+      ]);
+
+      let createdCategoryCount = 0;
+      mockCreateCategory.mockImplementation((_, input) => {
+        const createInput = input as {
+          householdId: string;
+          name: string;
+          icon?: string | null;
+          color?: string | null;
+          sortOrder?: number;
+        };
+
+        createdCategoryCount += 1;
+        return {
+          id: `category-created-${createdCategoryCount}`,
+          householdId: createInput.householdId,
+          name: createInput.name,
+          icon: createInput.icon ?? null,
+          color: createInput.color ?? null,
+          parentId: null,
+          isIncome: false,
+          isSystem: false,
+          sortOrder: createInput.sortOrder ?? createdCategoryCount,
+          ...syncMetadata,
+        };
+      });
+
+      mockQueryOne.mockImplementation((_, sql, params) => {
+        if (typeof sql === 'string' && sql.includes('WHERE deleted_at IS NULL AND id = ?')) {
+          const queryParams = (params ?? []) as unknown[];
+          const budgetId = queryParams[0] as string;
+          const executeCall = mockExecute.mock.calls.find(
+            ([, , executeParams]) => (executeParams as unknown[] | undefined)?.[0] === budgetId,
+          );
+          const budgetParams = (executeCall?.[2] ?? []) as unknown[];
+          return {
+            id: budgetId,
+            household_id: budgetParams[1],
+            category_id: budgetParams[2],
+            name: budgetParams[3],
+            amount: budgetParams[4],
+            currency: budgetParams[5],
+            period: budgetParams[6],
+            start_date: budgetParams[7],
+            end_date: budgetParams[8],
+            is_rollover: budgetParams[9],
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            deleted_at: null,
+            sync_version: 1,
+            is_synced: 0,
+          } satisfies Row;
+        }
+
+        return null;
+      });
+
+      const budgets = createBudgetTemplate(mockDb, {
+        templateId: 'student',
+        startDate: '2024-09-01',
+      });
+
+      expect(budgets).toHaveLength(9);
+      expect(mockCreateCategory).toHaveBeenCalledTimes(8);
+      expect(budgets.map((budget) => budget.name)).toContain('Rent/Housing');
+      expect(budgets.map((budget) => budget.name)).toContain('Food & Groceries');
+      expect(
+        mockExecute.mock.calls.some(
+          ([, sql, params]) =>
+            typeof sql === 'string' &&
+            sql.includes('INSERT INTO budget') &&
+            params?.[3] === 'Savings' &&
+            params?.[4] === 2000,
+        ),
+      ).toBe(true);
+    });
+  });
+
   describe('deleteBudget', () => {
     it('should soft-delete by setting deleted_at', () => {
       mockQueryOne.mockReturnValue({
@@ -429,6 +609,142 @@ describe('budgets repository', () => {
 
       const sql = mockExecute.mock.calls[0][1];
       expect(sql).not.toContain("id = 'budget-1'");
+    });
+  });
+
+  describe('createBudgetTemplate', () => {
+    it('creates a single Food & Meals budget while adding tracked child categories', () => {
+      const createdFoodCategory: Category = {
+        id: 'cat-food-meals',
+        householdId: 'hh-1',
+        name: 'Food & Meals',
+        icon: 'utensils',
+        color: '#16A34A',
+        parentId: null,
+        isIncome: false,
+        isSystem: false,
+        sortOrder: 5,
+        ...syncMetadata,
+      };
+      const createdGroceriesCategory: Category = {
+        id: 'cat-groceries',
+        householdId: 'hh-1',
+        name: 'Groceries',
+        icon: '🛒',
+        color: '#16A34A',
+        parentId: 'cat-food-meals',
+        isIncome: false,
+        isSystem: false,
+        sortOrder: 6,
+        ...syncMetadata,
+      };
+      const createdDiningCategory: Category = {
+        id: 'cat-dining',
+        householdId: 'hh-1',
+        name: 'Dining Out',
+        icon: '🍽️',
+        color: '#F97316',
+        parentId: 'cat-food-meals',
+        isIncome: false,
+        isSystem: false,
+        sortOrder: 7,
+        ...syncMetadata,
+      };
+      const createdDeliveryCategory: Category = {
+        id: 'cat-delivery',
+        householdId: 'hh-1',
+        name: 'Delivery & Takeout',
+        icon: '🥡',
+        color: '#FB7185',
+        parentId: 'cat-food-meals',
+        isIncome: false,
+        isSystem: false,
+        sortOrder: 8,
+        ...syncMetadata,
+      };
+      const createdCoffeeCategory: Category = {
+        id: 'cat-coffee',
+        householdId: 'hh-1',
+        name: 'Coffee & Snacks',
+        icon: '☕',
+        color: '#A16207',
+        parentId: 'cat-food-meals',
+        isIncome: false,
+        isSystem: false,
+        sortOrder: 9,
+        ...syncMetadata,
+      };
+      const createdMealPrepCategory: Category = {
+        id: 'cat-meal-prep',
+        householdId: 'hh-1',
+        name: 'Meal Prep',
+        icon: '🥗',
+        color: '#0F766E',
+        parentId: 'cat-food-meals',
+        isIncome: false,
+        isSystem: false,
+        sortOrder: 10,
+        ...syncMetadata,
+      };
+
+      mockGetAllCategories.mockReturnValue([]);
+      mockCreateCategory
+        .mockReturnValueOnce(createdFoodCategory)
+        .mockReturnValueOnce(createdGroceriesCategory)
+        .mockReturnValueOnce(createdDiningCategory)
+        .mockReturnValueOnce(createdDeliveryCategory)
+        .mockReturnValueOnce(createdCoffeeCategory)
+        .mockReturnValueOnce(createdMealPrepCategory);
+      mockQueryOne.mockImplementation((_, sql, params) => {
+        if (
+          typeof sql === 'string' &&
+          sql.includes('SELECT id FROM household WHERE deleted_at IS NULL')
+        ) {
+          return { id: 'hh-1' } satisfies Row;
+        }
+
+        if (typeof sql === 'string' && sql.includes('WHERE deleted_at IS NULL AND id = ?')) {
+          const queryParams = (params ?? []) as unknown[];
+          const budgetId = queryParams[0] as string;
+          const executeCall = mockExecute.mock.calls.find(
+            ([, , executeParams]) => (executeParams as unknown[] | undefined)?.[0] === budgetId,
+          );
+          const budgetParams = (executeCall?.[2] ?? []) as unknown[];
+          return {
+            id: budgetId,
+            household_id: budgetParams[1],
+            category_id: budgetParams[2],
+            name: budgetParams[3],
+            amount: budgetParams[4],
+            currency: budgetParams[5],
+            period: budgetParams[6],
+            start_date: budgetParams[7],
+            end_date: budgetParams[8],
+            is_rollover: budgetParams[9],
+            created_at: '2025-03-01T00:00:00Z',
+            updated_at: '2025-03-01T00:00:00Z',
+            deleted_at: null,
+            sync_version: 1,
+            is_synced: 0,
+          } satisfies Row;
+        }
+
+        return null;
+      });
+
+      const budgets = createBudgetTemplate(mockDb, {
+        templateId: 'food-meals',
+        startDate: '2025-03-01',
+      });
+
+      expect(budgets).toHaveLength(1);
+      expect(budgets[0]?.name).toBe('Food & Meals');
+      expect(mockCreateCategory).toHaveBeenCalledTimes(6);
+      expect(mockCreateCategory.mock.calls[1]?.[1]).toMatchObject({
+        name: 'Groceries',
+        parentId: 'cat-food-meals',
+      });
+      expect(mockExecute).toHaveBeenCalledTimes(1);
     });
   });
 

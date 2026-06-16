@@ -18,6 +18,10 @@ import type {
   AmortizationEntry,
   AmortizationSchedule,
   Debt,
+  DebtMilestone,
+  DebtMilestoneSummary,
+  DebtToIncomeSummary,
+  DebtToIncomeTrendPoint,
   PayoffStrategy,
   StrategyComparison,
   StrategyResult,
@@ -362,5 +366,137 @@ export function compareStrategies(
     snowball,
     interestSavingsCents: snowball.totalInterestCents - avalanche.totalInterestCents,
     timeSavingsMonths: snowball.totalMonths - avalanche.totalMonths,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Motivation, milestones, and DTI helpers
+// ---------------------------------------------------------------------------
+
+const MILESTONE_THRESHOLDS: readonly DebtMilestone['thresholdPercent'][] = [25, 50, 75, 100];
+
+function roundToOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+/**
+ * Calculates interest saved by applying extra payments versus minimum-only payoff.
+ */
+export function calculateInterestSavedCents(
+  debts: readonly Debt[],
+  strategy: PayoffStrategy,
+  extraPaymentCents: number,
+): number {
+  if (debts.length === 0 || extraPaymentCents <= 0) {
+    return 0;
+  }
+
+  const minimumOnly = calculateStrategyResult(debts, strategy, 0);
+  const accelerated = calculateStrategyResult(debts, strategy, extraPaymentCents);
+  return Math.max(0, minimumOnly.totalInterestCents - accelerated.totalInterestCents);
+}
+
+/**
+ * Calculates total payoff progress and milestone badge state.
+ */
+export function calculateDebtMilestoneSummary(debts: readonly Debt[]): DebtMilestoneSummary {
+  let totalOriginalDebtCents = 0;
+  let currentDebtCents = 0;
+
+  for (const debt of debts) {
+    const original = Math.max(debt.originalBalanceCents ?? debt.balanceCents, debt.balanceCents);
+    totalOriginalDebtCents += original;
+    currentDebtCents += Math.max(0, debt.balanceCents);
+  }
+
+  const paidOffCents = Math.max(0, totalOriginalDebtCents - currentDebtCents);
+  const percentPaidOff =
+    totalOriginalDebtCents > 0
+      ? roundToOneDecimal((paidOffCents * 100) / totalOriginalDebtCents)
+      : 0;
+
+  return {
+    totalOriginalDebtCents,
+    currentDebtCents,
+    paidOffCents,
+    percentPaidOff,
+    milestones: MILESTONE_THRESHOLDS.map((thresholdPercent) => ({
+      thresholdPercent,
+      isReached: percentPaidOff >= thresholdPercent,
+    })),
+  };
+}
+
+/**
+ * Calculates debt-to-income ratio as monthly required debt payments / monthly income.
+ */
+export function calculateDebtToIncomeRatioPercent(
+  monthlyDebtPaymentCents: number,
+  monthlyIncomeCents: number,
+): number {
+  if (monthlyIncomeCents <= 0 || monthlyDebtPaymentCents <= 0) {
+    return 0;
+  }
+  return roundToOneDecimal((monthlyDebtPaymentCents * 100) / monthlyIncomeCents);
+}
+
+/**
+ * Projects how required minimum debt payments decline as debts are paid off.
+ */
+export function calculateDebtToIncomeTrend(
+  debts: readonly Debt[],
+  monthlyIncomeCents: number,
+  strategy: PayoffStrategy,
+  extraPaymentCents: number,
+): DebtToIncomeSummary {
+  const currentRequiredPaymentCents = debts.reduce(
+    (total, debt) => total + Math.max(0, debt.minimumPaymentCents),
+    0,
+  );
+  const currentRatioPercent = calculateDebtToIncomeRatioPercent(
+    currentRequiredPaymentCents,
+    monthlyIncomeCents,
+  );
+
+  if (debts.length === 0) {
+    return {
+      currentRatioPercent: 0,
+      projectedFinalRatioPercent: 0,
+      isImproving: false,
+      trend: [{ month: 0, requiredDebtPaymentCents: 0, ratioPercent: 0 }],
+    };
+  }
+
+  const result = calculateStrategyResult(debts, strategy, extraPaymentCents);
+  const trend: DebtToIncomeTrendPoint[] = [
+    {
+      month: 0,
+      requiredDebtPaymentCents: currentRequiredPaymentCents,
+      ratioPercent: currentRatioPercent,
+    },
+  ];
+
+  for (let month = 1; month <= result.totalMonths; month++) {
+    let requiredDebtPaymentCents = 0;
+    for (const schedule of result.schedules) {
+      const entry = schedule.entries[Math.min(month - 1, schedule.entries.length - 1)];
+      if (entry && entry.remainingBalanceCents > 0) {
+        const debt = debts.find((candidate) => candidate.id === schedule.debtId);
+        requiredDebtPaymentCents += debt?.minimumPaymentCents ?? 0;
+      }
+    }
+    trend.push({
+      month,
+      requiredDebtPaymentCents,
+      ratioPercent: calculateDebtToIncomeRatioPercent(requiredDebtPaymentCents, monthlyIncomeCents),
+    });
+  }
+
+  const projectedFinalRatioPercent = trend[trend.length - 1]?.ratioPercent ?? 0;
+  return {
+    currentRatioPercent,
+    projectedFinalRatioPercent,
+    isImproving: projectedFinalRatioPercent < currentRatioPercent,
+    trend,
   };
 }

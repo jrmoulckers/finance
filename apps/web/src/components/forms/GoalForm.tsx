@@ -34,6 +34,7 @@ import type { CreateGoalInput } from '../../db/repositories/goals';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import type { Goal, GoalStatus, SyncId } from '../../kmp/bridge';
 import { goalSchema } from '../../lib/validation';
+import { DateInput } from '../common';
 
 import './forms.css';
 
@@ -383,10 +384,9 @@ export function GoalForm({ isOpen, onCancel, onSubmit, initialData }: GoalFormPr
               <label htmlFor="goal-target-date" className="form-group__label">
                 Target Date
               </label>
-              <input
+              <DateInput
                 id="goal-target-date"
                 className={`form-input${hasTargetDateError ? ' form-input--error' : ''}`}
-                type="date"
                 min={minimumTargetDate}
                 value={targetDate}
                 onChange={(event) => setTargetDate(event.target.value)}

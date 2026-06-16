@@ -1,21 +1,12 @@
 // SPDX-License-Identifier: MIT
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const mockMoveFocusTo = vi.fn();
-
-vi.mock('../../accessibility/aria', () => ({
-  moveFocusTo: (...args: unknown[]) => mockMoveFocusTo(...args),
-}));
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
 
 import { SkipToContent } from './SkipToContent';
 
 describe('SkipToContent', () => {
-  beforeEach(() => {
-    mockMoveFocusTo.mockClear();
-  });
-
   it('renders a skip link with the default label', () => {
     render(<SkipToContent />);
 
@@ -42,70 +33,88 @@ describe('SkipToContent', () => {
     expect(screen.getByText('Skip to navigation')).toBeInTheDocument();
   });
 
-  it('calls moveFocusTo with the target element on click', () => {
-    const targetEl = document.createElement('main');
-    targetEl.id = 'main-content';
-    document.body.appendChild(targetEl);
+  it('moves focus to the main content target on click and tabs into its content', async () => {
+    const user = userEvent.setup();
 
-    render(<SkipToContent />);
+    render(
+      <>
+        <SkipToContent />
+        <main id="main-content" tabIndex={-1}>
+          <button type="button">Main action</button>
+        </main>
+      </>,
+    );
 
-    fireEvent.click(screen.getByText('Skip to main content'));
+    await user.click(screen.getByRole('link', { name: 'Skip to main content' }));
 
-    expect(mockMoveFocusTo).toHaveBeenCalledTimes(1);
-    expect(mockMoveFocusTo).toHaveBeenCalledWith(targetEl);
+    const main = screen.getByRole('main');
+    expect(main).toHaveFocus();
 
-    document.body.removeChild(targetEl);
+    await user.tab();
+
+    expect(screen.getByRole('button', { name: 'Main action' })).toHaveFocus();
   });
 
-  it('calls moveFocusTo when Enter key is pressed', () => {
-    const targetEl = document.createElement('main');
-    targetEl.id = 'main-content';
-    document.body.appendChild(targetEl);
+  it('moves focus to the target when Enter is pressed', () => {
+    render(
+      <>
+        <SkipToContent />
+        <main id="main-content" tabIndex={-1}>
+          <button type="button">Main action</button>
+        </main>
+      </>,
+    );
 
-    render(<SkipToContent />);
+    fireEvent.keyDown(screen.getByRole('link', { name: 'Skip to main content' }), { key: 'Enter' });
 
-    fireEvent.keyDown(screen.getByText('Skip to main content'), { key: 'Enter' });
-
-    expect(mockMoveFocusTo).toHaveBeenCalledTimes(1);
-    expect(mockMoveFocusTo).toHaveBeenCalledWith(targetEl);
-
-    document.body.removeChild(targetEl);
+    expect(screen.getByRole('main')).toHaveFocus();
   });
 
-  it('calls moveFocusTo when Space key is pressed', () => {
-    const targetEl = document.createElement('main');
-    targetEl.id = 'main-content';
-    document.body.appendChild(targetEl);
+  it('falls back to the main landmark when the target id is missing', () => {
+    render(
+      <>
+        <SkipToContent />
+        <main tabIndex={-1}>
+          <button type="button">Main action</button>
+        </main>
+      </>,
+    );
 
-    render(<SkipToContent />);
+    fireEvent.click(screen.getByRole('link', { name: 'Skip to main content' }));
 
-    fireEvent.keyDown(screen.getByText('Skip to main content'), { key: ' ' });
-
-    expect(mockMoveFocusTo).toHaveBeenCalledTimes(1);
-    expect(mockMoveFocusTo).toHaveBeenCalledWith(targetEl);
-
-    document.body.removeChild(targetEl);
+    expect(screen.getByRole('main')).toHaveFocus();
   });
 
-  it('does not call moveFocusTo for other keys', () => {
-    render(<SkipToContent />);
+  it('makes a custom target programmatically focusable before focusing it', () => {
+    render(
+      <>
+        <SkipToContent targetId="custom-section" />
+        <div id="custom-section">Custom section</div>
+      </>,
+    );
 
-    fireEvent.keyDown(screen.getByText('Skip to main content'), { key: 'Tab' });
+    fireEvent.click(screen.getByRole('link', { name: 'Skip to main content' }));
 
-    expect(mockMoveFocusTo).not.toHaveBeenCalled();
+    const customTarget = document.getElementById('custom-section');
+    expect(customTarget).toHaveAttribute('tabindex', '-1');
+    expect(customTarget).toHaveFocus();
   });
 
-  it('calls moveFocusTo with the custom target element on click', () => {
-    const customEl = document.createElement('div');
-    customEl.id = 'custom-section';
-    document.body.appendChild(customEl);
+  it('does not move focus for other keys', () => {
+    render(
+      <>
+        <SkipToContent />
+        <main id="main-content" tabIndex={-1}>
+          <button type="button">Main action</button>
+        </main>
+      </>,
+    );
 
-    render(<SkipToContent targetId="custom-section" />);
+    const link = screen.getByRole('link', { name: 'Skip to main content' });
+    link.focus();
 
-    fireEvent.click(screen.getByText('Skip to main content'));
+    fireEvent.keyDown(link, { key: 'Tab' });
 
-    expect(mockMoveFocusTo).toHaveBeenCalledWith(customEl);
-
-    document.body.removeChild(customEl);
+    expect(link).toHaveFocus();
   });
 });

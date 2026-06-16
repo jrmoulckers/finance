@@ -58,12 +58,16 @@ vi.mock('../hooks/useOfflineStatus', () => ({
 }));
 
 const setThemeMock = vi.fn();
+const setDisplayDensityMock = vi.fn();
 vi.mock('../hooks/useTheme', () => ({
   useTheme: () => ({
     theme: 'system',
     resolvedTheme: 'light',
     setTheme: setThemeMock,
     themes: ['system', 'light', 'dark', 'dark-oled'],
+    displayDensity: 'comfortable',
+    setDisplayDensity: setDisplayDensityMock,
+    densities: ['comfortable', 'compact'],
   }),
 }));
 

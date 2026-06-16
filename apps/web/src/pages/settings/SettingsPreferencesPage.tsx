@@ -6,14 +6,17 @@ import { CurrencyDisplay } from '../../components/common/CurrencyDisplay';
 import { SettingInfoWidget } from '../../components/settings';
 import { CurrencyRatesSettings } from '../../components/settings/CurrencyRatesSettings';
 import '../../components/settings/currency-rates-settings.css';
+import { useFontScale } from '../../hooks/useFontScale';
+import type { FontScalePreference } from '../../hooks/useFontScale';
 import { useTheme } from '../../hooks/useTheme';
-import type { ThemeValue } from '../../hooks/useTheme';
+import type { DisplayDensity, ThemeValue } from '../../hooks/useTheme';
 import {
   loadBnplStackingThresholdCents,
   saveBnplStackingThresholdCents,
 } from '../../lib/bnpl-liability';
 import type { CurrencyDisplayMode, NegativeFormat } from '../../lib/display-settings';
 import { formatAmountWithSettings, useMoneyDisplay } from '../../lib/display-settings';
+import { setOnboardingComplete } from '../../lib/local-only-mode';
 
 const CURRENCY_STORAGE_KEY = 'finance-currency';
 const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
@@ -35,6 +38,12 @@ const THEME_LABELS: Record<ThemeValue, string> = {
   light: 'Light',
   dark: 'Dark',
   'dark-oled': 'OLED Dark',
+  'high-contrast': 'High Contrast',
+};
+
+const DENSITY_LABELS: Record<DisplayDensity, string> = {
+  comfortable: 'Comfortable',
+  compact: 'Compact / Dense',
 };
 
 /**
@@ -69,7 +78,8 @@ const CURRENCY_DISPLAY_OPTIONS: Array<{ value: CurrencyDisplayMode; label: strin
  * money display formatting, and currency-rate management.
  */
 export const SettingsPreferencesPage: React.FC = () => {
-  const { theme, setTheme, themes } = useTheme();
+  const { theme, setTheme, themes, displayDensity, setDisplayDensity, densities } = useTheme();
+  const fontScale = useFontScale();
   const displaySettings = useMoneyDisplay();
   const [currency, setCurrency] = useState<CurrencyPreference>(
     () => (localStorage.getItem(CURRENCY_STORAGE_KEY) as CurrencyPreference) || 'USD',
@@ -88,11 +98,25 @@ export const SettingsPreferencesPage: React.FC = () => {
     [setTheme],
   );
 
+  const handleDensityChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setDisplayDensity(event.target.value as DisplayDensity);
+    },
+    [setDisplayDensity],
+  );
+
   const handleCurrencyChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextCurrency = event.target.value as CurrencyPreference;
     localStorage.setItem(CURRENCY_STORAGE_KEY, nextCurrency);
     setCurrency(nextCurrency);
   }, []);
+
+  const handleFontScaleChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      fontScale.setPreference(event.target.value as FontScalePreference);
+    },
+    [fontScale],
+  );
 
   const handleNotificationsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const nextNotificationsEnabled = event.target.checked;
@@ -107,6 +131,11 @@ export const SettingsPreferencesPage: React.FC = () => {
     if (Number.isFinite(cents) && cents > 0) {
       saveBnplStackingThresholdCents(cents);
     }
+  }, []);
+
+  const handleRerunOnboarding = useCallback(() => {
+    setOnboardingComplete(false);
+    window.location.href = '/onboarding';
   }, []);
 
   return (
@@ -205,6 +234,55 @@ export const SettingsPreferencesPage: React.FC = () => {
           <p className="settings-group__description">
             Customize how monetary amounts appear throughout the app.
           </p>
+
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-font-scale">
+              Text size
+            </label>
+            <div className="settings-item__control">
+              <select
+                id="settings-font-scale"
+                aria-label="Text size"
+                className="settings-item__select"
+                value={fontScale.preference}
+                onChange={handleFontScaleChange}
+              >
+                {fontScale.options.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} ({option.rootFontSize})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="settings-item__description">
+              Scales app text and spacing up to 200% while allowing pages to reflow.
+            </p>
+          </div>
+
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-display-density">
+              Display density
+            </label>
+            <div className="settings-item__control">
+              <select
+                id="settings-display-density"
+                aria-label="Display density"
+                className="settings-item__select"
+                value={displayDensity}
+                onChange={handleDensityChange}
+              >
+                {(densities ?? []).map((densityOption) => (
+                  <option key={densityOption} value={densityOption}>
+                    {DENSITY_LABELS[densityOption]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p id="settings-display-density-help" className="settings-item__description">
+              Compact density reduces padding, row heights, and supporting text for a denser trader
+              workspace.
+            </p>
+          </div>
 
           <div className="settings-item settings-item--static">
             <label className="settings-item__label" htmlFor="settings-positive-color">
@@ -379,6 +457,16 @@ export const SettingsPreferencesPage: React.FC = () => {
           >
             <span className="settings-item__label">Reset to defaults</span>
             <span className="settings-item__value">↺</span>
+          </button>
+
+          <button
+            type="button"
+            className="settings-item settings-item--button"
+            onClick={handleRerunOnboarding}
+            aria-label="Run onboarding again"
+          >
+            <span className="settings-item__label">Run onboarding again</span>
+            <span className="settings-item__value">Simple setup ›</span>
           </button>
         </div>
       </section>

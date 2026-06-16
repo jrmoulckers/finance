@@ -91,6 +91,8 @@ export interface RetirementParams {
   readonly annualInflationRate: number;
   /** Desired monthly spending in retirement, in today's cents. */
   readonly desiredMonthlySpendingCents: number;
+  /** Monthly Social Security/pension income in retirement, in today's cents. */
+  readonly monthlyRetirementIncomeCents: number;
   /** Annual return standard deviation for Monte Carlo (e.g. 0.15 = 15%). */
   readonly annualReturnStdDev: number;
 }

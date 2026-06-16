@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { KeyboardShortcutsModal, SyncStatusBar } from '../common';
+import { CommandPalette, type CommandPaletteAction } from '../common/CommandPalette';
 import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
-import { useKeyboardShortcuts } from '../../hooks';
+import { NotificationCenter } from '../notifications';
+import { useKeyboardShortcuts, useNotifications, useTransactions } from '../../hooks';
+import { detectScamAlerts, scamAlertsToNotifications } from '../../lib/notifications';
 import { usePrivacyMode } from '../../contexts/PrivacyModeContext';
 import { useEscapeBack } from '../../hooks/useEscapeBack';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
+import { NAV_CONFIG } from './navConfig';
 import { InstallBanner } from '../common/InstallBanner';
+
+import { SkipToContent } from './SkipToContent';
 
 export interface AppLayoutProps {
   activePath: string;
@@ -26,11 +32,39 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   children,
 }) => {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const { showHelp, setShowHelp } = useKeyboardShortcuts({
+    onNavigate,
+    onNewTransaction: () => onNavigate('/transactions?new=transaction'),
+    onOpenCommandPalette: () => setShowCommandPalette(true),
     onTogglePrivacyMode: togglePrivacyMode,
   });
   const { conflictCount } = useSyncStatus();
   const [showConflicts, setShowConflicts] = useState(false);
+  const { notifications, unreadCount, markAsRead, markAllAsRead, dismiss, addNotifications } =
+    useNotifications();
+  const scamTransactionFilters = useMemo(
+    () => ({
+      type: 'EXPENSE' as const,
+    }),
+    [],
+  );
+  const { transactions: scamNotificationTransactions } = useTransactions(scamTransactionFilters);
+  const scamNotifications = useMemo(
+    () => scamAlertsToNotifications(detectScamAlerts(scamNotificationTransactions)),
+    [scamNotificationTransactions],
+  );
+
+  useEffect(() => {
+    const knownNotificationKeys = new Set(
+      notifications.map((notification) => notification.deduplicationKey ?? notification.id),
+    );
+    const newScamNotifications = scamNotifications.filter(
+      (notification) =>
+        !knownNotificationKeys.has(notification.deduplicationKey ?? notification.id),
+    );
+    addNotifications(newScamNotifications);
+  }, [addNotifications, notifications, scamNotifications]);
 
   // Navigate back on Escape key for detail pages (#1523)
   useEscapeBack();
@@ -42,6 +76,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const closeKeyboardShortcuts = useCallback(() => {
     setShowHelp(false);
   }, [setShowHelp]);
+
+  const openCommandPalette = useCallback(() => {
+    setShowCommandPalette(true);
+  }, []);
+
+  const closeCommandPalette = useCallback(() => {
+    setShowCommandPalette(false);
+  }, []);
+
+  const openNewTransaction = useCallback(() => {
+    onNavigate('/transactions?new=transaction');
+  }, [onNavigate]);
 
   const goToSettings = useCallback(() => {
     onNavigate('/settings');
@@ -55,11 +101,66 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     setShowConflicts(false);
   }, []);
 
+  const commandPaletteActions = useMemo<CommandPaletteAction[]>(
+    () => [
+      ...NAV_CONFIG.map((item) => ({
+        id: `command-nav-${item.id}`,
+        label: `Go to ${item.label}`,
+        description: item.description,
+        keywords: `${item.group ?? 'primary'} ${item.href}`,
+        shortcut:
+          item.id === 'dashboard'
+            ? 'G D'
+            : item.id === 'accounts'
+              ? 'G A'
+              : item.id === 'transactions'
+                ? 'G T'
+                : item.id === 'budgets'
+                  ? 'G B'
+                  : item.id === 'investments'
+                    ? 'G I'
+                    : undefined,
+        perform: () => onNavigate(item.href),
+      })),
+      {
+        id: 'command-new-transaction',
+        label: 'Add transaction',
+        description: 'Open manual transaction entry.',
+        shortcut: 'N',
+        keywords: 'new quick add create transaction',
+        perform: openNewTransaction,
+      },
+      {
+        id: 'command-shortcuts',
+        label: 'Show keyboard shortcuts',
+        description: 'Open the shortcuts reference overlay.',
+        shortcut: '?',
+        keywords: 'help keyboard shortcuts',
+        perform: openKeyboardShortcuts,
+      },
+      {
+        id: 'command-toggle-privacy',
+        label: isPrivacyMode ? 'Turn privacy mode off' : 'Turn privacy mode on',
+        description: 'Mask or reveal financial amounts.',
+        shortcut: 'Ctrl+Shift+P',
+        keywords: 'privacy mask sensitive amounts',
+        perform: togglePrivacyMode,
+      },
+      {
+        id: 'command-settings-preferences',
+        label: 'Open preferences',
+        description: 'Theme, density, currency, and display settings.',
+        shortcut: 'G S',
+        keywords: 'settings display density theme compact',
+        perform: () => onNavigate('/settings/preferences'),
+      },
+    ],
+    [isPrivacyMode, onNavigate, openKeyboardShortcuts, openNewTransaction, togglePrivacyMode],
+  );
+
   return (
     <div className="app-layout">
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
+      <SkipToContent />
       <SidebarNavigation
         activePath={activePath}
         onNavigate={onNavigate}
@@ -113,6 +214,17 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             <button
               type="button"
               className="icon-button"
+              aria-label="Command palette"
+              aria-keyshortcuts="Control+K Meta+K /"
+              onClick={openCommandPalette}
+            >
+              <span className="icon-button__glyph" aria-hidden="true">
+                ⌘K
+              </span>
+            </button>
+            <button
+              type="button"
+              className="icon-button"
               aria-label="Keyboard shortcuts"
               aria-keyshortcuts="Shift+/"
               onClick={openKeyboardShortcuts}
@@ -121,6 +233,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                 ?
               </span>
             </button>
+            <NotificationCenter
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
+              onDismiss={dismiss}
+            />
             <button
               type="button"
               className="icon-button"
@@ -134,12 +253,17 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             </button>
           </div>
         </header>
-        <main id="main-content" className="app-main" aria-label={pageTitle}>
+        <main id="main-content" className="app-main" aria-label={pageTitle} tabIndex={-1}>
           {children}
         </main>
         <BottomNavigation activePath={activePath} onNavigate={onNavigate} />
       </div>
       <InstallBanner />
+      <CommandPalette
+        isOpen={showCommandPalette}
+        actions={commandPaletteActions}
+        onClose={closeCommandPalette}
+      />
       <KeyboardShortcutsModal isOpen={showHelp} onClose={closeKeyboardShortcuts} />
       <ConflictResolutionDialog isOpen={showConflicts} onClose={closeConflictDialog} />
     </div>

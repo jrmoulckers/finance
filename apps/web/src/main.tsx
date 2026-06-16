@@ -9,7 +9,11 @@ import { AuthProvider } from './auth/auth-context';
 import { ErrorBoundary, ToastProvider, UpdateBanner } from './components/common';
 import { ScrollToTop } from './components/navigation/ScrollToTop';
 import { DatabaseProvider } from './db/DatabaseProvider';
+import { applyStoredFontScalePreference } from './hooks/useFontScale';
+import { applyStoredReducedMotionPreference } from './hooks/useReducedMotion';
+import { applyStoredDisplayDensityPreference, applyStoredThemePreference } from './hooks/useTheme';
 import { MoneyDisplayProvider } from './lib/display-settings';
+import { applyStoredSimplifiedModePreference } from './lib/accessibility-preferences';
 import { initMonitoring } from './lib/monitoring';
 import { registerAppServiceWorker } from './sw/register';
 import './theme/tokens.css';
@@ -21,12 +25,19 @@ import './styles/accessibility.css';
 import './styles/reduced-motion.css';
 import './styles/font-scaling.css';
 import './styles/error-boundaries.css';
+import './styles/density.css';
 
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {
   throw new Error('Root element not found. Ensure <div id="root"></div> exists in index.html.');
 }
+
+applyStoredThemePreference();
+applyStoredDisplayDensityPreference();
+applyStoredFontScalePreference();
+applyStoredReducedMotionPreference();
+applyStoredSimplifiedModePreference();
 
 function requiredProductionEnv(name: string): never {
   throw new Error(`${name} is required for production builds`);

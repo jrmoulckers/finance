@@ -68,7 +68,9 @@ export interface NavigationProps {
 }
 
 function isActive(activePath: string, href: string): boolean {
-  return activePath === href || activePath.startsWith(href + '/');
+  if (activePath === href) return true;
+  if (!activePath.startsWith(href + '/')) return false;
+  return !NAV_CONFIG.some((item) => item.href === activePath);
 }
 
 // ---------------------------------------------------------------------------

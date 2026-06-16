@@ -19,7 +19,7 @@
  *
  * @module components/forms/BudgetForm
  * @see {@link CreateBudgetInput} from db/repositories/budgets
- * References: issue #461, #487
+ * References: issue #461, #487, #2148
  */
 
 import {
@@ -32,8 +32,9 @@ import {
 } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
-import type { CreateBudgetInput } from '../../db/repositories/budgets';
+import type { CreateBudgetInput, CreateBudgetTemplateInput } from '../../db/repositories/budgets';
 import type { Budget, BudgetPeriod, Category } from '../../kmp/bridge';
+import type { BudgetStarterTemplate } from '../../lib/budgeting/starter-budget-templates';
 import { budgetSchema } from '../../lib/validation';
 
 import './forms.css';
@@ -51,6 +52,13 @@ const BUDGET_PERIODS: readonly { value: BudgetPeriod; label: string }[] = [
   { value: 'YEARLY', label: 'Yearly' },
 ] as const;
 
+const budgetTemplateCurrencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});
+
+type BudgetCreationMode = 'single' | 'template';
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -66,10 +74,16 @@ export interface BudgetFormProps {
    * The `amount` field is already in integer cents.
    */
   onSubmit: (data: CreateBudgetInput) => Promise<void>;
+  /** Optional callback for creating a starter budget from a template. */
+  onSubmitTemplate?: (data: CreateBudgetTemplateInput) => Promise<void>;
   /** Available categories to assign the budget to. */
   categories: Category[];
+  /** Starter budget templates available during creation. */
+  templates?: BudgetStarterTemplate[];
   /** Existing budget data used to prefill the form when editing. */
   initialData?: Budget;
+  /** Optional category selection applied when launching a focused budget template. */
+  defaultCategoryId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -90,6 +104,14 @@ function formatBudgetAmountForInput(budget: Budget): string {
   return (budget.amount.amount / divisor).toFixed(budget.currency.decimalPlaces);
 }
 
+function formatTemplateAmount(amountCents: number): string {
+  return budgetTemplateCurrencyFormatter.format(amountCents / 100);
+}
+
+function getDefaultTemplateId(templates: readonly BudgetStarterTemplate[]): string {
+  return templates.find((template) => template.isAvailable)?.id ?? '';
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -97,6 +119,7 @@ function formatBudgetAmountForInput(budget: Budget): string {
 interface FormErrors {
   categoryId?: string;
   amount?: string;
+  templateId?: string;
 }
 
 function validate(categoryId: string, amountStr: string, period: BudgetPeriod): FormErrors {
@@ -137,14 +160,19 @@ export function BudgetForm({
   isOpen,
   onCancel,
   onSubmit,
+  onSubmitTemplate,
   categories,
+  templates = [],
   initialData,
+  defaultCategoryId,
 }: BudgetFormProps) {
   // -- refs ----------------------------------------------------------------
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLSelectElement>(null);
 
   // -- state ---------------------------------------------------------------
+  const [creationMode, setCreationMode] = useState<BudgetCreationMode>('single');
+  const [templateId, setTemplateId] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
   const [period, setPeriod] = useState<BudgetPeriod>('MONTHLY');
@@ -153,6 +181,11 @@ export function BudgetForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const isEditMode = initialData !== undefined;
+  const canUseTemplates = !isEditMode && Boolean(onSubmitTemplate) && templates.length > 0;
+  const selectedTemplate =
+    creationMode === 'template'
+      ? (templates.find((template) => template.id === templateId && template.isAvailable) ?? null)
+      : null;
 
   // -- focus trap -----------------------------------------------------------
   useFocusTrap(panelRef, { active: isOpen, restoreFocus: true });
@@ -170,7 +203,9 @@ export function BudgetForm({
   // -- reset on open -------------------------------------------------------
   useEffect(() => {
     if (isOpen) {
-      setCategoryId(initialData?.categoryId ?? '');
+      setCreationMode('single');
+      setTemplateId(getDefaultTemplateId(templates));
+      setCategoryId(initialData?.categoryId ?? defaultCategoryId ?? '');
       setAmount(initialData ? formatBudgetAmountForInput(initialData) : '');
       setPeriod(initialData?.period ?? 'MONTHLY');
       setStartDate(initialData?.startDate ?? firstOfCurrentMonthISO());
@@ -178,7 +213,7 @@ export function BudgetForm({
       setSubmitting(false);
       setSubmitError(null);
     }
-  }, [initialData, isOpen]);
+  }, [defaultCategoryId, initialData, isOpen, templates]);
 
   // -- handlers ------------------------------------------------------------
 
@@ -200,6 +235,38 @@ export function BudgetForm({
     async (e: FormEvent) => {
       e.preventDefault();
 
+      if (canUseTemplates && creationMode === 'template') {
+        if (!templateId) {
+          setErrors({ templateId: 'Please select a starter budget template.' });
+          return;
+        }
+
+        if (!onSubmitTemplate) {
+          setSubmitError('Starter budget creation is unavailable right now.');
+          return;
+        }
+
+        setErrors({});
+        setSubmitting(true);
+        setSubmitError(null);
+
+        try {
+          await onSubmitTemplate({
+            templateId: templateId as CreateBudgetTemplateInput['templateId'],
+            startDate,
+          });
+          setCreationMode('single');
+          setTemplateId(getDefaultTemplateId(templates));
+          setStartDate(firstOfCurrentMonthISO());
+        } catch (err) {
+          setSubmitError(err instanceof Error ? err.message : 'Failed to create starter budget.');
+        } finally {
+          setSubmitting(false);
+        }
+
+        return;
+      }
+
       const fieldErrors = validate(categoryId, amount, period);
       setErrors(fieldErrors);
 
@@ -207,14 +274,12 @@ export function BudgetForm({
         return;
       }
 
-      // Derive householdId and name from the selected category.
       const selectedCategory = categories.find((c) => c.id === categoryId);
       if (!selectedCategory) {
         setSubmitError('Selected category not found.');
         return;
       }
 
-      // Convert dollars to integer cents — never store floats as money.
       const amountCents = Math.round(parseFloat(amount) * 100);
 
       const input: CreateBudgetInput = {
@@ -250,7 +315,20 @@ export function BudgetForm({
         setSubmitting(false);
       }
     },
-    [categoryId, amount, period, startDate, categories, isEditMode, onSubmit],
+    [
+      amount,
+      canUseTemplates,
+      categories,
+      categoryId,
+      creationMode,
+      isEditMode,
+      onSubmit,
+      onSubmitTemplate,
+      period,
+      startDate,
+      templateId,
+      templates,
+    ],
   );
 
   // -- render --------------------------------------------------------------
@@ -261,13 +339,16 @@ export function BudgetForm({
 
   const hasCategoryError = Boolean(errors.categoryId);
   const hasAmountError = Boolean(errors.amount);
+  const hasTemplateError = Boolean(errors.templateId);
+  const templateTotal = selectedTemplate?.categories.reduce(
+    (total, category) => total + category.amountCents,
+    0,
+  );
 
   return (
     <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
-      {/* Backdrop */}
       <div className="form-dialog__backdrop" aria-hidden="true" onClick={handleCancel} />
 
-      {/* Dialog panel */}
       <div
         ref={panelRef}
         className="form-dialog__panel"
@@ -279,7 +360,6 @@ export function BudgetForm({
           {isEditMode ? 'Edit Budget' : 'Create Budget'}
         </h2>
 
-        {/* Form-level error */}
         {submitError && (
           <div className="form-banner-error" role="alert">
             {submitError}
@@ -288,103 +368,253 @@ export function BudgetForm({
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="form-fields">
-            {/* Category */}
-            <div className="form-group">
-              <label
-                htmlFor="budget-category"
-                className="form-group__label form-group__label--required"
-              >
-                Category
-              </label>
-              <select
-                ref={firstInputRef}
-                id="budget-category"
-                className={`form-select${hasCategoryError ? ' form-select--error' : ''}`}
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                aria-invalid={hasCategoryError}
-                aria-describedby={hasCategoryError ? 'budget-category-error' : undefined}
-                aria-required="true"
-              >
-                <option value="">Select a category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              {hasCategoryError && (
-                <span id="budget-category-error" className="form-error" role="alert">
-                  {errors.categoryId}
-                </span>
-              )}
-            </div>
+            {canUseTemplates && (
+              <fieldset className="form-radio-group form-fieldset">
+                <legend className="form-radio-group__legend">
+                  How do you want to get started?
+                </legend>
+                <div className="form-radio-group__options">
+                  <label className="form-radio-option">
+                    <input
+                      type="radio"
+                      name="budget-creation-mode"
+                      value="single"
+                      checked={creationMode === 'single'}
+                      onChange={() => {
+                        setCreationMode('single');
+                        setErrors({});
+                        setSubmitError(null);
+                      }}
+                    />
+                    <span className="form-radio-option__label">Create one category</span>
+                  </label>
+                  <label className="form-radio-option">
+                    <input
+                      type="radio"
+                      name="budget-creation-mode"
+                      value="template"
+                      checked={creationMode === 'template'}
+                      onChange={() => {
+                        setCreationMode('template');
+                        setTemplateId(
+                          (currentValue) => currentValue || getDefaultTemplateId(templates),
+                        );
+                        setErrors({});
+                        setSubmitError(null);
+                      }}
+                    />
+                    <span className="form-radio-option__label">Start from template</span>
+                  </label>
+                </div>
+                <p className="form-group__help">
+                  Templates give you a realistic starting point you can edit at any time.
+                </p>
+              </fieldset>
+            )}
 
-            {/* Amount (dollars — converted to cents on submit) */}
-            <div className="form-group">
-              <label
-                htmlFor="budget-amount"
-                className="form-group__label form-group__label--required"
-              >
-                Amount
-              </label>
-              <input
-                id="budget-amount"
-                className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
-                type="number"
-                step="0.01"
-                min="0.01"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                aria-invalid={hasAmountError}
-                aria-describedby={hasAmountError ? 'budget-amount-error' : undefined}
-                aria-required="true"
-                autoComplete="off"
-              />
-              {hasAmountError && (
-                <span id="budget-amount-error" className="form-error" role="alert">
-                  {errors.amount}
-                </span>
-              )}
-            </div>
+            {canUseTemplates && creationMode === 'template' ? (
+              <>
+                <fieldset className="form-fieldset" aria-describedby="budget-template-help">
+                  <legend className="form-group__label form-group__label--required">
+                    Template
+                  </legend>
+                  <p id="budget-template-help" className="form-group__help">
+                    Pick a starter budget for the month you want to begin tracking.
+                  </p>
+                  <div className="budget-form__template-list">
+                    {templates.map((template) => {
+                      const disabled = !template.isAvailable;
+                      return (
+                        <label
+                          key={template.id}
+                          className={`budget-form__template-card${
+                            templateId === template.id
+                              ? ' budget-form__template-card--selected'
+                              : ''
+                          }${disabled ? ' budget-form__template-card--disabled' : ''}`}
+                        >
+                          <input
+                            type="radio"
+                            name="budget-template"
+                            value={template.id}
+                            checked={templateId === template.id}
+                            onChange={() => {
+                              setTemplateId(template.id);
+                              setErrors((currentErrors) => ({
+                                ...currentErrors,
+                                templateId: undefined,
+                              }));
+                            }}
+                            disabled={disabled}
+                            aria-describedby={
+                              disabled ? `budget-template-${template.id}-status` : undefined
+                            }
+                          />
+                          <span className="budget-form__template-card-content">
+                            <span className="budget-form__template-card-header">
+                              <strong>{template.name}</strong>
+                              {template.availabilityLabel && (
+                                <span
+                                  id={`budget-template-${template.id}-status`}
+                                  className="budget-form__template-badge"
+                                >
+                                  {template.availabilityLabel}
+                                </span>
+                              )}
+                            </span>
+                            <span>{template.description}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {hasTemplateError && (
+                    <span id="budget-template-error" className="form-error" role="alert">
+                      {errors.templateId}
+                    </span>
+                  )}
+                </fieldset>
 
-            {/* Period */}
-            <div className="form-group">
-              <label htmlFor="budget-period" className="form-group__label">
-                Period
-              </label>
-              <select
-                id="budget-period"
-                className="form-select"
-                value={period}
-                onChange={(e) => setPeriod(e.target.value as BudgetPeriod)}
-              >
-                {BUDGET_PERIODS.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {selectedTemplate && (
+                  <section
+                    className="budget-form__template-preview"
+                    aria-label={`${selectedTemplate.name} template preview`}
+                  >
+                    <p className="budget-form__template-guidance">{selectedTemplate.guidance}</p>
+                    <ul className="budget-form__template-items">
+                      {selectedTemplate.categories.map((category) => (
+                        <li key={category.name} className="budget-form__template-item">
+                          <span>
+                            {category.emoji} {category.name}
+                          </span>
+                          <strong>
+                            {category.createBudget === false
+                              ? 'Tracked in breakdown'
+                              : formatTemplateAmount(category.amountCents)}
+                          </strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="budget-form__template-total">
+                      Total starter budget:{' '}
+                      <strong>{formatTemplateAmount(templateTotal ?? 0)}</strong>
+                    </p>
+                    <p className="form-group__help">
+                      Creates editable monthly budgets and any supporting categories for this start
+                      date.
+                    </p>
+                  </section>
+                )}
 
-            {/* Start Date */}
-            <div className="form-group">
-              <label htmlFor="budget-start-date" className="form-group__label">
-                Start Date
-              </label>
-              <input
-                id="budget-start-date"
-                className="form-input"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
+                <div className="form-group">
+                  <label htmlFor="budget-start-date" className="form-group__label">
+                    Start Date
+                  </label>
+                  <input
+                    id="budget-start-date"
+                    className="form-input"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label
+                    htmlFor="budget-category"
+                    className="form-group__label form-group__label--required"
+                  >
+                    Category
+                  </label>
+                  <select
+                    ref={firstInputRef}
+                    id="budget-category"
+                    className={`form-select${hasCategoryError ? ' form-select--error' : ''}`}
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    aria-invalid={hasCategoryError}
+                    aria-describedby={hasCategoryError ? 'budget-category-error' : undefined}
+                    aria-required="true"
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  {hasCategoryError && (
+                    <span id="budget-category-error" className="form-error" role="alert">
+                      {errors.categoryId}
+                    </span>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label
+                    htmlFor="budget-amount"
+                    className="form-group__label form-group__label--required"
+                  >
+                    Amount
+                  </label>
+                  <input
+                    id="budget-amount"
+                    className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    aria-invalid={hasAmountError}
+                    aria-describedby={hasAmountError ? 'budget-amount-error' : undefined}
+                    aria-required="true"
+                    autoComplete="off"
+                  />
+                  {hasAmountError && (
+                    <span id="budget-amount-error" className="form-error" role="alert">
+                      {errors.amount}
+                    </span>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="budget-period" className="form-group__label">
+                    Period
+                  </label>
+                  <select
+                    id="budget-period"
+                    className="form-select"
+                    value={period}
+                    onChange={(e) => setPeriod(e.target.value as BudgetPeriod)}
+                  >
+                    {BUDGET_PERIODS.map((periodOption) => (
+                      <option key={periodOption.value} value={periodOption.value}>
+                        {periodOption.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="budget-start-date" className="form-group__label">
+                    Start Date
+                  </label>
+                  <input
+                    id="budget-start-date"
+                    className="form-input"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Actions */}
           <div className="form-actions">
             <button
               type="button"
@@ -401,12 +631,16 @@ export function BudgetForm({
               aria-busy={submitting}
             >
               {submitting
-                ? isEditMode
-                  ? 'Updating…'
-                  : 'Creating…'
-                : isEditMode
-                  ? 'Update Budget'
-                  : 'Create Budget'}
+                ? creationMode === 'template' && !isEditMode
+                  ? 'Creating starter budget…'
+                  : isEditMode
+                    ? 'Updating…'
+                    : 'Creating…'
+                : creationMode === 'template' && !isEditMode
+                  ? 'Create Starter Budget'
+                  : isEditMode
+                    ? 'Update Budget'
+                    : 'Create Budget'}
             </button>
           </div>
         </form>

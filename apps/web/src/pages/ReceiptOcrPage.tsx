@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React, { useId, useMemo, useState } from 'react';
+import { DateInput } from '../components/common';
 import { AppIcon } from '../components/icons';
 
 import { useAccounts } from '../hooks/useAccounts';
@@ -187,7 +188,7 @@ export const ReceiptOcrPage: React.FC = () => {
           </label>
           <label className="import-account-selector__label">
             Date
-            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            <DateInput value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
           <p>OCR confidence: {Math.round(receipt.confidence)}%</p>
 

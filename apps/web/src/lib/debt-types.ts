@@ -22,6 +22,8 @@ export interface Debt {
   readonly name: string;
   /** Current outstanding balance in cents. */
   readonly balanceCents: number;
+  /** Original balance before payoff progress, when known. */
+  readonly originalBalanceCents?: number;
   /** Annual interest rate as basis points (e.g., 1999 = 19.99%). */
   readonly annualRateBps: number;
   /** Minimum monthly payment in cents. */
@@ -110,6 +112,50 @@ export interface StrategyComparison {
   readonly timeSavingsMonths: number;
 }
 
+/** Payoff milestone reached as principal is paid down. */
+export interface DebtMilestone {
+  /** Milestone threshold percentage. */
+  readonly thresholdPercent: 25 | 50 | 75 | 100;
+  /** Whether the user has reached this threshold. */
+  readonly isReached: boolean;
+}
+
+/** Aggregate milestone progress across all debts. */
+export interface DebtMilestoneSummary {
+  /** Total original debt used as the baseline. */
+  readonly totalOriginalDebtCents: number;
+  /** Current outstanding debt. */
+  readonly currentDebtCents: number;
+  /** Principal paid off so far. */
+  readonly paidOffCents: number;
+  /** Percent of original debt paid off, rounded to one decimal. */
+  readonly percentPaidOff: number;
+  /** Milestone badges. */
+  readonly milestones: DebtMilestone[];
+}
+
+/** A single month in the debt-to-income payoff trend. */
+export interface DebtToIncomeTrendPoint {
+  /** Month number, with 0 representing today. */
+  readonly month: number;
+  /** Required monthly debt payments still active in this month. */
+  readonly requiredDebtPaymentCents: number;
+  /** Debt-to-income ratio as a percent, rounded to one decimal. */
+  readonly ratioPercent: number;
+}
+
+/** Debt-to-income summary and trend. */
+export interface DebtToIncomeSummary {
+  /** Current debt-to-income ratio as a percent. */
+  readonly currentRatioPercent: number;
+  /** Final projected ratio once debts are paid off. */
+  readonly projectedFinalRatioPercent: number;
+  /** Whether projected required debt payments decline over time. */
+  readonly isImproving: boolean;
+  /** Month-by-month DTI trend. */
+  readonly trend: DebtToIncomeTrendPoint[];
+}
+
 // ---------------------------------------------------------------------------
 // BNPL types
 // ---------------------------------------------------------------------------
@@ -187,16 +233,25 @@ export interface BnplRiskScore {
 /** Income-driven repayment plan type. */
 export type IdrPlanType = 'IBR' | 'PAYE' | 'REPAYE' | 'ICR';
 
+/** Supported student loan repayment states. */
+export type StudentLoanStatus = 'in_repayment' | 'in_grace' | 'deferred' | 'forbearance';
+
 /** Student loan details. */
 export interface StudentLoan {
   /** Unique identifier. */
   readonly id: string;
-  /** Loan servicer or name. */
+  /** Human-readable loan name. */
   readonly name: string;
+  /** Loan servicer. */
+  readonly servicer: string;
   /** Outstanding balance in cents. */
   readonly balanceCents: number;
   /** Annual interest rate in basis points. */
   readonly annualRateBps: number;
+  /** Minimum monthly payment in cents. */
+  readonly minimumPaymentCents: number;
+  /** Current repayment status. */
+  readonly status: StudentLoanStatus;
   /** Original loan amount in cents. */
   readonly originalBalanceCents: number;
   /** Whether this is a federal loan (eligible for IDR/PSLF). */
@@ -205,6 +260,44 @@ export interface StudentLoan {
   readonly isPslfEligible: boolean;
   /** Number of qualifying PSLF payments already made. */
   readonly pslfPaymentsMade: number;
+}
+
+/** Simple payoff metrics for a student-loan portfolio. */
+export interface StudentLoanPayoffMetrics {
+  /** Monthly payment used for the estimate. */
+  readonly monthlyPaymentCents: number;
+  /** Whole months remaining until payoff, if amortizing. */
+  readonly monthsToPayoff: number | null;
+  /** Estimated payoff date as an ISO date string. */
+  readonly estimatedPayoffDate: string | null;
+  /** Total remaining interest paid before payoff. */
+  readonly totalInterestCents: number;
+}
+
+/** Summary stats for the student-loan dashboard. */
+export interface StudentLoanDashboardSummary extends StudentLoanPayoffMetrics {
+  /** Total outstanding balance across all loans. */
+  readonly totalBalanceCents: number;
+  /** Total original principal across all loans. */
+  readonly totalOriginalBalanceCents: number;
+  /** Weighted average annual interest rate in basis points. */
+  readonly weightedAverageRateBps: number;
+  /** Percent of original principal already paid off. */
+  readonly percentPaidOff: number;
+}
+
+/** Impact of paying extra toward student loans each month. */
+export interface StudentLoanWhatIfScenario {
+  /** Extra monthly payment being modeled. */
+  readonly extraPaymentCents: number;
+  /** New total monthly payment. */
+  readonly newMonthlyPaymentCents: number;
+  /** Estimated interest saved versus the baseline payment. */
+  readonly interestSavedCents: number;
+  /** Estimated months saved versus the baseline payment. */
+  readonly monthsSaved: number;
+  /** Estimated payoff date with the extra payment. */
+  readonly acceleratedPayoffDate: string | null;
 }
 
 /** Input parameters for IDR calculation. */
@@ -271,6 +364,37 @@ export interface RepaymentComparison {
   readonly recommendedPlan: IdrPlanType | 'STANDARD' | 'PSLF';
   /** Savings of recommended plan vs. standard in cents. */
   readonly savingsVsStandardCents: number;
+}
+
+/** Scenario editor comparison types for student-loan planning. */
+export type StudentLoanScenarioType = 'idr' | 'pslf' | 'refinance' | 'salary_raise';
+
+/** Editable scenario inputs for student loan comparisons. */
+export interface StudentLoanScenarioConfig {
+  readonly id: string;
+  readonly label: string;
+  readonly type: StudentLoanScenarioType;
+  readonly idrPlan?: IdrPlanType;
+  readonly idrInput?: IdrInput;
+  readonly pslfQualifyingPayments?: number;
+  readonly refinanceAnnualRateBps?: number;
+  readonly refinanceTermMonths?: number;
+  readonly salaryRaiseAnnualCents?: number;
+}
+
+/** Normalized scenario comparison output for the UI. */
+export interface StudentLoanScenarioResult {
+  readonly id: string;
+  readonly label: string;
+  readonly type: StudentLoanScenarioType;
+  readonly monthlyPaymentCents: number;
+  readonly totalPaidCents: number;
+  readonly totalInterestCents: number;
+  readonly monthsToPayoff: number | null;
+  readonly estimatedEndDate: string | null;
+  readonly forgivenAmountCents: number;
+  readonly estimatedTaxCents: number;
+  readonly note: string;
 }
 
 // ---------------------------------------------------------------------------

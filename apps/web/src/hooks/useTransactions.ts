@@ -149,7 +149,11 @@ export function applyTransactionFilters(
   // -------------------------------------------------------------------------
 
   if (needsLocalCategoryFilter && categoryId !== undefined) {
-    results = results.filter((t) => t.categoryId === categoryId);
+    results = results.filter(
+      (t) =>
+        t.categoryId === categoryId ||
+        (t.splits ?? []).some((split) => split.categoryId === categoryId),
+    );
   }
 
   if (needsLocalStartDateFilter && startDate !== undefined) {

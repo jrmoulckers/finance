@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type { FC } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout } from './components/layout';
 import { ConsentDialog } from './components/gdpr';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
 import { useRouteAnnouncer } from './hooks/useRouteAnnouncer';
+import { isOnboardingComplete } from './lib/local-only-mode';
 import { AppRoutes } from './routes';
 
 /**
@@ -17,13 +18,16 @@ import { AppRoutes } from './routes';
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/dashboard': 'Dashboard',
+  '/safety': 'Safety',
   '/accounts': 'Accounts',
   '/transactions': 'Transactions',
   '/budgets': 'Budgets',
+  '/debt': 'Debt',
   '/goals': 'Goals',
   '/insights': 'Insights',
   '/household': 'Household',
   '/investments': 'Investments',
+  '/investments/tax': 'Tax Center',
   '/bills': 'Bills',
   '/report-builder': 'Report Builder',
   '/achievements': 'Achievements',
@@ -64,10 +68,26 @@ const STANDALONE_ROUTES: readonly string[] = [
   '/onboarding',
 ];
 
+const FIRST_RUN_ALLOWED_ROUTES: readonly string[] = [
+  '/forgot-password',
+  '/reset-password',
+  '/onboarding',
+];
+
 function isStandalonePath(pathname: string): boolean {
   return STANDALONE_ROUTES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
+}
+
+function isFirstRunAllowedPath(pathname: string): boolean {
+  return FIRST_RUN_ALLOWED_ROUTES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+export function shouldAutoLaunchOnboarding(pathname: string, onboardingComplete: boolean): boolean {
+  return !onboardingComplete && !isFirstRunAllowedPath(pathname);
 }
 
 function derivePageTitle(pathname: string): string {
@@ -94,9 +114,19 @@ export const App: FC = () => {
   const activePath = location.pathname === '/' ? '/' : location.pathname;
   const pageTitle = derivePageTitle(activePath);
   const isStandalonePage = isStandalonePath(activePath);
+  const shouldStartOnboarding = shouldAutoLaunchOnboarding(activePath, isOnboardingComplete());
 
   // Announce route transitions to screen readers (#1684)
   useRouteAnnouncer();
+
+  if (shouldStartOnboarding) {
+    return (
+      <PrivacyModeProvider>
+        <ConsentDialog />
+        <Navigate to="/onboarding" replace state={{ from: activePath }} />
+      </PrivacyModeProvider>
+    );
+  }
 
   return isStandalonePage ? (
     <PrivacyModeProvider>

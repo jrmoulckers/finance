@@ -10,11 +10,25 @@ import { useTransactions } from '../hooks/useTransactions';
 
 import { TransactionsPage } from './TransactionsPage';
 
+const repositoryMocks = vi.hoisted(() => ({
+  updateTransaction: vi.fn(),
+  deleteTransaction: vi.fn(),
+}));
+
 // Mock each hook file individually — the page imports from the individual
 // paths, not the barrel, so the barrel mock would not intercept them.
 vi.mock('../hooks/useTransactions', () => ({ useTransactions: vi.fn() }));
 vi.mock('../hooks/useCategories', () => ({ useCategories: vi.fn() }));
 vi.mock('../hooks/useAccounts', () => ({ useAccounts: vi.fn() }));
+vi.mock('../db/DatabaseProvider', () => ({ useDatabase: () => ({}) }));
+vi.mock('../db/repositories/transactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../db/repositories/transactions')>();
+  return {
+    ...actual,
+    updateTransaction: repositoryMocks.updateTransaction,
+    deleteTransaction: repositoryMocks.deleteTransaction,
+  };
+});
 
 // TransactionForm renders unconditionally and calls useDatabase internally.
 // Stub it out so the test has no provider dependency while still allowing
@@ -72,7 +86,11 @@ describe('TransactionsPage', () => {
     createTransactionMock.mockReset();
     updateTransactionMock.mockReset();
     deleteTransactionMock.mockReset();
+    repositoryMocks.updateTransaction.mockReset();
+    repositoryMocks.deleteTransaction.mockReset();
     deleteTransactionMock.mockReturnValue(true);
+    repositoryMocks.updateTransaction.mockReturnValue({ id: 'updated-transaction' });
+    repositoryMocks.deleteTransaction.mockReturnValue(true);
 
     mockedUseTransactions.mockReturnValue({
       transactions: [
@@ -92,7 +110,7 @@ describe('TransactionsPage', () => {
           transferTransactionId: null,
           isRecurring: false,
           recurringRuleId: null,
-          tags: [],
+          tags: ['groceries'],
           merchantAddress: null,
           merchantCity: null,
           merchantState: null,
@@ -109,7 +127,7 @@ describe('TransactionsPage', () => {
         {
           id: 'transaction-2',
           householdId: 'household-1',
-          accountId: 'account-1',
+          accountId: 'account-2',
           categoryId: 'category-income',
           type: 'INCOME',
           status: 'CLEARED',
@@ -219,6 +237,12 @@ describe('TransactionsPage', () => {
       createCategory: vi.fn(),
       updateCategory: vi.fn(),
       deleteCategory: vi.fn(),
+      foodMealTemplate: {
+        parentCategory: null,
+        subcategories: [],
+        missingSubcategoryDefinitions: [],
+      },
+      ensureFoodMealCategories: vi.fn(),
     });
     mockedUseAccounts.mockReturnValue({
       accounts: [
@@ -227,12 +251,27 @@ describe('TransactionsPage', () => {
           householdId: 'household-1',
           name: 'Checking',
           type: 'CHECKING',
+          purpose: 'personal',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: 520000 },
           isArchived: false,
           sortOrder: 1,
           icon: 'bank',
           color: '#2563EB',
+          ...syncMetadata,
+        },
+        {
+          id: 'account-2',
+          householdId: 'household-1',
+          name: 'Business Checking',
+          type: 'CHECKING',
+          purpose: 'business',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: 320000 },
+          isArchived: false,
+          sortOrder: 2,
+          icon: 'briefcase',
+          color: '#059669',
           ...syncMetadata,
         },
       ],
@@ -314,6 +353,20 @@ describe('TransactionsPage', () => {
     expect(screen.getByText('Electric Bill')).toBeInTheDocument();
   });
 
+  it('filters transactions by account purpose', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '💼 Business' }));
+
+    expect(screen.queryByText('Grocery Store')).not.toBeInTheDocument();
+    expect(screen.queryByText('Electric Bill')).not.toBeInTheDocument();
+    expect(screen.getByText('Monthly Salary')).toBeInTheDocument();
+  });
+
   it('displays edit and delete actions for each transaction', () => {
     render(
       <MemoryRouter>
@@ -377,5 +430,142 @@ describe('TransactionsPage', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     expect(deleteTransactionMock).toHaveBeenCalledWith('transaction-1');
+  });
+
+  it('selects individual transactions and exposes the bulk toolbar count', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /select grocery store/i }));
+
+    expect(screen.getByRole('checkbox', { name: /select grocery store/i })).toBeChecked();
+    expect(screen.getByRole('toolbar', { name: /bulk transaction actions/i })).toBeInTheDocument();
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+  });
+
+  it('selects all visible transactions from the register header checkbox', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /select all visible transactions/i }));
+
+    expect(screen.getByRole('checkbox', { name: /select grocery store/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /select monthly salary/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /select electric bill/i })).toBeChecked();
+    expect(screen.getByText('3 selected')).toBeInTheDocument();
+  });
+
+  it('supports shift-click range selection between transaction checkboxes', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /select grocery store/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /select electric bill/i }), {
+      shiftKey: true,
+    });
+
+    expect(screen.getByRole('checkbox', { name: /select grocery store/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /select monthly salary/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /select electric bill/i })).toBeChecked();
+    expect(screen.getByText('3 selected')).toBeInTheDocument();
+  });
+
+  it('bulk categorizes selected transactions through the toolbar', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /select grocery store/i }));
+    fireEvent.click(screen.getByRole('button', { name: /change category/i }));
+    fireEvent.click(screen.getByRole('option', { name: 'Utilities' }));
+
+    expect(repositoryMocks.updateTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      'transaction-1',
+      expect.objectContaining({ categoryId: 'category-utilities' }),
+    );
+    expect(refreshTransactionsMock).toHaveBeenCalled();
+  });
+
+  it('bulk adds tags while preserving existing transaction tags', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /select grocery store/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add or remove tags/i }));
+    fireEvent.change(screen.getByLabelText(/add tag/i), { target: { value: 'tax' } });
+    fireEvent.click(screen.getByRole('button', { name: /^add tag$/i }));
+
+    expect(repositoryMocks.updateTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      'transaction-1',
+      expect.objectContaining({ tags: ['groceries', 'tax'] }),
+    );
+  });
+
+  it('opens bulk delete confirmation and deletes selected transactions', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /select grocery store/i }));
+    fireEvent.click(screen.getByRole('button', { name: /delete 1 selected transactions/i }));
+
+    const dialog = screen.getByRole('alertdialog', { name: /delete selected transactions/i });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    expect(repositoryMocks.deleteTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      'transaction-1',
+    );
+    expect(refreshTransactionsMock).toHaveBeenCalled();
+  });
+
+  it('uses keyboard shortcuts to move focus and toggle row selection', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.keyDown(window, { key: 'x' });
+    expect(screen.getByRole('checkbox', { name: /select grocery store/i })).toBeChecked();
+
+    fireEvent.keyDown(window, { key: 'j' });
+    fireEvent.keyDown(window, { key: 'x' });
+
+    expect(screen.getByRole('checkbox', { name: /select monthly salary/i })).toBeChecked();
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+  });
+
+  it('uses Delete shortcut to confirm deletion of selected rows', () => {
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.keyDown(window, { key: 'x' });
+    fireEvent.keyDown(window, { key: 'Delete' });
+
+    expect(
+      screen.getByRole('alertdialog', { name: /delete selected transactions/i }),
+    ).toBeInTheDocument();
   });
 });

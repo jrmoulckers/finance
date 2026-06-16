@@ -342,7 +342,7 @@ export function escapeCsvField(value: unknown): string {
 
 export function buildDatedExportFileName(
   prefix: string,
-  extension: 'csv' | 'json' | 'zip',
+  extension: 'csv' | 'json' | 'zip' | 'xlsx',
   generatedAt = new Date(),
 ): string {
   return `${prefix}-${generatedAt.toISOString().slice(0, 10)}.${extension}`;

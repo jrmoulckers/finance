@@ -156,6 +156,19 @@
   color: var(--semantic-text-secondary);
 }
 
+.import-account-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+}
+
+.import-account-selector__label {
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+}
+
 /* Format badge */
 .import-format-badge {
   display: inline-flex;

@@ -18,6 +18,10 @@ import {
   bankersRound,
   buildAmortizationSchedule,
   calculateAvalancheOrder,
+  calculateDebtMilestoneSummary,
+  calculateDebtToIncomeRatioPercent,
+  calculateDebtToIncomeTrend,
+  calculateInterestSavedCents,
   calculateMonthlyInterestCents,
   calculateSnowballOrder,
   calculateStrategyResult,
@@ -438,5 +442,101 @@ describe('compareStrategies', () => {
     expect(comparison.avalanche.totalMonths).toBe(comparison.snowball.totalMonths);
     expect(comparison.interestSavingsCents).toBe(0);
     expect(comparison.timeSavingsMonths).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Motivation, milestones, and DTI
+// ---------------------------------------------------------------------------
+
+describe('calculateInterestSavedCents', () => {
+  const debts: Debt[] = [
+    {
+      id: 'card',
+      name: 'High APR Card',
+      balanceCents: 600_000,
+      originalBalanceCents: 800_000,
+      annualRateBps: 2299,
+      minimumPaymentCents: 18_000,
+      type: 'credit_card',
+    },
+    {
+      id: 'loan',
+      name: 'Personal Loan',
+      balanceCents: 900_000,
+      originalBalanceCents: 1_000_000,
+      annualRateBps: 799,
+      minimumPaymentCents: 20_000,
+      type: 'personal_loan',
+    },
+  ];
+
+  it('compares accelerated payoff against minimum-only interest', () => {
+    expect(calculateInterestSavedCents(debts, 'avalanche', 15_000)).toBeGreaterThan(0);
+  });
+
+  it('returns zero when there is no extra payment', () => {
+    expect(calculateInterestSavedCents(debts, 'avalanche', 0)).toBe(0);
+  });
+});
+
+describe('calculateDebtMilestoneSummary', () => {
+  it('marks 25% and 50% milestones when half of original debt is paid', () => {
+    const summary = calculateDebtMilestoneSummary([
+      {
+        id: 'loan',
+        name: 'Loan',
+        balanceCents: 500_000,
+        originalBalanceCents: 1_000_000,
+        annualRateBps: 500,
+        minimumPaymentCents: 10_000,
+        type: 'personal_loan',
+      },
+    ]);
+
+    expect(summary.percentPaidOff).toBe(50);
+    expect(
+      summary.milestones.find((milestone) => milestone.thresholdPercent === 25)?.isReached,
+    ).toBe(true);
+    expect(
+      summary.milestones.find((milestone) => milestone.thresholdPercent === 50)?.isReached,
+    ).toBe(true);
+    expect(
+      summary.milestones.find((milestone) => milestone.thresholdPercent === 75)?.isReached,
+    ).toBe(false);
+  });
+});
+
+describe('calculateDebtToIncomeRatioPercent', () => {
+  it('computes DTI as monthly debt payments divided by income', () => {
+    expect(calculateDebtToIncomeRatioPercent(1_000_00, 5_000_00)).toBe(20);
+  });
+
+  it('returns zero when income is missing', () => {
+    expect(calculateDebtToIncomeRatioPercent(1_000_00, 0)).toBe(0);
+  });
+});
+
+describe('calculateDebtToIncomeTrend', () => {
+  it('shows DTI improving as debts are paid off', () => {
+    const trend = calculateDebtToIncomeTrend(
+      [
+        {
+          id: 'card',
+          name: 'Card',
+          balanceCents: 100_000,
+          annualRateBps: 0,
+          minimumPaymentCents: 25_000,
+          type: 'credit_card',
+        },
+      ],
+      500_000,
+      'snowball',
+      25_000,
+    );
+
+    expect(trend.currentRatioPercent).toBe(5);
+    expect(trend.projectedFinalRatioPercent).toBe(0);
+    expect(trend.isImproving).toBe(true);
   });
 });

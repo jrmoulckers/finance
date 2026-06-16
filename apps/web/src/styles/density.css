@@ -1,0 +1,102 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+/* Compact density keeps the same information hierarchy while reducing whitespace for power users. */
+html[data-density='compact'] {
+  --layout-content-padding: var(--spacing-3);
+  --layout-card-gap: var(--spacing-3);
+  --settings-row-min-height: 2.75rem;
+  --density-card-padding: var(--spacing-3);
+  --density-list-padding-y: var(--spacing-2);
+  --density-list-padding-x: var(--spacing-3);
+}
+
+html[data-density='compact'] .app-header {
+  height: 48px;
+}
+
+html[data-density='compact'] .app-main {
+  padding-top: var(--spacing-3);
+}
+
+html[data-density='compact'] .card {
+  padding: var(--density-card-padding);
+}
+
+html[data-density='compact'] .card-grid > .card {
+  min-height: 96px;
+}
+
+html[data-density='compact'] .card__header,
+html[data-density='compact'] .page-header,
+html[data-density='compact'] .page-section__header,
+html[data-density='compact'] .search-bar,
+html[data-density='compact'] .purpose-filter {
+  margin-bottom: var(--spacing-3);
+}
+
+html[data-density='compact'] .page-section {
+  margin-bottom: var(--spacing-4);
+}
+
+html[data-density='compact'] .list-item {
+  gap: var(--spacing-2);
+  padding: var(--density-list-padding-y) var(--density-list-padding-x);
+}
+
+html[data-density='compact'] .list-item__link {
+  gap: var(--spacing-2);
+  padding: var(--density-list-padding-y) 0;
+}
+
+html[data-density='compact'] .list-item__primary,
+html[data-density='compact'] .settings-item__label,
+html[data-density='compact'] .settings-item__select,
+html[data-density='compact'] .settings-item__input,
+html[data-density='compact'] .add-button,
+html[data-density='compact'] .form-button {
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+}
+
+html[data-density='compact'] .settings-item {
+  padding-block: var(--spacing-2);
+}
+
+html[data-density='compact'] .settings-group__title {
+  padding-top: var(--spacing-2);
+  padding-bottom: var(--spacing-2);
+}
+
+html[data-density='compact'] .search-bar__input,
+html[data-density='compact'] .settings-item__select,
+html[data-density='compact'] .settings-item__input,
+html[data-density='compact'] .form-input,
+html[data-density='compact'] .form-select {
+  padding: var(--spacing-1) var(--spacing-2);
+}
+
+html[data-density='compact'] .add-button,
+html[data-density='compact'] .icon-button,
+html[data-density='compact'] .form-button {
+  min-height: 34px;
+}
+
+html[data-density='compact'] .widget-grid {
+  gap: var(--spacing-3);
+}
+
+html[data-density='compact'] .widget__header {
+  padding: var(--spacing-3) var(--spacing-3) var(--spacing-1);
+}
+
+html[data-density='compact'] .widget__body {
+  padding: var(--spacing-1) var(--spacing-3) var(--spacing-3);
+}
+
+html[data-density='compact'] .customize-panel__item {
+  gap: var(--spacing-2);
+  padding: var(--spacing-2);
+}
+
+html[data-density='compact'] .customize-panel__list {
+  gap: var(--spacing-1);
+}

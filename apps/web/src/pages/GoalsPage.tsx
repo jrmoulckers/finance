@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ConfirmDialog,
@@ -14,10 +14,12 @@ import { GoalContributionDialog } from '../components/goals/GoalContributionDial
 import { GoalForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
 import type { CreateGoalInput, GoalContributionInput } from '../db/repositories/goals';
-import { useGoals } from '../hooks';
+import { useAccounts, useGoals, useTransactions } from '../hooks';
+import { useTaxReserve } from '../hooks/useTaxReserve';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
 import { AppIcon, type IconName } from '../components/icons';
+import { getCurrentMonthBounds, getNextQuarterlyTaxDueDate } from '../lib/tax-reserve';
 
 function getGoalIcon(iconName: string | null | undefined): IconName {
   switch (iconName) {
@@ -42,6 +44,26 @@ function useOptionalToast(): ReturnType<typeof useToast> | null {
   }
 }
 
+function formatCurrencyAmount(amount: number, currency = 'USD'): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount / 100);
+}
+
+function formatDueDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatDueCountdown(days: number): string {
+  if (days === 0) {
+    return 'today';
+  }
+
+  return `in ${days} day${days === 1 ? '' : 's'}`;
+}
+
 export const GoalsPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
@@ -50,6 +72,52 @@ export const GoalsPage: React.FC = () => {
   const [isDeletingGoal, setIsDeletingGoal] = useState(false);
   const { goals, loading, error, refresh, createGoal, updateGoal, contributeToGoal, deleteGoal } =
     useGoals();
+  const {
+    accounts,
+    loading: accountsLoading,
+    error: accountsError,
+    refresh: refreshAccounts,
+  } = useAccounts();
+  const taxReserveAsOf = useMemo(() => new Date(), []);
+  const currentMonthRange = useMemo(() => getCurrentMonthBounds(taxReserveAsOf), [taxReserveAsOf]);
+  const nextTaxDueDate = useMemo(
+    () => getNextQuarterlyTaxDueDate(taxReserveAsOf),
+    [taxReserveAsOf],
+  );
+  const currentMonthFilters = useMemo(
+    () => ({ startDate: currentMonthRange.startDate, endDate: currentMonthRange.endDate }),
+    [currentMonthRange],
+  );
+  const taxQuarterFilters = useMemo(
+    () => ({ startDate: nextTaxDueDate.periodStart, endDate: nextTaxDueDate.periodEnd }),
+    [nextTaxDueDate],
+  );
+  const {
+    transactions: currentMonthTransactions,
+    loading: currentMonthTransactionsLoading,
+    error: currentMonthTransactionsError,
+    refresh: refreshCurrentMonthTransactions,
+  } = useTransactions(currentMonthFilters);
+  const {
+    transactions: taxQuarterTransactions,
+    loading: taxQuarterTransactionsLoading,
+    error: taxQuarterTransactionsError,
+    refresh: refreshTaxQuarterTransactions,
+  } = useTransactions(taxQuarterFilters);
+  const taxReserve = useTaxReserve({
+    currentMonthTransactions,
+    quarterTransactions: taxQuarterTransactions,
+    accounts,
+    asOf: taxReserveAsOf,
+  });
+  const taxReserveCurrency =
+    taxQuarterTransactions[0]?.currency.code ?? currentMonthTransactions[0]?.currency.code ?? 'USD';
+  const taxReserveRatePercent = Math.round(taxReserve.settings.rate * 100);
+  const taxReserveBucketDollars = (taxReserve.settings.bucketBalanceCents / 100).toFixed(2);
+  const isTaxReserveLoading =
+    accountsLoading || currentMonthTransactionsLoading || taxQuarterTransactionsLoading;
+  const taxReserveError =
+    accountsError ?? currentMonthTransactionsError ?? taxQuarterTransactionsError;
   const toast = useOptionalToast();
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount.amount, 0);
   const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount.amount, 0);
@@ -84,6 +152,30 @@ export const GoalsPage: React.FC = () => {
   const handleCancelDelete = useCallback(() => {
     setDeletingGoal(null);
   }, []);
+
+  const handleTaxReserveRetry = useCallback(() => {
+    refreshAccounts();
+    refreshCurrentMonthTransactions();
+    refreshTaxQuarterTransactions();
+  }, [refreshAccounts, refreshCurrentMonthTransactions, refreshTaxQuarterTransactions]);
+
+  const handleTaxRateChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      taxReserve.updateRatePercent(Number(event.target.value));
+    },
+    [taxReserve],
+  );
+
+  const handleBucketBalanceChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      taxReserve.updateBucketBalanceCents(Math.round(Number(event.target.value || 0) * 100));
+    },
+    [taxReserve],
+  );
+
+  const handleRecordRecommendedPayment = useCallback(() => {
+    taxReserve.addToBucket(taxReserve.summary.recommendedPaymentCents);
+  }, [taxReserve]);
 
   const handleSubmitGoal = useCallback(
     async (data: CreateGoalInput) => {
@@ -162,6 +254,108 @@ export const GoalsPage: React.FC = () => {
           Add Goal
         </button>
       </div>
+      <section className="page-section" aria-label="Tax reserve bucket">
+        <article className="card">
+          <div className="card__header">
+            <h3 className="card__title">Tax Reserve</h3>
+            <span className="list-item__secondary">Suggested rate: 25–30%</span>
+          </div>
+          {isTaxReserveLoading ? (
+            <div
+              style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-4) 0' }}
+            >
+              <LoadingSpinner label="Loading tax reserve" />
+            </div>
+          ) : taxReserveError ? (
+            <ErrorBanner message={taxReserveError} onRetry={handleTaxReserveRetry} />
+          ) : (
+            <>
+              <div className="card-grid card-grid--3">
+                <div>
+                  <p className="list-item__secondary">Set-aside rate</p>
+                  <label className="sr-only" htmlFor="tax-reserve-rate">
+                    Tax set-aside rate percent
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
+                    <input
+                      id="tax-reserve-rate"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={taxReserveRatePercent}
+                      onChange={handleTaxRateChange}
+                      className="form-input"
+                      style={{ maxWidth: '7rem' }}
+                    />
+                    <span>%</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="list-item__secondary">Bucket balance</p>
+                  <label className="sr-only" htmlFor="tax-reserve-balance">
+                    Tax reserve bucket balance in dollars
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
+                    <span aria-hidden="true">$</span>
+                    <input
+                      id="tax-reserve-balance"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={taxReserveBucketDollars}
+                      onChange={handleBucketBalanceChange}
+                      className="form-input"
+                      style={{ maxWidth: '9rem' }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <p className="list-item__secondary">Recommended payment</p>
+                  <p className="card__value">
+                    <CurrencyDisplay
+                      amount={taxReserve.summary.recommendedPaymentCents}
+                      currency={taxReserveCurrency}
+                      context="recommended estimated tax payment"
+                    />
+                  </p>
+                </div>
+              </div>
+              <p style={{ marginTop: 'var(--spacing-3)' }}>
+                You earned{' '}
+                {formatCurrencyAmount(
+                  taxReserve.summary.currentMonthNetIncomeCents,
+                  taxReserveCurrency,
+                )}{' '}
+                this month — set aside{' '}
+                {formatCurrencyAmount(
+                  taxReserve.summary.currentMonthRecommendedCents,
+                  taxReserveCurrency,
+                )}{' '}
+                ({taxReserveRatePercent}%).
+              </p>
+              <p className="list-item__secondary">
+                Quarterly estimate due {formatDueCountdown(taxReserve.summary.daysUntilDue)} on{' '}
+                {formatDueDate(taxReserve.summary.nextDueDate.dueDate)}. Based on income so far, set
+                aside ~
+                {formatCurrencyAmount(
+                  taxReserve.summary.quarterRecommendedCents,
+                  taxReserveCurrency,
+                )}
+                .
+              </p>
+              <button
+                type="button"
+                className="form-button form-button--secondary"
+                onClick={handleRecordRecommendedPayment}
+                disabled={taxReserve.summary.recommendedPaymentCents === 0}
+              >
+                Record recommended payment in bucket
+              </button>
+            </>
+          )}
+        </article>
+      </section>
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
           <LoadingSpinner label="Loading goals" />

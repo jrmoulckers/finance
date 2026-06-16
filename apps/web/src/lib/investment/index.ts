@@ -19,6 +19,26 @@ export {
 } from './cost-basis';
 
 export {
+  classifyGainTerm,
+  matchSaleLots,
+  detectWashSaleGuardrails,
+  computeTaxSummary,
+  computeUnrealizedTaxLots,
+} from './tax-center';
+export type {
+  HoldingPeriodTerm,
+  TaxLotMatchingMethod,
+  TaxLot,
+  TaxSaleInput,
+  ClosedTaxLot,
+  LotMatchResult,
+  WashSaleReplacementLot,
+  WashSaleGuardrail,
+  TaxSummary,
+  UnrealizedTaxLot,
+} from './tax-center';
+
+export {
   DEFAULT_ASSET_CLASS_MAP,
   ALLOCATION_PRESETS,
   validateTargets,
