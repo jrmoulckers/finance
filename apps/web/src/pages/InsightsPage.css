@@ -134,9 +134,35 @@
   transition: width 0.3s ease;
 }
 
+.insights-category-bar__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
 .insights-category-bar__percent {
   font-size: var(--type-scale-caption-font-size);
   color: var(--semantic-text-secondary);
+}
+
+.insights-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-1) var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm, var(--border-radius-md));
+  background: var(--semantic-background-primary);
+  color: var(--semantic-interactive-default);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: none;
+}
+
+.insights-link-button:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
 }
 
 /* Benchmark comparison */
@@ -389,6 +415,76 @@
   color: var(--semantic-text-secondary);
   margin-top: 2px;
   text-align: center;
+}
+
+.insights-trend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.insights-trend-card,
+.insights-drilldown,
+.insights-year-review {
+  padding: var(--spacing-4);
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.insights-trend-card__header,
+.insights-drilldown__header,
+.insights-section__header-row,
+.insights-export-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.insights-trend-card__header h4,
+.insights-drilldown__header h4 {
+  margin: 0;
+}
+
+.insights-trend-card__action {
+  color: var(--semantic-status-warning);
+  font-weight: var(--font-weight-medium);
+}
+
+.insights-drilldown {
+  margin-top: var(--spacing-4);
+}
+
+.insights-drilldown__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.insights-drilldown__table-wrap {
+  overflow-x: auto;
+}
+
+.insights-drilldown__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.insights-drilldown__table th,
+.insights-drilldown__table td {
+  padding: var(--spacing-2);
+  border-bottom: 1px solid var(--semantic-border-default);
+  text-align: left;
+}
+
+.insights-section__controls {
+  display: flex;
+  gap: var(--spacing-3);
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 /* Comparison */
