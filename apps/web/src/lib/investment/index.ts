@@ -110,6 +110,69 @@ export {
   SEVERE_RECESSION_SCENARIO,
 } from './monte-carlo';
 
+// #2236 — Net-worth growth projections
+export {
+  DEFAULT_NET_WORTH_PROJECTION_SCENARIOS,
+  deriveProjectionScenarios,
+  projectNetWorthGrowth,
+} from './net-worth-projections';
+export type {
+  NetWorthProjectionInput,
+  NetWorthProjectionMilestone,
+  NetWorthProjectionPoint,
+  NetWorthProjectionResult,
+  NetWorthProjectionScenario,
+  ProjectedMilestone,
+} from './net-worth-projections';
+
+// #2239 — FIRE planning scenarios
+export { DEFAULT_FIRE_SCENARIOS, calculateFirePlan, compareFirePlans, getFirePlanningWarnings } from './fire-planning';
+export type { FirePlanningInput, FirePlanResult, FireScenarioOverride } from './fire-planning';
+
+// #2243 — Net-worth over time report
+export { buildNetWorthOverTimeReport, exportNetWorthTimelineCsv } from './net-worth-report';
+export type {
+  NetWorthAccountClassValue,
+  NetWorthOverTimeReport,
+  NetWorthReportRange,
+  NetWorthSnapshot,
+  NetWorthTimelineMilestone,
+  NetWorthTimelinePoint,
+  NetWorthContributionChange,
+} from './net-worth-report';
+
+// #2245 — DCA tracking
+export { analyzeDCAPlan, analyzeDCAPlans } from './dca-tracking';
+export type {
+  DCACadence,
+  DCAPeriodProgress,
+  DCAPeriodStatus,
+  DCAPurchaseLot,
+  DCAPlan,
+  DCAPlanAmountOverride,
+  DCAPlanAnalysis,
+} from './dca-tracking';
+
+// #2247 — Cash-flow Sankey report
+export { buildCashFlowSankey, exportCashFlowSankeyCsv } from './cash-flow-sankey';
+export type {
+  CashFlowSankeyInput,
+  CashFlowSankeyLine,
+  CashFlowSankeyLink,
+  CashFlowSankeyNode,
+  CashFlowSankeyReport,
+  SankeyLineKind,
+} from './cash-flow-sankey';
+
+// #2248 — Benchmark comparison
+export { calculateModifiedDietzReturn, comparePortfolioToBenchmark } from './benchmark-comparison';
+export type {
+  BenchmarkComparisonInput,
+  BenchmarkComparisonResult,
+  BenchmarkPoint,
+  PortfolioPerformancePoint,
+} from './benchmark-comparison';
+
 // Types
 export type {
   PortfolioHolding,
