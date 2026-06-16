@@ -11,7 +11,7 @@
  * - Keyboard-accessible interactive elements
  */
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { useInsights } from '../hooks/useInsights';
 import { formatCurrency } from '../lib/currency';
@@ -23,6 +23,7 @@ import type {
   Recommendation,
   SpendingBenchmarkResult,
 } from '../hooks/useInsights';
+import type { AnnualSummary, CategoryDrillDown, SpendingTrendInsight } from '../lib/reports/reporting-beta';
 import './InsightsPage.css';
 import { AppIcon, type IconName } from '../components/icons';
 
@@ -59,9 +60,10 @@ interface CategoryBarProps {
   amount: number;
   percent: number;
   index: number;
+  onDrillDown: () => void;
 }
 
-const CategoryBar: React.FC<CategoryBarProps> = ({ name, amount, percent, index }) => {
+const CategoryBar: React.FC<CategoryBarProps> = ({ name, amount, percent, index, onDrillDown }) => {
   const colors = [
     'var(--semantic-status-info)',
     'var(--semantic-status-positive)',
@@ -92,7 +94,12 @@ const CategoryBar: React.FC<CategoryBarProps> = ({ name, amount, percent, index 
           style={{ width: `${percent}%`, backgroundColor: color }}
         />
       </div>
-      <span className="insights-category-bar__percent">{percent}%</span>
+      <div className="insights-category-bar__footer">
+        <span className="insights-category-bar__percent">{percent}%</span>
+        <button className="insights-link-button" type="button" onClick={onDrillDown}>
+          Drill down
+        </button>
+      </div>
     </div>
   );
 };
@@ -237,6 +244,134 @@ const BenchmarkCard: React.FC<BenchmarkCardProps> = ({ benchmark }) => {
   );
 };
 
+interface SpendingTrendCardProps {
+  trend: SpendingTrendInsight;
+}
+
+const SpendingTrendCard: React.FC<SpendingTrendCardProps> = ({ trend }) => {
+  const latest = trend.monthlyTotals.at(-1);
+  return (
+    <article className="insights-trend-card" role="listitem" aria-label={`${trend.periodMonths} month spending trend`}>
+      <div className="insights-trend-card__header">
+        <h4>{trend.periodMonths} months</h4>
+        <span>{trend.insufficientData ? 'Insufficient history' : 'Trend ready'}</span>
+      </div>
+      {latest ? (
+        <p>
+          Latest month {latest.month}: <CurrencyDisplay amount={latest.total} />
+        </p>
+      ) : null}
+      <p>{trend.pacing.summary}</p>
+      {trend.seasonality.length > 0 ? (
+        <ul>
+          {trend.seasonality.slice(0, 2).map((signal) => (
+            <li key={`${signal.categoryName}-${signal.monthName}`}>{signal.summary}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No recurring seasonal spikes detected yet.</p>
+      )}
+      {trend.actionableCopy.length > 0 ? (
+        <p className="insights-trend-card__action">{trend.actionableCopy[0]}</p>
+      ) : null}
+    </article>
+  );
+};
+
+interface CategoryDrillDownPanelProps {
+  drillDown: CategoryDrillDown;
+  onClose: () => void;
+}
+
+const CategoryDrillDownPanel: React.FC<CategoryDrillDownPanelProps> = ({ drillDown, onClose }) => (
+  <section className="insights-drilldown" aria-label={`${drillDown.categoryName} drill-down`}>
+    <div className="insights-drilldown__header">
+      <h4>{drillDown.categoryName} drill-down</h4>
+      <button className="insights-link-button" type="button" onClick={onClose}>
+        Back to chart
+      </button>
+    </div>
+    {drillDown.transactionCount === 0 ? (
+      <p>No transactions match this category and the current filters.</p>
+    ) : (
+      <>
+        <div className="insights-drilldown__stats" role="group" aria-label="Category totals">
+          <span>Total: {formatCurrency(drillDown.total)}</span>
+          <span>Transactions: {drillDown.transactionCount}</span>
+          <span>Average: {formatCurrency(drillDown.averageTransaction)}</span>
+          <span>
+            Largest:{' '}
+            {drillDown.largestTransaction
+              ? `${drillDown.largestTransaction.payee} (${formatCurrency(drillDown.largestTransaction.amount)})`
+              : 'None'}
+          </span>
+        </div>
+        <div className="insights-drilldown__table-wrap" role="region" tabIndex={0} aria-label="Drill-down transactions">
+          <table className="insights-drilldown__table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Payee</th>
+                <th>Account</th>
+                <th>Amount</th>
+                <th>Tags</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {drillDown.transactions.map((tx) => (
+                <tr key={tx.id}>
+                  <td>{tx.date}</td>
+                  <td>{tx.payee}</td>
+                  <td>{tx.accountName}</td>
+                  <td>{formatCurrency(tx.amount)}</td>
+                  <td>{tx.tags.join(', ') || '—'}</td>
+                  <td>{tx.note || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )}
+  </section>
+);
+
+interface YearInReviewCardProps {
+  summary: AnnualSummary;
+  privateMode: boolean;
+}
+
+const YearInReviewCard: React.FC<YearInReviewCardProps> = ({ summary, privateMode }) => {
+  const money = (amount: number) => (privateMode ? '$•••' : formatCurrency(amount));
+  return (
+    <article className="insights-year-review" aria-label={`${summary.year} year in review summary`}>
+      <p className="insights-section__note">
+        Coverage: {summary.startDate} to {summary.endDate}
+        {summary.isPartialYear ? ` (${summary.monthCount} months; partial-year data)` : ''}
+      </p>
+      <div className="insights-comparison">
+        <div className="insights-comparison__item"><span>Total income</span><strong>{money(summary.totalIncome)}</strong></div>
+        <div className="insights-comparison__item"><span>Total expenses</span><strong>{money(summary.totalExpenses)}</strong></div>
+        <div className="insights-comparison__item"><span>Net cash flow</span><strong>{money(summary.netCashFlow)}</strong></div>
+        <div className="insights-comparison__item"><span>Savings rate</span><strong>{summary.savingsRate}%</strong></div>
+      </div>
+      <h4>Top categories</h4>
+      <ul>
+        {summary.topCategories.map((category) => (
+          <li key={category.categoryName}>{category.categoryName}: {money(category.amount)}</li>
+        ))}
+      </ul>
+      <h4>Highlights and cautions</h4>
+      <ul>
+        {[...summary.highlights, ...summary.cautions].map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </article>
+  );
+};
+
 function isInsightsEmpty(data: InsightsData): boolean {
   return (
     data.totalSpentThisMonth === 0 &&
@@ -252,6 +387,18 @@ function isInsightsEmpty(data: InsightsData): boolean {
 
 export const InsightsPage: React.FC = () => {
   const { insights, loading, error, refresh } = useInsights();
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null | undefined>(undefined);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [privateMode, setPrivateMode] = useState(false);
+
+  const activeDrillDown = useMemo(
+    () => insights?.categoryDrillDowns.find((drillDown) => drillDown.categoryId === selectedCategoryId) ?? null,
+    [insights?.categoryDrillDowns, selectedCategoryId],
+  );
+  const activeAnnualSummary = useMemo(() => {
+    if (!insights || insights.annualSummaries.length === 0) return null;
+    return insights.annualSummaries.find((summary) => summary.year === (selectedYear ?? insights.annualSummaries[0]?.year)) ?? insights.annualSummaries[0];
+  }, [insights, selectedYear]);
 
   if (loading) {
     return (
@@ -322,6 +469,7 @@ export const InsightsPage: React.FC = () => {
                 amount={cat.amount}
                 percent={cat.percentOfTotal}
                 index={idx}
+                onDrillDown={() => setSelectedCategoryId(cat.categoryId)}
               />
             ))}
           </div>
@@ -330,8 +478,77 @@ export const InsightsPage: React.FC = () => {
               Showing top 5 of {insights.categorySpending.length} categories
             </p>
           )}
+          {activeDrillDown ? (
+            <CategoryDrillDownPanel
+              drillDown={activeDrillDown}
+              onClose={() => setSelectedCategoryId(undefined)}
+            />
+          ) : null}
         </section>
       )}
+
+      {insights.spendingTrends.length > 0 && (
+       <section className="insights-section" aria-label="Spending trends and seasonality">
+         <h3 className="insights-section__title">Spending Trends & Seasonality</h3>
+         <p className="insights-section__description">
+           Review 6, 12, and 24 month spending windows, recurring seasonal spikes, and current-month pacing.
+         </p>
+         <div className="insights-trend-grid" role="list">
+           {insights.spendingTrends.map((trend) => (
+             <SpendingTrendCard key={trend.periodMonths} trend={trend} />
+           ))}
+         </div>
+       </section>
+      )}
+
+      {activeAnnualSummary ? (
+       <section className="insights-section" aria-label="Year in review">
+         <div className="insights-section__header-row">
+           <h3 className="insights-section__title">Year in Review</h3>
+           <div className="insights-section__controls">
+             <label>
+               Year{' '}
+               <select
+                 value={activeAnnualSummary.year}
+                 onChange={(event) => setSelectedYear(Number(event.target.value))}
+               >
+                 {insights.annualSummaries.map((summary) => (
+                   <option key={summary.year} value={summary.year}>
+                     {summary.year}
+                   </option>
+                 ))}
+               </select>
+             </label>
+             <label>
+               <input
+                 type="checkbox"
+                 checked={privateMode}
+                 onChange={(event) => setPrivateMode(event.target.checked)}
+               />{' '}
+               Privacy mode
+             </label>
+           </div>
+         </div>
+         <YearInReviewCard summary={activeAnnualSummary} privateMode={privateMode} />
+         <div className="insights-export-actions">
+           <a
+             className="insights-link-button"
+             href={`data:text/csv;charset=utf-8,${encodeURIComponent(
+               [
+                 Object.keys(activeAnnualSummary.csvRows[0] ?? { Metric: '', Amount: '' }).join(','),
+                 ...activeAnnualSummary.csvRows.map((row) => Object.values(row).join(',')),
+               ].join('\n'),
+             )}`}
+             download={`year-in-review-${activeAnnualSummary.year}.csv`}
+           >
+             Export CSV
+           </a>
+           <button className="insights-link-button" type="button">
+             PDF-ready summary
+           </button>
+         </div>
+       </section>
+      ) : null}
 
       <section className="insights-section" aria-label="How do I compare">
         <h3 className="insights-section__title">How Do I Compare?</h3>

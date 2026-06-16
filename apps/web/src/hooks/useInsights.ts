@@ -14,9 +14,18 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
-import { getTransactionsByDateRange } from '../db/repositories/transactions';
+import { getAllTransactions, getTransactionsByDateRange } from '../db/repositories/transactions';
 import { getAllCategories } from '../db/repositories/categories';
+import { getAllAccounts } from '../db/repositories/accounts';
 import type { Transaction, Category } from '../kmp/bridge';
+import {
+  buildCategoryDrillDown,
+  buildSpendingTrendInsight,
+  buildYearInReview,
+  type AnnualSummary,
+  type CategoryDrillDown,
+  type SpendingTrendInsight,
+} from '../lib/reports/reporting-beta';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -137,6 +146,12 @@ export interface InsightsData {
   financialHealthScore: FinancialHealthScore;
   /** 50/30/20 budget rule overview. */
   budgetRuleOverview: BudgetRuleOverview;
+  /** Spending trends and seasonality for 6/12/24 month windows. */
+  spendingTrends: SpendingTrendInsight[];
+  /** Current-month category drill-downs keyed by top category. */
+  categoryDrillDowns: CategoryDrillDown[];
+  /** Annual summaries available for year-in-review. */
+  annualSummaries: AnnualSummary[];
 }
 
 /** Shape returned by {@link useInsights}. */
@@ -620,6 +635,8 @@ export function useInsights(): UseInsightsResult {
       );
 
       const categories = getAllCategories(db);
+      const accounts = getAllAccounts(db);
+      const allTransactions = getAllTransactions(db);
 
       let totalSpentThisMonth = 0;
       let totalIncomeThisMonth = 0;
@@ -661,6 +678,21 @@ export function useInsights(): UseInsightsResult {
       );
       const { spendingBenchmarks, financialHealthScore, budgetRuleOverview } =
         calculateSpendingBenchmarks(categorySpending, totalIncomeThisMonth, savingsRate);
+      const spendingTrends = ([6, 12, 24] as const).map((period) =>
+        buildSpendingTrendInsight(allTransactions, categories, period, now),
+      );
+      const categoryDrillDowns = topCategories.map((category) =>
+        buildCategoryDrillDown(allTransactions, categories, accounts, {
+          startDate: currentMonth.startDate,
+          endDate: currentMonth.endDate,
+          categoryId: category.categoryId,
+        }),
+      );
+      const annualSummaries = Array.from(
+        new Set(allTransactions.map((tx) => Number(tx.date.slice(0, 4))).filter(Number.isFinite)),
+      )
+        .sort((a, b) => b - a)
+        .map((year) => buildYearInReview(allTransactions, categories, year));
 
       setInsights({
         categorySpending,
@@ -680,6 +712,9 @@ export function useInsights(): UseInsightsResult {
         spendingBenchmarks,
         financialHealthScore,
         budgetRuleOverview,
+        spendingTrends,
+        categoryDrillDowns,
+        annualSummaries,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to compute insights.');
