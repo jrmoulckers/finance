@@ -1,14 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  CategoryPieChart,
-  SpendingBarChart,
-  SpendingTrendChart,
-  type TimePeriod,
-  type ViewType,
-} from '../components/charts';
+import type { TimePeriod, ViewType } from '../components/charts';
 import { CustomizePanel } from '../components/dashboard/CustomizePanel';
 import { SafeToSpendCard } from '../components/dashboard/SafeToSpendCard';
 import { AccountPurposeFilterControl } from '../components/accounts';
@@ -45,6 +39,24 @@ import { calculateSafeToSpend } from '../lib/dashboard/safe-to-spend';
 import { getNextQuarterlyTaxDueDate } from '../lib/tax-reserve';
 import { rollUpProtectedTransactions } from '../lib/ui/privacy';
 import '../components/dashboard/dashboard.css';
+
+const CategoryPieChart = React.lazy(() =>
+  import('../components/charts/CategoryPieChart').then((module) => ({
+    default: module.CategoryPieChart,
+  })),
+);
+const SpendingBarChart = React.lazy(() =>
+  import('../components/charts/SpendingBarChart').then((module) => ({
+    default: module.SpendingBarChart,
+  })),
+);
+const SpendingTrendChart = React.lazy(() =>
+  import('../components/charts/SpendingTrendChart').then((module) => ({
+    default: module.SpendingTrendChart,
+  })),
+);
+
+const ChartFallback = () => <LoadingSpinner size={24} label="Loading chart" />;
 
 const PERIOD_DAYS: Record<Exclude<TimePeriod, 'custom'>, number> = {
   '7d': 7,
@@ -988,37 +1000,43 @@ export const DashboardPage: React.FC = () => {
             <section className="page-section dashboard-charts" aria-label="Financial charts">
               {visibleWidgetIds.has('spending-trend') ? (
                 <div className="chart-container" aria-label="Spending trend chart">
-                  <SpendingTrendChart
-                    data={trendData}
-                    currency={chartCurrency}
-                    title="Spending Trend"
-                    selectedPeriod={selectedPeriod}
-                    onPeriodChange={handlePeriodChange}
-                    viewType={viewType}
-                    onViewTypeChange={handleViewTypeChange}
-                    averageDailySpending={averageDaily}
-                    comparison={comparison}
-                  />
+                  <Suspense fallback={<ChartFallback />}>
+                    <SpendingTrendChart
+                      data={trendData}
+                      currency={chartCurrency}
+                      title="Spending Trend"
+                      selectedPeriod={selectedPeriod}
+                      onPeriodChange={handlePeriodChange}
+                      viewType={viewType}
+                      onViewTypeChange={handleViewTypeChange}
+                      averageDailySpending={averageDaily}
+                      comparison={comparison}
+                    />
+                  </Suspense>
                 </div>
               ) : null}
               {visibleWidgetIds.has('spending-by-category') ? (
                 <div className="chart-container" aria-label="Category spending bar chart">
-                  <SpendingBarChart
-                    data={barData}
-                    currency={chartCurrency}
-                    title="Spending by Category"
-                  />
+                  <Suspense fallback={<ChartFallback />}>
+                    <SpendingBarChart
+                      data={barData}
+                      currency={chartCurrency}
+                      title="Spending by Category"
+                    />
+                  </Suspense>
                 </div>
               ) : null}
               {visibleWidgetIds.has('category-pie') ? (
                 <div className="chart-container" aria-label="Category share pie chart">
-                  <CategoryPieChart
-                    data={categoryData}
-                    currency={chartCurrency}
-                    width={280}
-                    height={280}
-                    title="Category Share"
-                  />
+                  <Suspense fallback={<ChartFallback />}>
+                    <CategoryPieChart
+                      data={categoryData}
+                      currency={chartCurrency}
+                      width={280}
+                      height={280}
+                      title="Category Share"
+                    />
+                  </Suspense>
                 </div>
               ) : null}
             </section>

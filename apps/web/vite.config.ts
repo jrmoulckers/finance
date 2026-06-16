@@ -6,6 +6,8 @@ import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 
+import { getRouteChunkName } from './src/lib/perf/route-chunks';
+
 /**
  * Vite plugin that copies sql.js WASM binaries to the public assets directory.
  *
@@ -117,6 +119,8 @@ export default defineConfig({
 
   build: {
     outDir: 'dist',
+    // Keep lazy route chunks lazy; the route prefetch policy opts in after app-shell paint.
+    modulePreload: false,
     // Security (#783): Disable source maps in production builds.
     // Source maps expose the full source code structure, including
     // security-relevant implementation details (auth flows, API
@@ -162,6 +166,8 @@ export default defineConfig({
           if (id.includes('node_modules/zod')) {
             return 'vendor-zod';
           }
+
+          return getRouteChunkName(id) ?? undefined;
         },
       },
     },

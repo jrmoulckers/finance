@@ -53,6 +53,9 @@ jobs:
       - name: Verify web build env
         run: node tools/verify-build-env.mjs apps/web/dist
 
+      - name: Enforce bundle performance budgets
+        run: node tools/check-web-performance-budget.mjs --dist apps/web/dist --budget apps/web/performance.budget.json
+
       - name: Report bundle size
         run: |
           echo "### 🌐 Web Build Summary" >> "$GITHUB_STEP_SUMMARY"
@@ -205,12 +208,10 @@ jobs:
           fi
 
   lighthouse:
-    name: Lighthouse Audit (Informational)
+    name: Lighthouse Budget Gate
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Lighthouse is informational — should not block PR merge
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -230,7 +231,6 @@ jobs:
       - name: Lighthouse Audit
         id: lighthouse-audit
         uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12.6.2
-        continue-on-error: true
         with:
           configPath: apps/web/lighthouserc.json
           budgetPath: apps/web/budget.json
@@ -238,6 +238,7 @@ jobs:
           runs: ${{ github.event_name == 'push' && 3 || 1 }}
 
       - name: Lighthouse Budget Check
-        if: always() && (steps.lighthouse-audit.conclusion == 'success' || steps.lighthouse-audit.conclusion == 'failure')
         run: npx @lhci/cli assert --config=apps/web/lighthouserc-budget.json
-        continue-on-error: true
+
+      - name: Enforce route performance budgets
+        run: node tools/check-web-performance-budget.mjs --dist apps/web/dist --budget apps/web/performance.budget.json --lighthouse .lighthouseci
