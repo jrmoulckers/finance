@@ -1,0 +1,28 @@
+{
+  "$schema": "https://finance.local/schemas/performance-budget.schema.json",
+  "version": 1,
+  "routes": [
+    {
+      "path": "/dashboard",
+      "budgets": { "lcpMs": 2500, "inpMs": 200, "cls": 0.1, "tbtMs": 200 }
+    },
+    {
+      "path": "/transactions",
+      "budgets": { "lcpMs": 2500, "inpMs": 200, "cls": 0.1, "tbtMs": 200 }
+    },
+    {
+      "path": "/transactions/:id",
+      "budgets": { "lcpMs": 2500, "inpMs": 200, "cls": 0.1, "tbtMs": 200 }
+    },
+    {
+      "path": "/settings",
+      "budgets": { "lcpMs": 2500, "inpMs": 200, "cls": 0.1, "tbtMs": 200 }
+    }
+  ],
+  "bundle": {
+    "initialJsGzipBytes": 184320,
+    "maxLazyChunkGzipBytes": 256000,
+    "maxSpeculativeJsGzipBytes": 307200
+  },
+  "waivers": []
+}
