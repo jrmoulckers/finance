@@ -13,7 +13,11 @@
  */
 
 import type {
+  CardUtilization,
   CreditCard,
+  CreditUtilizationStatus,
+  CreditUtilizationSummary,
+  CreditUtilizationThresholds,
   PaymentAlert,
   PaymentReservation,
   ReservationSummary,
@@ -25,6 +29,50 @@ import type {
 
 /** Days before due date to trigger "due soon" alert. */
 const DUE_SOON_DAYS = 5;
+
+const DEFAULT_UTILIZATION_THRESHOLDS: CreditUtilizationThresholds = {
+  warningPercent: 30,
+  highPercent: 50,
+  criticalPercent: 90,
+};
+
+function roundToOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function getUtilizationStatus(
+  utilizationPercent: number | null,
+  thresholds: CreditUtilizationThresholds,
+): CreditUtilizationStatus {
+  if (utilizationPercent === null) return 'unknown_limit';
+  if (utilizationPercent >= thresholds.criticalPercent) return 'critical';
+  if (utilizationPercent >= thresholds.highPercent) return 'high';
+  if (utilizationPercent >= thresholds.warningPercent) return 'warning';
+  return 'low';
+}
+
+function buildUtilizationMessage(
+  cardName: string,
+  utilizationPercent: number | null,
+  status: CreditUtilizationStatus,
+  statementDate: string,
+): string {
+  if (status === 'unknown_limit') {
+    return `${cardName} needs a credit limit before utilization can be calculated.`;
+  }
+  const percent = utilizationPercent?.toFixed(1) ?? '0.0';
+  const reportingContext = statementDate ? ` before the ${statementDate} statement` : '';
+  switch (status) {
+    case 'critical':
+      return `${cardName} is at ${percent}% utilization${reportingContext}; prioritize a payment to get below 90%.`;
+    case 'high':
+      return `${cardName} is at ${percent}% utilization${reportingContext}; consider getting below 50%.`;
+    case 'warning':
+      return `${cardName} is at ${percent}% utilization${reportingContext}; below 30% is safer.`;
+    case 'low':
+      return `${cardName} is at ${percent}% utilization${reportingContext}.`;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Reservation calculation
@@ -168,4 +216,71 @@ export function generatePaymentAlerts(
     if (pDiff !== 0) return pDiff;
     return a.daysUntilDue - b.daysUntilDue;
   });
+}
+
+// ---------------------------------------------------------------------------
+// Credit utilization tracking
+// ---------------------------------------------------------------------------
+
+export function calculateCreditUtilizationSummary(
+  cards: readonly CreditCard[],
+  thresholds: CreditUtilizationThresholds = DEFAULT_UTILIZATION_THRESHOLDS,
+): CreditUtilizationSummary {
+  const normalizedThresholds: CreditUtilizationThresholds = {
+    warningPercent: Math.max(0, thresholds.warningPercent),
+    highPercent: Math.max(thresholds.warningPercent, thresholds.highPercent),
+    criticalPercent: Math.max(thresholds.highPercent, thresholds.criticalPercent),
+  };
+  let aggregateBalanceCents = 0;
+  let aggregateCreditLimitCents = 0;
+  let unknownLimitCount = 0;
+
+  const utilizationCards: CardUtilization[] = cards.map((card) => {
+    const creditLimitCents = Math.max(0, card.creditLimitCents ?? 0);
+    if (creditLimitCents <= 0) {
+      unknownLimitCount++;
+      return {
+        cardId: card.id,
+        cardName: card.name,
+        balanceCents: Math.max(0, card.balanceCents),
+        creditLimitCents: null,
+        utilizationPercent: null,
+        status: 'unknown_limit',
+        statementDate: card.statementDate,
+        message: buildUtilizationMessage(card.name, null, 'unknown_limit', card.statementDate),
+      };
+    }
+
+    const balanceCents = Math.max(0, card.balanceCents);
+    const utilizationPercent = roundToOneDecimal((balanceCents * 100) / creditLimitCents);
+    const status = getUtilizationStatus(utilizationPercent, normalizedThresholds);
+    aggregateBalanceCents += balanceCents;
+    aggregateCreditLimitCents += creditLimitCents;
+
+    return {
+      cardId: card.id,
+      cardName: card.name,
+      balanceCents,
+      creditLimitCents,
+      utilizationPercent,
+      status,
+      statementDate: card.statementDate,
+      message: buildUtilizationMessage(card.name, utilizationPercent, status, card.statementDate),
+    };
+  });
+
+  const aggregateUtilizationPercent =
+    aggregateCreditLimitCents > 0
+      ? roundToOneDecimal((aggregateBalanceCents * 100) / aggregateCreditLimitCents)
+      : null;
+
+  return {
+    cards: utilizationCards,
+    aggregateBalanceCents,
+    aggregateCreditLimitCents,
+    aggregateUtilizationPercent,
+    aggregateStatus: getUtilizationStatus(aggregateUtilizationPercent, normalizedThresholds),
+    unknownLimitCount,
+    thresholds: normalizedThresholds,
+  };
 }

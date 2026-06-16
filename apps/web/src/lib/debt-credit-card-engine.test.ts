@@ -14,6 +14,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  calculateCreditUtilizationSummary,
   calculatePaymentReservations,
   calculateReservationSummary,
   generatePaymentAlerts,
@@ -191,5 +192,47 @@ describe('generatePaymentAlerts', () => {
   it('includes amount due in alert', () => {
     const alerts = generatePaymentAlerts([CARD_A], '2025-02-19');
     expect(alerts[0].amountDueCents).toBe(3_500);
+  });
+});
+
+
+describe('calculateCreditUtilizationSummary', () => {
+  it('calculates per-card utilization and aggregate utilization', () => {
+    const summary = calculateCreditUtilizationSummary([CARD_A, CARD_B]);
+
+    expect(summary.cards.find((card) => card.cardId === 'card-a')?.utilizationPercent).toBe(15);
+    expect(summary.aggregateUtilizationPercent).toBe(13);
+    expect(summary.aggregateStatus).toBe('low');
+  });
+
+  it('applies warning, high, and critical thresholds', () => {
+    const summary = calculateCreditUtilizationSummary([
+      { ...CARD_A, id: 'warning', balanceCents: 350_000, creditLimitCents: 1_000_000 },
+      { ...CARD_A, id: 'high', balanceCents: 600_000, creditLimitCents: 1_000_000 },
+      { ...CARD_A, id: 'critical', balanceCents: 950_000, creditLimitCents: 1_000_000 },
+    ]);
+
+    expect(summary.cards.map((card) => card.status)).toEqual(['warning', 'high', 'critical']);
+  });
+
+  it('handles zero or missing credit limits without divide-by-zero errors', () => {
+    const summary = calculateCreditUtilizationSummary([
+      { ...CARD_A, id: 'zero-limit', creditLimitCents: 0 },
+      { ...CARD_B, id: 'missing-limit', creditLimitCents: undefined },
+    ]);
+
+    expect(summary.aggregateUtilizationPercent).toBeNull();
+    expect(summary.unknownLimitCount).toBe(2);
+    expect(summary.cards.every((card) => card.status === 'unknown_limit')).toBe(true);
+  });
+
+  it('supports configurable thresholds', () => {
+    const summary = calculateCreditUtilizationSummary([CARD_A], {
+      warningPercent: 10,
+      highPercent: 20,
+      criticalPercent: 80,
+    });
+
+    expect(summary.cards[0].status).toBe('warning');
   });
 });
