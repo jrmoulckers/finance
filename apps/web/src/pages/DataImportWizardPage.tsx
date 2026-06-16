@@ -343,6 +343,7 @@ export function DataImportWizardPage() {
     unmappedFields,
     duplicateComparisons,
     duplicateActions,
+    mappingMemoryNotice,
     progress,
     result,
     error,
@@ -354,6 +355,7 @@ export function DataImportWizardPage() {
     updatePreviewField,
     setDuplicateAction,
     mapUnmappedToNotes,
+    forgetSavedMapping,
     goToPreview,
     startImport,
     goBack,
@@ -552,6 +554,24 @@ export function DataImportWizardPage() {
           <p className="import-card__description">
             {csvRows.length} rows found. Assign each CSV column to a transaction field.
           </p>
+
+          {mappingMemoryNotice && (
+            <div className="import-unmapped-warning" role="status">
+              <span className="import-unmapped-warning__icon" aria-hidden="true">
+                💾
+              </span>
+              <div className="import-unmapped-warning__content">
+                <p className="import-unmapped-warning__text">{mappingMemoryNotice}</p>
+                <button
+                  type="button"
+                  className="import-button import-button--small import-button--secondary"
+                  onClick={forgetSavedMapping}
+                >
+                  Forget mapping
+                </button>
+              </div>
+            </div>
+          )}
 
           <div
             className="import-mapping-table-wrapper"
