@@ -10,10 +10,15 @@ import '../forms/forms.css';
 export interface KeyboardShortcutsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  singleKeyShortcutsEnabled?: boolean;
 }
 
 /** Accessible help dialog listing the app's keyboard shortcuts. */
-export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsModalProps) {
+export function KeyboardShortcutsModal({
+  isOpen,
+  onClose,
+  singleKeyShortcutsEnabled = true,
+}: KeyboardShortcutsModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -73,6 +78,9 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
         </h2>
         <p id={descriptionId} className="keyboard-shortcuts__description">
           Shortcuts work when focus is outside text fields and keep common actions within reach.
+          {singleKeyShortcutsEnabled
+            ? ' Character-key shortcuts are currently enabled.'
+            : ' Character-key shortcuts are currently disabled; use visible controls or Ctrl/Cmd+K.'}
         </p>
 
         <table className="keyboard-shortcuts__table">

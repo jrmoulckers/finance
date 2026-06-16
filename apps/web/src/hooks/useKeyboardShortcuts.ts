@@ -21,6 +21,10 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react';
+import {
+  getStoredSingleKeyShortcutsPreference,
+  SINGLE_KEY_SHORTCUTS_CHANGE_EVENT,
+} from '../lib/accessibility-preferences';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,6 +59,8 @@ export interface UseKeyboardShortcutsOptions {
   onListEditSelected?: () => void;
   /** Callback invoked when Ctrl+Shift+P is pressed to toggle privacy mode. */
   onTogglePrivacyMode?: () => void;
+  /** Whether character-key shortcuts such as N, /, ?, and G sequences are enabled. */
+  allowSingleKeyShortcuts?: boolean;
 }
 
 export interface UseKeyboardShortcutsResult {
@@ -62,6 +68,8 @@ export interface UseKeyboardShortcutsResult {
   setShowHelp: Dispatch<SetStateAction<boolean>>;
   /** All available shortcuts organized by category for display. */
   shortcutCategories: ShortcutCategory[];
+  /** Whether character-key shortcuts such as N, /, ?, and G sequences are active. */
+  singleKeyShortcutsEnabled: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -171,9 +179,13 @@ export function useKeyboardShortcuts(
     onListDeleteSelected,
     onListEditSelected,
     onTogglePrivacyMode,
+    allowSingleKeyShortcuts,
   } = options;
 
   const [showHelp, setShowHelp] = useState(false);
+  const [storedSingleKeyShortcutsEnabled, setStoredSingleKeyShortcutsEnabled] = useState(
+    getStoredSingleKeyShortcutsPreference,
+  );
   const pendingGRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -183,6 +195,22 @@ export function useKeyboardShortcuts(
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+  }, []);
+
+  const singleKeyShortcutsEnabled =
+    allowSingleKeyShortcuts ?? storedSingleKeyShortcutsEnabled;
+
+  useEffect(() => {
+    const updatePreference = () => {
+      setStoredSingleKeyShortcutsEnabled(getStoredSingleKeyShortcutsPreference());
+    };
+
+    window.addEventListener('storage', updatePreference);
+    window.addEventListener(SINGLE_KEY_SHORTCUTS_CHANGE_EVENT, updatePreference);
+    return () => {
+      window.removeEventListener('storage', updatePreference);
+      window.removeEventListener(SINGLE_KEY_SHORTCUTS_CHANGE_EVENT, updatePreference);
+    };
   }, []);
 
   useEffect(() => {
@@ -223,6 +251,9 @@ export function useKeyboardShortcuts(
       // --- Two-key sequence: waiting for second key after G ---
       if (pendingGRef.current) {
         clearSequence();
+        if (!singleKeyShortcutsEnabled) {
+          return;
+        }
         const key = event.key.toLowerCase();
         const path = G_NAV_MAP[key];
         if (path && onNavigate) {
@@ -234,6 +265,11 @@ export function useKeyboardShortcuts(
 
       // --- Single key handlers ---
       const key = event.key;
+
+      if (!singleKeyShortcutsEnabled && key.length === 1) {
+        clearSequence();
+        return;
+      }
 
       // "G" starts a navigation sequence
       if (key === 'g' || key === 'G') {
@@ -334,7 +370,13 @@ export function useKeyboardShortcuts(
     onListEditSelected,
     onTogglePrivacyMode,
     clearSequence,
+    singleKeyShortcutsEnabled,
   ]);
 
-  return { showHelp, setShowHelp, shortcutCategories: SHORTCUT_CATEGORIES };
+  return {
+    showHelp,
+    setShowHelp,
+    shortcutCategories: SHORTCUT_CATEGORIES,
+    singleKeyShortcutsEnabled,
+  };
 }

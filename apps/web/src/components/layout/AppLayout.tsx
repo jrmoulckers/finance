@@ -25,6 +25,23 @@ export interface AppLayoutProps {
   children: React.ReactNode;
 }
 
+const NAV_SHORTCUT_BY_ID: Record<string, string> = {
+  dashboard: 'G D',
+  accounts: 'G A',
+  transactions: 'G T',
+  budgets: 'G B',
+  goals: 'G G',
+  investments: 'G I',
+  bills: 'G L',
+  categories: 'G C',
+  'cash-flow': 'G F',
+  'net-worth': 'G N',
+  reports: 'G R',
+  watchlists: 'G W',
+  household: 'G H',
+  import: 'G M',
+};
+
 export const AppLayout: React.FC<AppLayoutProps> = ({
   activePath,
   onNavigate,
@@ -33,7 +50,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 }) => {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const { showHelp, setShowHelp } = useKeyboardShortcuts({
+  const { showHelp, setShowHelp, singleKeyShortcutsEnabled } = useKeyboardShortcuts({
     onNavigate,
     onNewTransaction: () => onNavigate('/transactions?new=transaction'),
     onOpenCommandPalette: () => setShowCommandPalette(true),
@@ -108,18 +125,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         label: `Go to ${item.label}`,
         description: item.description,
         keywords: `${item.group ?? 'primary'} ${item.href}`,
-        shortcut:
-          item.id === 'dashboard'
-            ? 'G D'
-            : item.id === 'accounts'
-              ? 'G A'
-              : item.id === 'transactions'
-                ? 'G T'
-                : item.id === 'budgets'
-                  ? 'G B'
-                  : item.id === 'investments'
-                    ? 'G I'
-                    : undefined,
+        shortcut: NAV_SHORTCUT_BY_ID[item.id],
         perform: () => onNavigate(item.href),
       })),
       {
@@ -264,7 +270,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         actions={commandPaletteActions}
         onClose={closeCommandPalette}
       />
-      <KeyboardShortcutsModal isOpen={showHelp} onClose={closeKeyboardShortcuts} />
+      <KeyboardShortcutsModal
+        isOpen={showHelp}
+        onClose={closeKeyboardShortcuts}
+        singleKeyShortcutsEnabled={singleKeyShortcutsEnabled}
+      />
       <ConflictResolutionDialog isOpen={showConflicts} onClose={closeConflictDialog} />
     </div>
   );
