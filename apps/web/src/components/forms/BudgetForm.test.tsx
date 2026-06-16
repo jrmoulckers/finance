@@ -181,6 +181,28 @@ describe('BudgetForm', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('submits rollover envelope budgets when checked', async () => {
+    const { onSubmit } = renderBudgetForm();
+
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'category-food' } });
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100.00' } });
+    fireEvent.click(screen.getByLabelText(/envelope \/ rollover category/i));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Budget' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ isRollover: true }));
+  });
+
+  it('warns when the amount over-assigns expected income', () => {
+    renderBudgetForm({ expectedIncomeCents: 10000, assignedBeforeEditCents: 9000 });
+
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '20.00' } });
+
+    expect(screen.getByRole('status')).toHaveTextContent(/over expected income/i);
+  });
+
   it('calls onCancel when the cancel button is clicked', () => {
     const { onCancel } = renderBudgetForm();
 

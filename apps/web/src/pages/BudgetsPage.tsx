@@ -18,6 +18,15 @@ import { FOOD_MEAL_SUBCATEGORY_DEFINITIONS } from '../hooks/useCategories';
 import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
 import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
+import {
+  calculateActiveCadenceRange,
+  generateVarianceInsights,
+  normalizeBudgetAmountCents,
+  summarizeCadenceIncome,
+  summarizeEnvelopePlan,
+  type IncomeEventInput,
+  type PlanningCadence,
+} from '../lib/budgeting-beta';
 import { AppIcon, type IconName } from '../components/icons';
 
 function getBudgetIcon(iconName: string | null | undefined): IconName {
@@ -51,6 +60,24 @@ function renderBudgetIcon(iconName: string | null | undefined): React.ReactNode 
   return <AppIcon name={getBudgetIcon(iconName)} />;
 }
 
+function centsFromInput(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) : 0;
+}
+
+function todayIso(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+    today.getDate(),
+  ).padStart(2, '0')}`;
+}
+
+const CADENCE_LABELS: Record<PlanningCadence, string> = {
+  WEEKLY: 'Weekly',
+  BIWEEKLY: 'Biweekly',
+  MONTHLY: 'Monthly',
+};
+
 export const BudgetsPage: React.FC = () => {
   const {
     budgets,
@@ -75,6 +102,12 @@ export const BudgetsPage: React.FC = () => {
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [deletingBudget, setDeletingBudget] = useState<Budget | null>(null);
   const [defaultCategoryId, setDefaultCategoryId] = useState<string | undefined>(undefined);
+  const [planningCadence, setPlanningCadence] = useState<PlanningCadence>('MONTHLY');
+  const [expectedIncomeInput, setExpectedIncomeInput] = useState('');
+  const [incomeSourceInput, setIncomeSourceInput] = useState('Paycheck');
+  const [incomeAmountInput, setIncomeAmountInput] = useState('');
+  const [incomeDateInput, setIncomeDateInput] = useState(todayIso);
+  const [incomeEvents, setIncomeEvents] = useState<IncomeEventInput[]>([]);
 
   const categoriesById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -114,6 +147,24 @@ export const BudgetsPage: React.FC = () => {
   const handleDeleteBudget = useCallback((budget: Budget) => {
     setDeletingBudget(budget);
   }, []);
+
+  const handleAddIncomeEvent = useCallback(() => {
+    const amountCents = centsFromInput(incomeAmountInput);
+    if (amountCents <= 0) {
+      return;
+    }
+
+    setIncomeEvents((events) => [
+      ...events,
+      {
+        id: `income-${Date.now()}-${events.length}`,
+        source: incomeSourceInput.trim() || 'Income',
+        amountCents,
+        date: incomeDateInput || todayIso(),
+      },
+    ]);
+    setIncomeAmountInput('');
+  }, [incomeAmountInput, incomeDateInput, incomeSourceInput]);
 
   /** Close the budget form dialog without saving. */
   const handleFormCancel = useCallback(() => {
@@ -178,6 +229,59 @@ export const BudgetsPage: React.FC = () => {
   const totalBudgeted = budgets.reduce((sum, budget) => sum + budget.amount.amount, 0);
   const totalSpent = budgets.reduce((sum, budget) => sum + budget.spentAmount.amount, 0);
   const totalRemaining = budgets.reduce((sum, budget) => sum + budget.remainingAmount.amount, 0);
+  const cadenceRange = useMemo(
+    () => calculateActiveCadenceRange(planningCadence),
+    [planningCadence],
+  );
+  const cadenceIncome = useMemo(
+    () => summarizeCadenceIncome(incomeEvents, planningCadence),
+    [incomeEvents, planningCadence],
+  );
+  const manualExpectedIncomeCents = centsFromInput(expectedIncomeInput);
+  const expectedIncomeCents =
+    incomeEvents.length > 0
+      ? cadenceIncome.cadenceIncomeCents
+      : manualExpectedIncomeCents > 0
+        ? manualExpectedIncomeCents
+        : totalBudgeted;
+  const budgetPlanItems = useMemo(
+    () =>
+      budgets.map((budget) => ({
+        id: budget.id,
+        categoryId: budget.categoryId,
+        name: budget.name,
+        amountCents: budget.amount.amount,
+        spentCents: budget.spentAmount.amount,
+        period: budget.period,
+        isRollover: budget.isRollover,
+      })),
+    [budgets],
+  );
+  const envelopeSummary = useMemo(
+    () => summarizeEnvelopePlan(expectedIncomeCents, budgetPlanItems, planningCadence),
+    [budgetPlanItems, expectedIncomeCents, planningCadence],
+  );
+  const assignedBeforeEditCents = useMemo(
+    () =>
+      budgets
+        .filter((budget) => budget.id !== editingBudget?.id)
+        .reduce((sum, budget) => sum + budget.amount.amount, 0),
+    [budgets, editingBudget],
+  );
+  const varianceInsights = useMemo(
+    () =>
+      generateVarianceInsights(
+        budgets.map((budget) => ({
+          categoryId: budget.categoryId,
+          name: budget.name,
+          budgetedCents: budget.amount.amount,
+          actualCents: budget.spentAmount.amount,
+          priorActualCents: null,
+        })),
+        3,
+      ),
+    [budgets],
+  );
 
   // Budget analytics data
   const now = new Date();
@@ -226,6 +330,151 @@ export const BudgetsPage: React.FC = () => {
           + Add Budget
         </button>
       </div>
+
+      {!isLoading && !resolvedError && (
+        <section aria-label="Budget beta planner" style={{ marginBottom: 'var(--spacing-6)' }}>
+          <div className="card">
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(14rem, 1fr))',
+                gap: 'var(--spacing-4)',
+                marginBottom: 'var(--spacing-4)',
+              }}
+            >
+              <div>
+                <label htmlFor="budget-planning-cadence" className="card__title">
+                  Planning cadence
+                </label>
+                <select
+                  id="budget-planning-cadence"
+                  className="form-select"
+                  value={planningCadence}
+                  onChange={(event) => setPlanningCadence(event.target.value as PlanningCadence)}
+                >
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="BIWEEKLY">Biweekly</option>
+                  <option value="MONTHLY">Monthly</option>
+                </select>
+                <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                  {CADENCE_LABELS[planningCadence]} plan: {cadenceRange.startDate} –{' '}
+                  {cadenceRange.endDate}
+                </p>
+              </div>
+              <div>
+                <label htmlFor="budget-expected-income" className="card__title">
+                  Expected income
+                </label>
+                <input
+                  id="budget-expected-income"
+                  className="form-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={expectedIncomeInput}
+                  onChange={(event) => setExpectedIncomeInput(event.target.value)}
+                  placeholder={(totalBudgeted / 100).toFixed(2)}
+                />
+                <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                  Used for zero-based ready-to-assign warnings.
+                </p>
+              </div>
+              <div>
+                <p className="card__title">Projected monthly income</p>
+                <p className="card__value">
+                  <CurrencyDisplay amount={cadenceIncome.projectedMonthlyIncomeCents} />
+                </p>
+                <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                  From {cadenceIncome.eventCount} expected income event
+                  {cadenceIncome.eventCount === 1 ? '' : 's'} in this cadence.
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))',
+                gap: 'var(--spacing-3)',
+                marginBottom: 'var(--spacing-4)',
+              }}
+            >
+              <div>
+                <p className="card__title">Expected</p>
+                <p className="card__value">
+                  <CurrencyDisplay amount={envelopeSummary.totalIncomeCents} />
+                </p>
+              </div>
+              <div>
+                <p className="card__title">Total assigned</p>
+                <p className="card__value">
+                  <CurrencyDisplay amount={envelopeSummary.totalAssignedCents} />
+                </p>
+              </div>
+              <div>
+                <p className="card__title">
+                  {envelopeSummary.readyToAssignCents < 0 ? 'Over-assigned' : 'Ready to assign'}
+                </p>
+                <p className="card__value">
+                  <CurrencyDisplay amount={Math.abs(envelopeSummary.readyToAssignCents)} colorize />
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))',
+                gap: 'var(--spacing-3)',
+              }}
+            >
+              <input
+                className="form-input"
+                aria-label="Income source"
+                value={incomeSourceInput}
+                onChange={(event) => setIncomeSourceInput(event.target.value)}
+                placeholder="Paycheck"
+              />
+              <input
+                className="form-input"
+                aria-label="Income amount"
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                value={incomeAmountInput}
+                onChange={(event) => setIncomeAmountInput(event.target.value)}
+                placeholder="0.00"
+              />
+              <input
+                className="form-input"
+                aria-label="Income date"
+                type="date"
+                value={incomeDateInput}
+                onChange={(event) => setIncomeDateInput(event.target.value)}
+              />
+              <button
+                type="button"
+                className="form-button form-button--secondary"
+                onClick={handleAddIncomeEvent}
+              >
+                Add income event
+              </button>
+            </div>
+            {incomeEvents.length > 0 && (
+              <ul style={{ marginTop: 'var(--spacing-3)', paddingLeft: '1.25rem' }}>
+                {incomeEvents.map((event) => (
+                  <li key={event.id}>
+                    {event.source} on {event.date}:{' '}
+                    <CurrencyDisplay amount={event.amountCents} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      )}
 
       {!isLoading && !resolvedError && (
         <section aria-label="Food & Meals template" style={{ marginBottom: 'var(--spacing-6)' }}>
@@ -294,6 +543,8 @@ export const BudgetsPage: React.FC = () => {
         templates={starterTemplates}
         initialData={editingBudget ?? undefined}
         defaultCategoryId={defaultCategoryId}
+        expectedIncomeCents={expectedIncomeCents}
+        assignedBeforeEditCents={assignedBeforeEditCents}
       />
       <ConfirmDialog
         isOpen={deletingBudget !== null}
@@ -315,8 +566,8 @@ export const BudgetsPage: React.FC = () => {
         <ErrorBanner message={resolvedError} onRetry={handleRetry} />
       ) : budgets.length === 0 ? (
         <EmptyState
-          title="No budgets yet"
-          description="Create your first budget to start tracking spending by category."
+          title="No budget envelopes yet"
+          description="Start by entering expected income above, then create budget envelopes that assign every dollar to spending, saving, or debt categories."
         />
       ) : (
         <>
@@ -361,6 +612,26 @@ export const BudgetsPage: React.FC = () => {
             currentCategorySpending={currentCategorySpending}
             previousCategorySpending={new Map()}
           />
+          <section aria-label="Variance coaching" style={{ marginBottom: 'var(--spacing-6)' }}>
+            <div className="card">
+              <p className="card__title">Budget-vs-actual coaching</p>
+              {varianceInsights.length === 0 ? (
+                <p style={{ color: 'var(--semantic-text-secondary)' }}>
+                  Categories are on track for this period.
+                </p>
+              ) : (
+                <ul style={{ display: 'grid', gap: 'var(--spacing-3)', paddingLeft: '1.25rem' }}>
+                  {varianceInsights.map((insight) => (
+                    <li key={insight.categoryId}>
+                      <strong>{insight.name}</strong> is {insight.kind === 'over' ? 'over' : 'under'} by{' '}
+                      <CurrencyDisplay amount={Math.abs(insight.varianceCents)} /> ({Math.abs(insight.variancePercent)}%).{' '}
+                      {insight.action}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
           <section aria-label="Budget categories">
             <div className="card-grid card-grid--2">
               {budgets.map((budget) => {
@@ -376,6 +647,9 @@ export const BudgetsPage: React.FC = () => {
                 const circumference = 2 * Math.PI * radius;
                 const offset = circumference - (Math.min(percentUsed, 100) / 100) * circumference;
                 const category = categoriesById.get(budget.categoryId);
+                const envelope = envelopeSummary.envelopes.find(
+                  (entry) => entry.budgetId === budget.id,
+                );
 
                 return (
                   <article
@@ -507,6 +781,27 @@ export const BudgetsPage: React.FC = () => {
                           </>
                         )}
                       </p>
+                      {envelope && (
+                        <p
+                          style={{
+                            fontSize: 'var(--type-scale-caption-font-size)',
+                            color: 'var(--semantic-text-secondary)',
+                          }}
+                        >
+                          {envelope.isEnvelope ? (
+                            <>
+                              Envelope balance:{' '}
+                              <CurrencyDisplay
+                                amount={envelope.envelopeBalanceCents}
+                                currency={budget.currency.code}
+                                colorize
+                              />
+                            </>
+                          ) : (
+                            'Resets each period'
+                          )}
+                        </p>
+                      )}
                     </div>
                   </article>
                 );

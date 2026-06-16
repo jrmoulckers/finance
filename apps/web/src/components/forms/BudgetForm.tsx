@@ -25,6 +25,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -84,6 +85,10 @@ export interface BudgetFormProps {
   initialData?: Budget;
   /** Optional category selection applied when launching a focused budget template. */
   defaultCategoryId?: string;
+  /** Expected income for the active planning cadence, in cents, used for over-assignment warnings. */
+  expectedIncomeCents?: number;
+  /** Assigned cents from other budgets before this form value is applied. */
+  assignedBeforeEditCents?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +110,10 @@ function formatBudgetAmountForInput(budget: Budget): string {
 }
 
 function formatTemplateAmount(amountCents: number): string {
+  return budgetTemplateCurrencyFormatter.format(amountCents / 100);
+}
+
+function formatCents(amountCents: number): string {
   return budgetTemplateCurrencyFormatter.format(amountCents / 100);
 }
 
@@ -165,6 +174,8 @@ export function BudgetForm({
   templates = [],
   initialData,
   defaultCategoryId,
+  expectedIncomeCents,
+  assignedBeforeEditCents = 0,
 }: BudgetFormProps) {
   // -- refs ----------------------------------------------------------------
   const panelRef = useRef<HTMLDivElement>(null);
@@ -177,6 +188,7 @@ export function BudgetForm({
   const [amount, setAmount] = useState('');
   const [period, setPeriod] = useState<BudgetPeriod>('MONTHLY');
   const [startDate, setStartDate] = useState(firstOfCurrentMonthISO);
+  const [isRollover, setIsRollover] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -209,6 +221,7 @@ export function BudgetForm({
       setAmount(initialData ? formatBudgetAmountForInput(initialData) : '');
       setPeriod(initialData?.period ?? 'MONTHLY');
       setStartDate(initialData?.startDate ?? firstOfCurrentMonthISO());
+      setIsRollover(initialData?.isRollover ?? false);
       setErrors({});
       setSubmitting(false);
       setSubmitError(null);
@@ -290,7 +303,7 @@ export function BudgetForm({
         period,
         startDate,
         endDate: null,
-        isRollover: false,
+        isRollover,
       };
 
       setSubmitting(true);
@@ -302,6 +315,7 @@ export function BudgetForm({
         setAmount('');
         setPeriod('MONTHLY');
         setStartDate(firstOfCurrentMonthISO());
+        setIsRollover(false);
         setErrors({});
       } catch (err) {
         setSubmitError(
@@ -322,6 +336,7 @@ export function BudgetForm({
       categoryId,
       creationMode,
       isEditMode,
+      isRollover,
       onSubmit,
       onSubmitTemplate,
       period,
@@ -330,6 +345,27 @@ export function BudgetForm({
       templates,
     ],
   );
+
+  const overAssignmentWarning = useMemo(() => {
+    if (expectedIncomeCents === undefined || amount.trim() === '') {
+      return null;
+    }
+
+    const parsedAmount = Number.parseFloat(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return null;
+    }
+
+    const proposedTotalCents = assignedBeforeEditCents + Math.round(parsedAmount * 100);
+    if (proposedTotalCents <= expectedIncomeCents) {
+      return null;
+    }
+
+    return {
+      overByCents: proposedTotalCents - expectedIncomeCents,
+      proposedTotalCents,
+    };
+  }, [amount, assignedBeforeEditCents, expectedIncomeCents]);
 
   // -- render --------------------------------------------------------------
 
@@ -579,6 +615,12 @@ export function BudgetForm({
                       {errors.amount}
                     </span>
                   )}
+                  {overAssignmentWarning && !hasAmountError && (
+                    <p className="form-group__help" role="status">
+                      This would assign {formatCents(overAssignmentWarning.proposedTotalCents)} —{' '}
+                      {formatCents(overAssignmentWarning.overByCents)} over expected income.
+                    </p>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -597,6 +639,28 @@ export function BudgetForm({
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="form-group">
+                  <label
+                    style={{
+                      display: 'flex',
+                      gap: 'var(--spacing-2)',
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isRollover}
+                      onChange={(e) => setIsRollover(e.target.checked)}
+                    />
+                    <span>
+                      <span className="form-group__label">Envelope / rollover category</span>
+                      <span className="form-group__help" style={{ display: 'block' }}>
+                        Preserve unused money and carry overspending into the next budget period.
+                      </span>
+                    </span>
+                  </label>
                 </div>
 
                 <div className="form-group">
