@@ -9,10 +9,14 @@ import { getAllBudgets } from '../db/repositories/budgets';
 import { getAllGoals } from '../db/repositories/goals';
 import { getAllCategories } from '../db/repositories/categories';
 import {
+  DEFAULT_DATA_ACCESS_DOMAINS,
   buildDataAccessPackage,
   shouldAutoDeletePackage,
   shouldWarnPackageExpiresSoon,
+  summarizeDataAccessDomains,
+  type DataAccessDomain,
   type DataAccessManifest,
+  type DataAccessPackageInput,
   type DataAccessPackageResult,
 } from '../lib/data-access-package';
 import {
@@ -27,6 +31,11 @@ import {
   buildInvestmentXlsx,
   type InvestmentExportInput,
 } from '../lib/export/investment-export';
+import { exportConsentRecord } from '../lib/consent-storage';
+import { exportConsentHistory } from '../lib/consent-history';
+import { appendSecurityAuditEvent, loadSecurityAuditLog } from '../lib/security-audit-log';
+import { getStepUpStatus, markStepUpAuthenticated } from '../lib/session-security';
+import { recordThirdPartyConnectionGrant } from '../lib/third-party-permissions';
 import './data-export.css';
 
 type ExportStatus =
@@ -106,6 +115,34 @@ function readLocalStorageRecords(prefix: string): ExportRecord[] {
 
 function toExportRecords<T extends object>(records: readonly T[]): ExportRecord[] {
   return records.map((record) => Object.fromEntries(Object.entries(record)));
+}
+
+function safeJsonRecord(value: string): ExportRecord {
+  try {
+    const parsed = JSON.parse(value) as ExportRecord;
+    return parsed;
+  } catch {
+    return { raw: value };
+  }
+}
+
+function buildPackageInput(db: SqliteDb, includeMoodTags: boolean): DataAccessPackageInput {
+  const data = gatherExportData(db, includeMoodTags);
+  return {
+    accounts: toExportRecords(data.accounts),
+    transactions: toExportRecords(data.transactions),
+    budgets: toExportRecords(data.budgets),
+    goals: toExportRecords(data.goals),
+    categories: toExportRecords(data.categories),
+    preferences: readLocalStorageRecords('finance-'),
+    settings: readLocalStorageRecords('settings-'),
+    consentRecords: [safeJsonRecord(exportConsentRecord()), safeJsonRecord(exportConsentHistory())],
+    auditLog: loadSecurityAuditLog().map((event) => ({ ...event })),
+    syncMetadata: [{ offline: !navigator.onLine, user_agent: navigator.userAgent }],
+    recurringRules: [],
+    attachments: [],
+    moodTags: includeMoodTags ? readLocalStorageRecords('finance-mood-') : [],
+  };
 }
 
 function downloadBytes(content: Uint8Array, filename: string, mimeType: string): string {
@@ -240,8 +277,15 @@ export const DataExport: React.FC<DataExportProps> = ({
   const db = useExportDatabase();
   const [status, setStatus] = useState<ExportStatus>('idle');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [includeProtectedCategories, setIncludeProtectedCategories] = useState(true);
+  const [includeProtectedCategories, setIncludeProtectedCategories] = useState(false);
   const [includeMoodTags, setIncludeMoodTags] = useState(false);
+  const [includeNotes, setIncludeNotes] = useState(false);
+  const [includeAttachmentBinaries, setIncludeAttachmentBinaries] = useState(false);
+  const [selectedDomains, setSelectedDomains] = useState<DataAccessDomain[]>(() => [
+    ...DEFAULT_DATA_ACCESS_DOMAINS,
+  ]);
+  const [stepUpMessage, setStepUpMessage] = useState('');
+  const [shareRecipient, setShareRecipient] = useState('');
   const [packageResult, setPackageResult] = useState<DataAccessPackageResult | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -301,11 +345,28 @@ export const DataExport: React.FC<DataExportProps> = ({
 
   const manifest = packageResult?.manifest;
   const dbUnavailable = db === null;
+  const previewInput = useMemo(() => (db ? buildPackageInput(db, includeMoodTags) : null), [db, includeMoodTags]);
+  const domainSummaries = useMemo(
+    () => (previewInput ? summarizeDataAccessDomains(previewInput) : []),
+    [previewInput],
+  );
 
   const startRequest = useCallback(() => {
     setShowConfirmation(true);
     setErrorMessage('');
+    setStepUpMessage('');
     setSimpleDownloadMessage('');
+  }, []);
+
+  const toggleDomain = useCallback((domain: DataAccessDomain, checked: boolean) => {
+    setSelectedDomains((current) =>
+      checked ? Array.from(new Set([...current, domain])) : current.filter((item) => item !== domain),
+    );
+  }, []);
+
+  const verifyStepUpForExport = useCallback(async () => {
+    const status = await markStepUpAuthenticated('data_export', { source: 'data-export-dialog' });
+    setStepUpMessage(status.reason);
   }, []);
 
   const cancelRequest = useCallback(() => {
@@ -316,6 +377,21 @@ export const DataExport: React.FC<DataExportProps> = ({
   }, []);
 
   const confirmRequest = useCallback(() => {
+    if (selectedDomains.length === 0) {
+      setStatus('error');
+      setErrorMessage('Select at least one data category before generating a GDPR export.');
+      return;
+    }
+    const stepUp = getStepUpStatus('data_export');
+    if (!stepUp.allowed) {
+      setStepUpMessage(stepUp.reason);
+      void appendSecurityAuditEvent({
+        action: 'step_up_reauth',
+        result: 'failure',
+        metadata: { riskyAction: 'data_export', reason: stepUp.reason },
+      });
+      return;
+    }
     setShowConfirmation(false);
     setStatus('pending');
     setErrorMessage('');
@@ -327,30 +403,49 @@ export const DataExport: React.FC<DataExportProps> = ({
       try {
         if (!db)
           throw new Error('Database is still initializing. Please wait a moment and try again.');
-        const data = gatherExportData(db, includeMoodTags);
-
+        const packageInput = buildPackageInput(db, includeMoodTags);
+        await appendSecurityAuditEvent({
+          action: 'data_export_generated',
+          result: 'success',
+          metadata: {
+            selectedDomains,
+            includeProtectedCategories,
+            includeMoodTags,
+            includeNotes,
+            includeAttachmentBinaries,
+            redactionProfile: includeProtectedCategories || includeMoodTags || includeNotes || includeAttachmentBinaries ? 'full' : 'redacted',
+            recipient: shareRecipient.trim() || null,
+          },
+        });
+        if (shareRecipient.trim()) {
+          const now = new Date().toISOString();
+          await recordThirdPartyConnectionGrant({
+            id: 'export-recipient-' + shareRecipient.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            displayName: shareRecipient.trim(),
+            type: 'export_recipient',
+            scopes: selectedDomains,
+            consentedAt: now,
+            lastActivityAt: now,
+            status: 'active',
+            risk: 'high',
+          });
+        }
         const result = buildDataAccessPackage(
           {
-            accounts: toExportRecords(data.accounts),
-            transactions: toExportRecords(data.transactions),
-            budgets: toExportRecords(data.budgets),
-            goals: toExportRecords(data.goals),
-            categories: toExportRecords(data.categories),
-            preferences: readLocalStorageRecords('finance-'),
-            settings: readLocalStorageRecords('settings-'),
-            auditLog: [
-              { event: 'data_access_export_generated', timestamp: new Date().toISOString() },
-            ],
-            syncMetadata: [{ offline: !navigator.onLine, user_agent: navigator.userAgent }],
-            recurringRules: [],
-            attachments: [],
-            moodTags: includeMoodTags ? readLocalStorageRecords('finance-mood-') : [],
+            ...packageInput,
+            auditLog: loadSecurityAuditLog().map((event) => ({ ...event })),
           },
           {
             appVersion: APP_VERSION,
             locale: navigator.language,
             includeProtectedCategories,
             includeMoodTags,
+            includeNotes,
+            includeAttachmentBinaries,
+            selectedDomains,
+            redactionProfile: includeProtectedCategories || includeMoodTags || includeNotes || includeAttachmentBinaries ? 'full' : 'redacted',
+            recipient: shareRecipient.trim() || undefined,
+            shareMethod: 'unknown',
           },
         );
         if (cancelledRef.current) return;
@@ -361,7 +456,15 @@ export const DataExport: React.FC<DataExportProps> = ({
         setErrorMessage(error instanceof Error ? error.message : 'Data package generation failed.');
       }
     }, 100);
-  }, [db, includeMoodTags, includeProtectedCategories]);
+  }, [
+    db,
+    includeAttachmentBinaries,
+    includeMoodTags,
+    includeNotes,
+    includeProtectedCategories,
+    selectedDomains,
+    shareRecipient,
+  ]);
 
   const downloadFullJson = useCallback(() => {
     setErrorMessage('');
@@ -725,10 +828,28 @@ export const DataExport: React.FC<DataExportProps> = ({
             Request your data package
           </h4>
           <p id="data-export-confirm-body" className="data-export__dialog-body">
-            Finance will include transactions, accounts, budgets, goals, recurring rules,
-            categories, tags, attachments, preferences, settings, audit log entries, and sync
-            metadata. The ZIP is generated on this device and is available in-app for 7 days.
+            Choose exactly which data categories to export. The ZIP is generated on this device, defaults to a redacted sharing profile, and is available in-app for 7 days.
           </p>
+
+          <fieldset className="data-export__fieldset">
+            <legend className="data-export__legend">Data categories</legend>
+            {domainSummaries.map((summary) => (
+              <label className="data-export__option" key={summary.domain}>
+                <input
+                  type="checkbox"
+                  className="data-export__checkbox"
+                  checked={selectedDomains.includes(summary.domain)}
+                  onChange={(event) => toggleDomain(summary.domain, event.target.checked)}
+                />
+                <span className="data-export__option-text">
+                  <span className="data-export__option-label">
+                    {summary.label} ({summary.recordCount} record{summary.recordCount === 1 ? '' : 's'})
+                  </span>
+                  <span className="data-export__option-help">{summary.warning}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
 
           <fieldset className="data-export__fieldset">
             <legend className="data-export__legend">Privacy options</legend>
@@ -743,7 +864,7 @@ export const DataExport: React.FC<DataExportProps> = ({
               <span className="data-export__option-text">
                 <span className="data-export__option-label">Include protected categories</span>
                 <span className="data-export__option-help">
-                  Sensitive categories like medical or debt. Included by default.
+                  Sensitive categories like medical or debt. Redacted by default.
                 </span>
               </span>
             </label>
@@ -762,13 +883,59 @@ export const DataExport: React.FC<DataExportProps> = ({
                 </span>
               </span>
             </label>
+
+            <label className="data-export__option">
+              <input
+                type="checkbox"
+                className="data-export__checkbox"
+                checked={includeNotes}
+                onChange={(event) => setIncludeNotes(event.target.checked)}
+              />
+              <span className="data-export__option-text">
+                <span className="data-export__option-label">Include transaction notes</span>
+                <span className="data-export__option-help">Notes may contain names, health details, or private context. Off by default.</span>
+              </span>
+            </label>
+
+            <label className="data-export__option">
+              <input
+                type="checkbox"
+                className="data-export__checkbox"
+                checked={includeAttachmentBinaries}
+                onChange={(event) => setIncludeAttachmentBinaries(event.target.checked)}
+              />
+              <span className="data-export__option-text">
+                <span className="data-export__option-label">Include attachment binaries</span>
+                <span className="data-export__option-help">Receipts and files can reveal addresses, card digits, or account numbers. Metadata only by default.</span>
+              </span>
+            </label>
+
+            <label className="data-export__option">
+              <span className="data-export__option-text">
+                <span className="data-export__option-label">Recipient or share destination (optional)</span>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={shareRecipient}
+                  onChange={(event) => setShareRecipient(event.target.value)}
+                  placeholder="Accountant, support case, partner email"
+                />
+                <span className="data-export__option-help">Known recipients are recorded in Third-party connections for later review.</span>
+              </span>
+            </label>
           </fieldset>
 
+          {stepUpMessage && <p role="status" className="data-export__dialog-body">{stepUpMessage}</p>}
+
           <div className="data-export__dialog-actions">
+            <button type="button" className="data-export__button" onClick={() => void verifyStepUpForExport()}>
+              Verify identity for export
+            </button>
             <button
               type="button"
               className="data-export__button data-export__button--primary"
               onClick={confirmRequest}
+              disabled={selectedDomains.length === 0}
             >
               Generate package
             </button>
@@ -845,9 +1012,15 @@ const PackageSummary: React.FC<{ manifest: DataAccessManifest; expirationWarning
         <p role="alert">This data package expires within 24 hours and will be auto-deleted.</p>
       )}
       <p>
-        Protected categories included:{' '}
+        Redaction profile: {manifest.privacy.redaction_profile}; protected categories included:{' '}
         {manifest.privacy.protected_categories_included ? 'yes' : 'no'}; mood tags included:{' '}
-        {manifest.privacy.mood_tags_included ? 'yes' : 'no'}.
+        {manifest.privacy.mood_tags_included ? 'yes' : 'no'}; notes included:{' '}
+        {manifest.privacy.notes_included ? 'yes' : 'no'}; attachment binaries included:{' '}
+        {manifest.privacy.attachment_binaries_included ? 'yes' : 'no'}.
+      </p>
+      <p>
+        Selected domains: {manifest.privacy.selected_domains.join(', ')}. Omitted:{' '}
+        {manifest.privacy.omitted_domains.join(', ') || 'none'}.
       </p>
     </div>
   </div>
