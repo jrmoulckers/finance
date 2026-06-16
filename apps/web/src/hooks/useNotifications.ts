@@ -20,7 +20,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppNotification, NotificationId, NotificationStatus } from '../lib/notifications';
-import { isInQuietHours, rateLimitNotifications } from '../lib/notifications';
+import { rateLimitNotifications, shouldDeliverNotification } from '../lib/notifications';
 import { loadNotificationPreferences } from '../lib/notifications/preferences';
 
 // ---------------------------------------------------------------------------
@@ -116,8 +116,8 @@ export function useNotifications(): UseNotificationsResult {
   const addNotification = useCallback((notification: AppNotification) => {
     const prefs = loadNotificationPreferences();
 
-    // Check quiet hours — suppress non-critical during quiet hours
-    if (isInQuietHours(prefs) && notification.severity !== 'critical') {
+    // Apply global enablement, channel preferences, DND, and quiet hours.
+    if (!shouldDeliverNotification(notification, prefs, 'in_app')) {
       return;
     }
 
@@ -139,12 +139,11 @@ export function useNotifications(): UseNotificationsResult {
     if (newNotifications.length === 0) return;
 
     const prefs = loadNotificationPreferences();
-    const inQuietHours = isInQuietHours(prefs);
 
-    // Filter quiet hours
-    const allowed = inQuietHours
-      ? newNotifications.filter((n) => n.severity === 'critical')
-      : [...newNotifications];
+    // Apply global enablement, channel preferences, DND, and quiet hours.
+    const allowed = newNotifications.filter((notification) =>
+      shouldDeliverNotification(notification, prefs, 'in_app'),
+    );
 
     if (allowed.length === 0) return;
 
