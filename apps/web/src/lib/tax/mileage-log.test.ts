@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   MileagePurpose,
   MILEAGE_RATES_2024,
+  MILEAGE_RATES_2025,
   getMileageRate,
   calculateTripDeduction,
   calculateTripDeductions,
@@ -99,8 +100,14 @@ describe('mileage-log', () => {
       expect(getMileageRate(MileagePurpose.CHARITY)).toBe(14);
     });
 
+    it('returns business rate for 2025', () => {
+      const rate = MILEAGE_RATES_2025.find((r) => r.purpose === MileagePurpose.BUSINESS);
+      expect(rate?.centsPerMile).toBe(70);
+      expect(getMileageRate(MileagePurpose.BUSINESS, 2025)).toBe(70);
+    });
+
     it('returns null for unsupported year', () => {
-      expect(getMileageRate(MileagePurpose.BUSINESS, 2025)).toBeNull();
+      expect(getMileageRate(MileagePurpose.BUSINESS, 2026)).toBeNull();
     });
   });
 
@@ -149,7 +156,12 @@ describe('mileage-log', () => {
     });
 
     it('throws for unsupported tax year', () => {
-      expect(() => calculateTripDeduction(TRIPS[0], 2025)).toThrow('No mileage rate found');
+      expect(() => calculateTripDeduction(TRIPS[0], 2026)).toThrow('No mileage rate found');
+    });
+
+    it('keeps personal trips in the log without deducting them', () => {
+      const result = calculateTripDeduction({ ...TRIPS[0], isBusinessUse: false });
+      expect(result.deduction).toBe(0);
     });
   });
 
