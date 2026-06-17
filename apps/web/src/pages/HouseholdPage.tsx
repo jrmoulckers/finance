@@ -59,6 +59,11 @@ import type {
 } from '../kmp/bridge';
 import { ROLE_PERMISSIONS } from '../kmp/bridge';
 import { buildInviteUrl, getMemberDisplayName } from '../lib/household/display-name';
+import { buildTeenLearningRecordFromChild } from '../lib/household/teen-learning-local';
+import {
+  buildTeenParentReviewSummary,
+  TEEN_LEARNING_HOUSEHOLD_COPY,
+} from '../lib/household/teen-review-summaries';
 
 import './HouseholdPage.css';
 
@@ -2232,6 +2237,32 @@ export function HouseholdPage() {
                 collegeFundProgress: 0,
               };
               const collegeFundGoal = childSummary.collegeFundGoal;
+              const teenLearningRecord = buildTeenLearningRecordFromChild(
+                household.id,
+                child,
+                household.updatedAt,
+              );
+              const teenReviewSummary = buildTeenParentReviewSummary(teenLearningRecord.account, [
+                {
+                  type: 'EARN',
+                  amountCents: dollarsToCents(weeklyChoreTotal),
+                  label: 'Completed chore bonuses',
+                },
+                {
+                  type: 'SPEND',
+                  amountCents: childSummary.monthSpentCents,
+                  label: 'Tagged child spending this month',
+                },
+                ...(collegeFundGoal
+                  ? [
+                      {
+                        type: 'SAVE' as const,
+                        amountCents: collegeFundGoal.currentAmount.amount,
+                        label: 'College fund progress',
+                      },
+                    ]
+                  : []),
+              ]);
 
               return (
                 <article key={child.id} className="household-kid-card" role="listitem">
@@ -2279,6 +2310,43 @@ export function HouseholdPage() {
                       </dd>
                     </div>
                   </dl>
+
+                  <section
+                    className="household-kid-card__section"
+                    aria-labelledby={`teen-learning-title-${child.id}`}
+                  >
+                    <div className="household-kid-card__section-header">
+                      <h4
+                        id={`teen-learning-title-${child.id}`}
+                        className="household-kid-card__section-title"
+                      >
+                        Teen Learning Account
+                      </h4>
+                      <span className="household-kid-card__section-note">Practice balance</span>
+                    </div>
+                    <p className="household-card__note">{TEEN_LEARNING_HOUSEHOLD_COPY}</p>
+                    <dl className="household-kid-card__stats">
+                      <div className="household-kid-card__stat">
+                        <dt>Practice balance</dt>
+                        <dd>
+                          <CurrencyDisplay amount={teenReviewSummary.practiceBalanceCents} />
+                        </dd>
+                      </div>
+                      <div className="household-kid-card__stat">
+                        <dt>Approval guardrails</dt>
+                        <dd>{teenLearningRecord.account.approvalRequiredFor.length} actions</dd>
+                      </div>
+                    </dl>
+                    {teenReviewSummary.teachableMoments.length > 0 && (
+                      <ul className="household-kid-card__expense-list" role="list">
+                        {teenReviewSummary.teachableMoments.map((moment) => (
+                          <li key={moment} className="household-kid-card__expense-item">
+                            <span>{moment}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
 
                   <section
                     className="household-kid-card__section household-kid-card__section--college"

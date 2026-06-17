@@ -57,6 +57,31 @@ describe('evaluateSpendingVisibility', () => {
     expect(evaluateSpendingVisibility(rules, tx, 'member-partner').detailLevel).toBe('DETAIL');
   });
 
+  it('matches custom merchant, date range, and recurring bill filters', () => {
+    const rules: SpendingVisibilityRule[] = [
+      {
+        id: 'rule-recurring',
+        accountId: 'acct-1',
+        ownerMemberId: 'member-owner',
+        level: 'CUSTOM',
+        merchants: ['electric utility'],
+        startDate: '2025-03-01',
+        endDate: '2025-03-31',
+        recurringOnly: true,
+        updatedAt: '2025-03-01T00:00:00Z',
+      },
+    ];
+
+    expect(
+      evaluateSpendingVisibility(
+        rules,
+        { ...tx, merchant: 'Electric Utility', isRecurringBill: true },
+        'member-partner',
+      ).detailLevel,
+    ).toBe('DETAIL');
+    expect(evaluateSpendingVisibility(rules, tx, 'member-partner').visible).toBe(false);
+  });
+
   it('hides transactions when no rule permits sharing', () => {
     expect(evaluateSpendingVisibility([], tx, 'member-partner')).toMatchObject({
       visible: false,
