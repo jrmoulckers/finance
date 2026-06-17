@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { CategoryPieChart, type CategorySlice } from './CategoryPieChart';
 
@@ -114,5 +114,17 @@ describe('CategoryPieChart', () => {
     const srOnly = document.querySelector('.sr-only');
     expect(srOnly).toBeInTheDocument();
     expect(srOnly!.textContent).toContain('3 categories');
+  });
+
+  it('announces focused slices through a live region', () => {
+    const { container } = render(<CategoryPieChart data={sampleData} />);
+    const firstSlice = container.querySelector<SVGPathElement>('path[data-chart-point]');
+
+    expect(firstSlice).not.toBeNull();
+    fireEvent.focus(firstSlice!);
+
+    expect(screen.getByRole('status', { name: /chart point announcement/i })).toHaveTextContent(
+      'Food: $450 (56.3%)',
+    );
   });
 });

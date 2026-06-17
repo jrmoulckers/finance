@@ -257,6 +257,20 @@ describe('OnboardingPage', () => {
     expect(screen.getByRole('heading', { name: /local only/i })).toBeInTheDocument();
   });
 
+  it('announces onboarding progress as steps change', () => {
+    renderWithRouter(<OnboardingPage />);
+
+    expect(screen.getByRole('status', { name: /onboarding progress/i })).toHaveTextContent(
+      'Step 1 of 5: Comfort preferences. Current step.',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+
+    expect(screen.getByRole('status', { name: /onboarding progress/i })).toHaveTextContent(
+      'Step 2 of 5: Choose setup path. Current step.',
+    );
+  });
+
   it('stores comfort preferences and lets the user skip ahead', () => {
     renderWithRouter(<OnboardingPage />);
 

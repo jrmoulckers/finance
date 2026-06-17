@@ -79,6 +79,15 @@ describe('BottomNavigation', () => {
     expect(moreButton).toHaveAttribute('aria-expanded', 'false');
   });
 
+  it('uses simple-mode priority destinations when enabled', () => {
+    render(<BottomNavigation {...defaultProps} simpleMode />);
+
+    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    expect(nav).toHaveAttribute('data-simple-mode', 'true');
+    expect(within(nav).getByRole('button', { name: 'Bills' })).toBeInTheDocument();
+    expect(within(nav).queryByRole('button', { name: 'Debt' })).not.toBeInTheDocument();
+  });
+
   it('promotes Debt to the bottom nav instead of the More sheet', () => {
     render(<BottomNavigation {...defaultProps} />);
 

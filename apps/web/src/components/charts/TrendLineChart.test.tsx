@@ -131,9 +131,11 @@ describe('TrendLineChart', () => {
 
     const navigator = screen.getByRole('group', { name: /Trend over time data navigator/i });
     fireEvent.focus(navigator);
-    expect(screen.getByRole('status')).toHaveTextContent('Jan: Income $4,000, Expenses $2,400');
+    expect(screen.getByRole('status')).toHaveTextContent('Focused point 1 of 3.');
+    expect(screen.getByRole('status')).toHaveTextContent('Income Jan: $4,000');
 
     fireEvent.keyDown(navigator, { key: 'ArrowRight' });
-    expect(screen.getByRole('status')).toHaveTextContent('Feb: Income $3,000, Expenses $1,398');
+    expect(screen.getByRole('status')).toHaveTextContent('Focused point 2 of 3.');
+    expect(screen.getByRole('status')).toHaveTextContent('Expenses Feb: $1,398');
   });
 });

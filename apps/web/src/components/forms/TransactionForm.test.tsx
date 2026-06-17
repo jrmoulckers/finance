@@ -127,8 +127,10 @@ describe('TransactionForm', () => {
     renderTransactionForm();
 
     expect(screen.getByRole('dialog', { name: 'New Transaction' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Amount')).toBeInTheDocument();
-    expect(screen.getByLabelText('Payee')).toBeInTheDocument();
+    expect(screen.getByLabelText('Amount')).toHaveAttribute('data-dictation-label', 'Amount');
+    expect(screen.getByLabelText('Amount')).toHaveAttribute('name', 'txn-amount');
+    expect(screen.getByLabelText('Payee')).toHaveAttribute('data-dictation-label', 'Payee');
+    expect(screen.getByLabelText('Payee')).toHaveAttribute('name', 'txn-description');
     expect(screen.getByText(/What appears on your statement/i)).toBeInTheDocument();
     expect(screen.getByText(/The actual merchant or person/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Category')).toBeInTheDocument();

@@ -8,7 +8,7 @@
  *
  * @module components/charts/CategoryPieChart
  */
-import { type FC, useCallback, useEffect, useId, useRef } from 'react';
+import { type FC, useCallback, useEffect, useId, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { CHART_COLORS, buildChartDescription, formatChartCurrency } from './chart-palette';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
@@ -35,6 +35,7 @@ export const CategoryPieChart: FC<CategoryPieChartProps> = ({
   const chartId = useId();
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [announcement, setAnnouncement] = useState('');
   const maskingMode = useEffectiveMaskingMode();
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const description = buildChartDescription(
@@ -82,6 +83,7 @@ export const CategoryPieChart: FC<CategoryPieChartProps> = ({
       .style('outline', 'none');
     slices
       .on('focus', function () {
+        setAnnouncement(this.getAttribute('aria-label') ?? '');
         d3.select(this)
           .attr('stroke', 'var(--semantic-border-focus, #3B82F6)')
           .attr('stroke-width', 3);
@@ -137,6 +139,9 @@ export const CategoryPieChart: FC<CategoryPieChartProps> = ({
       <p id={`${chartId}-desc`} className="sr-only">
         {description}
       </p>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" aria-label="Chart point announcement">
+        {announcement}
+      </div>
       <div className="pie-chart-layout">
         <svg
           ref={svgRef}

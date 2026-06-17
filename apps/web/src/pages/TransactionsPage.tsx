@@ -30,6 +30,7 @@ import { useBulkTransactions } from '../hooks/useBulkTransactions';
 import { useCategories } from '../hooks/useCategories';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { recordPwaMeaningfulAction } from '../hooks/useInstallPrompt';
+import { useFontScale } from '../hooks/useFontScale';
 import { useTransactions } from '../hooks/useTransactions';
 import { useVirtualList } from '../hooks/useVirtualList';
 import type { Transaction } from '../kmp/bridge';
@@ -38,6 +39,7 @@ import {
   filterTransactionsByAccountPurpose,
   type AccountPurposeFilter,
 } from '../lib/accountPurpose';
+import { chooseLargeTextReflow } from '../lib/a11y/large-text-reflow';
 
 // ---------------------------------------------------------------------------
 // URL param helpers for filter/sort persistence
@@ -316,6 +318,10 @@ export const TransactionsPage: React.FC = () => {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const { scale: inAppTextScale } = useFontScale();
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 1024 : window.innerWidth,
+  );
   const addMenuRef = useRef<HTMLDivElement>(null);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const transactionRowRefs = useRef(new Map<string, HTMLElement>());
@@ -451,6 +457,11 @@ export const TransactionsPage: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const virtualRegister = useVirtualList({
     items: transactionRegisterRows,
@@ -458,7 +469,19 @@ export const TransactionsPage: React.FC = () => {
     containerHeight: registerViewportHeight,
     overscan: VIRTUAL_REGISTER_OVERSCAN,
   });
-  const useVirtualRegister = transactionRegisterRows.length > VIRTUAL_REGISTER_THRESHOLD;
+  const largeTextReflow = useMemo(
+    () =>
+      chooseLargeTextReflow({
+        viewportWidth,
+        browserZoomPercent: 100,
+        inAppScale: inAppTextScale,
+        hasDenseData: true,
+      }),
+    [inAppTextScale, viewportWidth],
+  );
+  const useCardRegister = largeTextReflow.mode === 'card-alternative';
+  const useVirtualRegister =
+    !useCardRegister && transactionRegisterRows.length > VIRTUAL_REGISTER_THRESHOLD;
   const virtualRowIndexByTransactionId = useMemo(() => {
     const indexes = new Map<string, number>();
     transactionRegisterRows.forEach((row, index) => {
@@ -996,7 +1019,28 @@ export const TransactionsPage: React.FC = () => {
             onRequestBulkDelete={() => setBulkDeleteDialogOpen(true)}
           />
 
-          {useVirtualRegister ? (
+          {useCardRegister ? (
+            <div className="card transaction-card-list-fallback">
+              <p className="sr-only" role="status">
+                Showing {transactions.length} transactions as cards for large text.{' '}
+                {largeTextReflow.reasons.join(' ')}
+              </p>
+              {groupedTransactions.map((group) => (
+                <section key={group.date} className="page-section" aria-label={`${group.label} transaction cards`}>
+                  <h3 className="list-group__header">{group.label}</h3>
+                  <ul className="list-group transaction-card-list" role="list" aria-label="Large text transaction card list">
+                    {group.transactions.map((transaction) =>
+                      renderTransactionRow(
+                        transaction,
+                        undefined,
+                        transactionPositionById.get(transaction.id),
+                      ),
+                    )}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          ) : useVirtualRegister ? (
             <div className="card">
               <p className="sr-only" role="status">
                 Showing {transactions.length} transactions with virtual scrolling

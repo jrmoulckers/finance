@@ -65,6 +65,7 @@ export interface NavigationProps {
   onNavigate: (path: string) => void;
   onOpenShortcuts?: () => void;
   onOpenFeedback?: () => void;
+  simpleMode?: boolean;
 }
 
 function isActive(activePath: string, href: string): boolean {
@@ -81,22 +82,33 @@ function isActive(activePath: string, href: string): boolean {
  * Bottom tab bar for narrow viewports. Renders the four highest-priority
  * destinations plus a "More" tab that opens {@link MoreNavSheet}.
  */
+const SIMPLE_MODE_BOTTOM_NAV_IDS = new Set(['dashboard', 'transactions', 'budgets', 'bills']);
+
 export const BottomNavigation: React.FC<NavigationProps> = ({
   activePath,
   onNavigate,
   onOpenShortcuts,
+  simpleMode = false,
 }) => {
   const { logout } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
 
+  const bottomNavItems = useMemo(
+    () =>
+      simpleMode
+        ? NAV_CONFIG.filter((item) => SIMPLE_MODE_BOTTOM_NAV_IDS.has(item.id))
+        : BOTTOM_NAV_PRIORITY_ITEMS,
+    [simpleMode],
+  );
+
   const isMoreActive = useMemo(() => {
     // The "More" tab should appear active when the user is on any route
     // that is reachable only via the sheet (i.e. not a priority item).
-    if (BOTTOM_NAV_PRIORITY_ITEMS.some((item) => isActive(activePath, item.href))) {
+    if (bottomNavItems.some((item) => isActive(activePath, item.href))) {
       return false;
     }
     return NAV_CONFIG.some((item) => isActive(activePath, item.href));
-  }, [activePath]);
+  }, [activePath, bottomNavItems]);
 
   const handleSignOut = useCallback(async () => {
     await logout();
@@ -104,8 +116,8 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
 
   return (
     <>
-      <nav className="bottom-nav" aria-label="Main navigation">
-        {BOTTOM_NAV_PRIORITY_ITEMS.map((item) => {
+      <nav className="bottom-nav" aria-label="Main navigation" data-simple-mode={simpleMode || undefined}>
+        {bottomNavItems.map((item) => {
           const active = isActive(activePath, item.href);
           return (
             <button
@@ -247,6 +259,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
   onNavigate,
   onOpenShortcuts,
   onOpenFeedback,
+  simpleMode = false,
 }) => {
   const { logout } = useAuth();
   const isSettingsActive = isActive(activePath, '/settings');
@@ -256,7 +269,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
   }, [logout]);
 
   return (
-    <aside className="app-sidebar" aria-label="Main navigation">
+    <aside className="app-sidebar" aria-label="Main navigation" data-simple-mode={simpleMode || undefined}>
       <div className="app-sidebar__header">
         <span className="app-sidebar__logo">Finance</span>
       </div>
@@ -294,7 +307,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
             items={getItemsByGroup(group)}
             activePath={activePath}
             onNavigate={onNavigate}
-            defaultExpanded={group === 'money' || group === 'plan'}
+            defaultExpanded={!simpleMode && (group === 'money' || group === 'plan')}
           />
         ))}
       </nav>

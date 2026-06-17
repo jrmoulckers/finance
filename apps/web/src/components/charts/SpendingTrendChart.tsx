@@ -37,6 +37,7 @@ import {
   CHART_KEYBOARD_INSTRUCTIONS,
   useChartKeyboardNavigation,
 } from './chart-accessibility';
+import { buildChartTextSummary } from '../../lib/a11y/chart-table-audit';
 import { useEffectiveMaskingMode } from '../../contexts/PrivacyModeContext';
 import './spending-trend.css';
 
@@ -258,9 +259,26 @@ export const SpendingTrendChart: FC<SpendingTrendChartProps> = ({
           rowHeader: point.label,
           cells: [formattedValue],
           ariaLabel: `${point.label}: ${formattedValue}`,
+          announcement: buildChartTextSummary({
+            title,
+            timeframe: point.label,
+            trendDescription: `Focused point ${index + 1} of ${data.length}.`,
+            points: [
+              {
+                label: point.label,
+                series: 'Spending',
+                value: formattedValue,
+                comparison:
+                  comparison != null
+                    ? `${formatPercentChange(Math.abs(comparison.percentChange))} vs last period`
+                    : undefined,
+              },
+            ],
+            maxPoints: 1,
+          }),
         };
       }),
-    [chartId, currency, data, maskingMode],
+    [chartId, comparison, currency, data, maskingMode, title],
   );
 
   const { announcement, handleFocus, handleKeyDown } = useChartKeyboardNavigation(dataPointRows);

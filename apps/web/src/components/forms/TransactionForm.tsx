@@ -59,6 +59,7 @@ import {
   isMoodTagsEnabled,
   normalizeMoodTag,
 } from '../../lib/mood-tags';
+import { buildDictationControlProps } from '../../lib/a11y/dictation-entry';
 import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { transactionSchema } from '../../lib/validation';
 import { DateInput } from '../common';
@@ -712,6 +713,16 @@ export function TransactionForm({
     hasAccountError ? { fieldId: 'txn-account', label: 'Account', message: errors.accountId! } : null,
     hasSplitError ? { fieldId: 'txn-splits-status', label: 'Splits', message: errors.splits! } : null,
   ].filter((item): item is FormErrorSummaryItem => item !== null);
+  const dictationControls = {
+    amount: buildDictationControlProps({ id: 'txn-amount', visibleLabel: 'Amount' }),
+    payee: buildDictationControlProps({ id: 'txn-description', visibleLabel: 'Payee' }),
+    status: buildDictationControlProps({ id: 'txn-status', visibleLabel: 'Status' }),
+    category: buildDictationControlProps({ id: 'txn-category', visibleLabel: 'Category' }),
+    account: buildDictationControlProps({ id: 'txn-account', visibleLabel: 'Account' }),
+    date: buildDictationControlProps({ id: 'txn-date', visibleLabel: 'Date' }),
+    notes: buildDictationControlProps({ id: 'txn-notes', visibleLabel: 'Notes' }),
+    tags: buildDictationControlProps({ id: 'txn-tags', visibleLabel: 'Tags' }),
+  } as const;
 
   return (
     <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
@@ -757,7 +768,10 @@ export function TransactionForm({
               </label>
               <input
                 ref={firstInputRef}
-                id="txn-amount"
+                id={dictationControls.amount.id}
+                name={dictationControls.amount.name}
+                aria-label={dictationControls.amount['aria-label']}
+                data-dictation-label={dictationControls.amount.label}
                 className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
                 type="text"
                 inputMode="numeric"
@@ -789,7 +803,10 @@ export function TransactionForm({
                 What appears on your statement (e.g. “AMZN MKTPL*XYZ”).
               </p>
               <input
-                id="txn-description"
+                id={dictationControls.payee.id}
+                name={dictationControls.payee.name}
+                aria-label={dictationControls.payee['aria-label']}
+                data-dictation-label={dictationControls.payee.label}
                 className={`form-input${hasDescriptionError ? ' form-input--error' : ''}`}
                 type="text"
                 value={description}
@@ -833,7 +850,10 @@ export function TransactionForm({
                 Status
               </label>
               <select
-                id="txn-status"
+                id={dictationControls.status.id}
+                name={dictationControls.status.name}
+                aria-label={dictationControls.status['aria-label']}
+                data-dictation-label={dictationControls.status.label}
                 className="form-select"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as TransactionStatus)}
@@ -896,7 +916,10 @@ export function TransactionForm({
                 Category
               </label>
               <select
-                id="txn-category"
+                id={dictationControls.category.id}
+                name={dictationControls.category.name}
+                aria-label={dictationControls.category['aria-label']}
+                data-dictation-label={dictationControls.category.label}
                 className="form-select"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
@@ -1040,7 +1063,10 @@ export function TransactionForm({
                 Account
               </label>
               <select
-                id="txn-account"
+                id={dictationControls.account.id}
+                name={dictationControls.account.name}
+                aria-label={dictationControls.account['aria-label']}
+                data-dictation-label={dictationControls.account.label}
                 className={`form-select${hasAccountError ? ' form-select--error' : ''}`}
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
@@ -1129,7 +1155,10 @@ export function TransactionForm({
                 Date
               </label>
               <DateInput
-                id="txn-date"
+                id={dictationControls.date.id}
+                name={dictationControls.date.name}
+                aria-label={dictationControls.date['aria-label']}
+                data-dictation-label={dictationControls.date.label}
                 className="form-input"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -1142,7 +1171,10 @@ export function TransactionForm({
                 Notes
               </label>
               <textarea
-                id="txn-notes"
+                id={dictationControls.notes.id}
+                name={dictationControls.notes.name}
+                aria-label={dictationControls.notes['aria-label']}
+                data-dictation-label={dictationControls.notes.label}
                 className="form-textarea"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -1156,7 +1188,10 @@ export function TransactionForm({
                 Tags
               </label>
               <input
-                id="txn-tags"
+                id={dictationControls.tags.id}
+                name={dictationControls.tags.name}
+                aria-label={dictationControls.tags['aria-label']}
+                data-dictation-label={dictationControls.tags.label}
                 className="form-input"
                 type="text"
                 value={tagsInput}

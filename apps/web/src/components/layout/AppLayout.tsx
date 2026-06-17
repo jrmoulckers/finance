@@ -11,6 +11,11 @@ import { detectScamAlerts, scamAlertsToNotifications } from '../../lib/notificat
 import { usePrivacyMode } from '../../contexts/PrivacyModeContext';
 import { useEscapeBack } from '../../hooks/useEscapeBack';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
+import {
+  getStoredSimplifiedModePreference,
+  SIMPLIFIED_MODE_STORAGE_KEY,
+} from '../../lib/accessibility-preferences';
+import { getSimpleModePlan, type SimpleModeSurface } from '../../lib/a11y/simple-mode';
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
 import { NAV_CONFIG } from './navConfig';
@@ -23,6 +28,24 @@ export interface AppLayoutProps {
   onNavigate: (path: string) => void;
   pageTitle: string;
   children: React.ReactNode;
+}
+
+const SIMPLE_MODE_SURFACES: Array<{ surface: SimpleModeSurface; paths: readonly string[] }> = [
+  { surface: 'dashboard', paths: ['/', '/dashboard'] },
+  { surface: 'transactions', paths: ['/transactions'] },
+  { surface: 'budgets', paths: ['/budgets'] },
+  { surface: 'bills', paths: ['/bills'] },
+  { surface: 'goals', paths: ['/goals'] },
+  { surface: 'reports', paths: ['/report-builder', '/cash-flow', '/net-worth', '/insights'] },
+  { surface: 'settings', paths: ['/settings'] },
+];
+
+function getSimpleModeSurface(pathname: string): SimpleModeSurface | null {
+  return (
+    SIMPLE_MODE_SURFACES.find(({ paths }) =>
+      paths.some((path) => pathname === path || pathname.startsWith(`${path}/`)),
+    )?.surface ?? null
+  );
 }
 
 const NAV_SHORTCUT_BY_ID: Record<string, string> = {
@@ -50,6 +73,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 }) => {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [simpleModeEnabled, setSimpleModeEnabled] = useState(getStoredSimplifiedModePreference);
   const { showHelp, setShowHelp, singleKeyShortcutsEnabled } = useKeyboardShortcuts({
     onNavigate,
     onNewTransaction: () => onNavigate('/transactions?new=transaction'),
@@ -71,6 +95,24 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     () => scamAlertsToNotifications(detectScamAlerts(scamNotificationTransactions)),
     [scamNotificationTransactions],
   );
+  const simpleModeSurface = getSimpleModeSurface(activePath);
+  const simpleModePlan = simpleModeEnabled && simpleModeSurface
+    ? getSimpleModePlan(simpleModeSurface)
+    : null;
+
+  useEffect(() => {
+    setSimpleModeEnabled(getStoredSimplifiedModePreference());
+  }, [activePath]);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === SIMPLIFIED_MODE_STORAGE_KEY) {
+        setSimpleModeEnabled(getStoredSimplifiedModePreference());
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   useEffect(() => {
     const knownNotificationKeys = new Set(
@@ -171,6 +213,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         activePath={activePath}
         onNavigate={onNavigate}
         onOpenShortcuts={openKeyboardShortcuts}
+        simpleMode={simpleModeEnabled}
       />
       <div className="app-shell">
         <SyncStatusBar />
@@ -259,10 +302,33 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             </button>
           </div>
         </header>
-        <main id="main-content" className="app-main" aria-label={pageTitle} tabIndex={-1}>
+        <main
+          id="main-content"
+          className="app-main"
+          aria-label={pageTitle}
+          tabIndex={-1}
+          data-simple-mode={simpleModeEnabled || undefined}
+          data-simple-mode-surface={simpleModePlan?.surface}
+        >
+          {simpleModePlan && (
+            <section
+              className="simple-mode-summary"
+              aria-label={`${simpleModePlan.heading} simple mode plan`}
+              data-simple-mode-plan={simpleModePlan.surface}
+            >
+              <p>
+                <strong>Simple Mode:</strong> {simpleModePlan.heading}. Primary action:{' '}
+                {simpleModePlan.primaryAction}.
+              </p>
+              <p className="sr-only">
+                Visible regions: {simpleModePlan.visibleRegions.join(', ')}. Advanced regions collapsed:{' '}
+                {simpleModePlan.collapsedRegions.join(', ')}.
+              </p>
+            </section>
+          )}
           {children}
         </main>
-        <BottomNavigation activePath={activePath} onNavigate={onNavigate} />
+        <BottomNavigation activePath={activePath} onNavigate={onNavigate} simpleMode={simpleModeEnabled} />
       </div>
       <InstallBanner />
       <CommandPalette

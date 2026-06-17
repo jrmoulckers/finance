@@ -12,6 +12,7 @@ export interface AccessibleChartTableRow {
   rowHeader: string;
   cells: string[];
   ariaLabel: string;
+  announcement?: string;
 }
 
 export const CHART_KEYBOARD_INSTRUCTIONS =
@@ -20,6 +21,10 @@ export const CHART_KEYBOARD_INSTRUCTIONS =
 function clampIndex(index: number, length: number): number {
   if (length === 0) return 0;
   return ((index % length) + length) % length;
+}
+
+function getRowAnnouncement(row: AccessibleChartTableRow): string {
+  return row.announcement ?? row.ariaLabel;
 }
 
 export function useChartKeyboardNavigation(rows: AccessibleChartTableRow[]) {
@@ -38,14 +43,14 @@ export function useChartKeyboardNavigation(rows: AccessibleChartTableRow[]) {
       if (rows.length === 0) return;
       const next = clampIndex(index, rows.length);
       setActiveIndex(next);
-      setAnnouncement(rows[next].ariaLabel);
+      setAnnouncement(getRowAnnouncement(rows[next]));
     },
     [rows],
   );
 
   const handleFocus = useCallback(() => {
     if (rows.length === 0) return;
-    setAnnouncement(rows[Math.min(activeIndex, rows.length - 1)].ariaLabel);
+    setAnnouncement(getRowAnnouncement(rows[Math.min(activeIndex, rows.length - 1)]));
   }, [activeIndex, rows]);
 
   const handleKeyDown = useCallback(
