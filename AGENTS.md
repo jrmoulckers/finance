@@ -44,10 +44,12 @@ For docs-only PRs, use the quick check: **`npm run ci:check:quick`**
 
 ### Definition of Done — task is NOT complete until BOTH gates pass
 
-| Gate                   | Verification                                                                              |
-| ---------------------- | ----------------------------------------------------------------------------------------- |
-| **CI green**           | `gh pr checks <N>` — no failures                                                          |
-| **No merge conflicts** | `gh pr view <N> --json mergeable,mergeStateStatus` — `MERGEABLE` and not `DIRTY`/`BEHIND` |
+| Gate                   | Verification                                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Base is `main`**     | PR opened with `--base main` (`gh pr view <N> --json baseRefName` → `main`)                                   |
+| **CI green**           | `gh pr checks <N>` — no failures                                                                              |
+| **No merge conflicts** | `gh pr view <N> --json mergeable,mergeStateStatus` — `MERGEABLE` and not `DIRTY`/`BEHIND`                     |
+| **Landed on `main`**   | Program is merged to `main`, or has a green, `MERGEABLE` PR to `main` (a branch-only program is **not done**) |
 
 **Merge conflicts carry the same P0 weight as red CI checks.** A green-CI PR sitting in a `CONFLICTING` state is not done. See the **Merge Conflict Protocol** in `.github/instructions/workflow.instructions.md` for the auto-resolve cycle (rebase, lockfile / generated-file auto-resolve, force-with-lease push). Force-with-lease on the agent's own branch is auto-approved when used to resolve conflicts.
 
@@ -68,10 +70,10 @@ All work in this repository follows an issue-first, feature-branch + worktree wo
    - Main worktree (`finance-human/`) is reserved for human work
 3. **Commit messages must include issue references** in the format `type(scope): description (#N)`.
 4. **Push automatically** — `git push origin <branch>` is auto-approved.
-5. **Open a PR automatically** with `gh pr create` — include `Closes #N` for resolved issues.
+5. **Open a PR automatically** with `gh pr create --base main` — **always target `main`** (never a long-lived feature branch) and include `Closes #N` for resolved issues. See the **Branch & Merge Policy** in `docs/ai/fleet-operations.md` (the canonical rules).
 6. **Verify the PR exists** — `gh pr view <branch>` must return a PR number before you move on. If it doesn't, re-run `gh pr create`. This catches the silent-failure mode where `gh pr create` errored but the agent assumed success.
 7. **Monitor the PR** — poll `gh pr checks` until all checks pass AND `gh pr view --json mergeable,mergeStateStatus` shows `MERGEABLE` / not `DIRTY`. **Merge conflicts carry the same P0 weight as red CI checks** — self-heal via the Merge Conflict Protocol in `.github/instructions/workflow.instructions.md`. Both gates must clear before declaring done.
-8. **Never merge PRs** — humans review and merge. The agent's job is to get the PR to merge-ready state.
+8. **Landing the work:** Individual sub-agents do **not** merge — they get their PR merge-ready. The **fleet orchestrator** is responsible for reconciling with `origin/main` and **landing the program on `main` within the work session** (merging the PRs, or leaving a single green, mergeable PR to `main` for a human with a clear note). Use `--admin` to override a protection-`BLOCKED` state **only** after verifying type-check + lint + affected tests are green locally; document the override. A program left only on a side branch is **not done** — it breaks staging auto-deploy and `Closes #N`.
 9. **Clean up the worktree** after the PR is confirmed merged: `git worktree remove <path>`.
 
 See `docs/ai/worktrees.md` for the full worktree setup and lifecycle guide.
