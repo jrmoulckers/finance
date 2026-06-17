@@ -12,7 +12,7 @@
  * References: issues #1662, #1685, #1690, #1681, #1761, #1569
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { CurrencyDisplay, EmptyState } from '../components/common';
 import { useAccounts } from '../hooks/useAccounts';
 import './DebtPage.css';
@@ -36,11 +36,7 @@ import {
   calculateStrategyResult,
   compareStrategies,
 } from '../lib/debt-payoff-engine';
-import {
-  calculateBnplSummary,
-  detectPaymentCollisions,
-  calculateBnplRiskScore,
-} from '../lib/debt-bnpl-engine';
+import { aggregateBnplDashboard, type BnplObligationDraft } from '../lib/debt/bnpl-aggregation';
 import {
   calculateStudentLoanDashboardSummary,
   calculateStudentLoanScenarioComparisons,
@@ -50,6 +46,37 @@ import {
   calculateCreditUtilizationSummary,
   calculateReservationSummary,
 } from '../lib/debt-credit-card-engine';
+import {
+  compareConsolidationOffer,
+  type ConsolidationFeeTreatment,
+} from '../lib/debt/consolidation-comparison';
+import { buildConsolidationOfferPanelModel } from '../lib/debt/consolidation-offer-panel';
+import {
+  readConsolidationScenario,
+  restoreConsolidationScenario,
+  writeConsolidationScenario,
+  type PersistedConsolidationScenario,
+} from '../lib/debt/consolidation-scenario-persistence';
+import {
+  buildDebtPayoffProgressRingCard,
+  buildStudentLoanProgressRingCard,
+  type DebtProgressRingCard,
+} from '../lib/debt/debt-progress-rings';
+import { buildCreditScoreSimulatorPanelModel } from '../lib/debt/credit-score-simulator-panel';
+import { buildCreditScoreAssumptionSummary } from '../lib/debt/credit-score-simulator-assumptions';
+import { validateBnplObligationDraft, upsertBnplObligationFromDraft } from '../lib/debt/bnpl-obligation-entry';
+import {
+  markBnplInstallmentPaidById,
+  readBnplObligations,
+  writeBnplObligations,
+} from '../lib/debt/bnpl-obligation-persistence';
+import { calculateRefinanceBreakEven } from '../lib/debt/refinance-break-even';
+import { buildRefinanceBreakEvenPanelModel } from '../lib/debt/refinance-break-even-panel';
+import {
+  buildRefinanceBaselineOptions,
+  resolveRefinanceBaselinePaymentCents,
+  type RefinanceBaselineId,
+} from '../lib/debt/refinance-baseline-options';
 import type { Account } from '../kmp/bridge';
 
 // ---------------------------------------------------------------------------
@@ -109,6 +136,45 @@ type CreditCardFormState = {
   statementDate: string;
 };
 
+type ConsolidationFormState = {
+  annualRate: string;
+  termMonths: string;
+  originationFee: string;
+  feeTreatment: ConsolidationFeeTreatment;
+  targetPayment: string;
+};
+
+type BnplFormState = {
+  id: string;
+  merchantName: string;
+  originalAmount: string;
+  totalInstallments: string;
+  paidInstallments: string;
+  installmentAmount: string;
+  annualRate: string;
+  totalFees: string;
+  firstDueDate: string;
+  cadenceDays: string;
+};
+
+type CreditScoreSimulatorFormState = {
+  targetCardId: string;
+  targetUtilization: string;
+  plannedPayment: string;
+  onTimePaymentMonths: string;
+  hardInquiries: string;
+  closeAccountId: string;
+};
+
+type RefinanceFormState = {
+  annualRate: string;
+  termMonths: string;
+  originationFee: string;
+  feesFinanced: boolean;
+  paymentOverride: string;
+  baselineId: RefinanceBaselineId;
+};
+
 const DEFAULT_DEBT_FORM: DebtFormState = {
   name: '',
   balance: '',
@@ -151,6 +217,45 @@ const DEFAULT_CREDIT_CARD_FORM: CreditCardFormState = {
   rate: '',
   dueDate: '',
   statementDate: '',
+};
+
+const DEFAULT_CONSOLIDATION_FORM: ConsolidationFormState = {
+  annualRate: '9',
+  termMonths: '36',
+  originationFee: '0',
+  feeTreatment: 'paid_upfront',
+  targetPayment: '',
+};
+
+const DEFAULT_BNPL_FORM: BnplFormState = {
+  id: '',
+  merchantName: '',
+  originalAmount: '',
+  totalInstallments: '4',
+  paidInstallments: '0',
+  installmentAmount: '',
+  annualRate: '0',
+  totalFees: '0',
+  firstDueDate: '',
+  cadenceDays: '14',
+};
+
+const DEFAULT_CREDIT_SCORE_FORM: CreditScoreSimulatorFormState = {
+  targetCardId: '',
+  targetUtilization: '30',
+  plannedPayment: '0',
+  onTimePaymentMonths: '0',
+  hardInquiries: '0',
+  closeAccountId: '',
+};
+
+const DEFAULT_REFINANCE_FORM: RefinanceFormState = {
+  annualRate: '5',
+  termMonths: '60',
+  originationFee: '0',
+  feesFinanced: false,
+  paymentOverride: '',
+  baselineId: 'current_required',
 };
 
 const STUDENT_LOAN_STATUS_LABELS: Record<StudentLoanStatus, string> = {
@@ -254,6 +359,10 @@ function createCreditCardId(): string {
   return 'credit-card-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 }
 
+function createBnplId(): string {
+  return 'bnpl-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+}
+
 function isDebtAccount(account: Account): boolean {
   const name = account.name.toLowerCase();
   return (
@@ -299,6 +408,10 @@ function accountToDebt(account: Account): Debt | null {
     minimumPaymentCents: defaultMinimumPaymentCents(balanceCents, type),
     type,
   };
+}
+
+function getLocalStorage(): Storage | null {
+  return typeof window === 'undefined' ? null : window.localStorage;
 }
 
 // ---------------------------------------------------------------------------
@@ -368,6 +481,12 @@ function PayoffPlannerPanel(): React.ReactElement {
   const [dtiAnnualRaise, setDtiAnnualRaise] = useState('0');
   const [dtiTarget, setDtiTarget] = useState('36');
   const [impactScenarioInput, setImpactScenarioInput] = useState('25, 50, 100, 200');
+  const [consolidationForm, setConsolidationForm] = useState<ConsolidationFormState>(
+    DEFAULT_CONSOLIDATION_FORM,
+  );
+  const [selectedConsolidationDebtIds, setSelectedConsolidationDebtIds] = useState<string[]>([]);
+  const [hasRestoredConsolidation, setHasRestoredConsolidation] = useState(false);
+  const [consolidationRestoreMessage, setConsolidationRestoreMessage] = useState<string | null>(null);
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const importedDebts = useMemo(
@@ -388,6 +507,41 @@ function PayoffPlannerPanel(): React.ReactElement {
     () => [...confirmedImportedDebts, ...manualDebts].filter((debt) => debt.balanceCents > 0),
     [confirmedImportedDebts, manualDebts],
   );
+  const eligibleConsolidationDebtIds = useMemo(() => debts.map((debt) => debt.id), [debts]);
+  const effectiveConsolidationDebtIds =
+    selectedConsolidationDebtIds.length > 0
+      ? selectedConsolidationDebtIds.filter((id) => eligibleConsolidationDebtIds.includes(id))
+      : eligibleConsolidationDebtIds;
+
+  useEffect(() => {
+    if (hasRestoredConsolidation || debts.length === 0) return;
+    const storage = getLocalStorage();
+    const saved = storage ? readConsolidationScenario(storage) : null;
+    if (saved) {
+      const restored = restoreConsolidationScenario(saved, debts);
+      setSelectedConsolidationDebtIds([...restored.selectedDebtIds]);
+      setConsolidationForm({
+        annualRate: bpsToInputValue(restored.annualRateBps),
+        termMonths: String(restored.termMonths),
+        originationFee: centsToInputValue(restored.originationFeeCents),
+        feeTreatment: restored.feeTreatment,
+        targetPayment:
+          restored.targetPaymentCents === undefined
+            ? ''
+            : centsToInputValue(restored.targetPaymentCents),
+      });
+      if (restored.ignoredDebtIds.length > 0) {
+        setConsolidationRestoreMessage(
+          'Ignored ' +
+            restored.ignoredDebtIds.length +
+            ' deleted or paid-off saved debt selection' +
+            (restored.ignoredDebtIds.length === 1 ? '' : 's') +
+            '.',
+        );
+      }
+    }
+    setHasRestoredConsolidation(true);
+  }, [debts, hasRestoredConsolidation]);
   const extraPaymentCents = parseCurrencyInput(extraPayment);
   const monthlyIncomeCents = parseCurrencyInput(monthlyIncome);
   const manualInterestPaidCents = parseCurrencyInput(manualInterestPaid);
@@ -449,6 +603,58 @@ function PayoffPlannerPanel(): React.ReactElement {
   const diminishingReturnScenario = extraPaymentScenarios.find(
     (scenario) => scenario.isDiminishingReturn,
   );
+  const consolidationComparison = useMemo(() => {
+    if (debts.length === 0) return null;
+    return compareConsolidationOffer({
+      debts,
+      selectedDebtIds: effectiveConsolidationDebtIds,
+      currentStrategy: activeStrategy,
+      currentExtraPaymentCents: extraPaymentCents,
+      consolidationAnnualRateBps: parseRateInput(consolidationForm.annualRate),
+      consolidationTermMonths: Math.max(1, Number.parseInt(consolidationForm.termMonths, 10) || 1),
+      originationFeeCents: parseCurrencyInput(consolidationForm.originationFee),
+      monthlyPaymentTargetCents:
+        consolidationForm.targetPayment.trim() === ''
+          ? undefined
+          : parseCurrencyInput(consolidationForm.targetPayment),
+      feeTreatment: consolidationForm.feeTreatment,
+    });
+  }, [activeStrategy, consolidationForm, debts, effectiveConsolidationDebtIds, extraPaymentCents]);
+  const consolidationPanelModel = useMemo(
+    () => (consolidationComparison ? buildConsolidationOfferPanelModel(consolidationComparison) : null),
+    [consolidationComparison],
+  );
+  const debtProgressRing = useMemo(
+    () =>
+      activeResult
+        ? buildDebtPayoffProgressRingCard({
+            milestones,
+            activeResult,
+            interestSavedCents,
+            debtFreeLabel: formatMonthYear(addMonthsToIsoDate(todayIso, activeResult.totalMonths)),
+          })
+        : null,
+    [activeResult, interestSavedCents, milestones, todayIso],
+  );
+
+  useEffect(() => {
+    if (!hasRestoredConsolidation || debts.length === 0) return;
+    const storage = getLocalStorage();
+    if (!storage) return;
+    const scenario: PersistedConsolidationScenario = {
+      version: 1,
+      selectedDebtIds: effectiveConsolidationDebtIds,
+      annualRateBps: parseRateInput(consolidationForm.annualRate),
+      termMonths: Math.max(1, Number.parseInt(consolidationForm.termMonths, 10) || 1),
+      originationFeeCents: parseCurrencyInput(consolidationForm.originationFee),
+      feeTreatment: consolidationForm.feeTreatment,
+      targetPaymentCents:
+        consolidationForm.targetPayment.trim() === ''
+          ? undefined
+          : parseCurrencyInput(consolidationForm.targetPayment),
+    };
+    writeConsolidationScenario(storage, scenario);
+  }, [consolidationForm, debts.length, effectiveConsolidationDebtIds, hasRestoredConsolidation]);
 
   const handleAdjustment = useCallback((debtId: string, patch: Partial<Debt>) => {
     setDebtAdjustments((current) => ({
@@ -463,6 +669,20 @@ function PayoffPlannerPanel(): React.ReactElement {
   const handleManualFieldChange = useCallback((field: keyof DebtFormState, value: string) => {
     setManualForm((current) => ({ ...current, [field]: value }));
   }, []);
+
+  const handleConsolidationFieldChange = useCallback(
+    <K extends keyof ConsolidationFormState>(field: K, value: ConsolidationFormState[K]) => {
+      setConsolidationForm((current) => ({ ...current, [field]: value }));
+    },
+    [],
+  );
+
+  const handleConsolidationDebtToggle = useCallback((debtId: string, checked: boolean) => {
+    setSelectedConsolidationDebtIds((current) => {
+      const base = current.length === 0 ? eligibleConsolidationDebtIds : current;
+      return checked ? Array.from(new Set([...base, debtId])) : base.filter((id) => id !== debtId);
+    });
+  }, [eligibleConsolidationDebtIds]);
 
   const handleManualSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -516,6 +736,8 @@ function PayoffPlannerPanel(): React.ReactElement {
               </div>
             </section>
           )}
+
+          {debtProgressRing && <ProgressRingCard card={debtProgressRing} />}
 
           <section aria-label="Debt milestones" className="debt-milestones">
             <div className="debt-milestones__summary">
@@ -867,6 +1089,128 @@ function PayoffPlannerPanel(): React.ReactElement {
             </label>
           </section>
 
+          <section aria-label="Consolidation offer comparison" className="debt-beta-panel">
+            <h2>Consolidation Offer Beta</h2>
+            {consolidationRestoreMessage && <p className="form-help">{consolidationRestoreMessage}</p>}
+            <div className="debt-beta-form">
+              <label>
+                Offer APR (%)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={consolidationForm.annualRate}
+                  onChange={(event) =>
+                    handleConsolidationFieldChange('annualRate', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Term (months)
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={consolidationForm.termMonths}
+                  onChange={(event) =>
+                    handleConsolidationFieldChange('termMonths', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Origination fee ($)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={consolidationForm.originationFee}
+                  onChange={(event) =>
+                    handleConsolidationFieldChange('originationFee', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Fee treatment
+                <select
+                  value={consolidationForm.feeTreatment}
+                  onChange={(event) =>
+                    handleConsolidationFieldChange(
+                      'feeTreatment',
+                      event.target.value as ConsolidationFeeTreatment,
+                    )
+                  }
+                >
+                  <option value="paid_upfront">Paid upfront</option>
+                  <option value="financed">Financed</option>
+                </select>
+              </label>
+              <label>
+                Optional target payment ($)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={consolidationForm.targetPayment}
+                  onChange={(event) =>
+                    handleConsolidationFieldChange('targetPayment', event.target.value)
+                  }
+                />
+              </label>
+            </div>
+            <fieldset className="debt-checkbox-list">
+              <legend>Eligible debts to consolidate</legend>
+              <button type="button" onClick={() => setSelectedConsolidationDebtIds([])}>
+                Select all debts
+              </button>
+              {debts.map((debt) => (
+                <label key={debt.id}>
+                  <input
+                    type="checkbox"
+                    checked={effectiveConsolidationDebtIds.includes(debt.id)}
+                    onChange={(event) =>
+                      handleConsolidationDebtToggle(debt.id, event.target.checked)
+                    }
+                  />
+                  {debt.name}
+                </label>
+              ))}
+            </fieldset>
+            {consolidationPanelModel && (
+              <dl className="debt-beta-stats">
+                <dt>Payment</dt>
+                <dd>
+                  <CurrencyDisplay amount={consolidationPanelModel.paymentCents} context="payment" />
+                </dd>
+                <dt>Total paid</dt>
+                <dd>
+                  <CurrencyDisplay amount={consolidationPanelModel.totalPaidCents} context="total paid" />
+                </dd>
+                <dt>Interest</dt>
+                <dd>
+                  <CurrencyDisplay amount={consolidationPanelModel.interestCents} context="interest" />
+                </dd>
+                <dt>Payoff months</dt>
+                <dd>{consolidationPanelModel.payoffMonths ?? 'Not amortizing'}</dd>
+                <dt>Fees</dt>
+                <dd>
+                  <CurrencyDisplay amount={consolidationPanelModel.feesCents} context="fees" />
+                </dd>
+                <dt>Recommendation</dt>
+                <dd>{consolidationPanelModel.recommendationSummary}</dd>
+              </dl>
+            )}
+            {consolidationPanelModel && consolidationPanelModel.flags.length > 0 && (
+              <ul role="list" className="debt-beta-list" aria-label="Consolidation flags">
+                {consolidationPanelModel.flags.map((flag) => (
+                  <li key={flag}>{flag}</li>
+                ))}
+              </ul>
+            )}
+            {consolidationPanelModel && (
+              <p className="form-help">Assumptions: {consolidationPanelModel.assumptions.join(' ')}</p>
+            )}
+          </section>
+
           <section aria-label="Your debts">
             <h2>Your Debts</h2>
             <ul role="list" className="debt-list">
@@ -1002,6 +1346,44 @@ function PayoffPlannerPanel(): React.ReactElement {
 }
 
 // ---------------------------------------------------------------------------
+// Progress ring sub-component (#2440)
+// ---------------------------------------------------------------------------
+
+function ProgressRingCard({ card }: { card: DebtProgressRingCard }): React.ReactElement {
+  const circumference = 2 * Math.PI * 44;
+  const dashOffset = circumference * (1 - card.percent / 100);
+
+  return (
+    <article className="debt-progress-ring-card" aria-label={card.ariaLabel}>
+      <svg className="debt-progress-ring" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+        <circle className="debt-progress-ring__track" cx="60" cy="60" r="44" />
+        <circle
+          className="debt-progress-ring__value"
+          cx="60"
+          cy="60"
+          r="44"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+        />
+        <text x="60" y="64" textAnchor="middle">
+          {Math.round(card.percent)}%
+        </text>
+      </svg>
+      <div>
+        <h2>{card.title}</h2>
+        <p className="debt-progress-ring-card__primary">{card.primaryText}</p>
+        <p>{card.secondaryText}</p>
+        <ul role="list">
+          {card.detailItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    </article>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Strategy card sub-component
 // ---------------------------------------------------------------------------
 
@@ -1071,104 +1453,274 @@ function StrategyCard({
 // ---------------------------------------------------------------------------
 
 function BnplDashboardPanel(): React.ReactElement {
-  const [obligations] = useState<BnplObligation[]>([]);
+  const [obligations, setObligations] = useState<BnplObligation[]>(() => {
+    const storage = getLocalStorage();
+    return storage ? [...readBnplObligations(storage)] : [];
+  });
+  const [formState, setFormState] = useState<BnplFormState>(DEFAULT_BNPL_FORM);
+  const [formErrors, setFormErrors] = useState<string[]>([]);
   const monthlyIncomeCents = 500_000;
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const aggregation = useMemo(
+    () => aggregateBnplDashboard({ obligations, monthlyIncomeCents, todayIso }),
+    [monthlyIncomeCents, obligations, todayIso],
+  );
+  const summary = aggregation.summary;
+  const alerts = aggregation.alerts;
+  const riskScore = aggregation.riskScore;
 
-  if (obligations.length === 0) {
-    return (
-      <EmptyState
-        title="No BNPL obligations"
-        description="Track your Buy Now Pay Later purchases to see total exposure and detect payment conflicts."
-        action={<button>Add BNPL Purchase</button>}
-      />
-    );
-  }
+  useEffect(() => {
+    const storage = getLocalStorage();
+    if (storage) writeBnplObligations(storage, obligations);
+  }, [obligations]);
 
-  const summary = calculateBnplSummary(obligations);
-  const alerts = detectPaymentCollisions(obligations);
-  const riskScore = calculateBnplRiskScore(obligations, monthlyIncomeCents);
+  const handleFieldChange = useCallback(<K extends keyof BnplFormState>(field: K, value: BnplFormState[K]) => {
+    setFormState((current) => ({ ...current, [field]: value }));
+  }, []);
+
+  const buildDraft = useCallback((): BnplObligationDraft => ({
+    id: formState.id || createBnplId(),
+    merchantName: formState.merchantName,
+    originalAmountCents: parseCurrencyInput(formState.originalAmount),
+    totalInstallments: Number.parseInt(formState.totalInstallments, 10) || 0,
+    paidInstallments: Number.parseInt(formState.paidInstallments, 10) || 0,
+    installmentAmountCents: parseCurrencyInput(formState.installmentAmount),
+    annualRateBps: parseRateInput(formState.annualRate),
+    totalFeesCents: parseCurrencyInput(formState.totalFees),
+    firstDueDateIso: formState.firstDueDate,
+    cadenceDays: Number.parseInt(formState.cadenceDays, 10) || 14,
+  }), [formState]);
+
+  const handleSubmit = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const draft = buildDraft();
+      const validation = validateBnplObligationDraft(draft);
+      setFormErrors([...validation.errors]);
+      if (!validation.isValid) return;
+      setObligations((current) => [...upsertBnplObligationFromDraft(current, draft)]);
+      setFormState(DEFAULT_BNPL_FORM);
+    },
+    [buildDraft],
+  );
+
+  const handleEdit = useCallback((obligation: BnplObligation) => {
+    setFormState({
+      id: obligation.id,
+      merchantName: obligation.merchantName,
+      originalAmount: centsToInputValue(obligation.originalAmountCents),
+      totalInstallments: String(obligation.totalInstallments),
+      paidInstallments: String(obligation.paidInstallments),
+      installmentAmount: centsToInputValue(obligation.installmentAmountCents),
+      annualRate: bpsToInputValue(obligation.annualRateBps),
+      totalFees: centsToInputValue(obligation.totalFeesCents),
+      firstDueDate: obligation.upcomingDueDates[0] ?? todayIso,
+      cadenceDays: '14',
+    });
+  }, [todayIso]);
+
+  const handleMarkPaid = useCallback((obligationId: string) => {
+    setObligations((current) => [...markBnplInstallmentPaidById(current, obligationId)]);
+  }, []);
 
   return (
     <div className="bnpl-dashboard">
-      <section aria-label="BNPL risk assessment">
-        <div
-          className={`risk-badge risk-badge--${riskScore.category}`}
-          role="status"
-          aria-live="polite"
-        >
-          <span className="risk-badge__score">{riskScore.score}</span>
-          <span className="risk-badge__label">
-            BNPL Risk: {riskScore.category.charAt(0).toUpperCase() + riskScore.category.slice(1)}
-          </span>
-        </div>
-        {riskScore.factors.length > 0 && (
-          <ul className="risk-factors" role="list" aria-label="Risk factors">
-            {riskScore.factors.map((f, i) => (
-              <li key={i} role="listitem">
-                {f}
-              </li>
+      {obligations.length === 0 && (
+        <EmptyState
+          title="No BNPL obligations"
+          description="Track your Buy Now Pay Later purchases to see total exposure and detect payment conflicts."
+          action={<button type="button">Add BNPL Purchase</button>}
+        />
+      )}
+
+      <section aria-label="BNPL obligation entry" className="debt-beta-panel">
+        <h2>{formState.id ? 'Edit BNPL Purchase' : 'Add BNPL Purchase'}</h2>
+        {formErrors.length > 0 && (
+          <ul role="alert" className="debt-beta-list">
+            {formErrors.map((error) => (
+              <li key={error}>{error}</li>
             ))}
           </ul>
         )}
+        <form className="debt-beta-form" onSubmit={handleSubmit} noValidate>
+          <label>
+            Merchant
+            <input
+              type="text"
+              value={formState.merchantName}
+              onChange={(event) => handleFieldChange('merchantName', event.target.value)}
+            />
+          </label>
+          <label>
+            Original amount ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formState.originalAmount}
+              onChange={(event) => handleFieldChange('originalAmount', event.target.value)}
+            />
+          </label>
+          <label>
+            Installments
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={formState.totalInstallments}
+              onChange={(event) => handleFieldChange('totalInstallments', event.target.value)}
+            />
+          </label>
+          <label>
+            Paid installments
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={formState.paidInstallments}
+              onChange={(event) => handleFieldChange('paidInstallments', event.target.value)}
+            />
+          </label>
+          <label>
+            Installment amount ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formState.installmentAmount}
+              onChange={(event) => handleFieldChange('installmentAmount', event.target.value)}
+            />
+          </label>
+          <label>
+            Fees ($)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formState.totalFees}
+              onChange={(event) => handleFieldChange('totalFees', event.target.value)}
+            />
+          </label>
+          <label>
+            APR (%)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formState.annualRate}
+              onChange={(event) => handleFieldChange('annualRate', event.target.value)}
+            />
+          </label>
+          <label>
+            First remaining due date
+            <input
+              type="date"
+              value={formState.firstDueDate}
+              onChange={(event) => handleFieldChange('firstDueDate', event.target.value)}
+            />
+          </label>
+          <label>
+            Cadence days
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={formState.cadenceDays}
+              onChange={(event) => handleFieldChange('cadenceDays', event.target.value)}
+            />
+          </label>
+          <button type="submit">{formState.id ? 'Update BNPL Purchase' : 'Add BNPL Purchase'}</button>
+        </form>
       </section>
 
-      {alerts.length > 0 && (
-        <section aria-label="BNPL alerts">
-          <h2>Alerts</h2>
-          <ul role="list" className="bnpl-alerts">
-            {alerts.map((alert, i) => (
-              <li key={i} role="listitem" className={`bnpl-alert bnpl-alert--${alert.level}`}>
-                <span role="alert">{alert.message}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {obligations.length > 0 && (
+        <>
+          <section aria-label="BNPL risk assessment">
+            <div
+              className={`risk-badge risk-badge--${riskScore.category}`}
+              role="status"
+              aria-live="polite"
+            >
+              <span className="risk-badge__score">{riskScore.score}</span>
+              <span className="risk-badge__label">
+                BNPL Risk: {riskScore.category.charAt(0).toUpperCase() + riskScore.category.slice(1)}
+              </span>
+            </div>
+            {riskScore.factors.length > 0 && (
+              <ul className="risk-factors" role="list" aria-label="Risk factors">
+                {riskScore.factors.map((factor) => (
+                  <li key={factor} role="listitem">
+                    {factor}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {alerts.length > 0 && (
+            <section aria-label="BNPL alerts">
+              <h2>Alerts</h2>
+              <ul role="list" className="bnpl-alerts">
+                {alerts.map((alert) => (
+                  <li key={alert.message} role="listitem" className={`bnpl-alert bnpl-alert--${alert.level}`}>
+                    <span role="alert">{alert.message}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section aria-label="BNPL summary">
+            <h2>Overview</h2>
+            <dl className="bnpl-summary">
+              <dt>Active Obligations</dt>
+              <dd>{summary.activeCount}</dd>
+              <dt>Total Outstanding</dt>
+              <dd>
+                <CurrencyDisplay amount={summary.totalOutstandingCents} context="total outstanding" />
+              </dd>
+              <dt>Monthly Commitment</dt>
+              <dd>
+                <CurrencyDisplay amount={summary.monthlyCommitmentCents} context="monthly commitment" />
+              </dd>
+              <dt>Total Fees Paid</dt>
+              <dd>
+                <CurrencyDisplay amount={summary.totalFeesCents} context="total fees" />
+              </dd>
+              <dt>Completed obligations</dt>
+              <dd>{aggregation.completedObligations.length}</dd>
+            </dl>
+            <p className="form-help">{aggregation.assumptions.join(' ')}</p>
+          </section>
+
+          <section aria-label="BNPL obligations">
+            <h2>Obligations</h2>
+            <ul role="list" className="bnpl-list">
+              {obligations.map((obligation) => (
+                <li key={obligation.id} role="listitem" className="bnpl-list__item">
+                  <div className="bnpl-list__merchant">{obligation.merchantName}</div>
+                  <div className="bnpl-list__details">
+                    <CurrencyDisplay
+                      amount={obligation.remainingBalanceCents}
+                      context={`${obligation.merchantName} remaining`}
+                    />
+                    <span>
+                      {obligation.paidInstallments}/{obligation.totalInstallments} payments
+                    </span>
+                    {obligation.upcomingDueDates[0] && <span>Next due: {obligation.upcomingDueDates[0]}</span>}
+                    <button type="button" onClick={() => handleEdit(obligation)}>
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => handleMarkPaid(obligation.id)}>
+                      Mark next paid
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
       )}
-
-      <section aria-label="BNPL summary">
-        <h2>Overview</h2>
-        <dl className="bnpl-summary">
-          <dt>Active Obligations</dt>
-          <dd>{summary.activeCount}</dd>
-          <dt>Total Outstanding</dt>
-          <dd>
-            <CurrencyDisplay amount={summary.totalOutstandingCents} context="total outstanding" />
-          </dd>
-          <dt>Monthly Commitment</dt>
-          <dd>
-            <CurrencyDisplay amount={summary.monthlyCommitmentCents} context="monthly commitment" />
-          </dd>
-          <dt>Total Fees Paid</dt>
-          <dd>
-            <CurrencyDisplay amount={summary.totalFeesCents} context="total fees" />
-          </dd>
-          <dt>Extra Cost vs. Upfront</dt>
-          <dd>
-            <CurrencyDisplay amount={summary.costVsUpfrontCents} context="cost vs paying upfront" />
-          </dd>
-        </dl>
-      </section>
-
-      <section aria-label="BNPL obligations">
-        <h2>Obligations</h2>
-        <ul role="list" className="bnpl-list">
-          {obligations.map((obl) => (
-            <li key={obl.id} role="listitem" className="bnpl-list__item">
-              <div className="bnpl-list__merchant">{obl.merchantName}</div>
-              <div className="bnpl-list__details">
-                <CurrencyDisplay
-                  amount={obl.remainingBalanceCents}
-                  context={`${obl.merchantName} remaining`}
-                />
-                <span>
-                  {obl.paidInstallments}/{obl.totalInstallments} payments
-                </span>
-                {obl.upcomingDueDates[0] && <span>Next due: {obl.upcomingDueDates[0]}</span>}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   );
 }
@@ -1184,6 +1736,7 @@ function StudentLoanPanel(): React.ReactElement {
   const [formState, setFormState] = useState<StudentLoanFormState>(DEFAULT_STUDENT_LOAN_FORM);
   const [scenarioForm, setScenarioForm] =
     useState<StudentLoanScenarioFormState>(DEFAULT_STUDENT_SCENARIOS);
+  const [refinanceForm, setRefinanceForm] = useState<RefinanceFormState>(DEFAULT_REFINANCE_FORM);
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const summary = useMemo(
@@ -1242,6 +1795,51 @@ function StudentLoanPanel(): React.ReactElement {
     ];
     return calculateStudentLoanScenarioComparisons(loans, scenarios, todayIso);
   }, [loans, scenarioForm, todayIso]);
+  const studentLoanProgressRing = useMemo(
+    () =>
+      loans.length > 0
+        ? buildStudentLoanProgressRingCard({
+            summary,
+            interestSavedCents: whatIfScenario.interestSavedCents,
+          })
+        : null,
+    [loans.length, summary, whatIfScenario.interestSavedCents],
+  );
+  const refinanceBaselineOptions = useMemo(
+    () =>
+      buildRefinanceBaselineOptions({
+        loans,
+        studentLoanSummary: summary,
+        selectedPayoffStrategyPaymentCents: whatIfScenario.newMonthlyPaymentCents,
+      }),
+    [loans, summary, whatIfScenario.newMonthlyPaymentCents],
+  );
+  const refinanceBaselinePaymentCents = resolveRefinanceBaselinePaymentCents(
+    refinanceBaselineOptions,
+    refinanceForm.baselineId,
+  );
+  const refinanceBreakEven = useMemo(
+    () =>
+      loans.length > 0
+        ? calculateRefinanceBreakEven({
+            loans,
+            refinanceAnnualRateBps: parseRateInput(refinanceForm.annualRate),
+            refinanceTermMonths: Math.max(1, Number.parseInt(refinanceForm.termMonths, 10) || 1),
+            originationFeeCents: parseCurrencyInput(refinanceForm.originationFee),
+            monthlyPaymentOverrideCents:
+              refinanceForm.paymentOverride.trim() === ''
+                ? undefined
+                : parseCurrencyInput(refinanceForm.paymentOverride),
+            currentMonthlyPaymentOverrideCents: refinanceBaselinePaymentCents,
+            feesFinanced: refinanceForm.feesFinanced,
+          })
+        : null,
+    [loans, refinanceBaselinePaymentCents, refinanceForm],
+  );
+  const refinancePanelModel = useMemo(
+    () => (refinanceBreakEven ? buildRefinanceBreakEvenPanelModel(refinanceBreakEven) : null),
+    [refinanceBreakEven],
+  );
 
   const resetForm = useCallback(() => {
     setEditingLoanId(null);
@@ -1261,6 +1859,13 @@ function StudentLoanPanel(): React.ReactElement {
       value: StudentLoanScenarioFormState[K],
     ) => {
       setScenarioForm((current) => ({ ...current, [field]: value }));
+    },
+    [],
+  );
+
+  const handleRefinanceFieldChange = useCallback(
+    <K extends keyof RefinanceFormState>(field: K, value: RefinanceFormState[K]) => {
+      setRefinanceForm((current) => ({ ...current, [field]: value }));
     },
     [],
   );
@@ -1387,6 +1992,8 @@ function StudentLoanPanel(): React.ReactElement {
             </div>
           </section>
 
+          {studentLoanProgressRing && <ProgressRingCard card={studentLoanProgressRing} />}
+
           <section aria-label="What-if calculator" className="student-loan-what-if">
             <h2>What if?</h2>
             <label htmlFor="student-loan-extra-payment">Extra payment each month ($)</label>
@@ -1409,6 +2016,135 @@ function StudentLoanPanel(): React.ReactElement {
               in interest and pay off {whatIfScenario.monthsSaved} month
               {whatIfScenario.monthsSaved === 1 ? '' : 's'} earlier.
             </p>
+          </section>
+
+          <section aria-label="Refinance break-even comparison" className="debt-beta-panel">
+            <h2>Refinance Break-Even Beta</h2>
+            <div className="debt-beta-form">
+              <label>
+                Compare against
+                <select
+                  value={refinanceForm.baselineId}
+                  onChange={(event) =>
+                    handleRefinanceFieldChange(
+                      'baselineId',
+                      event.target.value as RefinanceBaselineId,
+                    )
+                  }
+                >
+                  {refinanceBaselineOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Break-even APR (%)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={refinanceForm.annualRate}
+                  onChange={(event) => handleRefinanceFieldChange('annualRate', event.target.value)}
+                />
+              </label>
+              <label>
+                Term (months)
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={refinanceForm.termMonths}
+                  onChange={(event) => handleRefinanceFieldChange('termMonths', event.target.value)}
+                />
+              </label>
+              <label>
+                Fees ($)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={refinanceForm.originationFee}
+                  onChange={(event) =>
+                    handleRefinanceFieldChange('originationFee', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Optional payment override ($)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={refinanceForm.paymentOverride}
+                  onChange={(event) =>
+                    handleRefinanceFieldChange('paymentOverride', event.target.value)
+                  }
+                />
+              </label>
+              <label className="student-loan-checkbox">
+                <input
+                  type="checkbox"
+                  checked={refinanceForm.feesFinanced}
+                  onChange={(event) =>
+                    handleRefinanceFieldChange('feesFinanced', event.target.checked)
+                  }
+                />
+                Finance fees into principal
+              </label>
+            </div>
+            {refinancePanelModel && (
+              <>
+                <dl className="debt-beta-stats">
+                  <dt>Monthly savings</dt>
+                  <dd>
+                    <CurrencyDisplay
+                      amount={refinancePanelModel.monthlySavingsCents}
+                      context="monthly savings"
+                      colorize
+                    />
+                  </dd>
+                  <dt>Total interest savings</dt>
+                  <dd>
+                    <CurrencyDisplay
+                      amount={refinancePanelModel.totalInterestSavingsCents}
+                      context="interest savings"
+                      colorize
+                    />
+                  </dd>
+                  <dt>Total cost savings</dt>
+                  <dd>
+                    <CurrencyDisplay
+                      amount={refinancePanelModel.totalCostSavingsCents}
+                      context="total cost savings"
+                      colorize
+                    />
+                  </dd>
+                  <dt>Payoff-date change</dt>
+                  <dd>
+                    {refinancePanelModel.payoffMonthsDifference === null
+                      ? 'Not amortizing'
+                      : `${refinancePanelModel.payoffMonthsDifference} months`}
+                  </dd>
+                  <dt>Break-even month</dt>
+                  <dd>{refinancePanelModel.breakEvenMonth ?? 'No break-even'}</dd>
+                  <dt>Recommendation</dt>
+                  <dd>{refinancePanelModel.recommendation}</dd>
+                </dl>
+                {refinancePanelModel.warnings.length > 0 && (
+                  <ul role="list" className="debt-beta-list" aria-label="Refinance warnings">
+                    {refinancePanelModel.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                )}
+                <p className="form-help">
+                  Assumptions: {refinancePanelModel.assumptions.join(' ')} This is not legal or
+                  credit advice.
+                </p>
+              </>
+            )}
           </section>
 
           <section aria-label="Student loan scenario editor" className="student-loan-scenarios">
@@ -1738,6 +2474,8 @@ function StudentLoanPanel(): React.ReactElement {
 function CreditCardPanel(): React.ReactElement {
   const [cards, setCards] = useState<CreditCard[]>([]);
   const [cardForm, setCardForm] = useState<CreditCardFormState>(DEFAULT_CREDIT_CARD_FORM);
+  const [creditScoreForm, setCreditScoreForm] =
+    useState<CreditScoreSimulatorFormState>(DEFAULT_CREDIT_SCORE_FORM);
   const checkingBalanceCents = 0;
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -1746,10 +2484,35 @@ function CreditCardPanel(): React.ReactElement {
     [cards, today],
   );
   const utilization = useMemo(() => calculateCreditUtilizationSummary(cards), [cards]);
+  const creditScoreSimulator = useMemo(() => {
+    const targetCardId = creditScoreForm.targetCardId || cards[0]?.id || '';
+    return buildCreditScoreSimulatorPanelModel(cards, {
+      targetCardId,
+      targetUtilizationPercent: Number.parseFloat(creditScoreForm.targetUtilization) || 0,
+      plannedPaymentCents: parseCurrencyInput(creditScoreForm.plannedPayment),
+      onTimePaymentMonths: Number.parseInt(creditScoreForm.onTimePaymentMonths, 10) || 0,
+      hardInquiries: Number.parseInt(creditScoreForm.hardInquiries, 10) || 0,
+      closeAccountIds: creditScoreForm.closeAccountId ? [creditScoreForm.closeAccountId] : [],
+    });
+  }, [cards, creditScoreForm]);
+  const creditScoreAssumptions = useMemo(
+    () => buildCreditScoreAssumptionSummary(cards, creditScoreSimulator.result),
+    [cards, creditScoreSimulator.result],
+  );
 
   const handleCardFieldChange = useCallback(
     <K extends keyof CreditCardFormState>(field: K, value: CreditCardFormState[K]) => {
       setCardForm((current) => ({ ...current, [field]: value }));
+    },
+    [],
+  );
+
+  const handleCreditScoreFieldChange = useCallback(
+    <K extends keyof CreditScoreSimulatorFormState>(
+      field: K,
+      value: CreditScoreSimulatorFormState[K],
+    ) => {
+      setCreditScoreForm((current) => ({ ...current, [field]: value }));
     },
     [],
   );
@@ -1827,6 +2590,132 @@ function CreditCardPanel(): React.ReactElement {
                 </li>
               ))}
             </ul>
+          </section>
+
+          <section aria-label="Credit-score impact simulator" className="debt-beta-panel">
+            <h2>Credit-Score Impact Simulator</h2>
+            <p className="form-help">{creditScoreSimulator.result.disclaimer}</p>
+            <div className="debt-beta-form">
+              <label>
+                Card to pay down
+                <select
+                  value={creditScoreForm.targetCardId || cards[0]?.id || ''}
+                  onChange={(event) => handleCreditScoreFieldChange('targetCardId', event.target.value)}
+                >
+                  {cards.map((card) => (
+                    <option key={card.id} value={card.id}>
+                      {card.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Target utilization (%)
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={creditScoreForm.targetUtilization}
+                  onChange={(event) =>
+                    handleCreditScoreFieldChange('targetUtilization', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Planned payment ($)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={creditScoreForm.plannedPayment}
+                  onChange={(event) =>
+                    handleCreditScoreFieldChange('plannedPayment', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                On-time payment streak (months)
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={creditScoreForm.onTimePaymentMonths}
+                  onChange={(event) =>
+                    handleCreditScoreFieldChange('onTimePaymentMonths', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                New hard inquiries
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={creditScoreForm.hardInquiries}
+                  onChange={(event) =>
+                    handleCreditScoreFieldChange('hardInquiries', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Modeled closure
+                <select
+                  value={creditScoreForm.closeAccountId}
+                  onChange={(event) =>
+                    handleCreditScoreFieldChange('closeAccountId', event.target.value)
+                  }
+                >
+                  <option value="">No closure</option>
+                  {cards.map((card) => (
+                    <option key={card.id} value={card.id}>
+                      Close {card.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <dl className="debt-beta-stats">
+              <dt>Modeled payment</dt>
+              <dd>
+                <CurrencyDisplay
+                  amount={creditScoreSimulator.modeledPaymentCents}
+                  context="modeled payment"
+                />
+              </dd>
+              <dt>Target payment needed</dt>
+              <dd>
+                {creditScoreSimulator.targetPaymentCents === null ? (
+                  'Add credit limit'
+                ) : (
+                  <CurrencyDisplay
+                    amount={creditScoreSimulator.targetPaymentCents}
+                    context="target payment"
+                  />
+                )}
+              </dd>
+              <dt>Overall direction</dt>
+              <dd>{creditScoreSimulator.result.overallDirection}</dd>
+            </dl>
+            <ul role="list" className="debt-beta-list" aria-label="Score factor directions">
+              {creditScoreSimulator.result.factorImpacts.map((impact) => (
+                <li key={impact.factor}>
+                  <strong>{impact.factor.replace(/_/g, ' ')}:</strong> {impact.direction} —{' '}
+                  {impact.explanation}
+                </li>
+              ))}
+            </ul>
+            {creditScoreAssumptions.missingStates.length > 0 && (
+              <ul role="list" className="debt-beta-list" aria-label="Credit score missing data">
+                {creditScoreAssumptions.missingStates.map((state) => (
+                  <li key={state}>{state}</li>
+                ))}
+              </ul>
+            )}
+            <p className="form-help">
+              Known inputs: {creditScoreAssumptions.knownFromApp.join(', ') || 'None yet'}.
+              Assumptions: {creditScoreAssumptions.assumptions.join(' ')}
+            </p>
           </section>
 
           <section aria-label="Balance after reservations">
