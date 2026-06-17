@@ -153,6 +153,78 @@ export type {
   DCAPlanAnalysis,
 } from './dca-tracking';
 
+// #2466, #2467, #2469 — Net-worth projection view helpers
+export {
+  DEFAULT_NET_WORTH_PROJECTION_ASSUMPTIONS,
+  buildNetWorthProjectionInput,
+  buildNetWorthProjectionResults,
+  buildProjectedMilestoneRows,
+  buildProjectionTableRows,
+  loadNetWorthProjectionAssumptions,
+  normalizeNetWorthProjectionAssumptions,
+  resetNetWorthProjectionAssumptions,
+  saveNetWorthProjectionAssumptions,
+  toProjectionMilestones,
+} from './net-worth-projection-view';
+export type {
+  NetWorthProjectionAssumptions,
+  NetWorthProjectionTableRow,
+  ProjectedMilestoneRow,
+} from './net-worth-projection-view';
+
+// #2471, #2472, #2473 — FIRE planning view helpers
+export {
+  DEFAULT_FIRE_PLANNING_ASSUMPTIONS,
+  FIRE_PLANNING_DISCLAIMER,
+  FIRE_VIEW_SCENARIOS,
+  buildCoastFireCard,
+  buildFireScenarioCards,
+  deriveFirePlanningDefaults,
+  loadFirePlanningAssumptions,
+  normalizeFirePlanningAssumptions,
+  resetFirePlanningAssumptions,
+  saveFirePlanningAssumptions,
+} from './fire-planning-view';
+export type {
+  FireDefaultSources,
+  FirePlanningAssumptions,
+  FirePlanningDefaults,
+  FireScenarioCard,
+} from './fire-planning-view';
+
+// #2474, #2475, #2476 — Net-worth report view helpers
+export {
+  NET_WORTH_REPORT_RANGES,
+  buildNetWorthReportViewModel,
+  clearNetWorthSnapshots,
+  loadNetWorthSnapshots,
+  persistCurrentNetWorthSnapshot,
+  saveNetWorthSnapshots,
+  snapshotFromCurrentNetWorth,
+  upsertMonthlyNetWorthSnapshot,
+} from './net-worth-report-view';
+export type { NetWorthReportTableRow, NetWorthReportViewModel } from './net-worth-report-view';
+
+// #2477, #2478, #2479 — DCA plan view helpers
+export {
+  buildDCADashboardViewModel,
+  buildDCAPlanFromDraft,
+  clearDCAPlans,
+  deleteDCAPlan,
+  loadDCAPlans,
+  mapInvestmentLotsToDCAPurchases,
+  saveDCAPlans,
+  upsertDCAPlan,
+  validateDCAPlanDraft,
+} from './dca-plan-view';
+export type {
+  DCADashboardRow,
+  DCADashboardViewModel,
+  DCAReminderRow,
+  DCAPlanDraft,
+  DCAPlanValidationResult,
+} from './dca-plan-view';
+
 // #2247 — Cash-flow Sankey report
 export { buildCashFlowSankey, exportCashFlowSankeyCsv } from './cash-flow-sankey';
 export type {
@@ -163,6 +235,22 @@ export type {
   CashFlowSankeyReport,
   SankeyLineKind,
 } from './cash-flow-sankey';
+export { buildCashFlowSankeyPresentation } from './cash-flow-sankey-presentation';
+export type {
+  CashFlowSankeyChartNode,
+  CashFlowSankeyColorToken,
+  CashFlowSankeyLegendItem,
+  CashFlowSankeyPresentation,
+  CashFlowSankeyTableRow,
+} from './cash-flow-sankey-presentation';
+export { buildCashFlowSankeyRangeReport, resolveCashFlowSankeyDateRange } from './cash-flow-sankey-integration';
+export type {
+  CashFlowSankeyDateRange,
+  CashFlowSankeyOtherGroup,
+  CashFlowSankeyRangePreset,
+  CashFlowSankeyRangeReport,
+  CashFlowSankeyTransaction,
+} from './cash-flow-sankey-integration';
 
 // #2248 — Benchmark comparison
 export { calculateModifiedDietzReturn, comparePortfolioToBenchmark } from './benchmark-comparison';
@@ -172,6 +260,30 @@ export type {
   BenchmarkPoint,
   PortfolioPerformancePoint,
 } from './benchmark-comparison';
+export { buildBenchmarkComparisonPresentation } from './benchmark-comparison-presentation';
+export type {
+  BenchmarkComparisonChartDatum,
+  BenchmarkComparisonPresentation,
+  BenchmarkMetricRow,
+} from './benchmark-comparison-presentation';
+export { buildPortfolioBenchmarkComparison, resolveBenchmarkRange } from './portfolio-benchmark-adapter';
+export type {
+  BenchmarkRangeKey,
+  BenchmarkSourceAttribution,
+  PortfolioBenchmarkAdapterResult,
+  PortfolioCashFlowEvent,
+  PortfolioValuationSnapshot,
+} from './portfolio-benchmark-adapter';
+
+// #2694 — DeFi position presentation
+export { buildDefiPortfolioPresentation } from './defi-position-presentation';
+export type {
+  DefiExposureKind,
+  DefiExposureRow,
+  DefiPortfolioPresentation,
+  DefiPositionInput,
+  DefiValuationStatus,
+} from './defi-position-presentation';
 
 // Types
 export type {
