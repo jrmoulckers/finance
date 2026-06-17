@@ -80,8 +80,17 @@ describe('wipeLocalData', () => {
       delete: cachesDelete,
     });
 
-    await wipeLocalData();
+    const outcomes = await wipeLocalData();
 
+    expect(outcomes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ area: 'local-storage', status: 'deleted' }),
+        expect.objectContaining({ area: 'session-storage', status: 'deleted' }),
+        expect.objectContaining({ area: 'indexeddb', status: 'deleted' }),
+        expect.objectContaining({ area: 'service-workers', status: 'deleted' }),
+        expect.objectContaining({ area: 'caches', status: 'deleted' }),
+      ]),
+    );
     expect(localStorage.getItem('finance:test')).toBeNull();
     expect(sessionStorage.getItem('finance:test')).toBeNull();
     expect(getRegistrations).toHaveBeenCalledTimes(1);

@@ -5,9 +5,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
-import { useInvestments } from '../hooks';
+import { useAccounts, useInvestments, useTransactions } from '../hooks';
 import type { Investment, InvestmentLot } from '../kmp/bridge';
 import { formatCurrency, formatGainLoss } from '../lib/currency';
+import { summarizeTaggedRetirementContributions } from '../lib/tax/retirement-contribution-metadata';
 import {
   computeTaxSummary,
   computeUnrealizedTaxLots,
@@ -37,6 +38,19 @@ function parseShares(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function formatPercent(percent: number): string {
+  return `${percent}%`;
+}
+
+const RETIREMENT_LIMIT_GROUP_LABELS: Record<string, string> = {
+  IRA_COMBINED: 'IRA combined',
+  EMPLOYER_PLAN_EMPLOYEE_DEFERRAL: '401(k)/403(b) employee deferral',
+  EMPLOYER_PLAN_TOTAL_ANNUAL_ADDITIONS: 'Employer plan total annual additions',
+  HSA_SELF_ONLY: 'HSA self-only',
+  HSA_FAMILY: 'HSA family',
+  HEALTH_FSA: 'Health FSA',
+};
+
 function syntheticLot(investment: Investment): DisplayTaxLot {
   const acquiredDate = investment.createdAt.slice(0, 10);
   return {
@@ -65,7 +79,17 @@ function displayLot(investment: Investment, lot: InvestmentLot): DisplayTaxLot {
 }
 
 export const TaxCenterPage: React.FC = () => {
-  const { investments, loading, error, refresh, getLots } = useInvestments();
+  const { investments, loading: investmentsLoading, error: investmentsError, refresh, getLots } =
+    useInvestments();
+  const { accounts, loading: accountsLoading, error: accountsError, refresh: refreshAccounts } =
+    useAccounts();
+  const {
+    transactions,
+    loading: transactionsLoading,
+    error: transactionsError,
+    refresh: refreshTransactions,
+  } = useTransactions();
+  const [retirementTaxYear, setRetirementTaxYear] = useState(() => new Date().getFullYear());
   const [saleSymbol, setSaleSymbol] = useState('');
   const [saleDate, setSaleDate] = useState(toIsoDate(new Date()));
   const [saleShares, setSaleShares] = useState('');
@@ -74,6 +98,20 @@ export const TaxCenterPage: React.FC = () => {
   const [selectedLotIds, setSelectedLotIds] = useState<string[]>([]);
   const [shortTermRate, setShortTermRate] = useState('35');
   const [longTermRate, setLongTermRate] = useState('15');
+
+  const retirementSummary = useMemo(
+    () =>
+      summarizeTaggedRetirementContributions({
+        accounts,
+        transactions,
+        profile: { taxYear: retirementTaxYear },
+      }),
+    [accounts, retirementTaxYear, transactions],
+  );
+  const taggedContributionCount = useMemo(
+    () => new Set(retirementSummary.rows.flatMap((row) => row.contributionIds)).size,
+    [retirementSummary.rows],
+  );
 
   const taxLots = useMemo<DisplayTaxLot[]>(() => {
     return investments.flatMap((investment) => {
@@ -148,6 +186,14 @@ export const TaxCenterPage: React.FC = () => {
     );
   };
 
+  const loading = investmentsLoading || accountsLoading || transactionsLoading;
+  const error = investmentsError ?? accountsError ?? transactionsError;
+  const handleRetry = (): void => {
+    refresh();
+    refreshAccounts();
+    refreshTransactions();
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
@@ -157,7 +203,7 @@ export const TaxCenterPage: React.FC = () => {
   }
 
   if (error) {
-    return <ErrorBanner message={error} onRetry={refresh} />;
+    return <ErrorBanner message={error} onRetry={handleRetry} />;
   }
 
   return (
@@ -183,6 +229,125 @@ export const TaxCenterPage: React.FC = () => {
           trade.
         </p>
       </div>
+
+      <section className="page-section" aria-label="Retirement contribution limits">
+        <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: 'var(--spacing-4)',
+              flexWrap: 'wrap',
+              marginBottom: 'var(--spacing-4)',
+            }}
+          >
+            <div>
+              <h3
+                style={{
+                  fontWeight: 'var(--font-weight-semibold)',
+                  marginBottom: 'var(--spacing-1)',
+                }}
+              >
+                Retirement contribution limits
+              </h3>
+              <p style={{ color: 'var(--semantic-text-secondary)', margin: 0 }}>
+                Tracks transactions tagged as retirement contributions against configured IRS limits.
+              </p>
+            </div>
+            <label>
+              <span className="card__title">Tax year</span>
+              <input
+                type="number"
+                min="2024"
+                max="2100"
+                value={retirementTaxYear}
+                onChange={(event) => setRetirementTaxYear(Number.parseInt(event.target.value, 10))}
+                style={{ width: 96, marginLeft: 'var(--spacing-2)', padding: 'var(--spacing-2)' }}
+              />
+            </label>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: 'var(--spacing-4)',
+              marginBottom: 'var(--spacing-4)',
+            }}
+          >
+            <div>
+              <p className="card__title">Tagged contributions</p>
+              <p className="card__value">{taggedContributionCount}</p>
+            </div>
+            <div>
+              <p className="card__title">Total counted</p>
+              <p className="card__value">
+                <CurrencyDisplay amount={retirementSummary.totalContributedCents} />
+              </p>
+            </div>
+            <div>
+              <p className="card__title">Unsupported accounts</p>
+              <p className="card__value">{retirementSummary.unsupportedAccountIds.length}</p>
+            </div>
+          </div>
+
+          {retirementSummary.warnings.length > 0 && (
+            <div role="alert" style={{ marginBottom: 'var(--spacing-4)' }}>
+              {retirementSummary.warnings.map((warning) => (
+                <p key={warning} style={{ color: 'var(--semantic-warning, #d97706)' }}>
+                  {warning}
+                </p>
+              ))}
+            </div>
+          )}
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Limit group', 'Contributed', 'Limit', 'Remaining', 'Used', 'Status'].map(
+                    (heading) => (
+                      <th
+                        key={heading}
+                        scope="col"
+                        style={{
+                          textAlign: heading === 'Limit group' ? 'left' : 'right',
+                          padding: 'var(--spacing-3)',
+                          borderBottom: '2px solid var(--semantic-border, #e5e7eb)',
+                        }}
+                      >
+                        {heading}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {retirementSummary.rows.map((row) => (
+                  <tr key={row.group}>
+                    <td style={{ padding: 'var(--spacing-3)' }}>
+                      {RETIREMENT_LIMIT_GROUP_LABELS[row.group] ?? row.group}
+                    </td>
+                    <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                      <CurrencyDisplay amount={row.contributedCents} />
+                    </td>
+                    <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                      <CurrencyDisplay amount={row.limitCents} />
+                    </td>
+                    <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                      <CurrencyDisplay amount={row.remainingCents} />
+                    </td>
+                    <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                      {formatPercent(row.percentUsed)}
+                    </td>
+                    <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>{row.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       {taxLots.length === 0 ? (
         <EmptyState

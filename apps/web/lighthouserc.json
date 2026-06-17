@@ -1,7 +1,10 @@
 {
   "ci": {
     "collect": {
-      "staticDistDir": "apps/web/dist",
+      "url": ["http://localhost:5173/login"],
+      "startServerCommand": "npx -w apps/web vite preview --host 127.0.0.1 --port 5173 --strictPort",
+      "startServerReadyPattern": "Local:",
+      "startServerReadyTimeout": 120000,
       "settings": {
         "chromeFlags": "--headless=new --no-sandbox --disable-gpu"
       }

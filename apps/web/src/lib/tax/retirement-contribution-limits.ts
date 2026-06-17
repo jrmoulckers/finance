@@ -18,7 +18,9 @@ export type RetirementAccountType =
   | 'TRADITIONAL_IRA'
   | 'ROTH_IRA'
   | '401K'
+  | 'ROTH_401K'
   | '403B'
+  | 'SEP_IRA'
   | 'HSA'
   | 'FSA';
 
@@ -212,7 +214,11 @@ function resolveAge(profile: ContributionLimitProfile): number | null {
 }
 
 function isEmployerPlan(accountType: RetirementAccountType): boolean {
-  return accountType === '401K' || accountType === '403B';
+  return accountType === '401K' || accountType === 'ROTH_401K' || accountType === '403B';
+}
+
+function supportsEmployerContribution(accountType: RetirementAccountType): boolean {
+  return isEmployerPlan(accountType) || accountType === 'SEP_IRA' || accountType === 'HSA';
 }
 
 function getLimitDefinition(
@@ -250,10 +256,13 @@ function groupForAccount(
     case 'ROTH_IRA':
       return ['IRA_COMBINED'];
     case '401K':
+    case 'ROTH_401K':
     case '403B':
       return contribution.designation === 'EMPLOYEE'
         ? ['EMPLOYER_PLAN_EMPLOYEE_DEFERRAL', 'EMPLOYER_PLAN_TOTAL_ANNUAL_ADDITIONS']
         : ['EMPLOYER_PLAN_TOTAL_ANNUAL_ADDITIONS'];
+    case 'SEP_IRA':
+      return ['EMPLOYER_PLAN_TOTAL_ANNUAL_ADDITIONS'];
     case 'HSA':
       return [(account.hsaCoverageLevel ?? profile.hsaCoverageLevel) === 'FAMILY' ? 'HSA_FAMILY' : 'HSA_SELF_ONLY'];
     case 'FSA':
@@ -298,6 +307,7 @@ export function summarizeRetirementContributionLimits(input: {
   const accountMap = new Map(input.accounts.map((account) => [account.accountId, account]));
   const grouped = new Map<ContributionLimitGroup, { amount: number; ids: string[] }>();
   const unsupportedAccountIds = new Set<string>();
+  const validationWarnings: string[] = [];
   let totalContributedCents = 0;
 
   for (const contribution of input.contributions) {
@@ -307,14 +317,17 @@ export function summarizeRetirementContributionLimits(input: {
     const account = accountMap.get(contribution.accountId);
     if (account === undefined) {
       unsupportedAccountIds.add(contribution.accountId);
+      validationWarnings.push(
+        `Contribution ${contribution.id} references account ${contribution.accountId}, which is not classified as a supported retirement account.`,
+      );
       continue;
     }
 
-    if (
-      (account.accountType === 'TRADITIONAL_IRA' || account.accountType === 'ROTH_IRA') &&
-      contribution.designation === 'EMPLOYER'
-    ) {
+    if (contribution.designation === 'EMPLOYER' && !supportsEmployerContribution(account.accountType)) {
       unsupportedAccountIds.add(contribution.accountId);
+      validationWarnings.push(
+        `Contribution ${contribution.id} is marked employer-funded, but ${account.accountType} does not support employer contributions in this tracker.`,
+      );
       continue;
     }
 
@@ -386,9 +399,12 @@ export function summarizeRetirementContributionLimits(input: {
     taxYear: input.profile.taxYear,
     rows,
     totalContributedCents,
-    warnings: rows
-      .filter((row) => row.status === 'NEAR_LIMIT' || row.status === 'OVER_LIMIT')
-      .map((row) => row.message),
+    warnings: [
+      ...validationWarnings,
+      ...rows
+        .filter((row) => row.status === 'NEAR_LIMIT' || row.status === 'OVER_LIMIT')
+        .map((row) => row.message),
+    ],
     unsupportedAccountIds: [...unsupportedAccountIds].sort(),
   };
 }

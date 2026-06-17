@@ -16,7 +16,10 @@ import {
   useSpendingPace,
   useTransactions,
 } from '../hooks';
+import { PrivacyModeProvider } from '../contexts/PrivacyModeContext';
 import { calculateSafeToSpend } from '../lib/dashboard/safe-to-spend';
+import { evaluatePrivacyScreenCoverage } from '../lib/security/privacy-screen';
+import { auditPrivacySurfaceCoverage, privacySurface } from '../lib/security/privacy-coverage';
 import { DashboardPage } from './DashboardPage';
 
 vi.mock('../hooks', () => ({
@@ -614,5 +617,49 @@ describe('DashboardPage', () => {
     );
     expect(screen.getByRole('region', { name: /financial summary/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /recent transactions/i })).toBeInTheDocument();
+  });
+
+  it('covers dashboard financial values when privacy screen is active and reveals them when inactive', () => {
+    const renderDashboard = (initialValue: boolean) =>
+      render(
+        <PrivacyModeProvider initialValue={initialValue}>
+          <MemoryRouter>
+            <DashboardPage />
+          </MemoryRouter>
+        </PrivacyModeProvider>,
+      );
+
+    const active = renderDashboard(true);
+    const activeText = document.body.textContent ?? '';
+    const screenCoverage = evaluatePrivacyScreenCoverage([
+      { id: 'dashboard.net-worth', categories: ['net-worth'], masked: !activeText.includes('$37,250.00') },
+      { id: 'dashboard.spending', categories: ['amount'], masked: !activeText.includes('$67.42') },
+      { id: 'dashboard.safe-to-spend-copy', categories: ['amount'], masked: !activeText.includes('$3,200') },
+      {
+        id: 'dashboard.recent-transactions',
+        categories: ['amount'],
+        masked: !activeText.includes('$67.42') && !activeText.includes('$4,500.00'),
+      },
+    ]);
+    const manifestCoverage = auditPrivacySurfaceCoverage(
+      [
+        privacySurface('dashboard-balances', 'dashboard', ['balance', 'net-worth'], 'masked'),
+        privacySurface('dashboard-transactions', 'detail', ['amount'], 'masked'),
+      ],
+      ['dashboard', 'detail'],
+    );
+
+    expect(screenCoverage.safe).toBe(true);
+    expect(manifestCoverage.complete).toBe(true);
+    expect(screen.getAllByLabelText('Amount hidden').length).toBeGreaterThan(0);
+
+    active.unmount();
+    window.localStorage.clear();
+
+    renderDashboard(false);
+    expect(document.body).toHaveTextContent('$37,250.00');
+    expect(document.body).toHaveTextContent('$67.42');
+    expect(document.body).toHaveTextContent('$3,200');
+    expect(document.body).toHaveTextContent('-$67.42');
   });
 });

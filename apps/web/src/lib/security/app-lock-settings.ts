@@ -49,6 +49,9 @@ export const DEFAULT_APP_LOCK_STATE: AppLockRuntimeState = {
   lastUnlockedAtMs: null,
 };
 
+export const APP_LOCK_SETTINGS_STORAGE_KEY = 'finance-app-lock-settings-v1';
+export const APP_LOCK_SETTINGS_CHANGED_EVENT = 'finance-app-lock-settings-changed';
+
 export function normalizeAppLockSettings(settings: Partial<AppLockSettings>): AppLockSettings {
   return {
     enabled: settings.enabled ?? DEFAULT_APP_LOCK_SETTINGS.enabled,
@@ -56,6 +59,34 @@ export function normalizeAppLockSettings(settings: Partial<AppLockSettings>): Ap
     lockOnResume: settings.lockOnResume ?? DEFAULT_APP_LOCK_SETTINGS.lockOnResume,
     requirePasskey: settings.requirePasskey ?? DEFAULT_APP_LOCK_SETTINGS.requirePasskey,
   };
+}
+
+export function loadAppLockSettings(): AppLockSettings {
+  if (typeof localStorage === 'undefined') return DEFAULT_APP_LOCK_SETTINGS;
+
+  try {
+    const raw = localStorage.getItem(APP_LOCK_SETTINGS_STORAGE_KEY);
+    if (!raw) return DEFAULT_APP_LOCK_SETTINGS;
+    const parsed = JSON.parse(raw) as Partial<AppLockSettings> | null;
+    return parsed && typeof parsed === 'object'
+      ? normalizeAppLockSettings(parsed)
+      : DEFAULT_APP_LOCK_SETTINGS;
+  } catch {
+    return DEFAULT_APP_LOCK_SETTINGS;
+  }
+}
+
+export function saveAppLockSettings(settings: Partial<AppLockSettings>): AppLockSettings {
+  const normalized = normalizeAppLockSettings(settings);
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(APP_LOCK_SETTINGS_STORAGE_KEY, JSON.stringify(normalized));
+    } catch {
+      // Best-effort only; default-off app lock remains safe if persistence fails.
+    }
+  }
+  notifyAppLockSettingsChanged(normalized);
+  return normalized;
 }
 
 export function reduceAppLockEvent(
@@ -137,4 +168,9 @@ function audit(
   severity: AppLockAuditEntry['severity'] = 'info',
 ): AppLockAuditEntry {
   return { event, severity, metadata };
+}
+
+function notifyAppLockSettingsChanged(settings: AppLockSettings): void {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+  window.dispatchEvent(new CustomEvent(APP_LOCK_SETTINGS_CHANGED_EVENT, { detail: settings }));
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type {
+  ContributionDesignation,
   Currency,
   LocalDate,
   SyncId,
@@ -48,6 +49,8 @@ const TRANSACTION_COLUMNS = [
   'is_recurring',
   'recurring_rule_id',
   'tags',
+  'retirement_contribution_year',
+  'retirement_contribution_designation',
   'splits',
   'mood_tag',
   'merchant_address',
@@ -94,6 +97,8 @@ export interface CreateTransactionInput {
   isRecurring?: boolean;
   recurringRuleId?: SyncId | null;
   tags?: readonly string[];
+  retirementContributionYear?: number | null;
+  retirementContributionDesignation?: ContributionDesignation | null;
   splits?: readonly TransactionSplit[] | null;
   moodTag?: string | null;
   merchantAddress?: string | null;
@@ -126,6 +131,8 @@ export interface UpdateTransactionInput {
   isRecurring?: boolean;
   recurringRuleId?: SyncId | null;
   tags?: readonly string[];
+  retirementContributionYear?: number | null;
+  retirementContributionDesignation?: ContributionDesignation | null;
   splits?: readonly TransactionSplit[] | null;
   moodTag?: string | null;
   merchantAddress?: string | null;
@@ -159,6 +166,13 @@ function mapTransaction(row: Row): Transaction {
     isRecurring: toBoolean(row.is_recurring),
     recurringRuleId: optionalString(row.recurring_rule_id),
     tags: parseTags(row.tags),
+    retirementContributionYear:
+      row.retirement_contribution_year === null || row.retirement_contribution_year === undefined
+        ? null
+        : Number(row.retirement_contribution_year),
+    retirementContributionDesignation: optionalString(
+      row.retirement_contribution_designation,
+    ) as ContributionDesignation | null,
     splits: parseTransactionSplits(row.splits),
     moodTag: optionalString(row.mood_tag),
     merchantAddress: optionalString(row.merchant_address),
@@ -294,6 +308,8 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
       is_recurring,
       recurring_rule_id,
       tags,
+      retirement_contribution_year,
+      retirement_contribution_designation,
       splits,
       mood_tag,
       merchant_address,
@@ -313,7 +329,7 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
       sync_version,
       is_synced
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
       NULL,
@@ -337,6 +353,8 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
       input.isRecurring ? 1 : 0,
       input.recurringRuleId ?? null,
       serializeTags(input.tags ?? []),
+      input.retirementContributionDesignation ? (input.retirementContributionYear ?? null) : null,
+      input.retirementContributionDesignation ?? null,
       serializeTransactionSplits(splits),
       input.moodTag ?? null,
       input.merchantAddress ?? null,
@@ -404,6 +422,14 @@ export function updateTransaction(
         ? updates.recurringRuleId
         : existingTransaction.recurringRuleId,
     tags: updates.tags ?? existingTransaction.tags,
+    retirementContributionYear:
+      updates.retirementContributionYear !== undefined
+        ? updates.retirementContributionYear
+        : (existingTransaction.retirementContributionYear ?? null),
+    retirementContributionDesignation:
+      updates.retirementContributionDesignation !== undefined
+        ? updates.retirementContributionDesignation
+        : (existingTransaction.retirementContributionDesignation ?? null),
     splits:
       updates.splits !== undefined
         ? normalizeTransactionSplits(updates.splits)
@@ -467,6 +493,8 @@ export function updateTransaction(
             is_recurring = ?,
             recurring_rule_id = ?,
             tags = ?,
+            retirement_contribution_year = ?,
+            retirement_contribution_designation = ?,
             splits = ?,
             mood_tag = ?,
             merchant_address = ?,
@@ -501,6 +529,10 @@ export function updateTransaction(
       mergedTransaction.isRecurring ? 1 : 0,
       mergedTransaction.recurringRuleId,
       serializeTags(mergedTransaction.tags),
+      mergedTransaction.retirementContributionDesignation
+        ? (mergedTransaction.retirementContributionYear ?? null)
+        : null,
+      mergedTransaction.retirementContributionDesignation,
       serializeTransactionSplits(mergedTransaction.splits),
       mergedTransaction.moodTag,
       mergedTransaction.merchantAddress,

@@ -39,12 +39,18 @@ import { useMerchants } from '../../hooks/useMerchants';
 import type {
   Account,
   Category,
+  ContributionDesignation,
   Transaction,
   TransactionSplit,
   TransactionStatus,
   TransactionType,
 } from '../../kmp/bridge';
 import { BNPL_CUSTOM_FIELD_KEYS } from '../../lib/bnpl-liability';
+import {
+  CONTRIBUTION_DESIGNATION_OPTIONS,
+  getRetirementAccountTypeLabel,
+  supportsEmployerRetirementContributions,
+} from '../../lib/tax/retirement-contribution-metadata';
 import type { CategorySuggestion } from '../../lib/categorization';
 import type { MerchantMatchResult } from '../../lib/merchants';
 import {
@@ -256,6 +262,10 @@ export function TransactionForm({
   const [date, setDate] = useState(todayISO);
   const [notes, setNotes] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [isRetirementContribution, setIsRetirementContribution] = useState(false);
+  const [retirementContributionYear, setRetirementContributionYear] = useState('');
+  const [retirementContributionDesignation, setRetirementContributionDesignation] =
+    useState<ContributionDesignation>('EMPLOYEE');
   const [moodTag, setMoodTag] = useState<string | null>(null);
   const [moodTagsEnabled, setMoodTagsEnabled] = useState(() => isMoodTagsEnabled());
   const [errors, setErrors] = useState<FormErrors>({});
@@ -349,6 +359,16 @@ export function TransactionForm({
     setDate(initialData?.date ?? todayISO());
     setNotes(initialData?.note ?? '');
     setTagsInput(initialData ? tagsToString(initialData.tags) : '');
+    setIsRetirementContribution(Boolean(initialData?.retirementContributionDesignation));
+    setRetirementContributionYear(
+      initialData?.retirementContributionYear !== null &&
+        initialData?.retirementContributionYear !== undefined
+        ? String(initialData.retirementContributionYear)
+        : (initialData?.date ?? todayISO()).slice(0, 4),
+    );
+    setRetirementContributionDesignation(
+      initialData?.retirementContributionDesignation ?? 'EMPLOYEE',
+    );
     setMoodTag(normalizeMoodTag(initialData?.moodTag));
     setCounterpartyName(initialData?.counterpartyName ?? '');
     setMerchantMatch(null);
@@ -462,6 +482,10 @@ export function TransactionForm({
   );
   const hasSplitRows = splitRows.length > 0;
   const splitRemainderText = formatSplitRemainder(splitValidation.remainingCents);
+  const selectedAccount = useMemo(
+    () => accounts.find((account) => account.id === accountId) ?? null,
+    [accounts, accountId],
+  );
 
   const updateSplitRow = useCallback((id: string, updates: Partial<SplitFormRow>) => {
     setSplitRows((rows) => rows.map((row) => (row.id === id ? { ...row, ...updates } : row)));
@@ -514,7 +538,6 @@ export function TransactionForm({
       }
 
       // Derive householdId from the selected account.
-      const selectedAccount = accounts.find((a) => a.id === accountId);
       if (!selectedAccount) {
         setSubmitError('Selected account not found.');
         return;
@@ -549,6 +572,12 @@ export function TransactionForm({
           categoryId || transactionSplits.find((split) => split.categoryId)?.categoryId || null,
         note: notes.trim() || null,
         tags: parseTags(tagsInput),
+        retirementContributionYear: isRetirementContribution
+          ? Number.parseInt(retirementContributionYear || date.slice(0, 4), 10)
+          : null,
+        retirementContributionDesignation: isRetirementContribution
+          ? retirementContributionDesignation
+          : null,
         ...(hasSplitRows ? { splits: transactionSplits } : {}),
         ...(moodTagsEnabled ? { moodTag } : {}),
         merchantCity: merchantCity.trim() || null,
@@ -588,6 +617,9 @@ export function TransactionForm({
         setDate(todayISO());
         setNotes('');
         setTagsInput('');
+        setIsRetirementContribution(false);
+        setRetirementContributionYear(todayISO().slice(0, 4));
+        setRetirementContributionDesignation('EMPLOYEE');
         setMoodTag(null);
         setCounterpartyName('');
         setMerchantMatch(null);
@@ -614,7 +646,7 @@ export function TransactionForm({
       amountInput,
       description,
       accountId,
-      accounts,
+      selectedAccount,
       transactionType,
       status,
       date,
@@ -625,6 +657,9 @@ export function TransactionForm({
       splitRemainderText,
       notes,
       tagsInput,
+      isRetirementContribution,
+      retirementContributionYear,
+      retirementContributionDesignation,
       moodTag,
       moodTagsEnabled,
       merchantCity,
@@ -658,6 +693,17 @@ export function TransactionForm({
   const hasAccountError = Boolean(errors.accountId);
   const hasSplitError = Boolean(errors.splits);
   const hasValidationErrors = Object.keys(errors).length > 0;
+  const retirementContributionWarning =
+    isRetirementContribution && selectedAccount
+      ? selectedAccount.retirementAccountType
+        ? retirementContributionDesignation === 'EMPLOYER' &&
+          !supportsEmployerRetirementContributions(selectedAccount.retirementAccountType)
+          ? `${getRetirementAccountTypeLabel(
+              selectedAccount.retirementAccountType,
+            )} contributions cannot be tagged as employer-funded in the annual-limit tracker.`
+          : null
+        : 'Selected account is not classified as a supported retirement account, so this contribution will be flagged in limit tracking.'
+      : null;
   const validationErrorItems: FormErrorSummaryItem[] = [
     hasAmountError ? { fieldId: 'txn-amount', label: 'Amount', message: errors.amount! } : null,
     hasDescriptionError
@@ -1015,6 +1061,67 @@ export function TransactionForm({
                 </span>
               )}
             </div>
+
+            <fieldset className="form-group form-fieldset">
+              <legend className="form-group__label">Retirement contribution</legend>
+              <label className="form-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={isRetirementContribution}
+                  onChange={(event) => {
+                    setIsRetirementContribution(event.target.checked);
+                    if (event.target.checked && retirementContributionYear.trim() === '') {
+                      setRetirementContributionYear(date.slice(0, 4));
+                    }
+                  }}
+                />
+                Count this transaction or transfer toward an annual contribution limit
+              </label>
+              {isRetirementContribution && (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="txn-contribution-year" className="form-group__label">
+                      Contribution year
+                    </label>
+                    <input
+                      id="txn-contribution-year"
+                      className="form-input"
+                      type="number"
+                      min="2000"
+                      max="2100"
+                      value={retirementContributionYear}
+                      onChange={(event) => setRetirementContributionYear(event.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="txn-contribution-designation" className="form-group__label">
+                      Contribution designation
+                    </label>
+                    <select
+                      id="txn-contribution-designation"
+                      className="form-select"
+                      value={retirementContributionDesignation}
+                      onChange={(event) =>
+                        setRetirementContributionDesignation(
+                          event.target.value as ContributionDesignation,
+                        )
+                      }
+                    >
+                      {CONTRIBUTION_DESIGNATION_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {retirementContributionWarning && (
+                    <p className="form-hint" role="alert">
+                      {retirementContributionWarning}
+                    </p>
+                  )}
+                </>
+              )}
+            </fieldset>
 
             {/* Date */}
             <div className="form-group">

@@ -20,6 +20,13 @@ export interface AccountDeletionReceiptContract {
   readonly privacySafeMessage: string;
 }
 
+const DEFAULT_ENDPOINT_DELETED_DOMAINS: readonly DeletionDomain[] = [
+  'server-account',
+  'server-financial-data',
+  'server-auth-identities',
+  'server-passkeys',
+];
+
 export interface SubmitAccountDeletionOptions {
   readonly endpoint: string;
   readonly stepUpToken: string | null;
@@ -71,6 +78,17 @@ export function mapAccountDeletionEndpointResponse(
   if (response.status === 429 || response.status >= 500) {
     return receipt('retryable_error', 'delete-retryable', nowIso, [], [], true, 'Deletion is temporarily unavailable. Try again later.');
   }
+  if (response.ok && bodyText.trim().length === 0) {
+    return receipt(
+      'success',
+      readRequestId(response, `delete-receipt-${nowIso}`),
+      nowIso,
+      DEFAULT_ENDPOINT_DELETED_DOMAINS,
+      [],
+      false,
+      'Deletion completed and the receipt contains only domain-level status.',
+    );
+  }
 
   const payload = parseJson(bodyText);
   if (!response.ok || payload === null) {
@@ -114,6 +132,11 @@ function receipt(
 function isHtmlFallback(response: Pick<Response, 'headers'>, bodyText: string): boolean {
   const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
   return contentType.includes('text/html') || /^\s*<!doctype html|^\s*<html/i.test(bodyText);
+}
+
+function readRequestId(response: Pick<Response, 'headers'>, fallback: string): string {
+  const requestId = response.headers.get('x-request-id') ?? response.headers.get('x-correlation-id');
+  return requestId && requestId.length > 0 ? requestId : fallback;
 }
 
 function parseJson(bodyText: string): RawDeletionResponse | null {

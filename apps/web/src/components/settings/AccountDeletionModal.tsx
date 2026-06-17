@@ -12,6 +12,23 @@ import {
 import { wipeLocalData } from '../../storage/wipeLocalData';
 import { appendSecurityAuditEvent } from '../../lib/security-audit-log';
 import { getStepUpStatus, markStepUpAuthenticated } from '../../lib/session-security';
+import {
+  deletionResult,
+  serializeDeletionReceipt,
+  verifyAccountDeletion,
+  type DeletionDomain,
+  type DeletionDomainResult,
+  type DeletionReceipt,
+} from '../../lib/security/deletion-verification';
+import {
+  mapAccountDeletionEndpointResponse,
+  type AccountDeletionReceiptContract,
+} from '../../lib/security/deletion-endpoint';
+import {
+  buildLocalWipeReceipt,
+  type LocalWipeArea,
+  type LocalWipeReceipt,
+} from '../../lib/security/local-wipe-verification';
 
 /**
  * Tolerate missing DatabaseProvider (e.g. in some test harnesses).
@@ -22,6 +39,67 @@ function useOptionalDatabase() {
   } catch {
     return null;
   }
+}
+
+interface AccountDeletionReceiptState {
+  readonly receipt: DeletionReceipt & { readonly verificationHash: string };
+  readonly serialized: string;
+  readonly verificationHash: string;
+  readonly localWipeMessage: string;
+}
+
+const LOCAL_WIPE_DOMAIN_BY_AREA: Record<LocalWipeArea, DeletionDomain> = {
+  opfs: 'local-opfs',
+  indexeddb: 'local-indexeddb',
+  caches: 'local-caches',
+  'service-workers': 'local-service-workers',
+  'local-storage': 'local-storage',
+  'session-storage': 'session-storage',
+  'sync-queues': 'sync-queues',
+  'audit-log': 'audit-log',
+  'consent-records': 'consent-records',
+};
+
+function buildDeletionDomainResults(
+  endpointReceipt: AccountDeletionReceiptContract,
+  localWipeReceipt: LocalWipeReceipt,
+): readonly DeletionDomainResult[] {
+  const results = new Map<DeletionDomain, DeletionDomainResult>();
+
+  for (const domain of endpointReceipt.deletedDomains) {
+    results.set(domain, deletionResult(domain, 'deleted'));
+  }
+  for (const domain of endpointReceipt.failedDomains) {
+    results.set(domain, deletionResult(domain, 'failed', 'Server deletion endpoint reported this domain as incomplete.'));
+  }
+  for (const area of localWipeReceipt.deleted) {
+    results.set(LOCAL_WIPE_DOMAIN_BY_AREA[area], deletionResult(LOCAL_WIPE_DOMAIN_BY_AREA[area], 'deleted'));
+  }
+  for (const area of localWipeReceipt.notApplicable) {
+    results.set(LOCAL_WIPE_DOMAIN_BY_AREA[area], deletionResult(LOCAL_WIPE_DOMAIN_BY_AREA[area], 'not_applicable'));
+  }
+  for (const failure of localWipeReceipt.failed) {
+    const domain = LOCAL_WIPE_DOMAIN_BY_AREA[failure.area];
+    results.set(domain, deletionResult(domain, 'failed', failure.detail ?? 'Local wipe verification failed.'));
+  }
+
+  return [...results.values()];
+}
+
+async function readResponseText(response: Response): Promise<string> {
+  try {
+    return typeof response.text === 'function' ? await response.text() : '';
+  } catch {
+    return '';
+  }
+}
+
+function receiptDownloadHref(serializedReceipt: string): string {
+  return `data:application/json;charset=utf-8,${encodeURIComponent(serializedReceipt)}`;
+}
+
+function receiptFileName(requestId: string): string {
+  return `finance-account-deletion-receipt-${requestId.replace(/[^a-z0-9._-]/gi, '-')}.json`;
 }
 
 /**
@@ -41,6 +119,7 @@ export function useAccountDeletion(): {
   const [confirmationText, setConfirmationText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [completionReceipt, setCompletionReceipt] = useState<AccountDeletionReceiptState | null>(null);
   const [householdImpact, setHouseholdImpact] = useState<HouseholdDeletionImpact>({
     soloOwnedHouseholds: 0,
     memberHouseholds: 0,
@@ -50,15 +129,16 @@ export function useAccountDeletion(): {
   const openDeleteModal = useCallback(() => {
     setConfirmationText('');
     setError(null);
+    setCompletionReceipt(null);
     setIsOpen(true);
   }, []);
 
   const closeDeleteModal = useCallback(() => {
-    if (isDeleting) return;
+    if (isDeleting || completionReceipt) return;
     setIsOpen(false);
     setConfirmationText('');
     setError(null);
-  }, [isDeleting]);
+  }, [completionReceipt, isDeleting]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -79,6 +159,7 @@ export function useAccountDeletion(): {
       return;
     }
 
+    const requestedAt = new Date().toISOString();
     setError(null);
     setIsDeleting(true);
 
@@ -95,37 +176,58 @@ export function useAccountDeletion(): {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ confirmation: 'DELETE' }),
       });
-
-      // Issue #1960 — the production Caddy config used to be missing the
-      // `/api/account/*` proxy rule, so this fetch fell through to the
-      // SPA fallback and returned 200 OK with an HTML body. The client
-      // happily treated that as "success" and cleared the local cache
-      // while the server had not deleted a single row.
-      //
-      // Guard against any future regression of that nature by insisting
-      // the response is either 204 (success contract — see the edge
-      // function), or a non-HTML payload with a 2xx status.
-      const contentType = response.headers?.get('Content-Type') ?? '';
-      const looksLikeHtml = contentType.includes('text/html');
-      if (!response.ok || looksLikeHtml) {
-        throw new Error('Account deletion failed.');
+      const endpointReceipt = mapAccountDeletionEndpointResponse(
+        response,
+        await readResponseText(response),
+        new Date().toISOString(),
+      );
+      if (endpointReceipt.status !== 'success') {
+        throw new Error(endpointReceipt.privacySafeMessage);
       }
 
       await clearLocalAccountData(db);
       await db?.close().catch(() => undefined);
-      await wipeLocalData();
-      await appendSecurityAuditEvent({ action: 'account_deletion_completed', result: 'success' });
-      try {
-        await logout();
-      } catch {
-        // The account-delete endpoint already revoked the session; continue to login.
-      }
-      window.location.assign('/login');
+      const localWipeReceipt = buildLocalWipeReceipt('online', await wipeLocalData());
+      const verification = verifyAccountDeletion({
+        requestId: endpointReceipt.requestId,
+        requestedAt,
+        completedAt: new Date().toISOString(),
+        serverConfirmed: endpointReceipt.status === 'success',
+        domains: buildDeletionDomainResults(endpointReceipt, localWipeReceipt),
+      });
+      const completionEvent = await appendSecurityAuditEvent({
+        action: 'account_deletion_completed',
+        result: verification.verified ? 'success' : 'warning',
+        metadata: {
+          requestId: verification.receipt.requestId,
+          verified: verification.verified,
+          deletedDomains: verification.receipt.deletedDomains,
+          failedDomains: verification.failedDomains,
+        },
+      });
+      const receipt = { ...verification.receipt, verificationHash: completionEvent.hash };
+      setCompletionReceipt({
+        receipt,
+        serialized: serializeDeletionReceipt(receipt),
+        verificationHash: completionEvent.hash,
+        localWipeMessage: localWipeReceipt.userCopy,
+      });
+      setConfirmationText('');
+      setIsDeleting(false);
     } catch {
       setError("Couldn't delete account — please try again or contact support.");
       setIsDeleting(false);
     }
-  }, [db, confirmationText, isAuthenticated, isDeleting, logout]);
+  }, [db, confirmationText, isAuthenticated, isDeleting]);
+
+  const continueToLogin = useCallback(async () => {
+    try {
+      await logout();
+    } catch {
+      // The account-delete endpoint already revoked the session; continue to login.
+    }
+    window.location.assign('/login');
+  }, [logout]);
 
   const deleteModal = isOpen ? (
     <div
@@ -152,6 +254,84 @@ export function useAccountDeletion(): {
           boxShadow: 'var(--shadow-xl, 0 24px 64px rgba(0, 0, 0, 0.28))',
         }}
       >
+        {completionReceipt ? (
+          <>
+            <h3 id="delete-account-title" className="settings-group__title">
+              Account deletion receipt
+            </h3>
+            <p id="delete-account-description" className="settings-item__description">
+              Your account deletion completed. Save this verification receipt before leaving this
+              page; it contains only domain-level deletion status and audit proof metadata.
+            </p>
+            <dl className="settings-item__description">
+              <div>
+                <dt>Completed at</dt>
+                <dd>{completionReceipt.receipt.completedAt}</dd>
+              </div>
+              <div>
+                <dt>Verification hash</dt>
+                <dd style={{ overflowWrap: 'anywhere' }}>{completionReceipt.verificationHash}</dd>
+              </div>
+            </dl>
+            <p className="settings-item__description">{completionReceipt.localWipeMessage}</p>
+            <ul aria-label="Deleted domains" className="settings-item__description">
+              {completionReceipt.receipt.deletedDomains.map((domain) => (
+                <li key={domain}>{domain}</li>
+              ))}
+            </ul>
+            {(completionReceipt.receipt.failures.length > 0 || completionReceipt.receipt.retained.length > 0) && (
+              <p role="alert" style={{ color: 'var(--semantic-warning, #b45309)' }}>
+                Some deletion domains need follow-up; view or download the receipt for details.
+              </p>
+            )}
+            <details className="settings-item__description">
+              <summary>View verification receipt</summary>
+              <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{completionReceipt.serialized}</pre>
+            </details>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 'var(--spacing-3, 0.75rem)',
+                marginTop: 'var(--spacing-5, 1.25rem)',
+              }}
+            >
+              <a
+                className="settings-account-delete__cancel-button settings-account-delete__cancel-button--secondary"
+                href={receiptDownloadHref(completionReceipt.serialized)}
+                download={receiptFileName(completionReceipt.receipt.requestId)}
+                style={{
+                  border: '1px solid var(--semantic-border-primary, #d1d5db)',
+                  background: 'transparent',
+                  color: 'var(--semantic-text-secondary, #475569)',
+                  padding: '0.625rem 1rem',
+                  borderRadius: 'var(--radius-md, 0.5rem)',
+                  textDecoration: 'none',
+                }}
+              >
+                Download receipt
+              </a>
+              <button
+                type="button"
+                className="settings-account-delete__confirm-button settings-account-delete__confirm-button--danger"
+                onClick={() => {
+                  void continueToLogin();
+                }}
+                style={{
+                  border: '1px solid var(--semantic-danger, #dc2626)',
+                  background: 'var(--semantic-danger, #dc2626)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  padding: '0.625rem 1rem',
+                  borderRadius: 'var(--radius-md, 0.5rem)',
+                }}
+              >
+                Continue to login
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
         <h3 id="delete-account-title" className="settings-group__title">
           Delete account and all data
         </h3>
@@ -266,6 +446,8 @@ export function useAccountDeletion(): {
             {isDeleting ? 'Deleting…' : 'Yes, Delete Everything'}
           </button>
         </div>
+          </>
+        )}
       </div>
     </div>
   ) : null;

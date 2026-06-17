@@ -530,6 +530,19 @@ export const MIGRATIONS: Migration[] = [
     label: 'add-transaction-splits',
     up: [`ALTER TABLE "transaction" ADD COLUMN splits TEXT;`],
   },
+  {
+    version: 11,
+    label: 'add-retirement-contribution-metadata',
+    up: [
+      `ALTER TABLE account ADD COLUMN retirement_account_type TEXT;`,
+      `ALTER TABLE account ADD COLUMN retirement_tax_treatment TEXT;`,
+      `ALTER TABLE account ADD COLUMN hsa_coverage_level TEXT;`,
+      `ALTER TABLE "transaction" ADD COLUMN retirement_contribution_year INTEGER;`,
+      `ALTER TABLE "transaction" ADD COLUMN retirement_contribution_designation TEXT;`,
+      `CREATE INDEX IF NOT EXISTS idx_account_retirement_type ON account (retirement_account_type);`,
+      `CREATE INDEX IF NOT EXISTS idx_transaction_retirement_contribution_year ON "transaction" (retirement_contribution_year);`,
+    ],
+  },
 ];
 // ---------------------------------------------------------------------------
 // OPFS / IndexedDB feature detection

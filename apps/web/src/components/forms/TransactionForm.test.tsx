@@ -205,6 +205,8 @@ describe('TransactionForm', () => {
       categoryId: 'category-food',
       note: 'Morning treat',
       tags: ['coffee', 'morning'],
+      retirementContributionYear: null,
+      retirementContributionDesignation: null,
       merchantCity: null,
       merchantState: null,
       merchantZip: null,
@@ -215,6 +217,37 @@ describe('TransactionForm', () => {
       extraNotes: null,
       counterpartyName: null,
     });
+  });
+
+  it('submits retirement contribution tagging fields', async () => {
+    const { onSubmit } = renderTransactionForm();
+
+    const amountInput = screen.getByLabelText('Amount');
+    fireEvent.keyDown(amountInput, { key: '7' });
+    fireEvent.keyDown(amountInput, { key: '0' });
+    fireEvent.keyDown(amountInput, { key: '0' });
+    fireEvent.keyDown(amountInput, { key: '0' });
+
+    fireEvent.change(screen.getByLabelText('Payee'), { target: { value: 'IRA contribution' } });
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+    fireEvent.click(
+      screen.getByLabelText('Count this transaction or transfer toward an annual contribution limit'),
+    );
+    fireEvent.change(screen.getByLabelText('Contribution year'), { target: { value: '2025' } });
+    fireEvent.change(screen.getByLabelText('Contribution designation'), {
+      target: { value: 'EMPLOYEE' },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retirementContributionYear: 2025,
+        retirementContributionDesignation: 'EMPLOYEE',
+      }),
+    );
   });
 
   it('submits balanced split lines with per-line categories and notes', async () => {

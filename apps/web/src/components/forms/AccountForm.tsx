@@ -31,11 +31,25 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateAccountInput } from '../../db/repositories/accounts';
-import type { Account, AccountPurpose, AccountType, SyncId } from '../../kmp/bridge';
+import type {
+  Account,
+  AccountPurpose,
+  AccountType,
+  HsaCoverageLevel,
+  RetirementAccountType,
+  RetirementTaxTreatment,
+  SyncId,
+} from '../../kmp/bridge';
 import { getCurrencyMetadata, SUPPORTED_CURRENCY_METADATA } from '../../lib/currency-metadata';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import { accountSchema } from '../../lib/validation';
 import { getFormCopy } from '../../lib/i18n/forms-catalog';
+import {
+  HSA_COVERAGE_OPTIONS,
+  RETIREMENT_ACCOUNT_TYPE_OPTIONS,
+  RETIREMENT_TAX_TREATMENT_OPTIONS,
+  getDefaultRetirementTaxTreatment,
+} from '../../lib/tax/retirement-contribution-metadata';
 import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
 import './forms.css';
@@ -146,6 +160,9 @@ function getInitialFormValues(initialData?: Account) {
       currency: 'USD',
       balance: '0.00',
       purpose: 'personal' as AccountPurpose,
+      retirementAccountType: '' as RetirementAccountType | '',
+      retirementTaxTreatment: 'PRE_TAX' as RetirementTaxTreatment,
+      hsaCoverageLevel: 'SELF_ONLY' as HsaCoverageLevel,
     };
   }
 
@@ -157,6 +174,13 @@ function getInitialFormValues(initialData?: Account) {
       initialData.currentBalance.amount / Math.pow(10, initialData.currency.decimalPlaces)
     ).toFixed(initialData.currency.decimalPlaces),
     purpose: initialData.purpose ?? 'personal',
+    retirementAccountType: initialData.retirementAccountType ?? '',
+    retirementTaxTreatment:
+      initialData.retirementTaxTreatment ??
+      (initialData.retirementAccountType
+        ? getDefaultRetirementTaxTreatment(initialData.retirementAccountType)
+        : 'PRE_TAX'),
+    hsaCoverageLevel: initialData.hsaCoverageLevel ?? 'SELF_ONLY',
   };
 }
 
@@ -181,6 +205,10 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   const [name, setName] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('CHECKING');
   const [purpose, setPurpose] = useState<AccountPurpose>('personal');
+  const [retirementAccountType, setRetirementAccountType] = useState<RetirementAccountType | ''>('');
+  const [retirementTaxTreatment, setRetirementTaxTreatment] =
+    useState<RetirementTaxTreatment>('PRE_TAX');
+  const [hsaCoverageLevel, setHsaCoverageLevel] = useState<HsaCoverageLevel>('SELF_ONLY');
   const [currency, setCurrency] = useState('USD');
   const [balance, setBalance] = useState('0.00');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -211,6 +239,9 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
       setName(initialValues.name);
       setAccountType(initialValues.accountType);
       setPurpose(initialValues.purpose);
+      setRetirementAccountType(initialValues.retirementAccountType as RetirementAccountType | '');
+      setRetirementTaxTreatment(initialValues.retirementTaxTreatment);
+      setHsaCoverageLevel(initialValues.hsaCoverageLevel);
       setCurrency(initialValues.currency);
       setBalance(initialValues.balance);
       setErrors({});
@@ -262,6 +293,9 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         name: name.trim(),
         type: accountType,
         purpose,
+        retirementAccountType: retirementAccountType || null,
+        retirementTaxTreatment: retirementAccountType ? retirementTaxTreatment : null,
+        hsaCoverageLevel: retirementAccountType === 'HSA' ? hsaCoverageLevel : null,
         currency: {
           code: currencyObj.code,
           decimalPlaces,
@@ -278,6 +312,9 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         setName(initialValues.name);
         setAccountType(initialValues.accountType);
         setPurpose(initialValues.purpose);
+        setRetirementAccountType(initialValues.retirementAccountType as RetirementAccountType | '');
+        setRetirementTaxTreatment(initialValues.retirementTaxTreatment);
+        setHsaCoverageLevel(initialValues.hsaCoverageLevel);
         setCurrency(initialValues.currency);
         setBalance(initialValues.balance);
         setErrors({});
@@ -293,7 +330,19 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         setSubmitting(false);
       }
     },
-    [name, balance, accountType, purpose, currency, db, initialData, onSubmit],
+    [
+      name,
+      balance,
+      accountType,
+      purpose,
+      retirementAccountType,
+      retirementTaxTreatment,
+      hsaCoverageLevel,
+      currency,
+      db,
+      initialData,
+      onSubmit,
+    ],
   );
 
   // -- render --------------------------------------------------------------
@@ -304,6 +353,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
 
   const hasNameError = Boolean(errors.name);
   const hasBalanceError = Boolean(errors.balance);
+  const isRetirementAccount = retirementAccountType !== '';
   const selectedCurrency = getCurrencyMetadata(currency);
   const balanceStep = selectedCurrency.decimalPlaces === 0 ? '1' : `0.${'0'.repeat(Math.max(0, selectedCurrency.decimalPlaces - 1))}1`;
   const balancePlaceholder = selectedCurrency.decimalPlaces === 0 ? '0' : `0.${'0'.repeat(selectedCurrency.decimalPlaces)}`;
@@ -416,6 +466,96 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
                 ))}
               </select>
             </div>
+
+            <fieldset className="form-group form-fieldset">
+              <legend className="form-group__label">Retirement classification</legend>
+              <label className="form-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={isRetirementAccount}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      const defaultType = 'TRADITIONAL_IRA' as RetirementAccountType;
+                      setRetirementAccountType(defaultType);
+                      setRetirementTaxTreatment(getDefaultRetirementTaxTreatment(defaultType));
+                    } else {
+                      setRetirementAccountType('');
+                      setRetirementTaxTreatment('PRE_TAX');
+                      setHsaCoverageLevel('SELF_ONLY');
+                    }
+                  }}
+                />
+                Mark this as a retirement or tax-advantaged account
+              </label>
+              {isRetirementAccount && (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="account-retirement-type" className="form-group__label">
+                      Retirement account type
+                    </label>
+                    <select
+                      id="account-retirement-type"
+                      className="form-select"
+                      value={retirementAccountType}
+                      onChange={(event) => {
+                        const nextType = event.target.value as RetirementAccountType;
+                        setRetirementAccountType(nextType);
+                        setRetirementTaxTreatment(getDefaultRetirementTaxTreatment(nextType));
+                        if (nextType !== 'HSA') {
+                          setHsaCoverageLevel('SELF_ONLY');
+                        }
+                      }}
+                    >
+                      {RETIREMENT_ACCOUNT_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="account-tax-treatment" className="form-group__label">
+                      Tax treatment
+                    </label>
+                    <select
+                      id="account-tax-treatment"
+                      className="form-select"
+                      value={retirementTaxTreatment}
+                      onChange={(event) =>
+                        setRetirementTaxTreatment(event.target.value as RetirementTaxTreatment)
+                      }
+                    >
+                      {RETIREMENT_TAX_TREATMENT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {retirementAccountType === 'HSA' && (
+                    <div className="form-group">
+                      <label htmlFor="account-hsa-coverage" className="form-group__label">
+                        HSA coverage
+                      </label>
+                      <select
+                        id="account-hsa-coverage"
+                        className="form-select"
+                        value={hsaCoverageLevel}
+                        onChange={(event) =>
+                          setHsaCoverageLevel(event.target.value as HsaCoverageLevel)
+                        }
+                      >
+                        {HSA_COVERAGE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+            </fieldset>
 
             {/* Currency */}
             <div className="form-group">

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { CurrencyDisplay } from '../common';
+import { useIsPrivacyModeActive } from '../../contexts/PrivacyModeContext';
 import type { SafeToSpendBreakdown } from '../../lib/dashboard/safe-to-spend';
 
 export interface SafeToSpendCardProps {
@@ -22,8 +23,10 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
   currency = 'USD',
 }) => {
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const isPrivacyMode = useIsPrivacyModeActive();
   const displayAmount = Math.max(0, breakdown.safeToSpendCents);
   const isOverPlan = breakdown.safeToSpendCents < 0;
+  const displayAmountText = isPrivacyMode ? 'a hidden amount' : formatCurrencyAmount(displayAmount, currency);
 
   const toggleBreakdown = useCallback(() => {
     setShowBreakdown((current) => !current);
@@ -50,10 +53,7 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
         <p className="safe-to-spend-card__explanation">
           {isOverPlan
             ? 'Try to avoid extra spending this month after bills and savings.'
-            : `You can still spend about ${formatCurrencyAmount(
-                displayAmount,
-                currency,
-              )} this month after bills and savings.`}
+            : `You can still spend about ${displayAmountText} this month after bills and savings.`}
         </p>
         <button
           type="button"

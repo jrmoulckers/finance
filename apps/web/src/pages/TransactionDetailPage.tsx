@@ -18,6 +18,7 @@ import {
   isBnplLiabilityTransaction,
 } from '../lib/bnpl-liability';
 import { isTransactionLockedByReconciliation } from '../lib/reconciliation';
+import { getContributionDesignationLabel } from '../lib/tax/retirement-contribution-metadata';
 import type { Transaction } from '../kmp/bridge';
 import '../components/navigation/breadcrumb.css';
 
@@ -326,6 +327,17 @@ export const TransactionDetailPage: React.FC = () => {
                 <dd>{transaction.counterpartyName}</dd>
               </div>
             )}
+          {transaction.retirementContributionDesignation && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <dt className="card__title">Retirement contribution</dt>
+              <dd>
+                {getContributionDesignationLabel(transaction.retirementContributionDesignation)}
+                {transaction.retirementContributionYear
+                  ? ' · ' + transaction.retirementContributionYear
+                  : ''}
+              </dd>
+            </div>
+          )}
           {transaction.tags.length > 0 && (
             <div style={{ gridColumn: '1 / -1' }}>
               <dt className="card__title">Tags</dt>

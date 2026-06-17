@@ -8,6 +8,9 @@ import type { Transaction } from '../kmp/bridge';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import { useTransactions } from '../hooks/useTransactions';
+import { PrivacyModeProvider } from '../contexts/PrivacyModeContext';
+import { evaluatePrivacyScreenCoverage } from '../lib/security/privacy-screen';
+import { auditPrivacySurfaceCoverage, privacySurface } from '../lib/security/privacy-coverage';
 
 import { TransactionsPage } from './TransactionsPage';
 
@@ -609,5 +612,45 @@ describe('TransactionsPage', () => {
     expect(screen.getByRole('list', { name: /virtualized transaction register/i })).toBeInTheDocument();
     expect(screen.getByText(/showing 500 transactions with virtual scrolling/i)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^edit /i }).length).toBeLessThan(100);
+  });
+
+  it('covers transaction amounts when privacy screen is active and reveals them when inactive', () => {
+    const renderTransactions = (initialValue: boolean) =>
+      render(
+        <PrivacyModeProvider initialValue={initialValue}>
+          <MemoryRouter>
+            <TransactionsPage />
+          </MemoryRouter>
+        </PrivacyModeProvider>,
+      );
+
+    const active = renderTransactions(true);
+    const activeText = document.body.textContent ?? '';
+    const screenCoverage = evaluatePrivacyScreenCoverage([
+      {
+        id: 'transactions.register-amounts',
+        categories: ['amount'],
+        masked:
+          !activeText.includes('$67.42') &&
+          !activeText.includes('$4,500.00') &&
+          !activeText.includes('$124.00'),
+      },
+    ]);
+    const manifestCoverage = auditPrivacySurfaceCoverage(
+      [privacySurface('transactions.register-amounts', 'detail', ['amount'], 'masked')],
+      ['detail'],
+    );
+
+    expect(screenCoverage.safe).toBe(true);
+    expect(manifestCoverage.complete).toBe(true);
+    expect(screen.getAllByLabelText('Amount hidden')).toHaveLength(3);
+
+    active.unmount();
+    window.localStorage.clear();
+
+    renderTransactions(false);
+    expect(document.body).toHaveTextContent('-$67.42');
+    expect(document.body).toHaveTextContent('+$4,500.00');
+    expect(document.body).toHaveTextContent('-$124.00');
   });
 });
