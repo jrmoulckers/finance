@@ -22,6 +22,11 @@ describe('account deletion endpoint contract', () => {
   });
 
   it('maps success and partial-failure receipts without sensitive detail', () => {
+    expect(mapAccountDeletionEndpointResponse(response(204), '', nowIso)).toMatchObject({
+      status: 'success',
+      deletedDomains: ['server-account', 'server-financial-data', 'server-auth-identities', 'server-passkeys'],
+    });
+
     expect(
       mapAccountDeletionEndpointResponse(
         response(200),

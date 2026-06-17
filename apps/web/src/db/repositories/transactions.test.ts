@@ -401,9 +401,27 @@ describe('transactions repository', () => {
       createTransaction(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      expect(params[16]).toBe(
+      expect(params[18]).toBe(
         '[{"id":"split-1","categoryId":"cat-food","amount":3200,"note":"Groceries"},{"id":"split-2","categoryId":"cat-home","amount":1800,"note":null}]',
       );
+    });
+
+    it('stores retirement contribution tagging metadata', () => {
+      const input: CreateTransactionInput = {
+        householdId: 'hh-1',
+        accountId: 'acc-1',
+        type: 'TRANSFER' as TransactionType,
+        amount: { amount: 650000 },
+        date: '2025-01-15',
+        retirementContributionYear: 2024,
+        retirementContributionDesignation: 'EMPLOYEE',
+      };
+
+      createTransaction(mockDb, input);
+
+      const params = mockExecute.mock.calls[0][2] as unknown[];
+      expect(params[16]).toBe(2024);
+      expect(params[17]).toBe('EMPLOYEE');
     });
 
     it('should reject split lines that do not match the transaction total', () => {

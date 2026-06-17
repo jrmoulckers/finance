@@ -9,6 +9,7 @@ import { PrivacyPersistenceOption, usePrivacyMode } from '../../contexts/Privacy
 import { useAuth } from '../../auth/auth-context';
 import { initMonitoring } from '../../lib/monitoring';
 import { loadIdleSessionPolicy, saveIdleSessionPolicy } from '../../lib/session-security';
+import { loadAppLockSettings, saveAppLockSettings } from '../../lib/security/app-lock-settings';
 
 const MONITORING_CONSENT_STORAGE_KEY = 'finance-monitoring-consent';
 
@@ -26,6 +27,7 @@ export const SettingsPrivacyPage: React.FC = () => {
   const [idleTimeoutMinutes, setIdleTimeoutMinutes] = useState(
     () => Math.round(loadIdleSessionPolicy().timeoutMs / 60_000),
   );
+  const [appLockEnabled, setAppLockEnabled] = useState(() => loadAppLockSettings().enabled);
 
   const { openDeleteModal, deleteModal } = useAccountDeletion();
 
@@ -48,8 +50,20 @@ export const SettingsPrivacyPage: React.FC = () => {
 
   const handleIdleTimeoutChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
     const minutes = Number(event.target.value);
-    saveIdleSessionPolicy({ timeoutMs: minutes * 60_000, warningMs: 60_000, lockBehavior: 'logout' });
+    const timeoutMs = minutes * 60_000;
+    saveIdleSessionPolicy({ timeoutMs, warningMs: 60_000, lockBehavior: 'logout' });
+    saveAppLockSettings({ ...loadAppLockSettings(), idleTimeoutMs: timeoutMs });
     setIdleTimeoutMinutes(minutes);
+  }, []);
+
+  const handleAppLockChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const enabled = event.target.checked;
+    saveAppLockSettings({
+      ...loadAppLockSettings(),
+      enabled,
+      idleTimeoutMs: loadIdleSessionPolicy().timeoutMs,
+    });
+    setAppLockEnabled(enabled);
   }, []);
 
   const handleMonitoringToggle = useCallback((enabled: boolean) => {
@@ -113,6 +127,23 @@ export const SettingsPrivacyPage: React.FC = () => {
         <div className="settings-group">
           <h3 className="settings-group__title">Session security</h3>
           <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="s-app-lock">
+              App lock
+            </label>
+            <input
+              type="checkbox"
+              id="s-app-lock"
+              checked={appLockEnabled}
+              onChange={handleAppLockChange}
+              aria-label="Require passkey app lock before showing finance data"
+              className="settings-item__checkbox"
+            />
+          </div>
+          <p className="settings-item__description">
+            When enabled, Finance shows a privacy-safe locked shell on app load and after the idle timeout;
+            users with a registered passkey unlock with WebAuthn, otherwise the current authenticated session is used.
+          </p>
+          <div className="settings-item settings-item--static">
             <label className="settings-item__label" htmlFor="s-idle-timeout">
               Idle timeout
             </label>
@@ -130,7 +161,7 @@ export const SettingsPrivacyPage: React.FC = () => {
             </select>
           </div>
           <p className="settings-item__description">
-            Finance warns one minute before locking and records idle timeout events in the audit log.
+            Finance warns one minute before locking or signing out and records idle timeout events in the audit log.
           </p>
         </div>
       </section>

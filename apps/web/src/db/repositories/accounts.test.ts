@@ -289,7 +289,7 @@ describe('accounts repository', () => {
       createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      const amountParam = params[6]; // current_balance is 7th param
+      const amountParam = params[9]; // current_balance includes retirement metadata params
       expect(amountParam).toBe(123456);
       expect(Number.isInteger(amountParam as number)).toBe(true);
     });
@@ -306,7 +306,7 @@ describe('accounts repository', () => {
       createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      expect(params[5]).toBe('EUR');
+      expect(params[8]).toBe('EUR');
     });
 
     it('should default to USD when currency not provided', () => {
@@ -320,7 +320,7 @@ describe('accounts repository', () => {
       createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      expect(params[5]).toBe('USD');
+      expect(params[8]).toBe('USD');
     });
 
     it('should handle optional fields', () => {
@@ -338,10 +338,28 @@ describe('accounts repository', () => {
       createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      expect(params[7]).toBe(1); // isArchived
-      expect(params[8]).toBe(5); // sortOrder
-      expect(params[9]).toBe('wallet'); // icon
-      expect(params[10]).toBe('#ff0000'); // color
+      expect(params[10]).toBe(1); // isArchived
+      expect(params[11]).toBe(5); // sortOrder
+      expect(params[12]).toBe('wallet'); // icon
+      expect(params[13]).toBe('#ff0000'); // color
+    });
+
+    it('stores retirement classification metadata', () => {
+      const input: CreateAccountInput = {
+        householdId: 'hh-1',
+        name: 'Roth IRA',
+        type: 'INVESTMENT' as AccountType,
+        currentBalance: { amount: 100000 },
+        retirementAccountType: 'ROTH_IRA',
+        retirementTaxTreatment: 'ROTH',
+      };
+
+      createAccount(mockDb, input);
+
+      const params = mockExecute.mock.calls[0][2] as unknown[];
+      expect(params[5]).toBe('ROTH_IRA');
+      expect(params[6]).toBe('ROTH');
+      expect(params[7]).toBeNull();
     });
   });
 

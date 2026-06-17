@@ -159,5 +159,25 @@ describe('retirement-contribution-limits', () => {
     });
 
     expect(summary.unsupportedAccountIds).toEqual(['not-classified']);
+    expect(summary.warnings[0]).toContain('not classified as a supported retirement account');
+  });
+
+  it('warns when employer contributions are tagged on unsupported account types', () => {
+    const summary = summarizeRetirementContributionLimits({
+      accounts: ACCOUNTS,
+      contributions: [
+        {
+          id: 'employer-roth-ira',
+          accountId: 'roth-ira',
+          date: '2025-01-01',
+          amountCents: 500_00,
+          designation: 'EMPLOYER',
+        },
+      ],
+      profile: { taxYear: 2025 },
+    });
+
+    expect(summary.unsupportedAccountIds).toEqual(['roth-ira']);
+    expect(summary.warnings[0]).toContain('does not support employer contributions');
   });
 });

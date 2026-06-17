@@ -83,6 +83,20 @@ export type AccountType =
 
 export type AccountPurpose = 'personal' | 'business' | 'both';
 
+export type RetirementAccountType =
+  | 'TRADITIONAL_IRA'
+  | 'ROTH_IRA'
+  | '401K'
+  | 'ROTH_401K'
+  | '403B'
+  | 'SEP_IRA'
+  | 'HSA'
+  | 'FSA';
+
+export type RetirementTaxTreatment = 'PRE_TAX' | 'ROTH' | 'AFTER_TAX' | 'EMPLOYER';
+export type HsaCoverageLevel = 'SELF_ONLY' | 'FAMILY';
+export type ContributionDesignation = 'EMPLOYEE' | 'EMPLOYER';
+
 /** Maps to KMP `com.finance.models.Account`. */
 export interface Account extends SyncMetadata {
   readonly id: SyncId;
@@ -90,6 +104,9 @@ export interface Account extends SyncMetadata {
   readonly name: string;
   readonly type: AccountType;
   readonly purpose?: AccountPurpose;
+  readonly retirementAccountType?: RetirementAccountType | null;
+  readonly retirementTaxTreatment?: RetirementTaxTreatment | null;
+  readonly hsaCoverageLevel?: HsaCoverageLevel | null;
   readonly currency: Currency;
   readonly currentBalance: Cents;
   readonly isArchived: boolean;
@@ -131,6 +148,8 @@ export interface Transaction extends SyncMetadata {
   readonly isRecurring: boolean;
   readonly recurringRuleId: SyncId | null;
   readonly tags: readonly string[];
+  readonly retirementContributionYear?: number | null;
+  readonly retirementContributionDesignation?: ContributionDesignation | null;
   readonly moodTag?: string | null;
 
   // Merchant location (all optional)

@@ -17,7 +17,7 @@ const { clearLocalAccountDataMock, householdImpactMock, wipeLocalDataMock } = vi
     memberHouseholds: 2,
     pendingInvites: 3,
   })),
-  wipeLocalDataMock: vi.fn<() => Promise<void>>(),
+  wipeLocalDataMock: vi.fn(),
 }));
 
 vi.mock('../lib/account/account-deletion', () => ({
@@ -206,7 +206,17 @@ describe('SettingsPage', () => {
     clearLocalAccountDataMock.mockReset();
     clearLocalAccountDataMock.mockResolvedValue(undefined);
     wipeLocalDataMock.mockReset();
-    wipeLocalDataMock.mockResolvedValue(undefined);
+    wipeLocalDataMock.mockResolvedValue([
+      { area: 'opfs', status: 'not_applicable' },
+      { area: 'indexeddb', status: 'deleted' },
+      { area: 'caches', status: 'deleted' },
+      { area: 'service-workers', status: 'not_applicable' },
+      { area: 'local-storage', status: 'deleted' },
+      { area: 'session-storage', status: 'deleted' },
+      { area: 'sync-queues', status: 'deleted' },
+      { area: 'audit-log', status: 'deleted' },
+      { area: 'consent-records', status: 'deleted' },
+    ]);
     householdImpactMock.mockClear();
     householdImpactMock.mockReturnValue({
       soloOwnedHouseholds: 1,
@@ -360,7 +370,14 @@ describe('SettingsPage', () => {
       });
       await waitFor(() => expect(clearLocalAccountDataMock).toHaveBeenCalledTimes(1));
       expect(wipeLocalDataMock).toHaveBeenCalledTimes(1);
-      expect(logoutMock).toHaveBeenCalledTimes(1);
+      expect(await screen.findByRole('heading', { name: /account deletion receipt/i })).toBeInTheDocument();
+      expect(screen.getByText(/verification hash/i)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /download receipt/i })).toHaveAttribute('download');
+      expect(logoutMock).not.toHaveBeenCalled();
+      expect(assignSpy).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: /continue to login/i }));
+      await waitFor(() => expect(logoutMock).toHaveBeenCalledTimes(1));
       expect(assignSpy).toHaveBeenCalledWith('/login');
     });
 

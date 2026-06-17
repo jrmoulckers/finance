@@ -57,6 +57,7 @@ describe('AccountForm', () => {
     expect(screen.getByLabelText('Account Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Account Type')).toHaveValue('CHECKING');
     expect(screen.getByLabelText('Account Purpose')).toHaveValue('personal');
+    expect(screen.getByLabelText('Mark this as a retirement or tax-advantaged account')).not.toBeChecked();
     expect(screen.getByLabelText('Currency')).toHaveValue('USD');
     expect(screen.getByLabelText('Initial Balance')).toHaveValue(0);
 
@@ -106,9 +107,35 @@ describe('AccountForm', () => {
       name: 'Primary Savings',
       type: 'SAVINGS',
       purpose: 'business',
+      retirementAccountType: null,
+      retirementTaxTreatment: null,
+      hsaCoverageLevel: null,
       currency: { code: 'EUR', decimalPlaces: 2 },
       currentBalance: { amount: 12550 },
     });
+  });
+
+  it('submits retirement account classification metadata', async () => {
+    const { onSubmit } = renderAccountForm();
+
+    fireEvent.change(screen.getByLabelText('Account Name'), {
+      target: { value: 'Family HSA' },
+    });
+    fireEvent.click(screen.getByLabelText('Mark this as a retirement or tax-advantaged account'));
+    fireEvent.change(screen.getByLabelText('Retirement account type'), { target: { value: 'HSA' } });
+    fireEvent.change(screen.getByLabelText('HSA coverage'), { target: { value: 'FAMILY' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retirementAccountType: 'HSA',
+        retirementTaxTreatment: 'PRE_TAX',
+        hsaCoverageLevel: 'FAMILY',
+      }),
+    );
   });
 
   it('handles zero-decimal currency balances', async () => {

@@ -14,6 +14,11 @@ import '../components/navigation/breadcrumb.css';
 import '../styles/pages.css';
 import { getAccountPurposeLabel } from '../lib/accountPurpose';
 import {
+  getHsaCoverageLabel,
+  getRetirementAccountTypeLabel,
+  getRetirementTaxTreatmentLabel,
+} from '../lib/tax/retirement-contribution-metadata';
+import {
   calculateReconciliationDifference,
   getReconciliationCandidates,
   getTransactionReconciliationAmount,
@@ -275,6 +280,18 @@ export const AccountDetailPage: React.FC = () => {
           <div>
             <dt className="card__title">Purpose</dt>
             <dd>{getAccountPurposeLabel(account.purpose)}</dd>
+          </div>
+          <div>
+            <dt className="card__title">Retirement classification</dt>
+            <dd>
+              {getRetirementAccountTypeLabel(account.retirementAccountType)}
+              {account.retirementAccountType
+                ? ' · ' + getRetirementTaxTreatmentLabel(account.retirementTaxTreatment)
+                : ''}
+              {account.retirementAccountType === 'HSA'
+                ? ' · ' + getHsaCoverageLabel(account.hsaCoverageLevel) + ' coverage'
+                : ''}
+            </dd>
           </div>
           {account.isArchived && (
             <div>
@@ -539,6 +556,9 @@ export const AccountDetailPage: React.FC = () => {
             name: data.name,
             type: data.type,
             purpose: data.purpose,
+            retirementAccountType: data.retirementAccountType,
+            retirementTaxTreatment: data.retirementTaxTreatment,
+            hsaCoverageLevel: data.hsaCoverageLevel,
             currency: data.currency,
             currentBalance: data.currentBalance,
           });

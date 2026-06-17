@@ -103,14 +103,6 @@ function getTransactionDisplayAmount(transaction: Transaction): number {
   return transaction.amount.amount;
 }
 
-function formatCurrencyAmount(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount / 100);
-}
-
 function formatDueDate(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
@@ -970,25 +962,28 @@ export const DashboardPage: React.FC = () => {
               </div>
               <p style={{ marginTop: 'var(--spacing-3)' }}>
                 You earned{' '}
-                {formatCurrencyAmount(
-                  taxReserve.summary.currentMonthNetIncomeCents,
-                  taxReserveCurrency,
-                )}{' '}
+                <CurrencyDisplay
+                  amount={taxReserve.summary.currentMonthNetIncomeCents}
+                  currency={taxReserveCurrency}
+                  context="current month taxable income"
+                />{' '}
                 this month — set aside{' '}
-                {formatCurrencyAmount(
-                  taxReserve.summary.currentMonthRecommendedCents,
-                  taxReserveCurrency,
-                )}{' '}
+                <CurrencyDisplay
+                  amount={taxReserve.summary.currentMonthRecommendedCents}
+                  currency={taxReserveCurrency}
+                  context="current month recommended tax reserve"
+                />{' '}
                 ({taxReserveRatePercent}%).
               </p>
               <p className="list-item__secondary">
                 Quarterly estimate due {formatDueCountdown(taxReserve.summary.daysUntilDue)} on{' '}
                 {formatDueDate(taxReserve.summary.nextDueDate.dueDate)}. Based on income so far, set
                 aside ~
-                {formatCurrencyAmount(
-                  taxReserve.summary.quarterRecommendedCents,
-                  taxReserveCurrency,
-                )}
+                <CurrencyDisplay
+                  amount={taxReserve.summary.quarterRecommendedCents}
+                  currency={taxReserveCurrency}
+                  context="quarterly tax reserve"
+                />
                 .
               </p>
             </article>
