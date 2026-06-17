@@ -6,7 +6,7 @@
  * @module components/charts/SpendingBarChart
  */
 
-import { type FC, useCallback, useId, useMemo, useRef } from 'react';
+import { type FC, useCallback, useId, useMemo, useRef, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -47,6 +47,7 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
   const chartId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const maskingMode = useEffectiveMaskingMode();
+  const [announcement, setAnnouncement] = useState('');
 
   const description = useMemo(
     () =>
@@ -59,9 +60,20 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
     [data, currency, maskingMode],
   );
 
+  const pointAnnouncements = useMemo(
+    () =>
+      data.map(
+        (entry, index) =>
+          `${title}. Focused category ${index + 1} of ${data.length}. ${entry.name}: ${formatChartCurrency(entry.amount, currency, 'en-US', maskingMode)}.`,
+      ),
+    [currency, data, maskingMode, title],
+  );
   const { handleKeyDown } = useArrowKeyNavigation(containerRef, {
     orientation: 'horizontal',
-    onFocus: useCallback(() => {}, []),
+    onFocus: useCallback(
+      (index: number) => setAnnouncement(pointAnnouncements[index] ?? ''),
+      [pointAnnouncements],
+    ),
   });
 
   const disableAnimation = prefersReducedMotion();
@@ -80,6 +92,9 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
       <p id={`${chartId}-desc`} className="sr-only">
         {description}
       </p>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" aria-label="Chart point announcement">
+        {announcement}
+      </div>
       <ResponsiveContainer width="100%" height={height}>
         <BarChart
           data={data}

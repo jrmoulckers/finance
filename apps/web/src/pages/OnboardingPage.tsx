@@ -27,6 +27,7 @@ import { useLocalOnlyMode } from '../hooks/useLocalOnlyMode';
 import { setReducedMotionPreference } from '../hooks/useReducedMotion';
 import { applyTheme, THEME_STORAGE_KEY } from '../hooks/useTheme';
 import { setSimplifiedModePreference } from '../lib/accessibility-preferences';
+import { buildOnboardingProgressAnnouncement } from '../lib/a11y/onboarding-progress';
 import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templates';
 import type { FeatureAvailability } from '../lib/local-only-mode';
 
@@ -42,6 +43,22 @@ const SIMPLE_MODE_FONT_SCALE_INDEX = Math.max(
 );
 
 type OnboardingStep = 'comfort' | 'choose' | 'privacy' | 'template' | 'complete';
+
+const ONBOARDING_STEP_ORDER: readonly OnboardingStep[] = [
+  'comfort',
+  'choose',
+  'privacy',
+  'template',
+  'complete',
+];
+
+const ONBOARDING_STEP_LABELS: Record<OnboardingStep, string> = {
+  comfort: 'Comfort preferences',
+  choose: 'Choose setup path',
+  privacy: 'Privacy preferences',
+  template: 'Starter budget template',
+  complete: 'Setup complete',
+};
 
 type LifeStageId = 'student' | 'first-job' | 'household' | 'caregiver' | 'freelancer' | 'retiree';
 type GlossaryTermId = 'cashFlow' | 'recurringExpense' | 'savingsGoal' | 'budgetVariance';
@@ -380,6 +397,24 @@ const OnboardingPage: React.FC = () => {
   const fullySetUp =
     (starterBudgetCreated || savedGoals.length > 0) &&
     (allLessonsComplete || selectedLifeStages.length > 0);
+  const onboardingProgressAnnouncement = buildOnboardingProgressAnnouncement({
+    stepLabel: ONBOARDING_STEP_LABELS[step],
+    stepIndex: Math.max(ONBOARDING_STEP_ORDER.indexOf(step), 0),
+    totalSteps: ONBOARDING_STEP_ORDER.length,
+    status: templateError ? 'error' : isApplyingTemplate ? 'saving' : step === 'complete' ? 'complete' : 'current',
+    errorCount: templateError ? 1 : 0,
+  });
+  const onboardingProgressLiveRegion = (
+    <p
+      className="sr-only"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label="Onboarding progress"
+    >
+      {onboardingProgressAnnouncement}
+    </p>
+  );
 
   const onboardingClassName = [
     'onboarding',
@@ -626,6 +661,7 @@ const OnboardingPage: React.FC = () => {
   if (step === 'comfort') {
     return (
       <main className={onboardingClassName} aria-label="Comfort Preferences">
+        {onboardingProgressLiveRegion}
         <div className="onboarding__container onboarding__container--narrow">
           <header className="onboarding__header">
             <h1 className="onboarding__title">Welcome to Finance</h1>
@@ -767,6 +803,7 @@ const OnboardingPage: React.FC = () => {
   if (step === 'choose') {
     return (
       <main className={onboardingClassName} aria-label="Get Started">
+        {onboardingProgressLiveRegion}
         <div className="onboarding__container">
           <header className="onboarding__header">
             <h1 className="onboarding__title">Welcome to Finance</h1>
@@ -873,6 +910,7 @@ const OnboardingPage: React.FC = () => {
   if (step === 'privacy') {
     return (
       <main className={onboardingClassName} aria-label="Privacy Preferences">
+        {onboardingProgressLiveRegion}
         <div className="onboarding__container onboarding__container--narrow">
           <header className="onboarding__header">
             <h1 className="onboarding__title">Privacy Preferences</h1>
@@ -914,6 +952,7 @@ const OnboardingPage: React.FC = () => {
   if (step === 'template' && studentTemplate) {
     return (
       <main className={onboardingClassName} aria-label="Starter Budget Template">
+        {onboardingProgressLiveRegion}
         <div className="onboarding__container onboarding__container--narrow">
           <header className="onboarding__header">
             <h1 className="onboarding__title">Want a starter budget? Choose a template:</h1>
@@ -1222,6 +1261,7 @@ const OnboardingPage: React.FC = () => {
 
   return (
     <main className={onboardingClassName} aria-label="Setup Complete">
+      {onboardingProgressLiveRegion}
       <div className="onboarding__container onboarding__container--narrow">
         <div className="onboarding__complete">
           <div className="onboarding__complete-icon" aria-hidden="true">

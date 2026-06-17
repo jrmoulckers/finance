@@ -4,7 +4,7 @@
  * BudgetDonutChart — Recharts donut chart for budget allocation.
  * @module components/charts/BudgetDonutChart
  */
-import { type FC, useId, useMemo, useRef } from 'react';
+import { type FC, useCallback, useId, useMemo, useRef, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { CHART_COLORS, buildChartDescription, formatChartCurrency } from './chart-palette';
 import { useArrowKeyNavigation } from '../../accessibility/aria';
@@ -35,6 +35,7 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
 }) => {
   const chartId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [announcement, setAnnouncement] = useState('');
   const disableAnimation = prefersReducedMotion();
   const total = useMemo(() => data.reduce((sum, d) => sum + d.value, 0), [data]);
   const description = useMemo(
@@ -46,7 +47,20 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
       ),
     [data, currency],
   );
-  const { handleKeyDown } = useArrowKeyNavigation(containerRef, { orientation: 'both' });
+  const pointAnnouncements = useMemo(
+    () =>
+      data.map((entry, index) =>
+        `${title}. Focused slice ${index + 1} of ${data.length}. ${entry.name}: ${formatChartCurrency(entry.value, currency)} (${total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0'}%).`,
+      ),
+    [currency, data, title, total],
+  );
+  const { handleKeyDown } = useArrowKeyNavigation(containerRef, {
+    orientation: 'both',
+    onFocus: useCallback(
+      (index: number) => setAnnouncement(pointAnnouncements[index] ?? ''),
+      [pointAnnouncements],
+    ),
+  });
 
   return (
     <div
@@ -62,6 +76,9 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
       <p id={`${chartId}-desc`} className="sr-only">
         {description}
       </p>
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" aria-label="Chart point announcement">
+        {announcement}
+      </div>
       <ResponsiveContainer width="100%" height={height}>
         <PieChart
           role="img"

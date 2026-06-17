@@ -85,6 +85,7 @@ const mockSetShowHelp = vi.fn();
 
 describe('AppLayout', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.mocked(useKeyboardShortcuts).mockReturnValue({
       showHelp: false,
       setShowHelp: mockSetShowHelp,
@@ -192,5 +193,18 @@ describe('AppLayout', () => {
     render(<AppLayout {...defaultProps} />);
 
     expect(screen.getByTestId('install-banner')).toBeInTheDocument();
+  });
+
+  it('applies the simple-mode route plan to core route content', () => {
+    localStorage.setItem('finance-simplified-mode', 'true');
+
+    render(<AppLayout {...defaultProps} activePath="/transactions" pageTitle="Transactions" />);
+
+    const main = screen.getByRole('main', { name: 'Transactions' });
+    expect(main).toHaveAttribute('data-simple-mode', 'true');
+    expect(main).toHaveAttribute('data-simple-mode-surface', 'transactions');
+    expect(
+      screen.getByRole('region', { name: /transactions simple mode plan/i }),
+    ).toHaveTextContent('Primary action: Add transaction.');
   });
 });

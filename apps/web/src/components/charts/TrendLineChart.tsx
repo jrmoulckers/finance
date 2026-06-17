@@ -23,6 +23,7 @@ import {
   CHART_KEYBOARD_INSTRUCTIONS,
   useChartKeyboardNavigation,
 } from './chart-accessibility';
+import { buildChartTextSummary } from '../../lib/a11y/chart-table-audit';
 
 export interface TrendDataPoint {
   label: string;
@@ -89,9 +90,20 @@ export const TrendLineChart: FC<TrendLineChartProps> = ({
           rowHeader: point.label,
           cells: values.map((value) => value.formattedValue),
           ariaLabel: `${point.label}: ${values.map((value) => `${value.name} ${value.formattedValue}`).join(', ')}`,
+          announcement: buildChartTextSummary({
+            title,
+            timeframe: point.label,
+            trendDescription: `Focused point ${index + 1} of ${data.length}.`,
+            points: values.map((value) => ({
+              label: point.label,
+              series: value.name,
+              value: value.formattedValue,
+            })),
+            maxPoints: values.length,
+          }),
         };
       }),
-    [chartId, currency, data, series],
+    [chartId, currency, data, series, title],
   );
 
   const { announcement, handleFocus, handleKeyDown } = useChartKeyboardNavigation(dataPointRows);

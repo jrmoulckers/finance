@@ -175,10 +175,12 @@ describe('SpendingTrendChart', () => {
 
     const navigator = screen.getByRole('group', { name: /Spending Trend data navigator/i });
     fireEvent.focus(navigator);
-    expect(screen.getByRole('status')).toHaveTextContent('Jan 1: $50');
+    expect(screen.getByRole('status')).toHaveTextContent('Focused point 1 of 3.');
+    expect(screen.getByRole('status')).toHaveTextContent('Spending Jan 1: $50');
 
     fireEvent.keyDown(navigator, { key: 'ArrowRight' });
-    expect(screen.getByRole('status')).toHaveTextContent('Jan 2: $30');
+    expect(screen.getByRole('status')).toHaveTextContent('Focused point 2 of 3.');
+    expect(screen.getByRole('status')).toHaveTextContent('Spending Jan 2: $30');
   });
 
   it('hides comparison when null', () => {

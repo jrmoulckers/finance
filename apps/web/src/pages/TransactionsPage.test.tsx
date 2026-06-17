@@ -17,6 +17,7 @@ import { TransactionsPage } from './TransactionsPage';
 const repositoryMocks = vi.hoisted(() => ({
   updateTransaction: vi.fn(),
   deleteTransaction: vi.fn(),
+  fontScale: { value: 1 },
 }));
 
 // Mock each hook file individually — the page imports from the individual
@@ -24,6 +25,9 @@ const repositoryMocks = vi.hoisted(() => ({
 vi.mock('../hooks/useTransactions', () => ({ useTransactions: vi.fn() }));
 vi.mock('../hooks/useCategories', () => ({ useCategories: vi.fn() }));
 vi.mock('../hooks/useAccounts', () => ({ useAccounts: vi.fn() }));
+vi.mock('../hooks/useFontScale', () => ({
+  useFontScale: () => ({ scale: repositoryMocks.fontScale.value }),
+}));
 vi.mock('../db/DatabaseProvider', () => ({ useDatabase: () => ({}) }));
 vi.mock('../db/repositories/transactions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../db/repositories/transactions')>();
@@ -126,6 +130,7 @@ describe('TransactionsPage', () => {
     deleteTransactionMock.mockReset();
     repositoryMocks.updateTransaction.mockReset();
     repositoryMocks.deleteTransaction.mockReset();
+    repositoryMocks.fontScale.value = 1;
     deleteTransactionMock.mockReturnValue(true);
     repositoryMocks.updateTransaction.mockReturnValue({ id: 'updated-transaction' });
     repositoryMocks.deleteTransaction.mockReturnValue(true);
@@ -590,6 +595,19 @@ describe('TransactionsPage', () => {
 
     expect(screen.getByRole('checkbox', { name: /select monthly salary/i })).toBeChecked();
     expect(screen.getByText('2 selected')).toBeInTheDocument();
+  });
+
+  it('renders transaction cards instead of dense rows at huge text scale', () => {
+    repositoryMocks.fontScale.value = 2;
+
+    render(
+      <MemoryRouter>
+        <TransactionsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/showing 3 transactions as cards for large text/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('list', { name: /large text transaction card list/i })).toHaveLength(2);
   });
 
   it('virtualizes large transaction registers instead of rendering every row', () => {
