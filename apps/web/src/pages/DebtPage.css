@@ -971,3 +971,137 @@
   background: var(--semantic-background-primary, #1f2937);
   border-color: var(--semantic-border, #374151);
 }
+
+/* Debt issue beta panels */
+.debt-beta-panel,
+.debt-progress-ring-card {
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--semantic-background-primary, #fff);
+  padding: var(--spacing-4, 1rem);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.debt-beta-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-3, 0.75rem);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.debt-beta-form label,
+.debt-checkbox-list label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 0.5rem);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.debt-beta-form input,
+.debt-beta-form select {
+  width: 100%;
+  padding: var(--spacing-3, 0.75rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-background-primary, #fff);
+  color: inherit;
+  box-sizing: border-box;
+}
+
+.debt-beta-form button {
+  grid-column: 1 / -1;
+}
+
+.debt-beta-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-2, 0.5rem) var(--spacing-4, 1rem);
+  padding: var(--spacing-3, 0.75rem);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--semantic-background-secondary, #f9fafb);
+}
+
+.debt-beta-list {
+  display: grid;
+  gap: var(--spacing-2, 0.5rem);
+  padding-left: var(--spacing-5, 1.25rem);
+}
+
+.debt-checkbox-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3, 0.75rem);
+  border: 1px solid var(--semantic-border, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  margin: 0 0 var(--spacing-4, 1rem);
+  padding: var(--spacing-3, 0.75rem);
+}
+
+.debt-checkbox-list label,
+.student-loan-checkbox {
+  flex-direction: row;
+  align-items: center;
+}
+
+.debt-progress-ring-card {
+  display: flex;
+  gap: var(--spacing-4, 1rem);
+  align-items: center;
+}
+
+.debt-progress-ring {
+  width: 120px;
+  height: 120px;
+  flex: 0 0 auto;
+  transform: rotate(-90deg);
+}
+
+.debt-progress-ring text {
+  transform: rotate(90deg);
+  transform-origin: 50% 50%;
+  fill: var(--semantic-text-primary, #111);
+  font-weight: var(--font-weight-bold, 700);
+}
+
+.debt-progress-ring__track,
+.debt-progress-ring__value {
+  fill: none;
+  stroke-width: 12;
+}
+
+.debt-progress-ring__track {
+  stroke: var(--semantic-border, #e5e7eb);
+}
+
+.debt-progress-ring__value {
+  stroke: var(--semantic-primary, #2563eb);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.debt-progress-ring-card__primary {
+  font-size: var(--font-size-xl, 1.25rem);
+  font-weight: var(--font-weight-bold, 700);
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .debt-progress-ring__value {
+    transition: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .debt-beta-panel,
+  .debt-progress-ring-card {
+    background: var(--semantic-background-primary, #1f2937);
+    border-color: var(--semantic-border, #374151);
+  }
+}
+
+[data-theme='dark'] .debt-beta-panel,
+[data-theme='dark'] .debt-progress-ring-card {
+  background: var(--semantic-background-primary, #1f2937);
+  border-color: var(--semantic-border, #374151);
+}
