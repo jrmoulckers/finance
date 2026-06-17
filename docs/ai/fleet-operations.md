@@ -9,6 +9,7 @@ This document describes how the AI agent fleet operates in parallel, including d
 ## Table of Contents
 
 - [Overview](#overview)
+- [Branch & Merge Policy (MANDATORY)](#branch--merge-policy-mandatory)
 - [Fleet Dispatch Pattern](#fleet-dispatch-pattern)
 - [Worktree Isolation Model](#worktree-isolation-model)
 - [File Ownership Rules](#file-ownership-rules)
@@ -40,6 +41,47 @@ Fleet mode works best for tasks with **naturally separable concerns**:
 - CI/CD pipeline + infrastructure + documentation updates
 
 Fleet mode is **not appropriate** for tasks where the work is tightly coupled and requires frequent back-and-forth coordination (e.g., iterating on a single API contract that multiple agents consume simultaneously).
+
+---
+
+## Branch & Merge Policy (MANDATORY)
+
+> **Why this section exists:** A multi-session fleet program once accumulated ~100 feature PRs onto a stale, misleadingly-named feature branch (`feat/2030-account-deletion`) instead of `main`. Nothing auto-deployed (staging deploys from `main`), `Closes #` never fired, and reconciling the divergence later required resolving 58 conflicts. **This must never happen again.** The rules below are non-negotiable.
+
+### Rule A — The base branch for every fleet PR is `main`
+
+- Every `gh pr create` **MUST** pass `--base main`. Do not omit `--base` (it defaults to the repo default, which is correct only by luck) and **never** point fleet PRs at a long-lived feature branch.
+- The "latest green commit" staging deploy and `Closes #N` auto-close **only work when PRs merge into `main`** (the default branch). Merging into any other base silently breaks both.
+
+### Rule B — Integration branches are short-lived and single-PR
+
+You may use one short-lived integration branch **only** when a set of PRs is genuinely dependent and must land together. If you do:
+
+1. Name it `release/<program>` or `integration/<program>` — **never** reuse an unrelated feature branch.
+2. It carries **exactly one** tracking PR to `main`.
+3. It is **reconciled with `origin/main` and merged to `main` within the same work session.** A program is **not done** while it lives only on a side branch.
+4. Prefer **not** using one at all: independent PRs straight to `main` (merged as they go green) are the default.
+
+### Rule C — Reconcile with `main` before the final merge (orchestrator's job)
+
+- Before declaring a fleet complete, the orchestrator **MUST** merge `origin/main` into the work and resolve all conflicts, then validate green (type-check + lint + the conflict-affected test areas).
+- The longer a branch lives off `main`, the worse the conflicts. Reconcile **early and often**; do a final reconcile immediately before merge.
+
+### Rule D — "Done" means it's on `main` (or has a green, mergeable PR to `main`)
+
+- A fleet task is **not complete** while its work exists only on a branch. The Definition of Done is: **merged to `main`, OR an open PR to `main` that is `MERGEABLE` and green**, with a clear note if a human must click merge.
+- If you closed issues against a non-default base (so auto-close didn't fire), you **MUST** close them explicitly **and** state that in the summary.
+
+### Rule E — Landing on `main` is the deploy action
+
+- Merging to `main` **auto-triggers the staging deploy** (`deploy-staging.yml`, `workflow_run` after _Web CI_ + _Lint & Format_ pass on `main`). Treat every merge to `main` with that weight.
+- **Production is never automatic** — it requires `workflow_dispatch` + human approval via the `production` GitHub environment. Agents do not deploy to production.
+- See [branch-protection.md](../architecture/branch-protection.md) and [deployment-pipeline.md](../deployment-pipeline.md) for the gating and environments.
+
+### Rule F — Merge mechanics
+
+- Use `gh pr merge <n> --squash` for a single feature PR (clean `main` history), or `--merge` for an integration branch that should preserve its feature commits.
+- Branch protection may report `MERGEABLE (BLOCKED)` (required checks/reviews). Only use `--admin` to override when you have **explicitly verified locally** (type-check + lint + the affected tests are green) and the block is protection-state, not a real CI failure. Document the override in the merge summary.
 
 ---
 
@@ -333,11 +375,19 @@ If any agent encounters a financial logic decision during fleet work, it must:
 
 Agents don't rely on a central monitor. Each agent polls `gh pr checks` on its own PR and self-heals CI failures independently.
 
+### Rule 7: Every PR targets `main` — programs land on `main`, not side branches
+
+All fleet PRs use `--base main` (see [Branch & Merge Policy](#branch--merge-policy-mandatory)). The orchestrator is responsible for reconciling with `origin/main` and ensuring the program is **merged to `main` (or has a green, mergeable PR to `main`) before declaring the fleet done.** Accumulating a multi-PR program on a long-lived feature branch is a process failure — it breaks staging auto-deploy and `Closes #N` auto-close.
+
 ---
 
 ## Wave 3 Learnings
 
 Lessons from the third fleet deployment wave:
+
+### Branch policy: programs must land on `main` (incident)
+
+A later multi-session program accumulated ~100 feature PRs onto a stale, misleadingly-named feature branch instead of `main`. Consequences: **no staging auto-deploy** (staging deploys from `main`), **`Closes #N` never auto-fired** (only works on the default branch), and a later reconcile required resolving **58 conflicts** across core files. **Fix codified:** see [Branch & Merge Policy](#branch--merge-policy-mandatory) and [Rule 7](#rule-7-every-pr-targets-main--programs-land-on-main-not-side-branches). Orchestrators must target `main` for every PR and land the program on `main` within the work session.
 
 ### Doc agents need human commit
 
@@ -429,7 +479,9 @@ $env:HUSKY = "0" ; git push --no-verify origin <branch-name>
 ```bash
 $env:HUSKY = "0" ; git push --no-verify origin <branch>
 
+# ALWAYS target main as the base (see Branch & Merge Policy, Rule A).
 gh pr create \
+  --base main \
   --title "type(scope): description (#N)" \
   --body "## Summary
 <description of changes>
