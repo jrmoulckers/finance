@@ -23,6 +23,7 @@ import {
 } from '../../lib/accessibility-preferences';
 import { SUPPORTED_CURRENCY_METADATA } from '../../lib/currency-metadata';
 import { translate } from '../../lib/i18n';
+import { createSettingsCopy } from '../../lib/i18n/settings-catalog';
 import { setOnboardingComplete } from '../../lib/local-only-mode';
 
 const CURRENCY_STORAGE_KEY = 'finance-currency';
@@ -96,6 +97,7 @@ export const SettingsPreferencesPage: React.FC = () => {
   const [bnplStackingThreshold, setBnplStackingThreshold] = useState(() =>
     String(loadBnplStackingThresholdCents() / 100),
   );
+  const settingsCopy = createSettingsCopy(localePreferences.locale);
 
   const handleThemeChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -166,19 +168,19 @@ export const SettingsPreferencesPage: React.FC = () => {
 
   return (
     <>
-      <h2 className="settings-subpage__title">Preferences</h2>
-      <section aria-label="Preferences" className="page-section">
+      <h2 className="settings-subpage__title">{settingsCopy.text('preferencesTitle')}</h2>
+      <section aria-label={settingsCopy.text('preferencesAria')} className="page-section">
         <div className="settings-group">
-          <h3 className="settings-group__title">Preferences</h3>
+          <h3 className="settings-group__title">{settingsCopy.text('preferencesTitle')}</h3>
           <SettingInfoWidget settingKey="currency">
             <div className="settings-item settings-item--static">
               <label className="settings-item__label" htmlFor="settings-currency">
-                Currency
+                {settingsCopy.text('currencyLabel')}
               </label>
               <div className="settings-item__control">
                 <select
                   id="settings-currency"
-                  aria-label="Currency"
+                  aria-label={settingsCopy.text('currencyAria')}
                   className="settings-item__select"
                   value={currency}
                   onChange={handleCurrencyChange}
@@ -264,12 +266,12 @@ export const SettingsPreferencesPage: React.FC = () => {
           <SettingInfoWidget settingKey="theme">
             <div className="settings-item settings-item--static">
               <label className="settings-item__label" htmlFor="settings-theme">
-                Theme
+                {settingsCopy.text('themeLabel')}
               </label>
               <div className="settings-item__control">
                 <select
                   id="settings-theme"
-                  aria-label="Theme"
+                  aria-label={settingsCopy.text('themeAria')}
                   className="settings-item__select"
                   value={theme}
                   onChange={handleThemeChange}
@@ -286,14 +288,14 @@ export const SettingsPreferencesPage: React.FC = () => {
           <SettingInfoWidget settingKey="notifications">
             <div className="settings-item settings-item--static">
               <label className="settings-item__label" htmlFor="s-notif">
-                Notifications
+                {settingsCopy.text('notificationsLabel')}
               </label>
               <input
                 type="checkbox"
                 id="s-notif"
                 checked={notificationsEnabled}
                 onChange={handleNotificationsChange}
-                aria-label="Notifications"
+                aria-label={settingsCopy.text('notificationsAria')}
                 className="settings-item__checkbox"
               />
             </div>
@@ -567,3 +569,6 @@ export const SettingsPreferencesPage: React.FC = () => {
 };
 
 export default SettingsPreferencesPage;
+
+
+
