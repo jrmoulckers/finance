@@ -49,13 +49,14 @@ describe('starter budget templates', () => {
     expect(calculateStarterTemplateTotal('food-meals')).toBe(70_000);
   });
 
-  it('keeps future starter templates visible but unavailable', () => {
+  it('keeps future starter templates visible but unavailable while family is available', () => {
     const templateIds = getBudgetStarterTemplates().map((template) => template.id);
 
-    expect(templateIds).toEqual(['student', 'food-meals', 'professional', 'family', 'retiree']);
+    expect(templateIds).toEqual(['student', 'food-meals', 'family', 'professional', 'retiree']);
     expect(getAvailableBudgetStarterTemplates().map((template) => template.id)).toEqual([
       'student',
       'food-meals',
+      'family',
     ]);
   });
 
