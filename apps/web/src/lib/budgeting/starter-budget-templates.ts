@@ -9,6 +9,8 @@
  * References: issue #2148
  */
 
+import { SINGLE_PARENT_FAMILY_TEMPLATE } from './single-parent-starter-template';
+
 export type BudgetStarterTemplateId =
   | 'student'
   | 'food-meals'
@@ -180,15 +182,6 @@ const COMING_SOON_TEMPLATES: readonly BudgetStarterTemplate[] = [
     availabilityLabel: 'Coming soon',
   },
   {
-    id: 'family',
-    name: 'Family',
-    description: 'Designed for households balancing childcare, groceries, and shared bills.',
-    guidance: 'Coming soon',
-    categories: [],
-    isAvailable: false,
-    availabilityLabel: 'Coming soon',
-  },
-  {
     id: 'retiree',
     name: 'Retiree',
     description: 'Focused on fixed income, healthcare, and flexible leisure spending.',
@@ -202,6 +195,7 @@ const COMING_SOON_TEMPLATES: readonly BudgetStarterTemplate[] = [
 const STARTER_BUDGET_TEMPLATES: readonly BudgetStarterTemplate[] = [
   STUDENT_TEMPLATE,
   FOOD_MEALS_TEMPLATE,
+  SINGLE_PARENT_FAMILY_TEMPLATE,
   ...COMING_SOON_TEMPLATES,
 ] as const;
 
