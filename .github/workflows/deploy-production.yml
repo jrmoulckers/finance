@@ -254,7 +254,7 @@ jobs:
     if: needs.prepare.outputs.rollback != 'true'
     steps:
       - name: Wait for CI workflows
-        uses: lewagon/wait-on-check-action@0dceb95e7c4cad8cc7422aee3885998f5cab9c79 # v1.4.0
+        uses: lewagon/wait-on-check-action@96d9100b431964d10e0136aff8b9ccb92470505e # v1.8.0
         with:
           ref: ${{ needs.prepare.outputs.sha }}
           running-workflow-name: 'Verify CI green on SHA'

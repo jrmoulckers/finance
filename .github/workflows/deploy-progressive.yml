@@ -177,7 +177,7 @@ jobs:
 
       - name: Attest build provenance
         if: needs.prepare-canary.outputs.deploy_web == 'true'
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: apps/web/dist/**
 
