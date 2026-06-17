@@ -30,6 +30,7 @@ const Settings = lazy(() => import('./pages/SettingsPage'));
 const SettingsAccount = lazy(() => import('./pages/settings/SettingsAccountPage'));
 const SettingsPreferences = lazy(() => import('./pages/settings/SettingsPreferencesPage'));
 const SettingsPrivacy = lazy(() => import('./pages/settings/SettingsPrivacyPage'));
+const SettingsSecurity = lazy(() => import('./pages/settings/SettingsSecurityPage'));
 const SettingsSync = lazy(() => import('./pages/settings/SettingsSyncPage'));
 const SettingsAdvanced = lazy(() => import('./pages/settings/SettingsAdvancedPage'));
 const SettingsAbout = lazy(() => import('./pages/settings/SettingsAboutPage'));
@@ -39,6 +40,13 @@ const Login = lazy(() => import('./pages/LoginPage'));
 const Signup = lazy(() => import('./pages/SignupPage'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPassword = lazy(() => import('./pages/ResetPasswordPage'));
+const LegalIndex = lazy(() =>
+  import('./pages/legal/LegalPage').then((module) => ({ default: module.LegalIndexPage })),
+);
+const LegalDocument = lazy(() =>
+  import('./pages/legal/LegalPage').then((module) => ({ default: module.LegalDocumentPage })),
+);
+const BetaLanding = lazy(() => import('./pages/BetaLanding'));
 const NotFound = lazy(() => import('./pages/NotFoundPage'));
 const Watchlists = lazy(() => import('./pages/WatchlistsPage'));
 const Household = lazy(() => import('./pages/HouseholdPage'));
@@ -51,6 +59,8 @@ const Bills = lazy(() => import('./pages/BillsPage'));
 const BillDetail = lazy(() => import('./pages/BillDetailPage'));
 const CreateBill = lazy(() => import('./pages/CreateBillPage'));
 const Planning = lazy(() => import('./pages/PlanningPage'));
+const Learning = lazy(() => import('./pages/LearningPage'));
+const EstateInventory = lazy(() => import('./pages/EstateInventoryPage'));
 const PrivacyDashboard = lazy(() => import('./pages/PrivacyDashboardPage'));
 const Onboarding = lazy(() => import('./pages/OnboardingPage'));
 const CashFlow = lazy(() => import('./pages/CashFlowPage'));
@@ -189,6 +199,46 @@ export const AppRoutes: FC = () => (
       element={
         <RouteBoundary name="Reset Password">
           <ResetPassword />
+        </RouteBoundary>
+      }
+    />
+    <Route
+      path="/legal"
+      element={
+        <RouteBoundary name="Legal">
+          <LegalIndex />
+        </RouteBoundary>
+      }
+    />
+    <Route
+      path="/legal/privacy"
+      element={
+        <RouteBoundary name="Privacy Policy">
+          <LegalDocument documentId="privacy" />
+        </RouteBoundary>
+      }
+    />
+    <Route
+      path="/legal/terms"
+      element={
+        <RouteBoundary name="Terms of Service">
+          <LegalDocument documentId="terms" />
+        </RouteBoundary>
+      }
+    />
+    <Route
+      path="/legal/ccpa"
+      element={
+        <RouteBoundary name="California Privacy Notice">
+          <LegalDocument documentId="ccpa" />
+        </RouteBoundary>
+      }
+    />
+    <Route
+      path="/beta"
+      element={
+        <RouteBoundary name="Beta">
+          <BetaLanding />
         </RouteBoundary>
       }
     />
@@ -417,6 +467,14 @@ export const AppRoutes: FC = () => (
         }
       />
       <Route
+        path="security"
+        element={
+          <RouteBoundary name="Settings · Security">
+            <SettingsSecurity />
+          </RouteBoundary>
+        }
+      />
+      <Route
         path="sync"
         element={
           <RouteBoundary name="Settings · Sync">
@@ -522,6 +580,26 @@ export const AppRoutes: FC = () => (
       }
     />
     <Route
+      path="/learning"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Learning">
+            <Learning />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/estate"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Estate Inventory">
+            <EstateInventory />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
       path="/cash-flow"
       element={
         <AuthenticatedRoute>
@@ -578,6 +656,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Receipt OCR">
             <ReceiptOcr />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/learning"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Learning">
+            <Learning />
           </RouteBoundary>
         </AuthenticatedRoute>
       }

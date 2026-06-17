@@ -26,6 +26,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { replayMutations, type ReplayResult } from '../db/sync/replayMutations';
+import { updatePowerSyncStatus } from '../db/sync/powersync-client';
 import {
   LAST_SYNC_TIME_KEY,
   PERIODIC_SYNC_INTERVAL_MS,
@@ -167,6 +168,16 @@ export function useSyncStatus(): UseSyncStatusResult {
   useEffect(() => {
     void refreshPendingCount();
   }, [isOnline, refreshPendingCount]);
+
+  useEffect(() => {
+    updatePowerSyncStatus({
+      connectionStatus: isOnline ? (isSyncing ? 'syncing' : 'connected') : 'disconnected',
+      pendingUploads: pendingMutations,
+      lastSyncTime,
+      hasSynced: lastSyncTime !== null,
+      error: authError ? 'Authentication required.' : null,
+    });
+  }, [authError, isOnline, isSyncing, lastSyncTime, pendingMutations]);
 
   // -------------------------------------------------------------------------
   // Main-thread fallback: replay when coming back online

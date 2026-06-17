@@ -3,16 +3,68 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { useBudgets, useCategories } from '../hooks';
+import { useBudgets } from '../hooks/useBudgets';
+import { useCategories } from '../hooks/useCategories';
+import { useSyncStatus } from '../hooks/useSyncStatus';
+
+vi.mock('../components/forms', () => ({
+  BudgetForm: ({ isOpen }: { isOpen: boolean }) =>
+    isOpen ? (
+      <div role="dialog" aria-label="Budget form">
+        <label>
+          <input type="checkbox" />
+          Start from template
+        </label>
+        <p>Templates give you a realistic starting point.</p>
+      </div>
+    ) : null,
+}));
+
+vi.mock('../components/common/SyncIndicator', () => ({
+  SyncIndicator: () => <span>Synced</span>,
+}));
+
+vi.mock('../components/budgets', () => ({
+  BudgetAnalytics: () => (
+    <div aria-label="Budget analytics">
+      {Array.from({ length: 5 }, (_, index) => (
+        <div
+          key={index}
+          role="progressbar"
+          aria-valuenow={0}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        />
+      ))}
+    </div>
+  ),
+}));
+
 import { BudgetsPage } from './BudgetsPage';
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/useBudgets', () => ({
   useBudgets: vi.fn(),
+}));
+
+vi.mock('../hooks/useCategories', () => ({
   useCategories: vi.fn(),
+  FOOD_MEAL_SUBCATEGORY_DEFINITIONS: [
+    { name: 'Dining Out', icon: '🍽️', color: '#F97316', description: 'Restaurants' },
+    { name: 'Delivery & Takeout', icon: '🥡', color: '#FB7185', description: 'Delivery' },
+    { name: 'Coffee & Snacks', icon: '☕', color: '#A16207', description: 'Coffee' },
+    { name: 'Meal Prep', icon: '🥗', color: '#0F766E', description: 'Meal prep' },
+  ],
+  isFoodMealBudgetParentCategory: (category: { id?: string; name?: string } | null) =>
+    category?.id === 'category-food' || category?.name === 'Food',
+}));
+
+vi.mock('../hooks/useSyncStatus', () => ({
+  useSyncStatus: vi.fn(),
 }));
 
 const mockedUseBudgets = vi.mocked(useBudgets);
 const mockedUseCategories = vi.mocked(useCategories);
+const mockedUseSyncStatus = vi.mocked(useSyncStatus);
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-01T00:00:00Z',
@@ -23,6 +75,17 @@ const syncMetadata = {
 
 describe('BudgetsPage', () => {
   beforeEach(() => {
+    mockedUseSyncStatus.mockReturnValue({
+      isOnline: true,
+      isOffline: false,
+      pendingMutations: 0,
+      lastSyncTime: null,
+      isSyncing: false,
+      syncNow: vi.fn(),
+      authError: false,
+      conflictCount: 0,
+    });
+
     mockedUseBudgets.mockReturnValue({
       budgets: [
         {
@@ -94,6 +157,7 @@ describe('BudgetsPage', () => {
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
       getBudgetSpendingBreakdown: vi.fn(),
+      reorderBudgets: vi.fn(),
     });
     mockedUseCategories.mockReturnValue({
       categories: [

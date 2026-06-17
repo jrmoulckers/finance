@@ -114,6 +114,16 @@ export function useBulkTransactions(
     [transactions, selectedIds],
   );
 
+  useEffect(() => {
+    const visibleTransactionIds = new Set(transactions.map((transaction) => transaction.id));
+    setSelectedIds((prev) => {
+      const next = new Set(
+        Array.from(prev).filter((transactionId) => visibleTransactionIds.has(transactionId)),
+      );
+      return next.size === prev.size ? prev : next;
+    });
+  }, [transactions]);
+
   const selectionCount = selectedIds.size;
   const isBulkMode = selectionCount > 0;
 

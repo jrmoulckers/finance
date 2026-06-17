@@ -3,17 +3,19 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BudgetAnalytics } from '../components/budgets';
-import {
-  ConfirmDialog,
-  CurrencyDisplay,
-  EmptyState,
-  ErrorBanner,
-  LoadingSpinner,
-} from '../components/common';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
+import { CurrencyDisplay } from '../components/common/CurrencyDisplay';
+import { EmptyState } from '../components/common/EmptyState';
+import { ErrorBanner } from '../components/common/ErrorBanner';
+import { ExplainThis } from '../components/common/ExplainThis';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { SortableList } from '../components/common/SortableList';
+import { SyncIndicator } from '../components/common/SyncIndicator';
 import { BudgetForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
 import type { CreateBudgetInput, CreateBudgetTemplateInput } from '../db/repositories/budgets';
-import { useBudgets, useCategories } from '../hooks';
+import { useBudgets } from '../hooks/useBudgets';
+import { useCategories } from '../hooks/useCategories';
 import { FOOD_MEAL_SUBCATEGORY_DEFINITIONS } from '../hooks/useCategories';
 import type { Budget } from '../kmp/bridge';
 import { getBudgetStatusIndicator } from '../lib/a11y';
@@ -88,6 +90,7 @@ export const BudgetsPage: React.FC = () => {
     createBudgetTemplate,
     updateBudget,
     deleteBudget,
+    reorderBudgets,
   } = useBudgets();
   const {
     categories,
@@ -313,22 +316,35 @@ export const BudgetsPage: React.FC = () => {
           flexWrap: 'wrap',
         }}
       >
-        <h2
+        <div
           style={{
-            fontSize: 'var(--type-scale-headline-font-size)',
-            fontWeight: 'var(--type-scale-headline-font-weight)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-2)',
           }}
         >
-          Budgets
-        </h2>
-        <button
-          type="button"
-          className="form-button form-button--primary"
-          onClick={handleAddBudget}
-          aria-label="Add budget"
-        >
-          + Add Budget
-        </button>
+          <h2
+            style={{
+              fontSize: 'var(--type-scale-headline-font-size)',
+              fontWeight: 'var(--type-scale-headline-font-weight)',
+              margin: 0,
+            }}
+          >
+            Budgets
+          </h2>
+          <ExplainThis tipKey="budget503020Rule" />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
+          <SyncIndicator />
+          <button
+            type="button"
+            className="form-button form-button--primary"
+            onClick={handleAddBudget}
+            aria-label="Add budget"
+          >
+            + Add Budget
+          </button>
+        </div>
       </div>
 
       {!isLoading && !resolvedError && (
@@ -633,8 +649,30 @@ export const BudgetsPage: React.FC = () => {
             </div>
           </section>
           <section aria-label="Budget categories">
-            <div className="card-grid card-grid--2">
-              {budgets.map((budget) => {
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
+                marginBottom: 'var(--spacing-3)',
+              }}
+            >
+              <h3 style={{ margin: 0, fontWeight: 'var(--font-weight-semibold)' }}>
+                Budget Categories
+              </h3>
+              <ExplainThis
+                tipKey="budgetSinkingFund"
+                buttonLabel="Explain sinking funds for budget categories"
+              />
+            </div>
+            <SortableList
+              items={budgets}
+              getItemId={(budget) => budget.id}
+              getItemLabel={(budget) => budget.name}
+              onReorder={reorderBudgets}
+              className="card-grid card-grid--2"
+              ariaLabel="Budget categories"
+              renderItem={(budget, { itemProps, dragHandleProps }) => {
                 const percentUsed =
                   budget.amount.amount > 0
                     ? Math.round((budget.spentAmount.amount / budget.amount.amount) * 100)
@@ -653,8 +691,10 @@ export const BudgetsPage: React.FC = () => {
 
                 return (
                   <article
+                    {...itemProps}
                     key={budget.id}
-                    className="card"
+                    className={`${itemProps.className} card`}
+                    role="listitem"
                     aria-label={`${budget.name}: ${percentUsed}% used, ${budgetStatus.label}`}
                     style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-4)' }}
                   >
@@ -732,6 +772,14 @@ export const BudgetsPage: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
                           <button
+                            {...dragHandleProps}
+                            className={`${dragHandleProps.className ?? ''} icon-button`.trim()}
+                            aria-label={`Reorder ${budget.name}`}
+                            title="Reorder budget"
+                          >
+                            <span aria-hidden="true">⋮⋮</span>
+                          </button>
+                          <button
                             type="button"
                             className="icon-button"
                             onClick={() => handleEditBudget(budget)}
@@ -805,8 +853,8 @@ export const BudgetsPage: React.FC = () => {
                     </div>
                   </article>
                 );
-              })}
-            </div>
+              }}
+            />
           </section>
         </>
       )}

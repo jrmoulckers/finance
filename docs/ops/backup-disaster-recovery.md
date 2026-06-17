@@ -27,6 +27,41 @@
 
 ## 1. Backup Scope
 
+### Web user backup package (issue #2029)
+
+The web app exports a canonical plain JSON backup package for user-initiated backup/restore round-trips. Native iOS/Android/Windows export remains TODO and is out of scope for the current web-focused implementation.
+
+```json
+{
+  "version": 1,
+  "metadata": {
+    "generatedAt": "2026-05-26T12:00:00.000Z",
+    "appVersion": "0.1.0",
+    "source": "web"
+  },
+  "users": [],
+  "households": [],
+  "householdMembers": [],
+  "accounts": [],
+  "transactions": [],
+  "categories": [],
+  "budgets": [],
+  "goals": [],
+  "recurringTemplates": [],
+  "preferences": [],
+  "settings": [],
+  "consentRecords": []
+}
+```
+
+Rules:
+
+- `version` is required; restores reject missing or unsupported versions.
+- SQL-backed records are exported with stable primary keys so restore can dedupe by `id`.
+- `preferences`, `settings`, `consentRecords`, and local recurring templates are key/value records and dedupe by `key`.
+- `users`, `households`, and `householdMembers` are included to keep clean restores valid with local foreign-key checks.
+- Duplicate local records are skipped and reported unless the user selects **Wipe local data first**.
+
 ### Included
 
 | Data                                               | Source                          | Method                        |
@@ -186,6 +221,18 @@ Apply these settings to the backup bucket:
 > **⚠️ WARNING:** Restoring a backup replaces the current database contents. This is a destructive operation that requires human authorization.
 
 ### Step-by-Step Restore
+
+#### From a Web JSON Backup
+
+1. Open **Settings → Privacy & Data** and select **Download all data (JSON)**.
+2. Store the downloaded `finance-backup-YYYY-MM-DD.json` somewhere safe.
+3. To restore, open **Import → Import Wizard** and choose the JSON file.
+4. Verify the dry-run preview counts for each entity and review duplicate skips.
+5. Optional: select **Wipe local data first** for a clean restore.
+6. Select **Restore backup** and confirm the completion totals.
+7. Re-open Accounts, Transactions, Categories, Budgets, and Goals to spot-check restored counts.
+
+ZIP restore is supported only when the ZIP contains an uncompressed canonical backup JSON member. The default web export uses plain JSON for simplicity.
 
 #### From a Local Backup
 

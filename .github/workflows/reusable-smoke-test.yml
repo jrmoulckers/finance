@@ -5,7 +5,7 @@
 # Runs quick sanity checks against built artifacts to verify they are functional
 # before promoting to production or advancing a staged rollout.
 #
-# Called by: rc-branch-tag.yml, staged-rollout.yml, release-train.yml
+# Called by: rc-branch-tag.yml, deploy-progressive.yml, release-train.yml
 #
 # Issue: #1147
 # =============================================================================

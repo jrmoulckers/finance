@@ -57,10 +57,13 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import com.finance.core.icons.IconToken
 import com.finance.desktop.data.repository.AuthAccount
 import com.finance.desktop.data.repository.AuthRepository
 import com.finance.desktop.di.koinGet
+import com.finance.desktop.screens.settings.AppearanceSettingsScreen
 import com.finance.desktop.theme.FinanceDesktopTheme
+import com.finance.desktop.ui.components.IconView
 import com.finance.desktop.viewmodel.AuthViewModel
 import com.finance.desktop.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
@@ -154,25 +157,29 @@ fun SettingsScreen(
             // ── Appearance ──────────────────────────────────────────────
             SettingsSection("Appearance") {
                 ToggleSetting(
-                    icon = Icons.Filled.DarkMode,
+                    icon = IconToken.SETTINGS,
                     label = "Dark Mode",
                     description = "Use dark color scheme",
                     checked = state.darkMode,
                     onCheckedChange = viewModel::setDarkMode,
                 )
                 DropdownSetting(
-                    icon = Icons.Filled.Language,
+                    icon = IconToken.INFO,
                     label = "Language",
                     currentValue = state.language,
                     options = listOf("English", "Spanish", "French", "German", "Japanese"),
                     onValueChange = viewModel::setLanguage,
                 )
                 DropdownSetting(
-                    icon = Icons.Filled.ColorLens,
+                    icon = IconToken.EDIT,
                     label = "Accent Color",
                     currentValue = state.accentColor,
                     options = listOf("Blue", "Teal", "Purple", "Green", "Orange"),
                     onValueChange = viewModel::setAccentColor,
+                )
+                AppearanceSettingsScreen(
+                    selectedIconPackId = state.iconPackId,
+                    onIconPackSelected = viewModel::setIconPack,
                 )
             }
 
@@ -181,14 +188,14 @@ fun SettingsScreen(
             // ── Security ────────────────────────────────────────────────
             SettingsSection("Security") {
                 ToggleSetting(
-                    icon = Icons.Filled.Fingerprint,
+                    icon = IconToken.SECURE,
                     label = "Windows Hello",
                     description = "Use biometric or PIN authentication",
                     checked = state.windowsHelloEnabled,
                     onCheckedChange = viewModel::setWindowsHelloEnabled,
                 )
                 ToggleSetting(
-                    icon = Icons.Filled.Lock,
+                    icon = IconToken.LOCKED,
                     label = "Auto-Lock",
                     description = "Lock app after ${state.autoLockTimeoutMinutes} minutes of inactivity",
                     checked = state.autoLockEnabled,
@@ -201,14 +208,14 @@ fun SettingsScreen(
             // ── Notifications ───────────────────────────────────────────
             SettingsSection("Notifications") {
                 ToggleSetting(
-                    icon = Icons.Filled.Notifications,
+                    icon = IconToken.NOTIFICATIONS,
                     label = "Budget Alerts",
                     description = "Notify when approaching budget limits",
                     checked = state.budgetNotificationsEnabled,
                     onCheckedChange = viewModel::setBudgetNotifications,
                 )
                 ToggleSetting(
-                    icon = Icons.Filled.Notifications,
+                    icon = IconToken.GOAL,
                     label = "Goal Milestones",
                     description = "Notify when reaching savings milestones",
                     checked = state.goalNotificationsEnabled,
@@ -222,7 +229,7 @@ fun SettingsScreen(
             SettingsSection("Experimental") {
                 var showEraseDialog by remember { mutableStateOf(false) }
                 ToggleSetting(
-                    icon = Icons.Filled.Info,
+                    icon = IconToken.INFO,
                     label = "Allow mood tags on transactions",
                     description = "Add an optional emoji to saved transactions",
                     checked = state.moodTagsEnabled,
@@ -230,7 +237,7 @@ fun SettingsScreen(
                 )
                 if (state.moodTagsEnabled) {
                     ToggleSetting(
-                        icon = Icons.Filled.Sync,
+                        icon = IconToken.SYNC,
                         label = "Sync mood tags across my devices",
                         description = "Keep emoji tags local unless this is on",
                         checked = state.moodTagsSyncEnabled,
@@ -260,14 +267,14 @@ fun SettingsScreen(
             // ── Data & Sync ─────────────────────────────────────────────
             SettingsSection("Data & Sync") {
                 DropdownSetting(
-                    icon = Icons.Filled.CurrencyExchange,
+                    icon = IconToken.CASH,
                     label = "Default Currency",
                     currentValue = state.defaultCurrency,
                     options = listOf("USD", "EUR", "GBP", "JPY", "CAD", "AUD"),
                     onValueChange = viewModel::setDefaultCurrency,
                 )
                 ToggleSetting(
-                    icon = Icons.Filled.Sync,
+                    icon = IconToken.SYNC,
                     label = "Cloud Sync",
                     description = "Sync data across devices",
                     checked = state.cloudSyncEnabled,
@@ -280,12 +287,12 @@ fun SettingsScreen(
             // ── About ───────────────────────────────────────────────────
             SettingsSection("About") {
                 InfoSetting(
-                    icon = Icons.Filled.Info,
+                    icon = IconToken.INFO,
                     label = "Version",
                     value = "1.0.0",
                 )
                 InfoSetting(
-                    icon = Icons.Filled.Info,
+                    icon = IconToken.INFO,
                     label = "Build",
                     value = "2025.03.06",
                 )
@@ -429,7 +436,7 @@ private fun formatProvider(provider: String?): String = when (provider?.lowercas
  */
 @Composable
 private fun ToggleSetting(
-    icon: ImageVector,
+    icon: IconToken,
     label: String,
     description: String,
     checked: Boolean,
@@ -446,9 +453,8 @@ private fun ToggleSetting(
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
+        IconView(
+            token = icon,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(end = FinanceDesktopTheme.spacing.md),
         )
@@ -477,7 +483,7 @@ private fun ToggleSetting(
  */
 @Composable
 private fun DropdownSetting(
-    icon: ImageVector,
+    icon: IconToken,
     label: String,
     currentValue: String,
     options: List<String>,
@@ -499,9 +505,8 @@ private fun DropdownSetting(
                 },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
+            IconView(
+                token = icon,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(end = FinanceDesktopTheme.spacing.md),
             )
@@ -546,7 +551,7 @@ private fun DropdownSetting(
  */
 @Composable
 private fun InfoSetting(
-    icon: ImageVector,
+    icon: IconToken,
     label: String,
     value: String,
 ) {
@@ -561,9 +566,8 @@ private fun InfoSetting(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
+            IconView(
+                token = icon,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(end = FinanceDesktopTheme.spacing.md),
             )

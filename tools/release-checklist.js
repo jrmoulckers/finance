@@ -169,7 +169,7 @@ function checkPlatform(platform) {
       info(
         'Required secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD',
       );
-      info('Release workflow: .github/workflows/release-android.yml');
+      info('Release workflow: .github/workflows/release-platform.yml');
       break;
     }
     case 'ios': {
@@ -184,7 +184,7 @@ function checkPlatform(platform) {
         'Required secrets: IOS_DISTRIBUTION_CERT_BASE64, IOS_CERT_PASSWORD, IOS_PROVISIONING_PROFILE_BASE64',
       );
       info('Required secrets: APP_STORE_API_KEY_ID, APP_STORE_API_ISSUER');
-      info('Release workflow: .github/workflows/release-ios.yml');
+      info('Release workflow: .github/workflows/release-platform.yml');
       break;
     }
     case 'web': {
@@ -200,7 +200,7 @@ function checkPlatform(platform) {
       else fail('package.json missing');
 
       info('Required secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID');
-      info('Release workflow: .github/workflows/release-web.yml');
+      info('Release workflow: .github/workflows/release-platform.yml');
       break;
     }
     case 'windows': {
@@ -212,7 +212,7 @@ function checkPlatform(platform) {
       pass('Windows app directory exists');
 
       info('Required secrets: WINDOWS_SIGNING_CERT_BASE64, WINDOWS_CERT_PASSWORD');
-      info('Release workflow: .github/workflows/release-windows.yml');
+      info('Release workflow: .github/workflows/release-platform.yml');
       break;
     }
   }

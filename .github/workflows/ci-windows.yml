@@ -1,0 +1,236 @@
+# =============================================================================
+# Windows CI — build, package, and rolling main artifacts
+# =============================================================================
+#
+# Builds and tests the Windows app for normal CI and reuses the packaged MSI on main to refresh the rolling latest-main prerelease.
+# =============================================================================
+name: CI — Windows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/windows/**'
+      - 'packages/**'
+      - 'build-logic/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+      - 'config/detekt/**'
+      - '.github/workflows/ci-windows.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/windows/**'
+      - 'packages/**'
+      - 'build-logic/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with: { distribution: temurin, java-version: '21' }
+      - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+      - name: Cache Kotlin/Native prebuilt
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-konan-
+      - name: Build
+        id: build
+        shell: bash
+        run: |
+          BUILD_START=$SECONDS
+          ./gradlew :apps:windows:build --parallel --build-cache --stacktrace
+          echo "duration=$(( SECONDS - BUILD_START ))" >> "$GITHUB_OUTPUT"
+      - name: Package MSI
+        id: package
+        shell: bash
+        run: |
+          PKG_START=$SECONDS
+          ./gradlew :apps:windows:packageMsi --parallel --build-cache --stacktrace
+          echo "duration=$(( SECONDS - PKG_START ))" >> "$GITHUB_OUTPUT"
+      - name: Upload MSI artifact
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-msi
+          path: apps/windows/build/compose/binaries/**/*.msi
+          if-no-files-found: warn
+          retention-days: 7
+      - name: CI Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "### 🪟 Windows CI Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Build duration | ${{ steps.build.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Package duration | ${{ steps.package.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Gradle cache | ${{ github.ref == 'refs/heads/main' && 'read-write' || 'read-only' }} |" >> "$GITHUB_STEP_SUMMARY"
+          MSI=$(find apps/windows/build/compose/binaries -name '*.msi' 2>/dev/null | head -1)
+          if [ -n "$MSI" ]; then
+            SIZE=$(du -sh "$MSI" | cut -f1)
+            echo "| MSI size | $SIZE |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  publish-main-release:
+    name: Publish rolling main MSI
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: read
+    env:
+      HAS_SIGNING_SECRETS: ${{ secrets.WINDOWS_SIGNING_CERT_BASE64 != '' && secrets.WINDOWS_CERT_PASSWORD != '' }}
+      ROLLING_TAG: latest-main
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Download MSI artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows-msi
+          path: artifact
+
+      - name: Compute version metadata
+        id: version
+        shell: bash
+        run: |
+          SHA="${GITHUB_SHA::7}"
+          VERSION="main-${SHA}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Normalize MSI names
+        id: msi
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem -Path "artifact" -Filter "*.msi" -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $msi) { Write-Error "No MSI artifact downloaded."; exit 1 }
+          $outDir = Join-Path $PWD 'publish-artifacts'
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          $versioned = Join-Path $outDir "Finance-${{ steps.version.outputs.version }}.msi"
+          $stable = Join-Path $outDir 'Finance-main.msi'
+          Copy-Item $msi.FullName $versioned -Force
+          Copy-Item $msi.FullName $stable -Force
+          "versioned=$versioned" >> $env:GITHUB_OUTPUT
+          "stable=$stable" >> $env:GITHUB_OUTPUT
+          "name=$(Split-Path $versioned -Leaf)" >> $env:GITHUB_OUTPUT
+
+      - name: Sign MSI
+        if: env.HAS_SIGNING_SECRETS == 'true'
+        shell: pwsh
+        run: |
+          $sdkRoot = 'C:\Program Files (x86)\Windows Kits\10\bin'
+          $signtool = $null
+          if (Test-Path $sdkRoot) {
+              $signtool = Get-ChildItem -Path $sdkRoot -Directory |
+                  Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+                  Sort-Object -Property { [version]$_.Name } -Descending |
+                  ForEach-Object { Join-Path $_.FullName 'x64\signtool.exe' } |
+                  Where-Object { Test-Path $_ } |
+                  Select-Object -First 1
+          }
+          if (-not $signtool) { throw "signtool.exe not found under $sdkRoot" }
+          $certBytes = [System.Convert]::FromBase64String("${{ secrets.WINDOWS_SIGNING_CERT_BASE64 }}")
+          $certPath = Join-Path $env:RUNNER_TEMP 'signing-cert.pfx'
+          [System.IO.File]::WriteAllBytes($certPath, $certBytes)
+          try {
+              foreach ($target in @("${{ steps.msi.outputs.versioned }}", "${{ steps.msi.outputs.stable }}")) {
+                  & $signtool sign /f $certPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" `
+                      /fd sha256 /tr http://timestamp.digicert.com /td sha256 $target
+                  if ($LASTEXITCODE -ne 0) { throw "signtool exit $LASTEXITCODE on $target" }
+              }
+          } finally {
+              Remove-Item $certPath -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Warn if signing skipped
+        if: env.HAS_SIGNING_SECRETS != 'true'
+        run: echo "::warning::WINDOWS_SIGNING_CERT_BASE64 or WINDOWS_CERT_PASSWORD secret is empty — MSI published unsigned."
+
+      - name: Upload rolling artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-main-msi
+          path: |
+            ${{ steps.msi.outputs.versioned }}
+            ${{ steps.msi.outputs.stable }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish rolling pre-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ env.ROLLING_TAG }}"
+          $version = "${{ steps.version.outputs.version }}"
+          $versioned = "${{ steps.msi.outputs.versioned }}"
+          $stable = "${{ steps.msi.outputs.stable }}"
+          $stableName = Split-Path $stable -Leaf
+          git tag -f $tag
+          git push -f origin $tag
+          gh release delete $tag --yes --cleanup-tag=false 2>$null
+          $notes = @(
+            '**Rolling pre-release** built automatically from `main`.',
+            '',
+            "- Stable download URL: `$stableName`",
+            "- SHA-versioned asset: `$(Split-Path $versioned -Leaf)`",
+            '- Commit: ${{ github.sha }}',
+            '- Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          ) -join "`n"
+          $notesFile = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          $notes | Out-File -FilePath $notesFile -Encoding utf8
+          gh release create $tag $versioned $stable `
+            --title "Windows main rolling build ($version)" `
+            --notes-file $notesFile `
+            --prerelease `
+            --target ${{ github.sha }}
+
+      - name: Job summary
+        if: always()
+        shell: pwsh
+        run: |
+          $stableUrl = "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ env.ROLLING_TAG }}/Finance-main.msi"
+          $body = @(
+            '## 🪟 Windows rolling main build — ${{ steps.version.outputs.version }}',
+            '',
+            "- **Stable download URL:** $stableUrl",
+            '- **Versioned asset:** `${{ steps.msi.outputs.name }}`',
+            '- **Signed:** ${{ env.HAS_SIGNING_SECRETS == ''true'' }}',
+            '- **Rolling release page:** ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ env.ROLLING_TAG }}'
+          ) -join "`n"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $body

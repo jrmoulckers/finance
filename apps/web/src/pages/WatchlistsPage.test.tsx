@@ -79,6 +79,7 @@ describe('WatchlistsPage', () => {
       updateThreshold: vi.fn(),
       toggleAlerts: vi.fn(),
       dismissAlert: vi.fn(),
+      reorderWatchlists: vi.fn(),
       refresh: vi.fn(),
     });
   });
@@ -127,12 +128,58 @@ describe('WatchlistsPage', () => {
       updateThreshold: vi.fn(),
       toggleAlerts: vi.fn(),
       dismissAlert: vi.fn(),
+      reorderWatchlists: vi.fn(),
       refresh: vi.fn(),
     });
 
     render(<WatchlistsPage />);
     expect(screen.getByText('Food')).toBeInTheDocument();
     expect(screen.getByText('monthly')).toBeInTheDocument();
+  });
+
+  it('reorders watchlists with Alt+Arrow keyboard shortcuts', () => {
+    const reorderWatchlists = vi.fn();
+
+    mockedUseSpendingWatchlists.mockReturnValue({
+      watchlists: [
+        {
+          id: 'wl-1',
+          categoryId: 'cat-food',
+          categoryName: 'Food',
+          thresholdCents: 50000,
+          period: 'monthly',
+          alertsEnabled: true,
+          createdAt: '2025-01-01T00:00:00Z',
+        },
+        {
+          id: 'wl-2',
+          categoryId: 'cat-transport',
+          categoryName: 'Transport',
+          thresholdCents: 30000,
+          period: 'monthly',
+          alertsEnabled: true,
+          createdAt: '2025-01-01T00:00:00Z',
+        },
+      ],
+      alerts: [],
+      loading: false,
+      error: null,
+      addWatchlist: vi.fn(),
+      removeWatchlist: vi.fn(),
+      updateThreshold: vi.fn(),
+      toggleAlerts: vi.fn(),
+      dismissAlert: vi.fn(),
+      reorderWatchlists,
+      refresh: vi.fn(),
+    });
+
+    render(<WatchlistsPage />);
+    fireEvent.keyDown(screen.getByRole('button', { name: /reorder food/i }), {
+      key: 'ArrowDown',
+      altKey: true,
+    });
+
+    expect(reorderWatchlists).toHaveBeenCalledWith(0, 1);
   });
 
   it('displays alert cards when alerts are active', () => {
@@ -164,6 +211,7 @@ describe('WatchlistsPage', () => {
       updateThreshold: vi.fn(),
       toggleAlerts: vi.fn(),
       dismissAlert: vi.fn(),
+      reorderWatchlists: vi.fn(),
       refresh: vi.fn(),
     });
 
@@ -202,6 +250,7 @@ describe('WatchlistsPage', () => {
       updateThreshold: vi.fn(),
       toggleAlerts: vi.fn(),
       dismissAlert,
+      reorderWatchlists: vi.fn(),
       refresh: vi.fn(),
     });
 
@@ -239,6 +288,7 @@ describe('WatchlistsPage', () => {
       updateThreshold: vi.fn(),
       toggleAlerts: vi.fn(),
       dismissAlert: vi.fn(),
+      reorderWatchlists: vi.fn(),
       refresh: vi.fn(),
     });
 
@@ -258,6 +308,7 @@ describe('WatchlistsPage', () => {
       updateThreshold: vi.fn(),
       toggleAlerts: vi.fn(),
       dismissAlert: vi.fn(),
+      reorderWatchlists: vi.fn(),
       refresh: vi.fn(),
     });
 
@@ -276,6 +327,7 @@ describe('WatchlistsPage', () => {
       updateThreshold: vi.fn(),
       toggleAlerts: vi.fn(),
       dismissAlert: vi.fn(),
+      reorderWatchlists: vi.fn(),
       refresh: vi.fn(),
     });
 
@@ -312,6 +364,7 @@ describe('WatchlistsPage', () => {
       updateThreshold: vi.fn(),
       toggleAlerts: vi.fn(),
       dismissAlert: vi.fn(),
+      reorderWatchlists: vi.fn(),
       refresh: vi.fn(),
     });
 

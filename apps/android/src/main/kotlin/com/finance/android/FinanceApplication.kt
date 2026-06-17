@@ -27,6 +27,8 @@ class FinanceApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // TODO(#2033): Wire Sentry SDK for Android here.
+        // See docs/ops/monitoring-setup.md for DSN, consent, and scrubbing requirements.
         initLogging()
         initDependencyInjection()
         initSecurityChecks()

@@ -144,6 +144,7 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material.icons.extended)
+    implementation(libs.icons.lucide)
 
     // Glance — App Widgets with Compose-like API
     implementation(libs.glance.appwidget)

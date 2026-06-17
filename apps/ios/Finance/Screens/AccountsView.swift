@@ -42,7 +42,7 @@ struct AccountsView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button { viewModel.showingAddAccount = true } label: {
-                        Image(systemName: "plus")
+                        IconView(.add, size: 20)
                     }
                     .accessibilityIdentifier("add_account_button")
                     .accessibilityLabel(String(localized: "Add account"))

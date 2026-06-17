@@ -39,7 +39,9 @@ export type AlertType =
   | 'batch_confirmation'
   | 'scam_check'
   | 'spending_digest'
-  | 'subscription_price_change';
+  | 'subscription_price_change'
+  | 'warranty_deadline'
+  | 'return_window_deadline';
 
 /** Delivery channels for notifications. */
 export type NotificationChannel = 'in_app' | 'browser_push' | 'email';

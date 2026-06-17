@@ -1,0 +1,439 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.estate-inventory-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.estate-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: var(--spacing-5);
+  padding: var(--spacing-6);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-lg);
+  background: linear-gradient(
+    135deg,
+    var(--semantic-background-elevated),
+    var(--semantic-background-secondary)
+  );
+}
+
+.estate-hero__eyebrow,
+.estate-card__eyebrow {
+  margin: 0 0 var(--spacing-2);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.estate-hero__title {
+  margin: 0;
+  font-size: var(--type-scale-headline-font-size);
+  font-weight: var(--type-scale-headline-font-weight);
+  color: var(--semantic-text-primary);
+}
+
+.estate-hero__description,
+.estate-panel__description,
+.estate-export__note,
+.estate-checklist__item-detail,
+.estate-beneficiaries__empty,
+.estate-page-status {
+  margin: var(--spacing-2) 0 0;
+  color: var(--semantic-text-secondary);
+}
+
+.estate-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-3);
+}
+
+.estate-hero__stat,
+.estate-export__highlights > div {
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--semantic-border-default);
+}
+
+.estate-hero__stat-value,
+.estate-export__highlight-value {
+  display: block;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+}
+
+.estate-hero__stat-label,
+.estate-export__highlight-label {
+  display: block;
+  margin-top: var(--spacing-1);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.estate-page-status {
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+}
+
+.estate-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  gap: var(--spacing-5);
+  align-items: start;
+}
+
+.estate-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.estate-panel,
+.estate-card {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-lg);
+  background: var(--semantic-background-elevated);
+  box-shadow: var(--shadow-sm);
+}
+
+.estate-panel {
+  padding: var(--spacing-5);
+}
+
+.estate-panel--main {
+  min-height: 100%;
+}
+
+.estate-panel__header,
+.estate-card__header,
+.estate-beneficiaries__header,
+.estate-beneficiary-row__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+}
+
+.estate-panel__title,
+.estate-card__title,
+.estate-category-summary__title,
+.estate-beneficiaries__title,
+.estate-checklist__item-title,
+.estate-checklist__missing-title,
+.estate-card__subheading {
+  margin: 0;
+  color: var(--semantic-text-primary);
+}
+
+.estate-button {
+  appearance: none;
+  border: none;
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--semantic-interactive-default);
+  color: var(--semantic-text-on-interactive);
+  font: inherit;
+  cursor: pointer;
+}
+
+.estate-button:hover {
+  filter: brightness(1.04);
+}
+
+.estate-button--secondary {
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+  border: 1px solid var(--semantic-border-default);
+}
+
+.estate-button--ghost {
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  border: 1px solid transparent;
+}
+
+.estate-category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-4);
+}
+
+.estate-category-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: 999px;
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-secondary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.estate-category-tab--active {
+  background: var(--semantic-interactive-default);
+  border-color: var(--semantic-interactive-default);
+  color: var(--semantic-text-on-interactive);
+}
+
+.estate-category-tab__count,
+.estate-export__badge,
+.estate-checklist__score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0 var(--spacing-2);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.estate-category-summary {
+  margin: var(--spacing-4) 0;
+}
+
+.estate-entry-list,
+.estate-trusted-contacts__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.estate-empty-state {
+  padding: var(--spacing-6);
+  border: 1px dashed var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-secondary);
+}
+
+.estate-card {
+  padding: var(--spacing-4);
+}
+
+.estate-card__meta {
+  margin: var(--spacing-2) 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.estate-card__body {
+  margin-top: var(--spacing-4);
+}
+
+.estate-card__actions,
+.estate-card__footer,
+.estate-export__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.estate-card__details {
+  display: grid;
+  gap: var(--spacing-3);
+  margin: 0;
+}
+
+.estate-card__detail-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: var(--spacing-3);
+}
+
+.estate-card__detail-row dt {
+  color: var(--semantic-text-secondary);
+}
+
+.estate-card__detail-row dd {
+  margin: 0;
+  color: var(--semantic-text-primary);
+  word-break: break-word;
+}
+
+.estate-card__beneficiaries {
+  margin-top: var(--spacing-4);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--semantic-border-default);
+}
+
+.estate-card__beneficiary-list {
+  margin: var(--spacing-3) 0 0;
+  padding-left: 1.25rem;
+}
+
+.estate-card__error {
+  margin-top: var(--spacing-4);
+  color: var(--semantic-status-negative);
+}
+
+.estate-form-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: var(--spacing-3);
+}
+
+.estate-form-grid--two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.estate-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.estate-field--full-width {
+  grid-column: 1 / -1;
+}
+
+.estate-field__label {
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.estate-field__control {
+  width: 100%;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  padding: var(--spacing-3);
+  font: inherit;
+}
+
+.estate-field__control--textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.estate-beneficiaries,
+.estate-beneficiary-row {
+  margin-top: var(--spacing-5);
+}
+
+.estate-beneficiary-row {
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--semantic-border-default);
+  background: var(--semantic-background-secondary);
+}
+
+.estate-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-3);
+  color: var(--semantic-text-primary);
+}
+
+.estate-checklist__score {
+  flex-direction: column;
+  gap: 0;
+  padding: var(--spacing-3);
+  min-width: 84px;
+}
+
+.estate-checklist__score-number {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.estate-checklist__score-label {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.estate-checklist__items {
+  list-style: none;
+  padding: 0;
+  margin: var(--spacing-4) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.estate-checklist__item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-3);
+  align-items: start;
+  padding: var(--spacing-3);
+  border-radius: var(--border-radius-md);
+}
+
+.estate-checklist__item--complete {
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.estate-checklist__item--needs-work {
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.estate-checklist__status {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.72);
+  font-weight: var(--font-weight-semibold);
+}
+
+.estate-checklist__missing-list {
+  margin: var(--spacing-3) 0 0;
+  padding-left: 1.25rem;
+  color: var(--semantic-text-primary);
+}
+
+.estate-export__status {
+  margin-top: var(--spacing-3);
+  color: var(--semantic-text-secondary);
+}
+
+.estate-export__highlights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+}
+
+@media (max-width: 1100px) {
+  .estate-layout,
+  .estate-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .estate-form-grid--two-columns,
+  .estate-export__highlights,
+  .estate-hero__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .estate-panel__header--stacked-mobile,
+  .estate-panel__header,
+  .estate-card__header,
+  .estate-beneficiaries__header,
+  .estate-beneficiary-row__header {
+    flex-direction: column;
+  }
+
+  .estate-card__detail-row {
+    grid-template-columns: 1fr;
+  }
+}

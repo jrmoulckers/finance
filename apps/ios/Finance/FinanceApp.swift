@@ -14,6 +14,8 @@ import WatchConnectivity
 /// full-screen lock overlay on launch and when returning from background.
 @main
 struct FinanceApp: App {
+    // TODO(#2033): Wire Sentry SDK for iOS here.
+    // See docs/ops/monitoring-setup.md for DSN, consent, and scrubbing requirements.
     @State private var biometricManager = BiometricAuthManager()
     @State private var deepLinkHandler = DeepLinkHandler()
     @State private var networkMonitor = NetworkMonitor()

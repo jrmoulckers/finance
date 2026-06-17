@@ -10,7 +10,7 @@
 #   2. Bumps version to X.Y.Z-rc.N
 #   3. Runs smoke tests on all platforms
 #   4. Tags the RC (vX.Y.Z-rc.N)
-#   5. Triggers release-artifacts.yml for RC artifact builds
+#   5. Triggers release-platform.yml for RC artifact builds
 #
 # Human approval gates:
 #   - RC creation requires "staging" environment approval
@@ -250,7 +250,7 @@ jobs:
           else
             echo "### Next Steps" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "1. The \`release-artifacts.yml\` workflow will build platform binaries for \`${RC_TAG}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "1. The \`release-platform.yml\` workflow will build platform artifacts for \`${RC_TAG}\`" >> "$GITHUB_STEP_SUMMARY"
             echo "2. Test the RC artifacts in staging environments" >> "$GITHUB_STEP_SUMMARY"
             echo "3. When ready, use the **Release Train** workflow to promote to final release" >> "$GITHUB_STEP_SUMMARY"
             echo "4. Or create another RC with an incremented number if fixes are needed" >> "$GITHUB_STEP_SUMMARY"

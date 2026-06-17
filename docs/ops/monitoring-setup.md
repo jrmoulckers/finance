@@ -27,16 +27,16 @@ This document covers the full monitoring setup for the Finance monorepo: CI/CD h
 
 ### Overview
 
-Finance uses [Sentry](https://sentry.io) for error tracking on all four platforms. The SDK wiring is already in the codebase — this section describes how to create projects, configure DSNs, and verify the privacy contract.
+Finance uses [Sentry](https://sentry.io) for beta web error tracking. Native SDK wiring is intentionally deferred; each native entrypoint contains a TODO hook that points back to this document.
 
 **Architecture summary:**
 
-| Platform | SDK                        | DSN Source               | Config File                                        |
-| -------- | -------------------------- | ------------------------ | -------------------------------------------------- |
-| Web      | `@sentry/react`            | `VITE_SENTRY_DSN`        | `apps/web/src/lib/monitoring.ts`                   |
-| Android  | `io.sentry:sentry-android` | `BuildConfig.SENTRY_DSN` | `apps/android/src/main/kotlin/.../SentryConfig.kt` |
-| iOS      | `sentry-cocoa`             | `SENTRY_DSN` env / plist | (Planned — see iOS section below)                  |
-| Windows  | `Sentry.NET`               | `SENTRY_DSN` env         | (Planned — see Windows section below)              |
+| Platform | SDK             | DSN Source        | Config File                       |
+| -------- | --------------- | ----------------- | --------------------------------- |
+| Web      | `@sentry/react` | `VITE_SENTRY_DSN` | `apps/web/src/lib/monitoring.ts`  |
+| Android  | Planned         | `SENTRY_DSN`      | `FinanceApplication.kt` TODO hook |
+| iOS      | Planned         | `SENTRY_DSN`      | Swift `@main` TODO hooks          |
+| Windows  | Planned         | `SENTRY_DSN`      | `Main.kt` TODO hook               |
 
 All platforms share the same privacy contract enforced by the `CrashReporter` interface in `packages/core/`.
 
@@ -78,12 +78,13 @@ SENTRY_ENVIRONMENT=production
 
 #### Web (`apps/web/`)
 
-The web app reads `VITE_SENTRY_DSN` and `VITE_SENTRY_ENVIRONMENT` via Vite's env system:
+The web app reads `VITE_SENTRY_DSN`, `VITE_ENVIRONMENT`, and `VITE_APP_VERSION` via Vite's env system:
 
 ```env
 # apps/web/.env.local (not committed)
 VITE_SENTRY_DSN=https://examplePublicKey@o0.ingest.sentry.io/0
-VITE_SENTRY_ENVIRONMENT=development
+VITE_ENVIRONMENT=development
+VITE_APP_VERSION=local
 ```
 
 #### Android (`apps/android/`)
@@ -160,10 +161,9 @@ Events are tagged with the deployment environment so you can filter dashboards a
 **Debug builds should NOT send events to Sentry.** The SDK should only initialize when:
 
 1. The DSN is non-empty, AND
-2. The environment is `staging` or `production`, AND
-3. The user has granted monitoring consent
+2. The user has granted monitoring consent
 
-This is already enforced in the web and Android implementations.
+The web implementation no-ops when `VITE_SENTRY_DSN` is missing and logs one informational message. Deployments set `VITE_ENVIRONMENT` to `staging` or `production`; local development should leave the DSN empty unless explicitly testing Sentry.
 
 ### 5. Source Map Upload (Web)
 
@@ -197,7 +197,7 @@ export default defineConfig({
 #### Option B: CLI upload in CI
 
 ```yaml
-# In web-ci.yml or release.yml
+# In ci-web.yml or release-platform.yml
 - name: Upload source maps to Sentry
   run: |
     npx @sentry/cli releases files ${{ github.sha }} upload-sourcemaps ./apps/web/dist
@@ -278,18 +278,32 @@ Configure these alert rules in each Sentry project under **Alerts** → **Create
 
 ### 9. GitHub Actions Secrets
 
-Add these secrets in **Settings** → **Secrets and variables** → **Actions**:
+Set the web DSN as an **environment-scoped** GitHub secret so staging and production can point at separate Sentry projects:
 
-| Secret               | Scope       | Description                                                 |
-| -------------------- | ----------- | ----------------------------------------------------------- |
-| `SENTRY_ORG`         | Repository  | Sentry organization slug                                    |
-| `SENTRY_AUTH_TOKEN`  | Repository  | Org-level auth token (scopes: `project:releases`, `org:ci`) |
-| `SENTRY_DSN_WEB`     | Environment | Web project DSN (scoped to `staging` / `production`)        |
-| `SENTRY_DSN_ANDROID` | Environment | Android project DSN (scoped to `staging` / `production`)    |
-| `SENTRY_DSN_IOS`     | Environment | iOS project DSN (scoped to `staging` / `production`)        |
-| `SENTRY_DSN_WINDOWS` | Environment | Windows project DSN (scoped to `staging` / `production`)    |
+1. Go to **Settings** → **Environments** → `staging` → **Environment secrets**.
+2. Add `SENTRY_DSN` with the staging `finance-web` project DSN.
+3. Repeat for **Environments** → `production` with the production Sentry project DSN.
+4. Keep `SENTRY_DSN` unset for local builds unless intentionally testing Sentry.
 
-> **Environment-scoped secrets:** Use GitHub Environments (`staging`, `production`) to scope DSNs so staging builds never send events to production Sentry projects.
+Optional source-map upload later requires repository-level `SENTRY_ORG` and `SENTRY_AUTH_TOKEN` (scopes: `project:releases`, `org:ci`). Source maps remain out of scope for #2033.
+
+### 10. Beta crash-free rate
+
+View beta crash-free rate in Sentry at:
+
+- `https://sentry.io/organizations/<org-slug>/projects/finance-web/?environment=staging`
+
+Replace `<org-slug>` with the Finance Sentry organization slug. Filter to `environment:staging` and the release matching `VITE_APP_VERSION` (the staging deploy short SHA).
+
+### 11. Native Sentry TODO hooks
+
+Native SDK dependencies are intentionally deferred for a follow-up PR. Hook points are marked in source with TODO comments:
+
+- Android: `apps/android/src/main/kotlin/com/finance/android/FinanceApplication.kt` — `// TODO(#2033): Wire Sentry SDK for Android`
+- iOS app / clip / watch / widgets: Swift `@main` entrypoints under `apps/ios/` — `// TODO(#2033): Wire Sentry SDK for <platform>`
+- Windows: `apps/windows/src/main/kotlin/com/finance/desktop/Main.kt` — `// TODO(#2033): Wire Sentry SDK for Windows`
+
+When implementing native SDKs, preserve the same DSN gating, consent gating, `sendDefaultPii=false`, and recursive scrubber semantics used by `apps/web/src/lib/monitoring.ts`.
 
 ---
 
@@ -297,19 +311,26 @@ Add these secrets in **Settings** → **Secrets and variables** → **Actions**:
 
 CI health is monitored through three complementary mechanisms:
 
-1. **GitHub Actions workflows** — `ci-health.yml` and `build-perf.yml` run on schedule
+1. **GitHub Actions workflows** — `housekeeping.yml`, `nightly.yml`, and `ci-security.yml` run on schedule
 2. **Local tooling** — `tools/ci-health-dashboard.js` for on-demand checks
 3. **GitHub Security tab** — CodeQL and dependency scanning results
 
+### Beta uptime checks
+
+The beta uptime monitor lives at `.github/workflows/housekeeping.yml` and runs every 15 minutes (`*/15 * * * *`). It curls the public beta web URL with up to 3 attempts (10-second delay between retries):
+
+- Default URL: `https://finance-staging.vercel.app`
+- Override: set repository variable `BETA_UPTIME_URL` to the full beta URL to monitor (for example a custom domain or a dedicated `/health` endpoint)
+
+On timeout, DNS failure, or any non-2xx/3xx response after the retry budget is exhausted, the workflow opens a GitHub issue labeled `uptime` and `beta`. If an open `uptime` + `beta` issue already exists, the workflow adds a new failure comment instead of creating duplicates.
+
 ### Monitored Workflows
 
-| Workflow               | Schedule             | What it monitors                                 |
-| ---------------------- | -------------------- | ------------------------------------------------ |
-| `ci-health.yml`        | Weekly (Mon 7AM UTC) | Success rates, flaky tests, trend analysis       |
-| `build-perf.yml`       | Weekly (Tue 6AM UTC) | Build times, cache hit rates, P50/P90/P99        |
-| `dependency-audit.yml` | Weekly (Wed 5AM UTC) | npm + Gradle vulnerabilities, license compliance |
-| `security.yml`         | Weekly (Mon 6AM UTC) | CodeQL SAST, secret detection                    |
-| `stale-detection.yml`  | On schedule          | Stale issues and PRs                             |
+| Workflow           | Schedule             | What it monitors                                |
+| ------------------ | -------------------- | ----------------------------------------------- |
+| `nightly.yml`      | Daily / post-staging | Full E2E, load tests, and penetration testing   |
+| `ci-security.yml`  | Weekly + PR/push     | CodeQL, secret scanning, dependency auditing    |
+| `housekeeping.yml` | On schedule          | Uptime checks, stale issues, project automation |
 
 ### Alerting Rules
 
@@ -402,13 +423,13 @@ node tools/worktree-cleanup.js
 
 ### Dashboard Metrics Reference
 
-| Metric          | Source                 | Healthy         | Warning         | Critical      |
-| --------------- | ---------------------- | --------------- | --------------- | ------------- |
-| CI success rate | `ci-health.yml`        | >= 95%          | 80-95%          | < 80%         |
-| Avg build time  | `build-perf.yml`       | < 10min         | 10-15min        | > 15min       |
-| Flaky test rate | `ci-health.yml`        | 0 re-runs       | 1-3 re-runs     | > 3 re-runs   |
-| npm audit       | `dependency-audit.yml` | 0 high/critical | moderate issues | high/critical |
-| CodeQL findings | `security.yml`         | 0 findings      | low severity    | high severity |
+| Metric          | Source             | Healthy         | Warning         | Critical      |
+| --------------- | ------------------ | --------------- | --------------- | ------------- |
+| CI success rate | `housekeeping.yml` | >= 95%          | 80-95%          | < 80%         |
+| Avg build time  | `nightly.yml`      | < 10min         | 10-15min        | > 15min       |
+| Flaky test rate | `nightly.yml`      | 0 re-runs       | 1-3 re-runs     | > 3 re-runs   |
+| npm audit       | `ci-security.yml`  | 0 high/critical | moderate issues | high/critical |
+| CodeQL findings | `ci-security.yml`  | 0 findings      | low severity    | high severity |
 
 ### Configuration
 

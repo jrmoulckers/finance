@@ -6,14 +6,30 @@ import { AppIcon } from '../components/icons';
 
 import { AccountPurposeFilterControl } from '../components/accounts';
 import {
+  CategoryDropZone,
   ConfirmDialog,
   CurrencyDisplay,
+  DragDropProvider,
+  DraggableTransaction,
   EmptyState,
   ErrorBanner,
+  ExplainThis,
   LoadingSpinner,
+  SyncIndicator,
+  useToast,
 } from '../components/common';
+import { SwipeableRow } from '../components/common/SwipeableRow';
+import { CategoryConfirmation } from '../components/categorization';
 import { TransactionForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { VoiceEntrySheet } from '../components/voice';
+import {
+  BusinessExpenseTag,
+  DeductionSummary,
+  ExpenseReport,
+  MileageDashboard,
+  TripEntry,
+} from '../components/mileage';
 import {
   TransactionFilters,
   TransactionSort,
@@ -21,18 +37,34 @@ import {
   LazyReceiptImage,
   DEFAULT_SORT,
 } from '../components/transactions';
+import { ReturnWindowBadge } from '../components/warranty';
 import type { AdvancedFilters } from '../components/transactions';
 import type { SortConfig, SortField } from '../components/transactions';
 import { TransactionBulkActionsToolbar } from '../components/transactions/TransactionBulkActionsToolbar';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts } from '../hooks/useAccounts';
+import { useAccessibility } from '../hooks/useAccessibility';
+import { useAutoCategorize } from '../hooks/useAutoCategorize';
 import { useBulkTransactions } from '../hooks/useBulkTransactions';
 import { useCategories } from '../hooks/useCategories';
+import { useFontScale } from '../hooks/useFontScale';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { recordPwaMeaningfulAction } from '../hooks/useInstallPrompt';
-import { useFontScale } from '../hooks/useFontScale';
 import { useTransactions } from '../hooks/useTransactions';
 import { useVirtualList } from '../hooks/useVirtualList';
+import {
+  createMileageTrip,
+  deleteMileageTrip,
+  generateTaxReadyExpenseReport,
+  loadMileageTrips,
+  MILEAGE_TRIPS_CHANGED_EVENT,
+  updateMileageTrip,
+} from '../lib/mileage';
+import type {
+  ExpenseTransactionInput,
+  TripEntry as MileageTripRecord,
+  TripEntryDraft as MileageTripDraft,
+} from '../lib/mileage';
 import type { Transaction } from '../kmp/bridge';
 import {
   filterAccountsByPurpose,
@@ -188,6 +220,14 @@ function flattenTransactionGroups(
   ]);
 }
 
+function useOptionalToast(): ReturnType<typeof useToast> | null {
+  try {
+    return useToast();
+  } catch {
+    return null;
+  }
+}
+
 function PlusIcon() {
   return (
     <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -215,6 +255,15 @@ function ChevronDownIcon() {
       />
     </svg>
   );
+}
+
+function getTodayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getCurrentYearStartIsoDate(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-01-01`;
 }
 
 // ---------------------------------------------------------------------------
@@ -307,6 +356,7 @@ function applyAdvancedFilters(
 
 export const TransactionsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { isSimplified, speakAmounts, speakAmount } = useAccessibility();
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -314,10 +364,16 @@ export const TransactionsPage: React.FC = () => {
   const [editPanelTransaction, setEditPanelTransaction] = useState<Transaction | null>(null);
   const [selectedPurposeFilter, setSelectedPurposeFilter] = useState<AccountPurposeFilter>('all');
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+  const [editingMileageTrip, setEditingMileageTrip] = useState<MileageTripRecord | null>(null);
+  const [tripEntries, setTripEntries] = useState<MileageTripRecord[]>(() => loadMileageTrips());
+  const [reportStartDate, setReportStartDate] = useState(() => getCurrentYearStartIsoDate());
+  const [reportEndDate, setReportEndDate] = useState(() => getTodayIsoDate());
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [dismissedAutoCategoryIds, setDismissedAutoCategoryIds] = useState<string[]>([]);
+  const [isVoiceEntryOpen, setIsVoiceEntryOpen] = useState(false);
   const { scale: inAppTextScale } = useFontScale();
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 1024 : window.innerWidth,
@@ -349,6 +405,20 @@ export const TransactionsPage: React.FC = () => {
     updateTransaction,
     deleteTransaction,
   } = useTransactions(hookFilters);
+  const reportFilters = useMemo(
+    () => ({
+      type: 'EXPENSE' as const,
+      startDate: reportStartDate || undefined,
+      endDate: reportEndDate || undefined,
+    }),
+    [reportEndDate, reportStartDate],
+  );
+  const {
+    transactions: reportTransactions,
+    loading: reportLoading,
+    error: reportError,
+    refresh: refreshReportTransactions,
+  } = useTransactions(reportFilters);
   const {
     categories,
     loading: categoriesLoading,
@@ -382,6 +452,42 @@ export const TransactionsPage: React.FC = () => {
     () => filterAccountsByPurpose(accounts, selectedPurposeFilter),
     [accounts, selectedPurposeFilter],
   );
+  const { suggestForTransaction, autoCategorizeInput, learnFromFeedback } =
+    useAutoCategorize(categories);
+  const toast = useOptionalToast();
+
+  const learnCategoryChoice = useCallback(
+    (
+      transactionLike: {
+        payee?: string | null;
+        note?: string | null;
+        counterpartyName?: string | null;
+        amount?: { amount: number } | null;
+      },
+      categoryId: string | null,
+    ) => {
+      if (!categoryId) {
+        return;
+      }
+
+      const description =
+        transactionLike.payee?.trim() ||
+        transactionLike.note?.trim() ||
+        transactionLike.counterpartyName?.trim() ||
+        '';
+      if (!description) {
+        return;
+      }
+
+      learnFromFeedback({
+        description,
+        amountCents: transactionLike.amount ? Math.abs(transactionLike.amount.amount) : undefined,
+        categoryId,
+        categoryName: categoryNames.get(categoryId) ?? null,
+      });
+    },
+    [categoryNames, learnFromFeedback],
+  );
 
   // Apply purpose filter, advanced local filters, then sort
   const transactions = useMemo(() => {
@@ -402,6 +508,7 @@ export const TransactionsPage: React.FC = () => {
   ]);
 
   const bulkTransactions = useBulkTransactions(transactions, refreshTransactions);
+  const { selectedIds, selectionCount, clearSelection, isSelected, bulkUpdate } = bulkTransactions;
 
   const selectedTransactionTags = useMemo(() => {
     const tags = new Set<string>();
@@ -422,6 +529,71 @@ export const TransactionsPage: React.FC = () => {
       selectAllCheckboxRef.current.indeterminate = someVisibleSelected;
     }
   }, [someVisibleSelected]);
+
+  const transactionLookup = useMemo(
+    () => new Map(transactions.map((transaction) => [transaction.id, transaction])),
+    [transactions],
+  );
+  const reportExpenseTransactions = useMemo<ExpenseTransactionInput[]>(
+    () =>
+      reportTransactions.map((transaction) => ({
+        id: transaction.id,
+        date: transaction.date,
+        payee: transaction.payee,
+        note: transaction.note,
+        amountCents: transaction.amount.amount,
+        type: transaction.type,
+        tags: transaction.tags,
+        customFields: transaction.customFields,
+        categoryName:
+          transaction.categoryId !== null
+            ? (categoryNames.get(transaction.categoryId) ?? null)
+            : null,
+      })),
+    [categoryNames, reportTransactions],
+  );
+  const taxReport = useMemo(
+    () =>
+      generateTaxReadyExpenseReport({
+        trips: tripEntries,
+        transactions: reportExpenseTransactions,
+        startDate: reportStartDate || null,
+        endDate: reportEndDate || null,
+      }),
+    [reportEndDate, reportExpenseTransactions, reportStartDate, tripEntries],
+  );
+
+  useEffect(() => {
+    const syncTrips = () => {
+      setTripEntries(loadMileageTrips());
+    };
+
+    syncTrips();
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.addEventListener(MILEAGE_TRIPS_CHANGED_EVENT, syncTrips);
+    return () => window.removeEventListener(MILEAGE_TRIPS_CHANGED_EVENT, syncTrips);
+  }, []);
+
+  useEffect(() => {
+    if (transactions.length === 0 || toast === null || typeof window === 'undefined') {
+      return;
+    }
+
+    const tipStorageKey = 'transactions-swipe-actions-tip-shown';
+    if (window.localStorage.getItem(tipStorageKey) === 'true') {
+      return;
+    }
+
+    toast.showToast({
+      type: 'info',
+      message: 'Tip: swipe right to triage quickly, or swipe left for more actions.',
+      duration: 7000,
+    });
+    window.localStorage.setItem(tipStorageKey, 'true');
+  }, [toast, transactions.length]);
 
   // Group by date for display
   const groupedTransactions = useMemo(() => {
@@ -531,6 +703,15 @@ export const TransactionsPage: React.FC = () => {
     setSearchParams(nextParams, { replace: true });
   }, [handleOpenCreateForm, searchParams, setSearchParams]);
 
+  const handleOpenVoiceEntry = useCallback(() => {
+    setAddMenuOpen(false);
+    setIsVoiceEntryOpen(true);
+  }, []);
+
+  const handleCloseVoiceEntry = useCallback(() => {
+    setIsVoiceEntryOpen(false);
+  }, []);
+
   /** Navigate to the import wizard from the Add Transaction dropdown. */
   const handleImportFromFile = useCallback(() => {
     setAddMenuOpen(false);
@@ -566,7 +747,10 @@ export const TransactionsPage: React.FC = () => {
           throw new Error('Failed to update transaction. Please try again.');
         }
       } else {
-        const result = createTransaction(data);
+        const result = createTransaction({
+          ...data,
+          categoryId: autoCategorizeInput(data),
+        });
         if (result === null) {
           throw new Error('Failed to create transaction. Please try again.');
         }
@@ -577,6 +761,7 @@ export const TransactionsPage: React.FC = () => {
       refreshTransactions();
     },
     [
+      autoCategorizeInput,
       createTransaction,
       editingTransaction,
       handleFormCancel,
@@ -592,10 +777,30 @@ export const TransactionsPage: React.FC = () => {
         throw new Error('Failed to update transaction. Please try again.');
       }
       recordPwaMeaningfulAction();
+      if (editPanelTransaction?.categoryId !== result.categoryId) {
+        learnCategoryChoice(result, result.categoryId);
+      }
       setEditPanelTransaction(null);
       refreshTransactions();
     },
-    [updateTransaction, refreshTransactions],
+    [editPanelTransaction, learnCategoryChoice, refreshTransactions, updateTransaction],
+  );
+
+  const handleVoiceTransactionSubmit = useCallback(
+    async (data: CreateTransactionInput): Promise<void> => {
+      const result = createTransaction(data);
+      if (result === null) {
+        throw new Error('Failed to create transaction. Please try again.');
+      }
+
+      setIsVoiceEntryOpen(false);
+      refreshTransactions();
+      toast?.showToast({
+        type: 'success',
+        message: 'Voice transaction saved.',
+      });
+    },
+    [createTransaction, refreshTransactions, toast],
   );
 
   const handleEditPanelClose = useCallback(() => {
@@ -740,6 +945,216 @@ export const TransactionsPage: React.FC = () => {
     onListEditSelected: handleEditActiveTransaction,
   });
 
+  const handleMileageTripSubmit = useCallback(
+    async (trip: MileageTripDraft): Promise<void> => {
+      if (editingMileageTrip !== null) {
+        const updatedTrip = updateMileageTrip(editingMileageTrip.id, trip);
+        if (updatedTrip === null) {
+          throw new Error('Could not update the mileage trip.');
+        }
+
+        setEditingMileageTrip(null);
+        toast?.showToast({
+          type: 'success',
+          message: 'Updated mileage trip.',
+        });
+        return;
+      }
+
+      createMileageTrip(trip);
+      toast?.showToast({
+        type: 'success',
+        message: 'Logged mileage trip.',
+      });
+    },
+    [editingMileageTrip, toast],
+  );
+
+  const handleDeleteMileageTrip = useCallback(
+    (tripId: string) => {
+      const deleted = deleteMileageTrip(tripId);
+      if (!deleted) {
+        toast?.showToast({
+          type: 'error',
+          message: 'Could not delete the mileage trip.',
+        });
+        return;
+      }
+
+      if (editingMileageTrip?.id === tripId) {
+        setEditingMileageTrip(null);
+      }
+
+      toast?.showToast({
+        type: 'success',
+        message: 'Deleted mileage trip.',
+      });
+    },
+    [editingMileageTrip?.id, toast],
+  );
+
+  const handleSaveBusinessExpense = useCallback(
+    (
+      transaction: Transaction,
+      update: { tags: string[]; customFields: Record<string, string> | null },
+    ) => {
+      const result = updateTransaction(transaction.id, {
+        tags: update.tags,
+        customFields: update.customFields,
+      });
+      if (result === null) {
+        toast?.showToast({
+          type: 'error',
+          message: `Could not update business deduction metadata for ${getTransactionLabel(transaction)}.`,
+        });
+        return;
+      }
+
+      refreshTransactions();
+      refreshReportTransactions();
+      toast?.showToast({
+        type: 'success',
+        message: `Updated tax tagging for ${getTransactionLabel(transaction)}.`,
+      });
+    },
+    [refreshReportTransactions, refreshTransactions, toast, updateTransaction],
+  );
+
+  const handleQuickCategorize = useCallback(
+    (transaction: Transaction, categoryId: string, categoryName: string) => {
+      const result = updateTransaction(transaction.id, { categoryId });
+      if (result === null) {
+        toast?.showToast({
+          type: 'error',
+          message: `Could not categorize ${getTransactionLabel(transaction)}.`,
+        });
+        return;
+      }
+
+      learnCategoryChoice(result, result.categoryId);
+      setDismissedAutoCategoryIds((currentIds) => currentIds.filter((id) => id !== transaction.id));
+      refreshTransactions();
+      toast?.showToast({
+        type: 'success',
+        message: `Categorized ${getTransactionLabel(transaction)} as ${categoryName}.`,
+      });
+    },
+    [learnCategoryChoice, refreshTransactions, toast, updateTransaction],
+  );
+
+  const handleMarkReviewed = useCallback(
+    (transaction: Transaction) => {
+      const nextStatus = transaction.status === 'PENDING' ? 'CLEARED' : 'RECONCILED';
+      if (nextStatus === transaction.status) {
+        return;
+      }
+
+      const result = updateTransaction(transaction.id, { status: nextStatus });
+      if (result === null) {
+        toast?.showToast({
+          type: 'error',
+          message: `Could not mark ${getTransactionLabel(transaction)} as reviewed.`,
+        });
+        return;
+      }
+
+      refreshTransactions();
+      toast?.showToast({
+        type: 'success',
+        message: `Marked ${getTransactionLabel(transaction)} as reviewed.`,
+      });
+    },
+    [refreshTransactions, toast, updateTransaction],
+  );
+
+  const handleDropRecategorize = useCallback(
+    (draggedTransactionIds: readonly string[], categoryId: string | null, categoryName: string) => {
+      const uniqueIds = Array.from(new Set(draggedTransactionIds));
+      if (uniqueIds.length === 0) {
+        return false;
+      }
+
+      const existingTransactions = uniqueIds
+        .map((transactionId) => transactionLookup.get(transactionId))
+        .filter((transaction): transaction is Transaction => transaction !== undefined);
+      if (existingTransactions.length === 0) {
+        return false;
+      }
+
+      const transactionsNeedingChange = existingTransactions.filter(
+        (transaction) => transaction.categoryId !== categoryId,
+      );
+
+      if (transactionsNeedingChange.length === 0) {
+        toast?.showToast({
+          type: 'info',
+          message:
+            uniqueIds.length > 1
+              ? `Selected transactions are already in ${categoryName}.`
+              : `${getTransactionLabel(existingTransactions[0])} is already in ${categoryName}.`,
+        });
+        return false;
+      }
+
+      if (uniqueIds.length > 1) {
+        const result = bulkUpdate({ categoryId });
+        if (result.successCount === 0) {
+          toast?.showToast({
+            type: 'error',
+            message: `Could not move the selected transactions to ${categoryName}.`,
+          });
+          return false;
+        }
+
+        transactionsNeedingChange.forEach((transaction) => {
+          learnCategoryChoice(transaction, categoryId);
+        });
+        toast?.showToast({
+          type: result.failureCount > 0 ? 'warning' : 'success',
+          message:
+            result.failureCount > 0
+              ? `Moved ${result.successCount} of ${uniqueIds.length} transactions to ${categoryName}.`
+              : `Moved ${result.successCount} transactions to ${categoryName}.`,
+        });
+        return true;
+      }
+
+      const transaction = existingTransactions[0];
+      if (transaction === undefined) {
+        return false;
+      }
+
+      const result = updateTransaction(transaction.id, { categoryId });
+      if (result === null) {
+        toast?.showToast({
+          type: 'error',
+          message: `Could not categorize ${getTransactionLabel(transaction)}.`,
+        });
+        return false;
+      }
+
+      learnCategoryChoice(result, result.categoryId);
+      if (selectedIds.has(transaction.id)) {
+        clearSelection();
+      }
+
+      toast?.showToast({
+        type: 'success',
+        message: `Categorized ${getTransactionLabel(transaction)} as ${categoryName}.`,
+      });
+      return true;
+    },
+    [
+      bulkUpdate,
+      clearSelection,
+      learnCategoryChoice,
+      selectedIds,
+      toast,
+      transactionLookup,
+      updateTransaction,
+    ],
+  );
+
   const hasActiveFilters =
     selectedPurposeFilter !== 'all' ||
     query.trim() !== '' ||
@@ -863,172 +1278,244 @@ export const TransactionsPage: React.FC = () => {
   );
 
   return (
-    <>
-      <OfflineBanner />
-      <div className="transactions-page-header">
-        <h2
-          style={{
-            fontSize: 'var(--type-scale-headline-font-size)',
-            fontWeight: 'var(--type-scale-headline-font-weight)',
-          }}
-        >
-          Transactions
-        </h2>
-        <button
-          type="button"
-          className="add-button"
-          onClick={() => exportTransactionsCsv(transactions, categoryNames, accountNames)}
-          aria-label="Export transactions as CSV"
-          disabled={transactions.length === 0}
-          style={{ marginRight: 'var(--spacing-2)' }}
-        >
-          <AppIcon name="upload" /> Export CSV
-        </button>
-        <div className="add-transaction-menu" ref={addMenuRef}>
-          <div className="add-transaction-split-button">
-            <button
-              type="button"
-              className="add-button add-transaction-split-button__primary"
-              onClick={handleOpenCreateForm}
-            >
-              <PlusIcon />
-              Add Transaction
-            </button>
-            <button
-              type="button"
-              className="add-button add-transaction-split-button__toggle"
-              onClick={() => setAddMenuOpen((prev) => !prev)}
-              aria-label="Open transaction options"
-              aria-expanded={addMenuOpen}
-              aria-haspopup="menu"
-            >
-              <ChevronDownIcon />
-            </button>
-          </div>
-          {addMenuOpen && (
+    <DragDropProvider>
+      <>
+        <OfflineBanner />
+        <div className={`transactions-page${isSimplified ? ' transactions-page--simplified' : ''}`}>
+          <div className="transactions-page-header">
             <div
-              className="add-transaction-dropdown"
-              role="menu"
-              aria-label="Add transaction options"
-            >
-              <button
-                type="button"
-                className="add-transaction-dropdown__item"
-                role="menuitem"
-                onClick={handleOpenCreateForm}
-              >
-                <AppIcon name="edit" /> Manual Entry
-              </button>
-              <button
-                type="button"
-                className="add-transaction-dropdown__item"
-                role="menuitem"
-                onClick={handleImportFromFile}
-              >
-                <AppIcon name="download" /> Import from File
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <AccountPurposeFilterControl
-        value={selectedPurposeFilter}
-        onChange={setSelectedPurposeFilter}
-        label="Filter transactions by account purpose"
-      />
-
-      <div className="search-bar" role="search">
-        <input
-          type="search"
-          className="search-bar__input"
-          placeholder="Search..."
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          aria-label="Search transactions"
-        />
-      </div>
-
-      {/* Filter/Sort controls */}
-      <div className="transaction-controls-bar">
-        <div className="transaction-controls-bar__left">
-          <TransactionFilters
-            filters={advancedFilters}
-            onChange={handleFiltersChange}
-            isOpen={filtersOpen}
-            onToggle={() => setFiltersOpen((o) => !o)}
-            categories={categories}
-            accounts={visibleFilterAccounts}
-          />
-        </div>
-        <TransactionSort sort={sortConfig} onChange={handleSortChange} />
-      </div>
-
-      {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}>
-          <LoadingSpinner label="Loading transactions" />
-        </div>
-      ) : resolvedError ? (
-        <ErrorBanner message={resolvedError} onRetry={handleRetry} />
-      ) : transactions.length === 0 ? (
-        <EmptyState
-          title={hasActiveFilters ? 'No transactions found' : 'No transactions yet'}
-          description={
-            hasActiveFilters
-              ? 'Try adjusting your search or filters.'
-              : 'Transactions you add will appear here.'
-          }
-        />
-      ) : (
-        <div>
-          <p className="sr-only" role="status" aria-live="polite">
-            {bulkTransactions.selectionCount === 0
-              ? 'No transactions selected'
-              : `${bulkTransactions.selectionCount} transaction${
-                  bulkTransactions.selectionCount === 1 ? '' : 's'
-                } selected`}
-          </p>
-          <label className="transaction-register__select-all">
-            <input
-              ref={selectAllCheckboxRef}
-              type="checkbox"
-              className="bulk-select-checkbox"
-              checked={allVisibleSelected}
-              onChange={(event) => {
-                if (event.currentTarget.checked) {
-                  bulkTransactions.selectAll();
-                } else {
-                  bulkTransactions.clearSelection();
-                }
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--spacing-2)',
               }}
-              aria-label="Select all visible transactions"
-            />
-            Select all visible transactions
-          </label>
+            >
+              <h2
+                style={{
+                  fontSize: 'var(--type-scale-headline-font-size)',
+                  fontWeight: 'var(--type-scale-headline-font-weight)',
+                  margin: 0,
+                }}
+              >
+                Transactions
+              </h2>
+              <ExplainThis
+                tipKey="fixedVsVariableExpenses"
+                buttonLabel="Explain fixed versus variable expenses"
+              />
+            </div>
+            <SyncIndicator className="transactions-page-header__sync-indicator" />
+            {!isSimplified ? (
+              <>
+                <button
+                  type="button"
+                  className="add-button"
+                  onClick={() => exportTransactionsCsv(transactions, categoryNames, accountNames)}
+                  aria-label="Export transactions as CSV"
+                  disabled={transactions.length === 0}
+                  style={{ marginRight: 'var(--spacing-2)' }}
+                >
+                  <AppIcon name="upload" /> Export CSV
+                </button>
+                <div className="add-transaction-menu" ref={addMenuRef}>
+                  <div className="add-transaction-split-button">
+                    <button
+                      type="button"
+                      className="add-button add-transaction-split-button__primary"
+                      onClick={handleOpenCreateForm}
+                    >
+                      <PlusIcon />
+                      Add Transaction
+                    </button>
+                    <button
+                      type="button"
+                      className="add-button add-transaction-split-button__toggle"
+                      onClick={() => setAddMenuOpen((prev) => !prev)}
+                      aria-label="Open transaction options"
+                      aria-expanded={addMenuOpen}
+                      aria-haspopup="menu"
+                    >
+                      <ChevronDownIcon />
+                    </button>
+                  </div>
+                  {addMenuOpen && (
+                    <div
+                      className="add-transaction-dropdown"
+                      role="menu"
+                      aria-label="Add transaction options"
+                    >
+                      <button
+                        type="button"
+                        className="add-transaction-dropdown__item"
+                        role="menuitem"
+                        onClick={handleOpenCreateForm}
+                      >
+                        <AppIcon name="edit" /> Manual Entry
+                      </button>
+                      <button
+                        type="button"
+                        className="add-transaction-dropdown__item"
+                        role="menuitem"
+                        onClick={handleOpenVoiceEntry}
+                      >
+                        <AppIcon name="mic" /> Voice Entry
+                      </button>
+                      <button
+                        type="button"
+                        className="add-transaction-dropdown__item"
+                        role="menuitem"
+                        onClick={handleImportFromFile}
+                      >
+                        <AppIcon name="download" /> Import from File
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
+                <button type="button" className="add-button" onClick={handleOpenCreateForm}>
+                  <PlusIcon />
+                  Add income or expense
+                </button>
+                <button type="button" className="add-button" onClick={handleOpenVoiceEntry}>
+                  <AppIcon name="mic" />
+                  Voice entry
+                </button>
+              </div>
+            )}
+          </div>
 
-          <TransactionBulkActionsToolbar
-            selectionCount={bulkTransactions.selectionCount}
-            totalCount={transactions.length}
-            categories={categories}
-            availableTags={selectedTransactionTags}
-            onSelectAll={bulkTransactions.selectAll}
-            onClearSelection={bulkTransactions.clearSelection}
-            onBulkUpdate={bulkTransactions.bulkUpdate}
-            onBulkAddTag={bulkTransactions.bulkAddTag}
-            onBulkRemoveTag={bulkTransactions.bulkRemoveTag}
-            onRequestBulkDelete={() => setBulkDeleteDialogOpen(true)}
+          <AccountPurposeFilterControl
+            value={selectedPurposeFilter}
+            onChange={setSelectedPurposeFilter}
+            label="Filter transactions by account purpose"
           />
 
-          {useCardRegister ? (
+          <div className="search-bar" role="search">
+            <input
+              type="search"
+              className="search-bar__input"
+              placeholder="Search..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label="Search transactions"
+            />
+          </div>
+
+          {/* Filter/Sort controls */}
+          {!isSimplified ? (
+            <>
+              <div className="transaction-controls-bar">
+                <div className="transaction-controls-bar__left">
+                  <TransactionFilters
+                    filters={advancedFilters}
+                    onChange={handleFiltersChange}
+                    isOpen={filtersOpen}
+                    onToggle={() => setFiltersOpen((o) => !o)}
+                    categories={categories}
+                    accounts={visibleFilterAccounts}
+                  />
+                </div>
+                <TransactionSort sort={sortConfig} onChange={handleSortChange} />
+              </div>
+
+              <TransactionBulkActionsToolbar
+                selectionCount={bulkTransactions.selectionCount}
+                totalCount={transactions.length}
+                categories={categories}
+                availableTags={selectedTransactionTags}
+                onSelectAll={bulkTransactions.selectAll}
+                onClearSelection={bulkTransactions.clearSelection}
+                onBulkUpdate={bulkTransactions.bulkUpdate}
+                onBulkAddTag={bulkTransactions.bulkAddTag}
+                onBulkRemoveTag={bulkTransactions.bulkRemoveTag}
+                onRequestBulkDelete={() => setBulkDeleteDialogOpen(true)}
+              />
+              <CategoryDropZone
+                categories={categories}
+                onDropTransactions={handleDropRecategorize}
+              />
+            </>
+          ) : null}
+
+          <section className="page-section" aria-labelledby="tax-deductions-heading">
+            <div className="page-header">
+              <div>
+                <h3 id="tax-deductions-heading" className="page-heading">
+                  Mileage & business deductions
+                </h3>
+                <p className="page-summary">
+                  Track manual mileage, apply 2024 IRS rates, and tag deductible transactions
+                  locally on this device.
+                </p>
+              </div>
+            </div>
+            <div className="mileage-grid mileage-grid--columns">
+              <MileageDashboard report={taxReport} />
+              <DeductionSummary report={taxReport} />
+            </div>
+            <div
+              className="mileage-grid mileage-grid--columns"
+              style={{ marginTop: 'var(--spacing-4)' }}
+            >
+              <TripEntry
+                trip={editingMileageTrip}
+                onSubmit={handleMileageTripSubmit}
+                onCancel={() => setEditingMileageTrip(null)}
+              />
+              {reportError ? (
+                <ErrorBanner message={reportError} onRetry={refreshReportTransactions} />
+              ) : (
+                <ExpenseReport
+                  report={taxReport}
+                  startDate={reportStartDate}
+                  endDate={reportEndDate}
+                  onStartDateChange={setReportStartDate}
+                  onEndDateChange={setReportEndDate}
+                  onEditTrip={setEditingMileageTrip}
+                  onDeleteTrip={handleDeleteMileageTrip}
+                  isLoading={reportLoading}
+                />
+              )}
+            </div>
+          </section>
+
+          {isLoading ? (
+            <div
+              style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-8) 0' }}
+            >
+              <LoadingSpinner label="Loading transactions" />
+            </div>
+          ) : resolvedError ? (
+            <ErrorBanner message={resolvedError} onRetry={handleRetry} />
+          ) : transactions.length === 0 ? (
+            <EmptyState
+              title={hasActiveFilters ? 'No transactions found' : 'No transactions yet'}
+              description={
+                hasActiveFilters
+                  ? 'Try adjusting your search or filters.'
+                  : 'Transactions you add will appear here.'
+              }
+            />
+          ) : useCardRegister ? (
             <div className="card transaction-card-list-fallback">
               <p className="sr-only" role="status">
                 Showing {transactions.length} transactions as cards for large text.{' '}
                 {largeTextReflow.reasons.join(' ')}
               </p>
               {groupedTransactions.map((group) => (
-                <section key={group.date} className="page-section" aria-label={`${group.label} transaction cards`}>
+                <section
+                  key={group.date}
+                  className="page-section"
+                  aria-label={`${group.label} transaction cards`}
+                >
                   <h3 className="list-group__header">{group.label}</h3>
-                  <ul className="list-group transaction-card-list" role="list" aria-label="Large text transaction card list">
+                  <ul
+                    className="list-group transaction-card-list"
+                    role="list"
+                    aria-label="Large text transaction card list"
+                  >
                     {group.transactions.map((transaction) =>
                       renderTransactionRow(
                         transaction,
@@ -1096,69 +1583,346 @@ export const TransactionsPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            groupedTransactions.map((group) => (
-              <section key={group.date} className="page-section" aria-label={group.label}>
-                <h3 className="list-group__header">{group.label}</h3>
-                <div className="card">
-                  <ul className="list-group" role="list">
-                    {group.transactions.map((transaction) =>
-                      renderTransactionRow(
-                        transaction,
-                        undefined,
-                        transactionPositionById.get(transaction.id),
-                      ),
-                    )}
-                  </ul>
-                </div>
-              </section>
-            ))
+            <div>
+              <p className="sr-only" role="status" aria-live="polite">
+                {bulkTransactions.selectionCount === 0
+                  ? 'No transactions selected'
+                  : `${bulkTransactions.selectionCount} transaction${
+                      bulkTransactions.selectionCount === 1 ? '' : 's'
+                    } selected`}
+              </p>
+              <label className="transaction-register__select-all">
+                <input
+                  ref={selectAllCheckboxRef}
+                  type="checkbox"
+                  className="bulk-select-checkbox"
+                  checked={allVisibleSelected}
+                  onChange={(event) => {
+                    if (event.currentTarget.checked) {
+                      bulkTransactions.selectAll();
+                    } else {
+                      bulkTransactions.clearSelection();
+                    }
+                  }}
+                  aria-label="Select all visible transactions"
+                />
+                Select all visible transactions
+              </label>
+              {groupedTransactions.map((group) => (
+                <section key={group.date} className="page-section" aria-label={group.label}>
+                  <h3 className="list-group__header">{group.label}</h3>
+                  <div className="card">
+                    <ul className="list-group" role="list">
+                      {group.transactions.map((transaction) => {
+                        const transactionLabel = getTransactionLabel(transaction);
+                        const autoCategory = suggestForTransaction(transaction);
+                        const canQuickCategorize =
+                          autoCategory !== null &&
+                          autoCategory.categoryId !== transaction.categoryId;
+                        const showCategoryConfirmation =
+                          canQuickCategorize && !dismissedAutoCategoryIds.includes(transaction.id);
+                        const leftSwipeActions = [
+                          ...(canQuickCategorize && autoCategory !== null
+                            ? [
+                                {
+                                  id: 'categorize',
+                                  label: `Categorize`,
+                                  icon: <AppIcon name="tag" />,
+                                  variant: 'success' as const,
+                                  onAction: () =>
+                                    handleQuickCategorize(
+                                      transaction,
+                                      autoCategory.categoryId,
+                                      autoCategory.categoryName,
+                                    ),
+                                },
+                              ]
+                            : []),
+                          {
+                            id: 'edit',
+                            label: 'Edit',
+                            icon: <AppIcon name="edit" />,
+                            onAction: () => handleEditTransaction(transaction),
+                          },
+                          {
+                            id: 'delete',
+                            label: 'Delete',
+                            icon: <AppIcon name="trash" />,
+                            variant: 'danger' as const,
+                            onAction: () => setDeletingTransaction(transaction),
+                          },
+                        ];
+                        const rightSwipeActions =
+                          canQuickCategorize && autoCategory !== null
+                            ? [
+                                {
+                                  id: 'categorize',
+                                  label: `Categorize`,
+                                  icon: <AppIcon name="tag" />,
+                                  variant: 'success' as const,
+                                  quick: true,
+                                  onAction: () =>
+                                    handleQuickCategorize(
+                                      transaction,
+                                      autoCategory.categoryId,
+                                      autoCategory.categoryName,
+                                    ),
+                                },
+                              ]
+                            : transaction.status !== 'RECONCILED'
+                              ? [
+                                  {
+                                    id: 'review',
+                                    label: 'Mark reviewed',
+                                    icon: <AppIcon name="check-circle" />,
+                                    variant: 'default' as const,
+                                    quick: true,
+                                    onAction: () => handleMarkReviewed(transaction),
+                                  },
+                                ]
+                              : [];
+
+                        const dragTransactionIds =
+                          isSelected(transaction.id) && selectionCount > 1
+                            ? Array.from(selectedIds)
+                            : [transaction.id];
+
+                        const transactionRow = (
+                          <SwipeableRow
+                            aria-label={`Actions for ${transactionLabel}`}
+                            contentClassName={`list-item${!isSimplified && isSelected(transaction.id) ? ' transaction-list-item--selected' : ''}`}
+                            leftActions={leftSwipeActions}
+                            rightActions={rightSwipeActions}
+                          >
+                            {!isSimplified ? (
+                              <div className="transaction-list-item__selection">
+                                <input
+                                  type="checkbox"
+                                  className="bulk-select-checkbox"
+                                  checked={isSelected(transaction.id)}
+                                  onChange={(event) =>
+                                    handleTransactionSelection(
+                                      transaction,
+                                      event.currentTarget.checked,
+                                      event.nativeEvent instanceof MouseEvent
+                                        ? event.nativeEvent.shiftKey
+                                        : false,
+                                    )
+                                  }
+                                  aria-label={`Select ${transactionLabel}`}
+                                />
+                              </div>
+                            ) : null}
+                            <div className="list-item__content">
+                              <Link
+                                to={`/transactions/${transaction.id}`}
+                                style={{ textDecoration: 'none', color: 'inherit' }}
+                                aria-label={`View details for ${transactionLabel}`}
+                              >
+                                <p className="list-item__primary">{transactionLabel}</p>
+                              </Link>
+                              <p className="list-item__secondary">
+                                {isSimplified
+                                  ? transaction.categoryId !== null
+                                    ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
+                                    : 'Uncategorized'
+                                  : `${transaction.counterpartyName ? `${transaction.counterpartyName} · ` : ''}${
+                                      transaction.categoryId !== null
+                                        ? (categoryNames.get(transaction.categoryId) ??
+                                          'Uncategorized')
+                                        : 'Uncategorized'
+                                    } · ${accountNames.get(transaction.accountId) ?? 'Unknown account'}`}
+                              </p>
+                              <ReturnWindowBadge transaction={transaction} />
+                              {isSimplified ? (
+                                <p className="transaction-list-item__support">
+                                  Account:{' '}
+                                  {accountNames.get(transaction.accountId) ?? 'Unknown account'}
+                                </p>
+                              ) : null}
+                              <BusinessExpenseTag
+                                transaction={transaction}
+                                categoryName={
+                                  transaction.categoryId !== null
+                                    ? (categoryNames.get(transaction.categoryId) ?? null)
+                                    : null
+                                }
+                                onSave={(update) => handleSaveBusinessExpense(transaction, update)}
+                              />
+                              {showCategoryConfirmation && autoCategory !== null ? (
+                                <CategoryConfirmation
+                                  suggestion={autoCategory}
+                                  onAccept={() =>
+                                    handleQuickCategorize(
+                                      transaction,
+                                      autoCategory.categoryId,
+                                      autoCategory.categoryName,
+                                    )
+                                  }
+                                  onReject={() =>
+                                    setDismissedAutoCategoryIds((currentIds) =>
+                                      currentIds.includes(transaction.id)
+                                        ? currentIds
+                                        : [...currentIds, transaction.id],
+                                    )
+                                  }
+                                />
+                              ) : null}
+                            </div>
+                            <div className="list-item__trailing transaction-list-item__trailing">
+                              <div className="transaction-list-item__amount">
+                                <CurrencyDisplay
+                                  amount={getTransactionDisplayAmount(transaction)}
+                                  currency={transaction.currency.code}
+                                  colorize
+                                  showSign
+                                  context={`${transactionLabel} transaction amount`}
+                                />
+                              </div>
+                              {speakAmounts ? (
+                                <button
+                                  type="button"
+                                  className="transaction-item__text-action transactions-page__speech-button"
+                                  onClick={() =>
+                                    speakAmount(
+                                      getTransactionDisplayAmount(transaction),
+                                      transaction.currency.code,
+                                      `${transactionLabel} transaction amount`,
+                                    )
+                                  }
+                                >
+                                  Read amount
+                                </button>
+                              ) : null}
+                              <div
+                                className="transaction-item__actions"
+                                aria-label="Transaction actions"
+                              >
+                                {isSimplified ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="transaction-item__text-action"
+                                      onClick={() => handleEditTransaction(transaction)}
+                                      aria-label={`Edit ${transactionLabel}`}
+                                    >
+                                      Edit details
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="transaction-item__text-action transaction-item__text-action--danger"
+                                      onClick={() => setDeletingTransaction(transaction)}
+                                      aria-label={`Delete ${transactionLabel}`}
+                                    >
+                                      Delete
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="icon-button transaction-item__action"
+                                      onClick={() => handleEditTransaction(transaction)}
+                                      aria-label={`Edit ${transactionLabel}`}
+                                    >
+                                      <AppIcon name="edit" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="icon-button transaction-item__action transaction-item__action--delete"
+                                      onClick={() => setDeletingTransaction(transaction)}
+                                      aria-label={`Delete ${transactionLabel}`}
+                                    >
+                                      <AppIcon name="trash" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </SwipeableRow>
+                        );
+
+                        return (
+                          <li key={transaction.id} role="listitem">
+                            {isSimplified ? (
+                              transactionRow
+                            ) : (
+                              <DraggableTransaction
+                                transactionId={transaction.id}
+                                label={transactionLabel}
+                                dragTransactionIds={dragTransactionIds}
+                              >
+                                {transactionRow}
+                              </DraggableTransaction>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </section>
+              ))}
+            </div>
           )}
         </div>
-      )}
 
-      <TransactionForm
-        isOpen={isFormOpen}
-        accounts={accounts}
-        categories={categories}
-        initialData={editingTransaction ?? undefined}
-        onSubmit={handleTransactionSubmit}
-        onCancel={handleFormCancel}
-      />
+        <TransactionForm
+          isOpen={isFormOpen}
+          accounts={accounts}
+          categories={categories}
+          initialData={editingTransaction ?? undefined}
+          onSubmit={handleTransactionSubmit}
+          onCancel={handleFormCancel}
+        />
 
-      <TransactionEditPanel
-        transaction={editPanelTransaction}
-        accounts={accounts}
-        categories={categories}
-        onSave={handleEditPanelSave}
-        onClose={handleEditPanelClose}
-      />
+        <VoiceEntrySheet
+          isOpen={isVoiceEntryOpen}
+          accounts={accounts}
+          categories={categories}
+          onSubmit={handleVoiceTransactionSubmit}
+          onClose={handleCloseVoiceEntry}
+          onRequestManualEntry={() => {
+            handleCloseVoiceEntry();
+            handleOpenCreateForm();
+          }}
+        />
 
-      <ConfirmDialog
-        isOpen={deletingTransaction !== null}
-        title="Delete Transaction"
-        message={
-          deletingTransaction !== null
-            ? `Are you sure you want to delete "${getTransactionLabel(deletingTransaction)}"?`
-            : ''
-        }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeletingTransaction(null)}
-      />
+        <TransactionEditPanel
+          transaction={editPanelTransaction}
+          accounts={accounts}
+          categories={categories}
+          onSave={handleEditPanelSave}
+          onClose={handleEditPanelClose}
+        />
 
-      <ConfirmDialog
-        isOpen={bulkDeleteDialogOpen}
-        title="Delete Selected Transactions"
-        message={`Are you sure you want to delete ${bulkTransactions.selectionCount} selected transaction${
-          bulkTransactions.selectionCount === 1 ? '' : 's'
-        }?`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        onConfirm={handleBulkDeleteConfirm}
-        onCancel={() => setBulkDeleteDialogOpen(false)}
-      />
-    </>
+        <ConfirmDialog
+          isOpen={deletingTransaction !== null}
+          title="Delete Transaction"
+          message={
+            deletingTransaction !== null
+              ? `Are you sure you want to delete "${getTransactionLabel(deletingTransaction)}"?`
+              : ''
+          }
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeletingTransaction(null)}
+        />
+
+        <ConfirmDialog
+          isOpen={bulkDeleteDialogOpen}
+          title="Delete Selected Transactions"
+          message={`Are you sure you want to delete ${bulkTransactions.selectionCount} selected transaction${
+            bulkTransactions.selectionCount === 1 ? '' : 's'
+          }?`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={handleBulkDeleteConfirm}
+          onCancel={() => setBulkDeleteDialogOpen(false)}
+        />
+      </>
+    </DragDropProvider>
+
   );
 };
 

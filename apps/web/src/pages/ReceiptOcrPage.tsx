@@ -2,8 +2,10 @@
 
 import React, { useId, useMemo, useState } from 'react';
 import { DateInput } from '../components/common';
+import { AmountInput } from '../components/forms/AmountInput';
 import { AppIcon } from '../components/icons';
-
+import '../components/forms/forms.css';
+import { useAmountInput } from '../hooks/useAmountInput';
 import { useAccounts } from '../hooks/useAccounts';
 import { useTransactions } from '../hooks/useTransactions';
 import { Currencies, type Currency } from '../kmp/bridge';
@@ -34,7 +36,11 @@ export const ReceiptOcrPage: React.FC = () => {
   const [receipt, setReceipt] = useState<ExtractedReceiptText>(emptyReceipt);
   const [items, setItems] = useState<readonly EditableReceiptLineItem[]>([]);
   const [merchant, setMerchant] = useState('');
-  const [amount, setAmount] = useState('');
+  const amountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: 2,
+    allowNegative: false,
+  });
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [status, setStatus] = useState<'idle' | 'processing' | 'ready' | 'saved'>('idle');
@@ -53,7 +59,7 @@ export const ReceiptOcrPage: React.FC = () => {
       .then((result) => {
         setReceipt(result);
         setMerchant(result.merchant ?? '');
-        setAmount(result.total === null ? '' : (result.total / 100).toFixed(2));
+        amountInput.setCents(result.total ?? 0);
         setDate(result.date ?? new Date().toISOString().slice(0, 10));
         setItems(result.lineItems.map((item) => ({ ...item, accepted: true })));
         setStatus('ready');
@@ -83,8 +89,8 @@ export const ReceiptOcrPage: React.FC = () => {
       return;
     }
 
-    const totalCents = Math.round(Number(amount) * 100);
-    if (!Number.isFinite(totalCents) || totalCents <= 0 || merchant.trim().length === 0) {
+    const totalCents = amountInput.cents;
+    if (totalCents <= 0 || merchant.trim().length === 0) {
       setError('Review merchant and amount before saving.');
       return;
     }
@@ -140,7 +146,7 @@ export const ReceiptOcrPage: React.FC = () => {
 
       {status === 'processing' && (
         <div role="status" aria-live="polite" className="import-progress">
-          Reading receipt on device…
+          Reading receipt on device╬ô├ç┬¬
         </div>
       )}
 
@@ -178,14 +184,16 @@ export const ReceiptOcrPage: React.FC = () => {
             Merchant
             <input value={merchant} onChange={(event) => setMerchant(event.target.value)} />
           </label>
-          <label className="import-account-selector__label">
+          <label className="import-account-selector__label" htmlFor="receipt-amount">
             Amount
-            <input
-              value={amount}
-              inputMode="decimal"
-              onChange={(event) => setAmount(event.target.value)}
-            />
           </label>
+          <AmountInput
+            id="receipt-amount"
+            amountInput={amountInput}
+            className="form-input"
+            displayLabel="Receipt total"
+            aria-label="Amount"
+          />
           <label className="import-account-selector__label">
             Date
             <DateInput value={date} onChange={(event) => setDate(event.target.value)} />
@@ -202,7 +210,7 @@ export const ReceiptOcrPage: React.FC = () => {
                     checked={item.accepted}
                     onChange={() => toggleLineItem(index)}
                   />
-                  {item.description} — ${(item.total / 100).toFixed(2)}
+                  {item.description} ╬ô├ç├╢ ${(item.total / 100).toFixed(2)}
                   {item.suggestedCategory === null ? '' : ` (${item.suggestedCategory})`}
                 </label>
               ))}

@@ -111,18 +111,32 @@
 
 /* Watchlist list */
 .watchlist-list {
+  display: flex;
+  flex-direction: column;
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
 .watchlist-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--spacing-3, 12px);
+  align-items: flex-start;
   padding: var(--spacing-4, 16px);
   border-bottom: 1px solid var(--semantic-border-default, #e5e7eb);
 }
 
 .watchlist-item:last-child {
   border-bottom: none;
+}
+
+.watchlist-item__drag-handle {
+  margin-top: calc(var(--spacing-1, 4px) * -1);
+}
+
+.watchlist-item__content {
+  min-width: 0;
 }
 
 .watchlist-item__header {
@@ -319,5 +333,15 @@
   .watchlist-alert__progress-fill,
   .watchlist-item__bar-fill {
     transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .watchlist-item {
+    grid-template-columns: 1fr;
+  }
+
+  .watchlist-item__drag-handle {
+    margin-top: 0;
   }
 }

@@ -29,6 +29,7 @@ const mockCreateBudget = vi.fn<(...args: unknown[]) => Budget>();
 const mockCreateBudgetTemplate = vi.fn<(...args: unknown[]) => Budget[]>();
 const mockUpdateBudget = vi.fn<(...args: unknown[]) => Budget | null>();
 const mockDeleteBudget = vi.fn<(...args: unknown[]) => boolean>();
+const mockReorderBudgets = vi.fn<(...args: unknown[]) => void>();
 
 vi.mock('../../db/repositories/budgets', () => ({
   getAllBudgets: (...args: unknown[]) => mockGetAllBudgets(...args),
@@ -38,6 +39,7 @@ vi.mock('../../db/repositories/budgets', () => ({
   createBudgetTemplate: (...args: unknown[]) => mockCreateBudgetTemplate(...args),
   updateBudget: (...args: unknown[]) => mockUpdateBudget(...args),
   deleteBudget: (...args: unknown[]) => mockDeleteBudget(...args),
+  reorderBudgets: (...args: unknown[]) => mockReorderBudgets(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -307,6 +309,33 @@ describe('useBudgets', () => {
 
     expect(returned).toBeNull();
     expect(result.current.error).toBe('Update failed');
+  });
+
+  // -----------------------------------------------------------------------
+  // Reorder — reorderBudgets
+  // -----------------------------------------------------------------------
+
+  it('reorders budgets and refreshes the list', () => {
+    mockGetAllBudgets.mockReturnValue([
+      makeBudget({ id: 'budget-1', name: 'Food' }),
+      makeBudget({ id: 'budget-2', name: 'Rent' }),
+    ]);
+    mockGetBudgetWithSpending.mockImplementation((_db, budgetId) =>
+      makeBudgetWithSpending({
+        id: budgetId as string,
+        name: budgetId === 'budget-1' ? 'Food' : 'Rent',
+      }),
+    );
+
+    const { result } = renderHook(() => useBudgets());
+    const callCountAfterMount = mockGetAllBudgets.mock.calls.length;
+
+    act(() => {
+      result.current.reorderBudgets(0, 1);
+    });
+
+    expect(mockReorderBudgets).toHaveBeenCalledWith(mockDb, ['budget-2', 'budget-1']);
+    expect(mockGetAllBudgets.mock.calls.length).toBeGreaterThan(callCountAfterMount);
   });
 
   // -----------------------------------------------------------------------

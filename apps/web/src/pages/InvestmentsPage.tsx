@@ -10,7 +10,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  ExplainThis,
+  LoadingSpinner,
+} from '../components/common';
 import { DataExport } from '../components/DataExport';
 import {
   InvestingBetaFeaturesPanel,
@@ -253,14 +259,27 @@ export const InvestmentsPage: React.FC = () => {
           {allocation.length > 0 && (
             <section className="page-section" aria-label="Asset allocation chart">
               <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
-                <h3
+                <div
                   style={{
-                    fontWeight: 'var(--font-weight-semibold)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-2)',
                     marginBottom: 'var(--spacing-4)',
                   }}
                 >
-                  Asset Allocation
-                </h3>
+                  <h3
+                    style={{
+                      fontWeight: 'var(--font-weight-semibold)',
+                      margin: 0,
+                    }}
+                  >
+                    Asset Allocation
+                  </h3>
+                  <ExplainThis
+                    glossaryKey="diversification"
+                    buttonLabel="Explain diversification"
+                  />
+                </div>
                 <div
                   style={{
                     display: 'flex',

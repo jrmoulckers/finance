@@ -152,9 +152,9 @@ test.describe('Account detail page', () => {
       await accountLinks.first().click();
       await expect(page).toHaveURL(/\/accounts\/.+/);
 
-      // Should show the back link
-      const backLink = page.getByRole('link', { name: /back to accounts/i });
-      await expect(backLink).toBeVisible();
+      // Should show breadcrumb navigation back to Accounts.
+      const breadcrumb = page.getByRole('navigation', { name: /breadcrumb/i });
+      await expect(breadcrumb.getByRole('link', { name: /^accounts$/i })).toBeVisible();
 
       // Should show edit and delete buttons
       const editButton = page.getByRole('button', { name: /edit/i });

@@ -2,3 +2,5 @@
 
 export { MilestoneCelebration } from './MilestoneCelebration';
 export type { MilestoneCelebrationProps } from './MilestoneCelebration';
+export { MilestoneToast } from './MilestoneToast';
+export type { MilestoneToastProps } from './MilestoneToast';

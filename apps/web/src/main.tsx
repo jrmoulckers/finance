@@ -7,7 +7,8 @@ import { BrowserRouter, useLocation } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './auth/auth-context';
 import { ErrorBoundary, ToastProvider, UpdateBanner } from './components/common';
-import { ScrollToTop } from './components/navigation/ScrollToTop';
+import { AccessibilityProvider } from './contexts/AccessibilityContext';
+import { NavigationGuard, ScrollToTop } from './components/navigation';
 import { DatabaseProvider } from './db/DatabaseProvider';
 import { applyStoredFontScalePreference } from './hooks/useFontScale';
 import { applyStoredReducedMotionPreference } from './hooks/useReducedMotion';
@@ -55,16 +56,31 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
     ? requiredProductionEnv('VITE_SUPABASE_ANON_KEY')
     : 'placeholder-anon-key';
 
+const PRE_AUTH_ROUTES = new Set([
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/legal',
+  '/beta',
+]);
+
+function isPreAuthRoute(pathname: string): boolean {
+  return Array.from(PRE_AUTH_ROUTES).some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
+
 const authConfig = {
   supabaseUrl,
   supabaseAnonKey,
   loginEndpoint: import.meta.env.VITE_LOGIN_ENDPOINT ?? '/api/auth/login',
   refreshEndpoint: import.meta.env.VITE_REFRESH_ENDPOINT ?? '/api/auth/refresh',
   logoutEndpoint: import.meta.env.VITE_LOGOUT_ENDPOINT ?? '/api/auth/logout',
+  betaAllowedEmails: import.meta.env.VITE_BETA_ALLOWED_EMAILS,
   onUnauthenticated: () => {
-    // Redirect to login when session expires or user is not authenticated
-    const publicAuthPaths = new Set(['/login', '/signup', '/forgot-password', '/reset-password']);
-    if (!publicAuthPaths.has(window.location.pathname)) {
+    // Redirect to login when session expires or user is not authenticated.
+    if (!isPreAuthRoute(window.location.pathname)) {
       window.location.href = '/login';
     }
   },
@@ -136,8 +152,6 @@ if (typeof window !== 'undefined') {
  * and cause the E2E authenticatedPage fixture to time out before the login
  * form ever appears.
  */
-const PRE_AUTH_ROUTES = new Set(['/login', '/signup', '/forgot-password', '/reset-password']);
-
 /**
  * Conditionally wraps children in DatabaseProvider.
  *
@@ -166,13 +180,17 @@ createRoot(rootElement).render(
       <ToastProvider>
         <AuthProvider config={authConfig}>
           <MoneyDisplayProvider>
-            <BrowserRouter>
-              <ScrollToTop />
-              <UpdateBanner />
-              <DatabaseGate>
-                <App />
-              </DatabaseGate>
-            </BrowserRouter>
+            <AccessibilityProvider>
+              <BrowserRouter>
+                <NavigationGuard>
+                  <ScrollToTop />
+                  <UpdateBanner />
+                  <DatabaseGate>
+                    <App />
+                  </DatabaseGate>
+                </NavigationGuard>
+              </BrowserRouter>
+            </AccessibilityProvider>
           </MoneyDisplayProvider>
         </AuthProvider>
       </ToastProvider>

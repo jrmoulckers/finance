@@ -32,6 +32,24 @@ vi.mock('../../components/settings/CurrencyRatesSettings', () => ({
   CurrencyRatesSettings: () => <section aria-label="Currency Rates">Currency rates mock</section>,
 }));
 
+vi.mock('../../hooks/useCategories', () => ({
+  useCategories: () => ({
+    categories: [
+      {
+        id: 'cat-food',
+        householdId: 'hh-1',
+        name: 'Food',
+        icon: null,
+        color: null,
+        parentId: null,
+        isIncome: false,
+        isSystem: false,
+        sortOrder: 0,
+      },
+    ],
+  }),
+}));
+
 function renderPreferences(): void {
   render(
     <MoneyDisplayProvider>

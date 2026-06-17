@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 const isCI = !!process.env.CI;
 
@@ -12,10 +12,25 @@ export default defineConfig({
   // Retry flaky tests in CI (0 retries locally for fast feedback)
   retries: isCI ? 2 : 0,
 
-  // Use blob reporter in CI for shard merging, HTML locally for debugging
+  // Use blob reporter in CI for browser report merging, HTML locally for debugging
   reporter: isCI
     ? [['blob', { outputDir: 'blob-report' }], ['github']]
     : [['html', { open: 'never' }]],
+
+  // Reuse the same visual baselines across local and CI runs.
+  snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}',
+
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    {
+      name: 'chromium-edge',
+      use: { ...devices['Desktop Edge'], channel: 'msedge' },
+    },
+    { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
+    { name: 'mobile-safari', use: { ...devices['iPhone 12'] } },
+  ],
 
   use: {
     baseURL: 'http://localhost:5173',

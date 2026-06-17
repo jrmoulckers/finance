@@ -14,6 +14,7 @@ import { Currencies } from '../../kmp/bridge';
 import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { isTransactionLockedByReconciliation } from '../../lib/reconciliation';
 import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { notifyMilestoneDataChanged } from '../../lib/milestones';
 import { recomputeAccountBalance } from './accounts';
 import {
   SQLITE_NOW_EXPRESSION,
@@ -377,6 +378,7 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
   }
 
   recomputeAccountBalance(db, input.accountId);
+  notifyMilestoneDataChanged();
 
   return createdTransaction;
 }
@@ -555,7 +557,12 @@ export function updateTransaction(
   }
   recomputeAccountBalance(db, mergedTransaction.accountId);
 
-  return getTransactionById(db, transactionId);
+  const updatedTransaction = getTransactionById(db, transactionId);
+  if (updatedTransaction) {
+    notifyMilestoneDataChanged();
+  }
+
+  return updatedTransaction;
 }
 
 /** Soft-delete a transaction row by marking its deleted timestamp. */
@@ -582,6 +589,7 @@ export function deleteTransaction(db: SqliteDb, transactionId: SyncId): boolean 
   );
 
   recomputeAccountBalance(db, existingTransaction.accountId);
+  notifyMilestoneDataChanged();
 
   return true;
 }

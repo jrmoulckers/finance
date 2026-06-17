@@ -66,8 +66,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import com.finance.core.export.ExportFormat
+import com.finance.android.ui.screens.settings.AppearanceSettingsScreen
 import com.finance.android.ui.theme.ThemePreference
 import com.finance.android.ui.theme.ThemePreferenceManager
+import com.finance.core.icons.IconPack
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import java.io.File
@@ -110,6 +112,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onSignOut: () -> Unit,
     onSetThemePreference: (ThemePreference) -> Unit,
+    onSetIconPack: (IconPack) -> Unit,
     onSetCurrency: (SupportedCurrency) -> Unit,
     onSetNotifications: (Boolean) -> Unit,
     onSetBillReminders: (Boolean) -> Unit,
@@ -148,9 +151,11 @@ fun SettingsScreen(
         )
 
         // ── Appearance ───────────────────────────────────────────────────
-        AppearanceSection(
+        AppearanceSettingsScreen(
             themePreference = state.themePreference,
+            selectedIconPack = state.iconPack,
             onThemePreferenceChanged = onSetThemePreference,
+            onIconPackChanged = onSetIconPack,
         )
 
         // ── Preferences ──────────────────────────────────────────────────
@@ -1064,7 +1069,6 @@ fun SettingsScreen(
     val viewModel: SettingsViewModel = koinViewModel()
     val state by viewModel.uiState.collectAsState()
     val themePreferenceManager: ThemePreferenceManager = koinInject()
-    val themePreference by themePreferenceManager.themePreference.collectAsState()
 
     // Collect one-shot events
     LaunchedEffect(Unit) {
@@ -1093,7 +1097,8 @@ fun SettingsScreen(
         state = state,
         onNavigateBack = onNavigateBack,
         onSignOut = viewModel::signOut,
-        onSetThemePreference = themePreferenceManager::setThemePreference,
+        onSetThemePreference = viewModel::setThemePreference,
+        onSetIconPack = viewModel::setIconPack,
         onSetCurrency = viewModel::setDefaultCurrency,
         onSetNotifications = viewModel::setNotificationsEnabled,
         onSetBillReminders = viewModel::setBillRemindersEnabled,
@@ -1175,6 +1180,7 @@ private fun SettingsScreenPreviewLight() {
                 onNavigateBack = {},
                 onSignOut = {},
                 onSetThemePreference = {},
+                onSetIconPack = {},
                 onSetCurrency = {},
                 onSetNotifications = {},
                 onSetBillReminders = {},
@@ -1216,6 +1222,7 @@ private fun SettingsScreenPreviewDark() {
                 onNavigateBack = {},
                 onSignOut = {},
                 onSetThemePreference = {},
+                onSetIconPack = {},
                 onSetCurrency = {},
                 onSetNotifications = {},
                 onSetBillReminders = {},

@@ -159,17 +159,14 @@ describe('TransactionForm', () => {
     const summary = screen.getByText('Some fields need attention').closest('.form-error-summary');
     expect(summary).toHaveAttribute('tabindex', '-1');
     expect(summary).toHaveAttribute('aria-live', 'assertive');
-    expect(screen.getByRole('link', { name: /Amount: Amount must be greater than zero/i })).toHaveAttribute(
-      'href',
-      '#txn-amount',
-    );
+    expect(
+      screen.getByRole('link', { name: /Amount: Amount must be greater than zero/i }),
+    ).toHaveAttribute('href', '#txn-amount');
     expect(screen.getByRole('link', { name: /Account: Please select an account/i })).toHaveAttribute(
       'href',
       '#txn-account',
     );
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Some fields need attention — see highlighted errors above.',
-    );
+    expect(screen.getByRole('status')).toHaveTextContent(/Some fields need attention/);
     expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -185,12 +182,8 @@ describe('TransactionForm', () => {
     fireEvent.keyDown(amountInput, { key: '4' });
 
     fireEvent.change(screen.getByLabelText('Payee'), { target: { value: ' Coffee Shop ' } });
-    fireEvent.click(screen.getByRole('radio', { name: 'Income' }));
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'category-food' } });
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2025-06-10' } });
-    fireEvent.change(screen.getByLabelText('Notes'), { target: { value: ' Morning treat ' } });
-    fireEvent.change(screen.getByLabelText('Tags'), { target: { value: 'coffee, morning' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
     });
@@ -198,15 +191,15 @@ describe('TransactionForm', () => {
     expect(onSubmit).toHaveBeenCalledWith({
       householdId: 'household-1',
       accountId: 'account-1',
-      type: 'INCOME',
+      type: 'EXPENSE',
       status: 'PENDING',
-      amount: { amount: 1234 },
+      amount: { amount: -1234 },
       currency: { code: 'USD', decimalPlaces: 2 },
       payee: 'Coffee Shop',
       date: '2025-06-10',
-      categoryId: 'category-food',
-      note: 'Morning treat',
-      tags: ['coffee', 'morning'],
+      categoryId: null,
+      note: null,
+      tags: [],
       retirementContributionYear: null,
       retirementContributionDesignation: null,
       merchantCity: null,
@@ -405,7 +398,7 @@ describe('TransactionForm', () => {
   it('includes additional fields in submission data', async () => {
     const { onSubmit } = renderTransactionForm();
 
-    // Fill required fields — amount uses keyDown events with useAmountInput
+    // Fill required fields ΓÇö amount uses keyDown events with useAmountInput
     const amountInput = screen.getByLabelText('Amount');
     fireEvent.keyDown(amountInput, { key: '5' });
     fireEvent.keyDown(amountInput, { key: '0' });

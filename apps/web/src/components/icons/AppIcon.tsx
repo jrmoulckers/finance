@@ -37,6 +37,7 @@ export type IconName =
   | 'lock'
   | 'mail'
   | 'map-pin'
+  | 'mic'
   | 'medal'
   | 'package'
   | 'plane'
@@ -136,6 +137,12 @@ const paths: Record<IconName, string[]> = {
     'M12 21s7-5 7-12a7 7 0 1 0-14 0c0 7 7 12 7 12Z',
     'M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
   ],
+  mic: [
+    'M12 16a4 4 0 0 0 4-4V8a4 4 0 1 0-8 0v4a4 4 0 0 0 4 4Z',
+    'M19 11a7 7 0 0 1-14 0',
+    'M12 19v3',
+    'M9 22h6',
+  ],
   medal: ['M12 22a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z', 'm8 2 4 6 4-6'],
   package: ['m3 7 9 5 9-5', 'M3 7l9-5 9 5v10l-9 5-9-5V7Z', 'M12 12v10'],
   plane: ['M22 2 11 13', 'm22 2-7 20-4-9-9-4 20-7Z'],
@@ -166,6 +173,7 @@ const paths: Record<IconName, string[]> = {
   x: ['M6 6l12 12', 'M18 6 6 18'],
 };
 
+// TODO(#2009): Migrate the remaining legacy AppIcon call sites to the token-based <Icon />.
 export function AppIcon({ name, size = 16, label, style, ...svgProps }: AppIconProps) {
   const iconStyle: CSSProperties = {
     display: 'inline-block',

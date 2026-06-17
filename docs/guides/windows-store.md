@@ -8,7 +8,7 @@ Step-by-step guide for packaging and publishing the Finance Windows desktop app 
 | --------------------- | --------------------------------------------- |
 | **Package format**    | MSIX                                          |
 | **Build tool**        | Compose Desktop → `packageMsi` / MSIX tooling |
-| **CI workflow**       | `.github/workflows/windows-ci.yml`            |
+| **CI workflow**       | `.github/workflows/ci-windows.yml`            |
 | **Manifest template** | `apps/windows/packaging/AppxManifest.xml`     |
 | **Minimum OS**        | Windows 10 1809 (build 17763)                 |
 
@@ -120,11 +120,11 @@ Get-AppPackage -Name "*Finance*" | Remove-AppPackage
 
 ## 7. CI/CD Integration
 
-The `windows-ci.yml` workflow handles build and packaging automatically:
+The `ci-windows.yml` workflow handles build and packaging automatically:
 
 ```yaml
 # Triggered on pushes/PRs affecting apps/windows/** or packages/**
-# See .github/workflows/windows-ci.yml for full configuration
+# See .github/workflows/ci-windows.yml for full configuration
 ```
 
 ### Future Enhancements

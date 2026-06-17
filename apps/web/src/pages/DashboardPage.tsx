@@ -1,18 +1,29 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { Suspense, useCallback, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { QueryEngine } from '../components/ai/QueryEngine';
 import type { TimePeriod, ViewType } from '../components/charts';
+import { CoachCard, CoachPanel } from '../components/coaching';
+import { AccountPurposeFilterControl } from '../components/accounts';
+import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner, SyncIndicator } from '../components/common';
 import { CustomizePanel } from '../components/dashboard/CustomizePanel';
 import { SafeToSpendCard } from '../components/dashboard/SafeToSpendCard';
-import { AccountPurposeFilterControl } from '../components/accounts';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  EmotionalPatterns,
+  MoodCalendar,
+  MoodEntry,
+  MoodJournal,
+  SpendingMoodChart,
+} from '../components/mood';
+import { WarrantyDashboard } from '../components/warranty';
 import { OfflineBanner } from '../components/OfflineBanner';
 import {
   useAccounts,
   useBills,
   useBudgets,
   useCategories,
+  useCoachAlerts,
   useDashboardData,
   useGoals,
   usePredictiveBalance,
@@ -32,10 +43,21 @@ import {
   type AccountPurposeFilter,
 } from '../lib/accountPurpose';
 import { isLiabilityType } from '../lib/analytics/net-worth';
+import { calculateSafeToSpend } from '../lib/dashboard/safe-to-spend';
+import {
+  MOOD_JOURNAL_CHANGED_EVENT,
+  createMoodJournalEntry,
+  deleteMoodJournalEntry,
+  detectEmotionalSpendingPatterns,
+  listMoodJournalEntries,
+  summarizeSpendingForDate,
+  updateMoodJournalEntry,
+  type MoodJournalEntryInput,
+  type MoodSpendingRecord,
+} from '../lib/mood';
 import { detectScamAlerts } from '../lib/notifications';
 import type { SpendingPace } from '../lib/notifications';
 import type { PredictionSummary } from '../lib/predictiveBalance';
-import { calculateSafeToSpend } from '../lib/dashboard/safe-to-spend';
 import { getNextQuarterlyTaxDueDate } from '../lib/tax-reserve';
 import { rollUpProtectedTransactions } from '../lib/ui/privacy';
 import '../components/dashboard/dashboard.css';
@@ -160,6 +182,20 @@ function buildCategoryData(transactions: Transaction[], categoryNames: Map<strin
   return Array.from(totalsByCategory, ([name, value]) => ({ name, value })).sort(
     (left, right) => right.value - left.value,
   );
+}
+
+function buildMoodSpendingRecords(
+  transactions: readonly Transaction[],
+  categoryNames: ReadonlyMap<string, string>,
+): MoodSpendingRecord[] {
+  return transactions.map((transaction) => ({
+    date: transaction.date,
+    amountCents: Math.abs(transaction.amount.amount),
+    category:
+      transaction.categoryId !== null
+        ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
+        : 'Uncategorized',
+  }));
 }
 
 /**
@@ -326,8 +362,17 @@ export const DashboardPage: React.FC = () => {
 
   // Spending trend chart state
   const [selectedPurposeFilter, setSelectedPurposeFilter] = useState<AccountPurposeFilter>('all');
+  const {
+    analysis: coachAnalysis,
+    topAlerts,
+    loading: coachLoading,
+    dismissAlert,
+  } = useCoachAlerts();
+
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('30d');
   const [viewType, setViewType] = useState<ViewType>('line');
+  const [moodJournalVersion, setMoodJournalVersion] = useState(0);
+  const [editingMoodEntryId, setEditingMoodEntryId] = useState<string | null>(null);
 
   const activeDays = PERIOD_DAYS[selectedPeriod === 'custom' ? '30d' : selectedPeriod];
 
@@ -347,7 +392,6 @@ export const DashboardPage: React.FC = () => {
     refresh: refreshChartTransactions,
   } = useTransactions(chartFilters);
 
-  // Previous period transactions for comparison
   const prevDateRange = useMemo(() => {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() - activeDays);
@@ -368,6 +412,26 @@ export const DashboardPage: React.FC = () => {
     [prevDateRange],
   );
   const { transactions: prevTransactions } = useTransactions(prevFilters);
+  const {
+    transactions: moodTransactions,
+    loading: moodTransactionsLoading,
+    error: moodTransactionsError,
+    refresh: refreshMoodTransactions,
+  } = useTransactions({ type: 'EXPENSE' });
+
+  useEffect(() => {
+    const handleMoodJournalChange = () => {
+      setMoodJournalVersion((current) => current + 1);
+    };
+
+    window.addEventListener('storage', handleMoodJournalChange);
+    window.addEventListener(MOOD_JOURNAL_CHANGED_EVENT, handleMoodJournalChange);
+
+    return () => {
+      window.removeEventListener('storage', handleMoodJournalChange);
+      window.removeEventListener(MOOD_JOURNAL_CHANGED_EVENT, handleMoodJournalChange);
+    };
+  }, []);
 
   const currentMonthRange = useMemo(() => getCurrentMonthBounds(), []);
   const activeMonthlyBudgets = useMemo(
@@ -610,6 +674,33 @@ export const DashboardPage: React.FC = () => {
     };
   }, [prevPrivacyRollup, totalSpending]);
 
+  const moodSpendingRecords = useMemo(
+    () => buildMoodSpendingRecords(moodTransactions, categoryNames),
+    [moodTransactions, categoryNames],
+  );
+  const moodEntries = useMemo(
+    () => listMoodJournalEntries(moodSpendingRecords),
+    [moodJournalVersion, moodSpendingRecords],
+  );
+  const moodPatterns = useMemo(() => detectEmotionalSpendingPatterns(moodEntries), [moodEntries]);
+  const todayDate = useMemo(() => formatLocalDate(new Date()), []);
+  const todayEntry = useMemo(
+    () => moodEntries.find((entry) => entry.date === todayDate) ?? null,
+    [moodEntries, todayDate],
+  );
+  const editingMoodEntry = useMemo(
+    () =>
+      editingMoodEntryId !== null
+        ? (moodEntries.find((entry) => entry.id === editingMoodEntryId) ?? null)
+        : null,
+    [editingMoodEntryId, moodEntries],
+  );
+  const activeMoodEntry = editingMoodEntry ?? (editingMoodEntryId === null ? todayEntry : null);
+  const todaySpending = useMemo(
+    () => summarizeSpendingForDate(moodSpendingRecords, todayDate),
+    [moodSpendingRecords, todayDate],
+  );
+
   const handlePeriodChange = useCallback((period: TimePeriod) => {
     setSelectedPeriod(period);
   }, []);
@@ -617,6 +708,33 @@ export const DashboardPage: React.FC = () => {
   const handleViewTypeChange = useCallback((type: ViewType) => {
     setViewType(type);
   }, []);
+
+  const handleMoodEntrySave = useCallback(
+    (input: MoodJournalEntryInput) => {
+      const targetEntryId = editingMoodEntryId ?? todayEntry?.id ?? null;
+      if (targetEntryId !== null) {
+        updateMoodJournalEntry(targetEntryId, input, moodSpendingRecords);
+      } else {
+        createMoodJournalEntry(input, moodSpendingRecords);
+      }
+      setEditingMoodEntryId(null);
+    },
+    [editingMoodEntryId, moodSpendingRecords, todayEntry],
+  );
+
+  const handleMoodEntryDelete = useCallback(
+    (entryId: string) => {
+      if (!window.confirm('Delete this mood journal entry?')) {
+        return;
+      }
+
+      deleteMoodJournalEntry(entryId);
+      if (editingMoodEntryId === entryId) {
+        setEditingMoodEntryId(null);
+      }
+    },
+    [editingMoodEntryId],
+  );
 
   const netWorth = useMemo(
     () => filteredAccounts.reduce((sum, account) => sum + account.currentBalance.amount, 0),
@@ -711,6 +829,7 @@ export const DashboardPage: React.FC = () => {
     refreshCurrentMonthTransactions();
     refreshScamAlertTransactions();
     refreshTaxQuarterTransactions();
+    refreshMoodTransactions();
   };
 
   return (
@@ -721,9 +840,9 @@ export const DashboardPage: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 'var(--spacing-3)',
+          gap: 'var(--spacing-4)',
           flexWrap: 'wrap',
-          marginBottom: 'var(--spacing-4)',
+          marginBottom: 'var(--spacing-6)',
         }}
       >
         <h2
@@ -760,6 +879,7 @@ export const DashboardPage: React.FC = () => {
             <span aria-hidden="true">{rmdDueCount}</span>
           </Link>
         )}
+        <SyncIndicator />
       </div>
       <button
         type="button"
@@ -780,7 +900,9 @@ export const DashboardPage: React.FC = () => {
         </div>
       ) : resolvedError ? (
         <ErrorBanner message={resolvedError} onRetry={handleRetry} />
-      ) : isDashboardEmpty ? (
+      ) : (
+        <>
+          {isDashboardEmpty ? (
         <EmptyState
           title={
             selectedPurposeFilter === 'all'
@@ -793,9 +915,9 @@ export const DashboardPage: React.FC = () => {
               : 'Try a different purpose filter or tag more accounts for this view.'
           }
         />
-      ) : (
-        <>
-          <section
+          ) : (
+            <>
+              <section
             className="page-section safe-to-spend-section"
             aria-label="Monthly spending answer"
           >
@@ -1036,7 +1158,65 @@ export const DashboardPage: React.FC = () => {
               ) : null}
             </section>
           ) : null}
-          {visibleWidgetIds.has('recent-transactions') ? (
+              <section className="page-section" aria-label="Financial coach">
+                <CoachCard alerts={topAlerts} loading={coachLoading} onDismiss={dismissAlert} />
+              </section>
+              <section className="page-section" aria-label="Coach insights">
+                <CoachPanel analysis={coachAnalysis} loading={coachLoading} />
+              </section>
+            </>
+          )}
+
+          <WarrantyDashboard />
+
+          <section className="page-section mood-section" aria-label="Mood and spending journal">
+            <div className="page-section__header">
+              <div>
+                <h3 className="page-section__title">Emotional Spending Journal</h3>
+                <p className="mood-section__intro">
+                  Local-first mood check-ins that connect your emotional state to same-day spending.
+                </p>
+              </div>
+            </div>
+            {moodTransactionsLoading ? (
+              <LoadingSpinner label="Loading mood journal" />
+            ) : moodTransactionsError ? (
+              <ErrorBanner message={moodTransactionsError} onRetry={refreshMoodTransactions} />
+            ) : (
+              <div className="mood-section__grid">
+                <div className="card">
+                  <MoodEntry
+                    initialEntry={activeMoodEntry}
+                    todaySpendingCents={todaySpending.totalCents}
+                    onSave={handleMoodEntrySave}
+                    onCancel={
+                      editingMoodEntryId !== null ? () => setEditingMoodEntryId(null) : undefined
+                    }
+                    isEditing={editingMoodEntryId !== null}
+                  />
+                </div>
+                <div className="card">
+                  <MoodCalendar entries={moodEntries} />
+                </div>
+                <div className="card mood-section__wide">
+                  <SpendingMoodChart entries={moodEntries} currency={chartCurrency} />
+                </div>
+                <div className="card">
+                  <EmotionalPatterns patterns={moodPatterns} />
+                </div>
+                <div className="card">
+                  <MoodJournal
+                    entries={moodEntries}
+                    activeEntryId={editingMoodEntryId}
+                    onEdit={setEditingMoodEntryId}
+                    onDelete={handleMoodEntryDelete}
+                  />
+                </div>
+              </div>
+            )}
+          </section>
+
+          {!isDashboardEmpty && visibleWidgetIds.has('recent-transactions') ? (
             <section className="page-section" aria-label="Recent transactions">
               <h3 className="page-section__title">Recent Transactions</h3>
               <div className="card">
@@ -1112,6 +1292,7 @@ export const DashboardPage: React.FC = () => {
         onReset={widgetLayout.resetLayout}
         onClose={widgetLayout.stopCustomizing}
       />
+      <QueryEngine />
     </>
   );
 };

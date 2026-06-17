@@ -1,0 +1,119 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.milestone-toast {
+  position: fixed;
+  right: var(--spacing-4, 16px);
+  bottom: var(--spacing-4, 16px);
+  z-index: 10010;
+  display: flex;
+  gap: var(--spacing-3, 12px);
+  align-items: flex-start;
+  width: min(420px, calc(100vw - 32px));
+  padding: var(--spacing-4, 16px);
+  border-radius: var(--border-radius-lg, 12px);
+  border: 1px solid var(--semantic-border-default);
+  background:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.08), transparent 45%),
+    var(--semantic-background-elevated, #fff);
+  box-shadow: var(--shadow-lg, 0 12px 24px rgba(15, 23, 42, 0.18));
+  overflow: hidden;
+}
+
+.milestone-toast__confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.milestone-toast__icon,
+.milestone-toast__content,
+.milestone-toast__dismiss {
+  position: relative;
+  z-index: 1;
+}
+
+.milestone-toast__icon {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--semantic-status-positive, #16a34a);
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.milestone-toast__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.milestone-toast__badge {
+  display: inline-flex;
+  margin-bottom: var(--spacing-1, 4px);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--semantic-text-secondary, #475569);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.milestone-toast__title {
+  margin: 0 0 var(--spacing-1, 4px);
+  color: var(--semantic-text-primary, #0f172a);
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.milestone-toast__message {
+  margin: 0;
+  color: var(--semantic-text-secondary, #475569);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.milestone-toast__dismiss {
+  border: none;
+  background: transparent;
+  color: var(--semantic-text-secondary, #475569);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.milestone-toast__dismiss:hover {
+  color: var(--semantic-text-primary, #0f172a);
+}
+
+.milestone-toast__dismiss:focus-visible {
+  outline: 2px solid var(--semantic-border-focus, #6366f1);
+  outline-offset: 2px;
+}
+
+.milestone-toast--debt-payoff .milestone-toast__icon,
+.milestone-toast--debt-reduction .milestone-toast__icon {
+  color: var(--semantic-status-info, #0284c7);
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.milestone-toast--savings-streak .milestone-toast__icon {
+  color: var(--semantic-status-warning, #d97706);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+@media (max-width: 640px) {
+  .milestone-toast {
+    right: var(--spacing-2, 8px);
+    left: var(--spacing-2, 8px);
+    width: auto;
+    bottom: calc(var(--spacing-2, 8px) + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .milestone-toast {
+    transition: none;
+  }
+}

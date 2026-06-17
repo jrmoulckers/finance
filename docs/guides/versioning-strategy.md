@@ -57,7 +57,7 @@ In addition to the semver display version, mobile and desktop platforms require 
 | `CFBundleVersion`            | Build number (monotonic integer) | `42`    |
 
 - **Where stored:** `Info.plist`
-- **How incremented:** Auto-incremented by the CI pipeline (`release-ios.yml`) on each release build. The CI reads the current TestFlight build number and increments by 1.
+- **How incremented:** Auto-incremented by the CI pipeline (`release-platform.yml`) on each release build. The CI reads the current TestFlight build number and increments by 1.
 - **Constraint:** Must be a monotonically increasing integer. Apple rejects submissions with a `CFBundleVersion` equal to or less than any previously submitted build.
 
 ### Android — `versionCode`
@@ -177,7 +177,7 @@ alpha.1 → alpha.2 → ... → beta.1 → beta.2 → ... → stable (1.0.0)
 
 - Alpha and beta versions are **not** published to production app stores.
 - Each pre-release increment resets when moving to the next stage: `0.1.0-alpha.3` → `0.1.0-beta.1` (not `beta.4`).
-- The release workflow (`release.yml`) automatically marks GitHub Releases as **pre-release** when the tag contains `-alpha`, `-beta`, or `-rc`.
+- The release workflow (`release-platform.yml`) automatically marks GitHub Releases as **pre-release** when the tag contains `-alpha`, `-beta`, or `-rc`.
 
 ### Creating Pre-Release Versions
 
@@ -329,7 +329,7 @@ Here is a complete example showing how a feature moves from development to relea
 
 6. CI pushes platform tag: android/v1.3.0
 
-7. release-android.yml triggers:
+7. release-platform.yml triggers:
    └─ Build → Sign → Upload to Play Store internal track
 
 8. Internal testing (1–2 days) → Beta (3–7 days) → Staged rollout → Full release
@@ -344,5 +344,5 @@ Here is a complete example showing how a feature moves from development to relea
 - [Changesets documentation](https://github.com/changesets/changesets) — Upstream docs for the versioning tool
 - [Semantic Versioning 2.0.0](https://semver.org/) — The semver specification
 - [`.changeset/config.json`](../../.changeset/config.json) — Changesets configuration for this repo
-- [`.github/workflows/release.yml`](../../.github/workflows/release.yml) — GitHub Release workflow
+- [`.github/workflows/release-platform.yml`](../../.github/workflows/release-platform.yml) — GitHub Release workflow
 - [`.github/workflows/changesets.yml`](../../.github/workflows/changesets.yml) — Changesets automation workflow

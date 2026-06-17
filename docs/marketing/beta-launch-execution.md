@@ -101,20 +101,20 @@
 
 ### Web (Staging PWA)
 
-| Item                     | Detail                                                |
-| ------------------------ | ----------------------------------------------------- |
-| **Distribution method**  | Staging URL with access codes or auth                 |
-| **URL**                  | [staging.finance-app.com or equivalent]               |
-| **Access control**       | Invite codes, basic auth, or Supabase auth-gated      |
-| **Browser targets**      | Chrome 120+, Safari 17+, Firefox 120+, Edge 120+      |
-| **Install instructions** | Provide PWA install instructions (Add to Home Screen) |
+| Item                     | Detail                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| **Distribution method**  | Staging URL with auth-gated account allowlist                                    |
+| **URL**                  | [staging.finance-app.com or equivalent]                                          |
+| **Access control**       | Set `VITE_BETA_ALLOWED_EMAILS` / `BETA_ALLOWED_EMAILS` to approved tester emails |
+| **Browser targets**      | Chrome 120+, Safari 17+, Firefox 120+, Edge 120+                                 |
+| **Install instructions** | Provide PWA install instructions (Add to Home Screen)                            |
 
 **Setup steps:**
 
 1. Deploy latest build to staging environment
-2. Configure access control (invite codes or auth)
-3. Test on target browsers
-4. Send staging URL + access code to web testers
+2. Configure `BETA_ALLOWED_EMAILS` in the staging GitHub Environment (comma-separated approved account emails)
+3. Test allowed and denied account sign-in on target browsers
+4. Send staging URL to approved web testers; testers sign in with their allowlisted account email
 
 ### Windows (MSIX Pre-Release)
 

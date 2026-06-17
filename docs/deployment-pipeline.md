@@ -6,27 +6,33 @@
 ## Architecture
 
 ```
-PR merge to main
+green main commit
   → deploy-staging.yml (auto)
     → Affected detection (web / backend)
     → Deploy to staging environment
+    → Post-deploy smoke tests
     → Deployment summary
+
+successful staging workflow_run
+  → promote-production.yml (auto)
+    → deploy-production.yml (reusable)
+      → Version resolution (SHA or tag)
+      → Deploy to production
+      → Post-deploy smoke tests
+      → Auto-rollback on smoke failure
+      → GitHub Release + changelog
 
 Manual trigger (workflow_dispatch)
   → deploy-production.yml
-    → Version resolution (tag or SHA)
-    → Smoke tests (skipped on rollback)
-    → Human approval (production environment)
-    → Deploy to production
-    → Audit trail
+    → Escape-hatch deploy / rollback
 ```
 
 ## Environments
 
-| Environment | Trigger                    | Approval               | URL                |
-| ----------- | -------------------------- | ---------------------- | ------------------ |
-| Staging     | Auto on push to `main`     | None                   | Vercel preview URL |
-| Production  | Manual `workflow_dispatch` | Required (1+ reviewer) | Production URL     |
+| Environment | Trigger                                                                 | Approval               | URL                                       |
+| ----------- | ----------------------------------------------------------------------- | ---------------------- | ----------------------------------------- |
+| Staging     | Auto on the latest green `main` commit                                  | None                   | `https://finance-staging.jrmoulckers.com` |
+| Production  | Auto after successful staging smoke tests, plus manual/tag escape hatch | Required (1+ reviewer) | `https://finance.jrmoulckers.com`         |
 
 ## Staging Deployment
 
@@ -74,14 +80,15 @@ Manual re-deploy: **Actions → Deploy — Staging → Run workflow**
 
 Scoped to the `staging` GitHub Environment:
 
-| Secret              | Description                              |
-| ------------------- | ---------------------------------------- |
-| `DEPLOY_HOST`       | Staging server hostname                  |
-| `DEPLOY_SSH_KEY`    | SSH private key for staging              |
-| `DEPLOY_USER`       | SSH username for staging                 |
-| `SUPABASE_URL`      | Supabase URL (e.g. `https://staging...`) |
-| `SUPABASE_ANON_KEY` | Supabase anon key                        |
-| `POWERSYNC_URL`     | PowerSync URL                            |
+| Secret                | Description                                 |
+| --------------------- | ------------------------------------------- |
+| `DEPLOY_HOST`         | Staging server hostname                     |
+| `DEPLOY_SSH_KEY`      | SSH private key for staging                 |
+| `DEPLOY_USER`         | SSH username for staging                    |
+| `SUPABASE_URL`        | Supabase URL (e.g. `https://staging...`)    |
+| `SUPABASE_ANON_KEY`   | Supabase anon key                           |
+| `POWERSYNC_URL`       | PowerSync URL                               |
+| `BETA_ALLOWED_EMAILS` | Optional comma-separated web beta allowlist |
 
 ### Production Server (Backend)
 

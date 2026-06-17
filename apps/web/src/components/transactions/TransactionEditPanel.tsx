@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /**
- * TransactionEditPanel — Slide-over panel for editing transactions.
+ * TransactionEditPanel ╬ô├ç├╢ Slide-over panel for editing transactions.
  *
  * Desktop: slide-over drawer from the right side.
  * Mobile: full-screen modal.
@@ -14,9 +14,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
-import type { Account, Category, Transaction } from '../../kmp/bridge';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
+import { useAmountInput } from '../../hooks/useAmountInput';
+import type { Account, Category, Transaction } from '../../kmp/bridge';
 import { DateInput } from '../common';
+import { AmountInput } from '../forms/AmountInput';
 import './transaction-edit-panel.css';
 
 // ---------------------------------------------------------------------------
@@ -34,6 +36,18 @@ export interface TransactionEditPanelProps {
   onSave: (id: string, data: CreateTransactionInput) => Promise<void>;
   /** Callback to close the panel. */
   onClose: () => void;
+}
+
+function normalizeTransactionAmount(amountCents: number, type: 'EXPENSE' | 'INCOME' | 'TRANSFER') {
+  if (type === 'EXPENSE') {
+    return amountCents > 0 ? -amountCents : amountCents;
+  }
+
+  if (type === 'INCOME') {
+    return Math.abs(amountCents);
+  }
+
+  return amountCents;
 }
 
 // ---------------------------------------------------------------------------
@@ -54,9 +68,15 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
 
   // Form state
   const [payee, setPayee] = useState('');
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState('');
   const [type, setType] = useState<'EXPENSE' | 'INCOME' | 'TRANSFER'>('EXPENSE');
+  const amountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: 2,
+    mode: 'incremental',
+    maxCents: 99_999_999,
+    allowNegative: type !== 'INCOME',
+  });
+  const [date, setDate] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [note, setNote] = useState('');
@@ -67,7 +87,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
   useEffect(() => {
     if (transaction) {
       setPayee(transaction.payee ?? '');
-      setAmount((Math.abs(transaction.amount.amount) / 100).toFixed(2));
+      amountInput.setCents(transaction.amount.amount);
       setDate(transaction.date);
       setType(transaction.type);
       setCategoryId(transaction.categoryId ?? '');
@@ -76,6 +96,20 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
       setSubmitError(null);
     }
   }, [transaction]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (type === 'EXPENSE') {
+      amountInput.setSign('negative');
+    }
+
+    if (type === 'INCOME') {
+      amountInput.setSign('positive');
+    }
+  }, [amountInput.setSign, isOpen, type]);
 
   // Escape key closes
   useEffect(() => {
@@ -107,12 +141,18 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
       setSubmitError(null);
 
       try {
+        const normalizedAmountCents = normalizeTransactionAmount(amountInput.cents, type);
+        if (normalizedAmountCents === 0) {
+          setSubmitError('Amount must be greater than zero.');
+          return;
+        }
+
         const data: CreateTransactionInput = {
           householdId: transaction.householdId,
           accountId,
           categoryId: categoryId || null,
           type,
-          amount: { amount: Math.round(parseFloat(amount) * 100) },
+          amount: { amount: normalizedAmountCents },
           currency: transaction.currency,
           payee: payee || null,
           note: note || null,
@@ -127,7 +167,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
         setSubmitting(false);
       }
     },
-    [transaction, accountId, categoryId, type, amount, payee, note, date, onSave],
+    [transaction, accountId, amountInput.cents, categoryId, type, payee, note, date, onSave],
   );
 
   if (!isOpen) return null;
@@ -153,7 +193,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
             aria-label="Close edit panel"
             disabled={submitting}
           >
-            <span aria-hidden="true">✕</span>
+            <span aria-hidden="true">╬ô┬ú├▓</span>
           </button>
         </header>
 
@@ -188,17 +228,15 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
               >
                 Amount
               </label>
-              <input
+              <AmountInput
                 id="edit-panel-amount"
-                type="number"
+                amountInput={amountInput}
                 className="form-input"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                min="0"
-                step="0.01"
+                placeholder="$0.00"
                 required
                 aria-required="true"
                 disabled={submitting}
+                toggleLabel="Toggle sign"
               />
             </div>
 
@@ -322,7 +360,7 @@ export const TransactionEditPanel: React.FC<TransactionEditPanelProps> = ({
             disabled={submitting}
             aria-busy={submitting}
           >
-            {submitting ? 'Saving…' : 'Save'}
+            {submitting ? 'Saving╬ô├ç┬¬' : 'Save'}
           </button>
         </footer>
       </div>

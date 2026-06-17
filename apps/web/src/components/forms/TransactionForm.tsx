@@ -33,9 +33,10 @@ import {
 
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
-import { useAutoCategory } from '../../hooks/useAutoCategory';
+import { useAutoCategorize } from '../../hooks/useAutoCategorize';
 import { formatCentsDisplay, useAmountInput } from '../../hooks/useAmountInput';
 import { useMerchants } from '../../hooks/useMerchants';
+import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type {
   Account,
   Category,
@@ -63,6 +64,8 @@ import { buildDictationControlProps } from '../../lib/a11y/dictation-entry';
 import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { transactionSchema } from '../../lib/validation';
 import { DateInput } from '../common';
+import { CategoryConfirmation } from '../categorization';
+import { AmountInput } from './AmountInput';
 import { CounterpartyInput } from '../transactions/CounterpartyInput';
 import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
@@ -170,6 +173,61 @@ function splitRowsToTransactionSplits(rows: readonly SplitFormRow[]): Transactio
   }));
 }
 
+function normalizeTransactionAmount(amountCents: number, type: TransactionType): number {
+  if (type === 'EXPENSE') {
+    return amountCents > 0 ? -amountCents : amountCents;
+  }
+
+  if (type === 'INCOME') {
+    return Math.abs(amountCents);
+  }
+
+  return amountCents;
+}
+
+function buildTransactionSnapshot(initialData?: Transaction) {
+  return {
+    transactionType: initialData?.type ?? 'EXPENSE',
+    amountCents: initialData?.amount.amount ?? 0,
+    description: initialData?.payee ?? '',
+    status: initialData?.status ?? 'PENDING',
+    categoryId: initialData?.categoryId ?? '',
+    splitRows:
+      initialData?.splits?.map((split) => ({
+        id: split.id ?? createSplitRowId(),
+        categoryId: split.categoryId ?? '',
+        amountInput: formatSplitAmountInput(split.amount.amount),
+        note: split.note ?? '',
+      })) ?? [],
+    accountId: initialData?.accountId ?? '',
+    date: initialData?.date ?? todayISO(),
+    notes: initialData?.note ?? '',
+    tagsInput: initialData ? tagsToString(initialData.tags) : '',
+    isRetirementContribution: Boolean(initialData?.retirementContributionDesignation),
+    retirementContributionYear:
+      initialData?.retirementContributionYear !== null &&
+      initialData?.retirementContributionYear !== undefined
+        ? String(initialData.retirementContributionYear)
+        : (initialData?.date ?? todayISO()).slice(0, 4),
+    retirementContributionDesignation: initialData?.retirementContributionDesignation ?? 'EMPLOYEE',
+    moodTag: normalizeMoodTag(initialData?.moodTag),
+    counterpartyName: initialData?.counterpartyName ?? '',
+    isBnplLiability: initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.liabilityType] === 'BNPL',
+    bnplInstallmentCount:
+      initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.installmentCount] ?? '4',
+    merchantCity: initialData?.merchantCity ?? '',
+    merchantState: initialData?.merchantState ?? '',
+    merchantZip: initialData?.merchantZip ?? '',
+    merchantCountry: initialData?.merchantCountry ?? '',
+    statementDescription: initialData?.statementDescription ?? '',
+    externalReferenceId: initialData?.externalReferenceId ?? '',
+    extraNotes: initialData?.extraNotes ?? '',
+    customFieldEntries: initialData?.customFields
+      ? Object.entries(initialData.customFields).map(([key, value]) => ({ key, value }))
+      : [],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
@@ -196,9 +254,10 @@ function validate(
   date: string,
 ): FormErrors {
   const errors: FormErrors = {};
+  const normalizedAmountCents = normalizeTransactionAmount(amountCents, type);
   const result = transactionSchema.safeParse({
     description: description.trim(),
-    amount: amountCents / 100,
+    amount: Math.abs(normalizedAmountCents) / 100,
     type,
     accountId,
     date,
@@ -220,8 +279,8 @@ function validate(
     }
   }
 
-  // Extra check: cents must be > 0
-  if (amountCents <= 0 && !errors.amount) {
+  // Extra check: magnitude must be > 0
+  if (normalizedAmountCents === 0 && !errors.amount) {
     errors.amount = 'Amount must be greater than zero.';
   }
 
@@ -253,9 +312,13 @@ export function TransactionForm({
   const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   // -- state ---------------------------------------------------------------
-  const amountInput = useAmountInput({ currencySymbol: '$', decimalPlaces: 2 });
-  const [description, setDescription] = useState('');
   const [transactionType, setTransactionType] = useState<TransactionType>('EXPENSE');
+  const amountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: 2,
+    allowNegative: transactionType !== 'INCOME',
+  });
+  const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TransactionStatus>('PENDING');
   const [categoryId, setCategoryId] = useState('');
   const [splitRows, setSplitRows] = useState<SplitFormRow[]>([]);
@@ -290,9 +353,71 @@ export function TransactionForm({
     [],
   );
   const [extraNotes, setExtraNotes] = useState('');
+  const initialSnapshot = useMemo(() => buildTransactionSnapshot(initialData), [initialData]);
+  const currentSnapshot = useMemo(
+    () => ({
+      transactionType,
+      amountCents: amountInput.cents,
+      description,
+      status,
+      categoryId,
+      splitRows,
+      accountId,
+      date,
+      notes,
+      tagsInput,
+      isRetirementContribution,
+      retirementContributionYear,
+      retirementContributionDesignation,
+      moodTag,
+      counterpartyName,
+      isBnplLiability,
+      bnplInstallmentCount,
+      merchantCity,
+      merchantState,
+      merchantZip,
+      merchantCountry,
+      statementDescription,
+      externalReferenceId,
+      extraNotes,
+      customFieldEntries,
+    }),
+    [
+      accountId,
+      amountInput.cents,
+      bnplInstallmentCount,
+      categoryId,
+      counterpartyName,
+      customFieldEntries,
+      date,
+      description,
+      externalReferenceId,
+      extraNotes,
+      isBnplLiability,
+      isRetirementContribution,
+      merchantCity,
+      merchantCountry,
+      merchantState,
+      merchantZip,
+      moodTag,
+      notes,
+      retirementContributionDesignation,
+      retirementContributionYear,
+      splitRows,
+      statementDescription,
+      status,
+      tagsInput,
+      transactionType,
+    ],
+  );
+  const isDirty = isOpen && JSON.stringify(currentSnapshot) !== JSON.stringify(initialSnapshot);
+  const { confirmNavigation } = useNavigationGuard({
+    when: isDirty,
+    message: 'Discard the transaction changes you have not saved yet?',
+  });
 
   // -- auto-categorisation --------------------------------------------------
-  const { suggestCategory: autoSuggest, learnCorrection } = useAutoCategory(categories);
+  const { suggestCategory: autoSuggest, learnFromFeedback } = useAutoCategorize(categories);
 
   // -- merchant matching ----------------------------------------------------
   const { merchants, matchDescription, recordMatch } = useMerchants();
@@ -340,65 +465,57 @@ export function TransactionForm({
     }
 
     if (initialData) {
-      amountInput.setCents(Math.abs(initialData.amount.amount));
+      amountInput.setCents(initialSnapshot.amountCents);
     } else {
       amountInput.reset(0);
     }
-    setDescription(initialData?.payee ?? '');
-    setTransactionType(initialData?.type ?? 'EXPENSE');
-    setStatus(initialData?.status ?? 'PENDING');
-    setCategoryId(initialData?.categoryId ?? '');
-    setSplitRows(
-      initialData?.splits?.map((split) => ({
-        id: split.id ?? createSplitRowId(),
-        categoryId: split.categoryId ?? '',
-        amountInput: formatSplitAmountInput(split.amount.amount),
-        note: split.note ?? '',
-      })) ?? [],
-    );
-    setAccountId(initialData?.accountId ?? '');
-    setDate(initialData?.date ?? todayISO());
-    setNotes(initialData?.note ?? '');
-    setTagsInput(initialData ? tagsToString(initialData.tags) : '');
-    setIsRetirementContribution(Boolean(initialData?.retirementContributionDesignation));
-    setRetirementContributionYear(
-      initialData?.retirementContributionYear !== null &&
-        initialData?.retirementContributionYear !== undefined
-        ? String(initialData.retirementContributionYear)
-        : (initialData?.date ?? todayISO()).slice(0, 4),
-    );
-    setRetirementContributionDesignation(
-      initialData?.retirementContributionDesignation ?? 'EMPLOYEE',
-    );
-    setMoodTag(normalizeMoodTag(initialData?.moodTag));
-    setCounterpartyName(initialData?.counterpartyName ?? '');
+    setDescription(initialSnapshot.description);
+    setTransactionType(initialSnapshot.transactionType);
+    setStatus(initialSnapshot.status);
+    setCategoryId(initialSnapshot.categoryId);
+    setSplitRows(initialSnapshot.splitRows);
+    setAccountId(initialSnapshot.accountId);
+    setDate(initialSnapshot.date);
+    setNotes(initialSnapshot.notes);
+    setTagsInput(initialSnapshot.tagsInput);
+    setIsRetirementContribution(initialSnapshot.isRetirementContribution);
+    setRetirementContributionYear(initialSnapshot.retirementContributionYear);
+    setRetirementContributionDesignation(initialSnapshot.retirementContributionDesignation);
+    setMoodTag(initialSnapshot.moodTag);
+    setCounterpartyName(initialSnapshot.counterpartyName);
     setMerchantMatch(null);
-    setIsBnplLiability(
-      initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.liabilityType] === 'BNPL',
-    );
-    setBnplInstallmentCount(
-      initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.installmentCount] ?? '4',
-    );
+    setIsBnplLiability(initialSnapshot.isBnplLiability);
+    setBnplInstallmentCount(initialSnapshot.bnplInstallmentCount);
     setErrors({});
     setSubmitting(false);
     setSubmitError(null);
     setSuggestion(null);
 
     // Additional details
-    setMerchantCity(initialData?.merchantCity ?? '');
-    setMerchantState(initialData?.merchantState ?? '');
-    setMerchantZip(initialData?.merchantZip ?? '');
-    setMerchantCountry(initialData?.merchantCountry ?? '');
-    setStatementDescription(initialData?.statementDescription ?? '');
-    setExternalReferenceId(initialData?.externalReferenceId ?? '');
-    setExtraNotes(initialData?.extraNotes ?? '');
-    setCustomFieldEntries(
-      initialData?.customFields
-        ? Object.entries(initialData.customFields).map(([key, value]) => ({ key, value }))
-        : [],
-    );
+    setMerchantCity(initialSnapshot.merchantCity);
+    setMerchantState(initialSnapshot.merchantState);
+    setMerchantZip(initialSnapshot.merchantZip);
+    setMerchantCountry(initialSnapshot.merchantCountry);
+    setStatementDescription(initialSnapshot.statementDescription);
+    setExternalReferenceId(initialSnapshot.externalReferenceId);
+    setExtraNotes(initialSnapshot.extraNotes);
+    setCustomFieldEntries(initialSnapshot.customFieldEntries);
     setAdditionalOpen(false);
-  }, [initialData, isOpen]);
+  }, [amountInput.reset, amountInput.setCents, initialData, initialSnapshot, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (transactionType === 'EXPENSE') {
+      amountInput.setSign('negative');
+    }
+
+    if (transactionType === 'INCOME') {
+      amountInput.setSign('positive');
+    }
+  }, [amountInput.setSign, isOpen, transactionType]);
 
   // -- auto-suggest category when description changes ----------------------
   useEffect(() => {
@@ -407,7 +524,7 @@ export function TransactionForm({
       return;
     }
 
-    const amountCents = amountInput.cents > 0 ? amountInput.cents : undefined;
+    const amountCents = Math.abs(amountInput.cents) > 0 ? Math.abs(amountInput.cents) : undefined;
     const result = autoSuggest(description, amountCents);
     setSuggestion(result);
   }, [description, amountInput.cents, isOpen, autoSuggest]);
@@ -431,8 +548,12 @@ export function TransactionForm({
   // -- handlers ------------------------------------------------------------
 
   const handleCancel = useCallback(() => {
+    if (!confirmNavigation()) {
+      return;
+    }
+
     onCancel();
-  }, [onCancel]);
+  }, [confirmNavigation, onCancel]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -447,7 +568,7 @@ export function TransactionForm({
   const isEditMode = initialData !== undefined;
   const dialogTitle = isEditMode ? 'Edit Transaction' : 'New Transaction';
   const submitButtonLabel = isEditMode ? 'Update Transaction' : 'Add Transaction';
-  const submittingLabel = isEditMode ? 'Updating…' : 'Adding…';
+  const submittingLabel = isEditMode ? 'Updating╬ô├ç┬¬' : 'Adding╬ô├ç┬¬';
   const submitFailureMessage = isEditMode
     ? 'Failed to update transaction.'
     : 'Failed to add transaction.';
@@ -478,7 +599,7 @@ export function TransactionForm({
 
   const transactionSplits = useMemo(() => splitRowsToTransactionSplits(splitRows), [splitRows]);
   const splitValidation = useMemo(
-    () => validateTransactionSplits(amountInput.cents, transactionSplits),
+    () => validateTransactionSplits(Math.abs(amountInput.cents), transactionSplits),
     [amountInput.cents, transactionSplits],
   );
   const hasSplitRows = splitRows.length > 0;
@@ -494,10 +615,11 @@ export function TransactionForm({
 
   const addSplitRow = useCallback(() => {
     setSplitRows((rows) => {
+      const totalCents = Math.abs(amountInput.cents);
       const currentSplits = splitRowsToTransactionSplits(rows);
-      const currentValidation = validateTransactionSplits(amountInput.cents, currentSplits);
+      const currentValidation = validateTransactionSplits(totalCents, currentSplits);
       const defaultAmountCents =
-        rows.length === 0 ? amountInput.cents : Math.max(currentValidation.remainingCents, 0);
+        rows.length === 0 ? totalCents : Math.max(currentValidation.remainingCents, 0);
 
       return [
         ...rows,
@@ -519,8 +641,9 @@ export function TransactionForm({
     async (e: FormEvent) => {
       e.preventDefault();
 
+      const normalizedAmountCents = normalizeTransactionAmount(amountInput.cents, transactionType);
       const fieldErrors = validate(
-        amountInput.cents,
+        normalizedAmountCents,
         description,
         accountId,
         transactionType,
@@ -565,7 +688,7 @@ export function TransactionForm({
         accountId,
         type: transactionType,
         status,
-        amount: { amount: amountInput.cents },
+        amount: { amount: normalizedAmountCents },
         currency: selectedAccount.currency,
         payee: description.trim(),
         date,
@@ -592,11 +715,6 @@ export function TransactionForm({
         counterpartyName: counterpartyName.trim() || null,
       };
 
-      // Learn from user's category choice if it differs from the suggestion.
-      if (categoryId && description.trim() && suggestion && categoryId !== suggestion.categoryId) {
-        learnCorrection(description, categoryId);
-      }
-
       // Record merchant match for ranking
       if (merchantMatch) {
         recordMatch(merchantMatch.merchant.id);
@@ -607,8 +725,19 @@ export function TransactionForm({
 
       try {
         await onSubmit(input);
+
+        if (categoryId && description.trim()) {
+          learnFromFeedback({
+            description,
+            amountCents: Math.abs(normalizedAmountCents),
+            categoryId,
+            categoryName: categories.find((category) => category.id === categoryId)?.name ?? null,
+          });
+        }
+
         // Reset form on success
         amountInput.reset(0);
+        amountInput.setSign('negative');
         setDescription('');
         setTransactionType('EXPENSE');
         setStatus('PENDING');
@@ -678,7 +807,8 @@ export function TransactionForm({
       onSubmit,
       submitFailureMessage,
       suggestion,
-      learnCorrection,
+      learnFromFeedback,
+      categories,
       recordMatch,
     ],
   );
@@ -766,23 +896,23 @@ export function TransactionForm({
               <label htmlFor="txn-amount" className="form-group__label form-group__label--required">
                 Amount
               </label>
-              <input
+              <p id="txn-amount-help" className="form-group__help">
+                Type digits only. The decimal is applied automatically from the right.
+              </p>
+              <AmountInput
                 ref={firstInputRef}
                 id={dictationControls.amount.id}
                 name={dictationControls.amount.name}
                 aria-label={dictationControls.amount['aria-label']}
                 data-dictation-label={dictationControls.amount.label}
+                amountInput={amountInput}
                 className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
-                type="text"
-                inputMode="numeric"
-                value={amountInput.displayValue}
-                onKeyDown={amountInput.handleKeyDown}
-                onChange={amountInput.handleChange}
                 placeholder="$0.00"
                 aria-invalid={hasAmountError}
-                aria-describedby={hasAmountError ? 'txn-amount-error' : undefined}
+                aria-describedby={`txn-amount-help${hasAmountError ? ' txn-amount-error' : ''}`}
                 aria-required="true"
                 autoComplete="off"
+                toggleLabel="Toggle transaction amount sign"
               />
               {hasAmountError && (
                 <span id="txn-amount-error" className="form-error" role="alert">
@@ -800,7 +930,7 @@ export function TransactionForm({
                 Payee
               </label>
               <p id="txn-description-help" className="form-group__help">
-                What appears on your statement (e.g. “AMZN MKTPL*XYZ”).
+                What appears on your statement (e.g. ╬ô├ç┬úAMZN MKTPL*XYZ╬ô├ç┬Ñ).
               </p>
               <input
                 id={dictationControls.payee.id}
@@ -825,7 +955,7 @@ export function TransactionForm({
               )}
             </div>
 
-            {/* Type – radio group */}
+            {/* Type ╬ô├ç├┤ radio group */}
             <fieldset className="form-radio-group">
               <legend className="form-radio-group__legend">Type</legend>
               <div className="form-radio-group__options" role="radiogroup">
@@ -872,7 +1002,7 @@ export function TransactionForm({
                 Counterparty
               </label>
               <p id="txn-counterparty-help" className="form-group__help">
-                The actual merchant or person (e.g. “Amazon”, “Sarah Lee”).
+                The actual merchant or person (e.g. ╬ô├ç┬úAmazon╬ô├ç┬Ñ, ╬ô├ç┬úSarah Lee╬ô├ç┬Ñ).
               </p>
               <CounterpartyInput
                 id="txn-counterparty"
@@ -924,7 +1054,7 @@ export function TransactionForm({
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
               >
-                <option value="">— None —</option>
+                <option value="">╬ô├ç├╢ None ╬ô├ç├╢</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -932,20 +1062,11 @@ export function TransactionForm({
                 ))}
               </select>
               {suggestion && !categoryId && (
-                <div className="form-category-suggestion" role="status">
-                  <span className="form-category-suggestion__text">
-                    Suggested: {suggestion.categoryName} ({Math.round(suggestion.confidence * 100)}
-                    %)
-                  </span>
-                  <button
-                    type="button"
-                    className="form-category-suggestion__accept"
-                    onClick={handleAcceptSuggestion}
-                    aria-label={`Accept suggested category: ${suggestion.categoryName}`}
-                  >
-                    Accept
-                  </button>
-                </div>
+                <CategoryConfirmation
+                  suggestion={suggestion}
+                  onAccept={handleAcceptSuggestion}
+                  onReject={() => setSuggestion(null)}
+                />
               )}
             </div>
 
@@ -1247,7 +1368,7 @@ export function TransactionForm({
               </fieldset>
             )}
 
-            {/* Additional Details — expandable section */}
+            {/* Additional Details ╬ô├ç├╢ expandable section */}
             <fieldset className="form-group" style={{ border: 'none', padding: 0, margin: 0 }}>
               <legend style={{ display: 'contents' }}>
                 <button
@@ -1278,7 +1399,7 @@ export function TransactionForm({
                       transform: additionalOpen ? 'rotate(90deg)' : 'rotate(0deg)',
                     }}
                   >
-                    ▶
+                    ╬ô├╗Γòó
                   </span>
                   Additional Details
                 </button>
@@ -1392,7 +1513,7 @@ export function TransactionForm({
                     />
                   </div>
 
-                  {/* Custom fields — key/value pairs */}
+                  {/* Custom fields ╬ô├ç├╢ key/value pairs */}
                   <div className="form-group">
                     <label className="form-group__label">Custom Fields</label>
                     {customFieldEntries.map((entry, idx) => (
@@ -1442,7 +1563,7 @@ export function TransactionForm({
                           className="icon-button"
                           style={{ flexShrink: 0 }}
                         >
-                          <span aria-hidden="true">✕</span>
+                          <span aria-hidden="true">╬ô┬ú├▓</span>
                         </button>
                       </div>
                     ))}
@@ -1481,7 +1602,7 @@ export function TransactionForm({
 
           {hasValidationErrors && (
             <div className="form-submit-summary" role="status" aria-live="polite">
-              Some fields need attention — see highlighted errors above.
+              Some fields need attention ╬ô├ç├╢ see highlighted errors above.
             </div>
           )}
 

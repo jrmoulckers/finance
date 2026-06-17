@@ -11,6 +11,7 @@ import {
   getActiveGoals,
   getAllGoals,
   getGoalById,
+  reorderGoals,
   updateGoal,
   type CreateGoalInput,
 } from './goals';
@@ -117,13 +118,14 @@ describe('goals repository', () => {
       );
     });
 
-    it('should order by target_date and name', () => {
+    it('should order by sort_order before target date and name', () => {
       mockQuery.mockReturnValue({ columns: [], rows: [] });
 
       getAllGoals(mockDb);
 
       const sql = mockQuery.mock.calls[0][1];
       expect(sql).toContain('ORDER BY');
+      expect(sql).toContain('sort_order ASC');
       expect(sql).toContain('target_date');
       expect(sql).toContain('name ASC');
     });
@@ -379,6 +381,26 @@ describe('goals repository', () => {
 
       expect(params[3]).toBe('For the new roof');
       expect(goal.description).toBe('For the new roof');
+    });
+  });
+
+  describe('reorderGoals', () => {
+    it('updates persisted sort order for each goal id', () => {
+      reorderGoals(mockDb, ['goal-2', 'goal-1']);
+
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+      expect(mockExecute).toHaveBeenNthCalledWith(
+        1,
+        mockDb,
+        expect.stringContaining('SET sort_order = ?'),
+        [0, 'goal-2'],
+      );
+      expect(mockExecute).toHaveBeenNthCalledWith(
+        2,
+        mockDb,
+        expect.stringContaining('SET sort_order = ?'),
+        [1, 'goal-1'],
+      );
     });
   });
 

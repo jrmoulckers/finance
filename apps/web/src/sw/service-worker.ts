@@ -5,7 +5,12 @@
  *
  * Caching strategies:
  *   - Cache-first -- static assets (JS, CSS, images, fonts, WASM)
- *   - Network-first -- API calls (`/api/`)
+ *   - Network-first -- sync API calls (`/api/sync/`)
+ *   - Network-only/no-store -- all other API calls (`/api/*`)
+ *
+ * Authenticated API responses can contain bearer tokens, financial data, or
+ * user-specific state. Cache Storage is disk-backed and not covered by the
+ * encrypted SQLite IndexedDB layer, so non-sync API responses are never cached.
  *
  * Offline mutation replay:
  *   Listens for the Background Sync API `sync` event and replays queued
@@ -16,7 +21,7 @@
  * Cache versioning is enforced: when CACHE_VERSION changes, old caches
  * are automatically purged during activation.
  *
- * References: issues #58, #416
+ * References: issues #58, #416, #2028
  */
 
 /// <reference lib="webworker" />
@@ -24,7 +29,6 @@ declare const self: ServiceWorkerGlobalScope;
 
 import { replayMutations } from '../db/sync/replayMutations';
 import { SYNC_TAG, type ClientToSwMessage, type SwToClientMessage } from '../db/sync/types';
-import { SLOW_NETWORK_TIMEOUT_MS } from '../lib/networkDegradation';
 import {
   RECEIPT_CACHE_MAX_ENTRIES,
   hasSensitiveReceiptToken,
@@ -51,8 +55,9 @@ const CACHE_VERSION = 'v2';
 
 /** Cache bucket names. */
 const STATIC_CACHE = `finance-static-${CACHE_VERSION}`;
-const API_CACHE = `finance-api-${CACHE_VERSION}`;
+const SYNC_CACHE = `finance-sync-${CACHE_VERSION}`;
 const RECEIPT_CACHE = `finance-receipts-${CACHE_VERSION}`;
+const LEGACY_API_CACHE_PREFIX = 'finance-api-';
 
 /**
  * Build-time precache manifest.
@@ -102,11 +107,7 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== STATIC_CACHE && key !== API_CACHE && key !== RECEIPT_CACHE)
-            .map((key) => caches.delete(key)),
-        ),
+        Promise.all(keys.filter(shouldDeleteCacheOnActivate).map((key) => caches.delete(key))),
       ),
   );
   // Take control of all open tabs immediately
@@ -126,49 +127,23 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
 
-  // Auth API: strictly network-only, never cached (#1886).
-  // Auth responses carry bearer tokens (access_token in body, refresh
-  // token in HttpOnly cookie) so any caching path would persist
-  // credentials to disk-backed Cache Storage. The auth functions also
-  // emit `Cache-Control: no-store`, but defence-in-depth here protects
-  // against future strategy changes upstream.
-  if (url.pathname.startsWith('/api/auth/')) {
-    event.respondWith(networkOnlyNoStore(request));
-    return;
+  switch (getFetchStrategyForPathname(url.pathname, request.mode)) {
+    case 'receipt-cache-first':
+      event.respondWith(receiptImageCacheFirst(request));
+      return;
+    case 'network-first':
+      event.respondWith(networkFirst(request));
+      return;
+    case 'network-only-no-store':
+      event.respondWith(networkOnlyNoStore(request));
+      return;
+    case 'cache-first':
+      event.respondWith(cacheFirst(request));
+      return;
+    case 'navigation':
+      event.respondWith(navigationHandler(request));
+      return;
   }
-
-  // Sync API requests -> network-first (prefer fresh data, fall back to cache)
-  if (url.pathname.startsWith('/api/sync/')) {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  // Other API requests -> stale-while-revalidate (serve cached, update in background)
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(staleWhileRevalidate(request));
-    return;
-  }
-
-  // Receipt and attachment thumbnails need a privacy-aware cache key.
-  if (isReceiptImagePath(url.pathname)) {
-    event.respondWith(receiptImageCacheFirst(request));
-    return;
-  }
-
-  // Static assets & app shell -> cache-first
-  if (isStaticAsset(url.pathname)) {
-    event.respondWith(cacheFirst(request));
-    return;
-  }
-
-  // Navigation requests (HTML) -> network-first with app-shell fallback (SPA)
-  if (request.mode === 'navigate') {
-    event.respondWith(navigationHandler(request));
-    return;
-  }
-
-  // Everything else -- try cache, fall back to network
-  event.respondWith(cacheFirst(request));
 });
 
 // ---------------------------------------------------------------------------
@@ -300,19 +275,20 @@ async function cacheFirst(request: Request, fallbackUrl?: string): Promise<Respo
 }
 
 /**
- * **Network-only, no-store**: always go to the network for auth
- * requests, and never enter Cache Storage on any code path (success or
- * failure). Falls back to a JSON 503 when the network throws.
+ * **Network-only, no-store**: always go to the network for
+ * authenticated API requests, and never enter Cache Storage on any code
+ * path (success or failure). Falls back to a JSON 503 when the network
+ * throws.
  *
- * Exported so a regression test can assert that `/api/auth/*` is never
- * routed through a caching strategy (#1886).
+ * Exported so regression tests can assert that `/api/*` routes are never
+ * routed through a caching strategy (#1886, #2028).
  */
 export async function networkOnlyNoStore(request: Request): Promise<Response> {
   try {
     return await fetch(request);
   } catch {
     return new Response(
-      JSON.stringify({ error: 'offline', message: 'Network required for auth' }),
+      JSON.stringify({ error: 'offline', message: 'Network required for this API request' }),
       {
         status: 503,
         statusText: 'Service Unavailable',
@@ -327,10 +303,11 @@ export async function networkOnlyNoStore(request: Request): Promise<Response> {
 
 /**
  * **Network-first**: try the network, cache the response, and fall back
- * to a cached copy if offline.
+ * to a cached copy if offline. Used only for sync API endpoints, whose
+ * offline reconciliation payloads are intentionally available offline.
  */
 async function networkFirst(request: Request): Promise<Response> {
-  const cache = await caches.open(API_CACHE);
+  const cache = await caches.open(SYNC_CACHE);
 
   try {
     const response = await fetch(request);
@@ -352,54 +329,6 @@ async function networkFirst(request: Request): Promise<Response> {
       },
     );
   }
-}
-
-/**
- * **Stale-while-revalidate**: serve from cache immediately (if available),
- * then update the cache in the background from the network.
- *
- * This provides the best user experience for API requests: instant responses
- * from cache with eventual consistency from the network.
- */
-async function staleWhileRevalidate(request: Request): Promise<Response> {
-  const cache = await caches.open(API_CACHE);
-  const cached = await cache.match(request);
-
-  const networkPromise = fetch(request)
-    .then(async (response) => {
-      if (response.ok) {
-        await cache.put(request, response.clone());
-      }
-      return response;
-    })
-    .catch(() => null);
-
-  if (cached) {
-    void networkPromise;
-    return withCacheStatusHeaders(cached, 'stale');
-  }
-
-  const networkResponse = await withTimeout(networkPromise, SLOW_NETWORK_TIMEOUT_MS);
-  if (networkResponse) {
-    return networkResponse;
-  }
-
-  return new Response(
-    JSON.stringify({
-      error: 'slow_network',
-      message: 'Network did not respond quickly and no cached response is available',
-      retryAfterMs: SLOW_NETWORK_TIMEOUT_MS,
-    }),
-    {
-      status: 504,
-      statusText: 'Gateway Timeout',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store',
-        'X-Finance-Network-State': 'slow',
-      },
-    },
-  );
 }
 
 async function receiptImageCacheFirst(request: Request): Promise<Response> {
@@ -437,17 +366,6 @@ async function trimCacheEntries(cache: Cache, maxEntries: number): Promise<void>
   await Promise.all(keys.slice(0, keys.length - maxEntries).map((key) => cache.delete(key)));
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  const timeoutPromise = new Promise<null>((resolve) => {
-    timeoutId = setTimeout(() => resolve(null), timeoutMs);
-  });
-
-  const result = await Promise.race([promise, timeoutPromise]);
-  if (timeoutId !== null) clearTimeout(timeoutId);
-  return result;
-}
-
 function withCacheStatusHeaders(response: Response, status: 'cached' | 'stale'): Response {
   const headers = new Headers(response.headers);
   headers.set('X-Finance-Cache-Status', status);
@@ -462,6 +380,47 @@ function withCacheStatusHeaders(response: Response, status: 'cached' | 'stale'):
 /** Returns `true` when the pathname looks like a static asset. */
 function isStaticAsset(pathname: string): boolean {
   return STATIC_EXTENSIONS.test(pathname);
+}
+
+export type FetchStrategy =
+  | 'receipt-cache-first'
+  | 'network-first'
+  | 'network-only-no-store'
+  | 'cache-first'
+  | 'navigation';
+
+export function getFetchStrategyForPathname(
+  pathname: string,
+  requestMode?: RequestMode,
+): FetchStrategy {
+  if (isReceiptImagePath(pathname)) {
+    return 'receipt-cache-first';
+  }
+
+  if (pathname.startsWith('/api/sync/')) {
+    return 'network-first';
+  }
+
+  if (pathname.startsWith('/api/')) {
+    return 'network-only-no-store';
+  }
+
+  if (isStaticAsset(pathname)) {
+    return 'cache-first';
+  }
+
+  if (requestMode === 'navigate') {
+    return 'navigation';
+  }
+
+  return 'cache-first';
+}
+
+function shouldDeleteCacheOnActivate(key: string): boolean {
+  return (
+    key.startsWith(LEGACY_API_CACHE_PREFIX) ||
+    (key !== STATIC_CACHE && key !== SYNC_CACHE && key !== RECEIPT_CACHE)
+  );
 }
 
 // ---------------------------------------------------------------------------

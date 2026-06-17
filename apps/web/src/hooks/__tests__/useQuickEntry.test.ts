@@ -70,10 +70,12 @@ vi.mock('../useTransactions', () => ({
   }),
 }));
 
-vi.mock('../useAutoCategory', () => ({
-  useAutoCategory: () => ({
+vi.mock('../useAutoCategorize', () => ({
+  useAutoCategorize: () => ({
     suggestCategory: vi.fn().mockReturnValue(null),
-    learnCorrection: vi.fn(),
+    shouldAutoApply: vi.fn().mockReturnValue(false),
+    autoCategorizeInput: vi.fn().mockReturnValue(null),
+    learnFromFeedback: vi.fn(),
   }),
 }));
 

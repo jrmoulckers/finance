@@ -230,6 +230,7 @@ export interface Budget extends SyncMetadata {
   readonly startDate: LocalDate;
   readonly endDate: LocalDate | null;
   readonly isRollover: boolean;
+  readonly sortOrder?: number;
 }
 
 /** Maps to KMP `com.finance.models.GoalStatus`. */
@@ -249,6 +250,7 @@ export interface Goal extends SyncMetadata {
   readonly icon: string | null;
   readonly color: string | null;
   readonly accountId: SyncId | null;
+  readonly sortOrder?: number;
 }
 
 /** Maps to KMP `com.finance.models.Category`. */

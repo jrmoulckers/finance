@@ -17,14 +17,18 @@
 
 import React, { useCallback, useEffect, useRef } from 'react';
 
+import { useAccessibility } from '../../hooks/useAccessibility';
+import { Icon } from '../common/Icon';
+import { IconToken } from '../../icons/tokens';
 import {
   MORE_SHEET_ITEMS,
   NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
+  getMoreSheetItems,
   type NavConfigItem,
   type NavGroup,
 } from './navConfig';
-import { CloseIcon, KeyboardIcon, SettingsIcon, SignOutIcon } from './navIcons';
+import { CloseIcon, KeyboardIcon, SignOutIcon } from './navIcons';
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -43,6 +47,8 @@ export interface MoreNavSheetProps {
   onNavigate: (path: string) => void;
   /** Optional: open the keyboard-shortcuts modal. */
   onOpenShortcuts?: () => void;
+  /** Optional: open the feedback dialog. */
+  onOpenFeedback?: () => void;
   /** Optional: sign-out handler. */
   onSignOut?: () => void | Promise<void>;
 }
@@ -66,8 +72,10 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
   activePath,
   onNavigate,
   onOpenShortcuts,
+  onOpenFeedback,
   onSignOut,
 }) => {
+  const { isSimplified } = useAccessibility();
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
@@ -157,7 +165,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
 
   if (!open) return null;
 
-  const buckets = bucketByGroup(MORE_SHEET_ITEMS);
+  const buckets = bucketByGroup(isSimplified ? getMoreSheetItems(true) : MORE_SHEET_ITEMS);
 
   return (
     <div className="more-sheet">
@@ -247,7 +255,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
                   onClick={() => handleNavigate('/settings')}
                 >
                   <span className="more-sheet__item-icon" aria-hidden="true">
-                    <SettingsIcon />
+                    <Icon name={IconToken.SETTINGS} />
                   </span>
                   <span className="more-sheet__item-text">
                     <span className="more-sheet__item-label">Settings</span>
@@ -257,7 +265,7 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
                   </span>
                 </button>
               </li>
-              {onOpenShortcuts ? (
+              {onOpenShortcuts && !isSimplified ? (
                 <li>
                   <button
                     type="button"
@@ -276,6 +284,29 @@ export const MoreNavSheet: React.FC<MoreNavSheetProps> = ({
                       <span className="more-sheet__item-label">Keyboard shortcuts</span>
                       <span className="more-sheet__item-description">
                         Speed up navigation and common actions.
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ) : null}
+              {onOpenFeedback && !isSimplified ? (
+                <li>
+                  <button
+                    type="button"
+                    className="more-sheet__item"
+                    aria-label="Send feedback"
+                    onClick={() => {
+                      onClose();
+                      onOpenFeedback();
+                    }}
+                  >
+                    <span className="more-sheet__item-icon" aria-hidden="true">
+                      <KeyboardIcon />
+                    </span>
+                    <span className="more-sheet__item-text">
+                      <span className="more-sheet__item-label">Send feedback</span>
+                      <span className="more-sheet__item-description">
+                        Report bugs, ideas, and beta feedback.
                       </span>
                     </span>
                   </button>

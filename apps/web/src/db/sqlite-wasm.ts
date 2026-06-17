@@ -15,6 +15,10 @@
  * References: issues #57, #95
  */
 
+import { getAccessTokenSync } from '../auth/token-storage';
+import { extractTablesFromSql, isMutationSql, notifyDataChange } from '../lib/sync/crossTab';
+import { getOrCreateSessionStoragePassphrase, isEncryptionSupported } from './encryption';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -128,9 +132,11 @@ const MIGRATIONS_TABLE = '_migrations';
  *
  * When set, IndexedDB-backed databases are encrypted at rest using
  * AES-256-GCM via the Web Crypto API.  Set via `setEncryptionSecret()`
- * before calling `initDatabase()`.
+ * before calling `initDatabase()`. When unset, the storage layer derives a
+ * secret from sessionStorage or the current Supabase access token.
  */
 let _encryptionSecret: string | null = null;
+let _resolvedEncryptionSecret: string | null | undefined;
 
 /**
  * Configure the encryption secret used to encrypt/decrypt the database
@@ -146,11 +152,66 @@ let _encryptionSecret: string | null = null;
  */
 export function setEncryptionSecret(secret: string | null): void {
   _encryptionSecret = secret;
+  _resolvedEncryptionSecret = undefined;
 }
 
 /** Check whether an encryption secret has been configured. */
 export function hasEncryptionSecret(): boolean {
   return _encryptionSecret !== null;
+}
+
+function isDevUnencryptedFallbackEnabled(): boolean {
+  return import.meta.env.DEV === true;
+}
+
+function encryptionUnavailableError(): StorageError {
+  return new StorageError(
+    'INDEXEDDB_FAILED',
+    'Encrypted database storage requires Web Crypto and session storage.',
+    { backend: 'indexeddb' },
+  );
+}
+
+/**
+ * Resolve the secret used for IndexedDB SQLite encryption.
+ *
+ * Prefer an explicitly configured secret, then a per-tab sessionStorage
+ * passphrase, then the in-memory Supabase access token. If none is available,
+ * plaintext IndexedDB is allowed only in Vite dev/test mode.
+ */
+export function resolveDatabaseEncryptionSecret(): string | null {
+  if (_resolvedEncryptionSecret !== undefined) {
+    return _resolvedEncryptionSecret;
+  }
+
+  const configuredSecret = _encryptionSecret?.trim();
+  if (configuredSecret) {
+    _resolvedEncryptionSecret = configuredSecret;
+    return _resolvedEncryptionSecret;
+  }
+
+  const sessionSecret = getOrCreateSessionStoragePassphrase();
+  if (sessionSecret) {
+    _resolvedEncryptionSecret = sessionSecret;
+    return _resolvedEncryptionSecret;
+  }
+
+  const accessToken = getAccessTokenSync()?.trim();
+  if (accessToken) {
+    _resolvedEncryptionSecret = accessToken;
+    return _resolvedEncryptionSecret;
+  }
+
+  if (isDevUnencryptedFallbackEnabled()) {
+    _resolvedEncryptionSecret = null;
+    return null;
+  }
+
+  throw encryptionUnavailableError();
+}
+
+function toExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +314,6 @@ export const MIGRATIONS: Migration[] = [
         parent_id    TEXT,
         is_income    INTEGER NOT NULL DEFAULT 0,
         is_system    INTEGER NOT NULL DEFAULT 0,
-        sort_order   INTEGER NOT NULL DEFAULT 0,
         created_at   TEXT    NOT NULL,
         updated_at   TEXT    NOT NULL,
         deleted_at   TEXT,
@@ -495,11 +555,47 @@ export const MIGRATIONS: Migration[] = [
   },
   {
     version: 8,
+    label: 'add-sort-order-to-budget-and-goal',
+    up: [
+      `ALTER TABLE budget ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;`,
+      `WITH ordered_budget AS (
+        SELECT id,
+               ROW_NUMBER() OVER (ORDER BY start_date DESC, name ASC, id ASC) - 1 AS sort_order
+          FROM budget
+         WHERE deleted_at IS NULL
+      )
+      UPDATE budget
+         SET sort_order = (
+           SELECT ordered_budget.sort_order
+             FROM ordered_budget
+            WHERE ordered_budget.id = budget.id
+         )
+       WHERE id IN (SELECT id FROM ordered_budget);`,
+      `ALTER TABLE goal ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;`,
+      `WITH ordered_goal AS (
+        SELECT id,
+               ROW_NUMBER() OVER (
+                 ORDER BY (target_date IS NULL) ASC, target_date ASC, name ASC, id ASC
+               ) - 1 AS sort_order
+          FROM goal
+         WHERE deleted_at IS NULL
+      )
+      UPDATE goal
+         SET sort_order = (
+           SELECT ordered_goal.sort_order
+             FROM ordered_goal
+            WHERE ordered_goal.id = goal.id
+         )
+       WHERE id IN (SELECT id FROM ordered_goal);`,
+    ],
+  },
+  {
+    version: 9,
     label: 'add-account-purpose',
     up: [`ALTER TABLE account ADD COLUMN purpose TEXT NOT NULL DEFAULT 'personal';`],
   },
   {
-    version: 9,
+    version: 10,
     label: 'add-account-reconciliation-history',
     up: [
       `CREATE TABLE IF NOT EXISTS account_reconciliation (
@@ -526,12 +622,12 @@ export const MIGRATIONS: Migration[] = [
     ],
   },
   {
-    version: 10,
+    version: 11,
     label: 'add-transaction-splits',
     up: [`ALTER TABLE "transaction" ADD COLUMN splits TEXT;`],
   },
   {
-    version: 11,
+    version: 12,
     label: 'add-retirement-contribution-metadata',
     up: [
       `ALTER TABLE account ADD COLUMN retirement_account_type TEXT;`,
@@ -1211,48 +1307,106 @@ function openIDB(): Promise<IDBDatabase> {
 }
 
 async function loadFromIndexedDB(key: string): Promise<ArrayBuffer | null> {
-  // Try encrypted storage first when a secret is available
-  if (_encryptionSecret) {
-    try {
-      const { loadEncryptedDatabase } = await import('./encryption');
-      const decrypted = await loadEncryptedDatabase(_encryptionSecret);
-      if (decrypted) {
-        return decrypted.buffer as ArrayBuffer;
-      }
-    } catch {
-      // Fall through to unencrypted load — first use or migration
+  if (!isEncryptionSupported()) {
+    if (isDevUnencryptedFallbackEnabled()) {
+      return loadPlaintextFromIndexedDB(key);
+    }
+    throw encryptionUnavailableError();
+  }
+
+  const encryptionSecret = resolveDatabaseEncryptionSecret();
+  if (!encryptionSecret) {
+    return loadPlaintextFromIndexedDB(key);
+  }
+
+  try {
+    const { loadEncryptedDatabase } = await import('./encryption');
+    const decrypted = await loadEncryptedDatabase(encryptionSecret);
+    if (decrypted) {
+      return toExactArrayBuffer(decrypted);
+    }
+  } catch (error) {
+    if (!isDevUnencryptedFallbackEnabled()) {
+      throw error;
     }
   }
 
+  return loadPlaintextFromIndexedDB(key);
+}
+
+async function loadPlaintextFromIndexedDB(key: string): Promise<ArrayBuffer | null> {
   const idb = await openIDB();
   return new Promise((resolve, reject) => {
     const tx = idb.transaction(IDB_STORE, 'readonly');
     const store = tx.objectStore(IDB_STORE);
-    const req = store.get(`${key}:${IDB_KEY}`);
-    req.onsuccess = () => resolve(req.result ?? null);
-    req.onerror = () => reject(req.error);
+    const req = store.get(key + ':' + IDB_KEY);
+    req.onsuccess = () => {
+      idb.close();
+      resolve(req.result ?? null);
+    };
+    req.onerror = () => {
+      idb.close();
+      reject(req.error);
+    };
   });
 }
 
 async function persistToIndexedDB(key: string, data: Uint8Array): Promise<void> {
-  // Encrypt when a secret is available
-  if (_encryptionSecret) {
-    try {
-      const { saveEncryptedDatabase } = await import('./encryption');
-      await saveEncryptedDatabase(data, _encryptionSecret);
-      return;
-    } catch {
-      // Fall through to unencrypted save as safety net
+  if (!isEncryptionSupported()) {
+    if (isDevUnencryptedFallbackEnabled()) {
+      return persistPlaintextToIndexedDB(key, data);
     }
+    throw encryptionUnavailableError();
   }
 
+  const encryptionSecret = resolveDatabaseEncryptionSecret();
+  if (!encryptionSecret) {
+    return persistPlaintextToIndexedDB(key, data);
+  }
+
+  try {
+    const { saveEncryptedDatabase } = await import('./encryption');
+    await saveEncryptedDatabase(data, encryptionSecret);
+    await deletePlaintextFromIndexedDB(key);
+    return;
+  } catch (error) {
+    if (!isDevUnencryptedFallbackEnabled()) {
+      throw error;
+    }
+    return persistPlaintextToIndexedDB(key, data);
+  }
+}
+
+async function persistPlaintextToIndexedDB(key: string, data: Uint8Array): Promise<void> {
   const idb = await openIDB();
   return new Promise((resolve, reject) => {
     const tx = idb.transaction(IDB_STORE, 'readwrite');
     const store = tx.objectStore(IDB_STORE);
-    store.put(data.buffer, `${key}:${IDB_KEY}`);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    store.put(toExactArrayBuffer(data), key + ':' + IDB_KEY);
+    tx.oncomplete = () => {
+      idb.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      idb.close();
+      reject(tx.error);
+    };
+  });
+}
+
+async function deletePlaintextFromIndexedDB(key: string): Promise<void> {
+  const idb = await openIDB();
+  return new Promise((resolve) => {
+    const tx = idb.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(key + ':' + IDB_KEY);
+    tx.oncomplete = () => {
+      idb.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      idb.close();
+      resolve();
+    };
   });
 }
 
@@ -1329,4 +1483,8 @@ export function queryOne<T = Row>(db: SqliteDb, sql: string, params?: unknown[])
  */
 export function execute(db: SqliteDb, sql: string, params?: unknown[]): void {
   db.exec(sql, params);
+
+  if (isMutationSql(sql)) {
+    notifyDataChange(extractTablesFromSql(sql));
+  }
 }

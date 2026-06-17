@@ -22,6 +22,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -31,6 +32,8 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateAccountInput } from '../../db/repositories/accounts';
+import { useAmountInput } from '../../hooks/useAmountInput';
+import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type {
   Account,
   AccountPurpose,
@@ -50,6 +53,7 @@ import {
   RETIREMENT_TAX_TREATMENT_OPTIONS,
   getDefaultRetirementTaxTreatment,
 } from '../../lib/tax/retirement-contribution-metadata';
+import { AmountInput } from './AmountInput';
 import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
 import './forms.css';
@@ -103,14 +107,8 @@ interface FormErrors {
   balance?: string;
 }
 
-function validate(
-  name: string,
-  balanceStr: string,
-  accountType: AccountType,
-  currencyCode: string,
-): FormErrors {
+function validate(name: string, accountType: AccountType, currencyCode: string): FormErrors {
   const errors: FormErrors = {};
-  const parsedBalance = parseFloat(balanceStr);
   const result = accountSchema.safeParse({
     name: name.trim(),
     type: accountType,
@@ -123,10 +121,6 @@ function validate(
         errors.name = getFormCopy('accountNameRequired');
       }
     }
-  }
-
-  if (balanceStr.trim() !== '' && Number.isNaN(parsedBalance)) {
-    errors.balance = getFormCopy('accountInitialBalanceInvalid');
   }
 
   return errors;
@@ -158,7 +152,7 @@ function getInitialFormValues(initialData?: Account) {
       name: '',
       accountType: 'CHECKING' as AccountType,
       currency: 'USD',
-      balance: '0.00',
+      balanceCents: 0,
       purpose: 'personal' as AccountPurpose,
       retirementAccountType: '' as RetirementAccountType | '',
       retirementTaxTreatment: 'PRE_TAX' as RetirementTaxTreatment,
@@ -170,9 +164,7 @@ function getInitialFormValues(initialData?: Account) {
     name: initialData.name,
     accountType: initialData.type,
     currency: initialData.currency.code,
-    balance: (
-      initialData.currentBalance.amount / Math.pow(10, initialData.currency.decimalPlaces)
-    ).toFixed(initialData.currency.decimalPlaces),
+    balanceCents: initialData.currentBalance.amount,
     purpose: initialData.purpose ?? 'personal',
     retirementAccountType: initialData.retirementAccountType ?? '',
     retirementTaxTreatment:
@@ -210,13 +202,33 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
     useState<RetirementTaxTreatment>('PRE_TAX');
   const [hsaCoverageLevel, setHsaCoverageLevel] = useState<HsaCoverageLevel>('SELF_ONLY');
   const [currency, setCurrency] = useState('USD');
-  const [balance, setBalance] = useState('0.00');
+  const selectedCurrency = useMemo(() => getCurrencyMetadata(currency), [currency]);
+  const balanceInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: selectedCurrency.decimalPlaces,
+    allowNegative: true,
+  });
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // -- database ------------------------------------------------------------
   const db = useDatabase();
+  const initialValues = useMemo(() => getInitialFormValues(initialData), [initialData]);
+  const isDirty =
+    isOpen &&
+    (name !== initialValues.name ||
+      accountType !== initialValues.accountType ||
+      purpose !== initialValues.purpose ||
+      retirementAccountType !== initialValues.retirementAccountType ||
+      retirementTaxTreatment !== initialValues.retirementTaxTreatment ||
+      hsaCoverageLevel !== initialValues.hsaCoverageLevel ||
+      currency !== initialValues.currency ||
+      balanceInput.cents !== initialValues.balanceCents);
+  const { confirmNavigation } = useNavigationGuard({
+    when: isDirty,
+    message: 'Discard the account changes you have not saved yet?',
+  });
 
   // -- focus trap -----------------------------------------------------------
   useFocusTrap(panelRef, { active: isOpen, restoreFocus: true });
@@ -235,7 +247,6 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   // -- reset on open -------------------------------------------------------
   useEffect(() => {
     if (isOpen) {
-      const initialValues = getInitialFormValues(initialData);
       setName(initialValues.name);
       setAccountType(initialValues.accountType);
       setPurpose(initialValues.purpose);
@@ -243,18 +254,22 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
       setRetirementTaxTreatment(initialValues.retirementTaxTreatment);
       setHsaCoverageLevel(initialValues.hsaCoverageLevel);
       setCurrency(initialValues.currency);
-      setBalance(initialValues.balance);
+      balanceInput.setCents(initialValues.balanceCents);
       setErrors({});
       setSubmitting(false);
       setSubmitError(null);
     }
-  }, [initialData, isOpen]);
+  }, [balanceInput.setCents, initialValues, isOpen]);
 
   // -- handlers ------------------------------------------------------------
 
   const handleCancel = useCallback(() => {
+    if (!confirmNavigation()) {
+      return;
+    }
+
     onCancel();
-  }, [onCancel]);
+  }, [confirmNavigation, onCancel]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -270,7 +285,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
     async (e: FormEvent) => {
       e.preventDefault();
 
-      const fieldErrors = validate(name, balance, accountType, currency);
+      const fieldErrors = validate(name, accountType, currency);
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
@@ -285,8 +300,6 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
       }
 
       const currencyObj = getCurrencyMetadata(currency);
-      const decimalPlaces = currencyObj.decimalPlaces;
-      const balanceCents = Math.round(parseFloat(balance || '0') * Math.pow(10, decimalPlaces));
 
       const input: CreateAccountInput = {
         householdId,
@@ -298,9 +311,9 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         hsaCoverageLevel: retirementAccountType === 'HSA' ? hsaCoverageLevel : null,
         currency: {
           code: currencyObj.code,
-          decimalPlaces,
+          decimalPlaces: currencyObj.decimalPlaces,
         },
-        currentBalance: { amount: balanceCents },
+        currentBalance: { amount: balanceInput.cents },
       };
 
       setSubmitting(true);
@@ -316,7 +329,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         setRetirementTaxTreatment(initialValues.retirementTaxTreatment);
         setHsaCoverageLevel(initialValues.hsaCoverageLevel);
         setCurrency(initialValues.currency);
-        setBalance(initialValues.balance);
+        balanceInput.reset(initialValues.balanceCents);
         setErrors({});
       } catch (err) {
         setSubmitError(
@@ -332,8 +345,9 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
     },
     [
       name,
-      balance,
       accountType,
+      balanceInput.cents,
+      balanceInput.reset,
       purpose,
       retirementAccountType,
       retirementTaxTreatment,
@@ -354,9 +368,6 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   const hasNameError = Boolean(errors.name);
   const hasBalanceError = Boolean(errors.balance);
   const isRetirementAccount = retirementAccountType !== '';
-  const selectedCurrency = getCurrencyMetadata(currency);
-  const balanceStep = selectedCurrency.decimalPlaces === 0 ? '1' : `0.${'0'.repeat(Math.max(0, selectedCurrency.decimalPlaces - 1))}1`;
-  const balancePlaceholder = selectedCurrency.decimalPlaces === 0 ? '0' : `0.${'0'.repeat(selectedCurrency.decimalPlaces)}`;
   const validationErrorItems: FormErrorSummaryItem[] = [
     hasNameError ? { fieldId: 'account-name', label: getFormCopy('accountNameLabel'), message: errors.name! } : null,
     hasBalanceError
@@ -581,15 +592,11 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
               <label htmlFor="account-balance" className="form-group__label">
                 {getFormCopy('accountInitialBalanceLabel')}
               </label>
-              <input
+              <AmountInput
                 id="account-balance"
+                amountInput={balanceInput}
                 className={`form-input${hasBalanceError ? ' form-input--error' : ''}`}
-                type="number"
-                step={balanceStep}
-                inputMode="decimal"
-                value={balance}
-                onChange={(e) => setBalance(e.target.value)}
-                placeholder={balancePlaceholder}
+                placeholder={balanceInput.placeholderValue}
                 aria-invalid={hasBalanceError}
                 aria-describedby={hasBalanceError ? 'account-balance-error' : undefined}
                 autoComplete="off"
@@ -632,4 +639,3 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
     </div>
   );
 }
-

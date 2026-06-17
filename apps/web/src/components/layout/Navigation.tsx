@@ -18,6 +18,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../../auth/auth-context';
+import { useAccessibility } from '../../hooks/useAccessibility';
+import { Icon } from '../common/Icon';
+import { IconToken } from '../../icons/tokens';
 
 import { MoreNavSheet } from './MoreNavSheet';
 import {
@@ -26,11 +29,14 @@ import {
   NAV_GROUP_LABELS,
   NAV_GROUP_ORDER,
   PINNED_NAV_ITEMS,
+  getBottomNavPriorityItems,
   getItemsByGroup,
+  getPinnedNavItems,
+  getVisibleNavItems,
   type NavConfigItem,
   type NavGroup,
 } from './navConfig';
-import { ChevronDownIcon, KeyboardIcon, MoreIcon, SettingsIcon, SignOutIcon } from './navIcons';
+import { ChevronDownIcon, KeyboardIcon, MoreIcon, SignOutIcon } from './navIcons';
 
 // ---------------------------------------------------------------------------
 // Back-compat shims for existing consumers / tests.
@@ -88,17 +94,27 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
   activePath,
   onNavigate,
   onOpenShortcuts,
+  onOpenFeedback,
   simpleMode = false,
 }) => {
   const { logout } = useAuth();
+  const { isSimplified } = useAccessibility();
   const [moreOpen, setMoreOpen] = useState(false);
+  const priorityItems = useMemo(
+    () => (isSimplified ? getBottomNavPriorityItems(true) : BOTTOM_NAV_PRIORITY_ITEMS),
+    [isSimplified],
+  );
+  const visibleItems = useMemo(
+    () => (isSimplified ? getVisibleNavItems(true) : NAV_CONFIG),
+    [isSimplified],
+  );
 
   const bottomNavItems = useMemo(
     () =>
       simpleMode
         ? NAV_CONFIG.filter((item) => SIMPLE_MODE_BOTTOM_NAV_IDS.has(item.id))
-        : BOTTOM_NAV_PRIORITY_ITEMS,
-    [simpleMode],
+        : priorityItems,
+    [priorityItems, simpleMode],
   );
 
   const isMoreActive = useMemo(() => {
@@ -107,8 +123,8 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
     if (bottomNavItems.some((item) => isActive(activePath, item.href))) {
       return false;
     }
-    return NAV_CONFIG.some((item) => isActive(activePath, item.href));
-  }, [activePath, bottomNavItems]);
+    return visibleItems.some((item) => isActive(activePath, item.href));
+  }, [activePath, bottomNavItems, visibleItems]);
 
   const handleSignOut = useCallback(async () => {
     await logout();
@@ -154,6 +170,7 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
         activePath={activePath}
         onNavigate={onNavigate}
         onOpenShortcuts={onOpenShortcuts}
+        onOpenFeedback={onOpenFeedback}
         onSignOut={handleSignOut}
       />
     </>
@@ -262,7 +279,12 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
   simpleMode = false,
 }) => {
   const { logout } = useAuth();
+  const { isSimplified } = useAccessibility();
   const isSettingsActive = isActive(activePath, '/settings');
+  const pinnedItems = useMemo(
+    () => (isSimplified ? getPinnedNavItems(true) : PINNED_NAV_ITEMS),
+    [isSimplified],
+  );
 
   const handleSignOut = useCallback(async () => {
     await logout();
@@ -277,7 +299,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
       <nav className="app-sidebar__nav" aria-label="Primary">
         {/* Pinned destinations (Dashboard) */}
         <ul className="sidebar-nav__list" role="list">
-          {PINNED_NAV_ITEMS.map((item) => {
+          {pinnedItems.map((item) => {
             const active = isActive(activePath, item.href);
             return (
               <li key={item.id} role="listitem">
@@ -300,21 +322,28 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
         {/* Grouped destinations. Money + Plan are expanded by default
             because they hold the most-used routes; Insights + Connect
             start collapsed to reduce cognitive load. */}
-        {NAV_GROUP_ORDER.map((group) => (
-          <SidebarGroup
-            key={group}
-            group={group}
-            items={getItemsByGroup(group)}
-            activePath={activePath}
-            onNavigate={onNavigate}
-            defaultExpanded={!simpleMode && (group === 'money' || group === 'plan')}
-          />
-        ))}
+        {NAV_GROUP_ORDER.map((group) => {
+          const groupItems = getItemsByGroup(group, isSimplified);
+          if (groupItems.length === 0) {
+            return null;
+          }
+
+          return (
+            <SidebarGroup
+              key={group}
+              group={group}
+              items={groupItems}
+              activePath={activePath}
+              onNavigate={onNavigate}
+              defaultExpanded={isSimplified || (!simpleMode && (group === 'money' || group === 'plan'))}
+            />
+          );
+        })}
       </nav>
 
       {/* Pinned footer — always visible without scrolling. */}
       <div className="app-sidebar__footer">
-        {onOpenShortcuts ? (
+        {onOpenShortcuts && !isSimplified ? (
           <button
             type="button"
             className="sidebar-nav__item"
@@ -327,7 +356,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
             <span>Shortcuts</span>
           </button>
         ) : null}
-        {onOpenFeedback ? (
+        {onOpenFeedback && !isSimplified ? (
           <button
             type="button"
             className="sidebar-nav__item"
@@ -347,7 +376,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
           onClick={() => onNavigate('/settings')}
         >
           <span className="sidebar-nav__item-icon" aria-hidden="true">
-            <SettingsIcon />
+            <Icon name={IconToken.SETTINGS} />
           </span>
           <span>Settings</span>
         </button>

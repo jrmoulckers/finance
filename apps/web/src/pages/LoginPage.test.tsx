@@ -112,6 +112,15 @@ describe('LoginPage', () => {
     expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/signup');
   });
 
+  it('shows hosted legal links in the login footer', () => {
+    renderLoginPage();
+
+    expect(screen.getByRole('link', { name: 'Legal' })).toHaveAttribute('href', '/legal');
+    expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/legal/privacy');
+    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/legal/terms');
+    expect(screen.getByRole('link', { name: 'CCPA' })).toHaveAttribute('href', '/legal/ccpa');
+  });
+
   it('shows forgot password link without requiring a login error', () => {
     renderLoginPage();
 

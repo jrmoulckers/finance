@@ -4,7 +4,13 @@ import React, { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AppIcon, type IconName } from '../components/icons';
 
-import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
+import {
+  ConfirmDialog,
+  CurrencyDisplay,
+  ErrorBanner,
+  ExplainThis,
+  LoadingSpinner,
+} from '../components/common';
 import { GoalForm } from '../components/forms';
 import type { CreateGoalInput } from '../db/repositories/goals';
 import { useGoals } from '../hooks';
@@ -222,14 +228,27 @@ export const GoalDetailPage: React.FC = () => {
       </article>
 
       <section aria-label="Goal progress">
-        <h3
+        <div
           style={{
-            fontWeight: 'var(--font-weight-semibold)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-2)',
             marginBottom: 'var(--spacing-3)',
           }}
         >
-          Progress
-        </h3>
+          <h3
+            style={{
+              fontWeight: 'var(--font-weight-semibold)',
+              margin: 0,
+            }}
+          >
+            Progress
+          </h3>
+          <ExplainThis
+            tipKey="goalCompoundInterest"
+            buttonLabel="Explain compound interest for goal progress"
+          />
+        </div>
         <div
           className="card"
           aria-label={`${goal.name}: ${percentComplete}% complete, ${goalStatus.label}`}

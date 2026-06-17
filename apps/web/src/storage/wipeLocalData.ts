@@ -33,6 +33,13 @@ interface StorageWithDirectory {
   getDirectory?: () => Promise<OpfsDirectoryHandle>;
 }
 
+declare global {
+  interface Window {
+    __PLAYWRIGHT_E2E__?: boolean;
+    __financeWipeLocalDataForE2E__?: () => Promise<LocalWipeOutcome[]>;
+  }
+}
+
 /**
  * Best-effort browser data wipe used after server-confirmed account deletion.
  */
@@ -79,13 +86,26 @@ async function deleteIndexedDbDatabases(): Promise<LocalWipeOutcome> {
 
   try {
     await Promise.allSettled(
-      INDEXED_DB_STORES.map(({ database, store }) => clearIndexedDbStore(database, store)),
+      INDEXED_DB_STORES.map(({ database, store }) =>
+        resolveAfterTimeout(clearIndexedDbStore(database, store)),
+      ),
     );
-    await Promise.all(INDEXED_DB_DATABASES.map((name) => deleteIndexedDbDatabase(name)));
+    await Promise.all(
+      INDEXED_DB_DATABASES.map((name) => resolveAfterTimeout(deleteIndexedDbDatabase(name))),
+    );
     return localWipeOutcome('indexeddb', 'deleted');
   } catch (error) {
     return localWipeOutcome('indexeddb', 'failed', error instanceof Error ? error.message : 'IndexedDB wipe failed.');
   }
+}
+
+function resolveAfterTimeout(promise: Promise<void>, timeoutMs = 2_000): Promise<void> {
+  return new Promise((resolve) => {
+    const timeoutId = globalThis.setTimeout(resolve, timeoutMs);
+    promise.then(resolve, resolve).finally(() => {
+      globalThis.clearTimeout(timeoutId);
+    });
+  });
 }
 
 function clearIndexedDbStore(databaseName: string, storeName: string): Promise<void> {
@@ -189,4 +209,8 @@ async function deleteAllCaches(): Promise<LocalWipeOutcome> {
   } catch (error) {
     return localWipeOutcome('caches', 'failed', error instanceof Error ? error.message : 'Cache wipe failed.');
   }
+}
+
+if (typeof window !== 'undefined' && window.__PLAYWRIGHT_E2E__ === true) {
+  window.__financeWipeLocalDataForE2E__ = wipeLocalData;
 }

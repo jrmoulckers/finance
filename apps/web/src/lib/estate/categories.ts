@@ -1,0 +1,361 @@
+// SPDX-License-Identifier: BUSL-1.1
+
+import type { EstateCategoryDefinition, EstateCategoryId } from './types';
+
+export const ESTATE_CATEGORIES: readonly EstateCategoryDefinition[] = [
+  {
+    id: 'bank-accounts',
+    label: 'Bank Accounts',
+    shortLabel: 'Banking',
+    description: 'Checking, savings, cash management, and certificate accounts.',
+    emptyState: 'Document bank accounts so beneficiaries know where cash is held.',
+    summaryFields: ['institution', 'accountType', 'approximateBalance'],
+    fields: [
+      {
+        key: 'institution',
+        label: 'Institution',
+        inputType: 'text',
+        placeholder: 'First National Bank',
+        required: true,
+      },
+      {
+        key: 'accountType',
+        label: 'Account type',
+        inputType: 'select',
+        required: true,
+        options: [
+          { value: 'Checking', label: 'Checking' },
+          { value: 'Savings', label: 'Savings' },
+          { value: 'Money Market', label: 'Money Market' },
+          { value: 'CD', label: 'Certificate of Deposit' },
+          { value: 'Cash Management', label: 'Cash Management' },
+          { value: 'Other', label: 'Other' },
+        ],
+      },
+      {
+        key: 'accountNumber',
+        label: 'Last 4 or account reference',
+        inputType: 'text',
+        placeholder: '...4821',
+      },
+      {
+        key: 'approximateBalance',
+        label: 'Approximate balance',
+        inputType: 'currency',
+        placeholder: '25000',
+      },
+    ],
+  },
+  {
+    id: 'investments',
+    label: 'Investment Accounts',
+    shortLabel: 'Investments',
+    description: 'Brokerage, retirement, education, and other investment accounts.',
+    emptyState: 'Document investment accounts, custodians, and approximate values.',
+    summaryFields: ['brokerage', 'investmentType', 'approximateValue'],
+    fields: [
+      {
+        key: 'brokerage',
+        label: 'Brokerage or custodian',
+        inputType: 'text',
+        placeholder: 'Vanguard',
+        required: true,
+      },
+      {
+        key: 'investmentType',
+        label: 'Account type',
+        inputType: 'select',
+        required: true,
+        options: [
+          { value: '401k', label: '401(k)' },
+          { value: 'IRA', label: 'IRA' },
+          { value: 'Roth IRA', label: 'Roth IRA' },
+          { value: 'Taxable', label: 'Taxable Brokerage' },
+          { value: '529', label: '529 Plan' },
+          { value: 'HSA', label: 'HSA' },
+          { value: 'Other', label: 'Other' },
+        ],
+      },
+      {
+        key: 'accountReference',
+        label: 'Account reference',
+        inputType: 'text',
+        placeholder: 'Ending in 4402',
+      },
+      {
+        key: 'approximateValue',
+        label: 'Approximate value',
+        inputType: 'currency',
+        placeholder: '175000',
+      },
+    ],
+  },
+  {
+    id: 'insurance',
+    label: 'Insurance Policies',
+    shortLabel: 'Insurance',
+    description: 'Life, home, auto, disability, umbrella, and long-term care coverage.',
+    emptyState: 'List every policy beneficiaries or executors may need to claim.',
+    summaryFields: ['provider', 'policyType', 'coverageAmount'],
+    fields: [
+      {
+        key: 'provider',
+        label: 'Provider',
+        inputType: 'text',
+        placeholder: 'Northwestern Mutual',
+        required: true,
+      },
+      {
+        key: 'policyType',
+        label: 'Policy type',
+        inputType: 'select',
+        required: true,
+        options: [
+          { value: 'Life', label: 'Life' },
+          { value: 'Home', label: 'Home' },
+          { value: 'Auto', label: 'Auto' },
+          { value: 'Disability', label: 'Disability' },
+          { value: 'Umbrella', label: 'Umbrella' },
+          { value: 'Long-Term Care', label: 'Long-Term Care' },
+          { value: 'Other', label: 'Other' },
+        ],
+      },
+      {
+        key: 'policyNumber',
+        label: 'Policy number',
+        inputType: 'text',
+        placeholder: 'LP-20449',
+      },
+      {
+        key: 'coverageAmount',
+        label: 'Coverage amount',
+        inputType: 'currency',
+        placeholder: '500000',
+      },
+    ],
+  },
+  {
+    id: 'real-estate',
+    label: 'Real Estate',
+    shortLabel: 'Property',
+    description: 'Primary homes, rentals, land, and vacation properties.',
+    emptyState: 'Track addresses, estimated values, and mortgage details for each property.',
+    summaryFields: ['address', 'propertyType', 'approximateValue'],
+    fields: [
+      {
+        key: 'address',
+        label: 'Address',
+        inputType: 'text',
+        placeholder: '123 Main Street, Austin, TX',
+        required: true,
+      },
+      {
+        key: 'propertyType',
+        label: 'Property type',
+        inputType: 'select',
+        required: true,
+        options: [
+          { value: 'Primary residence', label: 'Primary residence' },
+          { value: 'Rental', label: 'Rental' },
+          { value: 'Vacation home', label: 'Vacation home' },
+          { value: 'Land', label: 'Land' },
+          { value: 'Commercial', label: 'Commercial' },
+          { value: 'Other', label: 'Other' },
+        ],
+      },
+      {
+        key: 'approximateValue',
+        label: 'Approximate value',
+        inputType: 'currency',
+        placeholder: '650000',
+      },
+      {
+        key: 'mortgageInfo',
+        label: 'Mortgage information',
+        inputType: 'textarea',
+        placeholder: 'Lender, balance, servicer, due date',
+      },
+    ],
+  },
+  {
+    id: 'debts',
+    label: 'Outstanding Debts',
+    shortLabel: 'Debts',
+    description: 'Mortgages, student loans, credit cards, private loans, and other liabilities.',
+    emptyState: 'Document what is owed so executors can settle debts in order.',
+    summaryFields: ['creditor', 'debtType', 'approximateBalance'],
+    fields: [
+      {
+        key: 'creditor',
+        label: 'Creditor',
+        inputType: 'text',
+        placeholder: 'Chase',
+        required: true,
+      },
+      {
+        key: 'debtType',
+        label: 'Debt type',
+        inputType: 'select',
+        required: true,
+        options: [
+          { value: 'Mortgage', label: 'Mortgage' },
+          { value: 'Credit Card', label: 'Credit Card' },
+          { value: 'Student Loan', label: 'Student Loan' },
+          { value: 'Auto Loan', label: 'Auto Loan' },
+          { value: 'Personal Loan', label: 'Personal Loan' },
+          { value: 'Medical', label: 'Medical' },
+          { value: 'Other', label: 'Other' },
+        ],
+      },
+      {
+        key: 'accountReference',
+        label: 'Account reference',
+        inputType: 'text',
+        placeholder: 'Ending in 8842',
+      },
+      {
+        key: 'approximateBalance',
+        label: 'Approximate balance',
+        inputType: 'currency',
+        placeholder: '12000',
+      },
+    ],
+  },
+  {
+    id: 'digital-assets',
+    label: 'Digital Assets',
+    shortLabel: 'Digital Assets',
+    description:
+      'Crypto wallets, domain names, creator income, storage accounts, and other online assets.',
+    emptyState: 'Capture digital assets and where recovery instructions live.',
+    summaryFields: ['assetName', 'assetType', 'approximateValue'],
+    fields: [
+      {
+        key: 'assetName',
+        label: 'Asset or platform',
+        inputType: 'text',
+        placeholder: 'Coinbase wallet or example.com',
+        required: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Digital asset type',
+        inputType: 'select',
+        required: true,
+        options: [
+          { value: 'Crypto Wallet', label: 'Crypto Wallet' },
+          { value: 'Domain Name', label: 'Domain Name' },
+          { value: 'Digital Storefront', label: 'Digital Storefront' },
+          { value: 'Cloud Storage', label: 'Cloud Storage' },
+          { value: 'Rewards / Points', label: 'Rewards / Points' },
+          { value: 'Other', label: 'Other' },
+        ],
+      },
+      {
+        key: 'accessReference',
+        label: 'Access reference',
+        inputType: 'text',
+        placeholder: 'Recovery sheet in fire safe',
+      },
+      {
+        key: 'approximateValue',
+        label: 'Approximate value',
+        inputType: 'currency',
+        placeholder: '5000',
+      },
+    ],
+  },
+  {
+    id: 'subscriptions',
+    label: 'Subscriptions & Recurring Services',
+    shortLabel: 'Subscriptions',
+    description: 'Recurring digital or household services that beneficiaries may need to cancel.',
+    emptyState: 'List recurring services to avoid surprise charges after a death or incapacity.',
+    summaryFields: ['serviceName', 'billingCadence', 'approximateMonthlyCost'],
+    fields: [
+      {
+        key: 'serviceName',
+        label: 'Service name',
+        inputType: 'text',
+        placeholder: 'Netflix',
+        required: true,
+      },
+      {
+        key: 'billingCadence',
+        label: 'Billing cadence',
+        inputType: 'select',
+        required: true,
+        options: [
+          { value: 'Monthly', label: 'Monthly' },
+          { value: 'Quarterly', label: 'Quarterly' },
+          { value: 'Annual', label: 'Annual' },
+          { value: 'Other', label: 'Other' },
+        ],
+      },
+      {
+        key: 'accountEmail',
+        label: 'Account email or username',
+        inputType: 'text',
+        placeholder: 'household@example.com',
+      },
+      {
+        key: 'approximateMonthlyCost',
+        label: 'Approximate monthly cost',
+        inputType: 'currency',
+        placeholder: '19.99',
+      },
+    ],
+  },
+  {
+    id: 'important-contacts',
+    label: 'Important Contacts',
+    shortLabel: 'Contacts',
+    description:
+      'Attorney, CPA, financial advisor, insurance agent, and executor support contacts.',
+    emptyState: 'Add professional contacts who can help beneficiaries settle the estate.',
+    summaryFields: ['contactName', 'role', 'phone'],
+    fields: [
+      {
+        key: 'contactName',
+        label: 'Contact name',
+        inputType: 'text',
+        placeholder: 'Jordan Smith',
+        required: true,
+      },
+      {
+        key: 'role',
+        label: 'Role',
+        inputType: 'select',
+        required: true,
+        options: [
+          { value: 'Attorney', label: 'Attorney' },
+          { value: 'CPA', label: 'CPA' },
+          { value: 'Financial Advisor', label: 'Financial Advisor' },
+          { value: 'Insurance Agent', label: 'Insurance Agent' },
+          { value: 'Executor', label: 'Executor' },
+          { value: 'Other', label: 'Other' },
+        ],
+      },
+      {
+        key: 'phone',
+        label: 'Phone',
+        inputType: 'tel',
+        placeholder: '(555) 555-1212',
+      },
+      {
+        key: 'email',
+        label: 'Email',
+        inputType: 'email',
+        placeholder: 'advisor@example.com',
+      },
+    ],
+  },
+] as const;
+
+const CATEGORY_LOOKUP = new Map<EstateCategoryId, EstateCategoryDefinition>(
+  ESTATE_CATEGORIES.map((category) => [category.id, category]),
+);
+
+export function getEstateCategory(categoryId: EstateCategoryId): EstateCategoryDefinition {
+  return CATEGORY_LOOKUP.get(categoryId) ?? ESTATE_CATEGORIES[0];
+}

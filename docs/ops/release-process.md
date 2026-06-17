@@ -27,13 +27,13 @@ This document outlines the release process for the Finance monorepo.
 Each platform has a dedicated release workflow following the pattern:
 **Build → Sign → Test → Artifact → Release Notes**
 
-| Platform | Workflow                               | Tag Pattern  | Dispatch |
-| -------- | -------------------------------------- | ------------ | -------- |
-| Android  | `release-android.yml`                  | `v*-android` | ✅       |
-| iOS      | `release-ios.yml`                      | `v*-ios`     | ✅       |
-| Web      | `release-web.yml`                      | `v*-web`     | ✅       |
-| Windows  | `release-windows.yml`                  | `v*-windows` | ✅       |
-| All      | `release.yml` (generic GitHub Release) | `v*`         | —        |
+| Platform | Workflow                                        | Tag Pattern  | Dispatch |
+| -------- | ----------------------------------------------- | ------------ | -------- |
+| Android  | `release-platform.yml`                          | `v*-android` | ✅       |
+| iOS      | `release-platform.yml`                          | `v*-ios`     | ✅       |
+| Web      | `release-platform.yml`                          | `v*-web`     | ✅       |
+| Windows  | `release-platform.yml`                          | `v*-windows` | ✅       |
+| All      | `release-platform.yml` (generic GitHub Release) | `v*`         | —        |
 
 ### Triggering a Release
 

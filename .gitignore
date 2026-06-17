@@ -114,3 +114,5 @@ kotlin-js-store/
 
 # Git worktrees (agent work directories)
 worktrees/
+.worktrees/
+lighthouse-report.json

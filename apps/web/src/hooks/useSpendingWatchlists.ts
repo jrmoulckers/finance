@@ -43,6 +43,8 @@ export interface Watchlist {
   readonly alertsEnabled: boolean;
   /** Created timestamp. */
   readonly createdAt: string;
+  /** Persisted display order. */
+  readonly sortOrder?: number;
 }
 
 /** Alert severity level. */
@@ -91,6 +93,8 @@ export interface UseSpendingWatchlistsResult {
   toggleAlerts: (watchlistId: string) => void;
   /** Dismiss an alert (hides it until spending changes). */
   dismissAlert: (watchlistId: string) => void;
+  /** Reorder persisted watchlists. */
+  reorderWatchlists: (fromIndex: number, toIndex: number) => void;
   /** Refresh spending calculations. */
   refresh: () => void;
 }
@@ -101,11 +105,44 @@ export interface UseSpendingWatchlistsResult {
 
 const STORAGE_KEY = 'finance-spending-watchlists';
 
+function normalizeWatchlists(watchlists: readonly Watchlist[]): Watchlist[] {
+  return [...watchlists]
+    .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+    .map((watchlist, index) => ({
+      ...watchlist,
+      sortOrder: index,
+    }));
+}
+
+function moveWatchlist(
+  watchlists: readonly Watchlist[],
+  fromIndex: number,
+  toIndex: number,
+): Watchlist[] {
+  if (
+    fromIndex === toIndex ||
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= watchlists.length ||
+    toIndex >= watchlists.length
+  ) {
+    return normalizeWatchlists(watchlists);
+  }
+
+  const reordered = [...watchlists];
+  const [movedWatchlist] = reordered.splice(fromIndex, 1);
+  if (!movedWatchlist) {
+    return normalizeWatchlists(watchlists);
+  }
+  reordered.splice(toIndex, 0, movedWatchlist);
+  return normalizeWatchlists(reordered);
+}
+
 function loadWatchlists(): Watchlist[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as Watchlist[];
+    return normalizeWatchlists(JSON.parse(raw) as Watchlist[]);
   } catch {
     return [];
   }
@@ -113,7 +150,7 @@ function loadWatchlists(): Watchlist[] {
 
 function saveWatchlists(watchlists: Watchlist[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(watchlists));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeWatchlists(watchlists)));
   } catch {
     // Storage may be unavailable.
   }
@@ -231,39 +268,55 @@ export function useSpendingWatchlists(): UseSpendingWatchlistsResult {
     }
   }, [db, watchlists, dismissedIds, refreshToken]);
 
-  const addWatchlist = useCallback((input: CreateWatchlistInput): Watchlist => {
-    const newWl: Watchlist = {
-      id: crypto.randomUUID(),
-      categoryId: input.categoryId,
-      categoryName: input.categoryName,
-      thresholdCents: input.thresholdCents,
-      period: input.period ?? 'monthly',
-      alertsEnabled: input.alertsEnabled ?? true,
-      createdAt: new Date().toISOString(),
-    };
+  const addWatchlist = useCallback(
+    (input: CreateWatchlistInput): Watchlist => {
+      const newWl: Watchlist = {
+        id: crypto.randomUUID(),
+        categoryId: input.categoryId,
+        categoryName: input.categoryName,
+        thresholdCents: input.thresholdCents,
+        period: input.period ?? 'monthly',
+        alertsEnabled: input.alertsEnabled ?? true,
+        createdAt: new Date().toISOString(),
+        sortOrder: watchlists.length,
+      };
 
-    setWatchlists((prev) => [...prev, newWl]);
-    return newWl;
-  }, []);
+      setWatchlists((prev) => normalizeWatchlists([...prev, newWl]));
+      return newWl;
+    },
+    [watchlists.length],
+  );
 
   const removeWatchlist = useCallback((watchlistId: string) => {
-    setWatchlists((prev) => prev.filter((wl) => wl.id !== watchlistId));
+    setWatchlists((prev) => normalizeWatchlists(prev.filter((wl) => wl.id !== watchlistId)));
   }, []);
 
   const updateThreshold = useCallback((watchlistId: string, newThresholdCents: number) => {
     setWatchlists((prev) =>
-      prev.map((wl) => (wl.id === watchlistId ? { ...wl, thresholdCents: newThresholdCents } : wl)),
+      normalizeWatchlists(
+        prev.map((wl) =>
+          wl.id === watchlistId ? { ...wl, thresholdCents: newThresholdCents } : wl,
+        ),
+      ),
     );
   }, []);
 
   const toggleAlerts = useCallback((watchlistId: string) => {
     setWatchlists((prev) =>
-      prev.map((wl) => (wl.id === watchlistId ? { ...wl, alertsEnabled: !wl.alertsEnabled } : wl)),
+      normalizeWatchlists(
+        prev.map((wl) =>
+          wl.id === watchlistId ? { ...wl, alertsEnabled: !wl.alertsEnabled } : wl,
+        ),
+      ),
     );
   }, []);
 
   const dismissAlert = useCallback((watchlistId: string) => {
     setDismissedIds((prev) => new Set([...prev, watchlistId]));
+  }, []);
+
+  const reorderWatchlists = useCallback((fromIndex: number, toIndex: number) => {
+    setWatchlists((prev) => moveWatchlist(prev, fromIndex, toIndex));
   }, []);
 
   const refresh = useCallback(() => {
@@ -281,6 +334,7 @@ export function useSpendingWatchlists(): UseSpendingWatchlistsResult {
     updateThreshold,
     toggleAlerts,
     dismissAlert,
+    reorderWatchlists,
     refresh,
   };
 }

@@ -1,0 +1,310 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.encryption-details {
+  display: grid;
+  gap: var(--spacing-6);
+}
+
+.encryption-details__hero {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+@media (min-width: 960px) {
+  .encryption-details__hero {
+    grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+    align-items: start;
+  }
+}
+
+.encryption-details__card,
+.encryption-details__accordion {
+  background: var(--card-background);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-border-radius);
+}
+
+.encryption-details__card {
+  padding: var(--card-padding);
+}
+
+.encryption-details__card--intro {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.encryption-details__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.encryption-details__title,
+.encryption-details__score-title,
+.encryption-details__section-title,
+.encryption-details__audit-title {
+  margin: 0;
+  color: var(--semantic-text-primary);
+}
+
+.encryption-details__title {
+  font-size: var(--type-scale-title-font-size, 1.5rem);
+  font-weight: var(--type-scale-title-font-weight, 700);
+}
+
+.encryption-details__lead,
+.encryption-details__summary-text,
+.encryption-details__pending-copy,
+.encryption-details__audit-empty,
+.encryption-details__signal-detail,
+.encryption-details__note,
+.encryption-details__event-description,
+.encryption-details__score-copy {
+  color: var(--semantic-text-secondary);
+  line-height: 1.55;
+}
+
+.encryption-details__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.encryption-details__tag,
+.encryption-details__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: 999px;
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.encryption-details__tag {
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+}
+
+.encryption-details__pill--active {
+  border-color: var(--semantic-status-positive);
+  color: var(--semantic-status-positive);
+}
+
+.encryption-details__pill--info {
+  border-color: var(--semantic-status-info);
+  color: var(--semantic-status-info);
+}
+
+.encryption-details__pill--warning {
+  border-color: var(--semantic-status-warning);
+  color: var(--semantic-status-warning);
+}
+
+.encryption-details__card--score {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.encryption-details__score-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+}
+
+.encryption-details__score-value {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 700;
+  color: var(--semantic-text-primary);
+}
+
+.encryption-details__progress {
+  width: 100%;
+  height: 0.625rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--semantic-background-secondary);
+}
+
+.encryption-details__progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--semantic-status-info);
+}
+
+.encryption-details__checklist,
+.encryption-details__facts,
+.encryption-details__event-list {
+  list-style: none;
+  display: grid;
+  gap: var(--spacing-3);
+  padding: 0;
+  margin: 0;
+}
+
+.encryption-details__check,
+.encryption-details__fact {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  color: var(--semantic-text-primary);
+}
+
+.encryption-details__check-icon--active,
+.encryption-details__fact-icon {
+  color: var(--semantic-status-positive);
+}
+
+.encryption-details__check-icon--pending {
+  color: var(--semantic-status-warning);
+}
+
+.encryption-details__accordion-list {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.encryption-details__accordion {
+  overflow: hidden;
+}
+
+.encryption-details__summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  padding: var(--card-padding);
+  cursor: pointer;
+  list-style: none;
+}
+
+.encryption-details__summary::-webkit-details-marker {
+  display: none;
+}
+
+.encryption-details__summary-main {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.encryption-details__summary-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-primary);
+  flex-shrink: 0;
+}
+
+.encryption-details__summary-copy {
+  display: grid;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.encryption-details__summary-heading-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.encryption-details__chevron {
+  color: var(--semantic-text-secondary);
+  transition: transform 160ms ease;
+  margin-top: 0.25rem;
+}
+
+.encryption-details__accordion[open] .encryption-details__chevron {
+  transform: rotate(90deg);
+}
+
+.encryption-details__content {
+  display: grid;
+  gap: var(--spacing-4);
+  padding: 0 var(--card-padding) var(--card-padding);
+  border-top: 1px solid var(--semantic-border-default);
+}
+
+.encryption-details__note {
+  margin: 0;
+  padding: var(--spacing-3);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+}
+
+.encryption-details__audit-panel {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.encryption-details__signals {
+  display: grid;
+  gap: var(--spacing-3);
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.encryption-details__signal-card,
+.encryption-details__event {
+  display: grid;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+}
+
+.encryption-details__signal-value {
+  color: var(--semantic-text-primary);
+  font-size: 1rem;
+}
+
+.encryption-details__audit-log {
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.encryption-details__event-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.encryption-details__event-time {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size, 0.875rem);
+}
+
+@media (max-width: 640px) {
+  .encryption-details__summary,
+  .encryption-details__score-header,
+  .encryption-details__event-header {
+    gap: var(--spacing-3);
+  }
+
+  .encryption-details__summary,
+  .encryption-details__score-header {
+    flex-direction: column;
+  }
+
+  .encryption-details__summary {
+    align-items: stretch;
+  }
+
+  .encryption-details__chevron {
+    align-self: flex-end;
+  }
+}

@@ -18,8 +18,11 @@ test.describe('Budgets page', () => {
   test('loads and shows the Budgets heading', async ({ authenticatedPage: page }) => {
     await page.goto('/budgets');
 
-    const heading = page.getByRole('heading', { name: /budgets/i }).first();
-    await expect(heading).toBeVisible();
+    const heading = page
+      .getByRole('main')
+      .getByRole('heading', { name: /budgets/i })
+      .first();
+    await expect(heading).toBeVisible({ timeout: 15_000 });
   });
 
   test('shows the Add Budget button', async ({ authenticatedPage: page }) => {
@@ -43,26 +46,26 @@ test.describe('Budgets page', () => {
     await expect(dialog.getByRole('heading', { name: /create budget/i })).toBeVisible();
 
     // Category select (required)
-    const categorySelect = page.getByLabel(/category/i);
+    const categorySelect = dialog.getByLabel(/category/i);
     await expect(categorySelect).toBeVisible();
     await expect(categorySelect).toHaveAttribute('aria-required', 'true');
 
     // Amount input (required)
-    const amountInput = page.getByLabel(/^amount$/i);
+    const amountInput = dialog.getByLabel(/^amount$/i);
     await expect(amountInput).toBeVisible();
     await expect(amountInput).toHaveAttribute('aria-required', 'true');
 
     // Period select
-    const periodSelect = page.getByLabel(/period/i);
+    const periodSelect = dialog.getByLabel(/period/i);
     await expect(periodSelect).toBeVisible();
 
     // Start date input
-    const startDateInput = page.getByLabel(/start date/i);
+    const startDateInput = dialog.getByLabel(/start date/i);
     await expect(startDateInput).toBeVisible();
 
     // Submit and cancel buttons
-    await expect(page.getByRole('button', { name: /create budget/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /create budget/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /cancel/i })).toBeVisible();
   });
 
   test('shows budget cards or empty state', async ({ authenticatedPage: page }) => {

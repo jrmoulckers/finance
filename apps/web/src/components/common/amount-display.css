@@ -1,0 +1,41 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.amount-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-1, 0.25rem);
+  width: 100%;
+  padding: var(--spacing-4, 1rem);
+  border: 1px solid var(--semantic-border-default, #d1d5db);
+  border-radius: var(--border-radius-lg, 0.75rem);
+  background: var(--semantic-background-secondary, #f8fafc);
+}
+
+.amount-display__label {
+  font-size: var(--type-scale-caption-font-size, 0.75rem);
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+.amount-display__value {
+  font-size: clamp(2rem, 6vw, 3rem);
+  font-weight: var(--font-weight-bold, 700);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--semantic-text-primary, #111827);
+}
+
+.amount-display--empty .amount-display__value {
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+@media (prefers-contrast: more) {
+  .amount-display {
+    border-width: 2px;
+  }
+}

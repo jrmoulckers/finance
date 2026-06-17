@@ -36,13 +36,13 @@ struct MainTabView: View {
             }
         }
 
-        var systemImage: String {
+        var iconToken: IconToken {
             switch self {
-            case .dashboard: "house"
-            case .accounts: "building.columns"
-            case .transactions: "arrow.left.arrow.right"
-            case .budgets: "chart.pie"
-            case .goals: "target"
+            case .dashboard: .dashboard
+            case .accounts: .accounts
+            case .transactions: .transactions
+            case .budgets: .budgets
+            case .goals: .goals
             }
         }
     }
@@ -51,7 +51,8 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
             DashboardView()
                 .tabItem {
-                    Label(Tab.dashboard.title, systemImage: Tab.dashboard.systemImage)
+                    IconView(Tab.dashboard.iconToken)
+                    Text(Tab.dashboard.title)
                 }
                 .tag(Tab.dashboard)
                 .accessibilityIdentifier("tab_dashboard")
@@ -60,7 +61,8 @@ struct MainTabView: View {
 
             AccountsView()
                 .tabItem {
-                    Label(Tab.accounts.title, systemImage: Tab.accounts.systemImage)
+                    IconView(Tab.accounts.iconToken)
+                    Text(Tab.accounts.title)
                 }
                 .tag(Tab.accounts)
                 .accessibilityIdentifier("tab_accounts")
@@ -69,7 +71,8 @@ struct MainTabView: View {
 
             TransactionsView()
                 .tabItem {
-                    Label(Tab.transactions.title, systemImage: Tab.transactions.systemImage)
+                    IconView(Tab.transactions.iconToken)
+                    Text(Tab.transactions.title)
                 }
                 .tag(Tab.transactions)
                 .accessibilityIdentifier("tab_transactions")
@@ -78,7 +81,8 @@ struct MainTabView: View {
 
             BudgetsView()
                 .tabItem {
-                    Label(Tab.budgets.title, systemImage: Tab.budgets.systemImage)
+                    IconView(Tab.budgets.iconToken)
+                    Text(Tab.budgets.title)
                 }
                 .tag(Tab.budgets)
                 .accessibilityIdentifier("tab_budgets")
@@ -87,7 +91,8 @@ struct MainTabView: View {
 
             GoalsView()
                 .tabItem {
-                    Label(Tab.goals.title, systemImage: Tab.goals.systemImage)
+                    IconView(Tab.goals.iconToken)
+                    Text(Tab.goals.title)
                 }
                 .tag(Tab.goals)
                 .accessibilityIdentifier("tab_goals")

@@ -21,6 +21,7 @@ const mockCreateGoal = vi.fn<(...args: unknown[]) => Goal>();
 const mockUpdateGoal = vi.fn<(...args: unknown[]) => Goal | null>();
 const mockContributeToGoal = vi.fn<(...args: unknown[]) => Goal | null>();
 const mockDeleteGoal = vi.fn<(...args: unknown[]) => boolean>();
+const mockReorderGoals = vi.fn<(...args: unknown[]) => void>();
 
 vi.mock('../../db/repositories/goals', () => ({
   getAllGoals: (...args: unknown[]) => mockGetAllGoals(...args),
@@ -28,6 +29,7 @@ vi.mock('../../db/repositories/goals', () => ({
   updateGoal: (...args: unknown[]) => mockUpdateGoal(...args),
   contributeToGoal: (...args: unknown[]) => mockContributeToGoal(...args),
   deleteGoal: (...args: unknown[]) => mockDeleteGoal(...args),
+  reorderGoals: (...args: unknown[]) => mockReorderGoals(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -217,6 +219,27 @@ describe('useGoals', () => {
 
     expect(returned).toBeNull();
     expect(result.current.error).toBe('Update failed');
+  });
+
+  // -----------------------------------------------------------------------
+  // Reorder — reorderGoals
+  // -----------------------------------------------------------------------
+
+  it('reorders goals and refreshes the list', () => {
+    mockGetAllGoals.mockReturnValue([
+      makeGoal({ id: 'goal-1', name: 'Emergency Fund' }),
+      makeGoal({ id: 'goal-2', name: 'Vacation Fund' }),
+    ]);
+
+    const { result } = renderHook(() => useGoals());
+    const callCountAfterMount = mockGetAllGoals.mock.calls.length;
+
+    act(() => {
+      result.current.reorderGoals(0, 1);
+    });
+
+    expect(mockReorderGoals).toHaveBeenCalledWith(mockDb, ['goal-2', 'goal-1']);
+    expect(mockGetAllGoals.mock.calls.length).toBeGreaterThan(callCountAfterMount);
   });
 
   // -----------------------------------------------------------------------

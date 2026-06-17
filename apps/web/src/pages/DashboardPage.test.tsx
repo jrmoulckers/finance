@@ -8,6 +8,7 @@ import {
   useBills,
   useBudgets,
   useCategories,
+  useCoachAlerts,
   useDashboardData,
   useGoals,
   usePredictiveBalance,
@@ -33,7 +34,46 @@ vi.mock('../hooks', () => ({
   useRetirementPlanner: vi.fn(),
   useRmdTracking: vi.fn(),
   useSpendingPace: vi.fn(),
+  useCoachAlerts: vi.fn(),
   useTransactions: vi.fn(),
+  useSyncStatus: vi.fn(() => ({
+    isOffline: false,
+    isSyncing: false,
+    pendingMutations: 0,
+    lastSyncTime: null,
+    syncNow: vi.fn(),
+    authError: false,
+    conflictCount: 0,
+  })),
+}));
+
+vi.mock('../components/ai/QueryEngine', () => ({
+  QueryEngine: () => <div data-testid="ai-query-engine">AI query engine</div>,
+}));
+
+vi.mock('../components/coaching', () => ({
+  CoachCard: () => <section aria-label="Financial coach">What needs attention now</section>,
+  CoachPanel: () => <section aria-label="Coach insights">Coach insights</section>,
+}));
+
+vi.mock('../components/common/EmptyState', () => ({
+  EmptyState: ({ title }: { title: string }) => <section>{title}</section>,
+}));
+vi.mock('../components/common/ErrorBanner', () => ({
+  ErrorBanner: ({ message }: { message: string }) => <section>{message}</section>,
+}));
+vi.mock('../components/common/LoadingSpinner', () => ({
+  LoadingSpinner: ({ label }: { label?: string }) => (
+    <div role="status" aria-label={label ?? 'Loading'}>
+      {label ?? 'Loading'}
+    </div>
+  ),
+}));
+vi.mock('../components/common/SyncIndicator', () => ({
+  SyncIndicator: () => <span>Synced</span>,
+}));
+vi.mock('../components/OfflineBanner', () => ({
+  OfflineBanner: () => null,
 }));
 
 // Chart components depend on Recharts canvas APIs unavailable in jsdom.
@@ -41,6 +81,15 @@ vi.mock('../hooks', () => ({
 vi.mock('../components/charts', () => ({
   SpendingTrendChart: () => null,
   SpendingBarChart: () => null,
+  CategoryPieChart: () => null,
+}));
+vi.mock('../components/charts/SpendingTrendChart', () => ({
+  SpendingTrendChart: () => null,
+}));
+vi.mock('../components/charts/SpendingBarChart', () => ({
+  SpendingBarChart: () => null,
+}));
+vi.mock('../components/charts/CategoryPieChart', () => ({
   CategoryPieChart: () => null,
 }));
 
@@ -54,6 +103,7 @@ const mockedUsePredictiveBalance = vi.mocked(usePredictiveBalance);
 const mockedUseRetirementPlanner = vi.mocked(useRetirementPlanner);
 const mockedUseRmdTracking = vi.mocked(useRmdTracking);
 const mockedUseSpendingPace = vi.mocked(useSpendingPace);
+const mockedUseCoachAlerts = vi.mocked(useCoachAlerts);
 const mockedUseTransactions = vi.mocked(useTransactions);
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
@@ -240,6 +290,74 @@ describe('DashboardPage', () => {
       error: null,
       refresh: vi.fn(),
     });
+    mockedUseCoachAlerts.mockReturnValue({
+      analysis: {
+        velocities: [],
+        cashFlow: {
+          currentBalanceCents: 2475000,
+          projectedRecurringIncomeCents: 450000,
+          projectedRecurringExpenseCents: 90000,
+          projectedDiscretionaryExpenseCents: 125000,
+          projectedEndBalanceCents: 2710000,
+          daysRemaining: 10,
+          willOverdraft: false,
+          balanceSnapshots: [],
+          recurringItems: [],
+        },
+        anomalies: [],
+        alerts: [
+          {
+            id: 'alert:budget:food',
+            severity: 'warning',
+            type: 'budget-velocity',
+            title: 'Food is ahead of budget pace',
+            message: 'Food is tracking above the monthly plan.',
+            actionLabel: 'Review budgets',
+            actionRoute: '/budgets',
+            sortValue: 100,
+          },
+        ],
+        suggestions: [
+          {
+            id: 'suggestion:food',
+            severity: 'warning',
+            title: 'Slow Food spending pace',
+            description: 'Trim daily Food spending for the rest of the month.',
+            actionLabel: 'Review budgets',
+            actionRoute: '/budgets',
+          },
+        ],
+      },
+      alerts: [
+        {
+          id: 'alert:budget:food',
+          severity: 'warning',
+          type: 'budget-velocity',
+          title: 'Food is ahead of budget pace',
+          message: 'Food is tracking above the monthly plan.',
+          actionLabel: 'Review budgets',
+          actionRoute: '/budgets',
+          sortValue: 100,
+        },
+      ],
+      topAlerts: [
+        {
+          id: 'alert:budget:food',
+          severity: 'warning',
+          type: 'budget-velocity',
+          title: 'Food is ahead of budget pace',
+          message: 'Food is tracking above the monthly plan.',
+          actionLabel: 'Review budgets',
+          actionRoute: '/budgets',
+          sortValue: 100,
+        },
+      ],
+      loading: false,
+      error: null,
+      dismissAlert: vi.fn(),
+      clearDismissedAlerts: vi.fn(),
+      dismissedAlertIds: new Set(),
+    });
     mockedUseCategories.mockReturnValue({
       categories: [
         {
@@ -337,6 +455,7 @@ describe('DashboardPage', () => {
       createBudgetTemplate: vi.fn(),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      reorderBudgets: vi.fn(),
       getBudgetSpendingBreakdown: vi.fn(),
     });
     mockedUseGoals.mockReturnValue({
@@ -364,6 +483,7 @@ describe('DashboardPage', () => {
       updateGoal: vi.fn(),
       contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
+      reorderGoals: vi.fn(),
     });
     mockedUsePredictiveBalance.mockReturnValue({
       prediction: {
@@ -509,6 +629,7 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(screen.getByText('Spent This Month')).toBeInTheDocument();
     expect(screen.getByText('Budget Health')).toBeInTheDocument();
+    expect(screen.getByText('What needs attention now')).toBeInTheDocument();
   });
 
   it('renders a safe-to-spend card with a plain-language explanation and breakdown', () => {
@@ -616,6 +737,7 @@ describe('DashboardPage', () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole('region', { name: /financial summary/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /mood and spending journal/i })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /recent transactions/i })).toBeInTheDocument();
   });
 
@@ -661,5 +783,27 @@ describe('DashboardPage', () => {
     expect(document.body).toHaveTextContent('$67.42');
     expect(document.body).toHaveTextContent('$3,200');
     expect(document.body).toHaveTextContent('-$67.42');
+  });
+
+  it('renders the mood journal section', () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Emotional Spending Journal')).toBeInTheDocument();
+    expect(screen.getByText('Quick mood check-in')).toBeInTheDocument();
+    expect(screen.getByText('Journal feed')).toBeInTheDocument();
+  });
+
+  it('includes the AI query engine entry point', () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('ai-query-engine')).toBeInTheDocument();
   });
 });

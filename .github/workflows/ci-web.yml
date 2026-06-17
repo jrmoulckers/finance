@@ -1,0 +1,314 @@
+# =============================================================================
+# Web CI — build, test, and tiered E2E validation
+# =============================================================================
+name: Web CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/web/**', 'packages/design-tokens/**']
+  pull_request:
+    branches: [main]
+    paths: ['apps/web/**', 'packages/design-tokens/**']
+
+concurrency:
+  group: web-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build -w packages/design-tokens
+
+      - name: Build web app
+        id: web-build
+        env:
+          VITE_SUPABASE_URL: https://e2e-test.supabase.co
+          VITE_SUPABASE_ANON_KEY: e2e-test-anon-key
+        run: |
+          BUILD_START=$SECONDS
+          npm run build -w apps/web
+          echo "duration=$(( SECONDS - BUILD_START ))" >> "$GITHUB_OUTPUT"
+
+      - name: Verify web build env
+        run: node tools/verify-build-env.mjs apps/web/dist
+
+      - name: Check source map configuration
+        run: |
+          if grep -r 'sourcemap\|sourceMap\|source-map' apps/web/vite.config.* 2>/dev/null | grep -v node_modules > /dev/null; then
+            echo 'Source maps configured in Vite.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '::warning::No source map configuration found in apps/web/vite.config.*'
+          fi
+
+      - name: Enforce bundle performance budgets
+        run: node tools/check-web-performance-budget.mjs --dist apps/web/dist --budget apps/web/performance.budget.json
+
+      - name: Report bundle size
+        run: |
+          echo "### 🌐 Web Build Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Build duration | ${{ steps.web-build.outputs.duration || 'N/A' }}s |" >> "$GITHUB_STEP_SUMMARY"
+          if [ -d "apps/web/dist" ]; then
+            TOTAL=$(du -sh apps/web/dist/ | cut -f1)
+            JS_SIZE=$(find apps/web/dist -name '*.js' -exec du -cb {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
+            CSS_SIZE=$(find apps/web/dist -name '*.css' -exec du -cb {} + 2>/dev/null | tail -1 | cut -f1 || echo "0")
+            echo "| Bundle size | $TOTAL |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| JS total | $(( JS_SIZE / 1024 ))KB |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| CSS total | $(( CSS_SIZE / 1024 ))KB |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-build
+          path: |
+            apps/web/dist/
+            packages/design-tokens/build/
+
+  unit-tests:
+    name: Unit Tests
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: web-build
+
+      - run: npm test -w apps/web
+
+  e2e-pr-smoke:
+    name: E2E PR Smoke (Chromium)
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: web-build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('apps/web/package.json') }}
+          restore-keys: ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browser
+        run: npx -w apps/web playwright install --with-deps chromium
+
+      - name: Run PR smoke suite
+        run: npx -w apps/web playwright test e2e/smoke.spec.ts --project=chromium
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-pr-blob-report-chromium
+          path: apps/web/blob-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-pr-report:
+    name: Merge PR E2E Report
+    if: ${{ always() && github.event_name == 'pull_request' && !cancelled() }}
+    needs: e2e-pr-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download blob reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: e2e-pr-blob-report-*
+          merge-multiple: true
+          path: all-blob-reports
+
+      - name: Merge reports
+        run: |
+          npx -w apps/web playwright merge-reports \
+            --reporter=html \
+            "${{ github.workspace }}/all-blob-reports" \
+            || echo "::warning::No blob reports found to merge"
+
+      - name: Upload merged HTML report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-pr-html-report
+          path: playwright-report/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: E2E Summary
+        if: always()
+        run: |
+          echo "### 🎭 PR E2E Smoke" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Scope: Chromium-only smoke coverage for pre-auth critical paths. This is the required merge gate." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "📊 Download the merged HTML report from the \`e2e-pr-html-report\` artifact above." >> "$GITHUB_STEP_SUMMARY"
+
+  e2e-main-desktop:
+    name: E2E Desktop Matrix (${{ matrix.browser }})
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit, chromium-edge]
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: web-build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('apps/web/package.json') }}
+          restore-keys: ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browser
+        run: |
+          case "${{ matrix.browser }}" in
+            chromium)
+              npx -w apps/web playwright install --with-deps chromium
+              ;;
+            firefox)
+              npx -w apps/web playwright install --with-deps firefox
+              ;;
+            webkit)
+              npx -w apps/web playwright install --with-deps webkit
+              ;;
+            chromium-edge)
+              npx -w apps/web playwright install --with-deps msedge
+              ;;
+          esac
+
+      - name: Run full desktop suite
+        run: npx -w apps/web playwright test --project=${{ matrix.browser }}
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-main-blob-report-${{ matrix.browser }}
+          path: apps/web/blob-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-main-report:
+    name: Merge Main E2E Report
+    if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && !cancelled() }}
+    needs: e2e-main-desktop
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download blob reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: e2e-main-blob-report-*
+          merge-multiple: true
+          path: all-blob-reports
+
+      - name: Merge reports
+        run: |
+          npx -w apps/web playwright merge-reports \
+            --reporter=html \
+            "${{ github.workspace }}/all-blob-reports" \
+            || echo "::warning::No blob reports found to merge"
+
+      - name: Upload merged HTML report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-main-html-report
+          path: playwright-report/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: E2E Summary
+        if: always()
+        run: |
+          echo "### 🎭 Main-branch desktop E2E" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Scope: full desktop matrix (Chromium, Firefox, WebKit, Edge). Deploy — Staging waits for this workflow to be green on main." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "📊 Download the merged HTML report from the `e2e-main-html-report` artifact above." >> "$GITHUB_STEP_SUMMARY"

@@ -163,14 +163,13 @@ describe('High Contrast Token Integration', () => {
 describe('Service Worker Caching', () => {
   const swCode = readFileSync(resolve(__dirname, '../../../src/sw/service-worker.ts'), 'utf-8');
 
-  it('should implement stale-while-revalidate strategy', () => {
-    expect(swCode).toContain('staleWhileRevalidate');
+  it('should implement network-only no-store for authenticated API requests', () => {
+    expect(swCode).toContain('networkOnlyNoStore');
   });
 
-  it('should use stale-while-revalidate for API requests', () => {
-    // The fetch handler should route /api/ to staleWhileRevalidate
-    expect(swCode).toContain("url.pathname.startsWith('/api/')");
-    expect(swCode).toContain('staleWhileRevalidate(request)');
+  it('should route non-sync API requests away from Cache Storage', () => {
+    expect(swCode).toContain("pathname.startsWith('/api/'))");
+    expect(swCode).toContain("return 'network-only-no-store'");
   });
 
   it('should implement cache-first for static assets', () => {

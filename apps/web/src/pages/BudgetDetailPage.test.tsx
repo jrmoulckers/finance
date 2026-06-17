@@ -4,12 +4,24 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-import { useBudgets, useCategories } from '../hooks';
+import { useBudgets } from '../hooks/useBudgets';
+import { useCategories } from '../hooks/useCategories';
 import { BudgetDetailPage } from './BudgetDetailPage';
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/useBudgets', () => ({
   useBudgets: vi.fn(),
+}));
+
+vi.mock('../hooks/useCategories', () => ({
   useCategories: vi.fn(),
+  FOOD_MEAL_SUBCATEGORY_DEFINITIONS: [
+    { name: 'Dining Out', icon: '🍽️', color: '#F97316', description: 'Restaurants' },
+    { name: 'Delivery & Takeout', icon: '🥡', color: '#FB7185', description: 'Delivery' },
+    { name: 'Coffee & Snacks', icon: '☕', color: '#A16207', description: 'Coffee' },
+    { name: 'Meal Prep', icon: '🥗', color: '#0F766E', description: 'Meal prep' },
+  ],
+  isFoodMealBudgetParentCategory: (category: { id?: string; name?: string } | null) =>
+    category?.id === 'category-food' || category?.name === 'Food',
 }));
 
 vi.mock('../components/forms', () => ({
@@ -85,6 +97,7 @@ describe('BudgetDetailPage', () => {
           spentAmount: { amount: 17350 },
         },
       ]),
+      reorderBudgets: vi.fn(),
     });
 
     mockedUseCategories.mockReturnValue({
@@ -144,6 +157,7 @@ describe('BudgetDetailPage', () => {
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
       getBudgetSpendingBreakdown: vi.fn(() => []),
+      reorderBudgets: vi.fn(),
     });
 
     renderWithRoute();
@@ -188,6 +202,7 @@ describe('BudgetDetailPage', () => {
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
       getBudgetSpendingBreakdown: vi.fn(() => []),
+      reorderBudgets: vi.fn(),
     });
 
     renderWithRoute();
@@ -207,6 +222,7 @@ describe('BudgetDetailPage', () => {
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
       getBudgetSpendingBreakdown: vi.fn(() => []),
+      reorderBudgets: vi.fn(),
     });
 
     renderWithRoute();
@@ -329,6 +345,7 @@ describe('BudgetDetailPage', () => {
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
       getBudgetSpendingBreakdown: vi.fn().mockReturnValue([]),
+      reorderBudgets: vi.fn(),
     });
 
     renderWithRoute();
@@ -364,6 +381,7 @@ describe('BudgetDetailPage', () => {
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
       getBudgetSpendingBreakdown: vi.fn().mockReturnValue([]),
+      reorderBudgets: vi.fn(),
     });
 
     renderWithRoute();

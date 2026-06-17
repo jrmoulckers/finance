@@ -70,9 +70,9 @@ class MyCalculatorTest {
 
 ## CI
 
-- CI runs `jvmTest` on every PR (see `.github/workflows/ci.yml`)
+- CI runs `jvmTest` on every PR (see `.github/workflows/ci-shared.yml`)
 - JS browser tests are skipped in CI (timing issues with ChromeHeadless — see #173)
-- Android instrumented tests run via `.github/workflows/android-ci.yml`
+- Android instrumented tests run via `.github/workflows/ci-android.yml`
 
 ## Coverage Targets
 

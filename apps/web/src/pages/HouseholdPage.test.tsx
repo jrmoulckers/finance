@@ -98,6 +98,7 @@ function mockBudgetsResult(overrides: Partial<UseBudgetsResult> = {}): UseBudget
     createBudgetTemplate: vi.fn(),
     updateBudget: vi.fn(),
     deleteBudget: vi.fn(),
+    reorderBudgets: vi.fn(),
     getBudgetSpendingBreakdown: vi.fn().mockReturnValue([]),
     ...overrides,
   };
@@ -113,6 +114,7 @@ function mockGoalsResult(overrides: Partial<UseGoalsResult> = {}): UseGoalsResul
     updateGoal: vi.fn(),
     contributeToGoal: vi.fn(),
     deleteGoal: vi.fn(),
+    reorderGoals: vi.fn(),
     ...overrides,
   };
 }

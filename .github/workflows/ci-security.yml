@@ -1,0 +1,427 @@
+# =============================================================================
+# Security CI — CodeQL, secret scanning, and dependency audit
+# =============================================================================
+#
+# Combines the repo-wide security scanners with scheduled dependency and license auditing so security checks live in one focused workflow.
+# =============================================================================
+name: CI — Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
+    - cron: '0 5 * * 3'
+  workflow_dispatch:
+    inputs:
+      severity:
+        description: 'Minimum severity to fail dependency audit on (low, moderate, high, critical)'
+        required: false
+        type: choice
+        default: high
+        options:
+          - low
+          - moderate
+          - high
+          - critical
+
+concurrency:
+  group: ci-security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+env:
+  AUDIT_SEVERITY: ${{ github.event.inputs.severity || 'high' }}
+
+jobs:
+  codeql-java-kotlin:
+    name: CodeQL Analysis (java-kotlin)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            kotlin:
+              - '**/*.kt'
+              - '**/*.kts'
+              - '**/*.java'
+              - '**/build.gradle*'
+              - 'gradle/**'
+              - 'settings.gradle*'
+      - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
+        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          languages: java-kotlin
+          queries: +security-and-quality
+      - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+      - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
+        run: ./gradlew clean compileKotlinJvm --no-daemon --no-build-cache
+      - if: github.event_name != 'pull_request' || steps.changes.outputs.kotlin == 'true'
+        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          category: '/language:java-kotlin'
+
+  codeql-javascript:
+    name: CodeQL Analysis (javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          languages: javascript-typescript
+          queries: +security-and-quality
+      - uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          category: '/language:javascript-typescript'
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0, AGPL-3.0
+          allow-dependencies-licenses: pkg:githubactions/trufflesecurity/trufflehog
+
+  secret-scanning:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+      - uses: trufflesecurity/trufflehog@d411fff7b8879a62509f3fa98c07f247ac089a51 # v3.95.4
+        with:
+          extra_args: --only-verified
+
+  npm-audit:
+    name: npm Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify lockfile integrity
+        run: |
+          echo "### 🔒 Lockfile Integrity" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ ! -f package-lock.json ]; then
+            echo "::error::package-lock.json is missing — lockfile is required for reproducible builds"
+            echo "❌ **package-lock.json is missing.**" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          npm ci
+          echo "✅ Lockfile is present and consistent with package.json." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run npm audit
+        id: npm-audit
+        run: |
+          echo "### 📦 npm Audit Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          EFFECTIVE_SEVERITY="${AUDIT_SEVERITY}"
+
+          set +e
+          AUDIT_OUTPUT=$(npm audit --audit-level="${EFFECTIVE_SEVERITY}" 2>&1)
+          AUDIT_EXIT=$?
+          set -e
+
+          echo "$AUDIT_OUTPUT"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "$AUDIT_OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          if [ $AUDIT_EXIT -ne 0 ]; then
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+            echo "❌ **npm audit found vulnerabilities at or above \`${EFFECTIVE_SEVERITY}\` severity.**" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "result=success" >> "$GITHUB_OUTPUT"
+            echo "✅ No vulnerabilities found at or above \`${EFFECTIVE_SEVERITY}\` severity." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Generate npm audit SARIF
+        if: always()
+        run: |
+          set +e
+          npm audit --json > npm-audit.json 2>&1
+          set -e
+
+          node <<'NODE'
+          const fs = require('fs');
+          const audit = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
+          const sarif = {
+            $schema:
+              'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json',
+            version: '2.1.0',
+            runs: [
+              {
+                tool: {
+                  driver: {
+                    name: 'npm-audit',
+                    informationUri: 'https://docs.npmjs.com/cli/v10/commands/npm-audit',
+                    rules: [],
+                  },
+                },
+                results: [],
+              },
+            ],
+          };
+          const vulns = audit.vulnerabilities || {};
+          const ruleIds = new Set();
+          for (const [name, vuln] of Object.entries(vulns)) {
+            const via = Array.isArray(vuln.via) ? vuln.via : [vuln.via];
+            for (const v of via) {
+              if (typeof v !== 'object' || !v.url) continue;
+              const ruleId = v.source ? String(v.source) : name;
+              if (!ruleIds.has(ruleId)) {
+                ruleIds.add(ruleId);
+                sarif.runs[0].tool.driver.rules.push({
+                  id: ruleId,
+                  shortDescription: { text: v.title || name },
+                  helpUri: v.url || '',
+                  properties: { severity: v.severity || vuln.severity || 'info' },
+                });
+              }
+              sarif.runs[0].results.push({
+                ruleId,
+                level:
+                  v.severity === 'critical' || v.severity === 'high'
+                    ? 'error'
+                    : v.severity === 'moderate'
+                      ? 'warning'
+                      : 'note',
+                message: {
+                  text: `${v.title || 'Vulnerability'} in ${name}@${vuln.range || 'unknown'} — ${v.url || 'no advisory'}`,
+                },
+                locations: [
+                  {
+                    physicalLocation: {
+                      artifactLocation: { uri: 'package-lock.json' },
+                      region: { startLine: 1 },
+                    },
+                  },
+                ],
+              });
+            }
+          }
+          fs.writeFileSync('npm-audit.sarif', JSON.stringify(sarif, null, 2));
+          NODE
+
+      - name: Upload npm audit SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        continue-on-error: true
+        with:
+          sarif_file: npm-audit.sarif
+          category: npm-audit
+
+      - name: Fail on vulnerabilities
+        if: steps.npm-audit.outputs.result == 'failure'
+        run: |
+          echo "::error::npm audit found vulnerabilities at or above ${AUDIT_SEVERITY} severity"
+          exit 1
+
+  gradle-dependency-check:
+    name: Gradle Dependency Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          dependency-graph: generate
+
+      - name: Cache Kotlin/Native prebuilt
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-konan-
+
+      - name: Verify Gradle version pinning
+        run: |
+          RANGE_ISSUES=0
+          while IFS= read -r line; do
+            if echo "$line" | grep -qE '^\s*(#|$|\[)'; then continue; fi
+            if echo "$line" | grep -qE '=\s*"'; then
+              VERSION=$(echo "$line" | sed -n 's/.*=\s*"\([^"]*\)".*/\1/p')
+              if [ -z "$VERSION" ]; then continue; fi
+              if echo "$VERSION" | grep -qE '(\+|\[|\]|\(|\)|latest|SNAPSHOT|RELEASE)'; then
+                echo "::error::Dynamic version found in libs.versions.toml: $line"
+                RANGE_ISSUES=$((RANGE_ISSUES + 1))
+              fi
+            fi
+          done < gradle/libs.versions.toml
+
+          if [ $RANGE_ISSUES -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Verify Gradle dependency checksums
+        run: |
+          ./gradlew dependencies --configuration runtimeClasspath --no-daemon 2>&1 | tee gradle-deps.txt || true
+
+      - name: Scan for vulnerable Gradle dependencies
+        id: gradle-scan
+        run: |
+          ./gradlew :packages:core:dependencies :packages:models:dependencies :packages:sync:dependencies \
+            --configuration runtimeClasspath --no-daemon 2>&1 | tee gradle-all-deps.txt || true
+
+          ISSUES=0
+          if grep -i "log4j-core:2\.[0-9]\." gradle-all-deps.txt 2>/dev/null; then ISSUES=$((ISSUES + 1)); fi
+          if grep -i "commons-text:1\.\([0-9]\|10\)\." gradle-all-deps.txt 2>/dev/null; then ISSUES=$((ISSUES + 1)); fi
+          if grep -i "snakeyaml:1\." gradle-all-deps.txt 2>/dev/null; then ISSUES=$((ISSUES + 1)); fi
+          echo "issues=$ISSUES" >> "$GITHUB_OUTPUT"
+
+      - name: Upload dependency report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gradle-dependency-report
+          path: |
+            gradle-deps.txt
+            gradle-all-deps.txt
+          retention-days: 14
+          if-no-files-found: warn
+
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check npm license compliance
+        run: |
+          npx license-checker --production --summary --out license-summary.txt 2>/dev/null || {
+            npm ls --all --json 2>/dev/null | node -e "
+              const fs = require('fs');
+              const data = JSON.parse(fs.readFileSync(0, 'utf8'));
+              const denied = ['GPL-3.0', 'AGPL-3.0', 'GPL-3.0-only', 'AGPL-3.0-only', 'GPL-3.0-or-later', 'AGPL-3.0-or-later'];
+              function walk(deps, path) {
+                if (!deps) return [];
+                const issues = [];
+                for (const [name, info] of Object.entries(deps)) {
+                  const lic = (info.license || info.licenses || 'unknown').toString();
+                  for (const d of denied) {
+                    if (lic.includes(d)) issues.push({ pkg: name, license: lic, path: path + '/' + name });
+                  }
+                  issues.push(...walk(info.dependencies, path + '/' + name));
+                }
+                return issues;
+              }
+              const issues = walk(data.dependencies || {}, '');
+              if (issues.length > 0) {
+                console.error('DENIED_LICENSES=' + JSON.stringify(issues));
+                process.exit(1);
+              } else {
+                console.log('No denied licenses found.');
+              }
+            "
+          }
+
+  summary:
+    name: Security Summary
+    needs:
+      [
+        codeql-java-kotlin,
+        codeql-javascript,
+        dependency-review,
+        secret-scanning,
+        npm-audit,
+        gradle-dependency-check,
+        license-check,
+      ]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Aggregate results
+        run: |
+          echo "### 🔐 Security Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Check | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| CodeQL (JVM) | ${{ needs.codeql-java-kotlin.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| CodeQL (JS/TS) | ${{ needs.codeql-javascript.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Dependency review | ${{ needs.dependency-review.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Secret detection | ${{ needs.secret-scanning.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| npm audit | ${{ needs.npm-audit.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Gradle dependency check | ${{ needs.gradle-dependency-check.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| License compliance | ${{ needs.license-check.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Audit severity threshold:** \`${{ env.AUDIT_SEVERITY }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ needs.npm-audit.result }}" = "failure" ]; then
+            echo "::error::Security workflow failed because npm audit reported vulnerabilities"
+            exit 1
+          fi
+
+          if [ "${{ needs.license-check.result }}" = "failure" ]; then
+            echo "::error::Security workflow failed because the license check failed"
+            exit 1
+          fi

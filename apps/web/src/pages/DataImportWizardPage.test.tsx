@@ -1,12 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAccounts } from '../hooks/useAccounts';
+import { DatabaseContext, type DatabaseContextValue } from '../db/DatabaseProvider';
+import type { SqliteDb } from '../db/sqlite-wasm';
 import { useDataImportWizard } from '../hooks/useDataImportWizard';
 import type { UseDataImportWizardResult } from '../hooks/useDataImportWizard';
 import { DataImportWizardPage } from './DataImportWizardPage';
+
+vi.mock('../components/common', () => ({
+  ErrorBanner: ({ message }: { message?: string }) => <div role="alert">{message}</div>,
+  LoadingSpinner: () => <div>Loading…</div>,
+}));
 
 vi.mock('../hooks/useAccounts', () => ({
   useAccounts: vi.fn(),
@@ -17,6 +25,30 @@ vi.mock('../hooks/useDataImportWizard', () => ({
 
 const mockedUseAccounts = vi.mocked(useAccounts);
 const mockedHook = vi.mocked(useDataImportWizard);
+
+const mockDb: SqliteDb = {
+  exec: vi.fn(),
+  selectAll: vi.fn(() => []),
+  selectOne: vi.fn(() => null),
+  close: vi.fn().mockResolvedValue(undefined),
+};
+
+const databaseContextValue: DatabaseContextValue = {
+  db: mockDb,
+  diagnostics: {
+    backend: 'indexeddb',
+    opfsAvailable: false,
+    didFallback: false,
+    quotaBytes: null,
+    usageBytes: null,
+  },
+};
+
+function renderWithDatabase(ui: ReactNode) {
+  return render(
+    <DatabaseContext.Provider value={databaseContextValue}>{ui}</DatabaseContext.Provider>,
+  );
+}
 
 function mockResult(overrides: Partial<UseDataImportWizardResult> = {}): UseDataImportWizardResult {
   return {
@@ -87,14 +119,14 @@ describe('DataImportWizardPage', () => {
   it('renders the wizard title', () => {
     mockedHook.mockReturnValue(mockResult());
 
-    render(<DataImportWizardPage />);
-    expect(screen.getByText('Import Transactions')).toBeInTheDocument();
+    renderWithDatabase(<DataImportWizardPage />);
+    expect(screen.getByText('Import & Restore Data')).toBeInTheDocument();
   });
 
   it('shows upload step by default', () => {
     mockedHook.mockReturnValue(mockResult());
 
-    render(<DataImportWizardPage />);
+    renderWithDatabase(<DataImportWizardPage />);
     expect(screen.getByText('Upload Import File')).toBeInTheDocument();
     expect(screen.getByText(/drag and drop/i)).toBeInTheDocument();
   });
@@ -102,7 +134,7 @@ describe('DataImportWizardPage', () => {
   it('shows step indicator', () => {
     mockedHook.mockReturnValue(mockResult());
 
-    render(<DataImportWizardPage />);
+    renderWithDatabase(<DataImportWizardPage />);
     expect(screen.getByText('Upload File')).toBeInTheDocument();
     expect(screen.getByText('Map Columns')).toBeInTheDocument();
     expect(screen.getByText('Preview')).toBeInTheDocument();
@@ -111,8 +143,9 @@ describe('DataImportWizardPage', () => {
   it('lists supported bank formats in upload hint', () => {
     mockedHook.mockReturnValue(mockResult());
 
-    render(<DataImportWizardPage />);
+    renderWithDatabase(<DataImportWizardPage />);
     expect(screen.getByText(/Quicken and banks/)).toBeInTheDocument();
+    expect(screen.getByText(/Chase, Amex, Wells Fargo, Citi/)).toBeInTheDocument();
   });
 
   it('shows mapping step with columns and detected format label', () => {
@@ -136,7 +169,7 @@ describe('DataImportWizardPage', () => {
       }),
     );
 
-    render(<DataImportWizardPage />);
+    renderWithDatabase(<DataImportWizardPage />);
     expect(screen.getByRole('heading', { name: 'Map Columns' })).toBeInTheDocument();
     expect(screen.getByText('Detected: Chase credit card format')).toBeInTheDocument();
   });
@@ -160,7 +193,7 @@ describe('DataImportWizardPage', () => {
       }),
     );
 
-    render(<DataImportWizardPage />);
+    renderWithDatabase(<DataImportWizardPage />);
     expect(screen.getByText(/These fields will not be imported/)).toBeInTheDocument();
     expect(screen.getAllByText('Post Date').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('button', { name: /map.*notes/i })).toBeInTheDocument();
@@ -207,7 +240,7 @@ describe('DataImportWizardPage', () => {
       }),
     );
 
-    render(<DataImportWizardPage />);
+    renderWithDatabase(<DataImportWizardPage />);
     expect(screen.getByText('Preview (2 transactions)')).toBeInTheDocument();
     expect(screen.getByText(/2 valid/)).toBeInTheDocument();
   });
@@ -265,7 +298,7 @@ describe('DataImportWizardPage', () => {
       }),
     );
 
-    render(<DataImportWizardPage />);
+    renderWithDatabase(<DataImportWizardPage />);
     expect(screen.getByText('Duplicate Review (1)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Import Anyway' })).toBeInTheDocument();
@@ -286,7 +319,7 @@ describe('DataImportWizardPage', () => {
       }),
     );
 
-    render(<DataImportWizardPage />);
+    renderWithDatabase(<DataImportWizardPage />);
     expect(screen.getByText('Importing Transactions…')).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50');
     expect(screen.getByText('5 / 10 transactions')).toBeInTheDocument();
@@ -305,7 +338,7 @@ describe('DataImportWizardPage', () => {
       }),
     );
 
-    render(<DataImportWizardPage />);
+    renderWithDatabase(<DataImportWizardPage />);
     expect(screen.getByText('Import Complete!')).toBeInTheDocument();
     expect(screen.getByText('8')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
@@ -315,7 +348,7 @@ describe('DataImportWizardPage', () => {
   it('shows error banner', () => {
     mockedHook.mockReturnValue(mockResult({ error: 'Invalid file format' }));
 
-    render(<DataImportWizardPage />);
+    renderWithDatabase(<DataImportWizardPage />);
     expect(screen.getByRole('alert')).toHaveTextContent('Invalid file format');
   });
 });

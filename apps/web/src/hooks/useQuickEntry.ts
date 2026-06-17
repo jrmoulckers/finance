@@ -20,7 +20,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts } from './useAccounts';
-import { useAutoCategory } from './useAutoCategory';
+import { useAutoCategorize } from './useAutoCategorize';
 import { useCategories } from './useCategories';
 import { useTransactions } from './useTransactions';
 
@@ -46,7 +46,11 @@ export interface UseQuickEntryResult {
   /** Categories available for suggestion. */
   categories: ReturnType<typeof useCategories>['categories'];
   /** Category suggestion function. */
-  suggestCategory: ReturnType<typeof useAutoCategory>['suggestCategory'];
+  suggestCategory: ReturnType<typeof useAutoCategorize>['suggestCategory'];
+  /** Whether a suggestion meets the configured auto-apply threshold. */
+  shouldAutoApplySuggestion: ReturnType<typeof useAutoCategorize>['shouldAutoApply'];
+  /** Learn from explicit user categorization feedback. */
+  learnFromFeedback: ReturnType<typeof useAutoCategorize>['learnFromFeedback'];
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +64,8 @@ export function useQuickEntry(): UseQuickEntryResult {
   const { accounts } = useAccounts();
   const { categories } = useCategories();
   const { createTransaction } = useTransactions();
-  const { suggestCategory } = useAutoCategory(categories);
+  const { suggestCategory, shouldAutoApply, autoCategorizeInput, learnFromFeedback } =
+    useAutoCategorize(categories);
 
   const open = useCallback(() => {
     setIsOpen(true);
@@ -79,7 +84,10 @@ export function useQuickEntry(): UseQuickEntryResult {
   const submitTransaction = useCallback(
     (data: CreateTransactionInput) => {
       try {
-        const result = createTransaction(data);
+        const result = createTransaction({
+          ...data,
+          categoryId: autoCategorizeInput(data),
+        });
         if (result === null) {
           setError('Failed to create transaction.');
         } else {
@@ -89,7 +97,7 @@ export function useQuickEntry(): UseQuickEntryResult {
         setError(err instanceof Error ? err.message : 'Failed to create transaction.');
       }
     },
-    [createTransaction],
+    [autoCategorizeInput, createTransaction],
   );
 
   // Register global keyboard shortcut: 'n' opens quick entry
@@ -131,5 +139,7 @@ export function useQuickEntry(): UseQuickEntryResult {
     accounts,
     categories,
     suggestCategory,
+    shouldAutoApplySuggestion: shouldAutoApply,
+    learnFromFeedback,
   };
 }

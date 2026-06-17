@@ -154,6 +154,7 @@ const defaultBudgetsReturn = {
   createBudgetTemplate: vi.fn(() => null),
   updateBudget: vi.fn(),
   deleteBudget: vi.fn(),
+  reorderBudgets: vi.fn(),
   getBudgetSpendingBreakdown: vi.fn(() => []),
 };
 

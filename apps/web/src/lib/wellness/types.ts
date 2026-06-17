@@ -451,3 +451,114 @@ export interface PrivacySafeExport {
   /** Time period end. */
   readonly periodEnd: string;
 }
+
+// ---------------------------------------------------------------------------
+// Financial Wellness Insights types (#1656)
+// ---------------------------------------------------------------------------
+
+/** Wellness-specific mood states derived from optional transaction mood tags. */
+export type MoodState = 'calm' | 'neutral' | 'anxious' | 'stressed' | 'celebratory' | 'fatigued';
+
+/** Severity used for anxiety and stress alerting. */
+export type StressLevel = 'low' | 'moderate' | 'high' | 'severe';
+
+/** Five-part breakdown for the 0-100 anxiety score. Lower is better. */
+export interface AnxietyScoreBreakdown {
+  readonly overdraftProximity: number;
+  readonly spendingVolatility: number;
+  readonly billStress: number;
+  readonly debtPressure: number;
+  readonly savingsTrajectory: number;
+}
+
+/** Raw metrics that explain how the anxiety score was computed. */
+export interface AnxietyScoreMetrics {
+  readonly liquidBufferDays: number;
+  readonly spendingVolatilityRatio: number;
+  readonly billCoverageRatio: number | null;
+  readonly minimumPaymentRatio: number;
+  readonly savingsRateChange: number;
+  readonly overdueBills: number;
+}
+
+/** Composite financial anxiety score and supporting detail. */
+export interface AnxietyScoreResult {
+  readonly score: number;
+  readonly level: StressLevel;
+  readonly summary: string;
+  readonly breakdown: AnxietyScoreBreakdown;
+  readonly metrics: AnxietyScoreMetrics;
+}
+
+/** Single chart point combining mood state and spending behavior for a day. */
+export interface MoodSpendingPoint {
+  readonly date: string;
+  readonly label: string;
+  readonly spending: number;
+  readonly baseline: number;
+  readonly moodState: MoodState;
+  readonly moodLabel: string;
+  readonly moodScore: number;
+  readonly transactionCount: number;
+  readonly isSpike: boolean;
+  readonly isDrop: boolean;
+}
+
+/** Interpreted emotional spending pattern detected from tagged spending. */
+export interface EmotionalSpendingPattern {
+  readonly id: string;
+  readonly moodState: MoodState;
+  readonly direction: 'spike' | 'drop' | 'habit';
+  readonly title: string;
+  readonly description: string;
+  readonly intensity: StressLevel;
+  readonly averageSpending: number;
+  readonly occurrences: number;
+}
+
+/** Summary of mood-to-spending correlation for the dashboard. */
+export interface MoodCorrelationSummary {
+  readonly hasEnoughData: boolean;
+  readonly summary: string;
+  readonly entriesTagged: number;
+  readonly correlation: number;
+  readonly dominantMoodState: MoodState | null;
+  readonly averageTaggedSpending: number;
+  readonly spikeCount: number;
+  readonly dropCount: number;
+  readonly chart: readonly MoodSpendingPoint[];
+  readonly patterns: readonly EmotionalSpendingPattern[];
+}
+
+/** Stress signals shown as gentle alerts in the wellness dashboard. */
+export type StressIndicatorKind =
+  | 'declining-savings'
+  | 'debt-pressure'
+  | 'irregular-income'
+  | 'bill-crunch';
+
+/** A single detected financial stress signal. */
+export interface StressIndicator {
+  readonly kind: StressIndicatorKind;
+  readonly level: StressLevel;
+  readonly signal: number;
+  readonly title: string;
+  readonly description: string;
+  readonly recommendation: string;
+}
+
+/** Collection of stress indicators and a plain-language summary. */
+export interface StressIndicatorSummary {
+  readonly highestLevel: StressLevel;
+  readonly summary: string;
+  readonly indicators: readonly StressIndicator[];
+}
+
+/** Combined wellness snapshot used by the insights dashboard. */
+export interface FinancialWellnessSnapshot {
+  readonly currencyCode: string;
+  readonly generatedAt: string;
+  readonly anxietyScore: AnxietyScoreResult;
+  readonly moodCorrelation: MoodCorrelationSummary;
+  readonly stressIndicators: StressIndicatorSummary;
+}

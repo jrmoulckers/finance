@@ -141,25 +141,25 @@ test.describe('Transactions page', () => {
 
     // Wait for data or empty state to appear (UI-based wait instead of
     // networkidle which hangs on Vite dev server persistent connections).
-    const transactionList = page.getByRole('list');
-    const emptyState = page.getByText(/no transactions yet/i);
+    const mainRegion = page.getByRole('main');
+    const transactionList = mainRegion.getByRole('list').first();
+    const emptyState = mainRegion.getByText(/no transactions yet/i);
 
     // One of these should be visible after loading
-    await expect(transactionList.first().or(emptyState)).toBeVisible();
+    await expect(transactionList.or(emptyState)).toBeVisible();
   });
 
   test('clicking a transaction navigates to detail page', async ({ authenticatedPage: page }) => {
     await page.goto('/transactions');
 
     // Wait for the page to finish loading.
-    const transactionList = page.getByRole('list');
-    const emptyState = page.getByText(/no transactions yet/i);
-    await expect(transactionList.first().or(emptyState)).toBeVisible();
+    const mainRegion = page.getByRole('main');
+    const transactionList = mainRegion.getByRole('list').first();
+    const emptyState = mainRegion.getByText(/no transactions yet/i);
+    await expect(transactionList.or(emptyState)).toBeVisible();
 
     // Look for transaction detail links
-    const transactionLinks = page.getByRole('link').filter({
-      has: page.locator('.list-item__primary'),
-    });
+    const transactionLinks = mainRegion.getByRole('link', { name: /view details for/i });
 
     const count = await transactionLinks.count();
     if (count > 0) {
@@ -167,7 +167,7 @@ test.describe('Transactions page', () => {
       await expect(page).toHaveURL(/\/transactions\/.+/);
     } else {
       // No seed data — verify empty state
-      await expect(page.getByText(/no transactions yet/i)).toBeVisible();
+      await expect(emptyState).toBeVisible();
     }
   });
 });
@@ -184,22 +184,21 @@ test.describe('Transaction detail page', () => {
     await page.goto('/transactions');
 
     // Wait for the page to finish loading.
-    const txList = page.getByRole('list');
-    const txEmpty = page.getByText(/no transactions yet/i);
-    await expect(txList.first().or(txEmpty)).toBeVisible();
+    const mainRegion = page.getByRole('main');
+    const txList = mainRegion.getByRole('list').first();
+    const txEmpty = mainRegion.getByText(/no transactions yet/i);
+    await expect(txList.or(txEmpty)).toBeVisible();
 
-    const transactionLinks = page.getByRole('link').filter({
-      has: page.locator('.list-item__primary'),
-    });
+    const transactionLinks = mainRegion.getByRole('link', { name: /view details for/i });
 
     const count = await transactionLinks.count();
     if (count > 0) {
       await transactionLinks.first().click();
       await expect(page).toHaveURL(/\/transactions\/.+/);
 
-      // Should show back link
-      const backLink = page.getByRole('link', { name: /back to transactions/i });
-      await expect(backLink).toBeVisible();
+      // Should show breadcrumb navigation back to Transactions.
+      const breadcrumb = page.getByRole('navigation', { name: /breadcrumb/i });
+      await expect(breadcrumb.getByRole('link', { name: /^transactions$/i })).toBeVisible();
 
       // Should show transaction details card
       const detailsCard = page.locator('article[aria-label="Transaction details"]');

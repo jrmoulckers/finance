@@ -67,6 +67,7 @@ describe('GoalDetailPage', () => {
       updateGoal: vi.fn(),
       contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
+      reorderGoals: vi.fn(),
     });
   });
 
@@ -84,6 +85,7 @@ describe('GoalDetailPage', () => {
       updateGoal: vi.fn(),
       contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
+      reorderGoals: vi.fn(),
     });
 
     renderWithRoute();
@@ -105,6 +107,7 @@ describe('GoalDetailPage', () => {
       updateGoal: vi.fn(),
       contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
+      reorderGoals: vi.fn(),
     });
 
     renderWithRoute();
@@ -123,6 +126,7 @@ describe('GoalDetailPage', () => {
       updateGoal: vi.fn(),
       contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
+      reorderGoals: vi.fn(),
     });
 
     renderWithRoute();
@@ -242,6 +246,7 @@ describe('GoalDetailPage', () => {
       updateGoal: vi.fn(),
       contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
+      reorderGoals: vi.fn(),
     });
 
     renderWithRoute();
@@ -275,6 +280,7 @@ describe('GoalDetailPage', () => {
       updateGoal: vi.fn(),
       contributeToGoal: vi.fn(),
       deleteGoal: vi.fn(),
+      reorderGoals: vi.fn(),
     });
 
     renderWithRoute();

@@ -29,6 +29,23 @@ export type {
   GoalStatus,
   GoalProjection,
   Milestone,
+  SuggestedGoalType,
+  ContributionFrequency,
+  SuggestedGoalPriority,
+  ExistingSavingsGoal,
+  SpendingCategoryTrend,
+  WishlistItem,
+  DebtSnapshot,
+  SavingsAnalysisSnapshot,
+  ContributionScheduleInput,
+  ContributionPlanOption,
+  ContributionPlan,
+  SuggestedSavingsGoal,
+  SuggestedGoalProjectionPoint,
+  SuggestedGoalProjection,
+  SavingsNudgeType,
+  SavingsNudge,
+  SavingsNudgeContext,
 } from './types';
 
 export { calculateSafeToSpend, recalculateAfterSpending, getWarningLevel } from './safe-to-spend';
@@ -44,3 +61,11 @@ export {
 export { calculateEmergencyRunway, getRunwayStatus } from './emergency-runway';
 export { calculateDebtPaydown, calculateExtraPaymentImpact } from './debt-paydown-goals';
 export { projectGoal, calculateMilestones, getGoalStatus } from './goal-projections';
+export {
+  calculateContributionPlan,
+  buildContributionOptions,
+  getContributionAmountForFrequency,
+} from './contributionSchedule';
+export { buildSavingsAnalysisSnapshot, suggestSavingsGoals } from './goalSuggester';
+export { generateSavingsNudges } from './nudgeEngine';
+export { projectSuggestedGoal } from './projections';

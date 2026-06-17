@@ -1,0 +1,361 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.mood-section {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.mood-section__intro {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+  max-width: 70ch;
+}
+
+.mood-section__grid {
+  display: grid;
+  gap: var(--spacing-4);
+  grid-template-columns: 1fr;
+}
+
+.mood-entry,
+.mood-calendar,
+.mood-chart,
+.mood-patterns,
+.mood-journal {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.mood-entry__header,
+.mood-calendar__header,
+.mood-chart__header,
+.mood-patterns__header,
+.mood-journal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.mood-entry__title,
+.mood-calendar__title,
+.mood-chart__title,
+.mood-patterns__title,
+.mood-journal__title {
+  margin: 0;
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+}
+
+.mood-entry__subtitle,
+.mood-calendar__subtitle,
+.mood-chart__subtitle,
+.mood-patterns__subtitle,
+.mood-journal__subtitle,
+.mood-chart__empty,
+.mood-patterns__empty,
+.mood-journal__empty {
+  margin: var(--spacing-1) 0 0;
+  color: var(--semantic-text-secondary);
+}
+
+.mood-entry__spending {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+}
+
+.mood-entry__spending-label,
+.mood-journal__time,
+.mood-calendar__weekday {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.mood-entry__fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.mood-entry__legend,
+.mood-entry__note-label {
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+}
+
+.mood-entry__scale {
+  display: grid;
+  gap: var(--spacing-2);
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+}
+
+.mood-entry__scale-button,
+.mood-entry__tag,
+.mood-entry__primary,
+.mood-entry__secondary,
+.mood-journal__action {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font: inherit;
+}
+
+.mood-entry__scale-button {
+  padding: var(--spacing-3);
+  display: grid;
+  gap: var(--spacing-1);
+  justify-items: center;
+}
+
+.mood-entry__scale-button--active,
+.mood-entry__tag--active {
+  border-color: var(--semantic-interactive-default);
+  background: color-mix(in srgb, var(--semantic-interactive-default) 10%, transparent);
+}
+
+.mood-entry__scale-emoji {
+  font-size: 1.5rem;
+}
+
+.mood-entry__scale-label {
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.mood-entry__tags,
+.mood-journal__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.mood-entry__tag,
+.mood-journal__tag {
+  padding: var(--spacing-1) var(--spacing-3);
+  text-transform: capitalize;
+}
+
+.mood-entry__note {
+  width: 100%;
+  min-height: 96px;
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font: inherit;
+  resize: vertical;
+}
+
+.mood-entry__actions,
+.mood-journal__actions {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.mood-entry__primary,
+.mood-entry__secondary,
+.mood-journal__action {
+  padding: var(--spacing-2) var(--spacing-4);
+  cursor: pointer;
+}
+
+.mood-entry__primary {
+  background: var(--semantic-interactive-default);
+  border-color: var(--semantic-interactive-default);
+  color: var(--semantic-text-inverse);
+}
+
+.mood-entry__primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mood-journal__action--danger {
+  color: var(--semantic-status-negative);
+}
+
+.mood-calendar__legend {
+  display: flex;
+  gap: var(--spacing-1);
+}
+
+.mood-calendar__legend-chip,
+.mood-calendar__cell {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--border-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+}
+
+.mood-calendar__legend-chip--1,
+.mood-calendar__cell--1 {
+  background: #fecaca;
+}
+
+.mood-calendar__legend-chip--2,
+.mood-calendar__cell--2 {
+  background: #fed7aa;
+}
+
+.mood-calendar__legend-chip--3,
+.mood-calendar__cell--3 {
+  background: #fde68a;
+}
+
+.mood-calendar__legend-chip--4,
+.mood-calendar__cell--4 {
+  background: #bbf7d0;
+}
+
+.mood-calendar__legend-chip--5,
+.mood-calendar__cell--5 {
+  background: #86efac;
+}
+
+.mood-calendar__cell--empty {
+  background: var(--semantic-background-secondary);
+  border-color: var(--semantic-border-default);
+  color: var(--semantic-text-secondary);
+}
+
+.mood-calendar__cell--today {
+  border-color: var(--semantic-interactive-default);
+}
+
+.mood-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--spacing-2);
+}
+
+.mood-calendar__day {
+  display: grid;
+  gap: var(--spacing-1);
+  justify-items: center;
+}
+
+.mood-chart__summary,
+.mood-journal__stats,
+.mood-patterns__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-3);
+  margin: 0;
+}
+
+.mood-chart__summary dt,
+.mood-journal__stats dt,
+.mood-patterns__stats dt {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.mood-chart__summary dd,
+.mood-journal__stats dd,
+.mood-patterns__stats dd {
+  margin: var(--spacing-1) 0 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+.mood-chart__canvas {
+  width: 100%;
+  min-height: 280px;
+}
+
+.mood-patterns__list {
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.mood-patterns__card,
+.mood-journal__item {
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-4);
+  background: var(--semantic-background-primary);
+}
+
+.mood-patterns__card-header,
+.mood-journal__item-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  align-items: flex-start;
+}
+
+.mood-patterns__card-title,
+.mood-journal__date {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+.mood-patterns__card-meta,
+.mood-patterns__recommendation,
+.mood-journal__note {
+  margin: var(--spacing-2) 0 0;
+  color: var(--semantic-text-secondary);
+}
+
+.mood-patterns__badge {
+  display: inline-flex;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: 999px;
+  text-transform: capitalize;
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.mood-patterns__badge--high {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.mood-patterns__badge--medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.mood-patterns__badge--low {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.mood-journal__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--spacing-3);
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.mood-journal__item--active {
+  border-color: var(--semantic-interactive-default);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--semantic-interactive-default) 45%, transparent);
+}
+
+.mood-journal__mood {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-weight: var(--font-weight-semibold);
+}
+
+@media (min-width: 900px) {
+  .mood-section__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mood-section__grid > .mood-section__wide {
+    grid-column: span 2;
+  }
+}

@@ -30,6 +30,14 @@ enum TransactionTypeUI: String, CaseIterable, Hashable, Sendable {
         }
     }
 
+    var iconToken: IconToken {
+        switch self {
+        case .expense: .expense
+        case .income: .income
+        case .transfer: .transfer
+        }
+    }
+
     var color: Color {
         switch self {
         case .expense: .red

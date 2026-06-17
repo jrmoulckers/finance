@@ -76,6 +76,27 @@ export function parseTransactionTimestamp(
  * Format a date string or Date object into a locale-appropriate display format.
  * Date-only strings are rendered as local dates and never shifted by timezone.
  */
+function parseDateString(value: string): Date {
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!dateOnlyMatch) return new Date(value);
+
+  const [, yearText, monthText, dayText] = dateOnlyMatch;
+  const year = Number(yearText);
+  const monthIndex = Number(monthText) - 1;
+  const day = Number(dayText);
+  const parsed = new Date(year, monthIndex, day);
+
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== monthIndex ||
+    parsed.getDate() !== day
+  ) {
+    return new Date(Number.NaN);
+  }
+
+  return parsed;
+}
+
 export function formatDate(
   date: string | Date | null | undefined,
   options?: FormatDateOptions,
@@ -93,7 +114,7 @@ export function formatDate(
   const dateObj = isDateOnly
     ? dateFromDateOnly(date)
     : typeof date === 'string'
-      ? new Date(date)
+      ? parseDateString(date)
       : date;
 
   if (Number.isNaN(dateObj.getTime())) {

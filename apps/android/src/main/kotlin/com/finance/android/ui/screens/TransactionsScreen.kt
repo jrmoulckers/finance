@@ -21,21 +21,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
+import com.finance.android.ui.components.IconView
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -68,6 +58,7 @@ import com.finance.android.ui.viewmodel.TransactionFilter
 import com.finance.android.ui.viewmodel.TransactionsUiState
 import com.finance.android.ui.viewmodel.TransactionsViewModel
 import com.finance.core.currency.CurrencyFormatter
+import com.finance.core.icons.IconToken
 import com.finance.models.Transaction
 import com.finance.models.TransactionType
 import com.finance.models.types.SyncId
@@ -148,13 +139,13 @@ private fun SearchFilterBar(active: Boolean, query: String, filter: TransactionF
             if (active) {
                 OutlinedTextField(query, onSearch, Modifier.weight(1f).semantics { contentDescription = "Search transactions" },
                     placeholder = { Text("Search payees, categories...") },
-                    leadingIcon = { Icon(Icons.Filled.Search, null) },
+                    leadingIcon = { IconView(token = IconToken.SEARCH) },
                     trailingIcon = { if (query.isNotEmpty()) IconButton({ onSearch("") },
-                        Modifier.semantics { contentDescription = "Clear search" }) { Icon(Icons.Filled.Clear, null) } },
+                        Modifier.semantics { contentDescription = "Clear search" }) { IconView(token = IconToken.CLOSE) } },
                     singleLine = true)
-                IconButton(onToggle, Modifier.semantics { contentDescription = "Close search" }) { Icon(Icons.Filled.SearchOff, null) }
+                IconButton(onToggle, Modifier.semantics { contentDescription = "Close search" }) { IconView(token = IconToken.CLOSE) }
             } else {
-                IconButton(onToggle, Modifier.semantics { contentDescription = "Open search" }) { Icon(Icons.Filled.Search, null) }
+                IconButton(onToggle, Modifier.semantics { contentDescription = "Open search" }) { IconView(token = IconToken.SEARCH) }
             }
         }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
@@ -162,18 +153,18 @@ private fun SearchFilterBar(active: Boolean, query: String, filter: TransactionF
                 modifier = Modifier.semantics { contentDescription = "Filter: All" }) }
             item { FilterChip(filter.type == TransactionType.EXPENSE,
                 { onType(if (filter.type == TransactionType.EXPENSE) null else TransactionType.EXPENSE) },
-                { Text("Expenses") }, leadingIcon = { Icon(Icons.Filled.TrendingDown, null, Modifier.size(16.dp)) },
+                { Text("Expenses") }, leadingIcon = { IconView(token = IconToken.EXPENSE, size = 16.dp) },
                 modifier = Modifier.semantics { contentDescription = "Filter: Expenses" }) }
             item { FilterChip(filter.type == TransactionType.INCOME,
                 { onType(if (filter.type == TransactionType.INCOME) null else TransactionType.INCOME) },
-                { Text("Income") }, leadingIcon = { Icon(Icons.Filled.TrendingUp, null, Modifier.size(16.dp)) },
+                { Text("Income") }, leadingIcon = { IconView(token = IconToken.INCOME, size = 16.dp) },
                 modifier = Modifier.semantics { contentDescription = "Filter: Income" }) }
             item { FilterChip(filter.type == TransactionType.TRANSFER,
                 { onType(if (filter.type == TransactionType.TRANSFER) null else TransactionType.TRANSFER) },
                 { Text("Transfers") }, modifier = Modifier.semantics { contentDescription = "Filter: Transfers" }) }
             if (filter != TransactionFilter()) {
                 item { FilterChip(false, onClear, { Text("Clear") },
-                    leadingIcon = { Icon(Icons.Filled.Clear, null, Modifier.size(16.dp)) },
+                    leadingIcon = { IconView(token = IconToken.CLOSE, size = 16.dp) },
                     modifier = Modifier.semantics { contentDescription = "Clear all filters" }) }
             }
         }
@@ -201,13 +192,13 @@ private fun SwipeableTxnItem(txn: Transaction, onDelete: () -> Unit, onEdit: () 
             SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primaryContainer
             SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
             else -> Color.Transparent }, label = "swipe-bg")
-        val icon = when (dir) { SwipeToDismissBoxValue.StartToEnd -> Icons.Filled.Edit
-            SwipeToDismissBoxValue.EndToStart -> Icons.Filled.Delete; else -> Icons.Filled.Edit }
+        val iconToken = when (dir) { SwipeToDismissBoxValue.StartToEnd -> IconToken.EDIT
+            SwipeToDismissBoxValue.EndToStart -> IconToken.DELETE; else -> IconToken.EDIT }
         val tint = when (dir) { SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.onPrimaryContainer
             SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.onErrorContainer; else -> Color.Transparent }
         val align = if (dir == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
         Box(Modifier.fillMaxSize().background(bg, MaterialTheme.shapes.medium).padding(horizontal = 20.dp), contentAlignment = align) {
-            Icon(icon, when (dir) { SwipeToDismissBoxValue.StartToEnd -> "Edit"; SwipeToDismissBoxValue.EndToStart -> "Delete"; else -> null }, tint = tint)
+            IconView(token = iconToken, tint = tint)
         }
     }, modifier = Modifier.semantics { contentDescription = buildTxnDesc(txn) }) { TxnListItem(txn, onClick) }
 }
@@ -228,9 +219,11 @@ private fun TxnListItem(txn: Transaction, onClick: () -> Unit) {
         Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                Icon(when (txn.type) { TransactionType.EXPENSE -> Icons.Filled.TrendingDown
-                    TransactionType.INCOME -> Icons.Filled.TrendingUp; TransactionType.TRANSFER -> Icons.Filled.SwapHoriz },
-                    null, tint = color, modifier = Modifier.size(24.dp))
+                IconView(
+                    token = transactionTypeToken(txn.type),
+                    tint = color,
+                    size = 24.dp,
+                )
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(payee, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
@@ -250,8 +243,12 @@ private fun TxnEmptyState(hasFilters: Boolean) {
         contentDescription = if (hasFilters) "No transactions match your filters" else "No transactions yet"
     }, contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(if (hasFilters) Icons.Filled.FilterList else Icons.Filled.SwapHoriz, null, Modifier.size(48.dp),
-                MaterialTheme.colorScheme.onSurfaceVariant)
+            IconView(
+                token = if (hasFilters) IconToken.FILTER else IconToken.TRANSACTIONS,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                size = 48.dp,
+            )
             Spacer(Modifier.height(16.dp))
             Text(if (hasFilters) "No matching transactions" else "No transactions yet", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
@@ -264,6 +261,12 @@ private fun TxnEmptyState(hasFilters: Boolean) {
 private fun buildTxnDesc(txn: Transaction): String {
     val amt = CurrencyFormatter.format(txn.amount, txn.currency, showSign = true)
     return "Transaction: $amt at ${txn.payee ?: "Unknown"}, ${txn.date}"
+}
+
+private fun transactionTypeToken(type: TransactionType): IconToken = when (type) {
+    TransactionType.EXPENSE -> IconToken.EXPENSE
+    TransactionType.INCOME -> IconToken.INCOME
+    TransactionType.TRANSFER -> IconToken.TRANSFER
 }
 
 @Suppress("UnusedPrivateMember") // Compose Preview function used by IDE

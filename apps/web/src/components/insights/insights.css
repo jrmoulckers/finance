@@ -1,0 +1,419 @@
+/* SPDX-License-Identifier: BUSL-1.1 */
+
+.wealth-digest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.wealth-digest__header,
+.wealth-digest__panel,
+.wealth-digest__metric-card,
+.wealth-digest__section,
+.insight-card,
+.wealth-digest__goal-card {
+  background: var(--semantic-background-elevated);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-lg);
+}
+
+.wealth-digest__header,
+.wealth-digest__section,
+.wealth-digest__panel,
+.wealth-digest__goal-card,
+.insight-card,
+.wealth-digest__metric-card {
+  padding: var(--spacing-5);
+}
+
+.wealth-digest__header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  align-items: flex-start;
+}
+
+.wealth-digest__eyebrow,
+.wealth-digest__panel-eyebrow,
+.wealth-digest__section-header span,
+.wealth-digest__comparison-copy,
+.wealth-digest__goal-header p,
+.wealth-digest__goal-meta,
+.wealth-digest__metric-card span,
+.insight-card__description,
+.insight-card__action,
+.net-worth-chart__labels,
+.wealth-digest__category-item span {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.wealth-digest__title {
+  margin: var(--spacing-1) 0;
+  font-size: var(--type-scale-headline-font-size);
+}
+
+.wealth-digest__subtitle {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--semantic-text-secondary);
+}
+
+.wealth-digest__period-switch {
+  display: inline-flex;
+  gap: var(--spacing-2);
+  padding: var(--spacing-1);
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-pill);
+}
+
+.wealth-digest__period-button {
+  border: 0;
+  border-radius: var(--border-radius-pill);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: transparent;
+  color: var(--semantic-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.wealth-digest__period-button--active {
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-primary);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
+}
+
+.wealth-digest__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: var(--spacing-4);
+}
+
+.wealth-digest__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.wealth-digest__panel-header,
+.wealth-digest__section-header,
+.wealth-digest__goal-header,
+.wealth-digest__category-item,
+.insight-card {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.wealth-digest__panel-header h3,
+.wealth-digest__section-header h3,
+.wealth-digest__goal-header h4,
+.insight-card__title {
+  margin: 0;
+}
+
+.wealth-digest__currency-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  align-items: baseline;
+}
+
+.wealth-digest__currency-row .currency-display {
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  font-weight: var(--font-weight-semibold);
+}
+
+.wealth-digest__comparison-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.wealth-digest__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-weight: var(--font-weight-semibold);
+}
+
+.wealth-digest__trend--up {
+  color: var(--semantic-status-positive);
+}
+
+.wealth-digest__trend--down {
+  color: var(--semantic-status-negative);
+}
+
+.wealth-digest__trend--flat {
+  color: var(--semantic-text-secondary);
+}
+
+.net-worth-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.net-worth-chart__svg {
+  width: 100%;
+  height: 140px;
+}
+
+.net-worth-chart__line {
+  fill: none;
+  stroke: var(--semantic-interactive-default);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.net-worth-chart__area {
+  fill: color-mix(in srgb, var(--semantic-interactive-default) 18%, transparent);
+  stroke: none;
+}
+
+.net-worth-chart__labels {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.wealth-digest__totals-grid,
+.wealth-digest__metrics,
+.wealth-digest__insights-grid,
+.wealth-digest__alignment-grid {
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.wealth-digest__totals-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wealth-digest__totals-grid div,
+.wealth-digest__metric-card,
+.wealth-digest__score-list li,
+.wealth-digest__goal-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.wealth-digest__totals-grid span,
+.wealth-digest__metric-card p {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+}
+
+.wealth-digest__metric-card strong,
+.wealth-digest__totals-grid .currency-display,
+.wealth-digest__goal-header strong {
+  font-size: var(--type-scale-title-font-size);
+}
+
+.wealth-digest__metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wealth-digest__alignment-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.wealth-digest__alignment-grid--secondary {
+  margin-top: var(--spacing-4);
+}
+
+.health-score-badge {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  margin: 0 auto;
+}
+
+.health-score-badge__content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.health-score-badge__score {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.health-score-badge__track,
+.health-score-badge__progress {
+  fill: none;
+  stroke-width: 10;
+}
+
+.health-score-badge__track {
+  stroke: var(--semantic-background-secondary);
+}
+
+.health-score-badge__progress {
+  transform: rotate(-90deg);
+  transform-origin: 60px 60px;
+  stroke-linecap: round;
+}
+
+.health-score-badge--excellent .health-score-badge__progress,
+.health-score-badge--strong .health-score-badge__progress {
+  stroke: var(--semantic-status-positive);
+}
+
+.health-score-badge--stable .health-score-badge__progress {
+  stroke: var(--semantic-status-warning);
+}
+
+.health-score-badge--warning .health-score-badge__progress {
+  stroke: var(--semantic-status-negative);
+}
+
+.wealth-digest__score-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.wealth-digest__score-list li {
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.wealth-digest__category-list,
+.wealth-digest__goal-list {
+  display: grid;
+  gap: var(--spacing-3);
+}
+
+.wealth-digest__category-item {
+  align-items: center;
+  padding: var(--spacing-3) 0;
+  border-bottom: 1px solid var(--semantic-border-default);
+}
+
+.wealth-digest__category-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.wealth-digest__category-item:first-child {
+  padding-top: 0;
+}
+
+.wealth-digest__category-meta {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-2);
+  flex-direction: column;
+}
+
+.wealth-digest__goal-progress {
+  width: 100%;
+  height: 10px;
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-pill);
+  overflow: hidden;
+}
+
+.wealth-digest__goal-progress-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--semantic-interactive-default),
+    var(--semantic-status-positive)
+  );
+}
+
+.insight-card {
+  align-items: flex-start;
+}
+
+.insight-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: var(--semantic-background-secondary);
+}
+
+.insight-card__body {
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.insight-card__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  text-decoration: none;
+}
+
+.insight-card--warning {
+  border-left: 4px solid var(--semantic-status-warning);
+}
+
+.insight-card--success {
+  border-left: 4px solid var(--semantic-status-positive);
+}
+
+.insight-card--info {
+  border-left: 4px solid var(--semantic-status-info);
+}
+
+.wealth-digest__empty-copy {
+  margin: 0;
+  color: var(--semantic-text-secondary);
+}
+
+@media (max-width: 900px) {
+  .wealth-digest__hero,
+  .wealth-digest__metrics,
+  .wealth-digest__alignment-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .wealth-digest__header,
+  .wealth-digest__panel-header,
+  .wealth-digest__section-header,
+  .wealth-digest__category-item,
+  .insight-card {
+    flex-direction: column;
+  }
+
+  .wealth-digest__period-switch {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .wealth-digest__period-button {
+    flex: 1;
+  }
+
+  .wealth-digest__totals-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wealth-digest__category-meta {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .health-score-badge__progress,
+  .wealth-digest__goal-progress-fill {
+    transition: none;
+  }
+}

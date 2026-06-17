@@ -19,16 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,7 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import com.finance.android.ui.components.IconView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -63,6 +53,7 @@ import com.finance.android.ui.viewmodel.AccountGroup
 import com.finance.android.ui.viewmodel.AccountsViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import com.finance.core.currency.CurrencyFormatter
+import com.finance.core.icons.IconToken
 import com.finance.models.Account
 import com.finance.models.AccountType
 import com.finance.models.Transaction
@@ -104,7 +95,7 @@ fun AccountsScreen(
     }
     Scaffold(modifier = modifier, floatingActionButton = {
         FloatingActionButton(onClick = onAddAccount, modifier = Modifier.semantics { contentDescription = "Add new account" }) {
-            Icon(Icons.Filled.Add, contentDescription = null)
+            IconView(token = IconToken.ADD)
         }
     }) { innerPadding ->
         if (state.isEmpty) AccountsEmptyState(Modifier.padding(innerPadding))
@@ -118,7 +109,12 @@ internal fun AccountsEmptyState(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize().semantics { contentDescription = "No accounts yet. Add your first account." },
         contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Filled.AccountBalance, null, Modifier.size(64.dp), MaterialTheme.colorScheme.onSurfaceVariant)
+            IconView(
+                token = IconToken.ACCOUNTS,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                size = 64.dp,
+            )
             Spacer(Modifier.height(16.dp))
             Text("No accounts yet", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
@@ -151,13 +147,18 @@ private fun AccountGroupHeader(group: AccountGroup) {
 @Composable
 private fun AccountCard(account: Account, onClick: () -> Unit) {
     val bal = CurrencyFormatter.format(account.currentBalance, account.currency)
-    val icon = accountTypeIcon(account.type)
+    val iconToken = accountTypeIcon(account.type)
     val typeName = account.type.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
     ElevatedCard(Modifier.fillMaxWidth().clickable(onClick = onClick).semantics {
         contentDescription = "${account.name}, $typeName, balance: $bal"
     }) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, Modifier.size(32.dp), MaterialTheme.colorScheme.primary)
+            IconView(
+                token = iconToken,
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.primary,
+                size = 32.dp,
+            )
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(account.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
@@ -191,7 +192,7 @@ internal fun AccountDetailScreen(
                     onClick = onEdit,
                     modifier = Modifier.semantics { contentDescription = "Edit account" },
                 ) {
-                    Icon(Icons.Filled.Edit, contentDescription = null)
+                    IconView(token = IconToken.EDIT)
                 }
             })
     }) { innerPadding ->
@@ -202,7 +203,12 @@ internal fun AccountDetailScreen(
                     colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                     Column(Modifier.padding(20.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(accountTypeIcon(account.type), null, Modifier.size(28.dp), MaterialTheme.colorScheme.onSecondaryContainer)
+                            IconView(
+                                token = accountTypeIcon(account.type),
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                size = 28.dp,
+                            )
                             Spacer(Modifier.width(12.dp))
                             Text(account.name, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
@@ -260,7 +266,11 @@ private fun AccountTxnItem(txn: Transaction, currency: Currency) {
         Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                Icon(if (isExp) Icons.Filled.TrendingDown else Icons.Filled.TrendingUp, null, tint = color, modifier = Modifier.size(20.dp))
+                IconView(
+                    token = if (isExp) IconToken.EXPENSE else IconToken.INCOME,
+                    tint = color,
+                    size = 20.dp,
+                )
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(payee, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
@@ -273,14 +283,14 @@ private fun AccountTxnItem(txn: Transaction, currency: Currency) {
     }
 }
 
-private fun accountTypeIcon(type: AccountType): ImageVector = when (type) {
-    AccountType.CHECKING -> Icons.Filled.AccountBalance
-    AccountType.SAVINGS -> Icons.Filled.Savings
-    AccountType.CREDIT_CARD -> Icons.Filled.CreditCard
-    AccountType.CASH -> Icons.Filled.Wallet
-    AccountType.INVESTMENT -> Icons.Filled.ShowChart
-    AccountType.LOAN -> Icons.Filled.AccountBalanceWallet
-    AccountType.OTHER -> Icons.Filled.AccountBalance
+private fun accountTypeIcon(type: AccountType): IconToken = when (type) {
+    AccountType.CHECKING -> IconToken.CHECKING_ACCOUNT
+    AccountType.SAVINGS -> IconToken.SAVINGS_ACCOUNT
+    AccountType.CREDIT_CARD -> IconToken.CREDIT_ACCOUNT
+    AccountType.CASH -> IconToken.CASH_ACCOUNT
+    AccountType.INVESTMENT -> IconToken.INVESTMENT_ACCOUNT
+    AccountType.LOAN -> IconToken.LOAN_ACCOUNT
+    AccountType.OTHER -> IconToken.ACCOUNTS
 }
 
 @Suppress("UnusedPrivateMember") // Compose Preview function used by IDE

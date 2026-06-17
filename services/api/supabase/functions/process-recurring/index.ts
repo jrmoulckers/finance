@@ -66,13 +66,13 @@ async function authenticateCron(
 ): Promise<Response | null> {
   const cronSecret = Deno.env.get('CRON_SECRET');
   if (!cronSecret) {
-    logger.error('CRON_SECRET environment variable is not configured');
+    logger.error('Cron credential environment variable is not configured');
     return internalErrorResponse(req);
   }
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader || !(await timingSafeEqual(authHeader, `Bearer ${cronSecret}`))) {
-    logger.warn('Unauthorized request — invalid or missing CRON_SECRET', {
+    logger.warn('Unauthorized request — invalid or missing cron credential', {
       httpStatus: 401,
     });
     return errorResponse(req, 'Unauthorized', 401);

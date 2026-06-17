@@ -20,11 +20,22 @@ test('unauthenticated redirect to login', async ({ page }) => {
   await expect(page).toHaveURL(/login/);
 });
 
-test('login page links to signup and forgot password', async ({ page }) => {
+test('login page links to signup and conditionally shows forgot password', async ({ page }) => {
   await page.goto('/login');
   const signupLink = page.getByRole('link', { name: /sign up/i });
   await expect(signupLink).toBeVisible();
-  await expect(page.getByRole('link', { name: /forgot password/i })).toBeVisible();
+
+  const isDemoMode = await page
+    .getByText(/demo mode/i)
+    .isVisible()
+    .catch(() => false);
+  const forgotPasswordLink = page.getByRole('link', { name: /forgot password/i });
+
+  if (isDemoMode) {
+    await expect(forgotPasswordLink).toHaveCount(0);
+  } else {
+    await expect(forgotPasswordLink).toBeVisible();
+  }
 });
 
 test('forgot password page renders', async ({ page }) => {

@@ -10,7 +10,36 @@
  * which mocks auth endpoints and logs in via the UI before each test.
  */
 
+import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
+
+async function navigateViaPrimaryNav(
+  page: Page,
+  label: string,
+  expectedUrl: RegExp,
+): Promise<void> {
+  const exactLabel = new RegExp(`^${label}$`, 'i');
+  const sidebar = page.locator('aside[aria-label="Main navigation"]');
+
+  if (await sidebar.isVisible().catch(() => false)) {
+    await sidebar.getByRole('button', { name: exactLabel }).click();
+  } else {
+    const bottomNav = page.locator('nav.bottom-nav');
+    const bottomButton = bottomNav.getByRole('button', { name: exactLabel });
+
+    if (await bottomButton.isVisible().catch(() => false)) {
+      await bottomButton.click();
+    } else {
+      await bottomNav.getByRole('button', { name: /more destinations/i }).click();
+      await page
+        .getByRole('dialog', { name: /all destinations/i })
+        .getByRole('button', { name: exactLabel })
+        .click();
+    }
+  }
+
+  await expect(page).toHaveURL(expectedUrl);
+}
 
 test.describe('Dashboard page', () => {
   test.beforeEach(async ({ authenticatedPage }) => {
@@ -63,7 +92,7 @@ test.describe('Dashboard page', () => {
     const hasSummary = await summarySection.isVisible().catch(() => false);
 
     if (hasSummary) {
-      const netWorthCard = authenticatedPage.getByLabel('Net worth');
+      const netWorthCard = authenticatedPage.getByRole('article', { name: 'Net worth' });
       await expect(netWorthCard).toBeVisible();
       await expect(netWorthCard.getByRole('heading', { name: /net worth/i })).toBeVisible();
     }
@@ -74,7 +103,7 @@ test.describe('Dashboard page', () => {
     const hasSummary = await summarySection.isVisible().catch(() => false);
 
     if (hasSummary) {
-      const spendingCard = authenticatedPage.getByLabel('Monthly spending');
+      const spendingCard = authenticatedPage.getByRole('article', { name: 'Monthly spending' });
       await expect(spendingCard).toBeVisible();
       await expect(spendingCard.getByRole('heading', { name: /spent this month/i })).toBeVisible();
     }
@@ -85,7 +114,7 @@ test.describe('Dashboard page', () => {
     const hasSummary = await summarySection.isVisible().catch(() => false);
 
     if (hasSummary) {
-      const budgetCard = authenticatedPage.getByLabel('Budget health');
+      const budgetCard = authenticatedPage.getByRole('article', { name: 'Budget health' });
       await expect(budgetCard).toBeVisible();
       await expect(budgetCard.getByRole('heading', { name: /budget health/i })).toBeVisible();
 
@@ -164,41 +193,20 @@ test.describe('Dashboard page', () => {
   // Navigation from dashboard
   // -------------------------------------------------------------------------
 
-  test('navigates to accounts page via sidebar', async ({ authenticatedPage }) => {
-    // The sidebar navigation has a button for "Accounts".
-    const accountsButton = authenticatedPage
-      .locator('aside[aria-label="Main navigation"]')
-      .getByRole('button', { name: /accounts/i });
-
-    await accountsButton.click();
-    await expect(authenticatedPage).toHaveURL(/\/accounts/);
+  test('navigates to accounts page via primary navigation', async ({ authenticatedPage }) => {
+    await navigateViaPrimaryNav(authenticatedPage, 'Accounts', /\/accounts/);
   });
 
-  test('navigates to transactions page via sidebar', async ({ authenticatedPage }) => {
-    const transactionsButton = authenticatedPage
-      .locator('aside[aria-label="Main navigation"]')
-      .getByRole('button', { name: /transactions/i });
-
-    await transactionsButton.click();
-    await expect(authenticatedPage).toHaveURL(/\/transactions/);
+  test('navigates to transactions page via primary navigation', async ({ authenticatedPage }) => {
+    await navigateViaPrimaryNav(authenticatedPage, 'Transactions', /\/transactions/);
   });
 
-  test('navigates to budgets page via sidebar', async ({ authenticatedPage }) => {
-    const budgetsButton = authenticatedPage
-      .locator('aside[aria-label="Main navigation"]')
-      .getByRole('button', { name: /budgets/i });
-
-    await budgetsButton.click();
-    await expect(authenticatedPage).toHaveURL(/\/budgets/);
+  test('navigates to budgets page via primary navigation', async ({ authenticatedPage }) => {
+    await navigateViaPrimaryNav(authenticatedPage, 'Budgets', /\/budgets/);
   });
 
-  test('navigates to goals page via sidebar', async ({ authenticatedPage }) => {
-    const goalsButton = authenticatedPage
-      .locator('aside[aria-label="Main navigation"]')
-      .getByRole('button', { name: /goals/i });
-
-    await goalsButton.click();
-    await expect(authenticatedPage).toHaveURL(/\/goals/);
+  test('navigates to goals page via primary navigation', async ({ authenticatedPage }) => {
+    await navigateViaPrimaryNav(authenticatedPage, 'Goals', /\/goals/);
   });
 
   test('navigates to settings page via header button', async ({ authenticatedPage }) => {

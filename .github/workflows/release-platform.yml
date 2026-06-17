@@ -1,0 +1,517 @@
+# =============================================================================
+# Platform Release Pipeline — matrix builds for web, Android, iOS, and Windows
+# =============================================================================
+#
+# Consolidates the per-platform release workflows and release-artifact workflow into one matrix-driven pipeline that builds release assets and publishes tagged releases.
+# =============================================================================
+name: Release — Platform
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: false
+        type: choice
+        default: all
+        options:
+          - all
+          - web
+          - android
+          - ios
+          - windows
+      version:
+        description: 'Release version (defaults to package.json when omitted)'
+        required: false
+        type: string
+        default: ''
+      source_ref:
+        description: 'Git ref to build from for manual runs'
+        required: false
+        type: string
+        default: 'main'
+      web_environment:
+        description: 'Web deployment environment for manual releases'
+        required: false
+        type: choice
+        default: staging
+        options:
+          - staging
+          - production
+      android_track:
+        description: 'Android release track metadata'
+        required: false
+        type: choice
+        default: internal
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+      ios_destination:
+        description: 'iOS destination metadata'
+        required: false
+        type: choice
+        default: testflight
+        options:
+          - testflight
+          - app-store
+      windows_channel:
+        description: 'Windows release channel metadata'
+        required: false
+        type: choice
+        default: sideload
+        options:
+          - sideload
+          - store
+      build_type:
+        description: 'Build type'
+        required: false
+        type: choice
+        default: release
+        options:
+          - release
+          - debug
+      dry_run:
+        description: 'Skip deployment/store submission side effects for manual runs'
+        required: false
+        type: boolean
+        default: true
+      generate_store_metadata:
+        description: 'Generate store metadata artifact'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-platform-${{ github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Prepare Release Metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      version_code: ${{ steps.meta.outputs.version_code }}
+      is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
+      platform_filter: ${{ steps.meta.outputs.platform_filter }}
+      source_ref: ${{ steps.meta.outputs.source_ref }}
+      dry_run: ${{ steps.meta.outputs.dry_run }}
+      publish_release: ${{ steps.meta.outputs.publish_release }}
+      store_metadata: ${{ steps.meta.outputs.store_metadata }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.source_ref || github.ref }}
+
+      - name: Extract version metadata
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+            PLATFORM_FILTER="all"
+            SOURCE_REF="$TAG"
+            DRY_RUN=false
+            PUBLISH_RELEASE=true
+            STORE_METADATA=true
+          else
+            RAW_VERSION="${{ github.event.inputs.version }}"
+            if [ -n "$RAW_VERSION" ]; then
+              VERSION="${RAW_VERSION#v}"
+            else
+              VERSION=$(node -e "console.log(require('./package.json').version)")
+            fi
+            TAG="v${VERSION}"
+            PLATFORM_FILTER="${{ github.event.inputs.platform || 'all' }}"
+            SOURCE_REF="${{ github.event.inputs.source_ref || 'main' }}"
+            DRY_RUN="${{ github.event.inputs.dry_run || 'true' }}"
+            PUBLISH_RELEASE=false
+            STORE_METADATA="${{ github.event.inputs.generate_store_metadata || 'true' }}"
+          fi
+
+          IFS='.-' read -r MAJOR MINOR PATCH _EXTRA <<< "$VERSION"
+          MAJOR="${MAJOR:-0}"
+          MINOR="${MINOR:-0}"
+          PATCH="${PATCH:-0}"
+          VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+
+          IS_PRERELEASE=false
+          if [[ "$TAG" == *'-rc'* ]] || [[ "$TAG" == *'-beta'* ]] || [[ "$TAG" == *'-alpha'* ]]; then
+            IS_PRERELEASE=true
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "platform_filter=$PLATFORM_FILTER" >> "$GITHUB_OUTPUT"
+          echo "source_ref=$SOURCE_REF" >> "$GITHUB_OUTPUT"
+          echo "dry_run=$DRY_RUN" >> "$GITHUB_OUTPUT"
+          echo "publish_release=$PUBLISH_RELEASE" >> "$GITHUB_OUTPUT"
+          echo "store_metadata=$STORE_METADATA" >> "$GITHUB_OUTPUT"
+
+  build-platform:
+    name: Release ${{ matrix.platform }}
+    needs: prepare
+    if: needs.prepare.outputs.platform_filter == 'all' || needs.prepare.outputs.platform_filter == matrix.platform
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: android
+            runner: ubuntu-latest
+          - platform: ios
+            runner: macos-15
+          - platform: web
+            runner: ubuntu-latest
+          - platform: windows
+            runner: windows-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 50
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      HAS_WINDOWS_SIGNING_SECRETS: ${{ secrets.WINDOWS_SIGNING_CERT_BASE64 != '' && secrets.WINDOWS_CERT_PASSWORD != '' }}
+      SPM_CACHE_DIR: apps/ios/.spm-packages
+      DERIVED_DATA_DIR: apps/ios/.derivedData
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.source_ref }}
+
+      - name: Set up Node.js
+        if: matrix.platform == 'web'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up JDK 21
+        if: matrix.platform == 'android' || matrix.platform == 'windows'
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        if: matrix.platform == 'android'
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Accept Android SDK licenses
+        if: matrix.platform == 'android'
+        run: yes | sdkmanager --licenses || true
+
+      - name: Set up Gradle
+        if: matrix.platform == 'android' || matrix.platform == 'windows'
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-read-only: true
+
+      - name: Validate Gradle wrapper
+        if: matrix.platform == 'android' || matrix.platform == 'windows'
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+
+      - name: Install npm dependencies
+        if: matrix.platform == 'web'
+        run: npm ci
+
+      - name: Cache SPM packages
+        if: matrix.platform == 'ios'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ env.SPM_CACHE_DIR }}
+          key: ${{ runner.os }}-spm-release-${{ hashFiles('apps/ios/Package.resolved', 'apps/ios/Package.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-release-
+            ${{ runner.os }}-spm-pkgs-
+
+      - name: Select Xcode
+        if: matrix.platform == 'ios'
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: latest-stable
+
+      - name: Prepare artifact directory
+        shell: bash
+        run: mkdir -p release-artifacts
+
+      - name: Build Android artifacts
+        if: matrix.platform == 'android'
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && format('{0}/release-keystore.jks', github.workspace) || '' }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/release-keystore.jks"
+          fi
+          VERSION="${{ needs.prepare.outputs.version }}"
+          VERSION_CODE="${{ needs.prepare.outputs.version_code }}"
+          BUILD_TYPE="${{ github.event.inputs.build_type || 'release' }}"
+          if [ "$BUILD_TYPE" = "release" ]; then
+            ./gradlew :apps:android:bundleRelease :apps:android:assembleRelease :apps:android:testReleaseUnitTest \
+              -PversionName="$VERSION" \
+              -PversionCode="$VERSION_CODE" \
+              ${ANDROID_KEYSTORE_FILE:+-Pandroid.injected.signing.store.file="$ANDROID_KEYSTORE_FILE"} \
+              ${ANDROID_KEYSTORE_PASSWORD:+-Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD"} \
+              ${ANDROID_KEY_ALIAS:+-Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS"} \
+              ${ANDROID_KEY_PASSWORD:+-Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"} \
+              --parallel --build-cache --stacktrace
+          else
+            ./gradlew :apps:android:assembleDebug --parallel --build-cache --stacktrace
+          fi
+          ./gradlew :apps:android:verifyPaparazziRelease --parallel --build-cache --stacktrace || true
+          APK=$(find apps/android/build/outputs/apk -name '*.apk' | head -1)
+          AAB=$(find apps/android/build/outputs/bundle -name '*.aab' | head -1)
+          [ -n "$APK" ] && cp "$APK" "release-artifacts/finance-android-${VERSION}.apk"
+          [ -n "$AAB" ] && cp "$AAB" "release-artifacts/finance-android-${VERSION}.aab"
+          cd release-artifacts && sha256sum * > checksums-android.sha256
+
+      - name: Build iOS artifacts
+        if: matrix.platform == 'ios'
+        shell: bash
+        run: |
+          cd apps/ios
+          xcodebuild -resolvePackageDependencies -scheme FinanceApp -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" 2>&1 | tail -10
+          xcodebuild build \
+            -scheme FinanceApp \
+            -configuration "${{ github.event.inputs.build_type == 'debug' && 'Debug' || 'Release' }}" \
+            -destination 'generic/platform=iOS' \
+            -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
+            -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \
+            MARKETING_VERSION="${{ needs.prepare.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ needs.prepare.outputs.version_code }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tail -20
+          xcodebuild test \
+            -scheme FinanceApp \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
+            -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            -resultBundlePath .build/ReleaseTestResults.xcresult \
+            2>&1 | tail -30
+          xcodebuild archive \
+            -scheme FinanceApp \
+            -configuration "${{ github.event.inputs.build_type == 'debug' && 'Debug' || 'Release' }}" \
+            -destination 'generic/platform=iOS' \
+            -archivePath "${{ github.workspace }}/release-artifacts/Finance.xcarchive" \
+            -clonedSourcePackagesDirPath "${{ github.workspace }}/${{ env.SPM_CACHE_DIR }}" \
+            -derivedDataPath "${{ github.workspace }}/${{ env.DERIVED_DATA_DIR }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            MARKETING_VERSION="${{ needs.prepare.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ needs.prepare.outputs.version_code }}" \
+            2>&1 | tail -20
+          cd "${{ github.workspace }}/release-artifacts"
+          zip -r -q "finance-ios-${{ needs.prepare.outputs.version }}.xcarchive.zip" Finance.xcarchive
+          rm -rf Finance.xcarchive
+          shasum -a 256 * > checksums-ios.sha256
+
+      - name: Build web artifacts
+        if: matrix.platform == 'web'
+        shell: bash
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: ${{ needs.prepare.outputs.version }}
+          VITE_ENVIRONMENT: ${{ github.event.inputs.web_environment || 'staging' }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+          VITE_BETA_ALLOWED_EMAILS: ${{ secrets.BETA_ALLOWED_EMAILS }}
+        run: |
+          npm run build -w packages/design-tokens
+          npm run build -w apps/web
+          node tools/verify-build-env.mjs --check-env apps/web/dist
+          npm test -w apps/web
+          npx -w apps/web playwright install --with-deps chromium
+          npx -w apps/web playwright test --project=chromium
+          npx @lhci/cli assert --config=apps/web/lighthouserc-budget.json || true
+          tar -czf "release-artifacts/finance-web-${{ needs.prepare.outputs.version }}.tar.gz" -C apps/web dist
+          (cd apps/web && zip -r -q "${{ github.workspace }}/release-artifacts/finance-web-${{ needs.prepare.outputs.version }}.zip" dist)
+          (cd release-artifacts && sha256sum * > checksums-web.sha256)
+
+      - name: Optionally deploy web release
+        if: matrix.platform == 'web' && github.event_name == 'workflow_dispatch' && needs.prepare.outputs.dry_run != 'true'
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            npm i -g vercel@latest
+            DEPLOY_LOG="$RUNNER_TEMP/vercel-release-platform.log"
+            vercel deploy --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID" ${{ github.event.inputs.web_environment == 'production' && '--prod' || '' }} --yes --archive=tgz apps/web/dist >"$DEPLOY_LOG" 2>&1 || {
+              cat "$DEPLOY_LOG"
+              exit 1
+            }
+          fi
+
+      - name: Build Windows artifacts
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          ./gradlew :apps:windows:build :apps:windows:test :apps:windows:packageMsi :apps:windows:createDistributable \
+            -PappVersion="$VERSION" \
+            --parallel --build-cache --stacktrace || ./gradlew :apps:windows:build :apps:windows:test :apps:windows:packageMsi \
+            -PappVersion="$VERSION" \
+            --parallel --build-cache --stacktrace
+          mkdir -p release-artifacts
+          MSI=$(find apps/windows/build/compose/binaries -name '*.msi' | head -1)
+          EXE=$(find apps/windows/build/compose/binaries -name '*.exe' | head -1)
+          [ -n "$MSI" ] && cp "$MSI" "release-artifacts/finance-windows-${VERSION}.msi"
+          [ -n "$EXE" ] && cp "$EXE" "release-artifacts/finance-windows-${VERSION}.exe"
+          cd release-artifacts && sha256sum * > checksums-windows.sha256
+
+      - name: Sign Windows MSI
+        if: matrix.platform == 'windows' && env.HAS_WINDOWS_SIGNING_SECRETS == 'true'
+        shell: pwsh
+        run: |
+          $sdkRoot = 'C:\Program Files (x86)\Windows Kits\10\bin'
+          $signtool = Get-ChildItem -Path $sdkRoot -Directory |
+            Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+            Sort-Object -Property { [version]$_.Name } -Descending |
+            ForEach-Object { Join-Path $_.FullName 'x64\signtool.exe' } |
+            Where-Object { Test-Path $_ } |
+            Select-Object -First 1
+          if (-not $signtool) { throw 'signtool.exe not found' }
+          $certBytes = [System.Convert]::FromBase64String("${{ secrets.WINDOWS_SIGNING_CERT_BASE64 }}")
+          $certPath = Join-Path $env:RUNNER_TEMP 'signing-cert.pfx'
+          [System.IO.File]::WriteAllBytes($certPath, $certBytes)
+          try {
+            Get-ChildItem -Path release-artifacts -Filter '*.msi' | ForEach-Object {
+              & $signtool sign /f $certPath /p "${{ secrets.WINDOWS_CERT_PASSWORD }}" /fd sha256 /tr http://timestamp.digicert.com /td sha256 $_.FullName
+            }
+          } finally {
+            Remove-Item $certPath -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Attest build provenance
+        if: needs.prepare.outputs.dry_run != 'true'
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: release-artifacts/*
+
+      - name: Upload platform artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.platform }}-release-artifacts
+          path: release-artifacts/
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Clean up Android keystore
+        if: matrix.platform == 'android' && always()
+        shell: bash
+        run: rm -f "$GITHUB_WORKSPACE/release-keystore.jks"
+
+  publish-release:
+    name: Publish GitHub Release Assets
+    needs: [prepare, build-platform]
+    if: needs.prepare.outputs.publish_release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download platform artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: '*-release-artifacts'
+          merge-multiple: true
+          path: all-artifacts
+
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        run: |
+          TAG="${{ needs.prepare.outputs.tag }}"
+          PREV_TAG=$(git tag --sort=-version:refname --list 'v*' | grep -v "^${TAG}$" | head -1)
+          if [ -n "$PREV_TAG" ]; then
+            node tools/generate-changelog.js --from "$PREV_TAG" --to "$TAG" > release-notes.md 2>/dev/null || true
+          fi
+          if [ ! -s release-notes.md ]; then
+            echo "## ${TAG}" > release-notes.md
+            echo "" >> release-notes.md
+            if [ -n "$PREV_TAG" ]; then
+              git log --pretty=format:"- %s (%h)" "$PREV_TAG..$TAG" >> release-notes.md
+            else
+              echo "- Initial release" >> release-notes.md
+            fi
+          fi
+
+      - name: Generate combined checksum manifest
+        run: |
+          cd all-artifacts
+          cat checksums-*.sha256 > CHECKSUMS.sha256 2>/dev/null || true
+          rm -f checksums-android.sha256 checksums-ios.sha256 checksums-web.sha256 checksums-windows.sha256
+
+      - name: Attest release bundle
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: all-artifacts/*
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          body_path: release-notes.md
+          files: all-artifacts/*
+          prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  store-metadata:
+    name: Store Submission Metadata
+    needs: [prepare, build-platform]
+    if: needs.prepare.outputs.store_metadata == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.prepare.outputs.source_ref }}
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate store metadata
+        run: |
+          node tools/generate-store-metadata.js --version "${{ needs.prepare.outputs.version }}"
+      - name: Upload store metadata
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: store-metadata
+          path: release-metadata/
+          retention-days: 90

@@ -266,3 +266,169 @@ export interface Milestone {
   /** Projected date to reach this milestone (ISO date string), null if already reached. */
   readonly projectedDate: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// AI-suggested savings goals & nudges (#1748)
+// ---------------------------------------------------------------------------
+
+/** Goal categories surfaced by the savings suggestion engine. */
+export type SuggestedGoalType =
+  | 'emergency-fund'
+  | 'discretionary-savings'
+  | 'big-purchase'
+  | 'retirement'
+  | 'debt-payoff';
+
+/** Contribution cadence for a suggested plan. */
+export type ContributionFrequency = 'weekly' | 'biweekly' | 'monthly';
+
+/** Priority assigned to a savings suggestion. */
+export type SuggestedGoalPriority = 'high' | 'medium' | 'low';
+
+/** Existing goals reclassified for local savings analysis. */
+export interface ExistingSavingsGoal {
+  readonly id: string;
+  readonly name: string;
+  readonly targetCents: number;
+  readonly currentCents: number;
+  readonly targetDate: string | null;
+  readonly classification: 'emergency-fund' | 'retirement' | 'debt-payoff' | 'wishlist';
+}
+
+/** A reducible spending category discovered from local spending history. */
+export interface SpendingCategoryTrend {
+  readonly categoryId: string | null;
+  readonly categoryName: string;
+  readonly monthlySpendCents: number;
+  readonly previousMonthlySpendCents: number;
+  readonly shareOfSpendingPercent: number;
+  readonly essential: boolean;
+}
+
+/** Wishlist-style item used to recommend big-purchase timelines. */
+export interface WishlistItem {
+  readonly id: string;
+  readonly name: string;
+  readonly targetCents: number;
+  readonly currentCents: number;
+  readonly targetDate: string | null;
+  readonly linkedGoalId: string | null;
+}
+
+/** Liability snapshot used for debt-payoff nudges. */
+export interface DebtSnapshot {
+  readonly accountId: string;
+  readonly name: string;
+  readonly balanceCents: number;
+}
+
+/** Consolidated local-only financial snapshot for the savings engine. */
+export interface SavingsAnalysisSnapshot {
+  readonly currencyCode: string;
+  readonly monthlyIncomeCents: number;
+  readonly monthlyExpensesCents: number;
+  readonly monthlySurplusCents: number;
+  readonly annualizedIncomeCents: number;
+  readonly liquidSavingsCents: number;
+  readonly retirementSavingsCents: number;
+  readonly monthlyRetirementContributionCents: number;
+  readonly currentYearRetirementContributionCents: number;
+  readonly currentWeeklySavingsCents: number;
+  readonly previousWeeklySavingsCents: number;
+  readonly discretionaryCategories: readonly SpendingCategoryTrend[];
+  readonly discretionaryRedirectCents: number;
+  readonly existingGoals: readonly ExistingSavingsGoal[];
+  readonly wishlistItems: readonly WishlistItem[];
+  readonly debtAccounts: readonly DebtSnapshot[];
+}
+
+/** Input for building contribution schedules for a suggestion. */
+export interface ContributionScheduleInput {
+  readonly targetCents: number;
+  readonly currentCents: number;
+  readonly monthlyCapacityCents: number;
+  readonly desiredMonthlyContributionCents?: number;
+}
+
+/** A contribution schedule option for a specific cadence. */
+export interface ContributionPlanOption {
+  readonly frequency: ContributionFrequency;
+  readonly contributionCents: number;
+  readonly monthlyEquivalentCents: number;
+  readonly percentOfSurplus: number;
+}
+
+/** The recommended contribution plan for a suggested goal. */
+export interface ContributionPlan {
+  readonly recommendedFrequency: ContributionFrequency;
+  readonly recommendedMonthlyContributionCents: number;
+  readonly minimumMonthlyContributionCents: number;
+  readonly stretchMonthlyContributionCents: number;
+  readonly estimatedMonths: number;
+  readonly options: readonly ContributionPlanOption[];
+}
+
+/** A single savings goal suggestion generated locally from spending patterns. */
+export interface SuggestedSavingsGoal {
+  readonly id: string;
+  readonly type: SuggestedGoalType;
+  readonly title: string;
+  readonly reason: string;
+  readonly reasoning: readonly string[];
+  readonly priority: SuggestedGoalPriority;
+  readonly targetCents: number;
+  readonly currentCents: number;
+  readonly shortfallCents: number;
+  readonly targetDate: string | null;
+  readonly linkedGoalId: string | null;
+  readonly redirectCategoryNames: readonly string[];
+  readonly contributionPlan: ContributionPlan;
+}
+
+/** A point in the contribution trajectory for a suggestion. */
+export interface SuggestedGoalProjectionPoint {
+  readonly date: string;
+  readonly amountCents: number;
+}
+
+/** Projection result for a suggested goal. */
+export interface SuggestedGoalProjection {
+  readonly projectedCompletionDate: string | null;
+  readonly monthsToGoal: number | null;
+  readonly completionPercent: number;
+  readonly onTrack: boolean;
+  readonly milestoneDates: readonly {
+    readonly label: string;
+    readonly date: string | null;
+  }[];
+  readonly trajectory: readonly SuggestedGoalProjectionPoint[];
+}
+
+/** Nudge categories emitted by the local suggestion engine. */
+export type SavingsNudgeType =
+  | 'spending-drift'
+  | 'redirect-opportunity'
+  | 'retirement-gap'
+  | 'debt-push'
+  | 'goal-momentum';
+
+/** A contextual nudge built from recent spending and savings momentum. */
+export interface SavingsNudge {
+  readonly id: string;
+  readonly type: SavingsNudgeType;
+  readonly tone: 'info' | 'warning' | 'success';
+  readonly title: string;
+  readonly message: string;
+  readonly actionLabel: string;
+  readonly linkedSuggestionId: string | null;
+}
+
+/** Input needed to generate contextual savings nudges. */
+export interface SavingsNudgeContext {
+  readonly currencyCode: string;
+  readonly monthlySurplusCents: number;
+  readonly currentWeeklySavingsCents: number;
+  readonly previousWeeklySavingsCents: number;
+  readonly topDiscretionaryCategory: SpendingCategoryTrend | null;
+  readonly suggestions: readonly SuggestedSavingsGoal[];
+}

@@ -1,69 +1,67 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-/**
- * Built-in categorization rules mapping merchant name patterns to categories.
- *
- * Each rule set maps a canonical category name to an array of keyword patterns.
- * Pattern matching is always case-insensitive; the engine normalises input
- * before comparing against these patterns.
- *
- * @module lib/categorization/rules
- */
+import type { BuiltinMerchantRule, RuleCategoryKey } from './types';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+export const CATEGORY_ALIASES: Readonly<Record<RuleCategoryKey, readonly string[]>> = {
+  groceries: ['groceries', 'grocery', 'food', 'food & dining', 'food and dining'],
+  dining: ['dining', 'restaurants', 'restaurant', 'eating out', 'food', 'food & dining'],
+  transportation: ['transportation', 'transport', 'travel', 'commute', 'gas', 'fuel', 'auto'],
+  entertainment: ['entertainment', 'fun', 'media', 'streaming', 'subscriptions'],
+  utilities: ['utilities', 'utility', 'housing', 'bills', 'monthly bills'],
+  shopping: ['shopping', 'general merchandise', 'retail', 'household'],
+  healthcare: ['healthcare', 'medical', 'health', 'pharmacy'],
+};
 
-/** A single built-in rule mapping keywords to a category name. */
-export interface BuiltinRule {
-  /** Human-readable category name (must match a real category in the database). */
-  readonly categoryName: string;
-  /** Lower-case keywords/substrings that identify this category in a merchant name. */
-  readonly keywords: readonly string[];
-}
-
-// ---------------------------------------------------------------------------
-// Rule definitions
-// ---------------------------------------------------------------------------
-
-export const BUILTIN_RULES: readonly BuiltinRule[] = [
+export const BUILTIN_RULES: readonly BuiltinMerchantRule[] = [
   {
-    categoryName: 'Groceries',
-    keywords: [
-      'walmart',
-      'costco',
-      'kroger',
+    id: 'builtin-groceries',
+    categoryKey: 'groceries',
+    merchants: [
       'whole foods',
       'trader joe',
-      'aldi',
+      'kroger',
       'safeway',
+      'costco',
+      'walmart',
+      'aldi',
       'publix',
-      'h-e-b',
       'wegmans',
+      'meijer',
+      'food lion',
+      'giant eagle',
+      'stop and shop',
+      'h e b',
+      'instacart',
+      'fresh market',
     ],
   },
   {
-    categoryName: 'Dining',
-    keywords: [
-      'mcdonald',
+    id: 'builtin-dining',
+    categoryKey: 'dining',
+    merchants: [
+      'mcdonalds',
       'starbucks',
-      'chipotle',
       'doordash',
       'uber eats',
       'grubhub',
+      'chipotle',
       'subway',
-      'chick-fil-a',
+      'chick fil a',
       'panera',
       'taco bell',
-      'wendy',
-      'burger king',
+      'dunkin',
+      'dominos',
       'pizza hut',
-      'domino',
+      'sweetgreen',
+      'five guys',
     ],
   },
   {
-    categoryName: 'Transportation',
-    keywords: [
+    id: 'builtin-transportation',
+    categoryKey: 'transportation',
+    merchants: [
+      'uber',
+      'lyft',
       'shell',
       'chevron',
       'exxon',
@@ -71,101 +69,91 @@ export const BUILTIN_RULES: readonly BuiltinRule[] = [
       'speedway',
       'sunoco',
       'marathon',
-      'circle k',
-      'wawa gas',
-      'uber ride',
-      'lyft',
+      'wawa',
+      'amtrak',
+      'delta',
+      'united',
+      'southwest',
+      'mta',
     ],
   },
   {
-    categoryName: 'Utilities',
-    keywords: [
-      'electric',
-      'water',
-      'gas bill',
-      'internet',
-      'comcast',
-      'at&t',
-      'verizon',
-      'spectrum',
-      'xfinity',
-      'power bill',
-      'sewage',
-    ],
-  },
-  {
-    categoryName: 'Entertainment',
-    keywords: [
+    id: 'builtin-entertainment',
+    categoryKey: 'entertainment',
+    merchants: [
       'netflix',
       'spotify',
+      'disney plus',
       'hulu',
-      'disney+',
-      'amazon prime',
-      'hbo max',
-      'apple tv',
       'youtube premium',
-      'paramount+',
+      'apple tv',
+      'max',
       'peacock',
+      'steam',
+      'playstation',
+      'xbox',
+      'ticketmaster',
+      'audible',
+      'paramount plus',
+      'kindle',
     ],
   },
   {
-    categoryName: 'Healthcare',
-    keywords: [
-      'pharmacy',
-      'cvs',
-      'walgreens',
-      'doctor',
-      'hospital',
-      'dentist',
-      'urgent care',
-      'clinic',
-      'optometrist',
-      'rite aid',
+    id: 'builtin-utilities',
+    categoryKey: 'utilities',
+    merchants: [
+      'at and t',
+      'att',
+      'verizon',
+      't mobile',
+      'xfinity',
+      'comcast',
+      'spectrum',
+      'pge',
+      'pg and e',
+      'comed',
+      'duke energy',
+      'con edison',
+      'seattle city light',
+      'water district',
+      'national grid',
     ],
   },
   {
-    categoryName: 'Shopping',
-    keywords: [
+    id: 'builtin-shopping',
+    categoryKey: 'shopping',
+    merchants: [
       'amazon',
       'target',
       'best buy',
-      'apple.com',
       'ebay',
       'etsy',
-      'nordstrom',
-      'home depot',
       'ikea',
+      'home depot',
       'lowes',
+      'nike',
+      'old navy',
+      'macys',
+      'tj maxx',
+      'wayfair',
+      'sephora',
+    ],
+  },
+  {
+    id: 'builtin-healthcare',
+    categoryKey: 'healthcare',
+    merchants: [
+      'cvs',
+      'walgreens',
+      'rite aid',
+      'kaiser',
+      'urgent care',
+      'doctor',
+      'hospital',
+      'dentist',
+      'optometrist',
+      'labcorp',
+      'quest diagnostics',
     ],
   },
 ] as const;
-
-/**
- * Find the first built-in rule whose keywords contain an exact match for
- * the given keyword (lower-cased).
- */
-export function findExactBuiltinMatch(normalisedDescription: string): BuiltinRule | null {
-  for (const rule of BUILTIN_RULES) {
-    for (const keyword of rule.keywords) {
-      if (normalisedDescription === keyword) {
-        return rule;
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Find the first built-in rule that has a keyword appearing as a substring
- * inside the given description (already lower-cased).
- */
-export function findPartialBuiltinMatch(normalisedDescription: string): BuiltinRule | null {
-  for (const rule of BUILTIN_RULES) {
-    for (const keyword of rule.keywords) {
-      if (normalisedDescription.includes(keyword)) {
-        return rule;
-      }
-    }
-  }
-  return null;
-}

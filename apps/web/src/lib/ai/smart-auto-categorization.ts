@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { getAmountHint, normaliseDescription } from '../categorization/patterns';
-import { BUILTIN_RULES } from '../categorization/rules';
+import { getAmountHint, normaliseDescription } from './categorization-patterns';
+import { BUILTIN_RULES } from './categorization-rules';
 
 export interface AiCategory {
   readonly id: string;

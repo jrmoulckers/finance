@@ -4,8 +4,9 @@
  * React hook for accessing and mutating budget data.
  *
  * All budgets are loaded enriched with their calculated spending and remaining
- * amounts via {@link getBudgetWithSpending}.  Mutations (create, update, delete)
- * automatically trigger a refresh so the spending totals stay accurate.
+ * amounts via {@link getBudgetWithSpending}. Mutations (create, update, delete,
+ * reorder) automatically propagate through the live query layer so the
+ * spending totals stay accurate across tabs and devices.
  *
  * Usage:
  * ```tsx
@@ -15,7 +16,7 @@
  * References: issue #443
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import {
   createBudget as repoCreateBudget,
@@ -24,6 +25,7 @@ import {
   getAllBudgets,
   getBudgetSpendingBreakdown as repoGetBudgetSpendingBreakdown,
   getBudgetWithSpending,
+  reorderBudgets as repoReorderBudgets,
   updateBudget as repoUpdateBudget,
   type BudgetSpendingBreakdownItem,
   type BudgetWithSpending,
@@ -31,29 +33,15 @@ import {
   type CreateBudgetTemplateInput,
   type UpdateBudgetInput,
 } from '../db/repositories/budgets';
+import type { SqliteDb } from '../db/sqlite-wasm';
 import type { Budget, SyncId } from '../kmp/bridge';
+import { useLiveQuery } from './useLiveQuery';
 
-// ---------------------------------------------------------------------------
-// Public interface
-// ---------------------------------------------------------------------------
-
-/** Shape returned by {@link useBudgets}. */
 export interface UseBudgetsResult {
-  /**
-   * All non-deleted budgets, each enriched with `spentAmount` and
-   * `remainingAmount` calculated from matching transactions.
-   */
   budgets: BudgetWithSpending[];
-  /** `true` while the initial or refresh load is in progress. */
   loading: boolean;
-  /** Human-readable error message from the last failed operation, or `null`. */
   error: string | null;
-  /** Trigger a re-fetch of all budgets and their spending totals. */
   refresh: () => void;
-  /**
-   * Create a new budget and automatically refresh the list.
-   * @returns The created budget, or `null` if creation failed.
-   */
   createBudget: (input: CreateBudgetInput) => Budget | null;
   /**
    * Create a full starter budget from a template and automatically refresh the list.
@@ -65,11 +53,8 @@ export interface UseBudgetsResult {
    * @returns The updated budget, or `null` if the budget was not found or update failed.
    */
   updateBudget: (budgetId: SyncId, updates: UpdateBudgetInput) => Budget | null;
-  /**
-   * Soft-delete a budget and automatically refresh the list.
-   * @returns `true` if deletion succeeded, `false` otherwise.
-   */
   deleteBudget: (budgetId: SyncId) => boolean;
+  reorderBudgets: (fromIndex: number, toIndex: number) => void;
   /** Read the current spending breakdown for a budget's category tree. */
   getBudgetSpendingBreakdown: (budgetId: SyncId) => BudgetSpendingBreakdownItem[];
 }
@@ -83,6 +68,10 @@ export interface ScorecardBudgetSnapshot {
   readonly budgetAmount: number;
   readonly spentAmount: number;
 }
+
+const EMPTY_BUDGET_QUERY_PARAMS: readonly unknown[] = [];
+const EMPTY_BUDGETS: BudgetWithSpending[] = [];
+const BUDGET_LIVE_QUERY_TABLES = ['budget', 'transaction'] as const;
 
 const SCORECARD_DEMO_BUDGETS: readonly Omit<ScorecardBudgetSnapshot, 'householdId'>[] = [
   {
@@ -142,81 +131,81 @@ export function getScorecardBudgetSnapshots(
   }));
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+function loadBudgetsWithSpending(db: SqliteDb): BudgetWithSpending[] {
+  try {
+    const budgets = getAllBudgets(db);
 
-/**
- * Load all budgets and enrich each with its spending totals.
- *
- * Falls back gracefully when `getBudgetWithSpending` cannot find a record
- * (e.g. a race between deletion and load), substituting zero spending so the
- * list remains consistent.
- */
-function loadBudgetsWithSpending(db: ReturnType<typeof useDatabase>): BudgetWithSpending[] {
-  const budgets = getAllBudgets(db);
+    return budgets.map((budget): BudgetWithSpending => {
+      const enriched = getBudgetWithSpending(db, budget.id);
+      if (enriched) {
+        return enriched;
+      }
 
-  return budgets.map((budget): BudgetWithSpending => {
-    const enriched = getBudgetWithSpending(db, budget.id);
-    if (enriched) {
-      return enriched;
+      return {
+        ...budget,
+        spentAmount: { amount: 0 },
+        remainingAmount: { amount: budget.amount.amount },
+      };
+    });
+  } catch (budgetError) {
+    if (budgetError instanceof Error) {
+      throw budgetError;
     }
-    // Fallback: budget exists but spending query returned null (edge case).
-    return {
-      ...budget,
-      spentAmount: { amount: 0 },
-      remainingAmount: { amount: budget.amount.amount },
-    };
-  });
+    throw new Error('Failed to load budgets.', { cause: budgetError });
+  }
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
-/** Load all budgets enriched with spending totals and expose CRUD operations. */
 export function useBudgets(): UseBudgetsResult {
   const db = useDatabase();
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const runBudgetQuery = useCallback((database: SqliteDb) => loadBudgetsWithSpending(database), []);
+  const {
+    data: budgets,
+    loading,
+    error: liveError,
+    refresh: refreshLiveQuery,
+  } = useLiveQuery<BudgetWithSpending[]>(
+    'SELECT id FROM budget WHERE deleted_at IS NULL',
+    EMPTY_BUDGET_QUERY_PARAMS,
+    {
+      initialData: EMPTY_BUDGETS,
+      tables: BUDGET_LIVE_QUERY_TABLES,
+      queryFn: runBudgetQuery,
+    },
+  );
 
-  const [budgets, setBudgets] = useState<BudgetWithSpending[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState(0);
+  const error = mutationError ?? liveError;
 
-  /** Trigger a re-fetch of all budgets. */
   const refresh = useCallback(() => {
-    setLoading(true);
-    setRefreshToken((t) => t + 1);
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-
     try {
-      const result = loadBudgetsWithSpending(db);
-      setBudgets(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load budgets.');
-      setBudgets([]);
-    } finally {
-      setLoading(false);
+      setMutationError(null);
+      runBudgetQuery(db);
+    } catch (budgetError) {
+      setMutationError(
+        budgetError instanceof Error ? budgetError.message : 'Failed to load budgets.',
+      );
     }
-  }, [db, refreshToken]);
+    refreshLiveQuery();
+  }, [db, refreshLiveQuery, runBudgetQuery]);
 
   const createBudget = useCallback(
     (input: CreateBudgetInput): Budget | null => {
       try {
-        const created = repoCreateBudget(db, input);
+        setMutationError(null);
+        const created = repoCreateBudget(db, {
+          ...input,
+          sortOrder: budgets.length,
+        });
         refresh();
         return created;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create budget.');
-        setLoading(false);
+      } catch (budgetError) {
+        setMutationError(
+          budgetError instanceof Error ? budgetError.message : 'Failed to create budget.',
+        );
         return null;
       }
     },
-    [db, refresh],
+    [budgets.length, db, refresh],
   );
 
   const createBudgetTemplate = useCallback(
@@ -226,8 +215,7 @@ export function useBudgets(): UseBudgetsResult {
         refresh();
         return created;
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create starter budget.');
-        setLoading(false);
+        setMutationError(err instanceof Error ? err.message : 'Failed to create starter budget.');
         return null;
       }
     },
@@ -237,14 +225,16 @@ export function useBudgets(): UseBudgetsResult {
   const updateBudget = useCallback(
     (budgetId: SyncId, updates: UpdateBudgetInput): Budget | null => {
       try {
+        setMutationError(null);
         const updated = repoUpdateBudget(db, budgetId, updates);
         if (updated !== null) {
           refresh();
         }
         return updated;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to update budget.');
-        setLoading(false);
+      } catch (budgetError) {
+        setMutationError(
+          budgetError instanceof Error ? budgetError.message : 'Failed to update budget.',
+        );
         return null;
       }
     },
@@ -254,18 +244,55 @@ export function useBudgets(): UseBudgetsResult {
   const deleteBudget = useCallback(
     (budgetId: SyncId): boolean => {
       try {
+        setMutationError(null);
         const deleted = repoDeleteBudget(db, budgetId);
         if (deleted) {
           refresh();
         }
         return deleted;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete budget.');
-        setLoading(false);
+      } catch (budgetError) {
+        setMutationError(
+          budgetError instanceof Error ? budgetError.message : 'Failed to delete budget.',
+        );
         return false;
       }
     },
     [db, refresh],
+  );
+
+  const reorderBudgets = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (
+        fromIndex === toIndex ||
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= budgets.length ||
+        toIndex >= budgets.length
+      ) {
+        return;
+      }
+
+      const reordered = [...budgets];
+      const [movedBudget] = reordered.splice(fromIndex, 1);
+      if (!movedBudget) {
+        return;
+      }
+      reordered.splice(toIndex, 0, movedBudget);
+
+      try {
+        setMutationError(null);
+        repoReorderBudgets(
+          db,
+          reordered.map((budget) => budget.id),
+        );
+        refresh();
+      } catch (budgetError) {
+        setMutationError(
+          budgetError instanceof Error ? budgetError.message : 'Failed to reorder budgets.',
+        );
+      }
+    },
+    [budgets, db, refresh],
   );
 
   const getBudgetSpendingBreakdown = useCallback(
@@ -273,8 +300,7 @@ export function useBudgets(): UseBudgetsResult {
       try {
         return repoGetBudgetSpendingBreakdown(db, budgetId);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load budget breakdown.');
-        setLoading(false);
+        setMutationError(err instanceof Error ? err.message : 'Failed to load budget breakdown.');
         return [];
       }
     },
@@ -291,5 +317,6 @@ export function useBudgets(): UseBudgetsResult {
     updateBudget,
     deleteBudget,
     getBudgetSpendingBreakdown,
+    reorderBudgets,
   };
 }

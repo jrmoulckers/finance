@@ -11,6 +11,7 @@ import PackageDescription
 
 let package = Package(
     name: "Finance",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v17),
         .watchOS(.v10),
@@ -40,9 +41,11 @@ let package = Package(
             path: "Finance",
             exclude: [
                 "Info.plist",
-                "Resources",
                 "FinanceApp.swift",
                 "Data",
+            ],
+            resources: [
+                .process("Resources"),
             ]
         ),
 

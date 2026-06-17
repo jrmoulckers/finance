@@ -53,6 +53,7 @@ function renderWithRoute(transactionId: string = 'transaction-1') {
 
 describe('TransactionDetailPage', () => {
   beforeEach(() => {
+    localStorage.clear();
     refreshTransactionsMock.mockReset();
     updateTransactionMock.mockReset();
     deleteTransactionMock.mockReset();

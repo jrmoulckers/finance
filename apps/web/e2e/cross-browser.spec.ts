@@ -8,8 +8,8 @@
  * and offline indicators. These tests run within the existing Playwright
  * setup using the `authenticatedPage` fixture.
  *
- * The Playwright config defines browser projects (chromium, firefox, webkit)
- * so these tests automatically run across all configured browsers.
+ * The Playwright config defines desktop browser projects (chromium, firefox,
+ * webkit, and Edge); CI runs mobile projects as startup smoke coverage.
  *
  * References: issue #1343
  */

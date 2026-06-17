@@ -13,7 +13,7 @@
 
 import React, { useCallback, useId } from 'react';
 
-import { DateInput } from '../common';
+import { DatePicker } from '../common/DatePicker';
 import type { Account, Category, TransactionStatus, TransactionType } from '../../kmp/bridge';
 import './transaction-filters.css';
 
@@ -252,11 +252,11 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
             <label className="transaction-filters-panel__label" htmlFor={`${idPrefix}-start-date`}>
               From date
             </label>
-            <DateInput
+            <DatePicker
               id={`${idPrefix}-start-date`}
               className="transaction-filters-panel__input"
               value={filters.startDate}
-              onChange={(e) => handleFieldChange('startDate', e.target.value)}
+              onChange={(nextDate) => handleFieldChange('startDate', nextDate)}
             />
           </div>
 
@@ -264,11 +264,11 @@ export const TransactionFilters: React.FC<TransactionFiltersProps> = ({
             <label className="transaction-filters-panel__label" htmlFor={`${idPrefix}-end-date`}>
               To date
             </label>
-            <DateInput
+            <DatePicker
               id={`${idPrefix}-end-date`}
               className="transaction-filters-panel__input"
               value={filters.endDate}
-              onChange={(e) => handleFieldChange('endDate', e.target.value)}
+              onChange={(nextDate) => handleFieldChange('endDate', nextDate)}
             />
           </div>
 

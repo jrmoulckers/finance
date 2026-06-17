@@ -10,6 +10,7 @@
 #   /rest/v1/*       → PostgREST (API)
 #   /auth/v1/*       → GoTrue (authentication)
 #   /functions/v1/*  → Edge Functions (Deno)
+#   /api/feedback    → Feedback Edge Function
 #   /sync/*          → PowerSync sync engine
 #   /health          → Edge Functions health check
 #   /assets/*        → Immutable hashed static assets (1-year cache)
@@ -54,7 +55,7 @@
 		# instantiation (sqlite-wasm) via the dedicated `wasm-unsafe-eval`
 		# directive. `wasm-unsafe-eval` does NOT enable JS `eval()` — it is
 		# the least-privilege grant for WebAssembly instantiation.
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'"
 
 		# Remove server identification
 		-Server
@@ -100,7 +101,7 @@
 	}
 
 	# -------------------------------------------------------------------------
-	# /api/auth/* and /api/account/* — same-origin façade for Edge Functions.
+	# /api/auth/*, /api/account/*, and /api/feedback — same-origin façade for Edge Functions.
 	#
 	# The Vite dev server proxies these to /functions/v1/auth-* and
 	# /functions/v1/account-* (apps/web/vite.config.ts). In production we
@@ -131,6 +132,14 @@
 	@apiAccountRoot path /api/account
 	handle @apiAccountRoot {
 		uri replace /api/account /functions/v1/account-delete
+		reverse_proxy edge-functions:9000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	@apiFeedback path /api/feedback
+	handle @apiFeedback {
+		uri replace /api/feedback /functions/v1/feedback
 		reverse_proxy edge-functions:9000 {
 			header_up X-Real-IP {remote_host}
 		}

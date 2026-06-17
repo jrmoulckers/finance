@@ -39,6 +39,7 @@ import type {
 import type { AnomalyModule, CategoryDrillDown } from '../lib/reports/reporting-beta';
 import { DateInput } from '../components/common';
 import { CHART_COLORS, formatChartCurrency } from '../components/charts/chart-palette';
+import { DatePicker } from '../components/common/DatePicker';
 
 import './ReportBuilderPage.css';
 
@@ -389,11 +390,11 @@ export function ReportBuilderPage() {
               <label htmlFor="report-as-of-date" className="report-filter-group__label">
                 As of Date
               </label>
-              <DateInput
+              <DatePicker
                 id="report-as-of-date"
                 className="report-input"
                 value={config.endDate ?? ''}
-                onChange={(e) => setDateRange(null, e.target.value || null)}
+                onChange={(nextDate) => setDateRange(null, nextDate || null)}
               />
             </div>
           </div>

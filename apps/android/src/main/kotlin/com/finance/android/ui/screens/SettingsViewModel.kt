@@ -18,9 +18,13 @@ import com.finance.core.export.ExportData
 import com.finance.core.export.ExportFormat
 import com.finance.core.export.ExportOutcome
 import com.finance.core.export.JsonExportSerializer
+import com.finance.android.ui.components.IconPreferenceManager
 import com.finance.android.ui.feedback.HapticAvailabilityChecker
 import com.finance.android.ui.theme.ThemePreference
 import com.finance.android.ui.theme.ThemePreferenceManager
+import com.finance.core.icons.IconPack
+import com.finance.core.icons.IconPacks
+import com.finance.core.icons.Platform
 import com.finance.sync.auth.AuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -89,6 +93,7 @@ data class SettingsUiState(
 
     // Appearance
     val themePreference: ThemePreference = ThemePreference.SYSTEM,
+    val iconPack: IconPack = IconPacks.defaultFor(Platform.ANDROID),
 
     // Preferences
     val defaultCurrency: SupportedCurrency = SupportedCurrency.USD,
@@ -177,6 +182,7 @@ private object PrefKeys {
  * @param goalRepository Source for goal data used in data export.
  * @param authManager Shared auth manager for sign-out and session management.
  * @param themePreferenceManager Reactive manager for the user's theme preference.
+ * @param iconPreferenceManager Reactive manager for the user's icon pack preference.
  */
 @Suppress("TooManyFunctions") // ViewModel/screen with related operations
 class SettingsViewModel(
@@ -191,6 +197,7 @@ class SettingsViewModel(
     private val goalRepository: GoalRepository,
     private val authManager: AuthManager,
     private val themePreferenceManager: ThemePreferenceManager,
+    private val iconPreferenceManager: IconPreferenceManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -212,6 +219,7 @@ class SettingsViewModel(
                 userName = prefs.getString(PrefKeys.USER_NAME, "") ?: "",
                 userEmail = prefs.getString(PrefKeys.USER_EMAIL, "") ?: "",
                 themePreference = themePreferenceManager.themePreference.value,
+                iconPack = iconPreferenceManager.iconPack.value,
                 defaultCurrency = prefs.getString(PrefKeys.DEFAULT_CURRENCY, null)
                     ?.let { code -> SupportedCurrency.entries.firstOrNull { it.code == code } }
                     ?: SupportedCurrency.USD,
@@ -247,6 +255,11 @@ class SettingsViewModel(
     fun setThemePreference(preference: ThemePreference) {
         themePreferenceManager.setThemePreference(preference)
         _uiState.update { it.copy(themePreference = preference) }
+    }
+
+    fun setIconPack(pack: IconPack) {
+        iconPreferenceManager.setIconPack(pack)
+        _uiState.update { it.copy(iconPack = iconPreferenceManager.iconPack.value) }
     }
 
     fun setNotificationsEnabled(enabled: Boolean) {

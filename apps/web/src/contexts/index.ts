@@ -10,3 +10,15 @@ export {
 export type { PrivacyModeContextValue, PrivacyModeProviderProps } from './PrivacyModeContext';
 export { HouseholdProvider, useHouseholdContext, useHouseholdPermission } from './HouseholdContext';
 export type { HouseholdContextValue, HouseholdProviderProps } from './HouseholdContext';
+export {
+  AccessibilityProvider,
+  DEFAULT_ACCESSIBILITY_SETTINGS,
+  useAccessibilityContext,
+} from './AccessibilityContext';
+export type {
+  AccessibilityContextValue,
+  AccessibilityFontSize,
+  AccessibilityMode,
+  AccessibilityProviderProps,
+  AccessibilitySettings,
+} from './AccessibilityContext';

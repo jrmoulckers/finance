@@ -11,9 +11,15 @@
  * - Keyboard-accessible interactive elements
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { WeeklyDigest } from '../components/insights';
+import { RecommendationsFeed } from '../components/recommendations';
+import { WellnessOverview } from '../components/wellness';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { AppIcon, type IconName } from '../components/icons';
 import { useInsights } from '../hooks/useInsights';
+import { useRecommendations } from '../hooks/useRecommendations';
+import { useWealthInsights } from '../hooks/useWealthInsights';
 import { formatCurrency } from '../lib/currency';
 import type {
   BudgetRuleOverview,
@@ -29,11 +35,15 @@ import {
   buildPeerComparisonCards,
 } from '../lib/reports/peer-insights-integration';
 import './InsightsPage.css';
-import { AppIcon, type IconName } from '../components/icons';
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
+function isDigestEmpty(
+  netWorth: number,
+  spending: number,
+  income: number,
+  goalCount: number,
+): boolean {
+  return netWorth === 0 && spending === 0 && income === 0 && goalCount === 0;
+}
 
 interface MetricCardProps {
   label: string;
@@ -385,12 +395,22 @@ function isInsightsEmpty(data: InsightsData): boolean {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Page component
-// ---------------------------------------------------------------------------
+function isWellnessEmpty(wellness: ReturnType<typeof useWealthInsights>['wellness']): boolean {
+  return (
+    !wellness ||
+    (wellness.anxietyScore.score === 0 &&
+      wellness.moodCorrelation.entriesTagged === 0 &&
+      wellness.stressIndicators.indicators.length === 0)
+  );
+}
 
 export const InsightsPage: React.FC = () => {
-  const { insights, loading, error, refresh } = useInsights();
+  const {
+    insights,
+    loading: insightsLoading,
+    error: insightsError,
+    refresh: refreshInsights,
+  } = useInsights();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null | undefined>(undefined);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [privateMode, setPrivateMode] = useState(false);
@@ -416,11 +436,34 @@ export const InsightsPage: React.FC = () => {
     () => (peerComparisonReport ? buildPeerComparisonCards(peerComparisonReport) : []),
     [peerComparisonReport],
   );
+  const {
+    digest,
+    wellness,
+    activePeriod,
+    setActivePeriod,
+    loading: wealthLoading,
+    error: wealthError,
+    refresh: refreshWealth,
+  } = useWealthInsights();
+  const {
+    recommendations,
+    summary: recommendationSummary,
+    loading: recommendationsLoading,
+    error: recommendationsError,
+    refresh: refreshRecommendations,
+  } = useRecommendations(6);
+
+  const loading = insightsLoading || wealthLoading;
+  const error = insightsError ?? wealthError;
+  const refresh = useCallback(() => {
+    refreshInsights();
+    refreshWealth();
+  }, [refreshInsights, refreshWealth]);
 
   if (loading) {
     return (
-      <div className="insights-page__loading">
-        <LoadingSpinner label="Loading insights" />
+      <div className="wealth-insights-page__loading">
+        <LoadingSpinner label="Loading wealth insights" />
       </div>
     );
   }
@@ -429,17 +472,39 @@ export const InsightsPage: React.FC = () => {
     return <ErrorBanner message={error} onRetry={refresh} />;
   }
 
-  if (!insights || isInsightsEmpty(insights)) {
+  const insightsEmpty = insights === null || isInsightsEmpty(insights);
+  const digestEmpty =
+    !digest ||
+    (isDigestEmpty(
+      digest.netWorth.current,
+      digest.spending.totalCurrentSpending,
+      digest.savingsRate.currentIncome,
+      digest.goals.length,
+    ) &&
+      isWellnessEmpty(wellness));
+
+  if (insightsEmpty && digestEmpty) {
     return (
       <EmptyState
-        title="No insights yet"
-        description="Start adding transactions to see spending trends, category analysis, and personalized recommendations."
+        title="No wealth insights yet"
+        description="Add accounts, transactions, budgets, or goals to generate your personalized digest."
       />
     );
   }
 
   return (
-    <div className="insights-page">
+    <div className="wealth-insights-page insights-page">
+      {digest ? <WeeklyDigest digest={digest} activePeriod={activePeriod} onPeriodChange={setActivePeriod} /> : null}
+      <RecommendationsFeed
+        recommendations={recommendations}
+        summary={recommendationSummary}
+        loading={recommendationsLoading}
+        error={recommendationsError}
+        onRetry={refreshRecommendations}
+      />
+      {wellness ? <WellnessOverview overview={wellness} /> : null}
+      {insights ? (
+        <>
       <div className="page-section__header">
         <h2 className="insights-page__title">Financial Insights</h2>
       </div>
@@ -698,6 +763,8 @@ export const InsightsPage: React.FC = () => {
           </div>
         </section>
       )}
+        </>
+      ) : null}
     </div>
   );
 };

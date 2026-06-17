@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -13,6 +14,7 @@ import { useFocusTrap } from '../../accessibility/aria';
 import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateCategoryInput } from '../../db/repositories/categories';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
+import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type { Category, SyncId } from '../../kmp/bridge';
 
 import './forms.css';
@@ -82,6 +84,29 @@ export function CategoryForm({
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const initialValues = useMemo(
+    () => ({
+      name: initialData?.name ?? '',
+      icon: initialData?.icon ?? '',
+      color: initialData?.color ?? '',
+      parentId: initialData?.parentId ?? '',
+      isIncome: initialData?.isIncome ?? false,
+      sortOrder: String(initialData?.sortOrder ?? nextSortOrder(categories)),
+    }),
+    [categories, initialData],
+  );
+  const isDirty =
+    isOpen &&
+    (name !== initialValues.name ||
+      icon !== initialValues.icon ||
+      color !== initialValues.color ||
+      parentId !== initialValues.parentId ||
+      isIncome !== initialValues.isIncome ||
+      sortOrder !== initialValues.sortOrder);
+  const { confirmNavigation } = useNavigationGuard({
+    when: isDirty,
+    message: 'Discard the category changes you have not saved yet?',
+  });
 
   useFocusTrap(panelRef, { active: isOpen, restoreFocus: true });
 
@@ -99,20 +124,24 @@ export function CategoryForm({
       return;
     }
 
-    setName(initialData?.name ?? '');
-    setIcon(initialData?.icon ?? '');
-    setColor(initialData?.color ?? '');
-    setParentId(initialData?.parentId ?? '');
-    setIsIncome(initialData?.isIncome ?? false);
-    setSortOrder(String(initialData?.sortOrder ?? nextSortOrder(categories)));
+    setName(initialValues.name);
+    setIcon(initialValues.icon);
+    setColor(initialValues.color);
+    setParentId(initialValues.parentId);
+    setIsIncome(initialValues.isIncome);
+    setSortOrder(initialValues.sortOrder);
     setErrors({});
     setSubmitting(false);
     setSubmitError(null);
-  }, [categories, initialData, isOpen]);
+  }, [initialValues, isOpen]);
 
   const handleCancel = useCallback(() => {
+    if (!confirmNavigation()) {
+      return;
+    }
+
     onCancel();
-  }, [onCancel]);
+  }, [confirmNavigation, onCancel]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {

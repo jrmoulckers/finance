@@ -34,9 +34,13 @@ import {
 
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateBudgetInput, CreateBudgetTemplateInput } from '../../db/repositories/budgets';
+import { useAmountInput } from '../../hooks/useAmountInput';
+import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type { Budget, BudgetPeriod, Category } from '../../kmp/bridge';
 import type { BudgetStarterTemplate } from '../../lib/budgeting/starter-budget-templates';
 import { budgetSchema } from '../../lib/validation';
+import { DatePicker } from '../common/DatePicker';
+import { AmountInput } from './AmountInput';
 
 import './forms.css';
 
@@ -103,12 +107,6 @@ function firstOfCurrentMonthISO(): string {
   return `${year}-${month}-01`;
 }
 
-/** Convert a stored cents amount into a decimal string for the amount input. */
-function formatBudgetAmountForInput(budget: Budget): string {
-  const divisor = Math.pow(10, budget.currency.decimalPlaces);
-  return (budget.amount.amount / divisor).toFixed(budget.currency.decimalPlaces);
-}
-
 function formatTemplateAmount(amountCents: number): string {
   return budgetTemplateCurrencyFormatter.format(amountCents / 100);
 }
@@ -131,11 +129,11 @@ interface FormErrors {
   templateId?: string;
 }
 
-function validate(categoryId: string, amountStr: string, period: BudgetPeriod): FormErrors {
+function validate(categoryId: string, amountCents: number, period: BudgetPeriod): FormErrors {
   const errors: FormErrors = {};
   const result = budgetSchema.safeParse({
     categoryId,
-    amount: parseFloat(amountStr),
+    amount: amountCents / 100,
     period,
   });
 
@@ -185,7 +183,12 @@ export function BudgetForm({
   const [creationMode, setCreationMode] = useState<BudgetCreationMode>('single');
   const [templateId, setTemplateId] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [amount, setAmount] = useState('');
+  const decimalPlaces = initialData?.currency.decimalPlaces ?? 2;
+  const amountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces,
+    allowNegative: false,
+  });
   const [period, setPeriod] = useState<BudgetPeriod>('MONTHLY');
   const [startDate, setStartDate] = useState(firstOfCurrentMonthISO);
   const [isRollover, setIsRollover] = useState(false);
@@ -193,11 +196,37 @@ export function BudgetForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const isEditMode = initialData !== undefined;
+  const defaultTemplateId = useMemo(() => getDefaultTemplateId(templates), [templates]);
   const canUseTemplates = !isEditMode && Boolean(onSubmitTemplate) && templates.length > 0;
   const selectedTemplate =
-    creationMode === 'template'
+    canUseTemplates && creationMode === 'template'
       ? (templates.find((template) => template.id === templateId && template.isAvailable) ?? null)
       : null;
+  const initialValues = useMemo(
+    () => ({
+      creationMode: 'single' as BudgetCreationMode,
+      templateId: defaultTemplateId,
+      categoryId: initialData?.categoryId ?? defaultCategoryId ?? '',
+      amountCents: initialData?.amount.amount ?? 0,
+      period: initialData?.period ?? 'MONTHLY',
+      startDate: initialData?.startDate ?? firstOfCurrentMonthISO(),
+      isRollover: initialData?.isRollover ?? false,
+    }),
+    [defaultCategoryId, defaultTemplateId, initialData],
+  );
+  const isDirty =
+    isOpen &&
+    (creationMode !== initialValues.creationMode ||
+      (canUseTemplates && templateId !== initialValues.templateId) ||
+      categoryId !== initialValues.categoryId ||
+      amountInput.cents !== initialValues.amountCents ||
+      period !== initialValues.period ||
+      startDate !== initialValues.startDate ||
+      isRollover !== initialValues.isRollover);
+  const { confirmNavigation } = useNavigationGuard({
+    when: isDirty,
+    message: 'Discard the budget changes you have not saved yet?',
+  });
 
   // -- focus trap -----------------------------------------------------------
   useFocusTrap(panelRef, { active: isOpen, restoreFocus: true });
@@ -215,24 +244,28 @@ export function BudgetForm({
   // -- reset on open -------------------------------------------------------
   useEffect(() => {
     if (isOpen) {
-      setCreationMode('single');
-      setTemplateId(getDefaultTemplateId(templates));
-      setCategoryId(initialData?.categoryId ?? defaultCategoryId ?? '');
-      setAmount(initialData ? formatBudgetAmountForInput(initialData) : '');
-      setPeriod(initialData?.period ?? 'MONTHLY');
-      setStartDate(initialData?.startDate ?? firstOfCurrentMonthISO());
-      setIsRollover(initialData?.isRollover ?? false);
+      setCreationMode(initialValues.creationMode);
+      setTemplateId(initialValues.templateId);
+      setCategoryId(initialValues.categoryId);
+      amountInput.setCents(initialValues.amountCents);
+      setPeriod(initialValues.period);
+      setStartDate(initialValues.startDate);
+      setIsRollover(initialValues.isRollover);
       setErrors({});
       setSubmitting(false);
       setSubmitError(null);
     }
-  }, [defaultCategoryId, initialData, isOpen, templates]);
+  }, [amountInput.setCents, initialValues, isOpen]);
 
   // -- handlers ------------------------------------------------------------
 
   const handleCancel = useCallback(() => {
+    if (!confirmNavigation()) {
+      return;
+    }
+
     onCancel();
-  }, [onCancel]);
+  }, [confirmNavigation, onCancel]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -269,7 +302,7 @@ export function BudgetForm({
             startDate,
           });
           setCreationMode('single');
-          setTemplateId(getDefaultTemplateId(templates));
+          setTemplateId(defaultTemplateId);
           setStartDate(firstOfCurrentMonthISO());
         } catch (err) {
           setSubmitError(err instanceof Error ? err.message : 'Failed to create starter budget.');
@@ -280,7 +313,7 @@ export function BudgetForm({
         return;
       }
 
-      const fieldErrors = validate(categoryId, amount, period);
+      const fieldErrors = validate(categoryId, amountInput.cents, period);
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
@@ -293,13 +326,11 @@ export function BudgetForm({
         return;
       }
 
-      const amountCents = Math.round(parseFloat(amount) * 100);
-
       const input: CreateBudgetInput = {
         householdId: selectedCategory.householdId,
         categoryId,
         name: selectedCategory.name,
-        amount: { amount: amountCents },
+        amount: { amount: amountInput.cents },
         period,
         startDate,
         endDate: null,
@@ -312,7 +343,7 @@ export function BudgetForm({
       try {
         await onSubmit(input);
         setCategoryId('');
-        setAmount('');
+        amountInput.reset(0);
         setPeriod('MONTHLY');
         setStartDate(firstOfCurrentMonthISO());
         setIsRollover(false);
@@ -330,11 +361,13 @@ export function BudgetForm({
       }
     },
     [
-      amount,
+      amountInput.cents,
+      amountInput.reset,
       canUseTemplates,
       categories,
       categoryId,
       creationMode,
+      defaultTemplateId,
       isEditMode,
       isRollover,
       onSubmit,
@@ -342,21 +375,15 @@ export function BudgetForm({
       period,
       startDate,
       templateId,
-      templates,
     ],
   );
 
   const overAssignmentWarning = useMemo(() => {
-    if (expectedIncomeCents === undefined || amount.trim() === '') {
+    if (expectedIncomeCents === undefined || amountInput.cents <= 0) {
       return null;
     }
 
-    const parsedAmount = Number.parseFloat(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      return null;
-    }
-
-    const proposedTotalCents = assignedBeforeEditCents + Math.round(parsedAmount * 100);
+    const proposedTotalCents = assignedBeforeEditCents + amountInput.cents;
     if (proposedTotalCents <= expectedIncomeCents) {
       return null;
     }
@@ -365,7 +392,7 @@ export function BudgetForm({
       overByCents: proposedTotalCents - expectedIncomeCents,
       proposedTotalCents,
     };
-  }, [amount, assignedBeforeEditCents, expectedIncomeCents]);
+  }, [amountInput.cents, assignedBeforeEditCents, expectedIncomeCents]);
 
   // -- render --------------------------------------------------------------
 
@@ -546,12 +573,11 @@ export function BudgetForm({
                   <label htmlFor="budget-start-date" className="form-group__label">
                     Start Date
                   </label>
-                  <input
+                  <DatePicker
                     id="budget-start-date"
                     className="form-input"
-                    type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={setStartDate}
                   />
                 </div>
               </>
@@ -595,16 +621,11 @@ export function BudgetForm({
                   >
                     Amount
                   </label>
-                  <input
+                  <AmountInput
                     id="budget-amount"
+                    amountInput={amountInput}
                     className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    inputMode="decimal"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder="$0.00"
                     aria-invalid={hasAmountError}
                     aria-describedby={hasAmountError ? 'budget-amount-error' : undefined}
                     aria-required="true"
@@ -667,12 +688,11 @@ export function BudgetForm({
                   <label htmlFor="budget-start-date" className="form-group__label">
                     Start Date
                   </label>
-                  <input
+                  <DatePicker
                     id="budget-start-date"
                     className="form-input"
-                    type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={setStartDate}
                   />
                 </div>
               </>

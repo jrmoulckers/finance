@@ -14,7 +14,7 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -22,13 +22,16 @@ import {
   useBills,
   useBudgets,
   useCategories,
+  useCoachAlerts,
   useDashboardData,
   useGoals,
   usePredictiveBalance,
   useRetirementPlanner,
   useRmdTracking,
   useSpendingPace,
+  useSyncStatus,
   useTransactions,
+  useWidgetLayout,
 } from '../hooks';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SpendingBarChart, type SpendingCategory } from '../components/charts/SpendingBarChart';
@@ -38,6 +41,7 @@ import {
   type TrendSeries,
 } from '../components/charts/TrendLineChart';
 import { CategoryPieChart, type CategorySlice } from '../components/charts/CategoryPieChart';
+import { MaskingMode } from '../lib/ui/privacy';
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -75,13 +79,20 @@ vi.mock('../hooks', () => ({
   useRetirementPlanner: vi.fn(),
   useRmdTracking: vi.fn(),
   useSpendingPace: vi.fn(),
+  useSyncStatus: vi.fn(),
+  useCoachAlerts: vi.fn(),
   useTransactions: vi.fn(),
+  useWidgetLayout: vi.fn(),
 }));
 
 vi.mock('../components/charts', () => ({
   TrendLineChart: () => null,
   SpendingBarChart: () => null,
   CategoryPieChart: () => null,
+}));
+
+vi.mock('../components/ai/QueryEngine', () => ({
+  QueryEngine: () => null,
 }));
 
 /** Mock Recharts for chart component tests (canvas/SVG not available in jsdom). */
@@ -118,7 +129,10 @@ const mockedUseSpendingPace = vi.mocked(useSpendingPace);
 const mockedUseCategories = vi.mocked(useCategories);
 const mockedUseRetirementPlanner = vi.mocked(useRetirementPlanner);
 const mockedUseRmdTracking = vi.mocked(useRmdTracking);
+const mockedUseCoachAlerts = vi.mocked(useCoachAlerts);
 const mockedUseTransactions = vi.mocked(useTransactions);
+const mockedUseSyncStatus = vi.mocked(useSyncStatus);
+const mockedUseWidgetLayout = vi.mocked(useWidgetLayout);
 
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
@@ -133,6 +147,48 @@ const syncMetadata = {
 // ---------------------------------------------------------------------------
 
 function setupDefaultMocks() {
+  const dashboardWidgets = [
+    'net-worth',
+    'monthly-spending',
+    'budget-health',
+    'income-vs-expense',
+    'spending-trend',
+    'spending-by-category',
+    'category-pie',
+    'recent-transactions',
+    'account-summary',
+    'goals-progress',
+  ].map((id, order) => ({
+    id,
+    visible: true,
+    order,
+    size: id === 'recent-transactions' || id === 'spending-trend' ? 'large' : 'medium',
+    maskingMode: MaskingMode.Bucketed,
+  })) as ReturnType<typeof useWidgetLayout>['widgets'];
+
+  mockedUseWidgetLayout.mockReturnValue({
+    widgets: dashboardWidgets,
+    visibleWidgets: dashboardWidgets,
+    isCustomizing: false,
+    startCustomizing: vi.fn(),
+    stopCustomizing: vi.fn(),
+    toggleWidget: vi.fn(),
+    moveWidget: vi.fn(),
+    resizeWidget: vi.fn(),
+    resetLayout: vi.fn(),
+  });
+
+  mockedUseSyncStatus.mockReturnValue({
+    isOnline: true,
+    isOffline: false,
+    pendingMutations: 0,
+    lastSyncTime: null,
+    isSyncing: false,
+    syncNow: vi.fn(),
+    authError: false,
+    conflictCount: 0,
+  });
+
   mockedUseDashboardData.mockReturnValue({
     data: {
       netWorth: 2475000,
@@ -235,6 +291,75 @@ function setupDefaultMocks() {
     createAccount: vi.fn(),
     updateAccount: vi.fn(),
     deleteAccount: vi.fn(),
+  });
+
+  mockedUseCoachAlerts.mockReturnValue({
+    analysis: {
+      velocities: [],
+      cashFlow: {
+        currentBalanceCents: 2475000,
+        projectedRecurringIncomeCents: 450000,
+        projectedRecurringExpenseCents: 90000,
+        projectedDiscretionaryExpenseCents: 125000,
+        projectedEndBalanceCents: 2710000,
+        daysRemaining: 10,
+        willOverdraft: false,
+        balanceSnapshots: [],
+        recurringItems: [],
+      },
+      anomalies: [],
+      alerts: [
+        {
+          id: 'alert:budget:food',
+          severity: 'warning',
+          type: 'budget-velocity',
+          title: 'Food is ahead of budget pace',
+          message: 'Food is tracking above the monthly plan.',
+          actionLabel: 'Review budgets',
+          actionRoute: '/budgets',
+          sortValue: 100,
+        },
+      ],
+      suggestions: [
+        {
+          id: 'suggestion:food',
+          severity: 'warning',
+          title: 'Slow Food spending pace',
+          description: 'Trim daily Food spending for the rest of the month.',
+          actionLabel: 'Review budgets',
+          actionRoute: '/budgets',
+        },
+      ],
+    },
+    alerts: [
+      {
+        id: 'alert:budget:food',
+        severity: 'warning',
+        type: 'budget-velocity',
+        title: 'Food is ahead of budget pace',
+        message: 'Food is tracking above the monthly plan.',
+        actionLabel: 'Review budgets',
+        actionRoute: '/budgets',
+        sortValue: 100,
+      },
+    ],
+    topAlerts: [
+      {
+        id: 'alert:budget:food',
+        severity: 'warning',
+        type: 'budget-velocity',
+        title: 'Food is ahead of budget pace',
+        message: 'Food is tracking above the monthly plan.',
+        actionLabel: 'Review budgets',
+        actionRoute: '/budgets',
+        sortValue: 100,
+      },
+    ],
+    loading: false,
+    error: null,
+    dismissAlert: vi.fn(),
+    clearDismissedAlerts: vi.fn(),
+    dismissedAlertIds: new Set(),
   });
 
   mockedUseCategories.mockReturnValue({
@@ -402,6 +527,7 @@ describe('DashboardPage rendering with data (#1334)', () => {
     expect(screen.getByText('Net Worth')).toBeInTheDocument();
     expect(screen.getByText('Spent This Month')).toBeInTheDocument();
     expect(screen.getByText('Budget Health')).toBeInTheDocument();
+    expect(screen.getByText('What needs attention now')).toBeInTheDocument();
   });
 
   it('displays budget health percentage', () => {
@@ -448,8 +574,10 @@ describe('DashboardPage rendering with data (#1334)', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('list')).toBeInTheDocument();
-    const items = screen.getAllByRole('listitem');
+    const recentTransactionsSection = screen.getByRole('region', { name: /recent transactions/i });
+    const list = within(recentTransactionsSection).getByRole('list');
+    expect(list).toBeInTheDocument();
+    const items = within(list).getAllByRole('listitem');
     expect(items.length).toBeGreaterThanOrEqual(2);
   });
 });

@@ -45,7 +45,7 @@ struct GoalsView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button { viewModel.showingCreateGoal = true } label: {
-                        Image(systemName: "plus")
+                        IconView(.add, size: 20)
                     }
                     .accessibilityIdentifier("create_goal_button")
                     .accessibilityLabel(String(localized: "Create goal"))
@@ -145,7 +145,7 @@ struct GoalsView: View {
                 }
             } else {
                 HStack {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                    IconView(.success, size: 16).foregroundStyle(.green)
                     Text(String(localized: "Goal completed!")).font(.caption).fontWeight(.medium).foregroundStyle(.green)
                 }
             }

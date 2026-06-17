@@ -31,8 +31,11 @@ import {
 
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
+import { useAmountInput } from '../../hooks/useAmountInput';
 import type { Account, Category, TransactionType } from '../../kmp/bridge';
 import type { CategorySuggestion } from '../../lib/categorization';
+import { AutoCategoryBadge } from '../categorization';
+import { AmountInput } from './AmountInput';
 
 import './forms.css';
 import './quick-entry.css';
@@ -64,6 +67,15 @@ export interface QuickEntryProps {
   onClose: () => void;
   /** Optional auto-categorization function. */
   suggestCategory?: (description: string, amountCents?: number) => CategorySuggestion | null;
+  /** Optional predicate for whether a suggestion should be applied automatically. */
+  shouldAutoApplySuggestion?: (suggestion: CategorySuggestion | null) => boolean;
+  /** Optional callback to learn from accepted categories. */
+  learnFromFeedback?: (entry: {
+    description: string;
+    amountCents?: number;
+    categoryId: string;
+    categoryName?: string | null;
+  }) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +123,18 @@ function setLastType(type: TransactionType): void {
   }
 }
 
+function normalizeTransactionAmount(amountCents: number, type: TransactionType): number {
+  if (type === 'EXPENSE') {
+    return amountCents > 0 ? -amountCents : amountCents;
+  }
+
+  if (type === 'INCOME') {
+    return Math.abs(amountCents);
+  }
+
+  return amountCents;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -122,13 +146,21 @@ export const QuickEntry: FC<QuickEntryProps> = ({
   onSubmit,
   onClose,
   suggestCategory,
+  shouldAutoApplySuggestion,
+  learnFromFeedback,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
 
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
   const [transactionType, setTransactionType] = useState<TransactionType>(getLastType);
+  const amountInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: 2,
+    mode: 'incremental',
+    maxCents: 99_999_999,
+    allowNegative: transactionType !== 'INCOME',
+  });
+  const [description, setDescription] = useState('');
   const [accountId, setAccountId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successCount, setSuccessCount] = useState(0);
@@ -154,15 +186,29 @@ export const QuickEntry: FC<QuickEntryProps> = ({
     }
   }, [isOpen, accounts]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    if (transactionType === 'EXPENSE') {
+      amountInput.setSign('negative');
+    }
+
+    if (transactionType === 'INCOME') {
+      amountInput.setSign('positive');
+    }
+  }, [amountInput.setSign, isOpen, transactionType]);
+
   // Auto-suggest category
   useEffect(() => {
     if (!isOpen || !description.trim() || !suggestCategory) {
       setSuggestion(null);
       return;
     }
-    const amountCents = parseFloat(amount) ? Math.round(parseFloat(amount) * 100) : undefined;
+    const amountCents = Math.abs(amountInput.cents) > 0 ? Math.abs(amountInput.cents) : undefined;
     setSuggestion(suggestCategory(description, amountCents));
-  }, [description, amount, isOpen, suggestCategory]);
+  }, [amountInput.cents, description, isOpen, suggestCategory]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -175,7 +221,8 @@ export const QuickEntry: FC<QuickEntryProps> = ({
   );
 
   const resetForm = useCallback(() => {
-    setAmount('');
+    amountInput.reset(0);
+    amountInput.setSign(transactionType === 'EXPENSE' ? 'negative' : 'positive');
     setDescription('');
     setError(null);
     setSuggestion(null);
@@ -183,14 +230,14 @@ export const QuickEntry: FC<QuickEntryProps> = ({
     requestAnimationFrame(() => {
       amountInputRef.current?.focus();
     });
-  }, []);
+  }, [amountInput.reset, amountInput.setSign, transactionType]);
 
   const handleSubmit = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
 
-      const parsedAmount = parseFloat(amount);
-      if (!parsedAmount || parsedAmount <= 0) {
+      const normalizedAmountCents = normalizeTransactionAmount(amountInput.cents, transactionType);
+      if (normalizedAmountCents === 0) {
         setError('Enter a valid amount.');
         return;
       }
@@ -207,8 +254,20 @@ export const QuickEntry: FC<QuickEntryProps> = ({
         return;
       }
 
-      const amountCents = Math.round(parsedAmount * 100);
-      const categoryId = suggestion?.categoryId ?? null;
+      const amountCents = normalizedAmountCents;
+      const categoryId =
+        suggestion && (shouldAutoApplySuggestion ? shouldAutoApplySuggestion(suggestion) : true)
+          ? suggestion.categoryId
+          : null;
+
+      if (categoryId && learnFromFeedback) {
+        learnFromFeedback({
+          description: trimmedDescription,
+          amountCents: Math.abs(amountCents),
+          categoryId,
+          categoryName: suggestion?.categoryName ?? null,
+        });
+      }
 
       const input: CreateTransactionInput = {
         householdId: selectedAccount.householdId,
@@ -229,7 +288,18 @@ export const QuickEntry: FC<QuickEntryProps> = ({
       setSuccessCount((c) => c + 1);
       resetForm();
     },
-    [amount, description, accountId, accounts, transactionType, suggestion, onSubmit, resetForm],
+    [
+      accountId,
+      accounts,
+      amountInput.cents,
+      description,
+      transactionType,
+      suggestion,
+      shouldAutoApplySuggestion,
+      learnFromFeedback,
+      onSubmit,
+      resetForm,
+    ],
   );
 
   if (!isOpen) return null;
@@ -296,26 +366,16 @@ export const QuickEntry: FC<QuickEntryProps> = ({
 
           {/* Amount */}
           <div className="quick-entry__amount-row">
-            <span className="quick-entry__currency-symbol" aria-hidden="true">
-              $
-            </span>
-            <input
+            <AmountInput
               ref={amountInputRef}
-              className={`quick-entry__amount-input${hasError ? ' form-input--error' : ''}`}
-              type="number"
-              step="0.01"
-              min="0.01"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setError(null);
-              }}
+              amountInput={amountInput}
+              className={`form-input quick-entry__amount-input${hasError ? ' form-input--error' : ''}`}
+              placeholder="$0.00"
               aria-label="Amount"
               aria-invalid={hasError}
               aria-required="true"
               autoComplete="off"
+              toggleLabel="Toggle quick entry amount sign"
             />
           </div>
 
@@ -337,9 +397,7 @@ export const QuickEntry: FC<QuickEntryProps> = ({
           {/* Category suggestion badge */}
           {suggestion && (
             <div className="quick-entry__suggestion" role="status">
-              <span className="quick-entry__suggestion-text">
-                {suggestion.categoryName} ({Math.round(suggestion.confidence * 100)}%)
-              </span>
+              <AutoCategoryBadge suggestion={suggestion} />
             </div>
           )}
 

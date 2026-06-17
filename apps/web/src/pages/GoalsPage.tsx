@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ConfirmDialog,
@@ -8,18 +8,43 @@ import {
   EmptyState,
   ErrorBanner,
   LoadingSpinner,
+  SortableList,
   useToast,
 } from '../components/common';
 import { GoalContributionDialog } from '../components/goals/GoalContributionDialog';
 import { GoalForm } from '../components/forms';
+import { AppIcon, type IconName } from '../components/icons';
+import {
+  ContributionPlanner,
+  GoalProjection,
+  NudgeToast,
+  SuggestedGoals,
+} from '../components/savings';
 import { OfflineBanner } from '../components/OfflineBanner';
 import type { CreateGoalInput, GoalContributionInput } from '../db/repositories/goals';
-import { useAccounts, useGoals, useTransactions } from '../hooks';
+import { useAccounts, useCategories, useGoals, useTransactions } from '../hooks';
 import { useTaxReserve } from '../hooks/useTaxReserve';
 import type { Goal } from '../kmp/bridge';
 import { getGoalStatusIndicator } from '../lib/a11y';
-import { AppIcon, type IconName } from '../components/icons';
+import {
+  buildSavingsAnalysisSnapshot,
+  generateSavingsNudges,
+  projectSuggestedGoal,
+  suggestSavingsGoals,
+  type ContributionFrequency,
+  type SuggestedGoalType,
+  type SuggestedSavingsGoal,
+  type SavingsNudge,
+} from '../lib/savings';
 import { getCurrentMonthBounds, getNextQuarterlyTaxDueDate } from '../lib/tax-reserve';
+
+const PLANNER_STORAGE_KEY = 'finance:savings-planner-overrides';
+const DISMISSED_NUDGES_STORAGE_KEY = 'finance:savings-dismissed-nudges';
+
+type PlannerSelection = {
+  monthlyContributionCents: number;
+  frequency: ContributionFrequency;
+};
 
 function getGoalIcon(iconName: string | null | undefined): IconName {
   switch (iconName) {
@@ -33,6 +58,78 @@ function getGoalIcon(iconName: string | null | undefined): IconName {
       return 'laptop';
     default:
       return 'target';
+  }
+}
+
+function getSuggestedGoalIcon(type: SuggestedGoalType): string {
+  switch (type) {
+    case 'emergency-fund':
+      return 'shield';
+    case 'discretionary-savings':
+      return 'wallet';
+    case 'big-purchase':
+      return 'target';
+    case 'retirement':
+      return 'trending-up';
+    case 'debt-payoff':
+      return 'bank';
+    default:
+      return 'target';
+  }
+}
+
+function getSuggestedGoalColor(type: SuggestedGoalType): string {
+  switch (type) {
+    case 'emergency-fund':
+      return '#2563EB';
+    case 'discretionary-savings':
+      return '#7C3AED';
+    case 'big-purchase':
+      return '#F59E0B';
+    case 'retirement':
+      return '#059669';
+    case 'debt-payoff':
+      return '#DC2626';
+    default:
+      return '#2563EB';
+  }
+}
+
+function loadPlannerSelections(): Record<string, PlannerSelection> {
+  try {
+    const raw = localStorage.getItem(PLANNER_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    return JSON.parse(raw) as Record<string, PlannerSelection>;
+  } catch {
+    return {};
+  }
+}
+
+function savePlannerSelections(value: Record<string, PlannerSelection>): void {
+  try {
+    localStorage.setItem(PLANNER_STORAGE_KEY, JSON.stringify(value));
+  } catch {
+    // Ignore storage failures in local-only mode.
+  }
+}
+
+function loadDismissedNudges(): string[] {
+  try {
+    const raw = localStorage.getItem(DISMISSED_NUDGES_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDismissedNudges(value: readonly string[]): void {
+  try {
+    localStorage.setItem(DISMISSED_NUDGES_STORAGE_KEY, JSON.stringify(value));
+  } catch {
+    // Ignore storage failures in local-only mode.
   }
 }
 
@@ -70,14 +167,24 @@ export const GoalsPage: React.FC = () => {
   const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null);
   const [contributingGoal, setContributingGoal] = useState<Goal | null>(null);
   const [isDeletingGoal, setIsDeletingGoal] = useState(false);
-  const { goals, loading, error, refresh, createGoal, updateGoal, contributeToGoal, deleteGoal } =
-    useGoals();
+  const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
+  const [plannerSelections, setPlannerSelections] =
+    useState<Record<string, PlannerSelection>>(loadPlannerSelections);
+  const [dismissedNudges, setDismissedNudges] = useState<string[]>(loadDismissedNudges);
   const {
-    accounts,
-    loading: accountsLoading,
-    error: accountsError,
-    refresh: refreshAccounts,
-  } = useAccounts();
+    goals,
+    loading,
+    error,
+    refresh,
+    createGoal,
+    updateGoal,
+    contributeToGoal,
+    deleteGoal,
+    reorderGoals,
+  } = useGoals();
+  const accountsState = useAccounts();
+  const categoriesState = useCategories();
+  const transactionsState = useTransactions();
   const taxReserveAsOf = useMemo(() => new Date(), []);
   const currentMonthRange = useMemo(() => getCurrentMonthBounds(taxReserveAsOf), [taxReserveAsOf]);
   const nextTaxDueDate = useMemo(
@@ -107,7 +214,7 @@ export const GoalsPage: React.FC = () => {
   const taxReserve = useTaxReserve({
     currentMonthTransactions,
     quarterTransactions: taxQuarterTransactions,
-    accounts,
+    accounts: accountsState.accounts,
     asOf: taxReserveAsOf,
   });
   const taxReserveCurrency =
@@ -115,12 +222,98 @@ export const GoalsPage: React.FC = () => {
   const taxReserveRatePercent = Math.round(taxReserve.settings.rate * 100);
   const taxReserveBucketDollars = (taxReserve.settings.bucketBalanceCents / 100).toFixed(2);
   const isTaxReserveLoading =
-    accountsLoading || currentMonthTransactionsLoading || taxQuarterTransactionsLoading;
+    accountsState.loading || currentMonthTransactionsLoading || taxQuarterTransactionsLoading;
   const taxReserveError =
-    accountsError ?? currentMonthTransactionsError ?? taxQuarterTransactionsError;
+    accountsState.error ?? currentMonthTransactionsError ?? taxQuarterTransactionsError;
   const toast = useOptionalToast();
   const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount.amount, 0);
   const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount.amount, 0);
+
+  const aiLoading = accountsState.loading || categoriesState.loading || transactionsState.loading;
+  const aiError = accountsState.error || categoriesState.error || transactionsState.error;
+
+  const analysisSnapshot = useMemo(
+    () =>
+      buildSavingsAnalysisSnapshot(
+        accountsState.accounts,
+        transactionsState.transactions,
+        categoriesState.categories,
+        goals,
+      ),
+    [accountsState.accounts, categoriesState.categories, goals, transactionsState.transactions],
+  );
+
+  const suggestedGoals = useMemo(() => suggestSavingsGoals(analysisSnapshot), [analysisSnapshot]);
+
+  const activeSuggestion = useMemo(
+    () =>
+      suggestedGoals.find((suggestion) => suggestion.id === selectedSuggestionId) ??
+      suggestedGoals[0] ??
+      null,
+    [selectedSuggestionId, suggestedGoals],
+  );
+
+  const activePlannerSelection = useMemo(() => {
+    if (!activeSuggestion) {
+      return null;
+    }
+
+    return (
+      plannerSelections[activeSuggestion.id] ?? {
+        monthlyContributionCents:
+          activeSuggestion.contributionPlan.recommendedMonthlyContributionCents,
+        frequency: activeSuggestion.contributionPlan.recommendedFrequency,
+      }
+    );
+  }, [activeSuggestion, plannerSelections]);
+
+  const activeProjection = useMemo(() => {
+    if (!activeSuggestion || !activePlannerSelection) {
+      return null;
+    }
+
+    return projectSuggestedGoal(activeSuggestion, activePlannerSelection.monthlyContributionCents);
+  }, [activePlannerSelection, activeSuggestion]);
+
+  const nudges = useMemo(
+    () =>
+      generateSavingsNudges({
+        currencyCode: analysisSnapshot.currencyCode,
+        monthlySurplusCents: analysisSnapshot.monthlySurplusCents,
+        currentWeeklySavingsCents: analysisSnapshot.currentWeeklySavingsCents,
+        previousWeeklySavingsCents: analysisSnapshot.previousWeeklySavingsCents,
+        topDiscretionaryCategory: analysisSnapshot.discretionaryCategories[0] ?? null,
+        suggestions: suggestedGoals,
+      }).filter((nudge) => !dismissedNudges.includes(nudge.id)),
+    [analysisSnapshot, dismissedNudges, suggestedGoals],
+  );
+
+  const activeNudge = nudges[0] ?? null;
+  const householdId =
+    goals[0]?.householdId ??
+    accountsState.accounts[0]?.householdId ??
+    transactionsState.transactions[0]?.householdId ??
+    categoriesState.categories[0]?.householdId ??
+    null;
+
+  useEffect(() => {
+    savePlannerSelections(plannerSelections);
+  }, [plannerSelections]);
+
+  useEffect(() => {
+    saveDismissedNudges(dismissedNudges);
+  }, [dismissedNudges]);
+
+  useEffect(() => {
+    if (!activeSuggestion) {
+      setSelectedSuggestionId(null);
+      return;
+    }
+
+    if (!suggestedGoals.some((suggestion) => suggestion.id === selectedSuggestionId)) {
+      setSelectedSuggestionId(activeSuggestion.id);
+    }
+  }, [activeSuggestion, selectedSuggestionId, suggestedGoals]);
 
   const handleOpenForm = useCallback(() => {
     setEditingGoal(null);
@@ -154,10 +347,10 @@ export const GoalsPage: React.FC = () => {
   }, []);
 
   const handleTaxReserveRetry = useCallback(() => {
-    refreshAccounts();
+    accountsState.refresh();
     refreshCurrentMonthTransactions();
     refreshTaxQuarterTransactions();
-  }, [refreshAccounts, refreshCurrentMonthTransactions, refreshTaxQuarterTransactions]);
+  }, [accountsState, refreshCurrentMonthTransactions, refreshTaxQuarterTransactions]);
 
   const handleTaxRateChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,6 +369,99 @@ export const GoalsPage: React.FC = () => {
   const handleRecordRecommendedPayment = useCallback(() => {
     taxReserve.addToBucket(taxReserve.summary.recommendedPaymentCents);
   }, [taxReserve]);
+
+  const handleSelectSuggestion = useCallback((suggestionId: string) => {
+    setSelectedSuggestionId(suggestionId);
+  }, []);
+
+  const handleMonthlyContributionChange = useCallback(
+    (monthlyContributionCents: number) => {
+      if (!activeSuggestion) {
+        return;
+      }
+
+      setPlannerSelections((prev) => ({
+        ...prev,
+        [activeSuggestion.id]: {
+          monthlyContributionCents,
+          frequency:
+            prev[activeSuggestion.id]?.frequency ??
+            activeSuggestion.contributionPlan.recommendedFrequency,
+        },
+      }));
+    },
+    [activeSuggestion],
+  );
+
+  const handleFrequencyChange = useCallback(
+    (frequency: ContributionFrequency) => {
+      if (!activeSuggestion) {
+        return;
+      }
+
+      setPlannerSelections((prev) => ({
+        ...prev,
+        [activeSuggestion.id]: {
+          monthlyContributionCents:
+            prev[activeSuggestion.id]?.monthlyContributionCents ??
+            activeSuggestion.contributionPlan.recommendedMonthlyContributionCents,
+          frequency,
+        },
+      }));
+    },
+    [activeSuggestion],
+  );
+
+  const handleDismissNudge = useCallback((nudgeId: string) => {
+    setDismissedNudges((prev) => (prev.includes(nudgeId) ? prev : [...prev, nudgeId]));
+  }, []);
+
+  const handleNudgeAction = useCallback((nudge: SavingsNudge) => {
+    if (nudge.linkedSuggestionId !== null) {
+      setSelectedSuggestionId(nudge.linkedSuggestionId);
+    }
+  }, []);
+
+  const handleAddSuggestedGoal = useCallback(
+    async (suggestion: SuggestedSavingsGoal) => {
+      if (suggestion.linkedGoalId !== null) {
+        setSelectedSuggestionId(suggestion.id);
+        return;
+      }
+
+      if (householdId === null) {
+        toast?.showToast({
+          type: 'warning',
+          message:
+            'Add an account or an existing goal first so we can save this suggestion locally.',
+          duration: 5000,
+        });
+        return;
+      }
+
+      const createdGoal = createGoal({
+        householdId,
+        name: suggestion.title,
+        description: suggestion.reasoning.join(' '),
+        targetAmount: { amount: suggestion.targetCents },
+        currentAmount: { amount: suggestion.currentCents },
+        targetDate: suggestion.targetDate,
+        icon: getSuggestedGoalIcon(suggestion.type),
+        color: getSuggestedGoalColor(suggestion.type),
+      });
+
+      if (createdGoal === null) {
+        throw new Error('Failed to create goal from suggestion.');
+      }
+
+      toast?.showToast({
+        type: 'success',
+        message: `Saved ${createdGoal.name} as a goal`,
+        duration: 3000,
+      });
+    },
+    [createGoal, householdId, toast],
+  );
 
   const handleSubmitGoal = useCallback(
     async (data: CreateGoalInput) => {
@@ -362,225 +648,330 @@ export const GoalsPage: React.FC = () => {
         </div>
       ) : error ? (
         <ErrorBanner message={error} onRetry={refresh} />
-      ) : goals.length === 0 ? (
-        <EmptyState
-          title="No goals yet"
-          description="Create a savings goal to track progress toward something important."
-        />
       ) : (
         <>
-          <section className="page-section" aria-label="Goals summary">
-            <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 'var(--spacing-4)',
-                }}
-              >
-                <div>
-                  <p className="card__title">Goals</p>
-                  <p className="card__value">{goals.length}</p>
-                </div>
-                <div>
-                  <p className="card__title">Saved</p>
-                  <p className="card__value">
-                    <CurrencyDisplay amount={totalSaved} />
-                  </p>
-                </div>
-                <div>
-                  <p className="card__title">Target</p>
-                  <p className="card__value">
-                    <CurrencyDisplay amount={totalTarget} />
-                  </p>
+          {goals.length > 0 ? (
+            <section className="page-section" aria-label="Goals summary">
+              <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 'var(--spacing-4)',
+                  }}
+                >
+                  <div>
+                    <p className="card__title">Goals</p>
+                    <p className="card__value">{goals.length}</p>
+                  </div>
+                  <div>
+                    <p className="card__title">Saved</p>
+                    <p className="card__value">
+                      <CurrencyDisplay amount={totalSaved} />
+                    </p>
+                  </div>
+                  <div>
+                    <p className="card__title">Target</p>
+                    <p className="card__value">
+                      <CurrencyDisplay amount={totalTarget} />
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-          <section aria-label="Goal list">
-            <div className="card-grid">
-              {goals.map((goal) => {
-                const percentComplete =
-                  goal.targetAmount.amount > 0
-                    ? Math.round((goal.currentAmount.amount / goal.targetAmount.amount) * 100)
-                    : 0;
-                const remainingAmount = Math.max(
-                  goal.targetAmount.amount - goal.currentAmount.amount,
-                  0,
-                );
-                const goalStatus = getGoalStatusIndicator(percentComplete);
-                const statusTone =
-                  percentComplete >= 100
-                    ? 'positive'
-                    : percentComplete >= 50
-                      ? 'positive'
-                      : percentComplete >= 25
-                        ? 'warning'
-                        : 'negative';
-                const targetDate = goal.targetDate ? new Date(`${goal.targetDate}T00:00:00`) : null;
-                const daysLeft =
-                  targetDate === null
-                    ? null
-                    : Math.max(0, Math.ceil((targetDate.getTime() - Date.now()) / 86400000));
+            </section>
+          ) : null}
 
-                return (
-                  <article
-                    key={goal.id}
-                    className="card"
-                    aria-label={`${goal.name}: ${percentComplete}%, ${goalStatus.label}`}
+          <section className="page-section" aria-label="AI suggested savings goals">
+            <div style={{ marginBottom: 'var(--spacing-4)' }}>
+              <p className="card__title">AI-suggested goals</p>
+              <h3 style={{ marginTop: 0, marginBottom: 'var(--spacing-2)' }}>
+                Local-first suggestions from your spending patterns
+              </h3>
+              <p style={{ color: 'var(--semantic-text-secondary)', marginBottom: 0 }}>
+                We analyze your local income, expenses, cash buffer, and active goals to suggest
+                realistic next moves — nothing leaves this device.
+              </p>
+            </div>
+
+            {aiLoading ? (
+              <div className="card">
+                <LoadingSpinner label="Analyzing savings opportunities" />
+              </div>
+            ) : aiError ? (
+              <div className="card" role="status">
+                <p style={{ marginTop: 0, fontWeight: 600 }}>
+                  Suggestions are temporarily unavailable
+                </p>
+                <p style={{ marginBottom: 0, color: 'var(--semantic-text-secondary)' }}>
+                  {aiError}
+                </p>
+              </div>
+            ) : suggestedGoals.length > 0 ? (
+              <>
+                {activeNudge ? (
+                  <div style={{ marginBottom: 'var(--spacing-4)' }}>
+                    <NudgeToast
+                      nudge={activeNudge}
+                      onDismiss={handleDismissNudge}
+                      onAction={handleNudgeAction}
+                    />
+                  </div>
+                ) : null}
+                <SuggestedGoals
+                  suggestions={suggestedGoals}
+                  currencyCode={analysisSnapshot.currencyCode}
+                  selectedSuggestionId={activeSuggestion?.id ?? null}
+                  onSelectSuggestion={handleSelectSuggestion}
+                  onAddGoal={handleAddSuggestedGoal}
+                />
+                {activeSuggestion && activePlannerSelection && activeProjection ? (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                      gap: 'var(--spacing-4)',
+                      marginTop: 'var(--spacing-4)',
+                    }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        gap: 'var(--spacing-3)',
-                        marginBottom: 'var(--spacing-3)',
-                      }}
+                    <ContributionPlanner
+                      suggestion={activeSuggestion}
+                      currencyCode={analysisSnapshot.currencyCode}
+                      monthlyContributionCents={activePlannerSelection.monthlyContributionCents}
+                      frequency={activePlannerSelection.frequency}
+                      onMonthlyContributionChange={handleMonthlyContributionChange}
+                      onFrequencyChange={handleFrequencyChange}
+                    />
+                    <GoalProjection
+                      projection={activeProjection}
+                      currencyCode={analysisSnapshot.currencyCode}
+                    />
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="card" role="status">
+                <p style={{ marginTop: 0, fontWeight: 600 }}>No suggestions yet</p>
+                <p style={{ marginBottom: 0, color: 'var(--semantic-text-secondary)' }}>
+                  Add a few weeks of income and spending history to unlock local savings
+                  suggestions.
+                </p>
+              </div>
+            )}
+          </section>
+
+          {goals.length === 0 ? (
+            <EmptyState
+              title="No goals yet"
+              description="Create a savings goal to track progress toward something important."
+            />
+          ) : (
+            <section aria-label="Goal list">
+              <SortableList
+                items={goals}
+                getItemId={(goal) => goal.id}
+                getItemLabel={(goal) => goal.name}
+                onReorder={reorderGoals}
+                className="card-grid"
+                ariaLabel="Goal list"
+                renderItem={(goal, { itemProps, dragHandleProps }) => {
+                  const percentComplete =
+                    goal.targetAmount.amount > 0
+                      ? Math.round((goal.currentAmount.amount / goal.targetAmount.amount) * 100)
+                      : 0;
+                  const remainingAmount = Math.max(
+                    goal.targetAmount.amount - goal.currentAmount.amount,
+                    0,
+                  );
+                  const goalStatus = getGoalStatusIndicator(percentComplete);
+                  const statusTone =
+                    percentComplete >= 100
+                      ? 'positive'
+                      : percentComplete >= 50
+                        ? 'positive'
+                        : percentComplete >= 25
+                          ? 'warning'
+                          : 'negative';
+                  const targetDate = goal.targetDate
+                    ? new Date(`${goal.targetDate}T00:00:00`)
+                    : null;
+                  const daysLeft =
+                    targetDate === null
+                      ? null
+                      : Math.max(0, Math.ceil((targetDate.getTime() - Date.now()) / 86400000));
+
+                  return (
+                    <article
+                      {...itemProps}
+                      key={goal.id}
+                      className={`${itemProps.className} card`}
+                      role="listitem"
+                      aria-label={`${goal.name}: ${percentComplete}%, ${goalStatus.label}`}
                     >
-                      <h3 style={{ fontWeight: 'var(--font-weight-semibold)' }}>
-                        <Link
-                          to={`/goals/${goal.id}`}
-                          style={{ textDecoration: 'none', color: 'inherit' }}
-                          aria-label={`View details for ${goal.name}`}
-                        >
-                          <AppIcon name={getGoalIcon(goal.icon)} /> {goal.name}
-                        </Link>
-                      </h3>
                       <div
                         style={{
                           display: 'flex',
-                          alignItems: 'center',
-                          gap: 'var(--spacing-2)',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          gap: 'var(--spacing-3)',
+                          marginBottom: 'var(--spacing-3)',
                         }}
                       >
-                        <span
+                        <h3 style={{ fontWeight: 'var(--font-weight-semibold)' }}>
+                          <Link
+                            to={`/goals/${goal.id}`}
+                            style={{ textDecoration: 'none', color: 'inherit' }}
+                            aria-label={`View details for ${goal.name}`}
+                          >
+                            <AppIcon name={getGoalIcon(goal.icon)} /> {goal.name}
+                          </Link>
+                        </h3>
+                        <div
                           style={{
-                            fontSize: 'var(--type-scale-caption-font-size)',
-                            color: 'var(--semantic-text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 'var(--spacing-2)',
                           }}
                         >
-                          {targetDate !== null
-                            ? targetDate.toLocaleDateString('en-US', {
-                                month: 'short',
-                                year: 'numeric',
-                              })
-                            : 'No target date'}
-                        </span>
-                        <div
-                          style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-1)' }}
-                        >
                           <button
-                            type="button"
-                            className="icon-button"
-                            onClick={() => handleEditGoal(goal)}
-                            aria-label={`Edit ${goal.name}`}
+                            {...dragHandleProps}
+                            className={`${dragHandleProps.className ?? ''} icon-button`.trim()}
+                            aria-label={`Reorder ${goal.name}`}
+                            title="Reorder goal"
                           >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                              <path d="M12 20h9" />
-                              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-                            </svg>
+                            <span aria-hidden="true">⋮⋮</span>
                           </button>
-                          <button
-                            type="button"
-                            className="icon-button icon-button--delete"
-                            onClick={() => handleRequestDelete(goal)}
-                            aria-label={`Delete ${goal.name}`}
+                          <span
+                            style={{
+                              fontSize: 'var(--type-scale-caption-font-size)',
+                              color: 'var(--semantic-text-secondary)',
+                            }}
                           >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                              <path d="M3 6h18" />
-                              <path d="M8 6V4h8v2" />
-                              <path d="M19 6l-1 14H6L5 6" />
-                              <path d="M10 11v6" />
-                              <path d="M14 11v6" />
-                            </svg>
-                          </button>
+                            {targetDate !== null
+                              ? targetDate.toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  year: 'numeric',
+                                })
+                              : 'No target date'}
+                          </span>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 'var(--spacing-1)',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              className="icon-button"
+                              onClick={() => handleEditGoal(goal)}
+                              aria-label={`Edit ${goal.name}`}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 20h9" />
+                                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button icon-button--delete"
+                              onClick={() => handleRequestDelete(goal)}
+                              aria-label={`Delete ${goal.name}`}
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 6h18" />
+                                <path d="M8 6V4h8v2" />
+                                <path d="M19 6l-1 14H6L5 6" />
+                                <path d="M10 11v6" />
+                                <path d="M14 11v6" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        marginBottom: 'var(--spacing-2)',
-                      }}
-                    >
-                      <CurrencyDisplay
-                        amount={goal.currentAmount.amount}
-                        currency={goal.currency.code}
-                      />
-                      <CurrencyDisplay
-                        amount={goal.targetAmount.amount}
-                        currency={goal.currency.code}
-                      />
-                    </div>
-                    <div
-                      className="progress-bar"
-                      role="progressbar"
-                      aria-valuenow={Math.min(percentComplete, 100)}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label={`${goal.name}: ${percentComplete} percent of goal reached, ${goalStatus.label}`}
-                    >
                       <div
-                        className={`progress-bar__fill progress-bar__fill--${statusTone}`}
-                        style={{ width: `${Math.min(percentComplete, 100)}%` }}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        marginTop: 'var(--spacing-2)',
-                        fontSize: 'var(--type-scale-caption-font-size)',
-                        color: 'var(--semantic-text-secondary)',
-                      }}
-                    >
-                      <span>
-                        <AppIcon name={goalStatus.icon} />{' '}
-                        {percentComplete >= 100 ? (
-                          'Goal reached!'
-                        ) : (
-                          <>
-                            <CurrencyDisplay
-                              amount={remainingAmount}
-                              currency={goal.currency.code}
-                              context={`remaining for ${goal.name} goal`}
-                            />{' '}
-                            to go
-                          </>
-                        )}
-                      </span>
-                      <span>
-                        {daysLeft === null
-                          ? 'No due date'
-                          : daysLeft > 0
-                            ? `${daysLeft} days left`
-                            : 'Past due'}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        marginTop: 'var(--spacing-4)',
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className="form-button form-button--secondary"
-                        onClick={() => handleContributeGoal(goal)}
-                        aria-label={`Contribute to ${goal.name}`}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: 'var(--spacing-2)',
+                        }}
                       >
-                        Contribute
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
+                        <CurrencyDisplay
+                          amount={goal.currentAmount.amount}
+                          currency={goal.currency.code}
+                        />
+                        <CurrencyDisplay
+                          amount={goal.targetAmount.amount}
+                          currency={goal.currency.code}
+                        />
+                      </div>
+                      <div
+                        className="progress-bar"
+                        role="progressbar"
+                        aria-valuenow={Math.min(percentComplete, 100)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${goal.name}: ${percentComplete} percent of goal reached, ${goalStatus.label}`}
+                      >
+                        <div
+                          className={`progress-bar__fill progress-bar__fill--${statusTone}`}
+                          style={{ width: `${Math.min(percentComplete, 100)}%` }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginTop: 'var(--spacing-2)',
+                          fontSize: 'var(--type-scale-caption-font-size)',
+                          color: 'var(--semantic-text-secondary)',
+                        }}
+                      >
+                        <span>
+                          <AppIcon name={goalStatus.icon} />{' '}
+                          {percentComplete >= 100 ? (
+                            'Goal reached!'
+                          ) : (
+                            <>
+                              <CurrencyDisplay
+                                amount={remainingAmount}
+                                currency={goal.currency.code}
+                                context={`remaining for ${goal.name} goal`}
+                              />{' '}
+                              to go
+                            </>
+                          )}
+                        </span>
+                        <span>
+                          {daysLeft === null
+                            ? 'No due date'
+                            : daysLeft > 0
+                              ? `${daysLeft} days left`
+                              : 'Past due'}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'flex-end',
+                          marginTop: 'var(--spacing-4)',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className="form-button form-button--secondary"
+                          onClick={() => handleContributeGoal(goal)}
+                          aria-label={`Contribute to ${goal.name}`}
+                        >
+                          Contribute
+                        </button>
+                      </div>
+                    </article>
+                  );
+                }}
+              />
+            </section>
+          )}
         </>
       )}
       <GoalContributionDialog

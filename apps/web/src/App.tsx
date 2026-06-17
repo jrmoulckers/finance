@@ -1,13 +1,30 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { FC } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type FC } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { AppLayout } from './components/layout';
+import { MilestoneToast } from './components/celebrations';
 import { ConsentDialog } from './components/gdpr';
+import { AppLayout } from './components/layout';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
 import { SessionSecurityBoundary } from './components/SessionSecurityBoundary';
+import { useBudgets, useNotifications, useTransactions } from './hooks';
+import { useHaptics } from './hooks/useHaptics';
+import { useMilestoneCheck } from './hooks/useMilestoneCheck';
 import { useRouteAnnouncer } from './hooks/useRouteAnnouncer';
+import { useSpendingPace } from './hooks/useSpendingPace';
+import type { HapticEventType } from './lib/haptics/types';
 import { isOnboardingComplete } from './lib/local-only-mode';
+import type { DetectedMilestone } from './lib/milestones';
+import {
+  detectScamAlerts,
+  scamAlertsToNotifications,
+  type AppNotification,
+} from './lib/notifications';
+import {
+  buildWarrantyReminderNotifications,
+  buildWarrantyReminders,
+  useWarrantyEntries,
+} from './lib/warranty';
 import { AppRoutes } from './routes';
 
 /**
@@ -30,6 +47,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/investments': 'Investments',
   '/investments/tax': 'Tax Center',
   '/bills': 'Bills',
+  '/invoices': 'Invoices',
   '/report-builder': 'Report Builder',
   '/achievements': 'Achievements',
   '/watchlists': 'Watchlists',
@@ -37,6 +55,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/settings/account': 'Settings · Account',
   '/settings/preferences': 'Settings · Preferences',
   '/settings/privacy': 'Settings · Privacy & Data',
+  '/settings/security': 'Settings · Security & Encryption',
   '/settings/sync': 'Settings · Sync & Devices',
   '/settings/advanced': 'Settings · Advanced',
   '/import': 'Import',
@@ -45,10 +64,17 @@ const PAGE_TITLES: Record<string, string> = {
   '/privacy-dashboard': 'Privacy Dashboard',
   '/categories': 'Categories',
   '/planning': 'Financial Planning',
+  '/learning': 'Learning',
+  '/estate': 'Estate Inventory',
   '/cash-flow': 'Cash Flow',
   '/net-worth': 'Net Worth',
+  '/client-profitability': 'Client Profitability',
   '/subscriptions': 'Subscriptions',
   '/bank-connections': 'Bank Connections',
+  '/legal': 'Legal',
+  '/legal/privacy': 'Privacy Policy',
+  '/legal/terms': 'Terms of Service',
+  '/legal/ccpa': 'California Privacy Notice',
 };
 
 /**
@@ -66,6 +92,8 @@ const STANDALONE_ROUTES: readonly string[] = [
   '/signup',
   '/forgot-password',
   '/reset-password',
+  '/legal',
+  '/beta',
   '/onboarding',
 ];
 
@@ -100,6 +128,233 @@ function derivePageTitle(pathname: string): string {
   return PAGE_TITLES[firstSegment] ?? 'Finance';
 }
 
+function getBudgetThresholdHapticEvent(
+  previousPercent: number,
+  currentPercent: number,
+): HapticEventType | null {
+  if (previousPercent < 100 && currentPercent >= 100) {
+    return 'budget_exceeded';
+  }
+
+  if (previousPercent < 90 && currentPercent >= 90) {
+    return 'budget_critical';
+  }
+
+  if (previousPercent < 75 && currentPercent >= 75) {
+    return 'budget_warning';
+  }
+
+  return null;
+}
+
+function getSpendingAlertHapticEvent(percentUsed: number): HapticEventType {
+  if (percentUsed >= 100) {
+    return 'budget_exceeded';
+  }
+
+  if (percentUsed >= 90) {
+    return 'budget_critical';
+  }
+
+  return 'budget_warning';
+}
+
+function getMilestoneHapticEvent(milestone: DetectedMilestone): HapticEventType {
+  return milestone.category === 'goal-progress' && milestone.badge === '100%'
+    ? 'goal_reached'
+    : 'savings_milestone';
+}
+
+function rankHapticEvent(eventType: HapticEventType): number {
+  switch (eventType) {
+    case 'budget_exceeded':
+      return 3;
+    case 'budget_critical':
+    case 'goal_reached':
+      return 2;
+    case 'budget_warning':
+    case 'savings_milestone':
+      return 1;
+  }
+}
+
+function selectMostUrgentEvent(
+  current: HapticEventType | null,
+  candidate: HapticEventType | null,
+): HapticEventType | null {
+  if (!candidate) {
+    return current;
+  }
+
+  if (!current) {
+    return candidate;
+  }
+
+  return rankHapticEvent(candidate) > rankHapticEvent(current) ? candidate : current;
+}
+
+const BudgetHapticNotifier: FC = () => {
+  const { budgets } = useBudgets();
+  const { paces } = useSpendingPace(budgets);
+  const { trigger } = useHaptics();
+  const budgetPercentsRef = useRef<Map<string, number>>(new Map());
+  const overspendingRef = useRef<Map<string, boolean>>(new Map());
+
+  useEffect(() => {
+    let nextEvent: HapticEventType | null = null;
+    const nextBudgetPercents = new Map<string, number>();
+
+    for (const budget of budgets) {
+      const currentPercent =
+        budget.amount.amount > 0
+          ? Math.round((budget.spentAmount.amount / budget.amount.amount) * 100)
+          : 0;
+      nextBudgetPercents.set(budget.id, currentPercent);
+
+      const previousPercent = budgetPercentsRef.current.get(budget.id);
+      if (previousPercent !== undefined) {
+        nextEvent = selectMostUrgentEvent(
+          nextEvent,
+          getBudgetThresholdHapticEvent(previousPercent, currentPercent),
+        );
+      }
+    }
+
+    budgetPercentsRef.current = nextBudgetPercents;
+
+    const nextOverspending = new Map<string, boolean>();
+    for (const pace of paces) {
+      nextOverspending.set(pace.budgetId, pace.willOverspend);
+
+      const wasOverspending = overspendingRef.current.get(pace.budgetId);
+      if (wasOverspending === false && pace.willOverspend) {
+        nextEvent = selectMostUrgentEvent(nextEvent, getSpendingAlertHapticEvent(pace.percentUsed));
+      }
+    }
+
+    overspendingRef.current = nextOverspending;
+
+    if (nextEvent) {
+      trigger(nextEvent);
+    }
+  }, [budgets, paces, trigger]);
+
+  return null;
+};
+
+const MilestoneNotifier: FC = () => {
+  const { activeMilestone, dismissMilestone } = useMilestoneCheck();
+  const { trigger } = useHaptics();
+  const lastMilestoneIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!activeMilestone || lastMilestoneIdRef.current === activeMilestone.id) {
+      return;
+    }
+
+    lastMilestoneIdRef.current = activeMilestone.id;
+    trigger(getMilestoneHapticEvent(activeMilestone));
+  }, [activeMilestone, trigger]);
+
+  if (!activeMilestone) {
+    return null;
+  }
+
+  return <MilestoneToast milestone={activeMilestone} onDismiss={dismissMilestone} />;
+};
+
+const AuthenticatedShell: FC<{
+  activePath: string;
+  pageTitle: string;
+}> = ({ activePath, pageTitle }) => {
+  const navigate = useNavigate();
+  const warrantyEntries = useWarrantyEntries();
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    dismiss,
+    addNotifications,
+  } = useNotifications();
+  const scamTransactionFilters = useMemo(
+    () => ({
+      type: 'EXPENSE' as const,
+    }),
+    [],
+  );
+  const { transactions: scamNotificationTransactions } = useTransactions(scamTransactionFilters);
+  const scamNotifications = useMemo(
+    () => scamAlertsToNotifications(detectScamAlerts(scamNotificationTransactions)),
+    [scamNotificationTransactions],
+  );
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    const existingDeduplicationKeys = new Set(
+      notifications
+        .map((notification) => notification.deduplicationKey)
+        .filter((key): key is string => typeof key === 'string' && key.length > 0),
+    );
+    const reminderNotifications = buildWarrantyReminderNotifications(
+      buildWarrantyReminders(warrantyEntries, undefined, existingDeduplicationKeys),
+    );
+
+    if (reminderNotifications.length > 0) {
+      addNotifications(reminderNotifications);
+    }
+  }, [addNotifications, loading, notifications, warrantyEntries]);
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    const knownNotificationKeys = new Set(
+      notifications.map((notification) => notification.deduplicationKey ?? notification.id),
+    );
+    const newScamNotifications = scamNotifications.filter(
+      (notification) =>
+        !knownNotificationKeys.has(notification.deduplicationKey ?? notification.id),
+    );
+    addNotifications(newScamNotifications);
+  }, [addNotifications, loading, notifications, scamNotifications]);
+
+  const handleNotificationAction = useCallback(
+    (notification: AppNotification) => {
+      if (notification.entityType === 'transaction' && notification.entityId) {
+        navigate(`/transactions/${notification.entityId}`);
+      }
+    },
+    [navigate],
+  );
+
+  return (
+    <>
+      <AppLayout
+        activePath={activePath}
+        onNavigate={(path) => navigate(path)}
+        pageTitle={pageTitle}
+        notifications={notifications}
+        notificationUnreadCount={unreadCount}
+        onMarkNotificationAsRead={markAsRead}
+        onMarkAllNotificationsAsRead={markAllAsRead}
+        onDismissNotification={dismiss}
+        onNotificationAction={handleNotificationAction}
+      >
+        <SessionSecurityBoundary>
+          <AppRoutes />
+        </SessionSecurityBoundary>
+      </AppLayout>
+      <MilestoneNotifier />
+    </>
+  );
+};
+
 /**
  * Root application component.
  *
@@ -110,7 +365,6 @@ function derivePageTitle(pathname: string): string {
  * render standalone without layout — see `STANDALONE_ROUTES` above.
  */
 export const App: FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const activePath = location.pathname === '/' ? '/' : location.pathname;
   const pageTitle = derivePageTitle(activePath);
@@ -137,15 +391,8 @@ export const App: FC = () => {
   ) : (
     <PrivacyModeProvider>
       <ConsentDialog />
-      <AppLayout
-        activePath={activePath}
-        onNavigate={(path) => navigate(path)}
-        pageTitle={pageTitle}
-      >
-        <SessionSecurityBoundary>
-          <AppRoutes />
-        </SessionSecurityBoundary>
-      </AppLayout>
+      <AuthenticatedShell activePath={activePath} pageTitle={pageTitle} />
+      <BudgetHapticNotifier />
     </PrivacyModeProvider>
   );
 };

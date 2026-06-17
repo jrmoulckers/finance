@@ -3,29 +3,23 @@
 /**
  * FeedbackDialog — Modal form for users to report bugs, give feedback, or suggest features.
  *
- * For alpha: stores submissions in localStorage. Backend integration planned.
+ * Submits feedback to the backend `/api/feedback` facade, which creates a
+ * GitHub issue for beta triage using a server-side token.
  *
  * @module components/FeedbackDialog
- * References: issue #1476
+ * References: issues #1476, #2031
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import packageJson from '../../package.json';
+import { buildFeedbackDiagnostics, submitFeedback } from '../lib/feedback';
 
-/** Feedback submission type. */
-export type FeedbackType = 'bug' | 'feedback' | 'suggestion';
-
-/** A stored feedback entry. */
-export interface FeedbackEntry {
-  id: string;
-  type: FeedbackType;
-  description: string;
-  email: string;
-  timestamp: string;
-}
+const BUILD_SHA =
+  import.meta.env.VITE_BUILD_SHA ??
+  import.meta.env.VITE_GIT_SHA ??
+  import.meta.env.VITE_COMMIT_SHA ??
+  '';
 
 export interface FeedbackDialogProps {
   /** Whether the dialog is visible. */
@@ -34,42 +28,26 @@ export interface FeedbackDialogProps {
   onClose: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const STORAGE_KEY = 'finance_feedback_entries';
-
-const TYPE_OPTIONS: { value: FeedbackType; label: string }[] = [
-  { value: 'bug', label: 'Bug Report' },
-  { value: 'feedback', label: 'Feedback' },
-  { value: 'suggestion', label: 'Suggestion' },
-];
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-/**
- * Accessible feedback dialog with focus trapping and localStorage persistence.
- */
+/** Accessible feedback dialog with focus trapping and GitHub issue submission. */
 export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose }) => {
-  const [type, setType] = useState<FeedbackType>('feedback');
-  const [description, setDescription] = useState('');
-  const [email, setEmail] = useState('');
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [includeDiagnostics, setIncludeDiagnostics] = useState(true);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const panelRef = useRef<HTMLDivElement>(null);
-  const firstInputRef = useRef<HTMLSelectElement>(null);
+  const firstInputRef = useRef<HTMLInputElement>(null);
 
   // Reset form state when dialog opens/closes
   useEffect(() => {
     if (isOpen) {
-      setType('feedback');
-      setDescription('');
-      setEmail('');
+      setSubject('');
+      setBody('');
+      setIncludeDiagnostics(true);
       setSubmitted(false);
+      setIsSubmitting(false);
       setError(null);
       // Focus first input on open
       requestAnimationFrame(() => {
@@ -116,41 +94,44 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
   }, [isOpen, onClose]);
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
       setError(null);
 
-      if (!description.trim()) {
-        setError('Please provide a description.');
+      if (!subject.trim()) {
+        setError('Please provide a subject.');
         return;
       }
 
-      // TODO: Replace localStorage with backend API integration when available
+      if (!body.trim()) {
+        setError('Please provide feedback details.');
+        return;
+      }
+
+      setIsSubmitting(true);
       try {
-        const entry: FeedbackEntry = {
-          id: crypto.randomUUID(),
-          type,
-          description: description.trim(),
-          email: email.trim(),
-          timestamp: new Date().toISOString(),
-        };
-
-        const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as FeedbackEntry[];
-        existing.push(entry);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
-
+        await submitFeedback({
+          subject,
+          body,
+          includeDiagnostics,
+          diagnostics: includeDiagnostics
+            ? buildFeedbackDiagnostics({ appVersion: packageJson.version, buildSha: BUILD_SHA })
+            : undefined,
+        });
         setSubmitted(true);
-      } catch {
-        setError('Failed to save feedback. Please try again.');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not send feedback. Please try again.');
+      } finally {
+        setIsSubmitting(false);
       }
     },
-    [type, description, email],
+    [subject, body, includeDiagnostics],
   );
 
   if (!isOpen) return null;
 
   return (
-    <div className="form-backdrop" onClick={onClose} aria-hidden="true">
+    <div className="form-backdrop" onClick={onClose}>
       <div
         ref={panelRef}
         className="form-dialog"
@@ -160,13 +141,13 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="feedback-dialog-title" className="form-dialog__title">
-          Send Feedback
+          Send feedback
         </h2>
 
         {submitted ? (
           <div className="feedback-dialog__success" role="status" aria-live="polite">
             <p className="feedback-dialog__success-text">
-              Thank you! Your feedback has been recorded.
+              Thank you! Your feedback has been sent to GitHub triage.
             </p>
             <button type="button" className="form-button form-button--primary" onClick={onClose}>
               Close
@@ -181,55 +162,55 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
             )}
 
             <div className="form-group">
-              <label htmlFor="feedback-type" className="form-group__label">
-                Type
+              <label
+                htmlFor="feedback-subject"
+                className="form-group__label form-group__label--required"
+              >
+                Subject
               </label>
-              <select
-                id="feedback-type"
+              <input
+                id="feedback-subject"
                 ref={firstInputRef}
                 className="form-group__input"
-                value={type}
-                onChange={(e) => setType(e.target.value as FeedbackType)}
-              >
-                {TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                maxLength={160}
+                placeholder="Briefly summarize your feedback"
+                aria-required="true"
+                aria-invalid={error && !subject.trim() ? 'true' : undefined}
+              />
             </div>
 
             <div className="form-group">
               <label
-                htmlFor="feedback-description"
+                htmlFor="feedback-body"
                 className="form-group__label form-group__label--required"
               >
-                Description
+                Details
               </label>
               <textarea
-                id="feedback-description"
+                id="feedback-body"
                 className="form-group__input form-group__textarea"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                placeholder="Tell us what's on your mind..."
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={5}
+                maxLength={12000}
+                placeholder="Tell us what happened, what you expected, or what would help..."
                 aria-required="true"
-                aria-invalid={error ? 'true' : undefined}
+                aria-invalid={error && !body.trim() ? 'true' : undefined}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="feedback-email" className="form-group__label">
-                Email (optional)
+              <label htmlFor="feedback-diagnostics" className="form-group__label">
+                <input
+                  id="feedback-diagnostics"
+                  type="checkbox"
+                  checked={includeDiagnostics}
+                  onChange={(e) => setIncludeDiagnostics(e.target.checked)}
+                />{' '}
+                Include diagnostic info
               </label>
-              <input
-                id="feedback-email"
-                type="email"
-                className="form-group__input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-              />
             </div>
 
             <div className="form-dialog__actions">
@@ -237,11 +218,16 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose 
                 type="button"
                 className="form-button form-button--secondary"
                 onClick={onClose}
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
-              <button type="submit" className="form-button form-button--primary">
-                Submit
+              <button
+                type="submit"
+                className="form-button form-button--primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Sending…' : 'Submit'}
               </button>
             </div>
           </form>

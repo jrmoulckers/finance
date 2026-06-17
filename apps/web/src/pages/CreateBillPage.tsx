@@ -8,12 +8,12 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { DateInput } from '../components/common';
 import { useDatabase } from '../db/DatabaseProvider';
 import { queryOne, type Row } from '../db/sqlite-wasm';
 import { useBills } from '../hooks';
 import type { BillFrequency } from '../kmp/bridge';
 import type { CreateBillInput } from '../db/repositories/bills';
+import { DatePicker } from '../components/common/DatePicker';
 
 /** Resolve the first available household ID from the local database. */
 function getFirstHouseholdId(db: ReturnType<typeof useDatabase>): string | null {
@@ -255,11 +255,11 @@ export const CreateBillPage: React.FC = () => {
             >
               Due Date
             </label>
-            <DateInput
+            <DatePicker
               id="bill-due-date"
               className="form-input"
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              onChange={setDueDate}
               aria-required="true"
               aria-invalid={!!errors.dueDate}
               aria-describedby={errors.dueDate ? 'bill-due-date-error' : undefined}

@@ -18,30 +18,10 @@
 
 import type React from 'react';
 
-import {
-  DashboardIcon,
-  AccountsIcon,
-  TransactionsIcon,
-  BillsIcon,
-  InvoicesIcon,
-  InvestmentsIcon,
-  SubscriptionsIcon,
-  BudgetsIcon,
-  DebtIcon,
-  GoalsIcon,
-  PlanningIcon,
-  CategoriesIcon,
-  InsightsIcon,
-  CashFlowIcon,
-  NetWorthIcon,
-  ReportsIcon,
-  AchievementsIcon,
-  WatchlistsIcon,
-  HouseholdIcon,
-  BankIcon,
-  ImportIcon,
-  PrivacyIcon,
-} from './navIcons';
+import { ensureStableNavOrder } from '../../lib/navigation/guardrails';
+import { Icon } from '../common/Icon';
+import { IconToken } from '../../icons/tokens';
+import { DebtIcon, InvoicesIcon, PrivacyIcon, ReportsIcon } from './navIcons';
 
 /** Named navigation groups, displayed in this order in the sidebar. */
 export type NavGroup = 'money' | 'plan' | 'insights' | 'connect';
@@ -55,7 +35,12 @@ export const NAV_GROUP_LABELS: Record<NavGroup, string> = {
 };
 
 /** Sidebar render order for groups. */
-export const NAV_GROUP_ORDER: NavGroup[] = ['money', 'plan', 'insights', 'connect'];
+export const NAV_GROUP_ORDER: readonly NavGroup[] = Object.freeze([
+  'money',
+  'plan',
+  'insights',
+  'connect',
+]);
 
 /** A single destination in the primary navigation. */
 export interface NavConfigItem {
@@ -82,13 +67,13 @@ export interface NavConfigItem {
  * Every destination reachable from the primary navigation.
  * Order within each group controls render order in the sidebar.
  */
-export const NAV_CONFIG: readonly NavConfigItem[] = [
+export const NAV_CONFIG: readonly NavConfigItem[] = ensureStableNavOrder([
   // ── pinned (no group) ────────────────────────────────────────────────
   {
     id: 'dashboard',
     label: 'Dashboard',
     href: '/dashboard',
-    icon: <DashboardIcon />,
+    icon: <Icon name={IconToken.DASHBOARD} />,
     mobilePriority: 0,
     description: 'Overview of balances, spending and insights.',
   },
@@ -98,7 +83,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'accounts',
     label: 'Accounts',
     href: '/accounts',
-    icon: <AccountsIcon />,
+    icon: <Icon name={IconToken.ACCOUNTS} />,
     group: 'money',
     mobilePriority: 1,
     description: 'Bank, credit, cash and investment accounts.',
@@ -107,7 +92,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'transactions',
     label: 'Transactions',
     href: '/transactions',
-    icon: <TransactionsIcon />,
+    icon: <Icon name={IconToken.TRANSACTIONS} />,
     group: 'money',
     mobilePriority: 2,
     description: 'Every debit and credit, across all accounts.',
@@ -125,7 +110,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'bills',
     label: 'Bills',
     href: '/bills',
-    icon: <BillsIcon />,
+    icon: <Icon name={IconToken.BILL} />,
     group: 'money',
     mobilePriority: 10,
     description: 'Upcoming and recurring bill reminders.',
@@ -143,7 +128,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'investments',
     label: 'Investments',
     href: '/investments',
-    icon: <InvestmentsIcon />,
+    icon: <Icon name={IconToken.INVESTMENT} />,
     group: 'money',
     mobilePriority: 11,
     description: 'Holdings, performance and watchlists.',
@@ -161,7 +146,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'subscriptions',
     label: 'Subscriptions',
     href: '/subscriptions',
-    icon: <SubscriptionsIcon />,
+    icon: <Icon name={IconToken.CATEGORY_SUBSCRIPTIONS} />,
     group: 'money',
     mobilePriority: 13,
     description: 'Recurring memberships and renewals.',
@@ -172,7 +157,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'budgets',
     label: 'Budgets',
     href: '/budgets',
-    icon: <BudgetsIcon />,
+    icon: <Icon name={IconToken.BUDGETS} />,
     group: 'plan',
     mobilePriority: 4,
     description: 'Track spending against monthly limits.',
@@ -190,7 +175,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'goals',
     label: 'Goals',
     href: '/goals',
-    icon: <GoalsIcon />,
+    icon: <Icon name={IconToken.GOALS} />,
     group: 'plan',
     mobilePriority: 13,
     description: 'Savings targets and progress.',
@@ -199,18 +184,36 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'planning',
     label: 'Planning',
     href: '/planning',
-    icon: <PlanningIcon />,
+    icon: <Icon name={IconToken.CHART_LINE} />,
     group: 'plan',
     mobilePriority: 14,
     description: 'Long-range projections and what-ifs.',
   },
   {
+    id: 'learning',
+    label: 'Learning',
+    href: '/learning',
+    icon: <Icon name={IconToken.CATEGORY_EDUCATION} />,
+    group: 'plan',
+    mobilePriority: 15,
+    description: 'Personalized financial literacy modules and quizzes.',
+  },
+  {
+    id: 'estate',
+    label: 'Estate Inventory',
+    href: '/estate',
+    icon: <Icon name={IconToken.SECURE} />,
+    group: 'plan',
+    mobilePriority: 16,
+    description: 'Estate and end-of-life inventory for beneficiaries.',
+  },
+  {
     id: 'categories',
     label: 'Categories',
     href: '/categories',
-    icon: <CategoriesIcon />,
+    icon: <Icon name={IconToken.FILTER} />,
     group: 'plan',
-    mobilePriority: 15,
+    mobilePriority: 17,
     description: 'Customise how transactions are classified.',
   },
 
@@ -219,7 +222,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'insights',
     label: 'Insights',
     href: '/insights',
-    icon: <InsightsIcon />,
+    icon: <Icon name={IconToken.INSIGHTS} />,
     group: 'insights',
     mobilePriority: 20,
     description: 'Trends, anomalies and personalised tips.',
@@ -228,7 +231,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'cash-flow',
     label: 'Cash Flow',
     href: '/cash-flow',
-    icon: <CashFlowIcon />,
+    icon: <Icon name={IconToken.TRANSFER} />,
     group: 'insights',
     mobilePriority: 21,
     description: 'Money in vs. money out over time.',
@@ -237,7 +240,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'net-worth',
     label: 'Net Worth',
     href: '/net-worth',
-    icon: <NetWorthIcon />,
+    icon: <Icon name={IconToken.NET_WORTH} />,
     group: 'insights',
     mobilePriority: 22,
     description: 'Assets minus liabilities, tracked monthly.',
@@ -246,7 +249,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'reports',
     label: 'Reports',
     href: '/report-builder',
-    icon: <ReportsIcon />,
+    icon: <Icon name={IconToken.REPORTS} />,
     group: 'insights',
     mobilePriority: 23,
     description: 'Build and export custom reports.',
@@ -264,7 +267,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'achievements',
     label: 'Achievements',
     href: '/achievements',
-    icon: <AchievementsIcon />,
+    icon: <Icon name={IconToken.SUCCESS} />,
     group: 'insights',
     mobilePriority: 25,
     description: 'Milestones and streaks you have earned.',
@@ -273,7 +276,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'watchlists',
     label: 'Watchlists',
     href: '/watchlists',
-    icon: <WatchlistsIcon />,
+    icon: <Icon name={IconToken.SEARCH} />,
     group: 'insights',
     mobilePriority: 26,
     description: 'Symbols and markets you follow.',
@@ -284,7 +287,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'household',
     label: 'Household',
     href: '/household',
-    icon: <HouseholdIcon />,
+    icon: <Icon name={IconToken.ACCOUNTS} />,
     group: 'connect',
     mobilePriority: 30,
     description: 'Shared budgets, goals and members.',
@@ -293,7 +296,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'bank-connections',
     label: 'Bank Connections',
     href: '/bank-connections',
-    icon: <BankIcon />,
+    icon: <Icon name={IconToken.BANK} />,
     group: 'connect',
     mobilePriority: 31,
     description: 'Linked institutions and sync status.',
@@ -302,7 +305,7 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'import',
     label: 'Import Data',
     href: '/import',
-    icon: <ImportIcon />,
+    icon: <Icon name={IconToken.IMPORT} />,
     group: 'connect',
     mobilePriority: 32,
     description: 'Bring in CSVs, OFX files and receipts.',
@@ -311,38 +314,66 @@ export const NAV_CONFIG: readonly NavConfigItem[] = [
     id: 'privacy',
     label: 'Privacy',
     href: '/privacy-dashboard',
-    icon: <PrivacyIcon />,
+    icon: <Icon name={IconToken.SECURE} />,
     group: 'connect',
     mobilePriority: 33,
     description: 'Consent, data export and deletion.',
   },
-];
+]);
 
 /** How many priority items show on the mobile bottom-nav (the 5th slot is "More"). */
 export const BOTTOM_NAV_PRIORITY_COUNT = 4;
+
+/** Primary destinations that remain visible in simplified accessibility mode. */
+export const SIMPLIFIED_NAV_ITEM_IDS = [
+  'dashboard',
+  'accounts',
+  'transactions',
+  'budgets',
+  'bills',
+] as const;
+
+const SIMPLIFIED_NAV_ITEM_ID_SET = new Set<string>(SIMPLIFIED_NAV_ITEM_IDS);
+
+export function getVisibleNavItems(simplified: boolean): readonly NavConfigItem[] {
+  return simplified
+    ? NAV_CONFIG.filter((item) => SIMPLIFIED_NAV_ITEM_ID_SET.has(item.id))
+    : NAV_CONFIG;
+}
+
+export function getBottomNavPriorityItems(simplified = false): readonly NavConfigItem[] {
+  return [...getVisibleNavItems(simplified)]
+    .sort((a, b) => a.mobilePriority - b.mobilePriority)
+    .slice(0, BOTTOM_NAV_PRIORITY_COUNT);
+}
 
 /**
  * Bottom-nav priority items, sorted by `mobilePriority`. The bottom-nav
  * appends a "More" button so all remaining items are still reachable.
  */
-export const BOTTOM_NAV_PRIORITY_ITEMS: readonly NavConfigItem[] = [...NAV_CONFIG]
-  .sort((a, b) => a.mobilePriority - b.mobilePriority)
-  .slice(0, BOTTOM_NAV_PRIORITY_COUNT);
+export const BOTTOM_NAV_PRIORITY_ITEMS: readonly NavConfigItem[] = getBottomNavPriorityItems();
+
+export function getPinnedNavItems(simplified = false): readonly NavConfigItem[] {
+  return getVisibleNavItems(simplified).filter((item) => item.group === undefined);
+}
 
 /** Destinations pinned above the grouped sections in the sidebar. */
-export const PINNED_NAV_ITEMS: readonly NavConfigItem[] = NAV_CONFIG.filter(
-  (item) => item.group === undefined,
-);
+export const PINNED_NAV_ITEMS: readonly NavConfigItem[] = getPinnedNavItems();
 
 /** Destinations bucketed by group, preserving config order within each. */
-export function getItemsByGroup(group: NavGroup): readonly NavConfigItem[] {
-  return NAV_CONFIG.filter((item) => item.group === group);
+export function getItemsByGroup(group: NavGroup, simplified = false): readonly NavConfigItem[] {
+  return getVisibleNavItems(simplified).filter((item) => item.group === group);
+}
+
+export function getMoreSheetItems(simplified = false): readonly NavConfigItem[] {
+  const priorityItems = getBottomNavPriorityItems(simplified);
+  return getVisibleNavItems(simplified).filter(
+    (item) => !priorityItems.some((priorityItem) => priorityItem.id === item.id),
+  );
 }
 
 /**
  * Items shown inside the mobile "More" sheet — everything that is not a
  * bottom-nav priority item, grouped for scanning.
  */
-export const MORE_SHEET_ITEMS: readonly NavConfigItem[] = NAV_CONFIG.filter(
-  (item) => !BOTTOM_NAV_PRIORITY_ITEMS.some((p) => p.id === item.id),
-);
+export const MORE_SHEET_ITEMS: readonly NavConfigItem[] = getMoreSheetItems();

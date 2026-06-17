@@ -310,8 +310,8 @@ jobs:
 
           ### After Merge
           A tag `${{ needs.prepare.outputs.tag }}` will be created, which triggers:
-          1. GitHub Release creation (via `release.yml`)
-          2. Platform artifact builds (via `release-artifacts.yml`)
+          1. Tagged GitHub Release asset publishing (via `release-platform.yml`)
+          2. Matrix platform builds (via `release-platform.yml`)
 
           ### Checklist
           - [ ] Review changelog for accuracy
@@ -411,8 +411,7 @@ jobs:
           echo "### 🏷️ Tag Created: \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "This tag will trigger:" >> "$GITHUB_STEP_SUMMARY"
-          echo "- ✅ \`release.yml\` — Create GitHub Release" >> "$GITHUB_STEP_SUMMARY"
-          echo "- ✅ \`release-artifacts.yml\` — Build platform binaries" >> "$GITHUB_STEP_SUMMARY"
+          echo "- ✅ \`release-platform.yml\` — Build and publish tagged platform assets" >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
   # Smoke Tests: Run pre-release validation on all platforms

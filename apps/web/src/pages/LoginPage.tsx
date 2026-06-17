@@ -7,6 +7,7 @@ import { useAuth } from '../auth/auth-context';
 import { getPreferredAuthMethod, setPreferredAuthMethod } from '../auth/preferred-auth-method';
 import { PasskeySetupPrompt } from '../components/auth/PasskeySetupPrompt';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { LegalLinks } from '../components/legal/LegalLinks';
 import { hasRegisteredPasskey } from '../lib/passkey-preferences';
 import { loginSchema } from '../lib/validation';
 
@@ -479,6 +480,9 @@ export const LoginPage: React.FC = () => {
             Sign up
           </Link>
         </p>
+        <footer className="auth-footer auth-footer--legal">
+          <LegalLinks />
+        </footer>
       </section>
 
       {/* Passkey setup prompt modal */}

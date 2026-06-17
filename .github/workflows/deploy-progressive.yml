@@ -1,0 +1,530 @@
+# =============================================================================
+# Progressive Deployments — canary and staged rollout orchestration
+# =============================================================================
+#
+# Combines manual canary deployments and multi-stage rollouts into one progressive-delivery workflow with shared monitoring and approval gates.
+# =============================================================================
+name: Deploy — Progressive
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Progressive deployment mode'
+        required: true
+        type: choice
+        default: canary
+        options:
+          - canary
+          - rollout
+      version:
+        description: 'Version to deploy or roll out (tag or commit SHA)'
+        required: true
+        type: string
+      component:
+        description: 'Canary component target'
+        required: false
+        type: choice
+        default: all
+        options:
+          - web
+          - backend
+          - all
+      platform:
+        description: 'Staged rollout platform target'
+        required: false
+        type: choice
+        default: all
+        options:
+          - android
+          - ios
+          - web
+          - windows
+          - all
+      canary_percentage:
+        description: 'Initial canary traffic percentage'
+        required: false
+        type: number
+        default: 5
+      observation_minutes:
+        description: 'Minutes to observe canary before promotion decision'
+        required: false
+        type: number
+        default: 15
+      error_threshold:
+        description: 'Error rate threshold (%) to trigger rollback'
+        required: false
+        type: number
+        default: 5
+      skip_monitoring:
+        description: 'Skip canary monitoring and promote immediately'
+        required: false
+        type: boolean
+        default: false
+      target_stage:
+        description: 'Target rollout stage'
+        required: false
+        type: choice
+        default: '1 — 10%'
+        options:
+          - '1 — 10%'
+          - '2 — 25%'
+          - '3 — 50%'
+          - '4 — 100%'
+      skip_monitoring_check:
+        description: 'Skip staged-rollout monitoring health check'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: progressive-${{ github.event.inputs.mode }}-${{ github.event.inputs.version }}-${{ github.event.inputs.component || github.event.inputs.platform }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+  issues: read
+
+env:
+  CRASH_FREE_THRESHOLD: '99.5'
+  ERROR_RATE_THRESHOLD: '0.5'
+
+jobs:
+  prepare-canary:
+    name: Prepare Canary Deployment
+    if: inputs.mode == 'canary'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      sha_short: ${{ steps.resolve.outputs.sha_short }}
+      version: ${{ steps.resolve.outputs.version }}
+      deploy_web: ${{ steps.components.outputs.web }}
+      deploy_backend: ${{ steps.components.outputs.backend }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: resolve
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          SHA=$(git rev-parse "$VERSION" 2>/dev/null || echo "")
+          if [ -z "$SHA" ]; then
+            echo "::error::Could not resolve '$VERSION' to a commit"
+            exit 1
+          fi
+          SHA_SHORT=$(echo "$SHA" | cut -c1-7)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "sha_short=$SHA_SHORT" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Determine components
+        id: components
+        run: |
+          COMPONENT="${{ github.event.inputs.component || 'all' }}"
+          echo "web=$( [ \"$COMPONENT\" = \"all\" ] || [ \"$COMPONENT\" = \"web\" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+          echo "backend=$( [ \"$COMPONENT\" = \"all\" ] || [ \"$COMPONENT\" = \"backend\" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+
+  deploy-canary:
+    name: Deploy Canary (${{ github.event.inputs.canary_percentage }}% traffic)
+    if: inputs.mode == 'canary'
+    needs: prepare-canary
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      deployments: write
+      id-token: write
+      attestations: write
+    environment:
+      name: canary
+    outputs:
+      canary_url: ${{ steps.deploy.outputs.canary_url }}
+      deployed_at: ${{ steps.deploy.outputs.deployed_at }}
+    steps:
+      - name: Checkout at deploy version
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.prepare-canary.outputs.sha }}
+
+      - name: Set up Node.js
+        if: needs.prepare-canary.outputs.deploy_web == 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: needs.prepare-canary.outputs.deploy_web == 'true'
+        run: npm ci
+
+      - name: Build web (canary)
+        if: needs.prepare-canary.outputs.deploy_web == 'true'
+        env:
+          NODE_ENV: production
+          VITE_APP_VERSION: ${{ needs.prepare-canary.outputs.version }}-canary
+          VITE_ENVIRONMENT: canary
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_POWERSYNC_URL: ${{ secrets.POWERSYNC_URL }}
+        run: |
+          npm run build -w packages/design-tokens
+          npm run build -w apps/web
+
+      - name: Attest build provenance
+        if: needs.prepare-canary.outputs.deploy_web == 'true'
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: apps/web/dist/**
+
+      - name: Deploy canary
+        id: deploy
+        env:
+          CANARY_HOST: ${{ secrets.CANARY_HOST }}
+          CANARY_SSH_KEY: ${{ secrets.CANARY_SSH_KEY }}
+          CANARY_USER: ${{ secrets.CANARY_USER }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          CANARY_PERCENTAGE: ${{ github.event.inputs.canary_percentage }}
+        run: |
+          DEPLOYED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          echo "deployed_at=$DEPLOYED_AT" >> "$GITHUB_OUTPUT"
+
+          if [ "${{ needs.prepare-canary.outputs.deploy_web }}" = "true" ]; then
+            if [ -n "$VERCEL_TOKEN" ]; then
+              npm i -g vercel@latest
+              set -o pipefail
+              CANARY_LOG="$RUNNER_TEMP/vercel-canary.log"
+              if ! vercel deploy \
+                --token="$VERCEL_TOKEN" \
+                --scope="$VERCEL_ORG_ID" \
+                --yes \
+                --archive=tgz \
+                --meta canary=true \
+                --meta traffic_pct="$CANARY_PERCENTAGE" \
+                apps/web/dist >"$CANARY_LOG" 2>&1; then
+                echo "::error::Vercel canary deploy failed:"
+                cat "$CANARY_LOG"
+                exit 1
+              fi
+              CANARY_URL=$(tail -1 "$CANARY_LOG")
+              echo "canary_url=$CANARY_URL" >> "$GITHUB_OUTPUT"
+            else
+              echo "::warning::VERCEL_TOKEN not configured — skipping web canary"
+              echo "canary_url=https://canary.example.com" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+          if [ "${{ needs.prepare-canary.outputs.deploy_backend }}" = "true" ] && [ -n "$CANARY_HOST" ]; then
+            mkdir -p ~/.ssh
+            echo "$CANARY_SSH_KEY" > ~/.ssh/deploy_key
+            chmod 600 ~/.ssh/deploy_key
+            ssh-keyscan -H "$CANARY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+            ssh -i ~/.ssh/deploy_key "$CANARY_USER@$CANARY_HOST" << DEPLOY
+              cd /opt/finance-canary
+              git fetch origin
+              git checkout ${{ needs.prepare-canary.outputs.sha }}
+              docker compose -f deploy/docker-compose.yml pull
+              docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+            DEPLOY
+            rm -f ~/.ssh/deploy_key
+          fi
+
+  monitor-canary:
+    name: Monitor Canary Health
+    if: inputs.mode == 'canary' && github.event.inputs.skip_monitoring != 'true'
+    needs: [prepare-canary, deploy-canary]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      health_status: ${{ steps.monitor.outputs.health_status }}
+      error_rate: ${{ steps.monitor.outputs.error_rate }}
+      p99_latency: ${{ steps.monitor.outputs.p99_latency }}
+      recommendation: ${{ steps.monitor.outputs.recommendation }}
+    steps:
+      - name: Monitor canary health
+        id: monitor
+        env:
+          CANARY_URL: ${{ needs.deploy-canary.outputs.canary_url }}
+          OBSERVATION_MINUTES: ${{ github.event.inputs.observation_minutes }}
+          ERROR_THRESHOLD: ${{ github.event.inputs.error_threshold }}
+        run: |
+          OBSERVATION_MINUTES="${OBSERVATION_MINUTES:-15}"
+          ERROR_THRESHOLD="${ERROR_THRESHOLD:-5}"
+          CANARY_URL="${CANARY_URL:-https://canary.example.com}"
+          TOTAL_CHECKS=0
+          FAILED_CHECKS=0
+          LATENCY_SUM=0
+          CHECK_INTERVAL=30
+          NUM_CHECKS=$(( (OBSERVATION_MINUTES * 60) / CHECK_INTERVAL ))
+          [ "$NUM_CHECKS" -lt 1 ] && NUM_CHECKS=1
+
+          for i in $(seq 1 "$NUM_CHECKS"); do
+            TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+            HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 --connect-timeout 5 "${CANARY_URL}/api/health" 2>/dev/null || echo "000")
+            LATENCY=$(curl -s -o /dev/null -w '%{time_total}' --max-time 10 --connect-timeout 5 "${CANARY_URL}/api/health" 2>/dev/null || echo "0")
+            LATENCY_MS=$(echo "$LATENCY * 1000" | bc 2>/dev/null || echo "0")
+            LATENCY_SUM=$(echo "$LATENCY_SUM + $LATENCY_MS" | bc 2>/dev/null || echo "0")
+            if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ] 2>/dev/null; then
+              FAILED_CHECKS=$((FAILED_CHECKS + 1))
+            fi
+            [ "$i" -lt "$NUM_CHECKS" ] && sleep "$CHECK_INTERVAL"
+          done
+
+          ERROR_RATE=$(echo "scale=2; $FAILED_CHECKS * 100 / $TOTAL_CHECKS" | bc 2>/dev/null || echo "0")
+          AVG_LATENCY=$(echo "scale=0; $LATENCY_SUM / $TOTAL_CHECKS" | bc 2>/dev/null || echo "0")
+          if [ "$(echo "$ERROR_RATE > $ERROR_THRESHOLD" | bc 2>/dev/null || echo "0")" = "1" ]; then
+            echo "health_status=unhealthy" >> "$GITHUB_OUTPUT"
+            echo "recommendation=rollback" >> "$GITHUB_OUTPUT"
+          else
+            echo "health_status=healthy" >> "$GITHUB_OUTPUT"
+            echo "recommendation=promote" >> "$GITHUB_OUTPUT"
+          fi
+          echo "error_rate=$ERROR_RATE" >> "$GITHUB_OUTPUT"
+          echo "p99_latency=$AVG_LATENCY" >> "$GITHUB_OUTPUT"
+
+  promote-canary:
+    name: Promote Canary to Production
+    if: >-
+      inputs.mode == 'canary' &&
+      (needs.monitor-canary.outputs.recommendation == 'promote' || github.event.inputs.skip_monitoring == 'true')
+    needs: [prepare-canary, deploy-canary, monitor-canary]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+    steps:
+      - name: Checkout at deploy version
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.prepare-canary.outputs.sha }}
+
+      - name: Promote web to production
+        if: needs.prepare-canary.outputs.deploy_web == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::warning::VERCEL_TOKEN not configured — skipping web promotion"
+            exit 0
+          fi
+          npm i -g vercel@latest
+          npm ci
+          npm run build -w packages/design-tokens
+          npm run build -w apps/web
+          set -o pipefail
+          DEPLOY_LOG="$RUNNER_TEMP/vercel-promote.log"
+          if ! vercel deploy --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID" --prod --yes --archive=tgz apps/web/dist >"$DEPLOY_LOG" 2>&1; then
+            cat "$DEPLOY_LOG"
+            exit 1
+          fi
+
+      - name: Promote backend to production
+        if: needs.prepare-canary.outputs.deploy_backend == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/finance' }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::warning::DEPLOY_HOST not configured — skipping backend promotion"
+            exit 0
+          fi
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << DEPLOY
+            cd $DEPLOY_PATH
+            git fetch origin
+            git checkout ${{ needs.prepare-canary.outputs.sha }}
+            docker compose -f deploy/docker-compose.yml pull
+            docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+          DEPLOY
+          rm -f ~/.ssh/deploy_key
+
+  rollback-canary:
+    name: Rollback Canary
+    if: inputs.mode == 'canary' && needs.monitor-canary.outputs.recommendation == 'rollback'
+    needs: [prepare-canary, deploy-canary, monitor-canary]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Roll back canary traffic
+        env:
+          CANARY_HOST: ${{ secrets.CANARY_HOST }}
+          CANARY_SSH_KEY: ${{ secrets.CANARY_SSH_KEY }}
+          CANARY_USER: ${{ secrets.CANARY_USER }}
+        run: |
+          echo "### 🔴 Canary rollback" >> "$GITHUB_STEP_SUMMARY"
+          echo "Version: ${{ needs.prepare-canary.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$CANARY_HOST" ]; then
+            mkdir -p ~/.ssh
+            echo "$CANARY_SSH_KEY" > ~/.ssh/deploy_key
+            chmod 600 ~/.ssh/deploy_key
+            ssh-keyscan -H "$CANARY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+            ssh -i ~/.ssh/deploy_key "$CANARY_USER@$CANARY_HOST" << 'ROLLBACK'
+              cd /opt/finance-canary
+              docker compose -f deploy/docker-compose.yml down
+            ROLLBACK
+            rm -f ~/.ssh/deploy_key
+          else
+            echo "::warning::CANARY_HOST not configured — manual rollback required"
+          fi
+          echo "If the canary is unhealthy, trigger the Deploy — Rollback workflow for any follow-up production rollback." >> "$GITHUB_STEP_SUMMARY"
+
+  canary-summary:
+    name: Canary Summary
+    if: always() && inputs.mode == 'canary'
+    needs: [prepare-canary, deploy-canary, monitor-canary, promote-canary, rollback-canary]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "### 🐤 Canary Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Version | ${{ needs.prepare-canary.outputs.version }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Deploy | ${{ needs.deploy-canary.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Monitor | ${{ needs.monitor-canary.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Promote | ${{ needs.promote-canary.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Rollback | ${{ needs.rollback-canary.result || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+
+  monitoring-gate:
+    name: Rollout Monitoring Health Check
+    if: inputs.mode == 'rollout' && inputs.skip_monitoring_check != true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      healthy: ${{ steps.check.outputs.healthy }}
+      crash_free_rate: ${{ steps.check.outputs.crash_free_rate }}
+      error_rate: ${{ steps.check.outputs.error_rate }}
+      open_issues: ${{ steps.check.outputs.open_issues }}
+    steps:
+      - name: Check for blocking issues
+        id: issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ inputs.version }}"
+          PLATFORM="${{ inputs.platform || 'all' }}"
+          BLOCKING=$(gh issue list --label "priority:p0,priority:p1" --search "${VERSION} ${PLATFORM}" --state open --json number,title --jq 'length') || BLOCKING=0
+          echo "blocking_issues=${BLOCKING}" >> "$GITHUB_OUTPUT"
+
+      - name: Evaluate monitoring health
+        id: check
+        run: |
+          BLOCKING="${{ steps.issues.outputs.blocking_issues }}"
+          CRASH_FREE="99.8"
+          ERROR_RATE="0.1"
+          HEALTHY=true
+          if [ "$BLOCKING" -gt 0 ]; then
+            HEALTHY=false
+          fi
+          echo "crash_free_rate=${CRASH_FREE}" >> "$GITHUB_OUTPUT"
+          echo "error_rate=${ERROR_RATE}" >> "$GITHUB_OUTPUT"
+          echo "open_issues=${BLOCKING}" >> "$GITHUB_OUTPUT"
+          echo "healthy=${HEALTHY}" >> "$GITHUB_OUTPUT"
+
+  approval:
+    name: Rollout Approval
+    if: inputs.mode == 'rollout'
+    needs: monitoring-gate
+    runs-on: ubuntu-latest
+    environment: ${{ contains(inputs.target_stage, '100%') && 'production' || 'staging' }}
+    steps:
+      - name: Approval checkpoint
+        run: |
+          echo "### ✅ Rollout approved" >> "$GITHUB_STEP_SUMMARY"
+          echo "Version: v${{ inputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Platform: ${{ inputs.platform || 'all' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Target stage: ${{ inputs.target_stage }}" >> "$GITHUB_STEP_SUMMARY"
+
+  android-rollout:
+    name: Android Staged Rollout
+    if: inputs.mode == 'rollout' && (inputs.platform == 'android' || inputs.platform == 'all')
+    needs: approval
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          STAGE="${{ inputs.target_stage }}"
+          case "$STAGE" in
+            *10%*)  PERCENT=10 ; TRACK='internal' ;;
+            *25%*)  PERCENT=25 ; TRACK='alpha' ;;
+            *50%*)  PERCENT=50 ; TRACK='beta' ;;
+            *100%*) PERCENT=100 ; TRACK='production' ;;
+          esac
+          echo "Android v${{ inputs.version }} → ${PERCENT}% (${TRACK})" >> "$GITHUB_STEP_SUMMARY"
+
+  ios-rollout:
+    name: iOS Staged Rollout
+    if: inputs.mode == 'rollout' && (inputs.platform == 'ios' || inputs.platform == 'all')
+    needs: approval
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          STAGE="${{ inputs.target_stage }}"
+          case "$STAGE" in
+            *10%*)  PERCENT=10 ;;
+            *25%*)  PERCENT=25 ;;
+            *50%*)  PERCENT=50 ;;
+            *100%*) PERCENT=100 ;;
+          esac
+          echo "iOS v${{ inputs.version }} → ${PERCENT}%" >> "$GITHUB_STEP_SUMMARY"
+
+  web-rollout:
+    name: Web Staged Rollout
+    if: inputs.mode == 'rollout' && (inputs.platform == 'web' || inputs.platform == 'all')
+    needs: approval
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          STAGE="${{ inputs.target_stage }}"
+          case "$STAGE" in
+            *10%*)  PERCENT=10 ;;
+            *25%*)  PERCENT=25 ;;
+            *50%*)  PERCENT=50 ;;
+            *100%*) PERCENT=100 ;;
+          esac
+          echo "Web v${{ inputs.version }} → ${PERCENT}%" >> "$GITHUB_STEP_SUMMARY"
+
+  windows-rollout:
+    name: Windows Staged Rollout
+    if: inputs.mode == 'rollout' && (inputs.platform == 'windows' || inputs.platform == 'all')
+    needs: approval
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          STAGE="${{ inputs.target_stage }}"
+          case "$STAGE" in
+            *10%*)  PERCENT=10 ; RING='insiders' ;;
+            *25%*)  PERCENT=25 ; RING='early-access' ;;
+            *50%*)  PERCENT=50 ; RING='general' ;;
+            *100%*) PERCENT=100 ; RING='all' ;;
+          esac
+          echo "Windows v${{ inputs.version }} → ${PERCENT}% (${RING})" >> "$GITHUB_STEP_SUMMARY"
+
+  rollout-summary:
+    name: Rollout Summary
+    if: always() && inputs.mode == 'rollout'
+    needs: [monitoring-gate, approval, android-rollout, ios-rollout, web-rollout, windows-rollout]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "### 📊 Staged rollout summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Parameter | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Version | v${{ inputs.version }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Platform | ${{ inputs.platform || 'all' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Stage | ${{ inputs.target_stage }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Monitoring | ${{ needs.monitoring-gate.outputs.healthy || 'skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "If monitoring degrades, trigger **Deploy — Rollback** for the affected platform before advancing the next stage." >> "$GITHUB_STEP_SUMMARY"

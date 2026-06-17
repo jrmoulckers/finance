@@ -18,12 +18,18 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
+  ConfirmDialog,
   CurrencyDisplay,
   EmptyState,
   ErrorBanner,
   LoadingSpinner,
-  ConfirmDialog,
+  SortableList,
+  type SortableListRenderProps,
 } from '../components/common';
+import { AmountInput } from '../components/forms/AmountInput';
+import '../components/forms/forms.css';
+import { AppIcon } from '../components/icons';
+import { useAmountInput } from '../hooks/useAmountInput';
 import { useCategories } from '../hooks/useCategories';
 import {
   useSpendingWatchlists,
@@ -34,7 +40,6 @@ import {
 } from '../hooks/useSpendingWatchlists';
 
 import '../styles/watchlists.css';
-import { AppIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Subcomponents
@@ -92,7 +97,7 @@ const AlertCard: React.FC<AlertCardProps> = ({ alert, onDismiss }) => (
       onClick={() => onDismiss(alert.watchlist.id)}
       aria-label={`Dismiss ${alert.watchlist.categoryName} alert`}
     >
-      ✕
+      Γ£ò
     </button>
   </div>
 );
@@ -102,6 +107,8 @@ interface WatchlistItemProps {
   currentSpent: number;
   onRemove: (id: string) => void;
   onToggleAlerts: (id: string) => void;
+  itemProps: SortableListRenderProps['itemProps'];
+  dragHandleProps: SortableListRenderProps['dragHandleProps'];
 }
 
 const WatchlistItem: React.FC<WatchlistItemProps> = ({
@@ -109,60 +116,70 @@ const WatchlistItem: React.FC<WatchlistItemProps> = ({
   currentSpent,
   onRemove,
   onToggleAlerts,
+  itemProps,
+  dragHandleProps,
 }) => {
   const percentage =
     watchlist.thresholdCents > 0 ? (currentSpent / watchlist.thresholdCents) * 100 : 0;
 
   return (
-    <li className="watchlist-item" role="listitem">
-      <div className="watchlist-item__header">
-        <h4 className="watchlist-item__name">{watchlist.categoryName}</h4>
-        <span className="watchlist-item__period">{watchlist.period}</span>
-      </div>
-      <div className="watchlist-item__spending">
-        <CurrencyDisplay amount={currentSpent} /> of{' '}
-        <CurrencyDisplay amount={watchlist.thresholdCents} />
-        <span className="watchlist-item__percentage"> ({Math.round(percentage)}%)</span>
-      </div>
-      <div
-        className="watchlist-item__bar"
-        role="progressbar"
-        aria-valuenow={Math.min(Math.round(percentage), 100)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={`${watchlist.categoryName}: ${Math.round(percentage)}% of limit`}
+    <div {...itemProps} className={`${itemProps.className} watchlist-item`.trim()} role="listitem">
+      <button
+        {...dragHandleProps}
+        className={`${dragHandleProps.className ?? ''} watchlist-item__drag-handle`.trim()}
       >
+        <span aria-hidden="true">⋮⋮</span>
+      </button>
+      <div className="watchlist-item__content">
+        <div className="watchlist-item__header">
+          <h4 className="watchlist-item__name">{watchlist.categoryName}</h4>
+          <span className="watchlist-item__period">{watchlist.period}</span>
+        </div>
+        <div className="watchlist-item__spending">
+          <CurrencyDisplay amount={currentSpent} /> of{' '}
+          <CurrencyDisplay amount={watchlist.thresholdCents} />
+          <span className="watchlist-item__percentage"> ({Math.round(percentage)}%)</span>
+        </div>
         <div
-          className={`watchlist-item__bar-fill ${percentage >= 100 ? 'watchlist-item__bar-fill--critical' : percentage >= 80 ? 'watchlist-item__bar-fill--warning' : ''}`}
-          style={{ width: `${Math.min(percentage, 100)}%` }}
-        />
-      </div>
-      <div className="watchlist-item__actions">
-        <button
-          type="button"
-          className="watchlist-item__toggle"
-          onClick={() => onToggleAlerts(watchlist.id)}
-          aria-label={`${watchlist.alertsEnabled ? 'Disable' : 'Enable'} alerts for ${watchlist.categoryName}`}
-          aria-pressed={watchlist.alertsEnabled}
+          className="watchlist-item__bar"
+          role="progressbar"
+          aria-valuenow={Math.min(Math.round(percentage), 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${watchlist.categoryName}: ${Math.round(percentage)}% of limit`}
         >
-          {watchlist.alertsEnabled ? (
-            <>
-              <AppIcon name="bell" /> Alerts on
-            </>
-          ) : (
-            'Alerts off'
-          )}
-        </button>
-        <button
-          type="button"
-          className="watchlist-item__remove"
-          onClick={() => onRemove(watchlist.id)}
-          aria-label={`Remove ${watchlist.categoryName} watchlist`}
-        >
-          Remove
-        </button>
+          <div
+            className={`watchlist-item__bar-fill ${percentage >= 100 ? 'watchlist-item__bar-fill--critical' : percentage >= 80 ? 'watchlist-item__bar-fill--warning' : ''}`}
+            style={{ width: `${Math.min(percentage, 100)}%` }}
+          />
+        </div>
+        <div className="watchlist-item__actions">
+          <button
+            type="button"
+            className="watchlist-item__toggle"
+            onClick={() => onToggleAlerts(watchlist.id)}
+            aria-label={`${watchlist.alertsEnabled ? 'Disable' : 'Enable'} alerts for ${watchlist.categoryName}`}
+            aria-pressed={watchlist.alertsEnabled}
+          >
+            {watchlist.alertsEnabled ? (
+              <>
+                <AppIcon name="bell" /> Alerts on
+              </>
+            ) : (
+              'Alerts off'
+            )}
+          </button>
+          <button
+            type="button"
+            className="watchlist-item__remove"
+            onClick={() => onRemove(watchlist.id)}
+            aria-label={`Remove ${watchlist.categoryName} watchlist`}
+          >
+            Remove
+          </button>
+        </div>
       </div>
-    </li>
+    </div>
   );
 };
 
@@ -180,6 +197,7 @@ export const WatchlistsPage: React.FC = () => {
     removeWatchlist,
     toggleAlerts,
     dismissAlert,
+    reorderWatchlists,
     refresh,
   } = useSpendingWatchlists();
 
@@ -187,7 +205,11 @@ export const WatchlistsPage: React.FC = () => {
 
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [thresholdInput, setThresholdInput] = useState('');
+  const thresholdInput = useAmountInput({
+    currencySymbol: '$',
+    decimalPlaces: 2,
+    allowNegative: false,
+  });
   const [periodInput, setPeriodInput] = useState<'monthly' | 'weekly'>('monthly');
   const [removingWatchlist, setRemovingWatchlist] = useState<Watchlist | null>(null);
 
@@ -214,10 +236,9 @@ export const WatchlistsPage: React.FC = () => {
       e.preventDefault();
 
       const category = categories.find((c) => c.id === selectedCategoryId);
-      if (!category || !thresholdInput) return;
+      if (!category || thresholdInput.cents <= 0) return;
 
-      const thresholdCents = Math.round(parseFloat(thresholdInput) * 100);
-      if (Number.isNaN(thresholdCents) || thresholdCents <= 0) return;
+      const thresholdCents = thresholdInput.cents;
 
       const input: CreateWatchlistInput = {
         categoryId: category.id,
@@ -229,7 +250,7 @@ export const WatchlistsPage: React.FC = () => {
       addWatchlist(input);
       setIsAddFormOpen(false);
       setSelectedCategoryId('');
-      setThresholdInput('');
+      thresholdInput.reset(0);
     },
     [addWatchlist, categories, periodInput, selectedCategoryId, thresholdInput],
   );
@@ -292,17 +313,25 @@ export const WatchlistsPage: React.FC = () => {
         <section className="page-section" aria-label="Configured watchlists">
           <h3 className="page-section__title">Your Watchlists</h3>
           <div className="card">
-            <ul className="watchlist-list" role="list">
-              {watchlists.map((wl) => (
+            <SortableList
+              items={watchlists}
+              getItemId={(watchlist) => watchlist.id}
+              getItemLabel={(watchlist) => watchlist.categoryName}
+              onReorder={reorderWatchlists}
+              className="watchlist-list"
+              ariaLabel="Configured watchlists"
+              renderItem={(watchlist, { itemProps, dragHandleProps }) => (
                 <WatchlistItem
-                  key={wl.id}
-                  watchlist={wl}
-                  currentSpent={spendingMap.get(wl.id) ?? 0}
-                  onRemove={() => setRemovingWatchlist(wl)}
+                  key={watchlist.id}
+                  watchlist={watchlist}
+                  currentSpent={spendingMap.get(watchlist.id) ?? 0}
+                  onRemove={() => setRemovingWatchlist(watchlist)}
                   onToggleAlerts={toggleAlerts}
+                  itemProps={itemProps}
+                  dragHandleProps={dragHandleProps}
                 />
-              ))}
-            </ul>
+              )}
+            />
           </div>
         </section>
       )}
@@ -326,7 +355,7 @@ export const WatchlistsPage: React.FC = () => {
                 required
                 aria-required="true"
               >
-                <option value="">Select category…</option>
+                <option value="">Select categoryΓÇª</option>
                 {availableCategories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -336,16 +365,14 @@ export const WatchlistsPage: React.FC = () => {
             </div>
             <div className="watchlist-form__field">
               <label htmlFor="wl-threshold">Spending Limit ($)</label>
-              <input
+              <AmountInput
                 id="wl-threshold"
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={thresholdInput}
-                onChange={(e) => setThresholdInput(e.target.value)}
+                amountInput={thresholdInput}
+                className="form-input"
+                displayLabel="Spending limit"
                 required
                 aria-required="true"
-                placeholder="e.g. 500.00"
+                placeholder="$0.00"
               />
             </div>
             <div className="watchlist-form__field">

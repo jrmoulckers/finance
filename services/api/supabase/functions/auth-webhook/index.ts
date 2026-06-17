@@ -69,7 +69,7 @@ function constantTimeEqual(a: string, b: string): boolean {
 function verifyWebhookSecret(req: Request, logger: Logger): boolean {
   const secret = Deno.env.get('AUTH_WEBHOOK_SECRET');
   if (!secret) {
-    logger.error('AUTH_WEBHOOK_SECRET not configured');
+    logger.error('Auth webhook credential is not configured');
     return false;
   }
 

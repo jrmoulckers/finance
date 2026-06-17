@@ -1,24 +1,14 @@
 /* SPDX-License-Identifier: BUSL-1.1 */
 
-/**
- * Styles for the Financial Insights page.
- *
- * Uses design token CSS custom properties for all visual values.
- */
-
-.insights-page {
-  max-width: 900px;
+.wealth-insights-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  max-width: 1120px;
   margin: 0 auto;
 }
 
-.insights-page__title {
-  font-size: var(--type-scale-headline-font-size);
-  font-weight: var(--type-scale-headline-font-weight);
-  color: var(--semantic-text-primary);
-  margin-bottom: 0;
-}
-
-.insights-page__loading {
+.wealth-insights-page__loading {
   display: flex;
   justify-content: center;
   padding: var(--spacing-8) 0;

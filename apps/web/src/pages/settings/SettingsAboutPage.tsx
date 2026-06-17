@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 import packageJson from '../../../package.json';
 
@@ -36,6 +37,14 @@ export const SettingsAboutPage: React.FC = () => (
     <section aria-label="Legal" className="page-section">
       <div className="settings-group">
         <h3 className="settings-group__title">Legal</h3>
+        <Link
+          className="settings-item settings-item--button"
+          to="/legal"
+          aria-label="Open Legal index"
+        >
+          <span className="settings-item__label">Legal documents</span>
+          <span className="settings-item__value">Privacy, Terms, CCPA</span>
+        </Link>
         <a
           className="settings-item settings-item--button"
           href="https://github.com/jrmoulckers/finance/blob/main/LICENSE"

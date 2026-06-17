@@ -227,15 +227,20 @@ export default defineConfig({
             .replace(/^\/api\/account\/delete-account$/, '/account-delete')
             .replace(/^\/api\/account\//, '/account-'),
       },
+      '/api/feedback': {
+        target: authProxyTarget,
+        changeOrigin: true,
+        rewrite: () => '/feedback',
+      },
     },
     headers: {
       // Strict CSP - no inline scripts, no eval
       'Content-Security-Policy': [
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
-        "style-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "img-src 'self' data: blob:",
-        "font-src 'self'",
+        "font-src 'self' https://fonts.gstatic.com",
         "connect-src 'self' ws://localhost:*",
         "worker-src 'self' blob:",
         "frame-ancestors 'none'",

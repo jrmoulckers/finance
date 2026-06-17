@@ -15,6 +15,7 @@ import {
   mapCurrency,
   mapSyncMetadata,
   optionalString,
+  requireNumber,
   requireString,
   toBoolean,
 } from './helpers';
@@ -30,6 +31,7 @@ const BUDGET_COLUMNS = [
   'start_date',
   'end_date',
   'is_rollover',
+  'sort_order',
   'created_at',
   'updated_at',
   'deleted_at',
@@ -50,6 +52,7 @@ export interface CreateBudgetInput {
   startDate: string;
   endDate?: string | null;
   isRollover?: boolean;
+  sortOrder?: number;
 }
 
 /** Input used when updating an existing budget record. */
@@ -63,6 +66,7 @@ export interface UpdateBudgetInput {
   startDate?: string;
   endDate?: string | null;
   isRollover?: boolean;
+  sortOrder?: number;
 }
 
 /** Budget shape enriched with calculated spending totals. */
@@ -211,15 +215,17 @@ function mapBudget(row: Row): Budget {
     startDate: requireString(row.start_date, 'budget.start_date'),
     endDate: optionalString(row.end_date),
     isRollover: toBoolean(row.is_rollover),
+    sortOrder: row.sort_order == null ? 0 : requireNumber(row.sort_order, 'budget.sort_order'),
     ...mapSyncMetadata(row),
   };
 }
 
-/** Return all non-deleted budgets ordered by period start date. */
+/** Return all non-deleted budgets ordered by persisted sort order. */
 export function getAllBudgets(db: SqliteDb): Budget[] {
-  return query<Row>(db, `${BUDGET_BASE_QUERY} ORDER BY start_date DESC, name ASC`).rows.map(
-    mapBudget,
-  );
+  return query<Row>(
+    db,
+    `${BUDGET_BASE_QUERY} ORDER BY sort_order ASC, start_date DESC, name ASC`,
+  ).rows.map(mapBudget);
 }
 
 /** Find a single non-deleted budget by its identifier. */
@@ -232,6 +238,7 @@ export function getBudgetById(db: SqliteDb, budgetId: SyncId): Budget | null {
 export function createBudget(db: SqliteDb, input: CreateBudgetInput): Budget {
   const id = crypto.randomUUID();
   const currency = input.currency ?? Currencies.USD;
+  const sortOrder = input.sortOrder ?? 0;
 
   execute(
     db,
@@ -246,13 +253,14 @@ export function createBudget(db: SqliteDb, input: CreateBudgetInput): Budget {
       start_date,
       end_date,
       is_rollover,
+      sort_order,
       created_at,
       updated_at,
       deleted_at,
       sync_version,
       is_synced
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
       NULL,
@@ -270,6 +278,7 @@ export function createBudget(db: SqliteDb, input: CreateBudgetInput): Budget {
       input.startDate,
       input.endDate ?? null,
       input.isRollover ? 1 : 0,
+      sortOrder,
     ],
   );
 
@@ -357,6 +366,7 @@ export function updateBudget(
     startDate: updates.startDate ?? existingBudget.startDate,
     endDate: updates.endDate !== undefined ? updates.endDate : existingBudget.endDate,
     isRollover: updates.isRollover ?? existingBudget.isRollover,
+    sortOrder: updates.sortOrder ?? existingBudget.sortOrder ?? 0,
   };
 
   execute(
@@ -371,6 +381,7 @@ export function updateBudget(
             start_date = ?,
             end_date = ?,
             is_rollover = ?,
+            sort_order = ?,
             updated_at = ${SQLITE_NOW_EXPRESSION},
             sync_version = 1,
             is_synced = 0
@@ -386,6 +397,7 @@ export function updateBudget(
       mergedBudget.startDate,
       mergedBudget.endDate,
       mergedBudget.isRollover ? 1 : 0,
+      mergedBudget.sortOrder,
       budgetId,
     ],
   );
@@ -415,11 +427,29 @@ export function deleteBudget(db: SqliteDb, budgetId: SyncId): boolean {
   return true;
 }
 
+export function reorderBudgets(db: SqliteDb, orderedBudgetIds: readonly SyncId[]): void {
+  for (const [sortOrder, budgetId] of orderedBudgetIds.entries()) {
+    execute(
+      db,
+      `UPDATE budget
+          SET sort_order = ?,
+              updated_at = ${SQLITE_NOW_EXPRESSION},
+              sync_version = 1,
+              is_synced = 0
+        WHERE id = ?
+          AND deleted_at IS NULL`,
+      [sortOrder, budgetId],
+    );
+  }
+}
+
 /** Return all non-deleted budgets for a given cadence. */
 export function getBudgetsByPeriod(db: SqliteDb, period: BudgetPeriod): Budget[] {
-  return query<Row>(db, `${BUDGET_BASE_QUERY} AND period = ? ORDER BY start_date DESC, name ASC`, [
-    period,
-  ]).rows.map(mapBudget);
+  return query<Row>(
+    db,
+    `${BUDGET_BASE_QUERY} AND period = ? ORDER BY sort_order ASC, start_date DESC, name ASC`,
+    [period],
+  ).rows.map(mapBudget);
 }
 
 /** Return a budget alongside its calculated spending and remaining amounts. */

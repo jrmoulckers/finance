@@ -45,6 +45,15 @@ const SALT_STORE_NAME = 'keys';
 /** IndexedDB key for the persistent salt. */
 const SALT_IDB_KEY = 'db-salt';
 
+/** SessionStorage key for the per-tab database encryption passphrase. */
+const SESSION_PASSPHRASE_KEY = 'finance.sqliteEncryption.passphrase';
+
+/** SessionStorage key for an additional per-tab passphrase salt. */
+const SESSION_PASSPHRASE_SALT_KEY = 'finance.sqliteEncryption.salt';
+
+/** Random byte length for generated session passphrases and salts. */
+const SESSION_SECRET_BYTES = 32;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -61,6 +70,41 @@ export interface KeyDerivationOptions {
   readonly secret: string;
   /** Optional salt — if not provided, a new random salt is generated. */
   readonly salt?: Uint8Array;
+}
+
+// ---------------------------------------------------------------------------
+// Byte helpers
+// ---------------------------------------------------------------------------
+
+function toExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
+function randomBase64Url(byteLength: number): string | null {
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+    return null;
+  }
+
+  const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/u, '');
+}
+
+function getSessionStorageIfAvailable(): Storage | null {
+  try {
+    if (typeof sessionStorage === 'undefined') {
+      return null;
+    }
+    const probeKey = 'finance.sqliteEncryption.probe';
+    sessionStorage.setItem(probeKey, '1');
+    sessionStorage.removeItem(probeKey);
+    return sessionStorage;
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +131,7 @@ export async function deriveEncryptionKey(secret: string, salt: Uint8Array): Pro
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt.buffer as ArrayBuffer,
+      salt: toExactArrayBuffer(salt),
       iterations: PBKDF2_ITERATIONS,
       hash: 'SHA-256',
     },
@@ -118,9 +162,9 @@ export async function encryptDatabase(
   const key = await deriveEncryptionKey(secret, salt);
 
   const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: iv.buffer as ArrayBuffer },
+    { name: 'AES-GCM', iv: toExactArrayBuffer(iv) },
     key,
-    plaintext.buffer as ArrayBuffer,
+    toExactArrayBuffer(plaintext),
   );
 
   // Pack: [salt (16)] [iv (12)] [ciphertext + auth tag]
@@ -153,9 +197,9 @@ export async function decryptDatabase(encrypted: Uint8Array, secret: string): Pr
 
   try {
     const plaintext = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: iv.buffer as ArrayBuffer },
+      { name: 'AES-GCM', iv: toExactArrayBuffer(iv) },
       key,
-      ciphertext.buffer as ArrayBuffer,
+      toExactArrayBuffer(ciphertext),
     );
     return new Uint8Array(plaintext);
   } catch {
@@ -163,6 +207,46 @@ export async function decryptDatabase(encrypted: Uint8Array, secret: string): Pr
       'Decryption failed. The encryption key may be incorrect or the data may have been tampered with.',
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Session passphrase fallback
+// ---------------------------------------------------------------------------
+
+/**
+ * Return a per-tab encryption secret backed by sessionStorage.
+ *
+ * This fallback keeps the SQLite IndexedDB blob encrypted even before an auth
+ * token is available. The generated passphrase is intentionally scoped to the
+ * current browser session and is never written to localStorage or IndexedDB.
+ */
+export function getOrCreateSessionStoragePassphrase(): string | null {
+  const storage = getSessionStorageIfAvailable();
+  if (!storage) {
+    return null;
+  }
+
+  let passphrase = storage.getItem(SESSION_PASSPHRASE_KEY);
+  let salt = storage.getItem(SESSION_PASSPHRASE_SALT_KEY);
+
+  if (!passphrase || !salt) {
+    passphrase = randomBase64Url(SESSION_SECRET_BYTES);
+    salt = randomBase64Url(SESSION_SECRET_BYTES);
+    if (!passphrase || !salt) {
+      return null;
+    }
+    storage.setItem(SESSION_PASSPHRASE_KEY, passphrase);
+    storage.setItem(SESSION_PASSPHRASE_SALT_KEY, salt);
+  }
+
+  return salt + ':' + passphrase;
+}
+
+/** Clear the per-tab fallback passphrase. */
+export function clearSessionStoragePassphrase(): void {
+  const storage = getSessionStorageIfAvailable();
+  storage?.removeItem(SESSION_PASSPHRASE_KEY);
+  storage?.removeItem(SESSION_PASSPHRASE_SALT_KEY);
 }
 
 // ---------------------------------------------------------------------------
@@ -190,7 +274,7 @@ export async function persistSalt(salt: Uint8Array): Promise<void> {
   const db = await openSaltStore();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(SALT_STORE_NAME, 'readwrite');
-    tx.objectStore(SALT_STORE_NAME).put(salt.buffer, SALT_IDB_KEY);
+    tx.objectStore(SALT_STORE_NAME).put(toExactArrayBuffer(salt), SALT_IDB_KEY);
     tx.oncomplete = () => {
       db.close();
       resolve();
@@ -252,7 +336,7 @@ export async function saveEncryptedDatabase(plaintext: Uint8Array, secret: strin
   const idb = await openEncryptedStore();
   return new Promise((resolve, reject) => {
     const tx = idb.transaction(ENCRYPTED_STORE, 'readwrite');
-    tx.objectStore(ENCRYPTED_STORE).put(data.buffer, ENCRYPTED_KEY);
+    tx.objectStore(ENCRYPTED_STORE).put(toExactArrayBuffer(data), ENCRYPTED_KEY);
     tx.oncomplete = () => {
       idb.close();
       resolve();

@@ -29,6 +29,10 @@ import {
   PINNED_NAV_ITEMS,
 } from './navConfig';
 
+beforeEach(() => {
+  localStorage.clear();
+});
+
 describe('BottomNavigation', () => {
   const defaultProps = {
     activePath: '/dashboard',
@@ -184,6 +188,36 @@ describe('BottomNavigation', () => {
       if (BOTTOM_NAV_PRIORITY_ITEMS.some((p) => p.id === item.id)) continue;
       expect(within(dialog).getByRole('button', { name: item.label })).toBeInTheDocument();
     }
+  });
+
+  it('snapshots the migrated token-based priority nav icons', () => {
+    const { container } = render(<BottomNavigation {...defaultProps} />);
+
+    const iconTokens = Array.from(container.querySelectorAll('[data-icon-token]')).map((icon) => ({
+      pack: icon.getAttribute('data-icon-pack'),
+      tag: icon.tagName.toLowerCase(),
+      token: icon.getAttribute('data-icon-token'),
+    }));
+
+    expect(iconTokens).toMatchInlineSnapshot(`
+      [
+        {
+          "pack": "standard_lucide",
+          "tag": "svg",
+          "token": "DASHBOARD",
+        },
+        {
+          "pack": "standard_lucide",
+          "tag": "svg",
+          "token": "ACCOUNTS",
+        },
+        {
+          "pack": "standard_lucide",
+          "tag": "svg",
+          "token": "TRANSACTIONS",
+        },
+      ]
+    `);
   });
 
   it('has an accessible nav label', () => {

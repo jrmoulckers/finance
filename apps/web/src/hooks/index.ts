@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export { useAccounts } from './useAccounts';
-export { useAmountInput, formatCentsDisplay } from './useAmountInput';
-export type { UseAmountInputResult } from './useAmountInput';
+export { useAmountInput, formatCentsDisplay, parseAmountInput } from './useAmountInput';
+export type {
+  AmountInputMode,
+  UseAmountInputOptions,
+  UseAmountInputResult,
+} from './useAmountInput';
 export { useBudgets } from './useBudgets';
 export { useCategories } from './useCategories';
 export { useDashboardData } from './useDashboardData';
@@ -33,8 +37,12 @@ export { useImport } from './useImport';
 export type { ImportStep, UseImportResult, ImportProgress, ImportSummary } from './useImport';
 export { useAutoCategory } from './useAutoCategory';
 export type { UseAutoCategoryResult } from './useAutoCategory';
+export { useAutoCategorize } from './useAutoCategorize';
+export type { UseAutoCategorizeResult } from './useAutoCategorize';
 export { useTheme } from './useTheme';
 export type { ThemeValue, ResolvedTheme, DisplayDensity, UseThemeResult } from './useTheme';
+export { useAccessibility } from './useAccessibility';
+export type { UseAccessibilityResult } from './useAccessibility';
 export { useWebVitals } from './useWebVitals';
 export type { UseWebVitalsResult } from './useWebVitals';
 export { useQuickEntry } from './useQuickEntry';
@@ -56,6 +64,8 @@ export type {
   MonthComparison,
   Recommendation,
 } from './useInsights';
+export { useWealthInsights } from './useWealthInsights';
+export type { UseWealthInsightsResult } from './useWealthInsights';
 export { useSpendingWatchlists } from './useSpendingWatchlists';
 export type {
   UseSpendingWatchlistsResult,
@@ -116,6 +126,10 @@ export { useVirtualList } from './useVirtualList';
 export type { UseVirtualListOptions, UseVirtualListResult, VirtualItem } from './useVirtualList';
 export { useDebouncedSearch } from './useDebouncedSearch';
 export type { UseDebouncedSearchResult, UseDebouncedSearchOptions } from './useDebouncedSearch';
+export { useLiveQuery } from './useLiveQuery';
+export type { UseLiveQueryOptions, UseLiveQueryResult } from './useLiveQuery';
+export { useRealtimeTable } from './useRealtimeTable';
+export type { UseRealtimeTableOptions, UseRealtimeTableResult } from './useRealtimeTable';
 export { useBrowserSupport } from './useBrowserSupport';
 export type { UseBrowserSupportResult } from './useBrowserSupport';
 export { useMilestones } from './useMilestones';
@@ -128,6 +142,8 @@ export type {
 export { useUndo } from './useUndo';
 export type { UseUndoResult, UseUndoOptions, UndoableAction, UndoExecuteInput } from './useUndo';
 export { useEscapeBack } from './useEscapeBack';
+export { useNavigationGuard } from './useNavigationGuard';
+export type { UseNavigationGuardResult } from './useNavigationGuard';
 export { useScenarioModeler } from './useScenarioModeler';
 export type { UseScenarioModelerResult } from './useScenarioModeler';
 export { useRetirementPlanner } from './useRetirementPlanner';
@@ -153,6 +169,8 @@ export type { UseAnnouncerResult, UseAnnouncerOptions } from './useAnnouncer';
 export { useRouteAnnouncer } from './useRouteAnnouncer';
 export { useFontScale } from './useFontScale';
 export type { UseFontScaleResult } from './useFontScale';
+export { useHaptics } from './useHaptics';
+export type { UseHapticsResult } from './useHaptics';
 export { useNotifications } from './useNotifications';
 export type { UseNotificationsResult } from './useNotifications';
 export { useNotificationPreferences } from './useNotificationPreferences';
@@ -193,10 +211,14 @@ export { useCashFlow } from './useCashFlow';
 export type { UseCashFlowResult } from './useCashFlow';
 export { useInvoices } from './useInvoices';
 export type { UseInvoicesResult } from './useInvoices';
+export { useCoachAlerts } from './useCoachAlerts';
+export type { UseCoachAlertsResult } from './useCoachAlerts';
 export { useNetWorth } from './useNetWorth';
 export type { UseNetWorthResult } from './useNetWorth';
 export { useSubscriptions } from './useSubscriptions';
 export type { UseSubscriptionsResult } from './useSubscriptions';
+export { useRecommendations } from './useRecommendations';
+export type { UseRecommendationsResult } from './useRecommendations';
 export { useBankConnections } from './useBankConnections';
 export type {
   UseBankConnectionsResult,
@@ -214,3 +236,5 @@ export type {
   PermissionLevel,
   TokenStatus,
 } from './useConnectorPermissions';
+export { useMilestoneCheck } from './useMilestoneCheck';
+export type { UseMilestoneCheckResult } from './useMilestoneCheck';

@@ -25,7 +25,7 @@
 		X-Frame-Options "DENY"
 		X-XSS-Protection "1; mode=block"
 		Referrer-Policy "strict-origin-when-cross-origin"
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 		-Server
 	}
 
@@ -66,7 +66,7 @@
 	}
 
 	# -------------------------------------------------------------------------
-	# /api/auth/* and /api/account/* — same-origin façade for Edge Functions.
+	# /api/auth/*, /api/account/*, and /api/feedback — same-origin façade for Edge Functions.
 	# Mirrors the Vite dev proxy (apps/web/vite.config.ts). Without these
 	# rewrites the client fetches fall through to the SPA fallback and
 	# silently "succeed" with an HTML body — see #1960.
@@ -82,6 +82,14 @@
 	@apiAccountRoot path /api/account
 	handle @apiAccountRoot {
 		uri replace /api/account /functions/v1/account-delete
+		reverse_proxy edge-functions:9000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	@apiFeedback path /api/feedback
+	handle @apiFeedback {
+		uri replace /api/feedback /functions/v1/feedback
 		reverse_proxy edge-functions:9000 {
 			header_up X-Real-IP {remote_host}
 		}

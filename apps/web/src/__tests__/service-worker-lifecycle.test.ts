@@ -14,13 +14,16 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { getFetchStrategyForPathname } from '../sw/service-worker';
+
 // ---------------------------------------------------------------------------
 // Service worker caching strategy constants (mirrored from source)
 // ---------------------------------------------------------------------------
 
 const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `finance-static-${CACHE_VERSION}`;
-const API_CACHE = `finance-api-${CACHE_VERSION}`;
+const SYNC_CACHE = `finance-sync-${CACHE_VERSION}`;
+const LEGACY_API_CACHE_PREFIX = 'finance-api-';
 const APP_SHELL: string[] = ['/', '/index.html', '/manifest.json'];
 const STATIC_EXTENSIONS = /\.(js|css|woff2?|ttf|otf|eot|png|jpe?g|gif|svg|ico|webp|avif|wasm)$/i;
 
@@ -33,17 +36,17 @@ describe('Cache version naming (#1330)', () => {
     expect(STATIC_CACHE).toBe('finance-static-v2');
   });
 
-  it('API cache includes version prefix', () => {
-    expect(API_CACHE).toBe('finance-api-v2');
+  it('sync cache includes version prefix', () => {
+    expect(SYNC_CACHE).toBe('finance-sync-v2');
   });
 
   it('changing CACHE_VERSION produces new cache names', () => {
     const nextVersion = 'v3';
     const nextStatic = `finance-static-${nextVersion}`;
-    const nextApi = `finance-api-${nextVersion}`;
+    const nextSync = `finance-sync-${nextVersion}`;
 
     expect(nextStatic).not.toBe(STATIC_CACHE);
-    expect(nextApi).not.toBe(API_CACHE);
+    expect(nextSync).not.toBe(SYNC_CACHE);
   });
 });
 
@@ -107,26 +110,16 @@ describe('Static asset detection (#1330)', () => {
 // ---------------------------------------------------------------------------
 
 describe('Fetch strategy routing (#1330)', () => {
-  it('auth API requests should use network-first strategy', () => {
-    const url = new URL('/api/auth/login', 'https://example.com');
-    const isAuthOrSync =
-      url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/sync/');
-    expect(isAuthOrSync).toBe(true);
-  });
-
   it('sync API requests should use network-first strategy', () => {
-    const url = new URL('/api/sync/push', 'https://example.com');
-    const isAuthOrSync =
-      url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/sync/');
-    expect(isAuthOrSync).toBe(true);
+    expect(getFetchStrategyForPathname('/api/sync/push')).toBe('network-first');
   });
 
-  it('other API requests should use stale-while-revalidate', () => {
-    const url = new URL('/api/accounts', 'https://example.com');
-    const isApi = url.pathname.startsWith('/api/');
-    const isAuthOrSync =
-      url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/sync/');
-    expect(isApi && !isAuthOrSync).toBe(true);
+  it('all non-sync API requests should use network-only no-store', () => {
+    expect(getFetchStrategyForPathname('/api/auth/login')).toBe('network-only-no-store');
+    expect(getFetchStrategyForPathname('/api/accounts')).toBe('network-only-no-store');
+    expect(getFetchStrategyForPathname('/api/transactions?month=2025-01')).toBe(
+      'network-only-no-store',
+    );
   });
 
   it('static assets use cache-first strategy', () => {
@@ -144,23 +137,31 @@ describe('Cache invalidation during activation (#1330)', () => {
     const allCacheKeys = [
       'finance-static-v0',
       'finance-api-v0',
+      'finance-api-v2',
       STATIC_CACHE,
-      API_CACHE,
+      SYNC_CACHE,
       'other-cache',
     ];
 
-    const staleCaches = allCacheKeys.filter((key) => key !== STATIC_CACHE && key !== API_CACHE);
+    const staleCaches = allCacheKeys.filter(
+      (key) =>
+        key.startsWith(LEGACY_API_CACHE_PREFIX) || (key !== STATIC_CACHE && key !== SYNC_CACHE),
+    );
 
     expect(staleCaches).toContain('finance-static-v0');
     expect(staleCaches).toContain('finance-api-v0');
+    expect(staleCaches).toContain('finance-api-v2');
     expect(staleCaches).toContain('other-cache');
     expect(staleCaches).not.toContain(STATIC_CACHE);
-    expect(staleCaches).not.toContain(API_CACHE);
+    expect(staleCaches).not.toContain(SYNC_CACHE);
   });
 
   it('current version caches are preserved', () => {
-    const allCacheKeys = [STATIC_CACHE, API_CACHE];
-    const staleCaches = allCacheKeys.filter((key) => key !== STATIC_CACHE && key !== API_CACHE);
+    const allCacheKeys = [STATIC_CACHE, SYNC_CACHE];
+    const staleCaches = allCacheKeys.filter(
+      (key) =>
+        key.startsWith(LEGACY_API_CACHE_PREFIX) || (key !== STATIC_CACHE && key !== SYNC_CACHE),
+    );
 
     expect(staleCaches).toHaveLength(0);
   });

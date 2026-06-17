@@ -12,6 +12,7 @@ import type {
 } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
 import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
+import { notifyMilestoneDataChanged } from '../../lib/milestones';
 import {
   SQLITE_NOW_EXPRESSION,
   mapCents,
@@ -85,7 +86,7 @@ function mapAccountPurpose(value: unknown): AccountPurpose {
   return value === 'business' || value === 'both' ? value : 'personal';
 }
 
-function mapAccount(row: Row): Account {
+export function mapAccount(row: Row): Account {
   return {
     id: requireString(row.id, 'account.id'),
     householdId: requireString(row.household_id, 'account.household_id'),
@@ -180,6 +181,7 @@ export function createAccount(db: SqliteDb, input: CreateAccountInput): Account 
     throw new Error('Failed to create account.');
   }
 
+  notifyMilestoneDataChanged();
   return createdAccount;
 }
 
@@ -258,7 +260,12 @@ export function updateAccount(
     ],
   );
 
-  return getAccountById(db, accountId);
+  const updatedAccount = getAccountById(db, accountId);
+  if (updatedAccount) {
+    notifyMilestoneDataChanged();
+  }
+
+  return updatedAccount;
 }
 
 /** Soft-delete an account row by marking its deleted timestamp. */
@@ -280,6 +287,7 @@ export function deleteAccount(db: SqliteDb, accountId: SyncId): boolean {
     [accountId],
   );
 
+  notifyMilestoneDataChanged();
   return true;
 }
 

@@ -14,7 +14,11 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
+import { CurrencyDisplay } from '../components/common/CurrencyDisplay';
+import { EmptyState } from '../components/common/EmptyState';
+import { ErrorBanner } from '../components/common/ErrorBanner';
+import { ExplainThis } from '../components/common/ExplainThis';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { useCashFlow } from '../hooks/useCashFlow';
 import type { MonthlyAggregate, IncomeSource } from '../lib/analytics/cash-flow';
 import { forecastMonthEndBalance } from '../lib/budgeting-beta';
@@ -210,7 +214,18 @@ export const CashFlowPage: React.FC = () => {
   return (
     <div className="analytics-page">
       <div className="analytics-page__header">
-        <h2 className="analytics-page__title">Cash Flow</h2>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--spacing-2)',
+          }}
+        >
+          <h2 className="analytics-page__title" style={{ margin: 0 }}>
+            Cash Flow
+          </h2>
+          <ExplainThis glossaryKey="cashFlow" buttonLabel="Explain cash flow" />
+        </div>
         <div className="analytics-page__actions">
           <PeriodSelector value={period} onChange={setPeriod} />
           <button

@@ -1,0 +1,326 @@
+# =============================================================================
+# Feature Flag CI — validate flag schema, expiry, and usage
+# =============================================================================
+#
+# Checks feature flag configuration quality on pull requests and on a weekly schedule, including orphaned or expired flag reporting.
+# =============================================================================
+# =============================================================================
+# Feature Flag CI Integration — Validate flags on PR, detect orphans, report
+# =============================================================================
+#
+# Validates feature flag configurations on every PR:
+#   - Schema validation of flag config files
+#   - Detection of orphaned flags (defined but not referenced in code)
+#   - Detection of stale flags (past their expiration date)
+#   - Flag usage report posted as PR comment
+#
+# Sprint: 11
+# =============================================================================
+
+name: CI — Feature Flags
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'config/feature-flags/**'
+      - 'apps/**'
+      - 'packages/**'
+      - 'services/**'
+
+  # Run on schedule to catch expiring flags
+  schedule:
+    - cron: '0 8 * * 1' # Weekly Monday 8 AM UTC
+
+  workflow_dispatch:
+
+concurrency:
+  group: ci-feature-flags-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate-flags:
+    name: Validate Feature Flags
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+
+      - name: Validate flag configuration schema
+        id: schema
+        run: |
+          FLAG_DIR="config/feature-flags"
+          ERRORS=0
+
+          echo "### 🏁 Feature Flag Validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ ! -d "$FLAG_DIR" ]; then
+            echo "::notice::No feature flag directory found at $FLAG_DIR — creating template"
+            mkdir -p "$FLAG_DIR"
+            echo '{ "flags": {}, "$schema": "../../tools/feature-flags/schema.json" }' > "$FLAG_DIR/flags.json"
+            echo "Created template flag configuration" >> "$GITHUB_STEP_SUMMARY"
+            echo "errors=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "#### Schema Validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          for file in "$FLAG_DIR"/*.json; do
+            [ -f "$file" ] || continue
+            BASENAME=$(basename "$file")
+
+            # Validate JSON syntax
+            if ! python3 -c "import json; json.load(open('$file'))" 2>/dev/null; then
+              echo "::error file=$file::Invalid JSON syntax in $BASENAME"
+              echo "- ❌ \`$BASENAME\`: Invalid JSON syntax" >> "$GITHUB_STEP_SUMMARY"
+              ERRORS=$((ERRORS + 1))
+              continue
+            fi
+
+            # Validate required fields in each flag
+            FLAG_COUNT=$(python3 -c "
+          import json, sys
+          data = json.load(open('$file'))
+          flags = data.get('flags', {})
+          errors = 0
+          for name, config in flags.items():
+              required = ['description', 'enabled', 'owner']
+              missing = [f for f in required if f not in config]
+              if missing:
+                  print(f'::error file=$file::Flag \"{name}\" missing required fields: {missing}', file=sys.stderr)
+                  errors += 1
+              # Validate owner is a valid team
+              valid_teams = ['platform', 'backend', 'web', 'android', 'ios', 'devops', 'core']
+              if config.get('owner', '') not in valid_teams:
+                  print(f'::warning file=$file::Flag \"{name}\" has unknown owner: {config.get(\"owner\", \"\")}', file=sys.stderr)
+          print(len(flags))
+          sys.exit(errors)
+          " 2>&1) || ERRORS=$((ERRORS + $?))
+
+            echo "- ✅ \`$BASENAME\`: $FLAG_COUNT flags validated" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "errors=$ERRORS" >> "$GITHUB_OUTPUT"
+
+      - name: Detect orphaned flags
+        id: orphans
+        run: |
+          FLAG_DIR="config/feature-flags"
+          ORPHANED=0
+          ORPHAN_LIST=""
+
+          echo "#### Orphaned Flag Detection" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ ! -d "$FLAG_DIR" ]; then
+            echo "No flag directory found — skipping" >> "$GITHUB_STEP_SUMMARY"
+            echo "orphaned=0" >> "$GITHUB_OUTPUT"
+            echo "orphan_list=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Extract all flag names from configuration
+          FLAG_NAMES=$(python3 -c "
+          import json, glob, os
+          names = set()
+          for f in glob.glob(os.path.join('$FLAG_DIR', '*.json')):
+              data = json.load(open(f))
+              names.update(data.get('flags', {}).keys())
+          for n in sorted(names):
+              print(n)
+          " 2>/dev/null)
+
+          if [ -z "$FLAG_NAMES" ]; then
+            echo "No flags defined — nothing to check" >> "$GITHUB_STEP_SUMMARY"
+            echo "orphaned=0" >> "$GITHUB_OUTPUT"
+            echo "orphan_list=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "| Flag | Referenced | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-----------|--------|" >> "$GITHUB_STEP_SUMMARY"
+
+          while IFS= read -r flag_name; do
+            [ -z "$flag_name" ] && continue
+
+            # Search for flag usage in source code (excluding config dir and node_modules)
+            USAGE_COUNT=$(grep -rl "$flag_name" \
+              --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
+              --include='*.kt' --include='*.swift' --include='*.cs' \
+              apps/ packages/ services/ 2>/dev/null | wc -l)
+
+            if [ "$USAGE_COUNT" -eq 0 ]; then
+              ORPHANED=$((ORPHANED + 1))
+              ORPHAN_LIST="${ORPHAN_LIST}${flag_name},"
+              echo "| \`$flag_name\` | ❌ 0 files | 🟡 Orphaned |" >> "$GITHUB_STEP_SUMMARY"
+              echo "::warning::Orphaned feature flag: $flag_name (not referenced in source code)"
+            else
+              echo "| \`$flag_name\` | ✅ $USAGE_COUNT files | Active |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done <<< "$FLAG_NAMES"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ORPHANED" -gt 0 ]; then
+            echo "⚠️ **$ORPHANED orphaned flag(s) found** — consider removing them" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "✅ All flags are referenced in source code" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "orphaned=$ORPHANED" >> "$GITHUB_OUTPUT"
+          echo "orphan_list=$ORPHAN_LIST" >> "$GITHUB_OUTPUT"
+
+      - name: Detect stale/expired flags
+        id: stale
+        run: |
+          FLAG_DIR="config/feature-flags"
+          STALE=0
+
+          echo "#### Stale Flag Detection" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ ! -d "$FLAG_DIR" ]; then
+            echo "No flag directory — skipping" >> "$GITHUB_STEP_SUMMARY"
+            echo "stale=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TODAY=$(date -u '+%Y-%m-%d')
+
+          python3 << 'PYTHON_SCRIPT'
+          import json, glob, os, sys
+          from datetime import datetime, timezone
+
+          flag_dir = "config/feature-flags"
+          today = datetime.now(timezone.utc).date()
+          stale_count = 0
+          expiring_soon = 0
+
+          for f in sorted(glob.glob(os.path.join(flag_dir, "*.json"))):
+              data = json.load(open(f))
+              for name, config in data.get("flags", {}).items():
+                  expires = config.get("expires", "")
+                  if not expires:
+                      continue
+                  try:
+                      exp_date = datetime.strptime(expires, "%Y-%m-%d").date()
+                  except ValueError:
+                      print(f"::warning::Flag '{name}' has invalid expiry date: {expires}")
+                      continue
+
+                  days_until = (exp_date - today).days
+                  if days_until < 0:
+                      stale_count += 1
+                      print(f"::warning::Flag '{name}' expired {abs(days_until)} days ago ({expires})")
+                  elif days_until <= 14:
+                      expiring_soon += 1
+                      print(f"::notice::Flag '{name}' expires in {days_until} days ({expires})")
+
+          # Write to GITHUB_OUTPUT
+          with open(os.environ.get("GITHUB_OUTPUT", "/dev/null"), "a") as out:
+              out.write(f"stale={stale_count}\n")
+              out.write(f"expiring_soon={expiring_soon}\n")
+
+          if stale_count > 0:
+              print(f"Found {stale_count} expired flag(s)")
+          if expiring_soon > 0:
+              print(f"Found {expiring_soon} flag(s) expiring within 14 days")
+          PYTHON_SCRIPT
+
+      - name: Generate flag usage report
+        id: report
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const { execSync } = require('child_process');
+
+            const flagDir = 'config/feature-flags';
+            const marker = '<!-- feature-flag-report -->';
+
+            // Collect all flags
+            const flags = {};
+            if (fs.existsSync(flagDir)) {
+              for (const file of fs.readdirSync(flagDir).filter(f => f.endsWith('.json'))) {
+                try {
+                  const data = JSON.parse(fs.readFileSync(path.join(flagDir, file), 'utf8'));
+                  Object.assign(flags, data.flags || {});
+                } catch (e) {
+                  core.warning(`Failed to parse ${file}: ${e.message}`);
+                }
+              }
+            }
+
+            const flagNames = Object.keys(flags).sort();
+            if (flagNames.length === 0) {
+              core.info('No feature flags found — skipping report');
+              return;
+            }
+
+            // Build report
+            let body = `${marker}\n## 🏁 Feature Flag Report\n\n`;
+            body += `| Flag | Enabled | Owner | Expires | Files |\n`;
+            body += `|------|---------|-------|---------|-------|\n`;
+
+            for (const name of flagNames) {
+              const config = flags[name];
+              const enabled = config.enabled ? '✅' : '❌';
+              const owner = config.owner || 'unknown';
+              const expires = config.expires || '—';
+
+              // Count usage
+              let fileCount = 0;
+              try {
+                const result = execSync(
+                  `grep -rl "${name}" --include="*.ts" --include="*.tsx" --include="*.kt" --include="*.swift" apps/ packages/ services/ 2>/dev/null | wc -l`,
+                  { encoding: 'utf8' }
+                ).trim();
+                fileCount = parseInt(result, 10) || 0;
+              } catch { /* no matches */ }
+
+              const status = fileCount === 0 ? '⚠️ 0 (orphaned)' : `${fileCount}`;
+              body += `| \`${name}\` | ${enabled} | ${owner} | ${expires} | ${status} |\n`;
+            }
+
+            body += `\n**Total flags:** ${flagNames.length}`;
+            body += ` | **Schema errors:** ${{ steps.schema.outputs.errors || 0 }}`;
+            body += ` | **Orphaned:** ${{ steps.orphans.outputs.orphaned || 0 }}`;
+            body += ` | **Stale:** ${{ steps.stale.outputs.stale || 0 }}`;
+
+            // Post or update PR comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const prev = comments.find(c => c.body?.includes(marker));
+            const params = { owner: context.repo.owner, repo: context.repo.repo, body };
+
+            if (prev) {
+              await github.rest.issues.updateComment({ ...params, comment_id: prev.id });
+            } else {
+              await github.rest.issues.createComment({ ...params, issue_number: context.issue.number });
+            }
+
+      - name: Fail on critical issues
+        if: steps.schema.outputs.errors != '0'
+        run: |
+          echo "::error::Feature flag validation failed with ${{ steps.schema.outputs.errors }} error(s)"
+          exit 1

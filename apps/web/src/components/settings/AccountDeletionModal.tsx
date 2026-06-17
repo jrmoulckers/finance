@@ -218,7 +218,7 @@ export function useAccountDeletion(): {
       setError("Couldn't delete account — please try again or contact support.");
       setIsDeleting(false);
     }
-  }, [db, confirmationText, isAuthenticated, isDeleting]);
+  }, [db, confirmationText, isAuthenticated, isDeleting, logout]);
 
   const continueToLogin = useCallback(async () => {
     try {

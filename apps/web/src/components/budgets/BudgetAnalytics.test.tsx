@@ -9,6 +9,9 @@ vi.mock('../common', () => ({
   CurrencyDisplay: ({ amount, currency }: { amount: number; currency?: string }) => (
     <span data-testid="currency">{`${currency ?? 'USD'} ${amount}`}</span>
   ),
+  ExplainThis: ({ buttonLabel }: { buttonLabel?: string }) => (
+    <button type="button">{buttonLabel ?? 'Explain'}</button>
+  ),
 }));
 
 const defaultProps: BudgetAnalyticsProps = {

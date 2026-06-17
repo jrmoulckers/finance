@@ -17,7 +17,7 @@ const { clearLocalAccountDataMock, householdImpactMock, wipeLocalDataMock } = vi
     memberHouseholds: 2,
     pendingInvites: 3,
   })),
-  wipeLocalDataMock: vi.fn(),
+  wipeLocalDataMock: vi.fn<() => Promise<unknown>>(),
 }));
 
 vi.mock('../lib/account/account-deletion', () => ({
@@ -55,6 +55,35 @@ vi.mock('../auth/auth-context', () => ({
 
 vi.mock('../hooks/useOfflineStatus', () => ({
   useOfflineStatus: () => offlineStatusMock,
+}));
+
+vi.mock('../components/common', () => ({
+  ErrorBanner: ({ message }: { message?: string }) => <div role="alert">{message}</div>,
+  LoadingSpinner: () => <div>Loading…</div>,
+  Icon: ({ label }: { label?: string }) => <span>{label}</span>,
+}));
+
+vi.mock('../lib/monitoring', () => ({
+  initMonitoring: vi.fn(),
+  captureError: vi.fn(),
+}));
+
+vi.mock('../hooks/useCategories', () => ({
+  useCategories: () => ({
+    categories: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    createCategory: vi.fn(),
+    updateCategory: vi.fn(),
+    deleteCategory: vi.fn(),
+    foodMealTemplate: {
+      parentCategory: null,
+      subcategories: [],
+      missingSubcategoryDefinitions: [],
+    },
+    ensureFoodMealCategories: vi.fn(),
+  }),
 }));
 
 const setThemeMock = vi.fn();
@@ -171,6 +200,7 @@ import { SettingsAboutPage } from './settings/SettingsAboutPage';
 import { SettingsAdvancedPage } from './settings/SettingsAdvancedPage';
 import { SettingsPreferencesPage } from './settings/SettingsPreferencesPage';
 import { SettingsPrivacyPage } from './settings/SettingsPrivacyPage';
+import { SettingsSecurityPage } from './settings/SettingsSecurityPage';
 import { SettingsSyncPage } from './settings/SettingsSyncPage';
 
 /**
@@ -186,6 +216,7 @@ function renderSettingsAt(path: string) {
           <Route path="account" element={<SettingsAccountPage />} />
           <Route path="preferences" element={<SettingsPreferencesPage />} />
           <Route path="privacy" element={<SettingsPrivacyPage />} />
+          <Route path="security" element={<SettingsSecurityPage />} />
           <Route path="sync" element={<SettingsSyncPage />} />
           <Route path="advanced" element={<SettingsAdvancedPage />} />
           <Route path="about" element={<SettingsAboutPage />} />
@@ -252,11 +283,17 @@ describe('SettingsPage', () => {
       const nav = screen.getByRole('navigation', { name: /settings sections/i });
       expect(nav).toBeInTheDocument();
       // Each section is a real <a> link inside <nav> for keyboard nav.
-      ['Account', 'Preferences', 'Privacy & Data', 'Sync & Devices', 'Advanced', 'About'].forEach(
-        (label) => {
-          expect(nav.querySelector(`a[href$='${label.toLowerCase().split(' ')[0]}']`)).toBeTruthy();
-        },
-      );
+      [
+        'Account',
+        'Preferences',
+        'Privacy & Data',
+        'Security',
+        'Sync & Devices',
+        'Advanced',
+        'About',
+      ].forEach((label) => {
+        expect(nav.querySelector(`a[href$='${label.toLowerCase().split(' ')[0]}']`)).toBeTruthy();
+      });
     });
 
     it('redirects /settings (bare) to /settings/account', () => {
@@ -273,6 +310,15 @@ describe('SettingsPage', () => {
 
       const link = screen.getByRole('link', { name: /^Preferences/i });
       expect(link).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('shows local haptic controls on the preferences page', () => {
+      renderSettingsAt('/settings/preferences');
+
+      expect(screen.getByLabelText('Haptic feedback')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /test budget warning haptic/i }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -508,6 +554,18 @@ describe('SettingsPage', () => {
     });
   });
 
+  describe('Security sub-page', () => {
+    it('renders the encryption details center', () => {
+      renderSettingsAt('/settings/security');
+
+      expect(
+        screen.getByRole('heading', { name: 'Security & Encryption', level: 2 }),
+      ).toBeInTheDocument();
+      expect(screen.getByText('Security Checkup')).toBeInTheDocument();
+      expect(screen.getByText('At-Rest Encryption')).toBeInTheDocument();
+    });
+  });
+
   describe('Sync sub-page', () => {
     it('shows online sync status and passkey registration state', () => {
       renderSettingsAt('/settings/sync');
@@ -572,7 +630,7 @@ describe('SettingsPage', () => {
       );
       expect(
         screen.getByRole('button', {
-          name: /removes all saved mood tags and disables mood-tag preferences/i,
+          name: /removes saved mood tags, local journal entries, and mood preferences/i,
         }),
       ).toBeInTheDocument();
     });
@@ -585,6 +643,10 @@ describe('SettingsPage', () => {
       expect(screen.getByRole('heading', { name: 'About', level: 2 })).toBeInTheDocument();
       expect(screen.getByText('0.1.0')).toBeInTheDocument();
       expect(screen.getByText('Not available in this build')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /open legal index/i })).toHaveAttribute(
+        'href',
+        '/legal',
+      );
       expect(screen.getByRole('link', { name: /open business source license/i })).toHaveAttribute(
         'href',
         'https://github.com/jrmoulckers/finance/blob/main/LICENSE',

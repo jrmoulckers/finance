@@ -9,6 +9,7 @@ import { TransactionForm } from '../components/forms';
 import { LazyReceiptImage } from '../components/transactions';
 import { Breadcrumb } from '../components/navigation';
 import { TagList } from '../components/tags';
+import { ReturnWindowBadge, WarrantyForm } from '../components/warranty';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts, useCategories, useTransactions } from '../hooks';
 import {
@@ -241,15 +242,18 @@ export const TransactionDetailPage: React.FC = () => {
           marginBottom: 'var(--spacing-4)',
         }}
       >
-        <h2
-          style={{
-            fontSize: 'var(--type-scale-headline-font-size)',
-            fontWeight: 'var(--type-scale-headline-font-weight)',
-            margin: 0,
-          }}
-        >
-          {label}
-        </h2>
+        <div>
+          <h2
+            style={{
+              fontSize: 'var(--type-scale-headline-font-size)',
+              fontWeight: 'var(--type-scale-headline-font-weight)',
+              margin: 0,
+            }}
+          >
+            {label}
+          </h2>
+          <ReturnWindowBadge transaction={transaction} />
+        </div>
         <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
           <button
             type="button"
@@ -401,6 +405,8 @@ export const TransactionDetailPage: React.FC = () => {
           </table>
         </article>
       )}
+
+      <WarrantyForm transaction={transaction} categoryName={categoryName} />
 
       {isBnplLiability && (
         <article

@@ -5,6 +5,7 @@ import React, { useCallback, useState } from 'react';
 import { SettingInfoWidget } from '../../components/settings';
 import { useDatabase } from '../../db/DatabaseProvider';
 import { eraseAllMoodTags } from '../../db/repositories/transactions';
+import { clearMoodJournalEntries } from '../../lib/mood';
 import {
   MOOD_TAGS_CHANGED_EVENT,
   MOOD_TAGS_ENABLED_KEY,
@@ -51,6 +52,7 @@ export const SettingsAdvancedPage: React.FC = () => {
   const handleEraseMoodData = useCallback(() => {
     if (!window.confirm('Erase all mood data?')) return;
     if (db) eraseAllMoodTags(db);
+    clearMoodJournalEntries();
     setMoodTagPreference(MOOD_TAGS_ENABLED_KEY, false);
     setMoodTagPreference(MOOD_TAGS_SYNC_ENABLED_KEY, false);
     setMoodTagsEnabled(false);
