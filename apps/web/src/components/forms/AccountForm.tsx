@@ -35,6 +35,7 @@ import type { Account, AccountPurpose, AccountType, SyncId } from '../../kmp/bri
 import { getCurrencyMetadata, SUPPORTED_CURRENCY_METADATA } from '../../lib/currency-metadata';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import { accountSchema } from '../../lib/validation';
+import { getFormCopy } from '../../lib/i18n/forms-catalog';
 import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
 import './forms.css';
@@ -105,13 +106,13 @@ function validate(
   if (!result.success) {
     for (const issue of result.error.issues) {
       if (issue.path[0] === 'name') {
-        errors.name = 'Account name is required.';
+        errors.name = getFormCopy('accountNameRequired');
       }
     }
   }
 
   if (balanceStr.trim() !== '' && Number.isNaN(parsedBalance)) {
-    errors.balance = 'Initial balance must be a valid number.';
+    errors.balance = getFormCopy('accountInitialBalanceInvalid');
   }
 
   return errors;
@@ -248,7 +249,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
 
       const householdId = initialData?.householdId ?? getFirstHouseholdId(db);
       if (!householdId) {
-        setSubmitError('No household found. Please create a household before adding accounts.');
+        setSubmitError(getFormCopy('accountNoHousehold'));
         return;
       }
 
@@ -285,8 +286,8 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
           err instanceof Error
             ? err.message
             : initialData
-              ? 'Failed to update account.'
-              : 'Failed to create account.',
+              ? getFormCopy('accountUpdateFailed')
+              : getFormCopy('accountCreateFailed'),
         );
       } finally {
         setSubmitting(false);
@@ -307,9 +308,9 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   const balanceStep = selectedCurrency.decimalPlaces === 0 ? '1' : `0.${'0'.repeat(Math.max(0, selectedCurrency.decimalPlaces - 1))}1`;
   const balancePlaceholder = selectedCurrency.decimalPlaces === 0 ? '0' : `0.${'0'.repeat(selectedCurrency.decimalPlaces)}`;
   const validationErrorItems: FormErrorSummaryItem[] = [
-    hasNameError ? { fieldId: 'account-name', label: 'Account Name', message: errors.name! } : null,
+    hasNameError ? { fieldId: 'account-name', label: getFormCopy('accountNameLabel'), message: errors.name! } : null,
     hasBalanceError
-      ? { fieldId: 'account-balance', label: 'Initial Balance', message: errors.balance! }
+      ? { fieldId: 'account-balance', label: getFormCopy('accountInitialBalanceLabel'), message: errors.balance! }
       : null,
   ].filter((item): item is FormErrorSummaryItem => item !== null);
 
@@ -327,7 +328,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         aria-labelledby="account-form-title"
       >
         <h2 id="account-form-title" className="form-dialog__title">
-          {initialData ? 'Edit Account' : 'Create Account'}
+          {getFormCopy(initialData ? 'accountEditTitle' : 'accountCreateTitle')}
         </h2>
 
         {/* Form-level error */}
@@ -339,6 +340,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         <FormErrorSummary
           id="account-form-error-summary"
           errors={validationErrorItems}
+          title={getFormCopy('errorSummaryTitle')}
           summaryRef={errorSummaryRef}
         />
 
@@ -356,7 +358,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
                 htmlFor="account-name"
                 className="form-group__label form-group__label--required"
               >
-                Account Name
+                {getFormCopy('accountNameLabel')}
               </label>
               <input
                 ref={firstInputRef}
@@ -437,7 +439,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
             {/* Initial Balance */}
             <div className="form-group">
               <label htmlFor="account-balance" className="form-group__label">
-                Initial Balance
+                {getFormCopy('accountInitialBalanceLabel')}
               </label>
               <input
                 id="account-balance"
@@ -468,7 +470,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
               onClick={handleCancel}
               disabled={submitting}
             >
-              Cancel
+              {getFormCopy('accountCancel')}
             </button>
             <button
               type="submit"
@@ -478,11 +480,11 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
             >
               {submitting
                 ? initialData
-                  ? 'Updating…'
-                  : 'Creating…'
+                  ? getFormCopy('accountUpdating')
+                  : getFormCopy('accountCreating')
                 : initialData
-                  ? 'Update Account'
-                  : 'Create Account'}
+                  ? getFormCopy('accountUpdate')
+                  : getFormCopy('accountCreate')}
             </button>
           </div>
         </form>
@@ -490,3 +492,4 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
     </div>
   );
 }
+

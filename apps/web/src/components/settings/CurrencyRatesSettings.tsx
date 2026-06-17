@@ -15,17 +15,7 @@ import type { ExchangeRate } from '../../lib/currency/exchange-rate-types';
 import { STATIC_CURRENCY_CODES } from '../../lib/currency/static-rates';
 import { useExchangeRates } from '../../hooks/useExchangeRates';
 import { useLocalePreferences } from '../../hooks/useLocalePreferences';
-
-// ---------------------------------------------------------------------------
-// Source badge labels
-// ---------------------------------------------------------------------------
-
-const SOURCE_LABELS: Record<string, string> = {
-  static: 'Static',
-  stored: 'Stored',
-  api: 'API',
-  'user-override': 'Manual',
-};
+import { createSettingsCopy } from '../../lib/i18n/settings-catalog';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -59,6 +49,7 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
   } = useExchangeRates(baseCurrency);
 
   const { locale, timeZone } = useLocalePreferences();
+  const copy = createSettingsCopy(locale);
   const [editingPair, setEditingPair] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
@@ -111,7 +102,7 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
   );
 
   const formatTimestamp = (ts: string | null): string => {
-    if (!ts) return 'Never';
+    if (!ts) return copy.text('currencyRatesNever');
     try {
       return new Intl.DateTimeFormat(locale, {
         dateStyle: 'medium',
@@ -124,8 +115,8 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
   };
 
   const getSourceLabel = (rate: ExchangeRate | undefined): string => {
-    if (!rate) return 'N/A';
-    return SOURCE_LABELS[rate.source] ?? rate.source;
+    if (!rate) return copy.text('currencyRatesNotAvailable');
+    return copy.sourceLabel(rate.source);
   };
 
   const isOverridden = (currencyCode: string): boolean => {
@@ -134,11 +125,11 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
 
   if (loading) {
     return (
-      <section aria-label="Currency Rates" className="page-section">
+      <section aria-label={copy.text('currencyRatesTitle')} className="page-section">
         <div className="settings-group">
-          <h3 className="settings-group__title">Currency Rates</h3>
+          <h3 className="settings-group__title">{copy.text('currencyRatesTitle')}</h3>
           <div className="settings-item settings-item--static" role="status" aria-live="polite">
-            <span className="settings-item__label">Loading rates…</span>
+            <span className="settings-item__label">{copy.text('currencyRatesLoading')}</span>
           </div>
         </div>
       </section>
@@ -147,19 +138,19 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
 
   if (error) {
     return (
-      <section aria-label="Currency Rates" className="page-section">
+      <section aria-label={copy.text('currencyRatesTitle')} className="page-section">
         <div className="settings-group">
-          <h3 className="settings-group__title">Currency Rates</h3>
+          <h3 className="settings-group__title">{copy.text('currencyRatesTitle')}</h3>
           <div className="settings-item settings-item--static" role="alert">
-            <span className="settings-item__label">Error loading rates: {error}</span>
+            <span className="settings-item__label">{copy.text('currencyRatesError', { error })}</span>
           </div>
           <button
             type="button"
             className="settings-item settings-item--button"
             onClick={refresh}
-            aria-label="Retry loading exchange rates"
+            aria-label={copy.text('currencyRatesRetryAria')}
           >
-            <span className="settings-item__label">Retry</span>
+            <span className="settings-item__label">{copy.text('currencyRatesRetry')}</span>
           </button>
         </div>
       </section>
@@ -167,30 +158,30 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
   }
 
   return (
-    <section aria-label="Currency Rates" className="page-section">
+    <section aria-label={copy.text('currencyRatesTitle')} className="page-section">
       <div className="settings-group">
-        <h3 className="settings-group__title">Currency Rates</h3>
+        <h3 className="settings-group__title">{copy.text('currencyRatesTitle')}</h3>
 
         {/* Meta info */}
         <div className="settings-item settings-item--static">
-          <span className="settings-item__label">Provider</span>
+          <span className="settings-item__label">{copy.text('currencyRatesProvider')}</span>
           <span className="settings-item__value">{providerName}</span>
         </div>
         <div className="settings-item settings-item--static">
-          <span className="settings-item__label">Last Updated</span>
+          <span className="settings-item__label">{copy.text('currencyRatesLastUpdated')}</span>
           <span className="settings-item__value">{formatTimestamp(lastUpdated)}</span>
         </div>
         <div className="settings-item settings-item--static">
-          <span className="settings-item__label">Base Currency</span>
+          <span className="settings-item__label">{copy.text('currencyRatesBaseCurrency')}</span>
           <span className="settings-item__value">{baseCurrency}</span>
         </div>
         {(isOffline || isStale || hasManualOverrides) && (
           <div className="settings-item settings-item--static" role="status" aria-live="polite">
-            <span className="settings-item__label">Rate freshness</span>
+            <span className="settings-item__label">{copy.text('currencyRatesFreshness')}</span>
             <span className="settings-item__value settings-item__value--muted">
-              {isOffline ? 'Offline fallback in use. ' : ''}
-              {isStale ? 'Rates may be stale. ' : ''}
-              {hasManualOverrides ? 'Manual overrides are active. ' : ''}
+              {isOffline ? copy.text('currencyRatesOfflineFallback') + ' ' : ''}
+              {isStale ? copy.text('currencyRatesStale') + ' ' : ''}
+              {hasManualOverrides ? copy.text('currencyRatesManualOverridesActive') + ' ' : ''}
             </span>
           </div>
         )}
@@ -198,26 +189,26 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
         {/* Rate list */}
         <details className="currency-rates-disclosure">
           <summary className="currency-rates-disclosure__summary">
-            <span className="currency-rates-disclosure__title">Exchange rates</span>
-            <span className="currency-rates-disclosure__hint">Click to expand</span>
+            <span className="currency-rates-disclosure__title">{copy.text('currencyRatesExchangeRates')}</span>
+            <span className="currency-rates-disclosure__hint">{copy.text('currencyRatesExpandHint')}</span>
           </summary>
           <div
             role="table"
-            aria-label={`Exchange rates from ${baseCurrency}`}
+            aria-label={copy.text('currencyRatesTableAria', { baseCurrency })}
             className="currency-rates-table"
           >
             <div role="row" className="currency-rates-table__header">
               <span role="columnheader" className="currency-rates-table__cell">
-                Currency
+                {copy.text('currencyRatesCurrency')}
               </span>
               <span role="columnheader" className="currency-rates-table__cell">
-                Rate
+                {copy.text('currencyRatesRate')}
               </span>
               <span role="columnheader" className="currency-rates-table__cell">
-                Source
+                {copy.text('currencyRatesSource')}
               </span>
               <span role="columnheader" className="currency-rates-table__cell">
-                Actions
+                {copy.text('currencyRatesActions')}
               </span>
             </div>
 
@@ -241,7 +232,7 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, code)}
-                        aria-label={`Override rate for ${baseCurrency} to ${code}`}
+                        aria-label={copy.text('currencyRatesOverrideRateAria', { fromCurrency: baseCurrency, toCurrency: code })}
                         autoFocus
                       />
                     ) : (
@@ -262,17 +253,17 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
                           type="button"
                           className="currency-rates-table__action"
                           onClick={() => handleSaveEdit(code)}
-                          aria-label={`Save override for ${code}`}
+                          aria-label={copy.text('currencyRatesSaveOverrideAria', { currency: code })}
                         >
-                          Save
+                          {copy.text('currencyRatesSave')}
                         </button>
                         <button
                           type="button"
                           className="currency-rates-table__action"
                           onClick={handleCancelEdit}
-                          aria-label="Cancel editing"
+                          aria-label={copy.text('currencyRatesCancelEditingAria')}
                         >
-                          Cancel
+                          {copy.text('currencyRatesCancel')}
                         </button>
                       </>
                     ) : (
@@ -281,19 +272,19 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
                           type="button"
                           className="currency-rates-table__action"
                           onClick={() => handleStartEdit(code, rate?.rate ?? 0)}
-                          aria-label={`Override rate for ${code}`}
+                          aria-label={copy.text('currencyRatesOverrideRateShortAria', { currency: code })}
                         >
-                          Override
-                        </button>
+                            {copy.text('currencyRatesOverride')}
+                          </button>
                         {hasOverride && (
                           <button
                             type="button"
                             className="currency-rates-table__action currency-rates-table__action--reset"
                             onClick={() => handleResetOverride(code)}
-                            aria-label={`Reset override for ${code}`}
+                            aria-label={copy.text('currencyRatesResetOverrideAria', { currency: code })}
                           >
-                            Reset
-                          </button>
+                              {copy.text('currencyRatesReset')}
+                            </button>
                         )}
                       </>
                     )}
@@ -307,8 +298,7 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
         {/* Disclaimer */}
         <div className="settings-item settings-item--static">
           <span className="settings-item__value settings-item__value--muted">
-            Converted values are estimates and not settlement-grade exchange quotes. Stored and
-            cached rates may differ from live market prices.
+            {copy.text('currencyRatesDisclaimer')}
           </span>
         </div>
       </div>
@@ -317,3 +307,6 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
 };
 
 export default CurrencyRatesSettings;
+
+
+
