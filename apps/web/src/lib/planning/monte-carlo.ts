@@ -117,6 +117,14 @@ export function calculateTargetNestEgg(
   return Math.round(annualSpending * pvFactor);
 }
 
+/** Calculate retirement spending that must be funded from savings after income. */
+export function calculateNetRetirementSpending(
+  monthlySpendingCents: number,
+  monthlyRetirementIncomeCents: number,
+): number {
+  return Math.max(0, monthlySpendingCents - monthlyRetirementIncomeCents);
+}
+
 // ---------------------------------------------------------------------------
 // Monte Carlo simulation
 // ---------------------------------------------------------------------------
@@ -135,11 +143,15 @@ export function runMonteCarlo(
   params: RetirementParams,
   iterations: number = DEFAULT_ITERATIONS,
 ): MonteCarloResult {
-  const yearsToRetirement = params.retirementAge - params.currentAge;
-  const retirementYears = params.planningHorizonAge - params.retirementAge;
-  const totalYears = yearsToRetirement + retirementYears;
+  const yearsToRetirement = Math.max(0, params.retirementAge - params.currentAge);
+  const totalYears = params.planningHorizonAge - params.currentAge;
+  const retirementYears = totalYears - yearsToRetirement;
+  const netMonthlySpendingCents = calculateNetRetirementSpending(
+    params.desiredMonthlySpendingCents,
+    params.monthlyRetirementIncomeCents,
+  );
 
-  if (totalYears <= 0 || yearsToRetirement < 0) {
+  if (totalYears <= 0 || retirementYears < 0) {
     return {
       iterations,
       successRate: 0,
@@ -171,7 +183,7 @@ export function runMonteCarlo(
         // Withdrawal phase: grow - spend (inflation-adjusted)
         const yearsInRetirement = year - yearsToRetirement;
         const inflatedSpending =
-          params.desiredMonthlySpendingCents *
+          netMonthlySpendingCents *
           12 *
           Math.pow(1 + params.annualInflationRate, yearsInRetirement);
         balance = balance * (1 + annualReturn) - inflatedSpending;
@@ -237,11 +249,15 @@ function assessFactors(
 ): RetirementFactor[] {
   const factors: RetirementFactor[] = [];
   const fundingRatio = targetCents > 0 ? projectedCents / targetCents : 0;
-  const yearsToRetirement = params.retirementAge - params.currentAge;
+  const yearsToRetirement = Math.max(0, params.retirementAge - params.currentAge);
+  const netMonthlyRetirementNeedCents = calculateNetRetirementSpending(
+    params.desiredMonthlySpendingCents,
+    params.monthlyRetirementIncomeCents,
+  );
   const savingsRate =
     params.monthlyContributionCents > 0
       ? params.monthlyContributionCents /
-        (params.monthlyContributionCents + params.desiredMonthlySpendingCents)
+        (params.monthlyContributionCents + netMonthlyRetirementNeedCents)
       : 0;
 
   // Funding ratio factor
@@ -334,7 +350,14 @@ export function calculateContributionGap(
 
   // Binary search for the additional contribution needed
   let low = 0;
-  let high = params.desiredMonthlySpendingCents * 2; // Upper bound: 2x desired spending
+  let high =
+    Math.max(
+      params.desiredMonthlySpendingCents,
+      calculateNetRetirementSpending(
+        params.desiredMonthlySpendingCents,
+        params.monthlyRetirementIncomeCents,
+      ),
+    ) * 2; // Upper bound: 2x desired spending
 
   for (let i = 0; i < maxIterations; i++) {
     const mid = Math.round((low + high) / 2);
@@ -369,8 +392,11 @@ export function calculateContributionGap(
  * @returns Complete retirement readiness assessment
  */
 export function assessRetirementReadiness(params: RetirementParams): RetirementReadiness {
-  const yearsToRetirement = params.retirementAge - params.currentAge;
-  const retirementYears = params.planningHorizonAge - params.retirementAge;
+  const yearsToRetirement = Math.max(0, params.retirementAge - params.currentAge);
+  const retirementYears = Math.max(
+    0,
+    params.planningHorizonAge - Math.max(params.currentAge, params.retirementAge),
+  );
 
   // Deterministic projections
   const projectedSavingsCents = projectSavings(
@@ -381,7 +407,10 @@ export function assessRetirementReadiness(params: RetirementParams): RetirementR
   );
 
   const targetNestEggCents = calculateTargetNestEgg(
-    params.desiredMonthlySpendingCents,
+    calculateNetRetirementSpending(
+      params.desiredMonthlySpendingCents,
+      params.monthlyRetirementIncomeCents,
+    ),
     params.annualInflationRate,
     retirementYears,
   );

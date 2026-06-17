@@ -98,7 +98,7 @@ interface StmtTrnResult {
 function parseStmtTrn(block: string, recordNumber: number): StmtTrnResult {
   const dtPosted = extractTagValue(block, 'DTPOSTED');
   const trnAmt = extractTagValue(block, 'TRNAMT');
-  const fitId = extractTagValue(block, 'FITID');
+  const fitId = extractTagValue(block, 'FITID') || extractTagValue(block, 'REFNUM');
   const name = extractTagValue(block, 'NAME');
   const memo = extractTagValue(block, 'MEMO');
   const trnType = extractTagValue(block, 'TRNTYPE');
@@ -141,7 +141,8 @@ function parseStmtTrn(block: string, recordNumber: number): StmtTrnResult {
     };
   }
 
-  const amountCents = parseOfxAmount(trnAmt);
+  const parsedAmountCents = parseOfxAmount(trnAmt);
+  const amountCents = parsedAmountCents === null ? null : normalizeAmountSign(parsedAmountCents, trnType);
   if (amountCents === null) {
     return {
       transaction: null,
@@ -155,7 +156,7 @@ function parseStmtTrn(block: string, recordNumber: number): StmtTrnResult {
   }
 
   const rawFields: Record<string, string> = {};
-  for (const tag of ['DTPOSTED', 'TRNAMT', 'FITID', 'NAME', 'MEMO', 'TRNTYPE', 'CHECKNUM']) {
+  for (const tag of ['DTPOSTED', 'TRNAMT', 'FITID', 'NAME', 'MEMO', 'TRNTYPE', 'CHECKNUM', 'REFNUM']) {
     const val = extractTagValue(block, tag);
     if (val) rawFields[tag] = val;
   }
@@ -191,15 +192,19 @@ function parseStmtTrn(block: string, recordNumber: number): StmtTrnResult {
  * @returns The tag value, or null if not found.
  */
 export function extractTagValue(content: string, tag: string): string | null {
-  // XML-style: <TAG>value</TAG>
-  const xmlPattern = new RegExp(`<${tag}>\\s*([^<]+?)\\s*</${tag}>`, 'i');
+  const tagPattern = `${escapeRegex(tag)}|[A-Z0-9_]+:${escapeRegex(tag)}`;
+  // XML-style: <TAG>value</TAG>, allowing lowercase, namespaces, and attributes.
+  const xmlPattern = new RegExp(
+    `<(?:${tagPattern})(?:\\s+[^>]*)?>\\s*([^<]+?)\\s*</(?:${tagPattern})>`,
+    'i',
+  );
   const xmlMatch = content.match(xmlPattern);
-  if (xmlMatch) return xmlMatch[1].trim();
+  if (xmlMatch) return decodeOfxEntities(xmlMatch[1].trim());
 
   // SGML-style: <TAG>value (terminated by newline or next tag)
-  const sgmlPattern = new RegExp(`<${tag}>\\s*([^<\\r\\n]+)`, 'i');
+  const sgmlPattern = new RegExp(`<(?:${tagPattern})(?:\\s+[^>]*)?>\\s*([^<\\r\\n]+)`, 'i');
   const sgmlMatch = content.match(sgmlPattern);
-  if (sgmlMatch) return sgmlMatch[1].trim();
+  if (sgmlMatch) return decodeOfxEntities(sgmlMatch[1].trim());
 
   return null;
 }
@@ -213,31 +218,24 @@ export function extractTagValue(content: string, tag: string): string | null {
  */
 export function extractBlocks(content: string, tag: string): string[] {
   const blocks: string[] = [];
-  const openTag = `<${tag}>`;
-  const closeTag = `</${tag}>`;
-  const upperContent = content.toUpperCase();
-  const upperOpen = openTag.toUpperCase();
-  const upperClose = closeTag.toUpperCase();
+  const tagPattern = `${escapeRegex(tag)}|[A-Z0-9_]+:${escapeRegex(tag)}`;
+  const openPattern = new RegExp(`<(?:${tagPattern})(?:\\s+[^>]*)?>`, 'gi');
+  const closePattern = new RegExp(`</(?:${tagPattern})>`, 'i');
 
-  let pos = 0;
-  while (pos < content.length) {
-    const startIdx = upperContent.indexOf(upperOpen, pos);
-    if (startIdx < 0) break;
+  let openMatch: RegExpExecArray | null;
+  while ((openMatch = openPattern.exec(content)) !== null) {
+    const contentStart = openMatch.index + openMatch[0].length;
+    const remainder = content.slice(contentStart);
+    const closeMatch = remainder.match(closePattern);
+    const nextOpenIndex = content.slice(contentStart).search(openPattern);
+    let endIdx = closeMatch ? contentStart + (closeMatch.index ?? 0) : -1;
 
-    const contentStart = startIdx + openTag.length;
-
-    // Look for explicit close tag
-    let endIdx = upperContent.indexOf(upperClose, contentStart);
-
-    if (endIdx < 0) {
-      // SGML: look for the next occurrence of the open tag
-      const nextOpen = upperContent.indexOf(upperOpen, contentStart);
-      endIdx = nextOpen >= 0 ? nextOpen : content.length;
+    if (endIdx < 0 || (nextOpenIndex >= 0 && contentStart + nextOpenIndex < endIdx)) {
+      endIdx = nextOpenIndex >= 0 ? contentStart + nextOpenIndex : content.length;
     }
 
     blocks.push(content.slice(contentStart, endIdx).trim());
-    pos = endIdx + (upperContent.indexOf(upperClose, contentStart) >= 0 ? closeTag.length : 0);
-    if (pos <= startIdx) pos = startIdx + 1; // Prevent infinite loops
+    openPattern.lastIndex = endIdx;
   }
 
   return blocks;
@@ -252,7 +250,12 @@ export function extractBlocks(content: string, tag: string): string[] {
  * @returns ISO 8601 date string, or null if parsing fails.
  */
 export function parseOfxDate(ofxDate: string): string | null {
-  const cleaned = ofxDate.trim().replace(/\[.*\]$/, '');
+  const cleaned = ofxDate
+    .trim()
+    .replace(/\[[^\]]*\]$/, '')
+    .replace(/[+-]\d{4}$/, '')
+    .replace(/\.\d+$/, '')
+    .replace(/[^0-9]/g, '');
 
   if (cleaned.length < 8) return null;
 
@@ -281,8 +284,35 @@ export function parseOfxDate(ofxDate: string): string | null {
  * @returns Integer cents, or null if parsing fails.
  */
 export function parseOfxAmount(ofxAmount: string): number | null {
-  const cleaned = ofxAmount.trim();
+  const cleaned = ofxAmount.trim().replace(/,/g, '');
   const num = parseFloat(cleaned);
   if (isNaN(num)) return null;
   return bankersRound(num * 100);
+}
+
+function normalizeAmountSign(amountCents: number, transactionType: string | null): number {
+  const type = transactionType?.trim().toUpperCase() ?? '';
+  if (
+    amountCents > 0 &&
+    ['DEBIT', 'CHECK', 'PAYMENT', 'POS', 'ATM', 'FEE', 'SRVCHG', 'WITHDRAWAL'].includes(type)
+  ) {
+    return -amountCents;
+  }
+  if (amountCents < 0 && ['CREDIT', 'DEP', 'DIRECTDEP', 'INT', 'DIV'].includes(type)) {
+    return Math.abs(amountCents);
+  }
+  return amountCents;
+}
+
+function decodeOfxEntities(value: string): string {
+  return value
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

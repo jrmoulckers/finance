@@ -18,7 +18,13 @@ import {
   bankersRound,
   buildAmortizationSchedule,
   calculateAvalancheOrder,
+  calculateDebtMilestoneSummary,
+  calculateDebtToIncomeRatioPercent,
+  calculateDebtToIncomeTrend,
+  calculateExtraPaymentImpactScenarios,
+  calculateInterestSavedCents,
   calculateMonthlyInterestCents,
+  calculatePayoffStrategyRecommendation,
   calculateSnowballOrder,
   calculateStrategyResult,
   compareStrategies,
@@ -438,5 +444,255 @@ describe('compareStrategies', () => {
     expect(comparison.avalanche.totalMonths).toBe(comparison.snowball.totalMonths);
     expect(comparison.interestSavingsCents).toBe(0);
     expect(comparison.timeSavingsMonths).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Motivation, milestones, and DTI
+// ---------------------------------------------------------------------------
+
+describe('calculateInterestSavedCents', () => {
+  const debts: Debt[] = [
+    {
+      id: 'card',
+      name: 'High APR Card',
+      balanceCents: 600_000,
+      originalBalanceCents: 800_000,
+      annualRateBps: 2299,
+      minimumPaymentCents: 18_000,
+      type: 'credit_card',
+    },
+    {
+      id: 'loan',
+      name: 'Personal Loan',
+      balanceCents: 900_000,
+      originalBalanceCents: 1_000_000,
+      annualRateBps: 799,
+      minimumPaymentCents: 20_000,
+      type: 'personal_loan',
+    },
+  ];
+
+  it('compares accelerated payoff against minimum-only interest', () => {
+    expect(calculateInterestSavedCents(debts, 'avalanche', 15_000)).toBeGreaterThan(0);
+  });
+
+  it('returns zero when there is no extra payment', () => {
+    expect(calculateInterestSavedCents(debts, 'avalanche', 0)).toBe(0);
+  });
+});
+
+describe('calculateDebtMilestoneSummary', () => {
+  it('marks 25% and 50% milestones when half of original debt is paid', () => {
+    const summary = calculateDebtMilestoneSummary([
+      {
+        id: 'loan',
+        name: 'Loan',
+        balanceCents: 500_000,
+        originalBalanceCents: 1_000_000,
+        annualRateBps: 500,
+        minimumPaymentCents: 10_000,
+        type: 'personal_loan',
+      },
+    ]);
+
+    expect(summary.percentPaidOff).toBe(50);
+    expect(
+      summary.milestones.find((milestone) => milestone.thresholdPercent === 25)?.isReached,
+    ).toBe(true);
+    expect(
+      summary.milestones.find((milestone) => milestone.thresholdPercent === 50)?.isReached,
+    ).toBe(true);
+    expect(
+      summary.milestones.find((milestone) => milestone.thresholdPercent === 75)?.isReached,
+    ).toBe(false);
+  });
+});
+
+describe('calculateDebtToIncomeRatioPercent', () => {
+  it('computes DTI as monthly debt payments divided by income', () => {
+    expect(calculateDebtToIncomeRatioPercent(1_000_00, 5_000_00)).toBe(20);
+  });
+
+  it('returns zero when income is missing', () => {
+    expect(calculateDebtToIncomeRatioPercent(1_000_00, 0)).toBe(0);
+  });
+});
+
+describe('calculateDebtToIncomeTrend', () => {
+  it('shows DTI improving as debts are paid off', () => {
+    const trend = calculateDebtToIncomeTrend(
+      [
+        {
+          id: 'card',
+          name: 'Card',
+          balanceCents: 100_000,
+          annualRateBps: 0,
+          minimumPaymentCents: 25_000,
+          type: 'credit_card',
+        },
+      ],
+      500_000,
+      'snowball',
+      25_000,
+    );
+
+    expect(trend.currentRatioPercent).toBe(5);
+    expect(trend.projectedFinalRatioPercent).toBe(0);
+    expect(trend.isImproving).toBe(true);
+  });
+});
+
+
+describe('calculatePayoffStrategyRecommendation', () => {
+  it('recommends avalanche when it saves interest and preserves snowball motivation copy', () => {
+    const comparison = compareStrategies(
+      [
+        {
+          id: 'high',
+          name: 'High APR',
+          balanceCents: 800_000,
+          annualRateBps: 2499,
+          minimumPaymentCents: 20_000,
+          type: 'credit_card',
+        },
+        {
+          id: 'small',
+          name: 'Small Loan',
+          balanceCents: 200_000,
+          annualRateBps: 399,
+          minimumPaymentCents: 5_000,
+          type: 'personal_loan',
+        },
+      ],
+      10_000,
+    );
+
+    const recommendation = calculatePayoffStrategyRecommendation(comparison);
+
+    expect(recommendation.recommendedStrategy).toBe('avalanche');
+    expect(recommendation.recommendationReason).toContain('minimizes interest');
+    expect(recommendation.snowballMotivationNote).toContain('motivationally preferable');
+  });
+});
+
+describe('calculateExtraPaymentImpactScenarios', () => {
+  const debts: Debt[] = [
+    {
+      id: 'card',
+      name: 'Card',
+      balanceCents: 500_000,
+      annualRateBps: 1999,
+      minimumPaymentCents: 15_000,
+      type: 'credit_card',
+    },
+  ];
+
+  it('includes a zero-extra baseline and multiple extra-payment scenarios', () => {
+    const scenarios = calculateExtraPaymentImpactScenarios(debts, 'avalanche', [5_000, 10_000]);
+
+    expect(scenarios.map((scenario) => scenario.extraPaymentCents)).toEqual([0, 5_000, 10_000]);
+    expect(scenarios[0].monthsSaved).toBe(0);
+    expect(scenarios[1].interestSavedCents).toBeGreaterThan(0);
+    expect(scenarios[2].totalMonths).toBeLessThanOrEqual(scenarios[1].totalMonths);
+  });
+
+  it('marks diminishing returns when incremental savings taper', () => {
+    const scenarios = calculateExtraPaymentImpactScenarios(debts, 'avalanche', [5_000, 20_000, 100_000]);
+
+    expect(scenarios.some((scenario) => scenario.isDiminishingReturn)).toBe(true);
+  });
+});
+
+describe('debt beta milestone and DTI additions', () => {
+  it('tracks 10% milestones and manual interest paid to date', () => {
+    const summary = calculateDebtMilestoneSummary(
+      [
+        {
+          id: 'loan',
+          name: 'Loan',
+          balanceCents: 900_000,
+          originalBalanceCents: 1_000_000,
+          interestPaidToDateCents: 12_000,
+          annualRateBps: 500,
+          minimumPaymentCents: 10_000,
+          type: 'personal_loan',
+        },
+      ],
+      3_000,
+    );
+
+    expect(summary.milestones.find((milestone) => milestone.thresholdPercent === 10)?.isReached).toBe(
+      true,
+    );
+    expect(summary.totalInterestPaidToDateCents).toBe(15_000);
+  });
+
+  it('handles completed payoff state', () => {
+    const summary = calculateDebtMilestoneSummary([
+      {
+        id: 'paid',
+        name: 'Paid Debt',
+        balanceCents: 0,
+        originalBalanceCents: 100_000,
+        annualRateBps: 0,
+        minimumPaymentCents: 0,
+        type: 'other',
+      },
+    ]);
+
+    expect(summary.percentPaidOff).toBe(100);
+    expect(summary.milestones.every((milestone) => milestone.isReached)).toBe(true);
+  });
+
+  it('reports threshold crossings across the full payoff plan', () => {
+    const trend = calculateDebtToIncomeTrend(
+      [
+        {
+          id: 'card',
+          name: 'Card',
+          balanceCents: 100_000,
+          annualRateBps: 0,
+          minimumPaymentCents: 50_000,
+          type: 'credit_card',
+        },
+      ],
+      100_000,
+      'snowball',
+      0,
+      { targetRatioPercent: 20 },
+    );
+
+    expect(trend.trend).toHaveLength(3);
+    expect(trend.thresholdCrossings.find((crossing) => crossing.thresholdPercent === 20)?.month).toBe(
+      2,
+    );
+  });
+
+  it('supports zero income and income changes by month', () => {
+    const zeroIncomeTrend = calculateDebtToIncomeTrend([], 0, 'avalanche', 0);
+    expect(zeroIncomeTrend.trend[0].monthlyIncomeCents).toBe(0);
+    expect(zeroIncomeTrend.trend[0].thresholdStatuses.every((status) => !status.isAtOrBelow)).toBe(
+      true,
+    );
+
+    const changedIncomeTrend = calculateDebtToIncomeTrend(
+      [
+        {
+          id: 'loan',
+          name: 'Loan',
+          balanceCents: 50_000,
+          annualRateBps: 0,
+          minimumPaymentCents: 25_000,
+          type: 'other',
+        },
+      ],
+      100_000,
+      'avalanche',
+      0,
+      { incomeChanges: [{ month: 1, monthlyIncomeCents: 200_000 }] },
+    );
+
+    expect(changedIncomeTrend.trend[1].monthlyIncomeCents).toBe(200_000);
   });
 });

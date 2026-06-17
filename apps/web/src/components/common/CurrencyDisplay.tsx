@@ -4,6 +4,8 @@ import React from 'react';
 
 import { formatCurrencyForScreenReader } from '../../lib/a11y';
 import { useEffectiveMaskingMode, useIsPrivacyModeActive } from '../../contexts/PrivacyModeContext';
+import { useLocalePreferences } from '../../hooks/useLocalePreferences';
+import { getCurrencyFractionDigits } from '../../lib/currency-metadata';
 import { getAmountColor, useMoneyDisplay } from '../../lib/display-settings';
 import { formatAmount, MaskingMode } from '../../lib/ui/privacy';
 
@@ -43,16 +45,15 @@ export interface CurrencyDisplayProps {
  * placeholder (e.g., `$•••.••`) and the accessible label indicates
  * "Amount hidden".
  *
- * Accessibility: when `negativeFormat` is `'color-only'`, the visible
- * text omits the minus sign but the `aria-label` always includes
- * "negative" for screen readers so information is never conveyed by
+ * Accessibility: legacy `negativeFormat` value `'color-only'` is rendered
+ * with a visible "Negative" text cue so information is never conveyed by
  * color alone. The optional `context` prop appends a description
  * (e.g., "Dining category") so amounts announce their meaning.
  */
 export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   amount,
   currency = 'USD',
-  locale = 'en-US',
+  locale,
   colorize = false,
   showSign = false,
   className = '',
@@ -62,19 +63,22 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   const displaySettings = useMoneyDisplay();
   const isPrivacyMode = useIsPrivacyModeActive();
   const maskingMode = useEffectiveMaskingMode();
+  const { locale: preferredLocale } = useLocalePreferences();
+  const resolvedLocale = locale ?? preferredLocale;
 
   // Format the visible text using the canonical privacy-aware formatter.
+  const currencyFractionDigits = getCurrencyFractionDigits(currency);
   const baseFormatOptions = {
     currency,
     currencyDisplay: displaySettings.currencyDisplay,
-    minimumFractionDigits: displaySettings.showDecimals ? 2 : 0,
-    maximumFractionDigits: displaySettings.showDecimals ? 2 : 0,
+    minimumFractionDigits: displaySettings.showDecimals ? currencyFractionDigits : 0,
+    maximumFractionDigits: displaySettings.showDecimals ? currencyFractionDigits : 0,
   } as const;
-  const formattedBase = formatAmount(amount, maskingMode, locale, {
+  const formattedBase = formatAmount(amount, maskingMode, resolvedLocale, {
     ...baseFormatOptions,
     signDisplay: showSign ? 'exceptZero' : 'auto',
   });
-  const formattedAbsolute = formatAmount(Math.abs(amount), MaskingMode.Visible, locale, {
+  const formattedAbsolute = formatAmount(Math.abs(amount), MaskingMode.Visible, resolvedLocale, {
     ...baseFormatOptions,
     signDisplay: 'never',
   });
@@ -83,7 +87,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
       ? displaySettings.negativeFormat === 'parentheses'
         ? `(${formattedAbsolute})`
         : displaySettings.negativeFormat === 'color-only'
-          ? formattedAbsolute
+          ? `Negative ${formattedAbsolute}`
           : formattedBase
       : formattedBase;
 
@@ -104,7 +108,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   // sign and meaning regardless of visual negative format.
   const label = isPrivacyMode
     ? 'Amount hidden'
-    : (ariaLabel ?? formatCurrencyForScreenReader(amount, currency, context));
+    : (ariaLabel ?? formatCurrencyForScreenReader(amount, currency, context, resolvedLocale));
 
   return (
     <span

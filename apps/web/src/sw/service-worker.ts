@@ -29,6 +29,12 @@ declare const self: ServiceWorkerGlobalScope;
 
 import { replayMutations } from '../db/sync/replayMutations';
 import { SYNC_TAG, type ClientToSwMessage, type SwToClientMessage } from '../db/sync/types';
+import {
+  RECEIPT_CACHE_MAX_ENTRIES,
+  hasSensitiveReceiptToken,
+  isReceiptImagePath,
+  sanitizeReceiptCacheUrl,
+} from '../lib/receiptImagePolicy';
 
 // ---------------------------------------------------------------------------
 // Cache configuration
@@ -50,6 +56,7 @@ const CACHE_VERSION = 'v2';
 /** Cache bucket names. */
 const STATIC_CACHE = `finance-static-${CACHE_VERSION}`;
 const SYNC_CACHE = `finance-sync-${CACHE_VERSION}`;
+const RECEIPT_CACHE = `finance-receipts-${CACHE_VERSION}`;
 const LEGACY_API_CACHE_PREFIX = 'finance-api-';
 
 /**
@@ -121,6 +128,9 @@ self.addEventListener('fetch', (event: FetchEvent) => {
   }
 
   switch (getFetchStrategyForPathname(url.pathname, request.mode)) {
+    case 'receipt-cache-first':
+      event.respondWith(receiptImageCacheFirst(request));
+      return;
     case 'network-first':
       event.respondWith(networkFirst(request));
       return;
@@ -321,12 +331,59 @@ async function networkFirst(request: Request): Promise<Response> {
   }
 }
 
+async function receiptImageCacheFirst(request: Request): Promise<Response> {
+  const requestUrl = new URL(request.url);
+  const cacheKey = sanitizeReceiptCacheUrl(requestUrl);
+  const cache = await caches.open(RECEIPT_CACHE);
+  const cached = await cache.match(cacheKey);
+
+  if (cached) {
+    return withCacheStatusHeaders(cached, 'cached');
+  }
+
+  try {
+    const response = await fetch(request);
+    if (response.ok && !hasSensitiveReceiptToken(requestUrl)) {
+      await cache.put(cacheKey, response.clone());
+      await trimCacheEntries(cache, RECEIPT_CACHE_MAX_ENTRIES);
+    }
+    return response;
+  } catch {
+    return new Response(
+      JSON.stringify({ error: 'offline', message: 'Receipt image is not cached on this device' }),
+      {
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      },
+    );
+  }
+}
+
+async function trimCacheEntries(cache: Cache, maxEntries: number): Promise<void> {
+  const keys = await cache.keys();
+  if (keys.length <= maxEntries) return;
+  await Promise.all(keys.slice(0, keys.length - maxEntries).map((key) => cache.delete(key)));
+}
+
+function withCacheStatusHeaders(response: Response, status: 'cached' | 'stale'): Response {
+  const headers = new Headers(response.headers);
+  headers.set('X-Finance-Cache-Status', status);
+  headers.set('X-Finance-Stale-At', new Date().toISOString());
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 /** Returns `true` when the pathname looks like a static asset. */
 function isStaticAsset(pathname: string): boolean {
   return STATIC_EXTENSIONS.test(pathname);
 }
 
 export type FetchStrategy =
+  | 'receipt-cache-first'
   | 'network-first'
   | 'network-only-no-store'
   | 'cache-first'
@@ -336,6 +393,10 @@ export function getFetchStrategyForPathname(
   pathname: string,
   requestMode?: RequestMode,
 ): FetchStrategy {
+  if (isReceiptImagePath(pathname)) {
+    return 'receipt-cache-first';
+  }
+
   if (pathname.startsWith('/api/sync/')) {
     return 'network-first';
   }
@@ -356,7 +417,10 @@ export function getFetchStrategyForPathname(
 }
 
 function shouldDeleteCacheOnActivate(key: string): boolean {
-  return key.startsWith(LEGACY_API_CACHE_PREFIX) || (key !== STATIC_CACHE && key !== SYNC_CACHE);
+  return (
+    key.startsWith(LEGACY_API_CACHE_PREFIX) ||
+    (key !== STATIC_CACHE && key !== SYNC_CACHE && key !== RECEIPT_CACHE)
+  );
 }
 
 // ---------------------------------------------------------------------------

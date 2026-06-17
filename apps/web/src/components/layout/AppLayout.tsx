@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { AppNotification } from '../../lib/notifications';
 import FeedbackDialog from '../FeedbackDialog';
-import { SyncStatusBar } from '../common';
+import { KeyboardShortcutsModal, SyncStatusBar } from '../common';
+import { CommandPalette, type CommandPaletteAction } from '../common/CommandPalette';
 import { ConflictResolutionDialog } from '../common/ConflictResolutionDialog';
 import { NotificationCenter } from '../notifications';
 import { useKeyboardShortcuts } from '../../hooks';
@@ -12,12 +13,19 @@ import { useAccessibility } from '../../hooks/useAccessibility';
 import { usePrivacyMode } from '../../contexts/PrivacyModeContext';
 import { useEscapeBack } from '../../hooks/useEscapeBack';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
+import {
+  getStoredSimplifiedModePreference,
+  SIMPLIFIED_MODE_STORAGE_KEY,
+} from '../../lib/accessibility-preferences';
+import { getSimpleModePlan, type SimpleModeSurface } from '../../lib/a11y/simple-mode';
 
 import { BottomNavigation, SidebarNavigation } from './Navigation';
 import { getVisibleNavItems } from './navConfig';
 import { InstallBanner } from '../common/InstallBanner';
 import { LegalLinks } from '../legal/LegalLinks';
 import { Breadcrumbs, NavShortcuts } from '../navigation';
+
+import { SkipToContent } from './SkipToContent';
 
 export interface AppLayoutProps {
   activePath: string;
@@ -32,6 +40,41 @@ export interface AppLayoutProps {
   onNotificationAction?: (notification: AppNotification) => void;
 }
 
+const SIMPLE_MODE_SURFACES: Array<{ surface: SimpleModeSurface; paths: readonly string[] }> = [
+  { surface: 'dashboard', paths: ['/', '/dashboard'] },
+  { surface: 'transactions', paths: ['/transactions'] },
+  { surface: 'budgets', paths: ['/budgets'] },
+  { surface: 'bills', paths: ['/bills'] },
+  { surface: 'goals', paths: ['/goals'] },
+  { surface: 'reports', paths: ['/report-builder', '/cash-flow', '/net-worth', '/insights'] },
+  { surface: 'settings', paths: ['/settings'] },
+];
+
+function getSimpleModeSurface(pathname: string): SimpleModeSurface | null {
+  return (
+    SIMPLE_MODE_SURFACES.find(({ paths }) =>
+      paths.some((path) => pathname === path || pathname.startsWith(`${path}/`)),
+    )?.surface ?? null
+  );
+}
+
+const NAV_SHORTCUT_BY_ID: Record<string, string> = {
+  dashboard: 'G D',
+  accounts: 'G A',
+  transactions: 'G T',
+  budgets: 'G B',
+  goals: 'G G',
+  investments: 'G I',
+  bills: 'G L',
+  categories: 'G C',
+  'cash-flow': 'G F',
+  'net-worth': 'G N',
+  reports: 'G R',
+  watchlists: 'G W',
+  household: 'G H',
+  import: 'G M',
+};
+
 export const AppLayout: React.FC<AppLayoutProps> = ({
   activePath,
   onNavigate,
@@ -45,15 +88,37 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   onNotificationAction,
 }) => {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [simpleModeEnabled, setSimpleModeEnabled] = useState(getStoredSimplifiedModePreference);
   const { isSimplified } = useAccessibility();
   const shortcutItems = useMemo(() => getVisibleNavItems(isSimplified), [isSimplified]);
-  const { showHelp, setShowHelp } = useKeyboardShortcuts({
+  const { showHelp, setShowHelp, singleKeyShortcutsEnabled } = useKeyboardShortcuts({
     onNavigate,
+    onNewTransaction: () => onNavigate('/transactions?new=transaction'),
+    onOpenCommandPalette: () => setShowCommandPalette(true),
     onTogglePrivacyMode: togglePrivacyMode,
   });
   const { conflictCount } = useSyncStatus();
   const [showConflicts, setShowConflicts] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const simpleModeSurface = getSimpleModeSurface(activePath);
+  const simpleModePlan = simpleModeEnabled && simpleModeSurface
+    ? getSimpleModePlan(simpleModeSurface)
+    : null;
+
+  useEffect(() => {
+    setSimpleModeEnabled(getStoredSimplifiedModePreference());
+  }, [activePath]);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === SIMPLIFIED_MODE_STORAGE_KEY) {
+        setSimpleModeEnabled(getStoredSimplifiedModePreference());
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   // Navigate back on Escape key for detail pages (#1523)
   useEscapeBack();
@@ -65,6 +130,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const closeKeyboardShortcuts = useCallback(() => {
     setShowHelp(false);
   }, [setShowHelp]);
+
+  const openCommandPalette = useCallback(() => {
+    setShowCommandPalette(true);
+  }, []);
+
+  const closeCommandPalette = useCallback(() => {
+    setShowCommandPalette(false);
+  }, []);
+
+  const openNewTransaction = useCallback(() => {
+    onNavigate('/transactions?new=transaction');
+  }, [onNavigate]);
 
   const goToSettings = useCallback(() => {
     onNavigate('/settings');
@@ -78,6 +155,52 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     setShowConflicts(false);
   }, []);
 
+  const commandPaletteActions = useMemo<CommandPaletteAction[]>(
+    () => [
+      ...shortcutItems.map((item) => ({
+        id: `command-nav-${item.id}`,
+        label: `Go to ${item.label}`,
+        description: item.description,
+        keywords: `${item.group ?? 'primary'} ${item.href}`,
+        shortcut: NAV_SHORTCUT_BY_ID[item.id],
+        perform: () => onNavigate(item.href),
+      })),
+      {
+        id: 'command-new-transaction',
+        label: 'Add transaction',
+        description: 'Open manual transaction entry.',
+        shortcut: 'N',
+        keywords: 'new quick add create transaction',
+        perform: openNewTransaction,
+      },
+      {
+        id: 'command-shortcuts',
+        label: 'Show keyboard shortcuts',
+        description: 'Open the shortcuts reference overlay.',
+        shortcut: '?',
+        keywords: 'help keyboard shortcuts',
+        perform: openKeyboardShortcuts,
+      },
+      {
+        id: 'command-toggle-privacy',
+        label: isPrivacyMode ? 'Turn privacy mode off' : 'Turn privacy mode on',
+        description: 'Mask or reveal financial amounts.',
+        shortcut: 'Ctrl+Shift+P',
+        keywords: 'privacy mask sensitive amounts',
+        perform: togglePrivacyMode,
+      },
+      {
+        id: 'command-settings-preferences',
+        label: 'Open preferences',
+        description: 'Theme, density, currency, and display settings.',
+        shortcut: 'G S',
+        keywords: 'settings display density theme compact',
+        perform: () => onNavigate('/settings/preferences'),
+      },
+    ],
+    [isPrivacyMode, onNavigate, openKeyboardShortcuts, openNewTransaction, shortcutItems, togglePrivacyMode],
+  );
+
   const openFeedbackDialog = useCallback(() => {
     setShowFeedback(true);
   }, []);
@@ -88,14 +211,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
   return (
     <div className="app-layout">
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
+      <SkipToContent />
       <SidebarNavigation
         activePath={activePath}
         onNavigate={onNavigate}
         onOpenShortcuts={openKeyboardShortcuts}
         onOpenFeedback={openFeedbackDialog}
+        simpleMode={simpleModeEnabled}
       />
       <div className={`app-shell${isSimplified ? ' app-shell--simplified' : ''}`}>
         <SyncStatusBar />
@@ -174,6 +296,17 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             ) : null}
             <button
               type="button"
+              className="icon-button"
+              aria-label="Command palette"
+              aria-keyshortcuts="Control+K Meta+K /"
+              onClick={openCommandPalette}
+            >
+              <span className="icon-button__glyph" aria-hidden="true">
+                ⌘K
+              </span>
+            </button>
+            <button
+              type="button"
               className={`icon-button${isSimplified ? ' icon-button--labeled' : ''}`}
               aria-label="Settings"
               onClick={goToSettings}
@@ -186,7 +319,30 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
             </button>
           </div>
         </header>
-        <main id="main-content" className="app-main" aria-label={pageTitle}>
+        <main
+          id="main-content"
+          className="app-main"
+          aria-label={pageTitle}
+          tabIndex={-1}
+          data-simple-mode={simpleModeEnabled || undefined}
+          data-simple-mode-surface={simpleModePlan?.surface}
+        >
+          {simpleModePlan && (
+            <section
+              className="simple-mode-summary"
+              aria-label={`${simpleModePlan.heading} simple mode plan`}
+              data-simple-mode-plan={simpleModePlan.surface}
+            >
+              <p>
+                <strong>Simple Mode:</strong> {simpleModePlan.heading}. Primary action:{' '}
+                {simpleModePlan.primaryAction}.
+              </p>
+              <p className="sr-only">
+                Visible regions: {simpleModePlan.visibleRegions.join(', ')}. Advanced regions collapsed:{' '}
+                {simpleModePlan.collapsedRegions.join(', ')}.
+              </p>
+            </section>
+          )}
           {children}
         </main>
         <footer className="app-footer">
@@ -196,9 +352,20 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           activePath={activePath}
           onNavigate={onNavigate}
           onOpenFeedback={openFeedbackDialog}
+          simpleMode={simpleModeEnabled}
         />
       </div>
       <InstallBanner />
+      <CommandPalette
+        isOpen={showCommandPalette}
+        actions={commandPaletteActions}
+        onClose={closeCommandPalette}
+      />
+      <KeyboardShortcutsModal
+        isOpen={showHelp}
+        onClose={closeKeyboardShortcuts}
+        singleKeyShortcutsEnabled={singleKeyShortcutsEnabled}
+      />
       <NavShortcuts
         isOpen={showHelp}
         onClose={closeKeyboardShortcuts}

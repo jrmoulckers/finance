@@ -3,11 +3,13 @@
 import React, { useCallback, useState } from 'react';
 
 import { DataExport } from '../../components/DataExport';
-import { CrashReportingSettings, PrivacySettings } from '../../components/gdpr';
+import { CrashReportingSettings, PrivacySettings, ThirdPartyPermissionReview } from '../../components/gdpr';
 import { useAccountDeletion } from '../../components/settings/AccountDeletionModal';
 import { PrivacyPersistenceOption, usePrivacyMode } from '../../contexts/PrivacyModeContext';
 import { useAuth } from '../../auth/auth-context';
 import { initMonitoring } from '../../lib/monitoring';
+import { loadIdleSessionPolicy, saveIdleSessionPolicy } from '../../lib/session-security';
+import { loadAppLockSettings, saveAppLockSettings } from '../../lib/security/app-lock-settings';
 
 const MONITORING_CONSENT_STORAGE_KEY = 'finance-monitoring-consent';
 
@@ -22,6 +24,10 @@ export const SettingsPrivacyPage: React.FC = () => {
   const [monitoringEnabled, setMonitoringEnabled] = useState(
     () => localStorage.getItem(MONITORING_CONSENT_STORAGE_KEY) === 'true',
   );
+  const [idleTimeoutMinutes, setIdleTimeoutMinutes] = useState(
+    () => Math.round(loadIdleSessionPolicy().timeoutMs / 60_000),
+  );
+  const [appLockEnabled, setAppLockEnabled] = useState(() => loadAppLockSettings().enabled);
 
   const { openDeleteModal, deleteModal } = useAccountDeletion();
 
@@ -40,6 +46,24 @@ export const SettingsPrivacyPage: React.FC = () => {
     if (nextMonitoringEnabled) {
       initMonitoring();
     }
+  }, []);
+
+  const handleIdleTimeoutChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
+    const minutes = Number(event.target.value);
+    const timeoutMs = minutes * 60_000;
+    saveIdleSessionPolicy({ timeoutMs, warningMs: 60_000, lockBehavior: 'logout' });
+    saveAppLockSettings({ ...loadAppLockSettings(), idleTimeoutMs: timeoutMs });
+    setIdleTimeoutMinutes(minutes);
+  }, []);
+
+  const handleAppLockChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const enabled = event.target.checked;
+    saveAppLockSettings({
+      ...loadAppLockSettings(),
+      enabled,
+      idleTimeoutMs: loadIdleSessionPolicy().timeoutMs,
+    });
+    setAppLockEnabled(enabled);
   }, []);
 
   const handleMonitoringToggle = useCallback((enabled: boolean) => {
@@ -99,6 +123,49 @@ export const SettingsPrivacyPage: React.FC = () => {
         </div>
       </section>
 
+      <section aria-label="Session security" className="page-section">
+        <div className="settings-group">
+          <h3 className="settings-group__title">Session security</h3>
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="s-app-lock">
+              App lock
+            </label>
+            <input
+              type="checkbox"
+              id="s-app-lock"
+              checked={appLockEnabled}
+              onChange={handleAppLockChange}
+              aria-label="Require passkey app lock before showing finance data"
+              className="settings-item__checkbox"
+            />
+          </div>
+          <p className="settings-item__description">
+            When enabled, Finance shows a privacy-safe locked shell on app load and after the idle timeout;
+            users with a registered passkey unlock with WebAuthn, otherwise the current authenticated session is used.
+          </p>
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="s-idle-timeout">
+              Idle timeout
+            </label>
+            <select
+              id="s-idle-timeout"
+              aria-label="Idle timeout"
+              className="settings-item__select"
+              value={idleTimeoutMinutes}
+              onChange={handleIdleTimeoutChange}
+            >
+              <option value={5}>5 minutes</option>
+              <option value={15}>15 minutes</option>
+              <option value={30}>30 minutes</option>
+              <option value={60}>60 minutes</option>
+            </select>
+          </div>
+          <p className="settings-item__description">
+            Finance warns one minute before locking or signing out and records idle timeout events in the audit log.
+          </p>
+        </div>
+      </section>
+
       <section aria-label="Error Reporting" className="page-section">
         <div className="settings-group">
           <h3 className="settings-group__title">Error reporting</h3>
@@ -137,6 +204,8 @@ export const SettingsPrivacyPage: React.FC = () => {
           openDeleteModal();
         }}
       />
+
+      <ThirdPartyPermissionReview />
 
       <CrashReportingSettings enabled={monitoringEnabled} onToggle={handleMonitoringToggle} />
 

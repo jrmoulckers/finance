@@ -28,6 +28,11 @@ import type {
   PslfTracker,
   RepaymentComparison,
   StudentLoan,
+  StudentLoanDashboardSummary,
+  StudentLoanPayoffMetrics,
+  StudentLoanScenarioConfig,
+  StudentLoanScenarioResult,
+  StudentLoanWhatIfScenario,
 } from './debt-types';
 import { bankersRound, calculateMonthlyInterestCents } from './debt-payoff-engine';
 
@@ -105,6 +110,179 @@ function calculateDiscretionaryIncome(annualIncomeCents: number, familySize: num
   // 150% of FPL — use integer math: fpl * 150 / 100
   const threshold = bankersRound((fpl * 150) / 100);
   return Math.max(0, annualIncomeCents - threshold);
+}
+
+function getStudentLoanAggregate(loans: readonly StudentLoan[]): {
+  totalBalanceCents: number;
+  totalOriginalBalanceCents: number;
+  totalMonthlyPaymentCents: number;
+  weightedAverageRateBps: number;
+} {
+  let totalBalanceCents = 0;
+  let totalOriginalBalanceCents = 0;
+  let totalMonthlyPaymentCents = 0;
+  let rateWeightedSum = 0;
+
+  for (const loan of loans) {
+    totalBalanceCents += loan.balanceCents;
+    totalOriginalBalanceCents += Math.max(loan.originalBalanceCents, loan.balanceCents);
+    totalMonthlyPaymentCents += loan.minimumPaymentCents;
+    rateWeightedSum += loan.balanceCents * loan.annualRateBps;
+  }
+
+  return {
+    totalBalanceCents,
+    totalOriginalBalanceCents,
+    totalMonthlyPaymentCents,
+    weightedAverageRateBps:
+      totalBalanceCents > 0 ? bankersRound(rateWeightedSum / totalBalanceCents) : 0,
+  };
+}
+
+function addMonthsToIsoDate(todayIso: string, months: number): string {
+  const [year, month, day] = todayIso.split('-').map((value) => Number.parseInt(value, 10));
+  const date = new Date(Date.UTC(year, Math.max(0, month - 1), day));
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Estimates payoff using the current monthly payment and weighted average rate.
+ *
+ * Formula:
+ *   months = -log(1 - (r × balance) / payment) / log(1 + r)
+ *   totalInterest = (payment × months) - balance
+ */
+export function calculateStudentLoanPayoffMetrics(
+  totalBalanceCents: number,
+  weightedAnnualRateBps: number,
+  monthlyPaymentCents: number,
+  todayIso: string,
+): StudentLoanPayoffMetrics {
+  if (totalBalanceCents <= 0) {
+    return {
+      monthlyPaymentCents,
+      monthsToPayoff: 0,
+      estimatedPayoffDate: todayIso,
+      totalInterestCents: 0,
+    };
+  }
+
+  if (monthlyPaymentCents <= 0) {
+    return {
+      monthlyPaymentCents,
+      monthsToPayoff: null,
+      estimatedPayoffDate: null,
+      totalInterestCents: 0,
+    };
+  }
+
+  if (weightedAnnualRateBps <= 0) {
+    const monthsToPayoff = Math.ceil(totalBalanceCents / monthlyPaymentCents);
+    return {
+      monthlyPaymentCents,
+      monthsToPayoff,
+      estimatedPayoffDate: addMonthsToIsoDate(todayIso, monthsToPayoff),
+      totalInterestCents: 0,
+    };
+  }
+
+  const monthlyRate = weightedAnnualRateBps / (100 * 100 * 12);
+  const amortizationThreshold = monthlyRate * totalBalanceCents;
+  if (monthlyPaymentCents <= amortizationThreshold) {
+    return {
+      monthlyPaymentCents,
+      monthsToPayoff: null,
+      estimatedPayoffDate: null,
+      totalInterestCents: 0,
+    };
+  }
+
+  const exactMonths =
+    -Math.log(1 - (monthlyRate * totalBalanceCents) / monthlyPaymentCents) /
+    Math.log(1 + monthlyRate);
+  const monthsToPayoff = Math.max(1, Math.ceil(exactMonths));
+
+  return {
+    monthlyPaymentCents,
+    monthsToPayoff,
+    estimatedPayoffDate: addMonthsToIsoDate(todayIso, monthsToPayoff),
+    totalInterestCents: Math.max(
+      0,
+      bankersRound(monthlyPaymentCents * exactMonths - totalBalanceCents),
+    ),
+  };
+}
+
+export function calculateStudentLoanDashboardSummary(
+  loans: readonly StudentLoan[],
+  todayIso: string,
+): StudentLoanDashboardSummary {
+  const aggregate = getStudentLoanAggregate(loans);
+  const payoff = calculateStudentLoanPayoffMetrics(
+    aggregate.totalBalanceCents,
+    aggregate.weightedAverageRateBps,
+    aggregate.totalMonthlyPaymentCents,
+    todayIso,
+  );
+  const principalPaidCents = Math.max(
+    0,
+    aggregate.totalOriginalBalanceCents - aggregate.totalBalanceCents,
+  );
+
+  return {
+    ...payoff,
+    totalBalanceCents: aggregate.totalBalanceCents,
+    totalOriginalBalanceCents: aggregate.totalOriginalBalanceCents,
+    weightedAverageRateBps: aggregate.weightedAverageRateBps,
+    percentPaidOff:
+      aggregate.totalOriginalBalanceCents > 0
+        ? Math.min(
+            100,
+            Math.max(
+              0,
+              Math.round((principalPaidCents * 1000) / aggregate.totalOriginalBalanceCents) / 10,
+            ),
+          )
+        : 0,
+  };
+}
+
+export function calculateStudentLoanWhatIfScenario(
+  loans: readonly StudentLoan[],
+  extraPaymentCents: number,
+  todayIso: string,
+): StudentLoanWhatIfScenario {
+  const safeExtraPaymentCents = Math.max(0, extraPaymentCents);
+  const baseline = calculateStudentLoanDashboardSummary(loans, todayIso);
+
+  if (baseline.totalBalanceCents <= 0 || safeExtraPaymentCents <= 0) {
+    return {
+      extraPaymentCents: safeExtraPaymentCents,
+      newMonthlyPaymentCents: baseline.monthlyPaymentCents,
+      interestSavedCents: 0,
+      monthsSaved: 0,
+      acceleratedPayoffDate: baseline.estimatedPayoffDate,
+    };
+  }
+
+  const accelerated = calculateStudentLoanPayoffMetrics(
+    baseline.totalBalanceCents,
+    baseline.weightedAverageRateBps,
+    baseline.monthlyPaymentCents + safeExtraPaymentCents,
+    todayIso,
+  );
+
+  return {
+    extraPaymentCents: safeExtraPaymentCents,
+    newMonthlyPaymentCents: baseline.monthlyPaymentCents + safeExtraPaymentCents,
+    interestSavedCents: Math.max(0, baseline.totalInterestCents - accelerated.totalInterestCents),
+    monthsSaved:
+      baseline.monthsToPayoff !== null && accelerated.monthsToPayoff !== null
+        ? Math.max(0, baseline.monthsToPayoff - accelerated.monthsToPayoff)
+        : 0,
+    acceleratedPayoffDate: accelerated.estimatedPayoffDate,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -375,22 +553,18 @@ export function compareRepaymentPlans(
   todayIso: string,
 ): RepaymentComparison {
   // Calculate combined balance and weighted average rate
-  let totalBalanceCents = 0;
-  let rateWeightedSum = 0;
+  const aggregate = getStudentLoanAggregate(loans);
+  const totalBalanceCents = aggregate.totalBalanceCents;
+  const weightedRateBps = aggregate.weightedAverageRateBps;
   let pslfEligibleCount = 0;
   let totalPslfPayments = 0;
 
   for (const loan of loans) {
-    totalBalanceCents += loan.balanceCents;
-    rateWeightedSum += loan.balanceCents * loan.annualRateBps;
     if (loan.isPslfEligible) {
       pslfEligibleCount++;
       totalPslfPayments = Math.max(totalPslfPayments, loan.pslfPaymentsMade);
     }
   }
-
-  const weightedRateBps =
-    totalBalanceCents > 0 ? bankersRound(rateWeightedSum / totalBalanceCents) : 0;
 
   // Standard repayment
   const standardPayment = calculateStandardPayment(totalBalanceCents, weightedRateBps);
@@ -459,4 +633,210 @@ export function compareRepaymentPlans(
     recommendedPlan: bestPlan,
     savingsVsStandardCents: Math.max(0, savingsVsStandard),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Editable scenario comparisons (#2160)
+// ---------------------------------------------------------------------------
+
+function addMonthsForScenario(todayIso: string, months: number | null): string | null {
+  if (months === null) return null;
+  return addMonthsToIsoDate(todayIso, Math.max(0, months));
+}
+
+function calculateAggregateForScenario(loans: readonly StudentLoan[]) {
+  return getStudentLoanAggregate(loans);
+}
+
+function defaultIdrInput(): IdrInput {
+  return {
+    annualIncomeCents: 0,
+    familySize: 1,
+    state: 'US',
+    filingStatus: 'single',
+  };
+}
+
+function applyPslfPayments(
+  loans: readonly StudentLoan[],
+  qualifyingPaymentsMade: number | undefined,
+): StudentLoan[] {
+  if (qualifyingPaymentsMade === undefined) {
+    return [...loans];
+  }
+
+  return loans.map((loan) => ({
+    ...loan,
+    isFederal: loan.isFederal || loan.isPslfEligible,
+    isPslfEligible: loan.isPslfEligible || loan.isFederal,
+    pslfPaymentsMade: Math.max(0, Math.min(PSLF_REQUIRED_PAYMENTS, qualifyingPaymentsMade)),
+  }));
+}
+
+function calculateIdrScenario(
+  loans: readonly StudentLoan[],
+  scenario: StudentLoanScenarioConfig,
+  todayIso: string,
+): StudentLoanScenarioResult {
+  const aggregate = calculateAggregateForScenario(loans);
+  const idrPlan = scenario.idrPlan ?? 'PAYE';
+  const input = scenario.idrInput ?? defaultIdrInput();
+  const payment = calculateIdrPayment(
+    idrPlan,
+    input,
+    aggregate.totalBalanceCents,
+    aggregate.weightedAverageRateBps,
+  );
+  const result = calculateIdrPlanResult(
+    idrPlan,
+    payment,
+    aggregate.totalBalanceCents,
+    aggregate.weightedAverageRateBps,
+    IDR_FORGIVENESS_MONTHS[idrPlan],
+    false,
+  );
+
+  return {
+    id: scenario.id,
+    label: scenario.label,
+    type: scenario.type,
+    monthlyPaymentCents: payment,
+    totalPaidCents: result.totalPaidCents + result.estimatedTaxOnForgivenessCents,
+    totalInterestCents: result.totalInterestCents,
+    monthsToPayoff: result.monthsToForgiveness,
+    estimatedEndDate: addMonthsForScenario(todayIso, result.monthsToForgiveness),
+    forgivenAmountCents: result.forgivenAmountCents,
+    estimatedTaxCents: result.estimatedTaxOnForgivenessCents,
+    note: `${idrPlan} income-driven repayment`,
+  };
+}
+
+function calculatePslfScenario(
+  loans: readonly StudentLoan[],
+  scenario: StudentLoanScenarioConfig,
+  todayIso: string,
+): StudentLoanScenarioResult {
+  const aggregate = calculateAggregateForScenario(loans);
+  const input = scenario.idrInput ?? defaultIdrInput();
+  const idrPlan = scenario.idrPlan ?? 'REPAYE';
+  const payment = calculateIdrPayment(
+    idrPlan,
+    input,
+    aggregate.totalBalanceCents,
+    aggregate.weightedAverageRateBps,
+  );
+  const pslfLoans = applyPslfPayments(loans, scenario.pslfQualifyingPayments);
+  const qualifyingPayments = Math.max(
+    0,
+    Math.min(
+      PSLF_REQUIRED_PAYMENTS,
+      scenario.pslfQualifyingPayments ??
+        pslfLoans.reduce((max, loan) => Math.max(max, loan.pslfPaymentsMade), 0),
+    ),
+  );
+  const tracker = calculatePslfTracker(
+    pslfLoans,
+    qualifyingPayments,
+    todayIso,
+    payment,
+    aggregate.weightedAverageRateBps,
+  );
+
+  return {
+    id: scenario.id,
+    label: scenario.label,
+    type: scenario.type,
+    monthlyPaymentCents: payment,
+    totalPaidCents: payment * tracker.paymentsRemaining,
+    totalInterestCents: Math.max(
+      0,
+      payment * tracker.paymentsRemaining - aggregate.totalBalanceCents,
+    ),
+    monthsToPayoff: tracker.paymentsRemaining,
+    estimatedEndDate: tracker.estimatedForgivenessDate,
+    forgivenAmountCents: tracker.projectedForgivenAmountCents,
+    estimatedTaxCents: 0,
+    note: 'Tax-free PSLF forgiveness after 120 qualifying payments',
+  };
+}
+
+function calculateRefinanceScenario(
+  loans: readonly StudentLoan[],
+  scenario: StudentLoanScenarioConfig,
+  todayIso: string,
+): StudentLoanScenarioResult {
+  const aggregate = calculateAggregateForScenario(loans);
+  const refinanceRate = Math.max(
+    0,
+    scenario.refinanceAnnualRateBps ?? aggregate.weightedAverageRateBps,
+  );
+  const termMonths = Math.max(1, scenario.refinanceTermMonths ?? STANDARD_TERM_MONTHS);
+  const monthlyPaymentCents = calculateFixedPayment(
+    aggregate.totalBalanceCents,
+    refinanceRate,
+    termMonths,
+  );
+  const payoff = calculateStudentLoanPayoffMetrics(
+    aggregate.totalBalanceCents,
+    refinanceRate,
+    monthlyPaymentCents,
+    todayIso,
+  );
+
+  return {
+    id: scenario.id,
+    label: scenario.label,
+    type: scenario.type,
+    monthlyPaymentCents,
+    totalPaidCents: aggregate.totalBalanceCents + payoff.totalInterestCents,
+    totalInterestCents: payoff.totalInterestCents,
+    monthsToPayoff: payoff.monthsToPayoff,
+    estimatedEndDate: payoff.estimatedPayoffDate,
+    forgivenAmountCents: 0,
+    estimatedTaxCents: 0,
+    note: `${(refinanceRate / 100).toFixed(2)}% refinance for ${termMonths} months`,
+  };
+}
+
+function calculateSalaryRaiseScenario(
+  loans: readonly StudentLoan[],
+  scenario: StudentLoanScenarioConfig,
+  todayIso: string,
+): StudentLoanScenarioResult {
+  const baseInput = scenario.idrInput ?? defaultIdrInput();
+  return calculateIdrScenario(
+    loans,
+    {
+      ...scenario,
+      type: 'salary_raise',
+      idrInput: {
+        ...baseInput,
+        annualIncomeCents:
+          baseInput.annualIncomeCents + Math.max(0, scenario.salaryRaiseAnnualCents ?? 0),
+      },
+    },
+    todayIso,
+  );
+}
+
+/**
+ * Calculates side-by-side editable student loan scenarios for IDR, PSLF, refinance, and salary raises.
+ */
+export function calculateStudentLoanScenarioComparisons(
+  loans: readonly StudentLoan[],
+  scenarios: readonly StudentLoanScenarioConfig[],
+  todayIso: string,
+): StudentLoanScenarioResult[] {
+  return scenarios.map((scenario) => {
+    switch (scenario.type) {
+      case 'idr':
+        return calculateIdrScenario(loans, scenario, todayIso);
+      case 'pslf':
+        return calculatePslfScenario(loans, scenario, todayIso);
+      case 'refinance':
+        return calculateRefinanceScenario(loans, scenario, todayIso);
+      case 'salary_raise':
+        return calculateSalaryRaiseScenario(loans, scenario, todayIso);
+    }
+  });
 }

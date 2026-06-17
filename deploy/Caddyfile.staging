@@ -83,7 +83,7 @@
 	handle @apiAccountRoot {
 		uri replace /api/account /functions/v1/account-delete
 		reverse_proxy edge-functions:9000 {
-		      header_up X-Real-IP {remote_host}
+			header_up X-Real-IP {remote_host}
 		}
 	}
 
@@ -91,7 +91,7 @@
 	handle @apiFeedback {
 		uri replace /api/feedback /functions/v1/feedback
 		reverse_proxy edge-functions:9000 {
-		      header_up X-Real-IP {remote_host}
+			header_up X-Real-IP {remote_host}
 		}
 	}
 

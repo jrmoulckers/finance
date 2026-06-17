@@ -44,10 +44,6 @@ vi.mock('recharts', () => ({
   Tooltip: () => null,
 }));
 
-vi.mock('../../accessibility/aria', () => ({
-  useArrowKeyNavigation: () => ({ handleKeyDown: vi.fn() }),
-}));
-
 const mockData = [
   { label: 'Jan 1', spending: 50 },
   { label: 'Jan 2', spending: 30 },
@@ -161,6 +157,30 @@ describe('SpendingTrendChart', () => {
     const figure = container.querySelector('[role="figure"]');
     expect(figure).toBeInTheDocument();
     expect(figure).toHaveAttribute('aria-roledescription', 'spending trend chart');
+  });
+
+  it('renders a keyboard-focusable chart navigator and accessible data table', () => {
+    render(<SpendingTrendChart {...defaultProps} />);
+
+    const navigator = screen.getByRole('group', { name: /Spending Trend data navigator/i });
+    expect(navigator).toHaveAttribute('tabindex', '0');
+
+    const table = screen.getByRole('table', { name: /Spending Trend data table/i });
+    expect(table).toBeInTheDocument();
+    expect(screen.getByText('Jan 1').closest('tr')).toHaveAttribute('aria-label', 'Jan 1: $50');
+  });
+
+  it('announces the current data point when using arrow keys', () => {
+    render(<SpendingTrendChart {...defaultProps} />);
+
+    const navigator = screen.getByRole('group', { name: /Spending Trend data navigator/i });
+    fireEvent.focus(navigator);
+    expect(screen.getByRole('status')).toHaveTextContent('Focused point 1 of 3.');
+    expect(screen.getByRole('status')).toHaveTextContent('Spending Jan 1: $50');
+
+    fireEvent.keyDown(navigator, { key: 'ArrowRight' });
+    expect(screen.getByRole('status')).toHaveTextContent('Focused point 2 of 3.');
+    expect(screen.getByRole('status')).toHaveTextContent('Spending Jan 2: $30');
   });
 
   it('hides comparison when null', () => {

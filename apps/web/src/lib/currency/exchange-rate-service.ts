@@ -25,6 +25,7 @@ import {
   setCachedRate,
   setCachedRates,
 } from './rate-cache';
+import { LocalStoredRateProvider } from './local-stored-rate-provider';
 import { StaticRateProvider } from './static-rates';
 
 // ---------------------------------------------------------------------------
@@ -71,19 +72,20 @@ function overrideKey(from: string, to: string): string {
  *
  * The resolution order for any rate lookup is:
  * 1. User override (manual rate entry)
- * 2. Cache (localStorage with TTL)
- * 3. Provider (StaticRateProvider by default)
+ * 2. Fresh cache (localStorage with TTL)
+ * 3. Provider (LocalStoredRateProvider by default)
+ * 4. Stale cache fallback when the provider fails
  */
 export class ExchangeRateService {
   private readonly provider: ExchangeRateProvider;
   private readonly cacheTtlMs: number;
 
   /**
-   * @param provider - Exchange rate provider (default: `StaticRateProvider`).
+   * @param provider - Exchange rate provider (default: `LocalStoredRateProvider`).
    * @param cacheTtlMs - Cache TTL in milliseconds (default: 24 hours).
    */
   constructor(provider?: ExchangeRateProvider, cacheTtlMs?: number) {
-    this.provider = provider ?? new StaticRateProvider();
+    this.provider = provider ?? new LocalStoredRateProvider();
     this.cacheTtlMs = cacheTtlMs ?? 24 * 60 * 60 * 1000;
   }
 
@@ -146,25 +148,30 @@ export class ExchangeRateService {
     }
 
     // 2. Check cache (if not stale)
-    if (!isCacheStale(this.cacheTtlMs)) {
-      const cached = getCachedRate(from, to);
-      if (cached) return cached;
+    const cached = getCachedRate(from, to);
+    if (!isCacheStale(this.cacheTtlMs) && cached) {
+     return cached;
     }
 
-    // 3. Fetch from provider
-    const rate = await this.provider.fetchRate(from, to);
-    const exchangeRate: ExchangeRate = {
-      from,
-      to,
-      rate,
-      timestamp: new Date().toISOString(),
-      source: this.provider.name === 'Static Rates' ? 'static' : 'api',
-    };
+    // 3. Fetch from provider, falling back to stale cache on failure.
+    try {
+     const rate = await this.provider.fetchRate(from, to);
+     const exchangeRate: ExchangeRate = {
+       from,
+       to,
+       rate,
+       timestamp: new Date().toISOString(),
+       source: this.providerSource,
+     };
 
-    // Cache for future lookups
-    setCachedRate(exchangeRate);
+     // Cache for future lookups
+     setCachedRate(exchangeRate);
 
-    return exchangeRate;
+     return exchangeRate;
+    } catch (err) {
+     if (cached) return cached;
+     throw err;
+    }
   }
 
   /**
@@ -176,29 +183,37 @@ export class ExchangeRateService {
     let rates: Record<string, ExchangeRate>;
 
     // Try cache first (if not stale)
-    const cached = !isCacheStale(this.cacheTtlMs) ? getCachedRates(baseCurrency) : null;
+    const cached = getCachedRates(baseCurrency);
 
-    if (cached) {
+    if (!isCacheStale(this.cacheTtlMs) && cached) {
       rates = cached;
     } else {
-      // Fetch from provider
-      const rawRates = await this.provider.fetchRates(baseCurrency);
-      const now = new Date().toISOString();
-      const source = this.provider.name === 'Static Rates' ? 'static' : 'api';
+      try {
+        // Fetch from provider
+        const rawRates = await this.provider.fetchRates(baseCurrency);
+        const now = new Date().toISOString();
+        const source = this.providerSource;
 
-      rates = {};
-      for (const [code, rate] of Object.entries(rawRates)) {
-        rates[code] = {
-          from: baseCurrency,
-          to: code,
-          rate,
-          timestamp: now,
-          source: source as 'static' | 'api',
-        };
+        rates = {};
+        for (const [code, rate] of Object.entries(rawRates)) {
+          rates[code] = {
+            from: baseCurrency,
+            to: code,
+            rate,
+            timestamp: now,
+            source,
+          };
+        }
+
+        // Persist to cache
+        setCachedRates(baseCurrency, rates);
+      } catch (err) {
+        if (cached) {
+          rates = cached;
+        } else {
+          throw err;
+        }
       }
-
-      // Persist to cache
-      setCachedRates(baseCurrency, rates);
     }
 
     // Merge user overrides on top
@@ -260,5 +275,11 @@ export class ExchangeRateService {
   /** Get the provider name. */
   get providerName(): string {
     return this.provider.name;
+  }
+
+  private get providerSource(): ExchangeRate['source'] {
+    if (this.provider instanceof StaticRateProvider) return 'static';
+    if (this.provider instanceof LocalStoredRateProvider) return 'stored';
+    return 'api';
   }
 }

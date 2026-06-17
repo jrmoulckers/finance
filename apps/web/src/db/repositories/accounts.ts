@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { Account, AccountType, Currency, SyncId } from '../../kmp/bridge';
+import type {
+  Account,
+  AccountPurpose,
+  AccountType,
+  Currency,
+  HsaCoverageLevel,
+  RetirementAccountType,
+  RetirementTaxTreatment,
+  SyncId,
+} from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
 import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
 import { notifyMilestoneDataChanged } from '../../lib/milestones';
@@ -20,6 +29,10 @@ const ACCOUNT_COLUMNS = [
   'household_id',
   'name',
   'type',
+  'purpose',
+  'retirement_account_type',
+  'retirement_tax_treatment',
+  'hsa_coverage_level',
   'currency',
   'current_balance',
   'is_archived',
@@ -40,6 +53,10 @@ export interface CreateAccountInput {
   householdId: SyncId;
   name: string;
   type: AccountType;
+  purpose?: AccountPurpose;
+  retirementAccountType?: RetirementAccountType | null;
+  retirementTaxTreatment?: RetirementTaxTreatment | null;
+  hsaCoverageLevel?: HsaCoverageLevel | null;
   currency?: Currency;
   currentBalance: { amount: number };
   isArchived?: boolean;
@@ -53,6 +70,10 @@ export interface UpdateAccountInput {
   householdId?: SyncId;
   name?: string;
   type?: AccountType;
+  purpose?: AccountPurpose;
+  retirementAccountType?: RetirementAccountType | null;
+  retirementTaxTreatment?: RetirementTaxTreatment | null;
+  hsaCoverageLevel?: HsaCoverageLevel | null;
   currency?: Currency;
   currentBalance?: { amount: number };
   isArchived?: boolean;
@@ -61,12 +82,20 @@ export interface UpdateAccountInput {
   color?: string | null;
 }
 
+function mapAccountPurpose(value: unknown): AccountPurpose {
+  return value === 'business' || value === 'both' ? value : 'personal';
+}
+
 export function mapAccount(row: Row): Account {
   return {
     id: requireString(row.id, 'account.id'),
     householdId: requireString(row.household_id, 'account.household_id'),
     name: requireString(row.name, 'account.name'),
     type: requireString(row.type, 'account.type') as AccountType,
+    purpose: mapAccountPurpose(row.purpose),
+    retirementAccountType: optionalString(row.retirement_account_type) as RetirementAccountType | null,
+    retirementTaxTreatment: optionalString(row.retirement_tax_treatment) as RetirementTaxTreatment | null,
+    hsaCoverageLevel: optionalString(row.hsa_coverage_level) as HsaCoverageLevel | null,
     currency: mapCurrency(row.currency),
     currentBalance: mapCents(row.current_balance, 'account.current_balance'),
     isArchived: toBoolean(row.is_archived),
@@ -94,6 +123,10 @@ export function getAccountById(db: SqliteDb, accountId: SyncId): Account | null 
 export function createAccount(db: SqliteDb, input: CreateAccountInput): Account {
   const id = crypto.randomUUID();
   const currency = input.currency ?? Currencies.USD;
+  const purpose = input.purpose ?? 'personal';
+  const retirementAccountType = input.retirementAccountType ?? null;
+  const retirementTaxTreatment = retirementAccountType ? (input.retirementTaxTreatment ?? null) : null;
+  const hsaCoverageLevel = retirementAccountType === 'HSA' ? (input.hsaCoverageLevel ?? null) : null;
 
   execute(
     db,
@@ -102,6 +135,10 @@ export function createAccount(db: SqliteDb, input: CreateAccountInput): Account 
       household_id,
       name,
       type,
+      purpose,
+      retirement_account_type,
+      retirement_tax_treatment,
+      hsa_coverage_level,
       currency,
       current_balance,
       is_archived,
@@ -114,7 +151,7 @@ export function createAccount(db: SqliteDb, input: CreateAccountInput): Account 
       sync_version,
       is_synced
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
       NULL,
@@ -126,6 +163,10 @@ export function createAccount(db: SqliteDb, input: CreateAccountInput): Account 
       input.householdId,
       input.name,
       input.type,
+      purpose,
+      retirementAccountType,
+      retirementTaxTreatment,
+      hsaCoverageLevel,
       currency.code,
       input.currentBalance.amount,
       input.isArchived ? 1 : 0,
@@ -159,6 +200,19 @@ export function updateAccount(
     householdId: updates.householdId ?? existingAccount.householdId,
     name: updates.name ?? existingAccount.name,
     type: updates.type ?? existingAccount.type,
+    purpose: updates.purpose ?? existingAccount.purpose ?? 'personal',
+    retirementAccountType:
+      updates.retirementAccountType !== undefined
+        ? updates.retirementAccountType
+        : (existingAccount.retirementAccountType ?? null),
+    retirementTaxTreatment:
+      updates.retirementTaxTreatment !== undefined
+        ? updates.retirementTaxTreatment
+        : (existingAccount.retirementTaxTreatment ?? null),
+    hsaCoverageLevel:
+      updates.hsaCoverageLevel !== undefined
+        ? updates.hsaCoverageLevel
+        : (existingAccount.hsaCoverageLevel ?? null),
     currency: updates.currency ?? existingAccount.currency,
     currentBalance: updates.currentBalance ?? existingAccount.currentBalance,
     isArchived: updates.isArchived ?? existingAccount.isArchived,
@@ -173,6 +227,10 @@ export function updateAccount(
         SET household_id = ?,
             name = ?,
             type = ?,
+            purpose = ?,
+            retirement_account_type = ?,
+            retirement_tax_treatment = ?,
+            hsa_coverage_level = ?,
             currency = ?,
             current_balance = ?,
             is_archived = ?,
@@ -188,6 +246,10 @@ export function updateAccount(
       mergedAccount.householdId,
       mergedAccount.name,
       mergedAccount.type,
+      mergedAccount.purpose,
+      mergedAccount.retirementAccountType,
+      mergedAccount.retirementAccountType ? mergedAccount.retirementTaxTreatment : null,
+      mergedAccount.retirementAccountType === 'HSA' ? mergedAccount.hsaCoverageLevel : null,
       mergedAccount.currency.code,
       mergedAccount.currentBalance.amount,
       mergedAccount.isArchived ? 1 : 0,

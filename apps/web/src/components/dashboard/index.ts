@@ -10,6 +10,8 @@ export { WidgetContainer } from './WidgetContainer';
 export type { WidgetContainerProps } from './WidgetContainer';
 export { CustomizePanel } from './CustomizePanel';
 export type { CustomizePanelProps } from './CustomizePanel';
+export { SafeToSpendCard } from './SafeToSpendCard';
+export type { SafeToSpendCardProps } from './SafeToSpendCard';
 export {
   WIDGET_DEFINITIONS,
   WIDGET_DEFINITION_MAP,

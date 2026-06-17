@@ -9,7 +9,7 @@
  * References: #1646
  */
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AppNotification } from '../../lib/notifications';
 import { NotificationCenter } from './NotificationCenter';
@@ -99,7 +99,7 @@ describe('NotificationCenter', () => {
     expect(bell).toBeDefined();
   });
 
-  it('opens the notification panel when bell is clicked', () => {
+  it('opens the notification panel when bell is clicked', async () => {
     render(
       <NotificationCenter
         notifications={mockNotifications}
@@ -115,7 +115,14 @@ describe('NotificationCenter', () => {
     });
     fireEvent.click(bell);
 
-    expect(screen.getByText('Notifications')).toBeDefined();
+    const panel = screen.getByRole('region', { name: 'Notifications' });
+    expect(panel).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText('Budget nearing limit: Groceries is at 80% ($400 of $500).'),
+      ).toHaveFocus();
+    });
   });
 
   it('does not show dismissed notifications in the panel', () => {
@@ -191,7 +198,7 @@ describe('NotificationCenter', () => {
     expect(screen.getByText('No notifications yet')).toBeDefined();
   });
 
-  it('closes panel on Escape key', () => {
+  it('closes panel on Escape key and returns focus to the trigger', async () => {
     render(
       <NotificationCenter
         notifications={mockNotifications}
@@ -202,16 +209,18 @@ describe('NotificationCenter', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 unread' }));
+    const bell = screen.getByRole('button', { name: 'Notifications, 1 unread' });
+    bell.focus();
+    fireEvent.click(bell);
 
-    // Panel should be open
     expect(screen.getByText('Budget nearing limit')).toBeDefined();
 
-    // Press Escape
     fireEvent.keyDown(document, { key: 'Escape' });
 
-    // Panel should be closed
-    expect(screen.queryByText('Budget nearing limit')).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByText('Budget nearing limit')).toBeNull();
+      expect(bell).toHaveFocus();
+    });
   });
 
   it('has proper ARIA attributes on the bell button', () => {

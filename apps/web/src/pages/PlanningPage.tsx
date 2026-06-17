@@ -17,36 +17,224 @@
  * - Reduced motion support
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ErrorBanner, LoadingSpinner } from '../components/common';
 import { useScenarioModeler } from '../hooks/useScenarioModeler';
 import { useRetirementPlanner } from '../hooks/useRetirementPlanner';
+import { useRmdTracking } from '../hooks/useRmdTracking';
 import { useLinkedGoals } from '../hooks/useLinkedGoals';
 import { useSweepRules } from '../hooks/useSweepRules';
+import { useGoals } from '../hooks/useGoals';
+import { useBudgets } from '../hooks/useBudgets';
 import { formatCurrency } from '../lib/currency';
+import { RMD_START_AGE, type RmdAccountStatus } from '../lib/rmd';
 import type {
   RetirementReadiness,
   RetirementFactor,
+  RetirementParams,
   ScenarioProjection,
   LinkedGoal,
   SweepEvaluation,
   SweepLogEntry,
 } from '../lib/planning';
+import { projectRetirementHealthcareCosts } from '../lib/planning';
 import './PlanningPage.css';
 import { AppIcon, type IconName } from '../components/icons';
+import { TrendLineChart } from '../components/charts';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type PlanningTab = 'scenarios' | 'retirement' | 'goals' | 'sweep';
+type PlanningTab = 'scenarios' | 'life-events' | 'retirement' | 'goals' | 'sweep';
 
 const TAB_CONFIG: { id: PlanningTab; label: string; icon: IconName }[] = [
   { id: 'scenarios', label: 'What-If Modeler', icon: 'sparkles' },
+  { id: 'life-events', label: 'Life Events', icon: 'calendar' },
   { id: 'retirement', label: 'Retirement', icon: 'leaf' },
   { id: 'goals', label: 'Savings Goals', icon: 'target' },
   { id: 'sweep', label: 'Automations', icon: 'lightning' },
 ];
+
+const LIFE_EVENTS_STORAGE_KEY = 'finance:life-events-timeline';
+
+export interface LifeEvent {
+  readonly id: string;
+  readonly name: string;
+  readonly date: string;
+  readonly monthlyCostChangeCents: number;
+}
+
+export interface LifeEventProjection extends LifeEvent {
+  readonly monthlyFreeCashFlowDeltaCents: number;
+  readonly cumulativeMonthlyFreeCashFlowCents: number;
+  readonly projectedMonthlyFreeCashFlowCents: number;
+  readonly monthOffset: number;
+}
+
+export interface ReallocationGuidanceItem {
+  readonly label: string;
+  readonly amountCents: number;
+}
+
+interface NamedPlanningItem {
+  readonly name: string;
+}
+
+interface BudgetCashFlowSnapshot {
+  readonly period?: string;
+  readonly amount?: { readonly amount: number };
+  readonly spentAmount?: { readonly amount: number };
+  readonly remainingAmount?: { readonly amount: number };
+}
+
+function parseLifeEventMonthValue(date: string): number {
+  const [yearText, monthText] = date.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  return year * 12 + month;
+}
+
+function monthOffsetFromNow(date: string, now = new Date()): number {
+  const [yearText, monthText] = date.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month)) {
+    return 0;
+  }
+
+  return Math.max(0, (year - now.getFullYear()) * 12 + (month - (now.getMonth() + 1)));
+}
+
+function formatLifeEventMonth(date: string): string {
+  const [yearText, monthText] = date.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month)) {
+    return date;
+  }
+
+  return new Date(year, month - 1, 1).toLocaleDateString(undefined, {
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function defaultLifeEventDate(monthsFromNow: number): string {
+  const date = new Date();
+  date.setMonth(date.getMonth() + monthsFromNow);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function loadLifeEvents(): LifeEvent[] {
+  try {
+    const raw = localStorage.getItem(LIFE_EVENTS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as LifeEvent[];
+    return parsed.filter(
+      (event) =>
+        event &&
+        typeof event.id === 'string' &&
+        typeof event.name === 'string' &&
+        typeof event.date === 'string' &&
+        Number.isFinite(event.monthlyCostChangeCents),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function saveLifeEvents(events: readonly LifeEvent[]): void {
+  try {
+    localStorage.setItem(LIFE_EVENTS_STORAGE_KEY, JSON.stringify(events));
+  } catch {
+    // Local storage can be unavailable or full; keep the in-memory timeline usable.
+  }
+}
+
+export function sortLifeEvents(events: readonly LifeEvent[]): LifeEvent[] {
+  return [...events].sort((a, b) => {
+    const dateDiff = parseLifeEventMonthValue(a.date) - parseLifeEventMonthValue(b.date);
+    if (dateDiff !== 0) return dateDiff;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+export function computeLifeEventProjections(
+  events: readonly LifeEvent[],
+  baseMonthlyFreeCashFlowCents = 0,
+): LifeEventProjection[] {
+  let cumulativeMonthlyFreeCashFlowCents = 0;
+
+  return sortLifeEvents(events).map((event) => {
+    const monthlyFreeCashFlowDeltaCents = -event.monthlyCostChangeCents;
+    cumulativeMonthlyFreeCashFlowCents += monthlyFreeCashFlowDeltaCents;
+
+    return {
+      ...event,
+      monthlyFreeCashFlowDeltaCents,
+      cumulativeMonthlyFreeCashFlowCents,
+      projectedMonthlyFreeCashFlowCents:
+        baseMonthlyFreeCashFlowCents + cumulativeMonthlyFreeCashFlowCents,
+      monthOffset: monthOffsetFromNow(event.date),
+    };
+  });
+}
+
+export function computeBudgetMonthlyFreeCashFlowCents(
+  budgets: readonly BudgetCashFlowSnapshot[],
+): number {
+  const periodMultipliers: Record<string, number> = {
+    WEEKLY: 52 / 12,
+    BIWEEKLY: 26 / 12,
+    MONTHLY: 1,
+    QUARTERLY: 1 / 3,
+    YEARLY: 1 / 12,
+  };
+
+  return budgets.reduce((sum, budget) => {
+    const remainingCents =
+      budget.remainingAmount?.amount ??
+      Math.max(0, (budget.amount?.amount ?? 0) - (budget.spentAmount?.amount ?? 0));
+    const multiplier = periodMultipliers[String(budget.period ?? 'MONTHLY')] ?? 1;
+    return sum + Math.round(remainingCents * multiplier);
+  }, 0);
+}
+
+export function buildReallocationGuidance(
+  freedCents: number,
+  goals: readonly NamedPlanningItem[] = [],
+  budgets: readonly NamedPlanningItem[] = [],
+): ReallocationGuidanceItem[] {
+  if (freedCents <= 0) {
+    return [];
+  }
+
+  const findByName = (pattern: RegExp) => goals.find((goal) => pattern.test(goal.name));
+  const educationGoal = findByName(/college|education|school|tuition|529/i);
+  const retirementGoal = findByName(/retire|401|ira/i);
+  const emergencyGoal = findByName(/emergency|safety|reserve|savings/i);
+  const hasDebtBudget = budgets.some((budget) => /debt|loan|mortgage|card/i.test(budget.name));
+
+  const labels = [
+    educationGoal ? `Boost ${educationGoal.name}` : 'Boost a college fund',
+    retirementGoal ? `Increase ${retirementGoal.name}` : 'Increase retirement contributions',
+    hasDebtBudget ? 'Accelerate debt payoff' : 'Pay down debt',
+    emergencyGoal ? `Top up ${emergencyGoal.name}` : 'Build emergency savings',
+  ];
+  const weights = [0.45, 0.3, 0.15, 0.1];
+  const amounts = weights.map((weight) => Math.floor(freedCents * weight));
+  amounts[0] += freedCents - amounts.reduce((sum, amount) => sum + amount, 0);
+
+  return labels.map((label, index) => ({ label, amountCents: amounts[index] ?? 0 }));
+}
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -112,6 +300,57 @@ const FactorItem: React.FC<{ factor: RetirementFactor }> = ({ factor }) => {
         <p className="factor-item__desc">{factor.description}</p>
       </div>
     </li>
+  );
+};
+
+const RmdStatusCard: React.FC<{ status: RmdAccountStatus }> = ({ status }) => {
+  const statusLabel = status.isSatisfied
+    ? 'Satisfied'
+    : status.urgency === 'overdue'
+      ? 'Overdue'
+      : status.urgency === 'due-soon'
+        ? 'Due soon'
+        : 'Upcoming';
+
+  return (
+    <article
+      className={`rmd-account rmd-account--${status.urgency}`}
+      aria-label={`RMD for ${status.accountName}`}
+    >
+      <div className="rmd-account__header">
+        <h4 className="rmd-account__name">{status.accountName}</h4>
+        <span className={`rmd-account__badge rmd-account__badge--${status.urgency}`}>
+          {statusLabel}
+        </span>
+      </div>
+      <dl className="rmd-account__metrics">
+        <div>
+          <dt>Required RMD</dt>
+          <dd>{formatCurrency(status.requiredCents)}</dd>
+        </div>
+        <div>
+          <dt>Deadline</dt>
+          <dd>{new Date(`${status.deadline}T00:00:00`).toLocaleDateString()}</dd>
+        </div>
+        <div>
+          <dt>Withdrawn so far</dt>
+          <dd>{formatCurrency(status.withdrawnCents)}</dd>
+        </div>
+        <div>
+          <dt>Remaining</dt>
+          <dd>{formatCurrency(status.remainingCents)}</dd>
+        </div>
+      </dl>
+      <p className="rmd-account__detail">
+        Based on {formatCurrency(status.priorYearEndBalanceCents)} prior-year-end balance ÷{' '}
+        {status.distributionPeriod} distribution period.
+      </p>
+      {status.isFirstYear && (
+        <p className="rmd-account__detail">
+          First RMD year: the initial withdrawal can be completed by Apr 1 of the following year.
+        </p>
+      )}
+    </article>
   );
 };
 
@@ -533,19 +772,422 @@ const ScenariosPanel: React.FC = () => {
   );
 };
 
+/** Healthcare cost projection section for retirement planning. */
+const HealthcareProjectionSection: React.FC<{ params: RetirementParams }> = ({ params }) => {
+  const projection = useMemo(
+    () =>
+      projectRetirementHealthcareCosts({
+        retirementAge: params.retirementAge,
+        projectionEndAge: 90,
+        desiredAnnualRetirementSpendingCents: params.desiredMonthlySpendingCents * 12,
+        generalInflationRate: params.annualInflationRate,
+        annualRetirementIncomeCents: params.desiredMonthlySpendingCents * 12,
+      }),
+    [params.annualInflationRate, params.desiredMonthlySpendingCents, params.retirementAge],
+  );
+
+  const firstMedicareYear = projection.years.find((year) => !year.isPreMedicareGap);
+  const sampleAges = Array.from(new Set([params.retirementAge, 65, 75, 85, 90]))
+    .filter((age) => age >= params.retirementAge && age <= 90)
+    .sort((a, b) => a - b);
+  const projectionRows = sampleAges
+    .map((age) => projection.years.find((year) => year.age === age))
+    .filter((year): year is NonNullable<typeof year> => Boolean(year));
+  const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
+
+  return (
+    <section
+      className="planning-card healthcare-projection"
+      aria-label="Healthcare cost projection"
+    >
+      <div className="planning-card__header">
+        <div>
+          <h3 className="planning-card__title">Healthcare Cost Projection</h3>
+          <p className="healthcare-projection__subtitle">
+            Medicare Part B, Part D, Medigap, out-of-pocket costs, IRMAA, and healthcare inflation
+            through age 90.
+          </p>
+        </div>
+      </div>
+
+      <div className="planning-metrics" aria-label="Healthcare projection summary">
+        <article className="planning-metric" aria-label="First year healthcare cost">
+          <p className="planning-metric__label">First retirement year</p>
+          <p className="planning-metric__value">
+            {formatCurrency(projection.firstYearHealthcareCents)}
+          </p>
+        </article>
+        <article className="planning-metric" aria-label="Age 90 healthcare cost">
+          <p className="planning-metric__label">Age 90 annual cost</p>
+          <p className="planning-metric__value">
+            {formatCurrency(projection.finalYearHealthcareCents)}
+          </p>
+        </article>
+        <article className="planning-metric" aria-label="Cumulative healthcare cost">
+          <p className="planning-metric__label">Cumulative through 90</p>
+          <p className="planning-metric__value">
+            {formatCurrency(projection.cumulativeHealthcareCents)}
+          </p>
+        </article>
+        <article className="planning-metric" aria-label="Healthcare share of spending">
+          <p className="planning-metric__label">Share of spending</p>
+          <p className="planning-metric__value">
+            {formatPercent(projection.healthcareShareOfSpending)}
+          </p>
+        </article>
+      </div>
+
+      {projection.preMedicareGapYears > 0 && (
+        <p className="healthcare-projection__gap" role="note">
+          Retiring at {params.retirementAge} creates a {projection.preMedicareGapYears}-year pre-65
+          coverage gap before Medicare eligibility; this projection uses higher ACA/private premium
+          assumptions for those years.
+        </p>
+      )}
+
+      {firstMedicareYear && (
+        <div className="healthcare-projection__components">
+          <h4 className="healthcare-projection__heading">
+            Medicare-year annual cost at age {firstMedicareYear.age}
+          </h4>
+          <dl className="healthcare-projection__component-list">
+            <div>
+              <dt>Part B premium</dt>
+              <dd>{formatCurrency(firstMedicareYear.partBAnnualCents)}</dd>
+            </div>
+            <div>
+              <dt>Part D premium</dt>
+              <dd>{formatCurrency(firstMedicareYear.partDAnnualCents)}</dd>
+            </div>
+            <div>
+              <dt>Medigap/supplemental</dt>
+              <dd>{formatCurrency(firstMedicareYear.medigapAnnualCents)}</dd>
+            </div>
+            <div>
+              <dt>Out-of-pocket estimate</dt>
+              <dd>{formatCurrency(firstMedicareYear.outOfPocketCents)}</dd>
+            </div>
+            {firstMedicareYear.irmaaSurchargeAnnualCents > 0 && (
+              <div>
+                <dt>IRMAA surcharge</dt>
+                <dd>{formatCurrency(firstMedicareYear.irmaaSurchargeAnnualCents)}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+
+      <div className="healthcare-projection__table-wrapper">
+        <table className="healthcare-projection__table">
+          <caption>Inflation-adjusted healthcare projection checkpoints</caption>
+          <thead>
+            <tr>
+              <th scope="col">Age</th>
+              <th scope="col">Coverage</th>
+              <th scope="col">Annual cost</th>
+              <th scope="col">Spending share</th>
+            </tr>
+          </thead>
+          <tbody>
+            {projectionRows.map((year) => (
+              <tr key={year.age}>
+                <th scope="row">{year.age}</th>
+                <td>{year.isPreMedicareGap ? 'ACA/private gap' : 'Medicare'}</td>
+                <td>{formatCurrency(year.totalAnnualCents)}</td>
+                <td>{formatPercent(year.healthcareShareOfSpending)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="healthcare-projection__footnote">
+        Uses a {formatPercent(projection.healthcareInflationRate)} healthcare inflation assumption,
+        typically above general inflation, so fixed-income plans include rising medical pressure.
+      </p>
+    </section>
+  );
+};
+
+const LIFE_EVENT_TEMPLATES: readonly Omit<LifeEvent, 'id'>[] = [
+  {
+    name: 'Childcare ends',
+    date: defaultLifeEventDate(24),
+    monthlyCostChangeCents: -120000,
+  },
+  {
+    name: 'Child starts kindergarten',
+    date: defaultLifeEventDate(18),
+    monthlyCostChangeCents: -80000,
+  },
+  {
+    name: 'Mortgage paid off',
+    date: defaultLifeEventDate(60),
+    monthlyCostChangeCents: -150000,
+  },
+  {
+    name: 'College starts',
+    date: defaultLifeEventDate(96),
+    monthlyCostChangeCents: 50000,
+  },
+];
+
+const LifeEventTemplateButtons: React.FC<{
+  onChoose: (template: Omit<LifeEvent, 'id'>) => void;
+}> = ({ onChoose }) => (
+  <div className="life-events-template-list" aria-label="Life event examples">
+    {LIFE_EVENT_TEMPLATES.map((template) => (
+      <button
+        key={template.name}
+        type="button"
+        className="planning-btn planning-btn--small"
+        onClick={() => onChoose(template)}
+      >
+        {template.name}
+      </button>
+    ))}
+  </div>
+);
+
+/** Family life events timeline tab. */
+const LifeEventsPanel: React.FC = () => {
+  const { goals } = useGoals();
+  const { budgets } = useBudgets();
+  const [events, setEvents] = useState<LifeEvent[]>(loadLifeEvents);
+  const [name, setName] = useState('');
+  const [date, setDate] = useState(defaultLifeEventDate(12));
+  const [monthlyChange, setMonthlyChange] = useState('');
+
+  useEffect(() => {
+    saveLifeEvents(events);
+  }, [events]);
+
+  const baseMonthlyFreeCashFlowCents = useMemo(
+    () => computeBudgetMonthlyFreeCashFlowCents(budgets),
+    [budgets],
+  );
+  const projections = useMemo(
+    () => computeLifeEventProjections(events, baseMonthlyFreeCashFlowCents),
+    [events, baseMonthlyFreeCashFlowCents],
+  );
+  const finalProjectedFreeCashFlowCents =
+    projections.at(-1)?.projectedMonthlyFreeCashFlowCents ?? baseMonthlyFreeCashFlowCents;
+
+  const handleTemplate = useCallback((template: Omit<LifeEvent, 'id'>) => {
+    setName(template.name);
+    setDate(template.date);
+    setMonthlyChange(String(template.monthlyCostChangeCents / 100));
+  }, []);
+
+  const handleAdd = useCallback(() => {
+    const trimmedName = name.trim();
+    const monthlyCostChangeCents = Math.round(Number(monthlyChange) * 100);
+
+    if (!trimmedName || !date || !Number.isFinite(monthlyCostChangeCents)) {
+      return;
+    }
+
+    setEvents((prev) => [
+      ...prev,
+      {
+        id: `life-event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: trimmedName,
+        date,
+        monthlyCostChangeCents,
+      },
+    ]);
+    setName('');
+    setDate(defaultLifeEventDate(12));
+    setMonthlyChange('');
+  }, [date, monthlyChange, name]);
+
+  const handleDelete = useCallback((id: string) => {
+    setEvents((prev) => prev.filter((event) => event.id !== id));
+  }, []);
+
+  return (
+    <div>
+      <section className="planning-card life-events-intro" aria-labelledby="life-events-title">
+        <h3 id="life-events-title" className="planning-card__title">
+          Life Events Timeline
+        </h3>
+        <p className="planning-card__description">
+          Map when major family costs start or end, then decide where freed-up cash should go next.
+          Enter expense reductions as negative amounts and new costs as positive amounts.
+        </p>
+
+        <div className="life-events-form" aria-label="Add future life event">
+          <label className="life-events-field">
+            Event name
+            <input
+              className="form-input"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Childcare ends"
+            />
+          </label>
+          <label className="life-events-field">
+            Event month
+            <input
+              className="form-input"
+              type="month"
+              min={defaultLifeEventDate(0)}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </label>
+          <label className="life-events-field">
+            Monthly cost change
+            <input
+              className="form-input"
+              type="number"
+              inputMode="decimal"
+              value={monthlyChange}
+              onChange={(e) => setMonthlyChange(e.target.value)}
+              placeholder="-1200"
+            />
+          </label>
+          <button
+            className="planning-btn planning-btn--primary"
+            type="button"
+            onClick={handleAdd}
+            disabled={!name.trim() || !date || !monthlyChange.trim()}
+          >
+            Add Event
+          </button>
+        </div>
+        <LifeEventTemplateButtons onChoose={handleTemplate} />
+      </section>
+
+      <div className="planning-metrics" aria-label="Life events cash flow summary">
+        <article className="planning-metric">
+          <p className="planning-metric__label">Current monthly free cash flow</p>
+          <p className="planning-metric__value">{formatCurrency(baseMonthlyFreeCashFlowCents)}</p>
+        </article>
+        <article className="planning-metric">
+          <p className="planning-metric__label">After planned events</p>
+          <p className="planning-metric__value">
+            {formatCurrency(finalProjectedFreeCashFlowCents)}
+          </p>
+        </article>
+        <article className="planning-metric">
+          <p className="planning-metric__label">Events mapped</p>
+          <p className="planning-metric__value">{events.length}</p>
+        </article>
+      </div>
+
+      {projections.length === 0 ? (
+        <div className="planning-empty">
+          <div className="planning-empty__icon" aria-hidden="true">
+            <AppIcon name="calendar" />
+          </div>
+          <p className="planning-empty__text">
+            Add childcare, school, mortgage, college, or other family milestones to see the cash
+            flow path.
+          </p>
+        </div>
+      ) : (
+        <>
+          <section className="planning-card" aria-label="Life events timeline">
+            <div className="life-events-timeline" role="list">
+              {projections.map((event) => {
+                const freedCents = event.monthlyFreeCashFlowDeltaCents;
+                const isFreedMoney = freedCents > 0;
+                const guidance = buildReallocationGuidance(freedCents, goals, budgets);
+
+                return (
+                  <article key={event.id} className="life-event" role="listitem">
+                    <div
+                      className={`life-event__marker ${isFreedMoney ? 'life-event__marker--positive' : 'life-event__marker--negative'}`}
+                      aria-hidden="true"
+                    />
+                    <p className="life-event__date">{formatLifeEventMonth(event.date)}</p>
+                    <h4 className="life-event__name">{event.name}</h4>
+                    <p
+                      className={`life-event__delta ${isFreedMoney ? 'life-event__delta--positive' : 'life-event__delta--negative'}`}
+                    >
+                      {isFreedMoney ? 'Frees' : 'Adds'} {formatCurrency(Math.abs(freedCents))}/mo
+                    </p>
+                    <p className="life-event__cash-flow">
+                      Projected monthly free cash flow:{' '}
+                      {formatCurrency(event.projectedMonthlyFreeCashFlowCents)}
+                    </p>
+                    {isFreedMoney ? (
+                      <div className="life-event__guidance">
+                        <p className="life-event__guidance-title">
+                          Reallocate {formatCurrency(freedCents)}/mo:
+                        </p>
+                        <ul>
+                          {guidance.map((item) => (
+                            <li key={item.label}>
+                              {item.label}: {formatCurrency(item.amountCents)}/mo
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="life-event__guidance-title">
+                        Plan for {formatCurrency(Math.abs(freedCents))}/mo by trimming flexible
+                        budgets, increasing income, or lowering another planned expense.
+                      </p>
+                    )}
+                    <button
+                      className="planning-btn planning-btn--small planning-btn--danger"
+                      type="button"
+                      onClick={() => handleDelete(event.id)}
+                      aria-label={`Delete ${event.name}`}
+                    >
+                      Delete
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          <section
+            className="planning-card"
+            aria-label="Projected monthly free cash flow over time"
+          >
+            <h3 className="planning-card__title">Projected Monthly Free Cash Flow Over Time</h3>
+            <ol className="life-events-cash-flow-list">
+              <li>Today: {formatCurrency(baseMonthlyFreeCashFlowCents)}/mo</li>
+              {projections.map((event) => (
+                <li key={event.id}>
+                  {formatLifeEventMonth(event.date)} — {event.name}:{' '}
+                  {formatCurrency(event.projectedMonthlyFreeCashFlowCents)}/mo
+                </li>
+              ))}
+            </ol>
+          </section>
+        </>
+      )}
+    </div>
+  );
+};
+
 /** Retirement readiness tab. */
 const RetirementPanel: React.FC = () => {
   const {
     params,
     readiness,
+    incomeProjection,
     setCurrentAge,
     setRetirementAge,
     setPlanningHorizonAge,
     setMonthlyContribution,
     setDesiredSpending,
+    setRetirementIncome,
     setAnnualReturn,
     setInflationRate,
   } = useRetirementPlanner();
+  const {
+    statuses: rmdStatuses,
+    reminders: rmdReminders,
+    loading: rmdLoading,
+    error: rmdError,
+  } = useRmdTracking(params.currentAge);
 
   if (!readiness) {
     return (
@@ -554,6 +1196,16 @@ const RetirementPanel: React.FC = () => {
       </div>
     );
   }
+
+  const retirementChartData = incomeProjection.points.map((point) => ({
+    label: point.depleted ? `Age ${point.age} (depleted)` : `Age ${point.age}`,
+    balance: point.endingBalanceCents / 100,
+  }));
+  const projectionAnswer = incomeProjection.lastsThroughHorizon
+    ? `Your savings lasts through age ${incomeProjection.horizonAge} with ${formatCurrency(
+        incomeProjection.finalBalanceCents,
+      )} remaining.`
+    : `Your savings lasts until age ${incomeProjection.depletionAge}.`;
 
   return (
     <div>
@@ -596,6 +1248,73 @@ const RetirementPanel: React.FC = () => {
         </article>
       </div>
 
+      <HealthcareProjectionSection params={params} />
+
+      <section className="planning-card rmd-tracker" aria-label="Required Minimum Distributions">
+        <h3 className="planning-card__title">Required Minimum Distributions</h3>
+        {rmdLoading ? (
+          <div className="planning-page__loading" role="status">
+            <LoadingSpinner />
+          </div>
+        ) : rmdError ? (
+          <ErrorBanner message={rmdError} />
+        ) : params.currentAge < RMD_START_AGE ? (
+          <p className="rmd-tracker__empty">
+            RMD tracking starts at age {RMD_START_AGE}. Increase your current age to model required
+            withdrawals for Traditional IRA and 401(k) accounts.
+          </p>
+        ) : rmdStatuses.length === 0 ? (
+          <p className="rmd-tracker__empty">
+            No Traditional IRA, 401(k), or other tax-deferred investment accounts were detected.
+          </p>
+        ) : (
+          <>
+            {rmdReminders.length > 0 && (
+              <div className="rmd-alert" role="alert">
+                <AppIcon name="alert-triangle" /> {rmdReminders.length} RMD{' '}
+                {rmdReminders.length === 1 ? 'reminder needs' : 'reminders need'} attention before
+                the deadline.
+              </div>
+            )}
+            <div className="rmd-list">
+              {rmdStatuses.map((status) => (
+                <RmdStatusCard key={status.accountId} status={status} />
+              ))}
+            </div>
+            <p className="rmd-tracker__note">
+              Prior-year-end balances are reconstructed from the current balance and current-year
+              transactions. Withdrawals are estimated from current-year expense and transfer
+              transactions in each tax-deferred account.
+            </p>
+          </>
+        )}
+      </section>
+
+      <section
+        className={`planning-card retirement-income-answer ${
+          incomeProjection.lastsThroughHorizon
+            ? 'retirement-income-answer--success'
+            : 'retirement-income-answer--warning'
+        }`}
+        aria-label="Retirement income projection"
+        aria-live="polite"
+      >
+        <h3 className="planning-card__title">Retirement Income Projection</h3>
+        <p className="retirement-income-answer__text">{projectionAnswer}</p>
+        {!incomeProjection.lastsThroughHorizon && incomeProjection.depletionAge !== null && (
+          <p className="retirement-income-answer__depletion">
+            Depletion point: age {incomeProjection.depletionAge}. Try retiring later or reducing
+            monthly spending to extend your savings.
+          </p>
+        )}
+        <TrendLineChart
+          title="Retirement balance over time"
+          data={retirementChartData}
+          series={[{ dataKey: 'balance', name: 'Projected balance' }]}
+          height={280}
+        />
+      </section>
+
       {/* Factors */}
       <section className="planning-card" aria-label="Readiness factors">
         <h3 className="planning-card__title">Key Factors</h3>
@@ -623,8 +1342,8 @@ const RetirementPanel: React.FC = () => {
           id="retirement-age"
           label="Retirement Age"
           value={params.retirementAge}
-          min={Math.max(params.currentAge + 1, 40)}
-          max={80}
+          min={40}
+          max={Math.max(80, params.currentAge)}
           step={1}
           displayValue={`${params.retirementAge} years`}
           onChange={setRetirementAge}
@@ -633,7 +1352,7 @@ const RetirementPanel: React.FC = () => {
           id="horizon-age"
           label="Planning Horizon"
           value={params.planningHorizonAge}
-          min={Math.max(params.retirementAge + 1, 70)}
+          min={Math.max(params.currentAge + 1, params.retirementAge + 1, 70)}
           max={100}
           step={1}
           displayValue={`${params.planningHorizonAge} years`}
@@ -658,6 +1377,16 @@ const RetirementPanel: React.FC = () => {
           step={10000}
           displayValue={formatCurrency(params.desiredMonthlySpendingCents)}
           onChange={setDesiredSpending}
+        />
+        <PlanningSlider
+          id="retirement-income"
+          label="Social Security / Pension Income"
+          value={params.monthlyRetirementIncomeCents}
+          min={0}
+          max={1000000}
+          step={5000}
+          displayValue={formatCurrency(params.monthlyRetirementIncomeCents)}
+          onChange={setRetirementIncome}
         />
         <PlanningSlider
           id="annual-return"
@@ -873,7 +1602,7 @@ export const PlanningPage: React.FC = () => {
     <div className="planning-page">
       <h1 className="planning-page__title">Financial Planning</h1>
       <p className="planning-page__subtitle">
-        Model scenarios, plan retirement, track goals, and automate savings.
+        Model scenarios, map life events, plan retirement, track goals, and automate savings.
       </p>
 
       {/* Tab navigation */}
@@ -901,6 +1630,7 @@ export const PlanningPage: React.FC = () => {
         tabIndex={0}
       >
         {activeTab === 'scenarios' && <ScenariosPanel />}
+        {activeTab === 'life-events' && <LifeEventsPanel />}
         {activeTab === 'retirement' && <RetirementPanel />}
         {activeTab === 'goals' && <GoalsPanel />}
         {activeTab === 'sweep' && <SweepPanel />}

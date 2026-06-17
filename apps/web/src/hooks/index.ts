@@ -27,6 +27,12 @@ export { useInstallPrompt } from './useInstallPrompt';
 export type { UseInstallPromptResult } from './useInstallPrompt';
 export { useTransactions } from './useTransactions';
 export type { TransactionFilters } from './useTransactions';
+export { usePredictiveBalance } from './usePredictiveBalance';
+export type { UsePredictiveBalanceResult } from './usePredictiveBalance';
+export { useAccountReconciliation } from './useReconciliation';
+export type { UseAccountReconciliationResult } from './useReconciliation';
+export { useTaxReserve } from './useTaxReserve';
+export type { UseTaxReserveInput, UseTaxReserveResult } from './useTaxReserve';
 export { useImport } from './useImport';
 export type { ImportStep, UseImportResult, ImportProgress, ImportSummary } from './useImport';
 export { useAutoCategory } from './useAutoCategory';
@@ -34,7 +40,7 @@ export type { UseAutoCategoryResult } from './useAutoCategory';
 export { useAutoCategorize } from './useAutoCategorize';
 export type { UseAutoCategorizeResult } from './useAutoCategorize';
 export { useTheme } from './useTheme';
-export type { ThemeValue, ResolvedTheme, UseThemeResult } from './useTheme';
+export type { ThemeValue, ResolvedTheme, DisplayDensity, UseThemeResult } from './useTheme';
 export { useAccessibility } from './useAccessibility';
 export type { UseAccessibilityResult } from './useAccessibility';
 export { useWebVitals } from './useWebVitals';
@@ -142,6 +148,8 @@ export { useScenarioModeler } from './useScenarioModeler';
 export type { UseScenarioModelerResult } from './useScenarioModeler';
 export { useRetirementPlanner } from './useRetirementPlanner';
 export type { UseRetirementPlannerResult } from './useRetirementPlanner';
+export { useRmdTracking } from './useRmdTracking';
+export type { UseRmdTrackingResult } from './useRmdTracking';
 export { useLinkedGoals } from './useLinkedGoals';
 export type { UseLinkedGoalsResult } from './useLinkedGoals';
 export { useSweepRules } from './useSweepRules';
@@ -152,6 +160,8 @@ export { useTagSuggestions } from './useTagSuggestions';
 export type { UseTagSuggestionsResult } from './useTagSuggestions';
 export { useExchangeRates } from './useExchangeRates';
 export type { UseExchangeRatesResult } from './useExchangeRates';
+export { useLocalePreferences } from './useLocalePreferences';
+export type { UseLocalePreferencesResult } from './useLocalePreferences';
 export { useMerchants } from './useMerchants';
 export type { UseMerchantsResult } from './useMerchants';
 export { useAnnouncer } from './useAnnouncer';
@@ -188,8 +198,19 @@ export type {
   SetSharedBudgetInput,
   SetSharedGoalInput,
 } from './useHousehold';
+export type {
+  AddChildChoreInput,
+  AllowanceDay,
+  ChildProfile,
+  Chore,
+  ChoreFrequency,
+  CreateChildProfileInput,
+  RecordChildWithdrawalInput,
+} from './householdKids';
 export { useCashFlow } from './useCashFlow';
 export type { UseCashFlowResult } from './useCashFlow';
+export { useInvoices } from './useInvoices';
+export type { UseInvoicesResult } from './useInvoices';
 export { useCoachAlerts } from './useCoachAlerts';
 export type { UseCoachAlertsResult } from './useCoachAlerts';
 export { useNetWorth } from './useNetWorth';

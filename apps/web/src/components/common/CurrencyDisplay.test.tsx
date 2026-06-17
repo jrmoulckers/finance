@@ -72,22 +72,31 @@ describe('CurrencyDisplay', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders negative amounts without sign in color-only mode', () => {
+  it('renders legacy color-only negative format with a visible text cue', () => {
     renderWithSettings(createElement(CurrencyDisplay, { amount: -1234 }), {
       negativeFormat: 'color-only',
     });
-    // Visual text has no minus sign
-    expect(screen.getByText('$12.34')).toBeInTheDocument();
-    // But aria-label still conveys negative for a11y
-    expect(screen.getByText('$12.34')).toHaveAttribute(
-      'aria-label',
-      expect.stringContaining('negative'),
-    );
+
+    const amount = screen.getByText('Negative $12.34');
+    expect(amount).toBeInTheDocument();
+    expect(amount).toHaveAttribute('aria-label', expect.stringContaining('negative'));
   });
 
   it('applies color-only class for zero with colorize', () => {
     renderWithSettings(createElement(CurrencyDisplay, { amount: 0, colorize: true }));
     expect(screen.getByText('$0.00')).toHaveClass('amount--zero');
+  });
+
+  it('uses selected locale preference when no locale prop is supplied', () => {
+    localStorage.setItem('finance-locale-preference', 'de-DE');
+    renderWithSettings(createElement(CurrencyDisplay, { amount: 1234, currency: 'EUR' }));
+
+    expect(screen.getByText(/12,34/)).toBeInTheDocument();
+  });
+
+  it('renders zero-decimal currencies without forced cents', () => {
+    renderWithSettings(createElement(CurrencyDisplay, { amount: 1234, currency: 'JPY' }));
+    expect(screen.getByText('¥1,234')).toBeInTheDocument();
   });
 
   it('renders without a provider (graceful fallback)', () => {

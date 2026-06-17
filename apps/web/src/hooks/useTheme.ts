@@ -3,11 +3,12 @@
 /**
  * useTheme — React hook for managing the application color theme.
  *
- * Supports three explicit themes plus system auto-detection:
- *   - 'light'     — Light theme
- *   - 'dark'      — Standard dark theme (dark grays)
- *   - 'dark-oled' — OLED-optimized dark theme (true black backgrounds)
- *   - 'system'    — Follow OS prefers-color-scheme (default)
+ * Supports explicit themes plus system auto-detection:
+ *   - 'light'         — Light theme
+ *   - 'dark'          — Standard dark theme (dark grays)
+ *   - 'dark-oled'     — OLED-optimized dark theme (true black backgrounds)
+ *   - 'high-contrast' — High-contrast theme for stronger separation
+ *   - 'system'        — Follow OS prefers-color-scheme (default)
  *
  * Theme preference is persisted to localStorage and applied as a
  * `data-theme` attribute on `<html>`. When set to 'system', the
@@ -30,10 +31,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
 /** Valid theme values that can be set by the user. */
-export type ThemeValue = 'light' | 'dark' | 'dark-oled' | 'system';
+export type ThemeValue = 'light' | 'dark' | 'dark-oled' | 'high-contrast' | 'system';
+
+/** Density values that can be set by the user. */
+export type DisplayDensity = 'comfortable' | 'compact';
 
 /** The resolved (effective) theme after system preference resolution. */
-export type ResolvedTheme = 'light' | 'dark' | 'dark-oled';
+export type ResolvedTheme = 'light' | 'dark' | 'dark-oled' | 'high-contrast';
 
 export interface UseThemeResult {
   /** Current user-selected theme preference (may be 'system'). */
@@ -47,28 +51,67 @@ export interface UseThemeResult {
 
   /** Ordered list of available theme options for building UI selectors. */
   themes: readonly ThemeValue[];
+
+  /** Current display density preference. */
+  displayDensity: DisplayDensity;
+
+  /** Update display density and persist to localStorage. */
+  setDisplayDensity: (value: DisplayDensity) => void;
+
+  /** Ordered list of density options for building UI selectors. */
+  densities: readonly DisplayDensity[];
 }
 
-const STORAGE_KEY = 'finance-theme-preference';
+export const THEME_STORAGE_KEY = 'finance-theme-preference';
+export const DENSITY_STORAGE_KEY = 'finance-display-density-preference';
 const THEME_ATTRIBUTE = 'data-theme';
+const DENSITY_ATTRIBUTE = 'data-density';
 
 /** All available theme values, in display order. */
-const AVAILABLE_THEMES: readonly ThemeValue[] = ['system', 'light', 'dark', 'dark-oled'] as const;
+const AVAILABLE_THEMES: readonly ThemeValue[] = [
+  'system',
+  'light',
+  'dark',
+  'dark-oled',
+  'high-contrast',
+] as const;
+
+/** All available density values, in display order. */
+const AVAILABLE_DENSITIES: readonly DisplayDensity[] = ['comfortable', 'compact'] as const;
 
 /**
  * Read the persisted theme preference from localStorage.
  * Falls back to 'system' if nothing stored or value is invalid.
  */
-function getStoredTheme(): ThemeValue {
+export function getStoredTheme(): ThemeValue {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark' || stored === 'dark-oled' || stored === 'system') {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (
+      stored === 'light' ||
+      stored === 'dark' ||
+      stored === 'dark-oled' ||
+      stored === 'high-contrast' ||
+      stored === 'system'
+    ) {
       return stored;
     }
   } catch {
     // localStorage unavailable (SSR, privacy mode) — fall through
   }
   return 'system';
+}
+
+/** Read the persisted display density preference from localStorage. */
+export function getStoredDisplayDensity(): DisplayDensity {
+  try {
+    const stored = localStorage.getItem(DENSITY_STORAGE_KEY);
+    if (stored === 'comfortable' || stored === 'compact') {
+      return stored;
+    }
+  } catch {
+    // localStorage unavailable (SSR, privacy mode) — fall through
+  }
+  return 'comfortable';
 }
 
 /**
@@ -89,7 +132,7 @@ function getSystemPreference(): 'light' | 'dark' {
  * - For explicit themes: sets `data-theme="<value>"` on `<html>`.
  * - For 'system': removes the attribute so CSS media queries take over.
  */
-function applyTheme(value: ThemeValue): void {
+export function applyTheme(value: ThemeValue): void {
   if (typeof document === 'undefined') return;
 
   const root = document.documentElement;
@@ -101,8 +144,29 @@ function applyTheme(value: ThemeValue): void {
   }
 }
 
+export function applyDisplayDensity(value: DisplayDensity): void {
+  if (typeof document === 'undefined') return;
+
+  const root = document.documentElement;
+  if (value === 'compact') {
+    root.setAttribute(DENSITY_ATTRIBUTE, value);
+  } else {
+    root.removeAttribute(DENSITY_ATTRIBUTE);
+  }
+}
+
+export function applyStoredThemePreference(): void {
+  applyTheme(getStoredTheme());
+}
+
+export function applyStoredDisplayDensityPreference(): void {
+  applyDisplayDensity(getStoredDisplayDensity());
+}
+
 export function useTheme(): UseThemeResult {
   const [theme, setThemeState] = useState<ThemeValue>(getStoredTheme);
+  const [displayDensity, setDisplayDensityState] =
+    useState<DisplayDensity>(getStoredDisplayDensity);
   const [systemPref, setSystemPref] = useState<'light' | 'dark'>(getSystemPreference);
 
   // Listen for OS color scheme changes
@@ -122,12 +186,26 @@ export function useTheme(): UseThemeResult {
     applyTheme(theme);
   }, [theme]);
 
+  // Apply display density to DOM whenever it changes
+  useEffect(() => {
+    applyDisplayDensity(displayDensity);
+  }, [displayDensity]);
+
   const setTheme = useCallback((value: ThemeValue) => {
     setThemeState(value);
     try {
-      localStorage.setItem(STORAGE_KEY, value);
+      localStorage.setItem(THEME_STORAGE_KEY, value);
     } catch {
       // localStorage unavailable — theme still works for the session
+    }
+  }, []);
+
+  const setDisplayDensity = useCallback((value: DisplayDensity) => {
+    setDisplayDensityState(value);
+    try {
+      localStorage.setItem(DENSITY_STORAGE_KEY, value);
+    } catch {
+      // localStorage unavailable — density still works for the session
     }
   }, []);
 
@@ -143,5 +221,8 @@ export function useTheme(): UseThemeResult {
     resolvedTheme,
     setTheme,
     themes: AVAILABLE_THEMES,
+    displayDensity,
+    setDisplayDensity,
+    densities: AVAILABLE_DENSITIES,
   };
 }

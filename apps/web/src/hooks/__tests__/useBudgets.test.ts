@@ -19,7 +19,14 @@ vi.mock('../../db/DatabaseProvider', () => ({
 
 const mockGetAllBudgets = vi.fn<(...args: unknown[]) => Budget[]>();
 const mockGetBudgetWithSpending = vi.fn<(...args: unknown[]) => BudgetWithSpending | null>();
+const mockGetBudgetSpendingBreakdown =
+  vi.fn<
+    (
+      ...args: unknown[]
+    ) => Array<{ categoryId: string; categoryName: string; spentAmount: { amount: number } }>
+  >();
 const mockCreateBudget = vi.fn<(...args: unknown[]) => Budget>();
+const mockCreateBudgetTemplate = vi.fn<(...args: unknown[]) => Budget[]>();
 const mockUpdateBudget = vi.fn<(...args: unknown[]) => Budget | null>();
 const mockDeleteBudget = vi.fn<(...args: unknown[]) => boolean>();
 const mockReorderBudgets = vi.fn<(...args: unknown[]) => void>();
@@ -27,7 +34,9 @@ const mockReorderBudgets = vi.fn<(...args: unknown[]) => void>();
 vi.mock('../../db/repositories/budgets', () => ({
   getAllBudgets: (...args: unknown[]) => mockGetAllBudgets(...args),
   getBudgetWithSpending: (...args: unknown[]) => mockGetBudgetWithSpending(...args),
+  getBudgetSpendingBreakdown: (...args: unknown[]) => mockGetBudgetSpendingBreakdown(...args),
   createBudget: (...args: unknown[]) => mockCreateBudget(...args),
+  createBudgetTemplate: (...args: unknown[]) => mockCreateBudgetTemplate(...args),
   updateBudget: (...args: unknown[]) => mockUpdateBudget(...args),
   deleteBudget: (...args: unknown[]) => mockDeleteBudget(...args),
   reorderBudgets: (...args: unknown[]) => mockReorderBudgets(...args),
@@ -83,6 +92,7 @@ describe('useBudgets', () => {
     vi.clearAllMocks();
     mockGetAllBudgets.mockReturnValue([]);
     mockGetBudgetWithSpending.mockReturnValue(null);
+    mockGetBudgetSpendingBreakdown.mockReturnValue([]);
   });
 
   // -----------------------------------------------------------------------
@@ -197,6 +207,54 @@ describe('useBudgets', () => {
 
     expect(returned).toBeNull();
     expect(result.current.error).toBe('Insert failed');
+  });
+
+  // -----------------------------------------------------------------------
+  // CRUD — createBudgetTemplate
+  // -----------------------------------------------------------------------
+
+  it('creates a starter budget template and triggers refresh', () => {
+    mockGetAllBudgets.mockReturnValue([]);
+    mockCreateBudgetTemplate.mockReturnValue([
+      makeBudget({ id: 'budget-student-1', categoryId: 'cat-rent', name: 'Rent/Housing' }),
+      makeBudget({ id: 'budget-student-2', categoryId: 'cat-food', name: 'Food & Groceries' }),
+    ]);
+
+    const { result } = renderHook(() => useBudgets());
+
+    let returned: Budget[] | null = null;
+    act(() => {
+      returned = result.current.createBudgetTemplate({
+        templateId: 'student',
+        startDate: '2025-04-01',
+      });
+    });
+
+    expect(returned).toHaveLength(2);
+    expect(mockCreateBudgetTemplate).toHaveBeenCalledWith(mockDb, {
+      templateId: 'student',
+      startDate: '2025-04-01',
+    });
+  });
+
+  it('returns null and sets error when createBudgetTemplate throws', () => {
+    mockGetAllBudgets.mockReturnValue([]);
+    mockCreateBudgetTemplate.mockImplementation(() => {
+      throw new Error('Template insert failed');
+    });
+
+    const { result } = renderHook(() => useBudgets());
+
+    let returned: Budget[] | null = null;
+    act(() => {
+      returned = result.current.createBudgetTemplate({
+        templateId: 'student',
+        startDate: '2025-04-01',
+      });
+    });
+
+    expect(returned).toBeNull();
+    expect(result.current.error).toBe('Template insert failed');
   });
 
   // -----------------------------------------------------------------------
@@ -329,6 +387,37 @@ describe('useBudgets', () => {
 
     expect(deleted).toBe(false);
     expect(result.current.error).toBe('Delete failed');
+  });
+
+  it('returns a grouped food spending breakdown on demand', () => {
+    mockGetBudgetSpendingBreakdown.mockReturnValue([
+      { categoryId: 'cat-groceries', categoryName: 'Groceries', spentAmount: { amount: 25000 } },
+      { categoryId: 'cat-dining', categoryName: 'Dining Out', spentAmount: { amount: 17350 } },
+    ]);
+
+    const { result } = renderHook(() => useBudgets());
+
+    expect(result.current.getBudgetSpendingBreakdown('budget-1')).toEqual([
+      { categoryId: 'cat-groceries', categoryName: 'Groceries', spentAmount: { amount: 25000 } },
+      { categoryId: 'cat-dining', categoryName: 'Dining Out', spentAmount: { amount: 17350 } },
+    ]);
+    expect(mockGetBudgetSpendingBreakdown).toHaveBeenCalledWith(mockDb, 'budget-1');
+  });
+
+  it('returns an empty breakdown and captures errors', () => {
+    mockGetBudgetSpendingBreakdown.mockImplementation(() => {
+      throw new Error('Breakdown failed');
+    });
+
+    const { result } = renderHook(() => useBudgets());
+
+    let breakdown: ReturnType<typeof result.current.getBudgetSpendingBreakdown> = [];
+    act(() => {
+      breakdown = result.current.getBudgetSpendingBreakdown('budget-1');
+    });
+
+    expect(breakdown).toEqual([]);
+    expect(result.current.error).toBe('Breakdown failed');
   });
 
   // -----------------------------------------------------------------------

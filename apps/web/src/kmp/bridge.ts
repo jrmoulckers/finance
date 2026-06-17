@@ -81,12 +81,32 @@ export type AccountType =
   | 'LOAN'
   | 'OTHER';
 
+export type AccountPurpose = 'personal' | 'business' | 'both';
+
+export type RetirementAccountType =
+  | 'TRADITIONAL_IRA'
+  | 'ROTH_IRA'
+  | '401K'
+  | 'ROTH_401K'
+  | '403B'
+  | 'SEP_IRA'
+  | 'HSA'
+  | 'FSA';
+
+export type RetirementTaxTreatment = 'PRE_TAX' | 'ROTH' | 'AFTER_TAX' | 'EMPLOYER';
+export type HsaCoverageLevel = 'SELF_ONLY' | 'FAMILY';
+export type ContributionDesignation = 'EMPLOYEE' | 'EMPLOYER';
+
 /** Maps to KMP `com.finance.models.Account`. */
 export interface Account extends SyncMetadata {
   readonly id: SyncId;
   readonly householdId: SyncId;
   readonly name: string;
   readonly type: AccountType;
+  readonly purpose?: AccountPurpose;
+  readonly retirementAccountType?: RetirementAccountType | null;
+  readonly retirementTaxTreatment?: RetirementTaxTreatment | null;
+  readonly hsaCoverageLevel?: HsaCoverageLevel | null;
   readonly currency: Currency;
   readonly currentBalance: Cents;
   readonly isArchived: boolean;
@@ -101,12 +121,21 @@ export type TransactionType = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 /** Maps to KMP `com.finance.models.TransactionStatus`. */
 export type TransactionStatus = 'PENDING' | 'CLEARED' | 'RECONCILED' | 'VOID';
 
+/** Multi-line category allocation for a transaction split. */
+export interface TransactionSplit {
+  readonly id?: SyncId;
+  readonly categoryId: SyncId | null;
+  readonly amount: Cents;
+  readonly note: string | null;
+}
+
 /** Maps to KMP `com.finance.models.Transaction`. */
 export interface Transaction extends SyncMetadata {
   readonly id: SyncId;
   readonly householdId: SyncId;
   readonly accountId: SyncId;
   readonly categoryId: SyncId | null;
+  readonly splits?: readonly TransactionSplit[];
   readonly type: TransactionType;
   readonly status: TransactionStatus;
   readonly amount: Cents;
@@ -119,6 +148,8 @@ export interface Transaction extends SyncMetadata {
   readonly isRecurring: boolean;
   readonly recurringRuleId: SyncId | null;
   readonly tags: readonly string[];
+  readonly retirementContributionYear?: number | null;
+  readonly retirementContributionDesignation?: ContributionDesignation | null;
   readonly moodTag?: string | null;
 
   // Merchant location (all optional)

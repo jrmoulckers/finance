@@ -9,30 +9,36 @@ import { CurrencyRatesSettings } from '../../components/settings/CurrencyRatesSe
 import '../../components/settings/currency-rates-settings.css';
 import { useAccessibility } from '../../hooks/useAccessibility';
 import { useCategories } from '../../hooks/useCategories';
+import { useFontScale } from '../../hooks/useFontScale';
+import type { FontScalePreference } from '../../hooks/useFontScale';
+import { useLocalePreferences } from '../../hooks/useLocalePreferences';
 import { useTheme } from '../../hooks/useTheme';
+import type { DisplayDensity, ThemeValue } from '../../hooks/useTheme';
 import { AppearanceSettings } from './AppearanceSettings';
 import type { AccessibilityFontSize } from '../../contexts/AccessibilityContext';
-import type { ThemeValue } from '../../hooks/useTheme';
 import {
   loadBnplStackingThresholdCents,
   saveBnplStackingThresholdCents,
 } from '../../lib/bnpl-liability';
 import type { CurrencyDisplayMode, NegativeFormat } from '../../lib/display-settings';
 import { formatAmountWithSettings, useMoneyDisplay } from '../../lib/display-settings';
+import {
+  getStoredSingleKeyShortcutsPreference,
+  setSingleKeyShortcutsPreference,
+} from '../../lib/accessibility-preferences';
+import { SUPPORTED_CURRENCY_METADATA } from '../../lib/currency-metadata';
+import { translate } from '../../lib/i18n';
+import { createSettingsCopy } from '../../lib/i18n/settings-catalog';
+import { setOnboardingComplete } from '../../lib/local-only-mode';
 
 const CURRENCY_STORAGE_KEY = 'finance-currency';
 const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
 
-type CurrencyPreference = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
+type CurrencyPreference = string;
 
-const currencyOptions: Array<{ value: CurrencyPreference; label: string }> = [
-  { value: 'USD', label: 'USD ($)' },
-  { value: 'EUR', label: 'EUR (€)' },
-  { value: 'GBP', label: 'GBP (£)' },
-  { value: 'CAD', label: 'CAD (C$)' },
-  { value: 'AUD', label: 'AUD (A$)' },
-  { value: 'JPY', label: 'JPY (¥)' },
-];
+const currencyOptions: Array<{ value: CurrencyPreference; label: string }> = SUPPORTED_CURRENCY_METADATA.map(
+  ({ code, label }) => ({ value: code, label }),
+);
 
 /** Labels for theme select options. */
 const THEME_LABELS: Record<ThemeValue, string> = {
@@ -40,6 +46,12 @@ const THEME_LABELS: Record<ThemeValue, string> = {
   light: 'Light',
   dark: 'Dark',
   'dark-oled': 'OLED Dark',
+  'high-contrast': 'High Contrast',
+};
+
+const DENSITY_LABELS: Record<DisplayDensity, string> = {
+  comfortable: 'Comfortable',
+  compact: 'Compact / Dense',
 };
 
 /**
@@ -59,7 +71,7 @@ function resolveColorForPicker(color: string, fallback: string): string {
 const NEGATIVE_FORMAT_OPTIONS: Array<{ value: NegativeFormat; label: string }> = [
   { value: 'minus', label: 'Standard' },
   { value: 'parentheses', label: 'Accounting' },
-  { value: 'color-only', label: 'Color Only' },
+  { value: 'color-only', label: 'Text label' },
 ];
 
 /** Labels for currency display mode options. */
@@ -80,8 +92,10 @@ const ACCESSIBILITY_FONT_SIZE_LABELS: Record<AccessibilityFontSize, string> = {
  * money display formatting, and currency-rate management.
  */
 export const SettingsPreferencesPage: React.FC = () => {
-  const { theme, setTheme, themes } = useTheme();
+  const { theme, setTheme, themes, displayDensity, setDisplayDensity, densities } = useTheme();
   const { categories } = useCategories();
+  const fontScale = useFontScale();
+  const localePreferences = useLocalePreferences();
   const {
     accessibilityMode,
     fontSize,
@@ -103,9 +117,13 @@ export const SettingsPreferencesPage: React.FC = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     () => localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) !== 'false',
   );
+  const [singleKeyShortcutsEnabled, setSingleKeyShortcutsEnabled] = useState(
+    getStoredSingleKeyShortcutsPreference,
+  );
   const [bnplStackingThreshold, setBnplStackingThreshold] = useState(() =>
     String(loadBnplStackingThresholdCents() / 100),
   );
+  const settingsCopy = createSettingsCopy(localePreferences.locale);
 
   const handleThemeChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -114,16 +132,50 @@ export const SettingsPreferencesPage: React.FC = () => {
     [setTheme],
   );
 
+  const handleDensityChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setDisplayDensity(event.target.value as DisplayDensity);
+    },
+    [setDisplayDensity],
+  );
+
   const handleCurrencyChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextCurrency = event.target.value as CurrencyPreference;
     localStorage.setItem(CURRENCY_STORAGE_KEY, nextCurrency);
     setCurrency(nextCurrency);
   }, []);
 
+  const handleLocaleChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      localePreferences.setLocale(event.target.value);
+    },
+    [localePreferences],
+  );
+
+  const handleTimeZoneChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      localePreferences.setTimeZone(event.target.value);
+    },
+    [localePreferences],
+  );
+
+  const handleFontScaleChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      fontScale.setPreference(event.target.value as FontScalePreference);
+    },
+    [fontScale],
+  );
+
   const handleNotificationsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const nextNotificationsEnabled = event.target.checked;
     localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, String(nextNotificationsEnabled));
     setNotificationsEnabled(nextNotificationsEnabled);
+  }, []);
+
+  const handleSingleKeyShortcutsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const enabled = event.target.checked;
+    setSingleKeyShortcutsPreference(enabled);
+    setSingleKeyShortcutsEnabled(enabled);
   }, []);
 
   const handleBnplThresholdChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,6 +185,11 @@ export const SettingsPreferencesPage: React.FC = () => {
     if (Number.isFinite(cents) && cents > 0) {
       saveBnplStackingThresholdCents(cents);
     }
+  }, []);
+
+  const handleRerunOnboarding = useCallback(() => {
+    setOnboardingComplete(false);
+    window.location.href = '/onboarding';
   }, []);
 
   const handleAccessibilityModeChange = useCallback(
@@ -161,19 +218,19 @@ export const SettingsPreferencesPage: React.FC = () => {
 
   return (
     <>
-      <h2 className="settings-subpage__title">Preferences</h2>
-      <section aria-label="Preferences" className="page-section">
+      <h2 className="settings-subpage__title">{settingsCopy.text('preferencesTitle')}</h2>
+      <section aria-label={settingsCopy.text('preferencesAria')} className="page-section">
         <div className="settings-group">
-          <h3 className="settings-group__title">Preferences</h3>
+          <h3 className="settings-group__title">{settingsCopy.text('preferencesTitle')}</h3>
           <SettingInfoWidget settingKey="currency">
             <div className="settings-item settings-item--static">
               <label className="settings-item__label" htmlFor="settings-currency">
-                Currency
+                {settingsCopy.text('currencyLabel')}
               </label>
               <div className="settings-item__control">
                 <select
                   id="settings-currency"
-                  aria-label="Currency"
+                  aria-label={settingsCopy.text('currencyAria')}
                   className="settings-item__select"
                   value={currency}
                   onChange={handleCurrencyChange}
@@ -181,6 +238,53 @@ export const SettingsPreferencesPage: React.FC = () => {
                   {currencyOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </SettingInfoWidget>
+          <SettingInfoWidget settingKey="language">
+            <div className="settings-item settings-item--static">
+              <label className="settings-item__label" htmlFor="settings-language">
+                {translate('settings.language', {}, localePreferences.locale).text}
+              </label>
+              <div className="settings-item__control">
+                <select
+                  id="settings-language"
+                  aria-label="Language"
+                  className="settings-item__select"
+                  value={localePreferences.locale}
+                  onChange={handleLocaleChange}
+                >
+                  {localePreferences.supportedLocales.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.nativeLabel} — {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="settings-item__description">
+                {translate('settings.languageDescription', {}, localePreferences.locale).text}
+              </p>
+            </div>
+          </SettingInfoWidget>
+          <SettingInfoWidget settingKey="time-zone">
+            <div className="settings-item settings-item--static">
+              <label className="settings-item__label" htmlFor="settings-time-zone">
+                {translate('settings.timeZone', {}, localePreferences.locale).text}
+              </label>
+              <div className="settings-item__control">
+                <select
+                  id="settings-time-zone"
+                  aria-label="Home time zone"
+                  className="settings-item__select"
+                  value={localePreferences.timeZone}
+                  onChange={handleTimeZoneChange}
+                >
+                  {localePreferences.timeZoneOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
                     </option>
                   ))}
                 </select>
@@ -212,12 +316,12 @@ export const SettingsPreferencesPage: React.FC = () => {
           <SettingInfoWidget settingKey="theme">
             <div className="settings-item settings-item--static">
               <label className="settings-item__label" htmlFor="settings-theme">
-                Theme
+                {settingsCopy.text('themeLabel')}
               </label>
               <div className="settings-item__control">
                 <select
                   id="settings-theme"
-                  aria-label="Theme"
+                  aria-label={settingsCopy.text('themeAria')}
                   className="settings-item__select"
                   value={theme}
                   onChange={handleThemeChange}
@@ -234,18 +338,35 @@ export const SettingsPreferencesPage: React.FC = () => {
           <SettingInfoWidget settingKey="notifications">
             <div className="settings-item settings-item--static">
               <label className="settings-item__label" htmlFor="s-notif">
-                Notifications
+                {settingsCopy.text('notificationsLabel')}
               </label>
               <input
                 type="checkbox"
                 id="s-notif"
                 checked={notificationsEnabled}
                 onChange={handleNotificationsChange}
-                aria-label="Notifications"
+                aria-label={settingsCopy.text('notificationsAria')}
                 className="settings-item__checkbox"
               />
             </div>
           </SettingInfoWidget>
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-single-key-shortcuts">
+              Single-key shortcuts
+            </label>
+            <input
+              type="checkbox"
+              id="settings-single-key-shortcuts"
+              checked={singleKeyShortcutsEnabled}
+              onChange={handleSingleKeyShortcutsChange}
+              aria-describedby="settings-single-key-shortcuts-help"
+              className="settings-item__checkbox"
+            />
+            <p id="settings-single-key-shortcuts-help" className="settings-item__description">
+              Turn off character-key shortcuts like N, /, ?, and G then D if they conflict with
+              assistive technology. Ctrl/Cmd+K remains available.
+            </p>
+          </div>
           <HapticSettings />
         </div>
       </section>
@@ -402,6 +523,55 @@ export const SettingsPreferencesPage: React.FC = () => {
           <p className="settings-group__description">
             Customize how monetary amounts appear throughout the app.
           </p>
+
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-font-scale">
+              Text size
+            </label>
+            <div className="settings-item__control">
+              <select
+                id="settings-font-scale"
+                aria-label="Text size"
+                className="settings-item__select"
+                value={fontScale.preference}
+                onChange={handleFontScaleChange}
+              >
+                {fontScale.options.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} ({option.rootFontSize})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="settings-item__description">
+              Scales app text and spacing up to 200% while allowing pages to reflow.
+            </p>
+          </div>
+
+          <div className="settings-item settings-item--static">
+            <label className="settings-item__label" htmlFor="settings-display-density">
+              Display density
+            </label>
+            <div className="settings-item__control">
+              <select
+                id="settings-display-density"
+                aria-label="Display density"
+                className="settings-item__select"
+                value={displayDensity}
+                onChange={handleDensityChange}
+              >
+                {(densities ?? []).map((densityOption) => (
+                  <option key={densityOption} value={densityOption}>
+                    {DENSITY_LABELS[densityOption]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p id="settings-display-density-help" className="settings-item__description">
+              Compact density reduces padding, row heights, and supporting text for a denser trader
+              workspace.
+            </p>
+          </div>
 
           <div className="settings-item settings-item--static">
             <label className="settings-item__label" htmlFor="settings-positive-color">
@@ -577,6 +747,16 @@ export const SettingsPreferencesPage: React.FC = () => {
             <span className="settings-item__label">Reset to defaults</span>
             <span className="settings-item__value">↺</span>
           </button>
+
+          <button
+            type="button"
+            className="settings-item settings-item--button"
+            onClick={handleRerunOnboarding}
+            aria-label="Run onboarding again"
+          >
+            <span className="settings-item__label">Run onboarding again</span>
+            <span className="settings-item__value">Simple setup ›</span>
+          </button>
         </div>
       </section>
 
@@ -586,3 +766,6 @@ export const SettingsPreferencesPage: React.FC = () => {
 };
 
 export default SettingsPreferencesPage;
+
+
+

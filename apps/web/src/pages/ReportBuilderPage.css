@@ -319,9 +319,56 @@
   min-width: 140px;
 }
 
+.report-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-2);
+}
+
+.report-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--semantic-text-primary);
+}
+
 /* Chart container */
 .report-chart-container {
   min-height: 300px;
+}
+
+.report-chart-actions,
+.report-drilldown__header,
+.report-drilldown__stats,
+.report-anomaly {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.report-chart-actions {
+  margin-top: var(--spacing-3);
+}
+
+.report-drilldown,
+.report-anomaly {
+  margin-top: var(--spacing-3);
+  padding: var(--spacing-3);
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-md);
+}
+
+.report-anomaly-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.report-anomaly h3,
+.report-drilldown h3 {
+  margin: 0 0 var(--spacing-1);
 }
 
 /* Summary grid */

@@ -47,6 +47,12 @@ export interface QifRecord {
   readonly clearedStatus: string | null;
   /** Address lines (from A lines). */
   readonly address: readonly string[];
+  /** Account section name active when the record was parsed. */
+  readonly accountName: string | null;
+  /** QIF type active when the record was parsed. */
+  readonly qifType: QifType | null;
+  /** Split/category detail lines from S/$/E fields. */
+  readonly splits: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -63,9 +69,8 @@ export function parseQif(content: string): ImportResult {
   const errors: ImportError[] = [];
   const lines = content.split(/\r?\n/);
 
-  // Extract the type header
+  // Extract the first type header for default transaction type.
   let qifType: QifType | null = null;
-  let startLine = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -73,7 +78,6 @@ export function parseQif(content: string): ImportResult {
 
     if (line.startsWith('!Type:')) {
       qifType = line.slice(6).trim();
-      startLine = i + 1;
       break;
     }
     if (line.startsWith('!Account')) {
@@ -83,8 +87,7 @@ export function parseQif(content: string): ImportResult {
     if (line.startsWith('!Option:')) {
       continue;
     }
-    // If first non-empty line isn't a header, start parsing from here
-    startLine = i;
+    // If first non-empty line isn't a header, the file has no explicit type.
     break;
   }
 
@@ -98,8 +101,9 @@ export function parseQif(content: string): ImportResult {
     qifType = 'Bank';
   }
 
-  // Parse records
-  const records = parseQifRecords(lines, startLine);
+  // Parse records. Start from the top so !Account sections and mid-file !Type
+  // switches can attach source account/type metadata to each transaction.
+  const records = parseQifRecords(lines, 0, qifType);
   const transactions: ParsedTransaction[] = [];
 
   for (let i = 0; i < records.length; i++) {
@@ -158,6 +162,9 @@ export function parseQif(content: string): ImportResult {
     if (record.checkNumber) rawFields['N'] = record.checkNumber;
     if (record.category) rawFields['L'] = record.category;
     if (record.clearedStatus) rawFields['C'] = record.clearedStatus;
+    if (record.accountName) rawFields['ACCOUNT'] = record.accountName;
+    if (record.splits.length > 0) rawFields['SPLITS'] = record.splits.join('\n');
+    if (record.address.length > 0) rawFields['A'] = record.address.join('\n');
 
     transactions.push({
       date,
@@ -166,19 +173,23 @@ export function parseQif(content: string): ImportResult {
       sourceId: null,
       category,
       checkNumber: record.checkNumber || null,
-      type: mapQifType(qifType),
-      memo: record.memo || null,
+      type: mapQifType(record.qifType ?? qifType),
+      memo: mergeMemoAndAddress(record.memo, record.address),
       balanceCents: null,
       rawFields,
     });
   }
+
+  const accountIds = Array.from(
+    new Set(records.map((record) => record.accountName).filter((value): value is string => !!value)),
+  );
 
   return {
     format: ImportFormat.QIF,
     transactions,
     errors,
     totalRecords: records.length,
-    accountId: null,
+    accountId: accountIds.length > 0 ? accountIds.join(',') : null,
     startDate: transactions.length > 0 ? transactions[0].date : null,
     endDate: transactions.length > 0 ? transactions[transactions.length - 1].date : null,
     currency: null,
@@ -192,40 +203,72 @@ export function parseQif(content: string): ImportResult {
  * @param startLine - 0-based index of the first line to parse.
  * @returns Array of raw QIF records.
  */
-export function parseQifRecords(lines: readonly string[], startLine: number): QifRecord[] {
+export function parseQifRecords(
+  lines: readonly string[],
+  startLine: number,
+  initialType: QifType | null = null,
+): QifRecord[] {
   const records: QifRecord[] = [];
-  let current: {
-    date: string | null;
-    amount: string | null;
-    payee: string | null;
-    memo: string | null;
-    checkNumber: string | null;
-    category: string | null;
-    clearedStatus: string | null;
-    address: string[];
-  } = createEmptyRecord();
-
+  let current = createEmptyRecord(initialType, null);
+  let activeType = initialType;
+  let activeAccountName: string | null = null;
+  let accountSectionName: string | null = null;
+  let inAccountSection = false;
   let hasFields = false;
+
+  const flush = () => {
+    if (hasFields) {
+      records.push({
+        ...current,
+        address: [...current.address],
+        splits: [...current.splits],
+      });
+    }
+    current = createEmptyRecord(activeType, activeAccountName);
+    hasFields = false;
+  };
 
   for (let i = startLine; i < lines.length; i++) {
     const line = lines[i].trim();
     if (line.length === 0) continue;
 
     if (line === '^') {
-      // Record terminator
-      if (hasFields) {
-        records.push({ ...current, address: [...current.address] });
+      if (inAccountSection) {
+        activeAccountName = accountSectionName;
+        accountSectionName = null;
+        inAccountSection = false;
+        current = createEmptyRecord(activeType, activeAccountName);
+        continue;
       }
-      current = createEmptyRecord();
-      hasFields = false;
+      flush();
       continue;
     }
 
-    // Skip additional type or option headers mid-file
+    if (/^!Account/i.test(line)) {
+      flush();
+      inAccountSection = true;
+      accountSectionName = null;
+      continue;
+    }
+
+    if (/^!Type:/i.test(line)) {
+      flush();
+      activeType = line.slice(6).trim();
+      current = createEmptyRecord(activeType, activeAccountName);
+      continue;
+    }
+
+    if (/^!Option:/i.test(line)) continue;
     if (line.startsWith('!')) continue;
 
     const code = line[0];
     const value = line.slice(1).trim();
+
+    if (inAccountSection) {
+      if (code === 'N') accountSectionName = value;
+      continue;
+    }
+
     hasFields = true;
 
     switch (code) {
@@ -239,7 +282,7 @@ export function parseQifRecords(lines: readonly string[], startLine: number): Qi
         current.payee = value;
         break;
       case 'M':
-        current.memo = value;
+        current.memo = appendLine(current.memo, value);
         break;
       case 'N':
         current.checkNumber = value;
@@ -253,15 +296,15 @@ export function parseQifRecords(lines: readonly string[], startLine: number): Qi
       case 'A':
         current.address.push(value);
         break;
-      // Other codes (S, $, etc. for splits) are ignored for now
+      case 'S':
+      case '$':
+      case 'E':
+        current.splits.push(`${code}${value}`);
+        break;
     }
   }
 
-  // Flush any remaining record without a trailing ^
-  if (hasFields) {
-    records.push({ ...current, address: [...current.address] });
-  }
-
+  flush();
   return records;
 }
 
@@ -269,7 +312,19 @@ export function parseQifRecords(lines: readonly string[], startLine: number): Qi
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function createEmptyRecord() {
+function createEmptyRecord(qifType: QifType | null, accountName: string | null): {
+  date: string | null;
+  amount: string | null;
+  payee: string | null;
+  memo: string | null;
+  checkNumber: string | null;
+  category: string | null;
+  clearedStatus: string | null;
+  address: string[];
+  accountName: string | null;
+  qifType: QifType | null;
+  splits: string[];
+} {
   return {
     date: null,
     amount: null,
@@ -279,7 +334,21 @@ function createEmptyRecord() {
     category: null,
     clearedStatus: null,
     address: [] as string[],
+    accountName,
+    qifType,
+    splits: [] as string[],
   };
+}
+
+function appendLine(existing: string | null, value: string): string {
+  if (!existing) return value;
+  if (!value) return existing;
+  return `${existing}\n${value}`;
+}
+
+function mergeMemoAndAddress(memo: string | null, address: readonly string[]): string | null {
+  const lines = [memo, ...address].filter((value): value is string => Boolean(value?.trim()));
+  return lines.length > 0 ? lines.join('\n') : null;
 }
 
 /**

@@ -61,6 +61,9 @@ jobs:
             echo '::warning::No source map configuration found in apps/web/vite.config.*'
           fi
 
+      - name: Enforce bundle performance budgets
+        run: node tools/check-web-performance-budget.mjs --dist apps/web/dist --budget apps/web/performance.budget.json
+
       - name: Report bundle size
         run: |
           echo "### 🌐 Web Build Summary" >> "$GITHUB_STEP_SUMMARY"
@@ -308,4 +311,4 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Scope: full desktop matrix (Chromium, Firefox, WebKit, Edge). Deploy — Staging waits for this workflow to be green on main." >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "📊 Download the merged HTML report from the \`e2e-main-html-report\` artifact above." >> "$GITHUB_STEP_SUMMARY"
+          echo "📊 Download the merged HTML report from the `e2e-main-html-report` artifact above." >> "$GITHUB_STEP_SUMMARY"

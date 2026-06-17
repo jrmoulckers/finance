@@ -3,7 +3,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useKeyboardShortcuts } from '../useKeyboardShortcuts';
+import {
+  SINGLE_KEY_SHORTCUTS_STORAGE_KEY,
+  setSingleKeyShortcutsPreference,
+} from '../lib/accessibility-preferences';
+import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,6 +38,7 @@ function fireKeyDown(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
 });
 
 afterEach(() => {
@@ -60,6 +65,14 @@ describe('useKeyboardShortcuts', () => {
 
     expect(result.current.shortcutCategories.length).toBeGreaterThan(0);
     expect(result.current.shortcutCategories[0].title).toBe('Navigation');
+    expect(result.current.shortcutCategories[0].shortcuts).toContainEqual({
+      keys: 'G then I',
+      description: 'Go to Investments',
+    });
+    expect(result.current.shortcutCategories[1].shortcuts).toContainEqual({
+      keys: 'Ctrl/Cmd+K',
+      description: 'Open command palette',
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -262,7 +275,7 @@ describe('useKeyboardShortcuts', () => {
       fireKeyDown('d');
     });
 
-    expect(onNavigate).toHaveBeenCalledWith('/');
+    expect(onNavigate).toHaveBeenCalledWith('/dashboard');
   });
 
   it('navigates to transactions with G then T', () => {
@@ -277,6 +290,34 @@ describe('useKeyboardShortcuts', () => {
     });
 
     expect(onNavigate).toHaveBeenCalledWith('/transactions');
+  });
+
+  it('navigates to investments with G then I', () => {
+    const onNavigate = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onNavigate }));
+
+    act(() => {
+      fireKeyDown('g');
+    });
+    act(() => {
+      fireKeyDown('i');
+    });
+
+    expect(onNavigate).toHaveBeenCalledWith('/investments');
+  });
+
+  it('navigates to budgets with G then B', () => {
+    const onNavigate = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onNavigate }));
+
+    act(() => {
+      fireKeyDown('g');
+    });
+    act(() => {
+      fireKeyDown('b');
+    });
+
+    expect(onNavigate).toHaveBeenCalledWith('/budgets');
   });
 
   it('does not navigate if second key is unrecognised', () => {
@@ -308,7 +349,7 @@ describe('useKeyboardShortcuts', () => {
     expect(onNewTransaction).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onFocusSearch when / is pressed without shift', () => {
+  it('calls onFocusSearch when / is pressed without shift and no command palette is registered', () => {
     const onFocusSearch = vi.fn();
     renderHook(() => useKeyboardShortcuts({ onFocusSearch }));
 
@@ -317,6 +358,41 @@ describe('useKeyboardShortcuts', () => {
     });
 
     expect(onFocusSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens command palette when / is pressed and command palette is registered', () => {
+    const onFocusSearch = vi.fn();
+    const onOpenCommandPalette = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onFocusSearch, onOpenCommandPalette }));
+
+    act(() => {
+      fireKeyDown('/');
+    });
+
+    expect(onOpenCommandPalette).toHaveBeenCalledTimes(1);
+    expect(onFocusSearch).not.toHaveBeenCalled();
+  });
+
+  it('opens command palette with Ctrl+K', () => {
+    const onOpenCommandPalette = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onOpenCommandPalette }));
+
+    act(() => {
+      fireKeyDown('k', { ctrlKey: true });
+    });
+
+    expect(onOpenCommandPalette).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens command palette with Meta+K', () => {
+    const onOpenCommandPalette = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onOpenCommandPalette }));
+
+    act(() => {
+      fireKeyDown('k', { metaKey: true });
+    });
+
+    expect(onOpenCommandPalette).toHaveBeenCalledTimes(1);
   });
 
   it('calls onListNavigate(1) when J is pressed', () => {
@@ -354,5 +430,48 @@ describe('useKeyboardShortcuts', () => {
 
     expect(onNewTransaction).not.toHaveBeenCalled();
     document.body.removeChild(input);
+  });
+
+  it('honors the preference to disable character-key shortcuts', () => {
+    localStorage.setItem(SINGLE_KEY_SHORTCUTS_STORAGE_KEY, 'false');
+    const onNewTransaction = vi.fn();
+    const onNavigate = vi.fn();
+    const { result } = renderHook(() => useKeyboardShortcuts({ onNewTransaction, onNavigate }));
+
+    expect(result.current.singleKeyShortcutsEnabled).toBe(false);
+
+    act(() => {
+      fireKeyDown('n');
+      fireKeyDown('g');
+      fireKeyDown('d');
+      fireKeyDown('?');
+    });
+
+    expect(onNewTransaction).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(result.current.showHelp).toBe(false);
+  });
+
+  it('keeps modified shortcuts available when character-key shortcuts are disabled', () => {
+    localStorage.setItem(SINGLE_KEY_SHORTCUTS_STORAGE_KEY, 'false');
+    const onOpenCommandPalette = vi.fn();
+    renderHook(() => useKeyboardShortcuts({ onOpenCommandPalette }));
+
+    act(() => {
+      fireKeyDown('k', { ctrlKey: true });
+    });
+
+    expect(onOpenCommandPalette).toHaveBeenCalledTimes(1);
+  });
+
+  it('updates when the single-key shortcuts preference changes in the current tab', () => {
+    const { result } = renderHook(() => useKeyboardShortcuts());
+    expect(result.current.singleKeyShortcutsEnabled).toBe(true);
+
+    act(() => {
+      setSingleKeyShortcutsPreference(false);
+    });
+
+    expect(result.current.singleKeyShortcutsEnabled).toBe(false);
   });
 });

@@ -3,9 +3,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account, Category } from '../../kmp/bridge';
+import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { TransactionForm, type TransactionFormProps } from './TransactionForm';
 
 vi.mock('../../accessibility/aria', () => ({
+  announce: vi.fn(),
   useFocusTrap: vi.fn(),
 }));
 
@@ -91,6 +93,25 @@ function renderTransactionForm(overrides: Partial<TransactionFormProps> = {}) {
   return { onSubmit, onCancel };
 }
 
+describe('validateTransactionSplits', () => {
+  it('reports a zero remainder when split lines match the transaction total', () => {
+    expect(
+      validateTransactionSplits(1234, [
+        { categoryId: 'category-food', amount: { amount: 734 }, note: 'Dinner' },
+        { categoryId: 'category-income', amount: { amount: 500 }, note: null },
+      ]),
+    ).toMatchObject({ isBalanced: true, remainingCents: 0, splitTotalCents: 1234 });
+  });
+
+  it('reports the unassigned remainder when split lines do not balance', () => {
+    expect(validateTransactionSplits(1234, [{ amount: { amount: 1000 } }])).toMatchObject({
+      isBalanced: false,
+      remainingCents: 234,
+      error: 'Split amounts must equal the transaction total.',
+    });
+  });
+});
+
 describe('TransactionForm', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -106,8 +127,10 @@ describe('TransactionForm', () => {
     renderTransactionForm();
 
     expect(screen.getByRole('dialog', { name: 'New Transaction' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Amount')).toBeInTheDocument();
-    expect(screen.getByLabelText('Payee')).toBeInTheDocument();
+    expect(screen.getByLabelText('Amount')).toHaveAttribute('data-dictation-label', 'Amount');
+    expect(screen.getByLabelText('Amount')).toHaveAttribute('name', 'txn-amount');
+    expect(screen.getByLabelText('Payee')).toHaveAttribute('data-dictation-label', 'Payee');
+    expect(screen.getByLabelText('Payee')).toHaveAttribute('name', 'txn-description');
     expect(screen.getByText(/What appears on your statement/i)).toBeInTheDocument();
     expect(screen.getByText(/The actual merchant or person/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Category')).toBeInTheDocument();
@@ -133,6 +156,16 @@ describe('TransactionForm', () => {
 
     expect(screen.getByText('Amount must be greater than zero.')).toBeInTheDocument();
     expect(screen.getByText('Please select an account.')).toBeInTheDocument();
+    const summary = screen.getByText('Some fields need attention').closest('.form-error-summary');
+    expect(summary).toHaveAttribute('tabindex', '-1');
+    expect(summary).toHaveAttribute('aria-live', 'assertive');
+    expect(
+      screen.getByRole('link', { name: /Amount: Amount must be greater than zero/i }),
+    ).toHaveAttribute('href', '#txn-amount');
+    expect(screen.getByRole('link', { name: /Account: Please select an account/i })).toHaveAttribute(
+      'href',
+      '#txn-account',
+    );
     expect(screen.getByRole('status')).toHaveTextContent(/Some fields need attention/);
     expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
     expect(onSubmit).not.toHaveBeenCalled();
@@ -167,6 +200,8 @@ describe('TransactionForm', () => {
       categoryId: null,
       note: null,
       tags: [],
+      retirementContributionYear: null,
+      retirementContributionDesignation: null,
       merchantCity: null,
       merchantState: null,
       merchantZip: null,
@@ -177,6 +212,113 @@ describe('TransactionForm', () => {
       extraNotes: null,
       counterpartyName: null,
     });
+  });
+
+  it('submits retirement contribution tagging fields', async () => {
+    const { onSubmit } = renderTransactionForm();
+
+    const amountInput = screen.getByLabelText('Amount');
+    fireEvent.keyDown(amountInput, { key: '7' });
+    fireEvent.keyDown(amountInput, { key: '0' });
+    fireEvent.keyDown(amountInput, { key: '0' });
+    fireEvent.keyDown(amountInput, { key: '0' });
+
+    fireEvent.change(screen.getByLabelText('Payee'), { target: { value: 'IRA contribution' } });
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+    fireEvent.click(
+      screen.getByLabelText('Count this transaction or transfer toward an annual contribution limit'),
+    );
+    fireEvent.change(screen.getByLabelText('Contribution year'), { target: { value: '2025' } });
+    fireEvent.change(screen.getByLabelText('Contribution designation'), {
+      target: { value: 'EMPLOYEE' },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retirementContributionYear: 2025,
+        retirementContributionDesignation: 'EMPLOYEE',
+      }),
+    );
+  });
+
+  it('submits balanced split lines with per-line categories and notes', async () => {
+    const { onSubmit } = renderTransactionForm();
+
+    const amountInput = screen.getByLabelText('Amount');
+    fireEvent.keyDown(amountInput, { key: '1' });
+    fireEvent.keyDown(amountInput, { key: '2' });
+    fireEvent.keyDown(amountInput, { key: '3' });
+    fireEvent.keyDown(amountInput, { key: '4' });
+
+    fireEvent.change(screen.getByLabelText('Payee'), { target: { value: 'Supermarket' } });
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add split' }));
+    expect(screen.getByText('Remaining: $0.00')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Split 1 category'), {
+      target: { value: 'category-food' },
+    });
+    fireEvent.change(screen.getByLabelText('Split 1 amount'), { target: { value: '7.34' } });
+    fireEvent.change(screen.getByLabelText('Split 1 note'), { target: { value: 'Groceries' } });
+    expect(screen.getByText('Remaining: $5.00')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add split' }));
+    fireEvent.change(screen.getByLabelText('Split 2 category'), {
+      target: { value: 'category-income' },
+    });
+    fireEvent.change(screen.getByLabelText('Split 2 note'), { target: { value: 'Rebate' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        categoryId: 'category-food',
+        splits: [
+          {
+            id: expect.any(String),
+            categoryId: 'category-food',
+            amount: { amount: 734 },
+            note: 'Groceries',
+          },
+          {
+            id: expect.any(String),
+            categoryId: 'category-income',
+            amount: { amount: 500 },
+            note: 'Rebate',
+          },
+        ],
+      }),
+    );
+  });
+
+  it('blocks submission when split lines are not balanced', async () => {
+    const { onSubmit } = renderTransactionForm();
+
+    const amountInput = screen.getByLabelText('Amount');
+    fireEvent.keyDown(amountInput, { key: '1' });
+    fireEvent.keyDown(amountInput, { key: '2' });
+    fireEvent.keyDown(amountInput, { key: '3' });
+    fireEvent.keyDown(amountInput, { key: '4' });
+
+    fireEvent.change(screen.getByLabelText('Payee'), { target: { value: 'Supermarket' } });
+    fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add split' }));
+    fireEvent.change(screen.getByLabelText('Split 1 amount'), { target: { value: '10.00' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
+    });
+
+    expect(screen.getAllByText(/Split amounts must equal the transaction total/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Remaining: \$2\.34/i).length).toBeGreaterThan(0);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('calls onCancel when the cancel button is clicked', () => {

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AppIcon } from '../components/icons';
 
+import { AccountPurposeFilterControl } from '../components/accounts';
 import {
   CategoryDropZone,
   ConfirmDialog,
@@ -19,7 +20,7 @@ import {
 } from '../components/common';
 import { SwipeableRow } from '../components/common/SwipeableRow';
 import { CategoryConfirmation } from '../components/categorization';
-import { BulkEditToolbar, TransactionForm } from '../components/forms';
+import { TransactionForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { VoiceEntrySheet } from '../components/voice';
 import {
@@ -33,30 +34,44 @@ import {
   TransactionFilters,
   TransactionSort,
   TransactionEditPanel,
+  LazyReceiptImage,
   DEFAULT_SORT,
 } from '../components/transactions';
 import { ReturnWindowBadge } from '../components/warranty';
 import type { AdvancedFilters } from '../components/transactions';
 import type { SortConfig, SortField } from '../components/transactions';
+import { TransactionBulkActionsToolbar } from '../components/transactions/TransactionBulkActionsToolbar';
 import type { CreateTransactionInput } from '../db/repositories/transactions';
 import { useAccounts } from '../hooks/useAccounts';
-import { useAutoCategorize } from '../hooks/useAutoCategorize';
-import { useCategories } from '../hooks/useCategories';
-import { useBulkTransactions } from '../hooks/useBulkTransactions';
 import { useAccessibility } from '../hooks/useAccessibility';
+import { useAutoCategorize } from '../hooks/useAutoCategorize';
+import { useBulkTransactions } from '../hooks/useBulkTransactions';
+import { useCategories } from '../hooks/useCategories';
+import { useFontScale } from '../hooks/useFontScale';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { recordPwaMeaningfulAction } from '../hooks/useInstallPrompt';
 import { useTransactions } from '../hooks/useTransactions';
+import { useVirtualList } from '../hooks/useVirtualList';
 import {
+  createMileageTrip,
+  deleteMileageTrip,
   generateTaxReadyExpenseReport,
   loadMileageTrips,
   MILEAGE_TRIPS_CHANGED_EVENT,
+  updateMileageTrip,
 } from '../lib/mileage';
-import { createMileageTrip, deleteMileageTrip, updateMileageTrip } from '../lib/mileage';
 import type {
   ExpenseTransactionInput,
   TripEntry as MileageTripRecord,
   TripEntryDraft as MileageTripDraft,
 } from '../lib/mileage';
 import type { Transaction } from '../kmp/bridge';
+import {
+  filterAccountsByPurpose,
+  filterTransactionsByAccountPurpose,
+  type AccountPurposeFilter,
+} from '../lib/accountPurpose';
+import { chooseLargeTextReflow } from '../lib/a11y/large-text-reflow';
 
 // ---------------------------------------------------------------------------
 // URL param helpers for filter/sort persistence
@@ -164,6 +179,45 @@ function getTransactionLabel(transaction: Transaction): string {
     transaction.note?.trim() ||
     (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction')
   );
+}
+
+const VIRTUAL_REGISTER_THRESHOLD = 200;
+const VIRTUAL_REGISTER_ROW_HEIGHT = 76;
+const VIRTUAL_REGISTER_OVERSCAN = 16;
+
+interface TransactionRegisterHeaderRow {
+  readonly kind: 'header';
+  readonly id: string;
+  readonly label: string;
+}
+
+interface TransactionRegisterTransactionRow {
+  readonly kind: 'transaction';
+  readonly id: string;
+  readonly transaction: Transaction;
+  readonly transactionPosition: number;
+}
+
+type TransactionRegisterRow = TransactionRegisterHeaderRow | TransactionRegisterTransactionRow;
+
+function getRegisterViewportHeight(): number {
+  if (typeof window === 'undefined') return 640;
+  return Math.min(720, Math.max(360, window.innerHeight - 280));
+}
+
+function flattenTransactionGroups(
+  groups: Array<{ date: string; label: string; transactions: Transaction[] }>,
+): TransactionRegisterRow[] {
+  let transactionPosition = 0;
+  return groups.flatMap((group) => [
+    { kind: 'header' as const, id: `header-${group.date}`, label: group.label },
+    ...group.transactions.map((transaction) => ({
+      kind: 'transaction' as const,
+      id: transaction.id,
+      transaction,
+      transactionPosition: ++transactionPosition,
+    })),
+  ]);
 }
 
 function useOptionalToast(): ReturnType<typeof useToast> | null {
@@ -308,6 +362,7 @@ export const TransactionsPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editPanelTransaction, setEditPanelTransaction] = useState<Transaction | null>(null);
+  const [selectedPurposeFilter, setSelectedPurposeFilter] = useState<AccountPurposeFilter>('all');
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [editingMileageTrip, setEditingMileageTrip] = useState<MileageTripRecord | null>(null);
   const [tripEntries, setTripEntries] = useState<MileageTripRecord[]>(() => loadMileageTrips());
@@ -315,9 +370,17 @@ export const TransactionsPage: React.FC = () => {
   const [reportEndDate, setReportEndDate] = useState(() => getTodayIsoDate());
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [dismissedAutoCategoryIds, setDismissedAutoCategoryIds] = useState<string[]>([]);
   const [isVoiceEntryOpen, setIsVoiceEntryOpen] = useState(false);
+  const { scale: inAppTextScale } = useFontScale();
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 1024 : window.innerWidth,
+  );
   const addMenuRef = useRef<HTMLDivElement>(null);
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+  const transactionRowRefs = useRef(new Map<string, HTMLElement>());
 
   // Get filters/sort from URL params
   const advancedFilters = useMemo(() => filtersFromParams(searchParams), [searchParams]);
@@ -385,6 +448,10 @@ export const TransactionsPage: React.FC = () => {
     () => new Map(accounts.map((account) => [account.id, account.name])),
     [accounts],
   );
+  const visibleFilterAccounts = useMemo(
+    () => filterAccountsByPurpose(accounts, selectedPurposeFilter),
+    [accounts, selectedPurposeFilter],
+  );
   const { suggestForTransaction, autoCategorizeInput, learnFromFeedback } =
     useAutoCategorize(categories);
   const toast = useOptionalToast();
@@ -422,21 +489,47 @@ export const TransactionsPage: React.FC = () => {
     [categoryNames, learnFromFeedback],
   );
 
-  // Apply advanced local filters, then sort
+  // Apply purpose filter, advanced local filters, then sort
   const transactions = useMemo(() => {
-    const filtered = applyAdvancedFilters(rawTransactions, advancedFilters);
+    const purposeFiltered = filterTransactionsByAccountPurpose(
+      rawTransactions,
+      accounts,
+      selectedPurposeFilter,
+    );
+    const filtered = applyAdvancedFilters(purposeFiltered, advancedFilters);
     return sortTransactions(filtered, sortConfig, categoryNames);
-  }, [rawTransactions, advancedFilters, sortConfig, categoryNames]);
-  const {
-    selectedIds,
-    selectionCount,
-    toggleSelection,
-    selectAll,
-    clearSelection,
-    isSelected,
-    bulkUpdate,
-    bulkDelete,
-  } = useBulkTransactions(transactions, refreshTransactions);
+  }, [
+    rawTransactions,
+    accounts,
+    selectedPurposeFilter,
+    advancedFilters,
+    sortConfig,
+    categoryNames,
+  ]);
+
+  const bulkTransactions = useBulkTransactions(transactions, refreshTransactions);
+  const { selectedIds, selectionCount, clearSelection, isSelected, bulkUpdate } = bulkTransactions;
+
+  const selectedTransactionTags = useMemo(() => {
+    const tags = new Set<string>();
+    for (const transaction of bulkTransactions.selectedTransactions) {
+      for (const tag of transaction.tags ?? []) {
+        tags.add(tag);
+      }
+    }
+    return Array.from(tags);
+  }, [bulkTransactions.selectedTransactions]);
+
+  const allVisibleSelected =
+    transactions.length > 0 && bulkTransactions.selectionCount === transactions.length;
+  const someVisibleSelected = bulkTransactions.selectionCount > 0 && !allVisibleSelected;
+
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = someVisibleSelected;
+    }
+  }, [someVisibleSelected]);
+
   const transactionLookup = useMemo(
     () => new Map(transactions.map((transaction) => [transaction.id, transaction])),
     [transactions],
@@ -526,6 +619,53 @@ export const TransactionsPage: React.FC = () => {
     }));
   }, [transactions]);
 
+  const transactionRegisterRows = useMemo(
+    () => flattenTransactionGroups(groupedTransactions),
+    [groupedTransactions],
+  );
+  const [registerViewportHeight, setRegisterViewportHeight] = useState(getRegisterViewportHeight);
+  useEffect(() => {
+    const handleResize = () => setRegisterViewportHeight(getRegisterViewportHeight());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const virtualRegister = useVirtualList({
+    items: transactionRegisterRows,
+    itemHeight: VIRTUAL_REGISTER_ROW_HEIGHT,
+    containerHeight: registerViewportHeight,
+    overscan: VIRTUAL_REGISTER_OVERSCAN,
+  });
+  const largeTextReflow = useMemo(
+    () =>
+      chooseLargeTextReflow({
+        viewportWidth,
+        browserZoomPercent: 100,
+        inAppScale: inAppTextScale,
+        hasDenseData: true,
+      }),
+    [inAppTextScale, viewportWidth],
+  );
+  const useCardRegister = largeTextReflow.mode === 'card-alternative';
+  const useVirtualRegister =
+    !useCardRegister && transactionRegisterRows.length > VIRTUAL_REGISTER_THRESHOLD;
+  const virtualRowIndexByTransactionId = useMemo(() => {
+    const indexes = new Map<string, number>();
+    transactionRegisterRows.forEach((row, index) => {
+      if (row.kind === 'transaction') indexes.set(row.transaction.id, index);
+    });
+    return indexes;
+  }, [transactionRegisterRows]);
+  const transactionPositionById = useMemo(
+    () => new Map(transactions.map((transaction, index) => [transaction.id, index + 1])),
+    [transactions],
+  );
+
   // Filter/Sort handlers
   const handleFiltersChange = useCallback(
     (newFilters: AdvancedFilters) => {
@@ -553,6 +693,15 @@ export const TransactionsPage: React.FC = () => {
     setIsFormOpen(true);
     setAddMenuOpen(false);
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('new') !== 'transaction') return;
+
+    handleOpenCreateForm();
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('new');
+    setSearchParams(nextParams, { replace: true });
+  }, [handleOpenCreateForm, searchParams, setSearchParams]);
 
   const handleOpenVoiceEntry = useCallback(() => {
     setAddMenuOpen(false);
@@ -607,6 +756,7 @@ export const TransactionsPage: React.FC = () => {
         }
       }
 
+      recordPwaMeaningfulAction();
       handleFormCancel();
       refreshTransactions();
     },
@@ -626,6 +776,7 @@ export const TransactionsPage: React.FC = () => {
       if (result === null) {
         throw new Error('Failed to update transaction. Please try again.');
       }
+      recordPwaMeaningfulAction();
       if (editPanelTransaction?.categoryId !== result.categoryId) {
         learnCategoryChoice(result, result.categoryId);
       }
@@ -663,10 +814,136 @@ export const TransactionsPage: React.FC = () => {
 
     const deleted = deleteTransaction(deletingTransaction.id);
     if (deleted) {
+      recordPwaMeaningfulAction();
       setDeletingTransaction(null);
       refreshTransactions();
     }
   }, [deleteTransaction, deletingTransaction, refreshTransactions]);
+
+  const handleBulkDeleteConfirm = useCallback(() => {
+    bulkTransactions.bulkDelete();
+    recordPwaMeaningfulAction();
+    setBulkDeleteDialogOpen(false);
+  }, [bulkTransactions]);
+
+  const handleTransactionSelection = useCallback(
+    (transaction: Transaction, selected: boolean, shiftKey: boolean) => {
+      setActiveTransactionId(transaction.id);
+      if (shiftKey) {
+        bulkTransactions.selectRange(transaction.id, selected);
+      } else {
+        bulkTransactions.setSelection(transaction.id, selected);
+      }
+    },
+    [bulkTransactions],
+  );
+
+  const focusTransactionRow = useCallback(
+    (transactionId: string) => {
+      const focusRow = () => transactionRowRefs.current.get(transactionId)?.focus();
+      if (useVirtualRegister && !transactionRowRefs.current.has(transactionId)) {
+        const virtualIndex = virtualRowIndexByTransactionId.get(transactionId);
+        if (virtualIndex !== undefined) {
+          virtualRegister.scrollToIndex(virtualIndex, 'center');
+        }
+      }
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(focusRow);
+      } else {
+        focusRow();
+      }
+    },
+    [useVirtualRegister, virtualRegister, virtualRowIndexByTransactionId],
+  );
+
+  const handleListNavigate = useCallback(
+    (direction: -1 | 1) => {
+      if (transactions.length === 0) return;
+
+      const currentIndex = activeTransactionId
+        ? transactions.findIndex((transaction) => transaction.id === activeTransactionId)
+        : -1;
+      const nextIndex = Math.min(
+        transactions.length - 1,
+        Math.max(0, (currentIndex === -1 ? 0 : currentIndex) + direction),
+      );
+      const nextTransactionId = transactions[nextIndex].id;
+      setActiveTransactionId(nextTransactionId);
+      focusTransactionRow(nextTransactionId);
+    },
+    [activeTransactionId, focusTransactionRow, transactions],
+  );
+
+  const getKeyboardTargetTransaction = useCallback(() => {
+    if (transactions.length === 0) return null;
+    return (
+      transactions.find((transaction) => transaction.id === activeTransactionId) ?? transactions[0]
+    );
+  }, [activeTransactionId, transactions]);
+
+  const handleToggleActiveSelection = useCallback(() => {
+    const transaction = getKeyboardTargetTransaction();
+    if (!transaction) return;
+    setActiveTransactionId(transaction.id);
+    bulkTransactions.toggleSelection(transaction.id);
+  }, [bulkTransactions, getKeyboardTargetTransaction]);
+
+  const handleSelectAllVisible = useCallback(() => {
+    bulkTransactions.selectAll();
+    if (transactions[0]) {
+      setActiveTransactionId(transactions[0].id);
+    }
+  }, [bulkTransactions, transactions]);
+
+  const handleDeleteSelected = useCallback(() => {
+    if (bulkTransactions.selectionCount > 0) {
+      setBulkDeleteDialogOpen(true);
+    }
+  }, [bulkTransactions.selectionCount]);
+
+  const handleEditActiveTransaction = useCallback(() => {
+    const onlySelectedTransaction =
+      bulkTransactions.selectionCount === 1 ? bulkTransactions.selectedTransactions[0] : null;
+    const transaction = onlySelectedTransaction ?? getKeyboardTargetTransaction();
+    if (transaction) {
+      setActiveTransactionId(transaction.id);
+      handleEditTransaction(transaction);
+    }
+  }, [
+    bulkTransactions.selectedTransactions,
+    bulkTransactions.selectionCount,
+    getKeyboardTargetTransaction,
+    handleEditTransaction,
+  ]);
+
+  const handleOpenActiveTransaction = useCallback(() => {
+    const transaction = getKeyboardTargetTransaction();
+    if (transaction) {
+      navigate(`/transactions/${transaction.id}`);
+    }
+  }, [getKeyboardTargetTransaction, navigate]);
+
+  useEffect(() => {
+    if (transactions.length === 0) {
+      setActiveTransactionId(null);
+      return;
+    }
+    if (
+      !activeTransactionId ||
+      !transactions.some((transaction) => transaction.id === activeTransactionId)
+    ) {
+      setActiveTransactionId(transactions[0].id);
+    }
+  }, [activeTransactionId, transactions]);
+
+  useKeyboardShortcuts({
+    onListNavigate: handleListNavigate,
+    onListSelect: handleOpenActiveTransaction,
+    onListToggleSelection: handleToggleActiveSelection,
+    onListSelectAll: handleSelectAllVisible,
+    onListDeleteSelected: handleDeleteSelected,
+    onListEditSelected: handleEditActiveTransaction,
+  });
 
   const handleMileageTripSubmit = useCallback(
     async (trip: MileageTripDraft): Promise<void> => {
@@ -879,6 +1156,7 @@ export const TransactionsPage: React.FC = () => {
   );
 
   const hasActiveFilters =
+    selectedPurposeFilter !== 'all' ||
     query.trim() !== '' ||
     advancedFilters.startDate !== '' ||
     advancedFilters.endDate !== '' ||
@@ -888,6 +1166,116 @@ export const TransactionsPage: React.FC = () => {
     advancedFilters.amountMax !== '' ||
     advancedFilters.types.length > 0 ||
     advancedFilters.statuses.length > 0;
+
+  const renderTransactionRow = useCallback(
+    (transaction: Transaction, style?: React.CSSProperties, position?: number) => {
+      const transactionLabel = getTransactionLabel(transaction);
+      const isSelected = bulkTransactions.isSelected(transaction.id);
+      const isActive = activeTransactionId === transaction.id;
+
+      return (
+        <li
+          key={transaction.id}
+          ref={(node) => {
+            if (node) {
+              transactionRowRefs.current.set(transaction.id, node);
+            } else {
+              transactionRowRefs.current.delete(transaction.id);
+            }
+          }}
+          className={`list-item transaction-register__row${
+            isSelected ? ' transaction-register__row--selected' : ''
+          }${isActive ? ' transaction-register__row--active' : ''}`}
+          role="listitem"
+          aria-selected={isSelected}
+          aria-posinset={position}
+          aria-setsize={transactions.length}
+          tabIndex={isActive ? 0 : -1}
+          style={style}
+          onFocus={() => setActiveTransactionId(transaction.id)}
+          onClick={(event) => {
+            if (
+              (event.target as HTMLElement).closest('a,button,input,label,select,textarea')
+            ) {
+              return;
+            }
+            setActiveTransactionId(transaction.id);
+          }}
+        >
+          <div className="transaction-register__checkbox-cell">
+            <input
+              type="checkbox"
+              className="bulk-select-checkbox"
+              checked={isSelected}
+              readOnly
+              aria-label={`Select ${transactionLabel}`}
+              onClick={(event) =>
+                handleTransactionSelection(
+                  transaction,
+                  event.currentTarget.checked,
+                  event.shiftKey,
+                )
+              }
+            />
+          </div>
+          <LazyReceiptImage transaction={transaction} className="receipt-thumb" />
+          <div className="list-item__content">
+            <Link
+              to={`/transactions/${transaction.id}`}
+              style={{ textDecoration: 'none', color: 'inherit' }}
+              aria-label={`View details for ${transactionLabel}`}
+            >
+              <p className="list-item__primary">{transactionLabel}</p>
+            </Link>
+            <p className="list-item__secondary">
+              {transaction.counterpartyName ? `${transaction.counterpartyName} · ` : ''}
+              {transaction.categoryId !== null
+                ? (categoryNames.get(transaction.categoryId) ?? 'Uncategorized')
+                : 'Uncategorized'}{' '}
+              &middot; {accountNames.get(transaction.accountId) ?? 'Unknown account'}
+            </p>
+          </div>
+          <div className="list-item__trailing transaction-list-item__trailing">
+            <div className="transaction-list-item__amount">
+              <CurrencyDisplay
+                amount={getTransactionDisplayAmount(transaction)}
+                currency={transaction.currency.code}
+                colorize
+                showSign
+              />
+            </div>
+            <div className="transaction-item__actions" aria-label="Transaction actions">
+              <button
+                type="button"
+                className="icon-button transaction-item__action"
+                onClick={() => handleEditTransaction(transaction)}
+                aria-label={`Edit ${transactionLabel}`}
+              >
+                <AppIcon name="edit" />
+              </button>
+              <button
+                type="button"
+                className="icon-button transaction-item__action transaction-item__action--delete"
+                onClick={() => setDeletingTransaction(transaction)}
+                aria-label={`Delete ${transactionLabel}`}
+              >
+                <AppIcon name="trash" />
+              </button>
+            </div>
+          </div>
+        </li>
+      );
+    },
+    [
+      accountNames,
+      activeTransactionId,
+      bulkTransactions,
+      categoryNames,
+      handleEditTransaction,
+      handleTransactionSelection,
+      transactions.length,
+    ],
+  );
 
   return (
     <DragDropProvider>
@@ -998,6 +1386,12 @@ export const TransactionsPage: React.FC = () => {
             )}
           </div>
 
+          <AccountPurposeFilterControl
+            value={selectedPurposeFilter}
+            onChange={setSelectedPurposeFilter}
+            label="Filter transactions by account purpose"
+          />
+
           <div className="search-bar" role="search">
             <input
               type="search"
@@ -1020,20 +1414,23 @@ export const TransactionsPage: React.FC = () => {
                     isOpen={filtersOpen}
                     onToggle={() => setFiltersOpen((o) => !o)}
                     categories={categories}
-                    accounts={accounts}
+                    accounts={visibleFilterAccounts}
                   />
                 </div>
                 <TransactionSort sort={sortConfig} onChange={handleSortChange} />
               </div>
 
-              <BulkEditToolbar
-                selectionCount={selectionCount}
+              <TransactionBulkActionsToolbar
+                selectionCount={bulkTransactions.selectionCount}
                 totalCount={transactions.length}
                 categories={categories}
-                onSelectAll={selectAll}
-                onClearSelection={clearSelection}
-                onBulkUpdate={bulkUpdate}
-                onBulkDelete={bulkDelete}
+                availableTags={selectedTransactionTags}
+                onSelectAll={bulkTransactions.selectAll}
+                onClearSelection={bulkTransactions.clearSelection}
+                onBulkUpdate={bulkTransactions.bulkUpdate}
+                onBulkAddTag={bulkTransactions.bulkAddTag}
+                onBulkRemoveTag={bulkTransactions.bulkRemoveTag}
+                onRequestBulkDelete={() => setBulkDeleteDialogOpen(true)}
               />
               <CategoryDropZone
                 categories={categories}
@@ -1101,8 +1498,116 @@ export const TransactionsPage: React.FC = () => {
                   : 'Transactions you add will appear here.'
               }
             />
+          ) : useCardRegister ? (
+            <div className="card transaction-card-list-fallback">
+              <p className="sr-only" role="status">
+                Showing {transactions.length} transactions as cards for large text.{' '}
+                {largeTextReflow.reasons.join(' ')}
+              </p>
+              {groupedTransactions.map((group) => (
+                <section
+                  key={group.date}
+                  className="page-section"
+                  aria-label={`${group.label} transaction cards`}
+                >
+                  <h3 className="list-group__header">{group.label}</h3>
+                  <ul
+                    className="list-group transaction-card-list"
+                    role="list"
+                    aria-label="Large text transaction card list"
+                  >
+                    {group.transactions.map((transaction) =>
+                      renderTransactionRow(
+                        transaction,
+                        undefined,
+                        transactionPositionById.get(transaction.id),
+                      ),
+                    )}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          ) : useVirtualRegister ? (
+            <div className="card">
+              <p className="sr-only" role="status">
+                Showing {transactions.length} transactions with virtual scrolling
+              </p>
+              <div
+                {...virtualRegister.containerProps}
+                ref={virtualRegister.containerRef}
+                className="transaction-register-virtual"
+                role="list"
+                aria-label="Virtualized transaction register"
+                aria-setsize={transactions.length}
+              >
+                <ul
+                  className="list-group"
+                  role="presentation"
+                  style={{
+                    ...virtualRegister.contentProps.style,
+                    listStyle: 'none',
+                    margin: 0,
+                    padding: 0,
+                  }}
+                >
+                  {virtualRegister.visibleItems.map(({ item, offsetTop }) => {
+                    const rowStyle: React.CSSProperties = {
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: VIRTUAL_REGISTER_ROW_HEIGHT,
+                      transform: `translateY(${offsetTop}px)`,
+                    };
+
+                    if (item.kind === 'header') {
+                      return (
+                        <li
+                          key={item.id}
+                          className="list-group__header transaction-register-virtual__header"
+                          role="presentation"
+                          style={rowStyle}
+                        >
+                          {item.label}
+                        </li>
+                      );
+                    }
+
+                    return renderTransactionRow(
+                      item.transaction,
+                      rowStyle,
+                      item.transactionPosition,
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
           ) : (
             <div>
+              <p className="sr-only" role="status" aria-live="polite">
+                {bulkTransactions.selectionCount === 0
+                  ? 'No transactions selected'
+                  : `${bulkTransactions.selectionCount} transaction${
+                      bulkTransactions.selectionCount === 1 ? '' : 's'
+                    } selected`}
+              </p>
+              <label className="transaction-register__select-all">
+                <input
+                  ref={selectAllCheckboxRef}
+                  type="checkbox"
+                  className="bulk-select-checkbox"
+                  checked={allVisibleSelected}
+                  onChange={(event) => {
+                    if (event.currentTarget.checked) {
+                      bulkTransactions.selectAll();
+                    } else {
+                      bulkTransactions.clearSelection();
+                    }
+                  }}
+                  aria-label="Select all visible transactions"
+                />
+                Select all visible transactions
+              </label>
               {groupedTransactions.map((group) => (
                 <section key={group.date} className="page-section" aria-label={group.label}>
                   <h3 className="list-group__header">{group.label}</h3>
@@ -1195,7 +1700,15 @@ export const TransactionsPage: React.FC = () => {
                                   type="checkbox"
                                   className="bulk-select-checkbox"
                                   checked={isSelected(transaction.id)}
-                                  onChange={() => toggleSelection(transaction.id)}
+                                  onChange={(event) =>
+                                    handleTransactionSelection(
+                                      transaction,
+                                      event.currentTarget.checked,
+                                      event.nativeEvent instanceof MouseEvent
+                                        ? event.nativeEvent.shiftKey
+                                        : false,
+                                    )
+                                  }
                                   aria-label={`Select ${transactionLabel}`}
                                 />
                               </div>
@@ -1395,8 +1908,21 @@ export const TransactionsPage: React.FC = () => {
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeletingTransaction(null)}
         />
+
+        <ConfirmDialog
+          isOpen={bulkDeleteDialogOpen}
+          title="Delete Selected Transactions"
+          message={`Are you sure you want to delete ${bulkTransactions.selectionCount} selected transaction${
+            bulkTransactions.selectionCount === 1 ? '' : 's'
+          }?`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={handleBulkDeleteConfirm}
+          onCancel={() => setBulkDeleteDialogOpen(false)}
+        />
       </>
     </DragDropProvider>
+
   );
 };
 

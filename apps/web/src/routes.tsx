@@ -13,6 +13,7 @@ import './styles/route-loader.css';
  * These mirror the mobile app navigation structure.
  */
 const Dashboard = lazy(() => import('./pages/DashboardPage'));
+const Safety = lazy(() => import('./pages/SafetyPage'));
 const Accounts = lazy(() => import('./pages/AccountsPage'));
 const AccountDetail = lazy(() => import('./pages/AccountDetailPage'));
 const Transactions = lazy(() => import('./pages/TransactionsPage'));
@@ -50,8 +51,10 @@ const NotFound = lazy(() => import('./pages/NotFoundPage'));
 const Watchlists = lazy(() => import('./pages/WatchlistsPage'));
 const Household = lazy(() => import('./pages/HouseholdPage'));
 const ReportBuilder = lazy(() => import('./pages/ReportBuilderPage'));
+const ClientProfitability = lazy(() => import('./pages/ClientProfitabilityPage'));
 const Investments = lazy(() => import('./pages/InvestmentsPage'));
 const InvestmentDetail = lazy(() => import('./pages/InvestmentDetailPage'));
+const TaxCenter = lazy(() => import('./pages/TaxCenterPage'));
 const Bills = lazy(() => import('./pages/BillsPage'));
 const BillDetail = lazy(() => import('./pages/BillDetailPage'));
 const CreateBill = lazy(() => import('./pages/CreateBillPage'));
@@ -61,9 +64,11 @@ const EstateInventory = lazy(() => import('./pages/EstateInventoryPage'));
 const PrivacyDashboard = lazy(() => import('./pages/PrivacyDashboardPage'));
 const Onboarding = lazy(() => import('./pages/OnboardingPage'));
 const CashFlow = lazy(() => import('./pages/CashFlowPage'));
+const Invoices = lazy(() => import('./pages/InvoicesPage'));
 const NetWorth = lazy(() => import('./pages/NetWorthPage'));
 const Subscriptions = lazy(() => import('./pages/SubscriptionsPage'));
 const BankConnections = lazy(() => import('./pages/BankConnectionsPage'));
+const Debt = lazy(() => import('./pages/DebtPage'));
 
 /**
  * Loading fallback shown while a lazy route chunk is being fetched.
@@ -152,7 +157,7 @@ const RedirectIfAuthenticated: FC<{ children: ReactNode }> = ({ children }) => {
  * Application route definitions.
  *
  * Route structure mirrors the mobile app tabs:
- *   /dashboard, /accounts, /transactions, /budgets, /goals, /settings
+ *   /dashboard, /accounts, /transactions, /budgets, /debt, /goals, /settings
  *
  * Pre-auth routes (login, signup) are rendered WITHOUT AppLayout.
  */
@@ -244,6 +249,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Dashboard">
             <Dashboard />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/safety"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Safety">
+            <Safety />
           </RouteBoundary>
         </AuthenticatedRoute>
       }
@@ -347,6 +362,16 @@ export const AppRoutes: FC = () => (
       }
     />
     <Route
+      path="/debt"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Debt">
+            <Debt />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
       path="/import"
       element={
         <AuthenticatedRoute>
@@ -382,6 +407,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Report Builder">
             <ReportBuilder />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/client-profitability"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Client Profitability">
+            <ClientProfitability />
           </RouteBoundary>
         </AuthenticatedRoute>
       }
@@ -485,6 +520,16 @@ export const AppRoutes: FC = () => (
       }
     />
     <Route
+      path="/investments/tax"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Tax Center">
+            <TaxCenter />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
       path="/investments/:id"
       element={
         <AuthenticatedRoute>
@@ -560,6 +605,16 @@ export const AppRoutes: FC = () => (
         <AuthenticatedRoute>
           <RouteBoundary name="Cash Flow">
             <CashFlow />
+          </RouteBoundary>
+        </AuthenticatedRoute>
+      }
+    />
+    <Route
+      path="/invoices"
+      element={
+        <AuthenticatedRoute>
+          <RouteBoundary name="Invoices">
+            <Invoices />
           </RouteBoundary>
         </AuthenticatedRoute>
       }

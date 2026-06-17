@@ -22,11 +22,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const offlineStatusMock = vi.hoisted(() => ({
   isOffline: false,
   isOnline: true,
+  isDegraded: false,
+  degradedMessage: 'Online',
 }));
 
 vi.mock('../hooks/useOfflineStatus', () => ({
   useOfflineStatus: () => offlineStatusMock,
 }));
+
+const offlineMessage = 'You are offline. Changes will sync when connectivity is restored.';
 
 import { OfflineBanner } from '../components/OfflineBanner';
 
@@ -92,6 +96,8 @@ beforeEach(() => {
 
   offlineStatusMock.isOffline = false;
   offlineStatusMock.isOnline = true;
+  offlineStatusMock.isDegraded = false;
+  offlineStatusMock.degradedMessage = 'Online';
 
   Object.defineProperty(navigator, 'onLine', {
     get: () => onlineState,
@@ -125,13 +131,13 @@ describe('OfflineBanner (#1333)', () => {
   it('shows the banner when offline', () => {
     offlineStatusMock.isOffline = true;
     offlineStatusMock.isOnline = false;
+    offlineStatusMock.isDegraded = true;
+    offlineStatusMock.degradedMessage = offlineMessage;
 
     render(<OfflineBanner />);
 
     expect(screen.getByRole('status')).not.toHaveClass('offline-banner--hidden');
-    expect(
-      screen.getByText('You are offline. Changes will sync when connectivity is restored.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText(offlineMessage)).toBeInTheDocument();
   });
 
   it('hides the banner when online', () => {
@@ -161,6 +167,8 @@ describe('OfflineBanner (#1333)', () => {
 
     offlineStatusMock.isOffline = true;
     offlineStatusMock.isOnline = false;
+    offlineStatusMock.isDegraded = true;
+    offlineStatusMock.degradedMessage = offlineMessage;
     rerender(<OfflineBanner />);
 
     expect(screen.getByRole('status')).not.toHaveClass('offline-banner--hidden');
@@ -169,12 +177,16 @@ describe('OfflineBanner (#1333)', () => {
   it('transitions from offline to online state', () => {
     offlineStatusMock.isOffline = true;
     offlineStatusMock.isOnline = false;
+    offlineStatusMock.isDegraded = true;
+    offlineStatusMock.degradedMessage = offlineMessage;
 
     const { rerender } = render(<OfflineBanner />);
     expect(screen.getByRole('status')).not.toHaveClass('offline-banner--hidden');
 
     offlineStatusMock.isOffline = false;
     offlineStatusMock.isOnline = true;
+    offlineStatusMock.isDegraded = false;
+    offlineStatusMock.degradedMessage = 'Online';
     rerender(<OfflineBanner />);
 
     expect(screen.getByRole('status')).toHaveClass('offline-banner--hidden');
@@ -534,3 +546,4 @@ describe('Data integrity after offline → online (#1333)', () => {
     });
   });
 });
+

@@ -6,6 +6,7 @@ import { AppIcon } from '../components/icons';
 
 import { ConfirmDialog, CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
 import { TransactionForm } from '../components/forms';
+import { LazyReceiptImage } from '../components/transactions';
 import { Breadcrumb } from '../components/navigation';
 import { TagList } from '../components/tags';
 import { ReturnWindowBadge, WarrantyForm } from '../components/warranty';
@@ -17,6 +18,8 @@ import {
   isBnplInstallmentPaid,
   isBnplLiabilityTransaction,
 } from '../lib/bnpl-liability';
+import { isTransactionLockedByReconciliation } from '../lib/reconciliation';
+import { getContributionDesignationLabel } from '../lib/tax/retirement-contribution-metadata';
 import type { Transaction } from '../kmp/bridge';
 import '../components/navigation/breadcrumb.css';
 
@@ -67,11 +70,25 @@ export const TransactionDetailPage: React.FC = () => {
     [accounts, transaction],
   );
 
-  const categoryName = useMemo(
+  const categoryName = useMemo(() => {
+    if (transaction?.splits && transaction.splits.length > 0) {
+      return `Split (${transaction.splits.length} lines)`;
+    }
+
+    return transaction?.categoryId
+      ? (categories.find((c) => c.id === transaction.categoryId)?.name ?? 'Uncategorized')
+      : 'Uncategorized';
+  }, [categories, transaction]);
+
+  const splitDetails = useMemo(
     () =>
-      transaction?.categoryId
-        ? (categories.find((c) => c.id === transaction.categoryId)?.name ?? 'Uncategorized')
-        : 'Uncategorized',
+      transaction?.splits?.map((split) => ({
+        ...split,
+        categoryName: split.categoryId
+          ? (categories.find((category) => category.id === split.categoryId)?.name ??
+            'Uncategorized')
+          : 'Uncategorized',
+      })) ?? [],
     [categories, transaction],
   );
 
@@ -197,6 +214,7 @@ export const TransactionDetailPage: React.FC = () => {
     transaction.payee?.trim() ||
     transaction.note?.trim() ||
     (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction');
+  const isLockedByReconciliation = isTransactionLockedByReconciliation(transaction);
 
   const displayAmount =
     transaction.type === 'EXPENSE'
@@ -242,6 +260,8 @@ export const TransactionDetailPage: React.FC = () => {
             className="icon-button transaction-item__action"
             onClick={() => setIsFormOpen(true)}
             aria-label={`Edit ${label}`}
+            disabled={isLockedByReconciliation}
+            title={isLockedByReconciliation ? 'Reconciled transactions are locked.' : undefined}
           >
             <AppIcon name="edit" />
           </button>
@@ -250,6 +270,8 @@ export const TransactionDetailPage: React.FC = () => {
             className="icon-button transaction-item__action transaction-item__action--delete"
             onClick={() => setDeletingTransaction(transaction)}
             aria-label={`Delete ${label}`}
+            disabled={isLockedByReconciliation}
+            title={isLockedByReconciliation ? 'Reconciled transactions are locked.' : undefined}
           >
             <AppIcon name="trash" />
           </button>
@@ -283,7 +305,10 @@ export const TransactionDetailPage: React.FC = () => {
           </div>
           <div>
             <dt className="card__title">Status</dt>
-            <dd>{STATUS_LABELS[transaction.status] ?? transaction.status}</dd>
+            <dd>
+              {STATUS_LABELS[transaction.status] ?? transaction.status}
+              {isLockedByReconciliation ? ' · Locked by reconciliation' : ''}
+            </dd>
           </div>
           <div>
             <dt className="card__title">Account</dt>
@@ -306,6 +331,17 @@ export const TransactionDetailPage: React.FC = () => {
                 <dd>{transaction.counterpartyName}</dd>
               </div>
             )}
+          {transaction.retirementContributionDesignation && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <dt className="card__title">Retirement contribution</dt>
+              <dd>
+                {getContributionDesignationLabel(transaction.retirementContributionDesignation)}
+                {transaction.retirementContributionYear
+                  ? ' · ' + transaction.retirementContributionYear
+                  : ''}
+              </dd>
+            </div>
+          )}
           {transaction.tags.length > 0 && (
             <div style={{ gridColumn: '1 / -1' }}>
               <dt className="card__title">Tags</dt>
@@ -316,6 +352,59 @@ export const TransactionDetailPage: React.FC = () => {
           )}
         </dl>
       </article>
+
+      <LazyReceiptImage transaction={transaction} className="receipt-detail-image" />
+
+      {splitDetails.length > 0 && (
+        <article
+          className="card"
+          aria-label="Split details"
+          style={{ marginBottom: 'var(--spacing-6)' }}
+        >
+          <h3 className="card__title">Splits</h3>
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              marginTop: 'var(--spacing-2)',
+            }}
+          >
+            <thead>
+              <tr>
+                <th scope="col" style={{ textAlign: 'left', padding: 'var(--spacing-2)' }}>
+                  Category
+                </th>
+                <th scope="col" style={{ textAlign: 'right', padding: 'var(--spacing-2)' }}>
+                  Amount
+                </th>
+                <th scope="col" style={{ textAlign: 'left', padding: 'var(--spacing-2)' }}>
+                  Note
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {splitDetails.map((split, index) => (
+                <tr key={split.id ?? `${split.categoryId ?? 'none'}-${index}`}>
+                  <td style={{ padding: 'var(--spacing-2)' }}>{split.categoryName}</td>
+                  <td style={{ padding: 'var(--spacing-2)', textAlign: 'right' }}>
+                    <CurrencyDisplay
+                      amount={
+                        transaction.type === 'EXPENSE'
+                          ? -Math.abs(split.amount.amount)
+                          : split.amount.amount
+                      }
+                      currency={transaction.currency.code}
+                      colorize
+                      showSign
+                    />
+                  </td>
+                  <td style={{ padding: 'var(--spacing-2)' }}>{split.note ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </article>
+      )}
 
       <WarrantyForm transaction={transaction} categoryName={categoryName} />
 

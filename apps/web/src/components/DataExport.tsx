@@ -9,10 +9,14 @@ import { getAllBudgets } from '../db/repositories/budgets';
 import { getAllGoals } from '../db/repositories/goals';
 import { getAllCategories } from '../db/repositories/categories';
 import {
+  DEFAULT_DATA_ACCESS_DOMAINS,
   buildDataAccessPackage,
   shouldAutoDeletePackage,
   shouldWarnPackageExpiresSoon,
+  summarizeDataAccessDomains,
+  type DataAccessDomain,
   type DataAccessManifest,
+  type DataAccessPackageInput,
   type DataAccessPackageResult,
 } from '../lib/data-access-package';
 import { buildBackupPackage, serializeBackupPackage } from '../lib/export/backup-package';
@@ -22,6 +26,16 @@ import {
   buildFullJsonExport,
   buildTransactionsCsv,
 } from '../lib/export/simple-export';
+import {
+  buildInvestmentCsvZip,
+  buildInvestmentXlsx,
+  type InvestmentExportInput,
+} from '../lib/export/investment-export';
+import { exportConsentRecord } from '../lib/consent-storage';
+import { exportConsentHistory } from '../lib/consent-history';
+import { appendSecurityAuditEvent, loadSecurityAuditLog } from '../lib/security-audit-log';
+import { getStepUpStatus, markStepUpAuthenticated } from '../lib/session-security';
+import { recordThirdPartyConnectionGrant } from '../lib/third-party-permissions';
 import './data-export.css';
 
 type ExportStatus =
@@ -44,6 +58,8 @@ interface ExportData {
 
 export interface DataExportProps {
   className?: string;
+  investmentExport?: InvestmentExportInput;
+  showFinanceExports?: boolean;
 }
 
 const APP_VERSION = '0.1.0';
@@ -99,6 +115,34 @@ function readLocalStorageRecords(prefix: string): ExportRecord[] {
 
 function toExportRecords<T extends object>(records: readonly T[]): ExportRecord[] {
   return records.map((record) => Object.fromEntries(Object.entries(record)));
+}
+
+function safeJsonRecord(value: string): ExportRecord {
+  try {
+    const parsed = JSON.parse(value) as ExportRecord;
+    return parsed;
+  } catch {
+    return { raw: value };
+  }
+}
+
+function buildPackageInput(db: SqliteDb, includeMoodTags: boolean): DataAccessPackageInput {
+  const data = gatherExportData(db, includeMoodTags);
+  return {
+    accounts: toExportRecords(data.accounts),
+    transactions: toExportRecords(data.transactions),
+    budgets: toExportRecords(data.budgets),
+    goals: toExportRecords(data.goals),
+    categories: toExportRecords(data.categories),
+    preferences: readLocalStorageRecords('finance-'),
+    settings: readLocalStorageRecords('settings-'),
+    consentRecords: [safeJsonRecord(exportConsentRecord()), safeJsonRecord(exportConsentHistory())],
+    auditLog: loadSecurityAuditLog().map((event) => ({ ...event })),
+    syncMetadata: [{ offline: !navigator.onLine, user_agent: navigator.userAgent }],
+    recurringRules: [],
+    attachments: [],
+    moodTags: includeMoodTags ? readLocalStorageRecords('finance-mood-') : [],
+  };
 }
 
 function downloadBytes(content: Uint8Array, filename: string, mimeType: string): string {
@@ -225,12 +269,23 @@ export async function shareZipPackage(
   }
 }
 
-export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
+export const DataExport: React.FC<DataExportProps> = ({
+  className = '',
+  investmentExport,
+  showFinanceExports = true,
+}) => {
   const db = useExportDatabase();
   const [status, setStatus] = useState<ExportStatus>('idle');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [includeProtectedCategories, setIncludeProtectedCategories] = useState(true);
+  const [includeProtectedCategories, setIncludeProtectedCategories] = useState(false);
   const [includeMoodTags, setIncludeMoodTags] = useState(false);
+  const [includeNotes, setIncludeNotes] = useState(false);
+  const [includeAttachmentBinaries, setIncludeAttachmentBinaries] = useState(false);
+  const [selectedDomains, setSelectedDomains] = useState<DataAccessDomain[]>(() => [
+    ...DEFAULT_DATA_ACCESS_DOMAINS,
+  ]);
+  const [stepUpMessage, setStepUpMessage] = useState('');
+  const [shareRecipient, setShareRecipient] = useState('');
   const [packageResult, setPackageResult] = useState<DataAccessPackageResult | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -290,11 +345,28 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
 
   const manifest = packageResult?.manifest;
   const dbUnavailable = db === null;
+  const previewInput = useMemo(() => (db ? buildPackageInput(db, includeMoodTags) : null), [db, includeMoodTags]);
+  const domainSummaries = useMemo(
+    () => (previewInput ? summarizeDataAccessDomains(previewInput) : []),
+    [previewInput],
+  );
 
   const startRequest = useCallback(() => {
     setShowConfirmation(true);
     setErrorMessage('');
+    setStepUpMessage('');
     setSimpleDownloadMessage('');
+  }, []);
+
+  const toggleDomain = useCallback((domain: DataAccessDomain, checked: boolean) => {
+    setSelectedDomains((current) =>
+      checked ? Array.from(new Set([...current, domain])) : current.filter((item) => item !== domain),
+    );
+  }, []);
+
+  const verifyStepUpForExport = useCallback(async () => {
+    const status = await markStepUpAuthenticated('data_export', { source: 'data-export-dialog' });
+    setStepUpMessage(status.reason);
   }, []);
 
   const cancelRequest = useCallback(() => {
@@ -305,6 +377,21 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
   }, []);
 
   const confirmRequest = useCallback(() => {
+    if (selectedDomains.length === 0) {
+      setStatus('error');
+      setErrorMessage('Select at least one data category before generating a GDPR export.');
+      return;
+    }
+    const stepUp = getStepUpStatus('data_export');
+    if (!stepUp.allowed) {
+      setStepUpMessage(stepUp.reason);
+      void appendSecurityAuditEvent({
+        action: 'step_up_reauth',
+        result: 'failure',
+        metadata: { riskyAction: 'data_export', reason: stepUp.reason },
+      });
+      return;
+    }
     setShowConfirmation(false);
     setStatus('pending');
     setErrorMessage('');
@@ -316,30 +403,49 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
       try {
         if (!db)
           throw new Error('Database is still initializing. Please wait a moment and try again.');
-        const data = gatherExportData(db, includeMoodTags);
-
+        const packageInput = buildPackageInput(db, includeMoodTags);
+        await appendSecurityAuditEvent({
+          action: 'data_export_generated',
+          result: 'success',
+          metadata: {
+            selectedDomains,
+            includeProtectedCategories,
+            includeMoodTags,
+            includeNotes,
+            includeAttachmentBinaries,
+            redactionProfile: includeProtectedCategories || includeMoodTags || includeNotes || includeAttachmentBinaries ? 'full' : 'redacted',
+            recipient: shareRecipient.trim() || null,
+          },
+        });
+        if (shareRecipient.trim()) {
+          const now = new Date().toISOString();
+          await recordThirdPartyConnectionGrant({
+            id: 'export-recipient-' + shareRecipient.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            displayName: shareRecipient.trim(),
+            type: 'export_recipient',
+            scopes: selectedDomains,
+            consentedAt: now,
+            lastActivityAt: now,
+            status: 'active',
+            risk: 'high',
+          });
+        }
         const result = buildDataAccessPackage(
           {
-            accounts: toExportRecords(data.accounts),
-            transactions: toExportRecords(data.transactions),
-            budgets: toExportRecords(data.budgets),
-            goals: toExportRecords(data.goals),
-            categories: toExportRecords(data.categories),
-            preferences: readLocalStorageRecords('finance-'),
-            settings: readLocalStorageRecords('settings-'),
-            auditLog: [
-              { event: 'data_access_export_generated', timestamp: new Date().toISOString() },
-            ],
-            syncMetadata: [{ offline: !navigator.onLine, user_agent: navigator.userAgent }],
-            recurringRules: [],
-            attachments: [],
-            moodTags: includeMoodTags ? readLocalStorageRecords('finance-mood-') : [],
+            ...packageInput,
+            auditLog: loadSecurityAuditLog().map((event) => ({ ...event })),
           },
           {
             appVersion: APP_VERSION,
             locale: navigator.language,
             includeProtectedCategories,
             includeMoodTags,
+            includeNotes,
+            includeAttachmentBinaries,
+            selectedDomains,
+            redactionProfile: includeProtectedCategories || includeMoodTags || includeNotes || includeAttachmentBinaries ? 'full' : 'redacted',
+            recipient: shareRecipient.trim() || undefined,
+            shareMethod: 'unknown',
           },
         );
         if (cancelledRef.current) return;
@@ -350,7 +456,15 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
         setErrorMessage(error instanceof Error ? error.message : 'Data package generation failed.');
       }
     }, 100);
-  }, [db, includeMoodTags, includeProtectedCategories]);
+  }, [
+    db,
+    includeAttachmentBinaries,
+    includeMoodTags,
+    includeNotes,
+    includeProtectedCategories,
+    selectedDomains,
+    shareRecipient,
+  ]);
 
   const downloadFullJson = useCallback(() => {
     setErrorMessage('');
@@ -423,6 +537,46 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
     }
   }, [db]);
 
+  const downloadInvestmentCsvZip = useCallback(() => {
+    if (!investmentExport) return;
+    setErrorMessage('');
+    setSimpleDownloadMessage('');
+    try {
+      const generatedAt = new Date();
+      triggerBytesDownload(
+        buildInvestmentCsvZip(investmentExport),
+        buildDatedExportFileName('finance-investment-tax-exports', 'zip', generatedAt),
+        'application/zip',
+      );
+      setSimpleDownloadMessage('Investment CSV ZIP download started.');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to download investment CSVs.',
+      );
+    }
+  }, [investmentExport]);
+
+  const downloadInvestmentXlsx = useCallback(() => {
+    if (!investmentExport) return;
+    setErrorMessage('');
+    setSimpleDownloadMessage('');
+    try {
+      const generatedAt = new Date();
+      triggerBytesDownload(
+        buildInvestmentXlsx(investmentExport),
+        buildDatedExportFileName('finance-investment-tax-exports', 'xlsx', generatedAt),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      setSimpleDownloadMessage('Investment XLSX download started.');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to download investment XLSX.',
+      );
+    }
+  }, [investmentExport]);
+
   const downloadPackage = useCallback(() => {
     if (!packageResult) return;
     setErrorMessage('');
@@ -463,139 +617,191 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
   }, [packageResult]);
 
   const requestDisabled = dbUnavailable || status === 'pending' || status === 'generating';
+  const investmentDownloadDisabled = status === 'pending' || status === 'generating';
+  const showInvestmentExports = investmentExport !== undefined;
 
   return (
     <div className={`data-export ${className}`.trim()}>
       <p id="data-export-description" className="data-export__description">
-        {dbUnavailable
+        {showFinanceExports && dbUnavailable
           ? 'Database is not available. Please wait for it to initialize.'
-          : 'Download your data directly, or generate a signed ZIP package for sharing. Everything happens on this device — no server roundtrip.'}
+          : showFinanceExports
+            ? 'Download your data directly, or generate a signed ZIP package for sharing. Everything happens on this device — no server roundtrip.'
+            : 'Download investment and tax-ready exports generated on this device.'}
       </p>
 
-      <div className="data-export__group" role="group" aria-labelledby="data-export-direct-heading">
-        <h4 id="data-export-direct-heading" className="data-export__group-title">
-          Direct download
-        </h4>
-        <p className="data-export__group-help">
-          One-click downloads that work for both fresh and populated accounts.
-        </p>
-        <div className="data-export__button-row">
-          <button
-            type="button"
-            className="data-export__button"
-            disabled={requestDisabled}
-            onClick={downloadFullJson}
-            aria-describedby="data-export-description"
-          >
-            <DownloadIcon />
-            Download all data (JSON)
-          </button>
-          <button
-            type="button"
-            className="data-export__button"
-            disabled={requestDisabled}
-            onClick={downloadAllCsvZip}
-            aria-describedby="data-export-description"
-          >
-            <DownloadIcon />
-            Download all data (CSV ZIP)
-          </button>
-          <button
-            type="button"
-            className="data-export__button"
-            disabled={requestDisabled}
-            onClick={downloadTransactionsCsv}
-            aria-describedby="data-export-description"
-          >
-            <DownloadIcon />
-            Download transactions (CSV)
-          </button>
-        </div>
-      </div>
-
-      <div
-        className="data-export__group"
-        role="group"
-        aria-labelledby="data-export-package-heading"
-      >
-        <h4 id="data-export-package-heading" className="data-export__group-title">
-          Signed data package
-        </h4>
-        <p className="data-export__group-help">
-          A signed ZIP with a manifest, README, and per-entity JSON files. Kept on-device for 7
-          days.
-        </p>
-        <div className="data-export__button-row">
-          <button
-            type="button"
-            className="data-export__button"
-            disabled={requestDisabled}
-            onClick={startRequest}
-          >
-            <DownloadIcon />
-            {STRINGS.requestButton}
-          </button>
-          {(status === 'pending' || status === 'generating') && (
-            <button type="button" className="data-export__button" onClick={cancelRequest}>
-              Cancel request
-            </button>
-          )}
-          {packageResult && status !== 'pending' && status !== 'generating' && (
-            <>
-              <button
-                type="button"
-                className="data-export__button data-export__button--primary"
-                onClick={downloadPackage}
-              >
-                <DownloadIcon />
-                Download ZIP
-              </button>
-              {shareApiPresent && (
-                <button
-                  type="button"
-                  className="data-export__button"
-                  onClick={() => void sharePackage()}
-                  disabled={!shareSupported}
-                  aria-describedby="data-export-share-help"
-                  title={
-                    shareSupported
-                      ? undefined
-                      : "Sharing isn't available in this browser — use Download ZIP."
-                  }
-                >
-                  Share my exported package
-                </button>
-              )}
-            </>
-          )}
-          {!packageResult && shareApiPresent && (
+      {showFinanceExports && (
+        <div
+          className="data-export__group"
+          role="group"
+          aria-labelledby="data-export-direct-heading"
+        >
+          <h4 id="data-export-direct-heading" className="data-export__group-title">
+            Direct download
+          </h4>
+          <p className="data-export__group-help">
+            One-click downloads that work for both fresh and populated accounts.
+          </p>
+          <div className="data-export__button-row">
             <button
               type="button"
               className="data-export__button"
-              disabled
-              aria-describedby="data-export-share-help"
-              title="Generate a package first, then share."
+              disabled={requestDisabled}
+              onClick={downloadFullJson}
+              aria-describedby="data-export-description"
             >
-              Share my exported package
+              <DownloadIcon />
+              Download all data (JSON)
             </button>
+            <button
+              type="button"
+              className="data-export__button"
+              disabled={requestDisabled}
+              onClick={downloadAllCsvZip}
+              aria-describedby="data-export-description"
+            >
+              <DownloadIcon />
+              Download all data (CSV ZIP)
+            </button>
+            <button
+              type="button"
+              className="data-export__button"
+              disabled={requestDisabled}
+              onClick={downloadTransactionsCsv}
+              aria-describedby="data-export-description"
+            >
+              <DownloadIcon />
+              Download transactions (CSV)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showFinanceExports && (
+        <div
+          className="data-export__group"
+          role="group"
+          aria-labelledby="data-export-package-heading"
+        >
+          <h4 id="data-export-package-heading" className="data-export__group-title">
+            Signed data package
+          </h4>
+          <p className="data-export__group-help">
+            A signed ZIP with a manifest, README, and per-entity JSON files. Kept on-device for 7
+            days.
+          </p>
+          <div className="data-export__button-row">
+            <button
+              type="button"
+              className="data-export__button"
+              disabled={requestDisabled}
+              onClick={startRequest}
+            >
+              <DownloadIcon />
+              {STRINGS.requestButton}
+            </button>
+            {(status === 'pending' || status === 'generating') && (
+              <button type="button" className="data-export__button" onClick={cancelRequest}>
+                Cancel request
+              </button>
+            )}
+            {packageResult && status !== 'pending' && status !== 'generating' && (
+              <>
+                <button
+                  type="button"
+                  className="data-export__button data-export__button--primary"
+                  onClick={downloadPackage}
+                >
+                  <DownloadIcon />
+                  Download ZIP
+                </button>
+                {shareApiPresent && (
+                  <button
+                    type="button"
+                    className="data-export__button"
+                    onClick={() => void sharePackage()}
+                    disabled={!shareSupported}
+                    aria-describedby="data-export-share-help"
+                    title={
+                      shareSupported
+                        ? undefined
+                        : "Sharing isn't available in this browser — use Download ZIP."
+                    }
+                  >
+                    Share my exported package
+                  </button>
+                )}
+              </>
+            )}
+            {!packageResult && shareApiPresent && (
+              <button
+                type="button"
+                className="data-export__button"
+                disabled
+                aria-describedby="data-export-share-help"
+                title="Generate a package first, then share."
+              >
+                Share my exported package
+              </button>
+            )}
+          </div>
+          {shareApiPresent && (
+            <p id="data-export-share-help" className="data-export__group-help">
+              Opens your device's share sheet (Files, AirDrop, Messages, etc.).
+              {!packageResult && ' Generate a package first.'}
+            </p>
           )}
         </div>
-        {shareApiPresent && (
-          <p id="data-export-share-help" className="data-export__group-help">
-            Opens your device's share sheet (Files, AirDrop, Messages, etc.).
-            {!packageResult && ' Generate a package first.'}
-          </p>
-        )}
-      </div>
+      )}
 
-      <div className="data-export__progress" role="status" aria-live="polite">
-        <span>Status: {statusLabel(status)}</span>
-        {(status === 'pending' || status === 'generating') && (
-          <div className="progress-bar">
-            <div className="progress-bar__fill data-export__progress-fill" />
+      {showInvestmentExports && (
+        <div
+          className="data-export__group"
+          role="group"
+          aria-labelledby="data-export-investment-heading"
+        >
+          <h4 id="data-export-investment-heading" className="data-export__group-title">
+            Investment and tax exports
+          </h4>
+          <p className="data-export__group-help">
+            Holdings, tax lots, realized gains, and dividends/income for spreadsheet and tax
+            workflows.
+          </p>
+          <div className="data-export__button-row">
+            <button
+              type="button"
+              className="data-export__button"
+              disabled={investmentDownloadDisabled}
+              onClick={downloadInvestmentCsvZip}
+              aria-describedby="data-export-description"
+            >
+              <DownloadIcon />
+              Download investment CSVs (ZIP)
+            </button>
+            <button
+              type="button"
+              className="data-export__button"
+              disabled={investmentDownloadDisabled}
+              onClick={downloadInvestmentXlsx}
+              aria-describedby="data-export-description"
+            >
+              <DownloadIcon />
+              Download investment workbook (XLSX)
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {showFinanceExports && (
+        <div className="data-export__progress" role="status" aria-live="polite">
+          <span>Status: {statusLabel(status)}</span>
+          {(status === 'pending' || status === 'generating') && (
+            <div className="progress-bar">
+              <div className="progress-bar__fill data-export__progress-fill" />
+            </div>
+          )}
+        </div>
+      )}
 
       {simpleDownloadMessage && (
         <div
@@ -620,10 +826,28 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
             Request your data package
           </h4>
           <p id="data-export-confirm-body" className="data-export__dialog-body">
-            Finance will include transactions, accounts, budgets, goals, recurring rules,
-            categories, tags, attachments, preferences, settings, audit log entries, and sync
-            metadata. The ZIP is generated on this device and is available in-app for 7 days.
+            Choose exactly which data categories to export. The ZIP is generated on this device, defaults to a redacted sharing profile, and is available in-app for 7 days.
           </p>
+
+          <fieldset className="data-export__fieldset">
+            <legend className="data-export__legend">Data categories</legend>
+            {domainSummaries.map((summary) => (
+              <label className="data-export__option" key={summary.domain}>
+                <input
+                  type="checkbox"
+                  className="data-export__checkbox"
+                  checked={selectedDomains.includes(summary.domain)}
+                  onChange={(event) => toggleDomain(summary.domain, event.target.checked)}
+                />
+                <span className="data-export__option-text">
+                  <span className="data-export__option-label">
+                    {summary.label} ({summary.recordCount} record{summary.recordCount === 1 ? '' : 's'})
+                  </span>
+                  <span className="data-export__option-help">{summary.warning}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
 
           <fieldset className="data-export__fieldset">
             <legend className="data-export__legend">Privacy options</legend>
@@ -638,7 +862,7 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
               <span className="data-export__option-text">
                 <span className="data-export__option-label">Include protected categories</span>
                 <span className="data-export__option-help">
-                  Sensitive categories like medical or debt. Included by default.
+                  Sensitive categories like medical or debt. Redacted by default.
                 </span>
               </span>
             </label>
@@ -657,13 +881,59 @@ export const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
                 </span>
               </span>
             </label>
+
+            <label className="data-export__option">
+              <input
+                type="checkbox"
+                className="data-export__checkbox"
+                checked={includeNotes}
+                onChange={(event) => setIncludeNotes(event.target.checked)}
+              />
+              <span className="data-export__option-text">
+                <span className="data-export__option-label">Include transaction notes</span>
+                <span className="data-export__option-help">Notes may contain names, health details, or private context. Off by default.</span>
+              </span>
+            </label>
+
+            <label className="data-export__option">
+              <input
+                type="checkbox"
+                className="data-export__checkbox"
+                checked={includeAttachmentBinaries}
+                onChange={(event) => setIncludeAttachmentBinaries(event.target.checked)}
+              />
+              <span className="data-export__option-text">
+                <span className="data-export__option-label">Include attachment binaries</span>
+                <span className="data-export__option-help">Receipts and files can reveal addresses, card digits, or account numbers. Metadata only by default.</span>
+              </span>
+            </label>
+
+            <label className="data-export__option">
+              <span className="data-export__option-text">
+                <span className="data-export__option-label">Recipient or share destination (optional)</span>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={shareRecipient}
+                  onChange={(event) => setShareRecipient(event.target.value)}
+                  placeholder="Accountant, support case, partner email"
+                />
+                <span className="data-export__option-help">Known recipients are recorded in Third-party connections for later review.</span>
+              </span>
+            </label>
           </fieldset>
 
+          {stepUpMessage && <p role="status" className="data-export__dialog-body">{stepUpMessage}</p>}
+
           <div className="data-export__dialog-actions">
+            <button type="button" className="data-export__button" onClick={() => void verifyStepUpForExport()}>
+              Verify identity for export
+            </button>
             <button
               type="button"
               className="data-export__button data-export__button--primary"
               onClick={confirmRequest}
+              disabled={selectedDomains.length === 0}
             >
               Generate package
             </button>
@@ -740,9 +1010,15 @@ const PackageSummary: React.FC<{ manifest: DataAccessManifest; expirationWarning
         <p role="alert">This data package expires within 24 hours and will be auto-deleted.</p>
       )}
       <p>
-        Protected categories included:{' '}
+        Redaction profile: {manifest.privacy.redaction_profile}; protected categories included:{' '}
         {manifest.privacy.protected_categories_included ? 'yes' : 'no'}; mood tags included:{' '}
-        {manifest.privacy.mood_tags_included ? 'yes' : 'no'}.
+        {manifest.privacy.mood_tags_included ? 'yes' : 'no'}; notes included:{' '}
+        {manifest.privacy.notes_included ? 'yes' : 'no'}; attachment binaries included:{' '}
+        {manifest.privacy.attachment_binaries_included ? 'yes' : 'no'}.
+      </p>
+      <p>
+        Selected domains: {manifest.privacy.selected_domains.join(', ')}. Omitted:{' '}
+        {manifest.privacy.omitted_domains.join(', ') || 'none'}.
       </p>
     </div>
   </div>

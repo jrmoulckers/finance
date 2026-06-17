@@ -91,7 +91,11 @@ export function applyTransactionFilters(db: SqliteDb, filters: TransactionFilter
   }
 
   if (needsLocalCategoryFilter && categoryId !== undefined) {
-    results = results.filter((transaction) => transaction.categoryId === categoryId);
+    results = results.filter(
+      (transaction) =>
+        transaction.categoryId === categoryId ||
+        (transaction.splits ?? []).some((split) => split.categoryId === categoryId),
+    );
   }
 
   if (needsLocalStartDateFilter && startDate !== undefined) {

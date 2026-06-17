@@ -34,17 +34,24 @@ import {
 import { useFocusTrap } from '../../accessibility/aria';
 import type { CreateTransactionInput } from '../../db/repositories/transactions';
 import { useAutoCategorize } from '../../hooks/useAutoCategorize';
-import { useAmountInput } from '../../hooks/useAmountInput';
+import { formatCentsDisplay, useAmountInput } from '../../hooks/useAmountInput';
 import { useMerchants } from '../../hooks/useMerchants';
 import { useNavigationGuard } from '../../hooks/useNavigationGuard';
 import type {
   Account,
   Category,
+  ContributionDesignation,
   Transaction,
+  TransactionSplit,
   TransactionStatus,
   TransactionType,
 } from '../../kmp/bridge';
 import { BNPL_CUSTOM_FIELD_KEYS } from '../../lib/bnpl-liability';
+import {
+  CONTRIBUTION_DESIGNATION_OPTIONS,
+  getRetirementAccountTypeLabel,
+  supportsEmployerRetirementContributions,
+} from '../../lib/tax/retirement-contribution-metadata';
 import type { CategorySuggestion } from '../../lib/categorization';
 import type { MerchantMatchResult } from '../../lib/merchants';
 import {
@@ -53,10 +60,14 @@ import {
   isMoodTagsEnabled,
   normalizeMoodTag,
 } from '../../lib/mood-tags';
+import { buildDictationControlProps } from '../../lib/a11y/dictation-entry';
+import { validateTransactionSplits } from '../../lib/transactions/splits';
 import { transactionSchema } from '../../lib/validation';
-import { AmountInput } from './AmountInput';
+import { DateInput } from '../common';
 import { CategoryConfirmation } from '../categorization';
+import { AmountInput } from './AmountInput';
 import { CounterpartyInput } from '../transactions/CounterpartyInput';
+import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
 import './forms.css';
 
@@ -124,6 +135,44 @@ function parseTags(input: string): string[] {
     .filter((t) => t.length > 0);
 }
 
+function createSplitRowId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `split-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function formatSplitAmountInput(cents: number): string {
+  return (Math.abs(cents) / 100).toFixed(2);
+}
+
+function parseSplitAmountInput(value: string): number {
+  const normalized = value.replace(/[$,\s]/g, '');
+  if (!normalized) {
+    return 0;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+}
+
+function formatSplitRemainder(remainingCents: number): string {
+  if (remainingCents === 0) {
+    return 'Remaining: $0.00';
+  }
+
+  const label = remainingCents > 0 ? 'Remaining' : 'Overassigned';
+  return `${label}: ${formatCentsDisplay(Math.abs(remainingCents))}`;
+}
+
+function splitRowsToTransactionSplits(rows: readonly SplitFormRow[]): TransactionSplit[] {
+  return rows.map((row) => ({
+    id: row.id,
+    categoryId: row.categoryId || null,
+    amount: { amount: parseSplitAmountInput(row.amountInput) },
+    note: row.note.trim() || null,
+  }));
+}
+
 function normalizeTransactionAmount(amountCents: number, type: TransactionType): number {
   if (type === 'EXPENSE') {
     return amountCents > 0 ? -amountCents : amountCents;
@@ -143,10 +192,24 @@ function buildTransactionSnapshot(initialData?: Transaction) {
     description: initialData?.payee ?? '',
     status: initialData?.status ?? 'PENDING',
     categoryId: initialData?.categoryId ?? '',
+    splitRows:
+      initialData?.splits?.map((split) => ({
+        id: split.id ?? createSplitRowId(),
+        categoryId: split.categoryId ?? '',
+        amountInput: formatSplitAmountInput(split.amount.amount),
+        note: split.note ?? '',
+      })) ?? [],
     accountId: initialData?.accountId ?? '',
     date: initialData?.date ?? todayISO(),
     notes: initialData?.note ?? '',
     tagsInput: initialData ? tagsToString(initialData.tags) : '',
+    isRetirementContribution: Boolean(initialData?.retirementContributionDesignation),
+    retirementContributionYear:
+      initialData?.retirementContributionYear !== null &&
+      initialData?.retirementContributionYear !== undefined
+        ? String(initialData.retirementContributionYear)
+        : (initialData?.date ?? todayISO()).slice(0, 4),
+    retirementContributionDesignation: initialData?.retirementContributionDesignation ?? 'EMPLOYEE',
     moodTag: normalizeMoodTag(initialData?.moodTag),
     counterpartyName: initialData?.counterpartyName ?? '',
     isBnplLiability: initialData?.customFields?.[BNPL_CUSTOM_FIELD_KEYS.liabilityType] === 'BNPL',
@@ -173,6 +236,14 @@ interface FormErrors {
   amount?: string;
   description?: string;
   accountId?: string;
+  splits?: string;
+}
+
+interface SplitFormRow {
+  id: string;
+  categoryId: string;
+  amountInput: string;
+  note: string;
 }
 
 function validate(
@@ -238,6 +309,7 @@ export function TransactionForm({
   // -- refs ----------------------------------------------------------------
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   // -- state ---------------------------------------------------------------
   const [transactionType, setTransactionType] = useState<TransactionType>('EXPENSE');
@@ -249,10 +321,15 @@ export function TransactionForm({
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TransactionStatus>('PENDING');
   const [categoryId, setCategoryId] = useState('');
+  const [splitRows, setSplitRows] = useState<SplitFormRow[]>([]);
   const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState(todayISO);
   const [notes, setNotes] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [isRetirementContribution, setIsRetirementContribution] = useState(false);
+  const [retirementContributionYear, setRetirementContributionYear] = useState('');
+  const [retirementContributionDesignation, setRetirementContributionDesignation] =
+    useState<ContributionDesignation>('EMPLOYEE');
   const [moodTag, setMoodTag] = useState<string | null>(null);
   const [moodTagsEnabled, setMoodTagsEnabled] = useState(() => isMoodTagsEnabled());
   const [errors, setErrors] = useState<FormErrors>({});
@@ -284,10 +361,14 @@ export function TransactionForm({
       description,
       status,
       categoryId,
+      splitRows,
       accountId,
       date,
       notes,
       tagsInput,
+      isRetirementContribution,
+      retirementContributionYear,
+      retirementContributionDesignation,
       moodTag,
       counterpartyName,
       isBnplLiability,
@@ -313,12 +394,16 @@ export function TransactionForm({
       externalReferenceId,
       extraNotes,
       isBnplLiability,
+      isRetirementContribution,
       merchantCity,
       merchantCountry,
       merchantState,
       merchantZip,
       moodTag,
       notes,
+      retirementContributionDesignation,
+      retirementContributionYear,
+      splitRows,
       statementDescription,
       status,
       tagsInput,
@@ -388,10 +473,14 @@ export function TransactionForm({
     setTransactionType(initialSnapshot.transactionType);
     setStatus(initialSnapshot.status);
     setCategoryId(initialSnapshot.categoryId);
+    setSplitRows(initialSnapshot.splitRows);
     setAccountId(initialSnapshot.accountId);
     setDate(initialSnapshot.date);
     setNotes(initialSnapshot.notes);
     setTagsInput(initialSnapshot.tagsInput);
+    setIsRetirementContribution(initialSnapshot.isRetirementContribution);
+    setRetirementContributionYear(initialSnapshot.retirementContributionYear);
+    setRetirementContributionDesignation(initialSnapshot.retirementContributionDesignation);
     setMoodTag(initialSnapshot.moodTag);
     setCounterpartyName(initialSnapshot.counterpartyName);
     setMerchantMatch(null);
@@ -508,6 +597,46 @@ export function TransactionForm({
     [categories, categoryId],
   );
 
+  const transactionSplits = useMemo(() => splitRowsToTransactionSplits(splitRows), [splitRows]);
+  const splitValidation = useMemo(
+    () => validateTransactionSplits(Math.abs(amountInput.cents), transactionSplits),
+    [amountInput.cents, transactionSplits],
+  );
+  const hasSplitRows = splitRows.length > 0;
+  const splitRemainderText = formatSplitRemainder(splitValidation.remainingCents);
+  const selectedAccount = useMemo(
+    () => accounts.find((account) => account.id === accountId) ?? null,
+    [accounts, accountId],
+  );
+
+  const updateSplitRow = useCallback((id: string, updates: Partial<SplitFormRow>) => {
+    setSplitRows((rows) => rows.map((row) => (row.id === id ? { ...row, ...updates } : row)));
+  }, []);
+
+  const addSplitRow = useCallback(() => {
+    setSplitRows((rows) => {
+      const totalCents = Math.abs(amountInput.cents);
+      const currentSplits = splitRowsToTransactionSplits(rows);
+      const currentValidation = validateTransactionSplits(totalCents, currentSplits);
+      const defaultAmountCents =
+        rows.length === 0 ? totalCents : Math.max(currentValidation.remainingCents, 0);
+
+      return [
+        ...rows,
+        {
+          id: createSplitRowId(),
+          categoryId: '',
+          amountInput: defaultAmountCents > 0 ? formatSplitAmountInput(defaultAmountCents) : '',
+          note: '',
+        },
+      ];
+    });
+  }, [amountInput.cents]);
+
+  const removeSplitRow = useCallback((id: string) => {
+    setSplitRows((rows) => rows.filter((row) => row.id !== id));
+  }, []);
+
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
@@ -520,14 +649,19 @@ export function TransactionForm({
         transactionType,
         date,
       );
+
+      if (hasSplitRows && !splitValidation.isBalanced) {
+        fieldErrors.splits = `${splitValidation.error ?? 'Split amounts must equal the transaction total.'} ${splitRemainderText}`;
+      }
+
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
+        requestAnimationFrame(() => errorSummaryRef.current?.focus());
         return;
       }
 
       // Derive householdId from the selected account.
-      const selectedAccount = accounts.find((a) => a.id === accountId);
       if (!selectedAccount) {
         setSubmitError('Selected account not found.');
         return;
@@ -558,9 +692,17 @@ export function TransactionForm({
         currency: selectedAccount.currency,
         payee: description.trim(),
         date,
-        categoryId: categoryId || null,
+        categoryId:
+          categoryId || transactionSplits.find((split) => split.categoryId)?.categoryId || null,
         note: notes.trim() || null,
         tags: parseTags(tagsInput),
+        retirementContributionYear: isRetirementContribution
+          ? Number.parseInt(retirementContributionYear || date.slice(0, 4), 10)
+          : null,
+        retirementContributionDesignation: isRetirementContribution
+          ? retirementContributionDesignation
+          : null,
+        ...(hasSplitRows ? { splits: transactionSplits } : {}),
         ...(moodTagsEnabled ? { moodTag } : {}),
         merchantCity: merchantCity.trim() || null,
         merchantState: merchantState.trim() || null,
@@ -600,10 +742,14 @@ export function TransactionForm({
         setTransactionType('EXPENSE');
         setStatus('PENDING');
         setCategoryId('');
+        setSplitRows([]);
         setAccountId('');
         setDate(todayISO());
         setNotes('');
         setTagsInput('');
+        setIsRetirementContribution(false);
+        setRetirementContributionYear(todayISO().slice(0, 4));
+        setRetirementContributionDesignation('EMPLOYEE');
         setMoodTag(null);
         setCounterpartyName('');
         setMerchantMatch(null);
@@ -630,13 +776,20 @@ export function TransactionForm({
       amountInput,
       description,
       accountId,
-      accounts,
+      selectedAccount,
       transactionType,
       status,
       date,
       categoryId,
+      transactionSplits,
+      hasSplitRows,
+      splitValidation,
+      splitRemainderText,
       notes,
       tagsInput,
+      isRetirementContribution,
+      retirementContributionYear,
+      retirementContributionDesignation,
       moodTag,
       moodTagsEnabled,
       merchantCity,
@@ -669,7 +822,37 @@ export function TransactionForm({
   const hasAmountError = Boolean(errors.amount);
   const hasDescriptionError = Boolean(errors.description);
   const hasAccountError = Boolean(errors.accountId);
+  const hasSplitError = Boolean(errors.splits);
   const hasValidationErrors = Object.keys(errors).length > 0;
+  const retirementContributionWarning =
+    isRetirementContribution && selectedAccount
+      ? selectedAccount.retirementAccountType
+        ? retirementContributionDesignation === 'EMPLOYER' &&
+          !supportsEmployerRetirementContributions(selectedAccount.retirementAccountType)
+          ? `${getRetirementAccountTypeLabel(
+              selectedAccount.retirementAccountType,
+            )} contributions cannot be tagged as employer-funded in the annual-limit tracker.`
+          : null
+        : 'Selected account is not classified as a supported retirement account, so this contribution will be flagged in limit tracking.'
+      : null;
+  const validationErrorItems: FormErrorSummaryItem[] = [
+    hasAmountError ? { fieldId: 'txn-amount', label: 'Amount', message: errors.amount! } : null,
+    hasDescriptionError
+      ? { fieldId: 'txn-description', label: 'Payee', message: errors.description! }
+      : null,
+    hasAccountError ? { fieldId: 'txn-account', label: 'Account', message: errors.accountId! } : null,
+    hasSplitError ? { fieldId: 'txn-splits-status', label: 'Splits', message: errors.splits! } : null,
+  ].filter((item): item is FormErrorSummaryItem => item !== null);
+  const dictationControls = {
+    amount: buildDictationControlProps({ id: 'txn-amount', visibleLabel: 'Amount' }),
+    payee: buildDictationControlProps({ id: 'txn-description', visibleLabel: 'Payee' }),
+    status: buildDictationControlProps({ id: 'txn-status', visibleLabel: 'Status' }),
+    category: buildDictationControlProps({ id: 'txn-category', visibleLabel: 'Category' }),
+    account: buildDictationControlProps({ id: 'txn-account', visibleLabel: 'Account' }),
+    date: buildDictationControlProps({ id: 'txn-date', visibleLabel: 'Date' }),
+    notes: buildDictationControlProps({ id: 'txn-notes', visibleLabel: 'Notes' }),
+    tags: buildDictationControlProps({ id: 'txn-tags', visibleLabel: 'Tags' }),
+  } as const;
 
   return (
     <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
@@ -694,8 +877,19 @@ export function TransactionForm({
             {submitError}
           </div>
         )}
+        <FormErrorSummary
+          id="transaction-form-error-summary"
+          errors={validationErrorItems}
+          summaryRef={errorSummaryRef}
+        />
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          aria-describedby={
+            validationErrorItems.length > 0 ? 'transaction-form-error-summary' : undefined
+          }
+        >
           <div className="form-fields">
             {/* Amount (Venmo-style cents-first) */}
             <div className="form-group">
@@ -707,7 +901,10 @@ export function TransactionForm({
               </p>
               <AmountInput
                 ref={firstInputRef}
-                id="txn-amount"
+                id={dictationControls.amount.id}
+                name={dictationControls.amount.name}
+                aria-label={dictationControls.amount['aria-label']}
+                data-dictation-label={dictationControls.amount.label}
                 amountInput={amountInput}
                 className={`form-input${hasAmountError ? ' form-input--error' : ''}`}
                 placeholder="$0.00"
@@ -736,7 +933,10 @@ export function TransactionForm({
                 What appears on your statement (e.g. ╬ô├ç┬úAMZN MKTPL*XYZ╬ô├ç┬Ñ).
               </p>
               <input
-                id="txn-description"
+                id={dictationControls.payee.id}
+                name={dictationControls.payee.name}
+                aria-label={dictationControls.payee['aria-label']}
+                data-dictation-label={dictationControls.payee.label}
                 className={`form-input${hasDescriptionError ? ' form-input--error' : ''}`}
                 type="text"
                 value={description}
@@ -780,7 +980,10 @@ export function TransactionForm({
                 Status
               </label>
               <select
-                id="txn-status"
+                id={dictationControls.status.id}
+                name={dictationControls.status.name}
+                aria-label={dictationControls.status['aria-label']}
+                data-dictation-label={dictationControls.status.label}
                 className="form-select"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as TransactionStatus)}
@@ -843,7 +1046,10 @@ export function TransactionForm({
                 Category
               </label>
               <select
-                id="txn-category"
+                id={dictationControls.category.id}
+                name={dictationControls.category.name}
+                aria-label={dictationControls.category['aria-label']}
+                data-dictation-label={dictationControls.category.label}
                 className="form-select"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
@@ -864,6 +1070,111 @@ export function TransactionForm({
               )}
             </div>
 
+            {/* Splits */}
+            <fieldset className="form-group form-fieldset" aria-describedby="txn-splits-status">
+              <legend className="form-group__label">Splits</legend>
+              <p className="form-group__help">
+                Allocate this transaction across multiple categories. Split amounts must add up to
+                the transaction total.
+              </p>
+              {splitRows.map((split, index) => (
+                <div
+                  key={split.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 9rem 1fr auto',
+                    gap: 'var(--spacing-2)',
+                    alignItems: 'end',
+                    marginBottom: 'var(--spacing-2)',
+                  }}
+                >
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor={`txn-split-${split.id}-category`} className="form-group__label">
+                      Split {index + 1} category
+                    </label>
+                    <select
+                      id={`txn-split-${split.id}-category`}
+                      className="form-select"
+                      value={split.categoryId}
+                      onChange={(event) =>
+                        updateSplitRow(split.id, { categoryId: event.target.value })
+                      }
+                    >
+                      <option value="">— None —</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor={`txn-split-${split.id}-amount`} className="form-group__label">
+                      Split {index + 1} amount
+                    </label>
+                    <input
+                      id={`txn-split-${split.id}-amount`}
+                      className={`form-input${hasSplitError ? ' form-input--error' : ''}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={split.amountInput}
+                      onChange={(event) =>
+                        updateSplitRow(split.id, { amountInput: event.target.value })
+                      }
+                      aria-invalid={hasSplitError}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor={`txn-split-${split.id}-note`} className="form-group__label">
+                      Split {index + 1} note
+                    </label>
+                    <input
+                      id={`txn-split-${split.id}-note`}
+                      className="form-input"
+                      type="text"
+                      value={split.note}
+                      onChange={(event) => updateSplitRow(split.id, { note: event.target.value })}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => removeSplitRow(split.id)}
+                    aria-label={`Remove split ${index + 1}`}
+                  >
+                    <span aria-hidden="true">✕</span>
+                  </button>
+                </div>
+              ))}
+              <div
+                id="txn-splits-status"
+                aria-live="polite"
+                style={{
+                  color:
+                    hasSplitRows && !splitValidation.isBalanced
+                      ? 'var(--semantic-text-danger)'
+                      : 'var(--semantic-text-secondary)',
+                  marginBottom: 'var(--spacing-2)',
+                }}
+              >
+                {hasSplitRows ? splitRemainderText : 'Unassigned: no split lines'}
+              </div>
+              {hasSplitError && (
+                <span id="txn-splits-error" className="form-error" role="alert">
+                  {errors.splits}
+                </span>
+              )}
+              <button
+                type="button"
+                className="form-button form-button--secondary"
+                onClick={addSplitRow}
+              >
+                Add split
+              </button>
+            </fieldset>
+
             {/* Account */}
             <div className="form-group">
               <label
@@ -873,7 +1184,10 @@ export function TransactionForm({
                 Account
               </label>
               <select
-                id="txn-account"
+                id={dictationControls.account.id}
+                name={dictationControls.account.name}
+                aria-label={dictationControls.account['aria-label']}
+                data-dictation-label={dictationControls.account.label}
                 className={`form-select${hasAccountError ? ' form-select--error' : ''}`}
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
@@ -895,15 +1209,78 @@ export function TransactionForm({
               )}
             </div>
 
+            <fieldset className="form-group form-fieldset">
+              <legend className="form-group__label">Retirement contribution</legend>
+              <label className="form-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={isRetirementContribution}
+                  onChange={(event) => {
+                    setIsRetirementContribution(event.target.checked);
+                    if (event.target.checked && retirementContributionYear.trim() === '') {
+                      setRetirementContributionYear(date.slice(0, 4));
+                    }
+                  }}
+                />
+                Count this transaction or transfer toward an annual contribution limit
+              </label>
+              {isRetirementContribution && (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="txn-contribution-year" className="form-group__label">
+                      Contribution year
+                    </label>
+                    <input
+                      id="txn-contribution-year"
+                      className="form-input"
+                      type="number"
+                      min="2000"
+                      max="2100"
+                      value={retirementContributionYear}
+                      onChange={(event) => setRetirementContributionYear(event.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="txn-contribution-designation" className="form-group__label">
+                      Contribution designation
+                    </label>
+                    <select
+                      id="txn-contribution-designation"
+                      className="form-select"
+                      value={retirementContributionDesignation}
+                      onChange={(event) =>
+                        setRetirementContributionDesignation(
+                          event.target.value as ContributionDesignation,
+                        )
+                      }
+                    >
+                      {CONTRIBUTION_DESIGNATION_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {retirementContributionWarning && (
+                    <p className="form-hint" role="alert">
+                      {retirementContributionWarning}
+                    </p>
+                  )}
+                </>
+              )}
+            </fieldset>
+
             {/* Date */}
             <div className="form-group">
               <label htmlFor="txn-date" className="form-group__label">
                 Date
               </label>
-              <input
-                id="txn-date"
+              <DateInput
+                id={dictationControls.date.id}
+                name={dictationControls.date.name}
+                aria-label={dictationControls.date['aria-label']}
+                data-dictation-label={dictationControls.date.label}
                 className="form-input"
-                type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
               />
@@ -915,7 +1292,10 @@ export function TransactionForm({
                 Notes
               </label>
               <textarea
-                id="txn-notes"
+                id={dictationControls.notes.id}
+                name={dictationControls.notes.name}
+                aria-label={dictationControls.notes['aria-label']}
+                data-dictation-label={dictationControls.notes.label}
                 className="form-textarea"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -929,17 +1309,21 @@ export function TransactionForm({
                 Tags
               </label>
               <input
-                id="txn-tags"
+                id={dictationControls.tags.id}
+                name={dictationControls.tags.name}
+                aria-label={dictationControls.tags['aria-label']}
+                data-dictation-label={dictationControls.tags.label}
                 className="form-input"
                 type="text"
                 value={tagsInput}
                 onChange={(e) => setTagsInput(e.target.value)}
-                placeholder="Enter tags separated by commas"
+                placeholder="client:Acme, project:Website redesign"
                 autoComplete="off"
                 aria-describedby="txn-tags-hint"
               />
               <span id="txn-tags-hint" className="form-hint">
-                Separate multiple tags with commas
+                Separate multiple tags with commas. Use client: or project: tags for profitability
+                reporting.
               </span>
               {parseTags(tagsInput).length > 0 && (
                 <div className="form-tags" role="list" aria-label="Selected tags">

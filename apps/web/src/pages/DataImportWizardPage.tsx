@@ -11,11 +11,12 @@
  * References: issues #1076, #1468, #1469
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import type { DragEvent, ChangeEvent } from 'react';
 import { AppIcon } from '../components/icons';
 import { useDatabase } from '../db/DatabaseProvider';
 
+import { useAccounts } from '../hooks/useAccounts';
 import { useDataImportWizard } from '../hooks/useDataImportWizard';
 import type {
   TransactionField,
@@ -45,6 +46,8 @@ const FIELD_OPTIONS: readonly { value: TransactionField; label: string }[] = [
   { value: 'account', label: 'Account' },
   { value: 'note', label: 'Note' },
   { value: 'type', label: 'Type' },
+  { value: 'externalReferenceId', label: 'External Reference ID' },
+  { value: 'statementDescription', label: 'Statement Description' },
 ];
 
 const STEP_LABELS: Record<string, string> = {
@@ -347,14 +350,19 @@ export function DataImportWizardPage() {
     unmappedFields,
     duplicateComparisons,
     duplicateActions,
+    mappingMemoryNotice,
     progress,
     result,
     error,
+    selectedAccountId,
+    setSelectedAccountId,
+    setSelectedHouseholdId,
     uploadFile,
     setColumnMapping,
     updatePreviewField,
     setDuplicateAction,
     mapUnmappedToNotes,
+    forgetSavedMapping,
     goToPreview,
     startImport,
     goBack,
@@ -363,7 +371,9 @@ export function DataImportWizardPage() {
 
   const db = useDatabase();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const accountSelectId = useId();
   const [dragActive, setDragActive] = useState(false);
+  const { accounts, loading: accountsLoading } = useAccounts();
   const [backupPackage, setBackupPackage] = useState<BackupPackage | null>(null);
   const [backupPreview, setBackupPreview] = useState<BackupRestorePreview | null>(null);
   const [backupResult, setBackupResult] = useState<BackupRestoreResult | null>(null);
@@ -399,8 +409,17 @@ export function DataImportWizardPage() {
         return;
       }
 
-      if (!lowerName.endsWith('.csv') && file.type !== 'text/csv') {
-        setBackupError('Choose a .json backup, .zip backup, or .csv transaction import file.');
+      const isTransactionImport =
+        lowerName.endsWith('.csv') ||
+        lowerName.endsWith('.ofx') ||
+        lowerName.endsWith('.qfx') ||
+        lowerName.endsWith('.qif') ||
+        file.type === 'text/csv' ||
+        file.type === 'application/x-ofx' ||
+        file.type === 'application/vnd.intu.qfx';
+
+      if (!isTransactionImport) {
+        setBackupError('Choose a .json backup, .zip backup, .csv, .ofx, .qfx, or .qif transaction import file.');
         return;
       }
       setBackupPackage(null);
@@ -418,6 +437,15 @@ export function DataImportWizardPage() {
       if (file) await handleFile(file);
     },
     [handleFile],
+  );
+
+  const handleAccountChange = useCallback(
+    (accountId: string) => {
+      setSelectedAccountId(accountId || null);
+      const account = accounts.find((candidate) => candidate.id === accountId);
+      setSelectedHouseholdId(account?.householdId ?? null);
+    },
+    [accounts, setSelectedAccountId, setSelectedHouseholdId],
   );
 
   const handleDragEnter = useCallback((e: DragEvent) => {
@@ -531,12 +559,36 @@ export function DataImportWizardPage() {
       {step === 'upload' && (
         <section className="import-card" aria-labelledby="upload-title">
           <h2 id="upload-title" className="import-card__title">
-            Upload CSV File
+            Upload Import File
           </h2>
           <p className="import-card__description">
-            Drag and drop a JSON backup for full restore, a ZIP backup wrapper, or a CSV file for
-            transaction-only import.
+            Drag and drop a JSON/ZIP backup for full restore, or a CSV, OFX/QFX, or QIF file
+            for transaction import. Supports Quicken, Mint, YNAB, Chase, American Express,
+            Wells Fargo, Citi, and custom CSV formats.
           </p>
+
+          <div className="import-account-selector">
+            <label htmlFor={accountSelectId} className="import-account-selector__label">
+              Import into account
+            </label>
+            <select
+              id={accountSelectId}
+              className="import-mapping-select"
+              value={selectedAccountId ?? ''}
+              onChange={(event) => handleAccountChange(event.target.value)}
+              disabled={accountsLoading}
+              aria-required="true"
+            >
+              <option value="" disabled>
+                {accountsLoading ? 'Loading accounts…' : 'Select an account'}
+              </option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div
             className={`import-dropzone ${dragActive ? 'import-dropzone--active' : ''}`}
@@ -547,7 +599,7 @@ export function DataImportWizardPage() {
             onClick={() => fileInputRef.current?.click()}
             role="button"
             tabIndex={0}
-            aria-label="Drop CSV file here or click to browse"
+            aria-label="Drop CSV, OFX, QFX, or QIF file here or click to browse"
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -559,18 +611,18 @@ export function DataImportWizardPage() {
               <AppIcon name="folder" />
             </span>
             <span className="import-dropzone__text">
-              {dragActive ? 'Drop your file here' : 'Click or drag backup/CSV file here'}
+              {dragActive ? 'Drop your file here' : 'Click or drag backup/import file here'}
             </span>
             <span className="import-dropzone__hint">
-              Supported: .json/.zip Finance backups, plus .csv files from Mint, YNAB, Chase, Amex,
-              Wells Fargo, Citi, or custom exports
+              Supported: .json/.zip Finance backups, .csv, .ofx, .qfx, and .qif files from
+              Quicken and banks, including Mint, YNAB, Chase, Amex, Wells Fargo, Citi, or custom exports
             </span>
           </div>
 
           <input
             ref={fileInputRef}
             type="file"
-            accept=".json,.zip,.csv,application/json,application/zip,text/csv"
+            accept=".json,.zip,.csv,.ofx,.qfx,.qif,application/json,application/zip,text/csv,application/x-ofx,application/vnd.intu.qfx"
             onChange={handleFileChange}
             className="import-hidden"
             aria-hidden="true"
@@ -671,6 +723,24 @@ export function DataImportWizardPage() {
             {csvRows.length} rows found. Assign each CSV column to a transaction field.
           </p>
 
+          {mappingMemoryNotice && (
+            <div className="import-unmapped-warning" role="status">
+              <span className="import-unmapped-warning__icon" aria-hidden="true">
+                💾
+              </span>
+              <div className="import-unmapped-warning__content">
+                <p className="import-unmapped-warning__text">{mappingMemoryNotice}</p>
+                <button
+                  type="button"
+                  className="import-button import-button--small import-button--secondary"
+                  onClick={forgetSavedMapping}
+                >
+                  Forget mapping
+                </button>
+              </div>
+            </div>
+          )}
+
           <div
             className="import-mapping-table-wrapper"
             role="region"
@@ -744,7 +814,11 @@ export function DataImportWizardPage() {
             <button className="import-button import-button--secondary" onClick={goBack}>
               Back
             </button>
-            <button className="import-button import-button--primary" onClick={goToPreview}>
+            <button
+              className="import-button import-button--primary"
+              onClick={goToPreview}
+              disabled={selectedAccountId === null}
+            >
               Preview Import
             </button>
           </div>

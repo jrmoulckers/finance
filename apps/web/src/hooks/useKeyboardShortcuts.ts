@@ -21,6 +21,10 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react';
+import {
+  getStoredSingleKeyShortcutsPreference,
+  SINGLE_KEY_SHORTCUTS_CHANGE_EVENT,
+} from '../lib/accessibility-preferences';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,12 +43,24 @@ export interface UseKeyboardShortcutsOptions {
   onNewTransaction?: () => void;
   /** Callback to focus the search field. */
   onFocusSearch?: () => void;
+  /** Callback to open the command palette/search overlay. */
+  onOpenCommandPalette?: () => void;
   /** Callback for J/K list navigation (direction: -1 up, +1 down). */
   onListNavigate?: (direction: -1 | 1) => void;
   /** Callback for Enter on selected list item. */
   onListSelect?: () => void;
+  /** Callback to toggle selection for the active list item. */
+  onListToggleSelection?: () => void;
+  /** Callback to select every item in the active list. */
+  onListSelectAll?: () => void;
+  /** Callback to delete selected list items. */
+  onListDeleteSelected?: () => void;
+  /** Callback to edit the active list item. */
+  onListEditSelected?: () => void;
   /** Callback invoked when Ctrl+Shift+P is pressed to toggle privacy mode. */
   onTogglePrivacyMode?: () => void;
+  /** Whether character-key shortcuts such as N, /, ?, and G sequences are enabled. */
+  allowSingleKeyShortcuts?: boolean;
 }
 
 export interface UseKeyboardShortcutsResult {
@@ -52,6 +68,8 @@ export interface UseKeyboardShortcutsResult {
   setShowHelp: Dispatch<SetStateAction<boolean>>;
   /** All available shortcuts organized by category for display. */
   shortcutCategories: ShortcutCategory[];
+  /** Whether character-key shortcuts such as N, /, ?, and G sequences are active. */
+  singleKeyShortcutsEnabled: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -63,12 +81,21 @@ const SEQUENCE_TIMEOUT = 1500;
 
 /** Navigation targets for "G then X" sequences. */
 const G_NAV_MAP: Record<string, string> = {
-  d: '/',
+  d: '/dashboard',
+  a: '/accounts',
   t: '/transactions',
   b: '/budgets',
-  a: '/accounts',
-  o: '/goals',
-  s: '/settings',
+  g: '/goals',
+  i: '/investments',
+  l: '/bills',
+  c: '/categories',
+  f: '/cash-flow',
+  n: '/net-worth',
+  r: '/report-builder',
+  w: '/watchlists',
+  h: '/household',
+  m: '/import',
+  s: '/settings/preferences',
 };
 
 /** All shortcut categories for the help dialog. */
@@ -77,18 +104,28 @@ export const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
     title: 'Navigation',
     shortcuts: [
       { keys: 'G then D', description: 'Go to Dashboard' },
+      { keys: 'G then A', description: 'Go to Accounts' },
       { keys: 'G then T', description: 'Go to Transactions' },
       { keys: 'G then B', description: 'Go to Budgets' },
-      { keys: 'G then A', description: 'Go to Accounts' },
-      { keys: 'G then O', description: 'Go to Goals' },
-      { keys: 'G then S', description: 'Go to Settings' },
+      { keys: 'G then G', description: 'Go to Goals' },
+      { keys: 'G then I', description: 'Go to Investments' },
+      { keys: 'G then L', description: 'Go to Bills' },
+      { keys: 'G then C', description: 'Go to Categories' },
+      { keys: 'G then F', description: 'Go to Cash Flow' },
+      { keys: 'G then N', description: 'Go to Net Worth' },
+      { keys: 'G then R', description: 'Go to Reports' },
+      { keys: 'G then W', description: 'Go to Watchlists' },
+      { keys: 'G then H', description: 'Go to Household' },
+      { keys: 'G then M', description: 'Go to Import' },
+      { keys: 'G then S', description: 'Go to Settings Preferences' },
     ],
   },
   {
     title: 'Actions',
     shortcuts: [
-      { keys: 'N', description: 'New transaction' },
-      { keys: '/', description: 'Focus search' },
+      { keys: 'N', description: 'Quick add transaction' },
+      { keys: '/', description: 'Open command palette' },
+      { keys: 'Ctrl/Cmd+K', description: 'Open command palette' },
       { keys: '?', description: 'Show keyboard shortcuts' },
       { keys: 'Ctrl+Shift+P', description: 'Toggle privacy mode' },
     ],
@@ -96,14 +133,18 @@ export const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
   {
     title: 'Transaction List',
     shortcuts: [
-      { keys: 'J', description: 'Next item' },
-      { keys: 'K', description: 'Previous item' },
+      { keys: 'J / ↓', description: 'Next item' },
+      { keys: 'K / ↑', description: 'Previous item' },
+      { keys: 'X / Space', description: 'Toggle selected item' },
+      { keys: 'A', description: 'Select all visible items' },
+      { keys: 'E', description: 'Edit active item' },
+      { keys: 'Delete', description: 'Delete selected items' },
       { keys: 'Enter', description: 'Open selected item' },
     ],
   },
   {
     title: 'General',
-    shortcuts: [{ keys: 'Escape', description: 'Close dialog / dismiss' }],
+    shortcuts: [{ keys: 'Esc', description: 'Close dialog / dismiss' }],
   },
 ];
 
@@ -130,12 +171,21 @@ export function useKeyboardShortcuts(
     onNavigate,
     onNewTransaction,
     onFocusSearch,
+    onOpenCommandPalette,
     onListNavigate,
     onListSelect,
+    onListToggleSelection,
+    onListSelectAll,
+    onListDeleteSelected,
+    onListEditSelected,
     onTogglePrivacyMode,
+    allowSingleKeyShortcuts,
   } = options;
 
   const [showHelp, setShowHelp] = useState(false);
+  const [storedSingleKeyShortcutsEnabled, setStoredSingleKeyShortcutsEnabled] = useState(
+    getStoredSingleKeyShortcutsPreference,
+  );
   const pendingGRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -147,12 +197,35 @@ export function useKeyboardShortcuts(
     }
   }, []);
 
+  const singleKeyShortcutsEnabled =
+    allowSingleKeyShortcuts ?? storedSingleKeyShortcutsEnabled;
+
+  useEffect(() => {
+    const updatePreference = () => {
+      setStoredSingleKeyShortcutsEnabled(getStoredSingleKeyShortcutsPreference());
+    };
+
+    window.addEventListener('storage', updatePreference);
+    window.addEventListener(SINGLE_KEY_SHORTCUTS_CHANGE_EVENT, updatePreference);
+    return () => {
+      window.removeEventListener('storage', updatePreference);
+      window.removeEventListener(SINGLE_KEY_SHORTCUTS_CHANGE_EVENT, updatePreference);
+    };
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Escape always works, even in inputs
       if (event.key === 'Escape') {
         setShowHelp(false);
         clearSequence();
+        return;
+      }
+
+      // Ctrl/Cmd+K — open command palette from anywhere
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        onOpenCommandPalette?.();
         return;
       }
 
@@ -178,6 +251,9 @@ export function useKeyboardShortcuts(
       // --- Two-key sequence: waiting for second key after G ---
       if (pendingGRef.current) {
         clearSequence();
+        if (!singleKeyShortcutsEnabled) {
+          return;
+        }
         const key = event.key.toLowerCase();
         const path = G_NAV_MAP[key];
         if (path && onNavigate) {
@@ -189,6 +265,11 @@ export function useKeyboardShortcuts(
 
       // --- Single key handlers ---
       const key = event.key;
+
+      if (!singleKeyShortcutsEnabled && key.length === 1) {
+        clearSequence();
+        return;
+      }
 
       // "G" starts a navigation sequence
       if (key === 'g' || key === 'G') {
@@ -206,36 +287,68 @@ export function useKeyboardShortcuts(
         return;
       }
 
-      // Focus search with /
-      if (key === '/' && !event.shiftKey) {
+      // Open command palette/search with /
+      if (key === '/' && !event.shiftKey && (onOpenCommandPalette || onFocusSearch)) {
         event.preventDefault();
-        onFocusSearch?.();
+        if (onOpenCommandPalette) {
+          onOpenCommandPalette();
+        } else {
+          onFocusSearch?.();
+        }
         return;
       }
 
       // New transaction
-      if (key === 'n' || key === 'N') {
+      if ((key === 'n' || key === 'N') && onNewTransaction) {
         event.preventDefault();
-        onNewTransaction?.();
+        onNewTransaction();
         return;
       }
 
-      // List navigation: J = down, K = up
-      if (key === 'j' || key === 'J') {
+      // List navigation: J/ArrowDown = down, K/ArrowUp = up
+      if ((key === 'j' || key === 'J' || key === 'ArrowDown') && onListNavigate) {
         event.preventDefault();
-        onListNavigate?.(1);
+        onListNavigate(1);
         return;
       }
 
-      if (key === 'k' || key === 'K') {
+      if ((key === 'k' || key === 'K' || key === 'ArrowUp') && onListNavigate) {
         event.preventDefault();
-        onListNavigate?.(-1);
+        onListNavigate(-1);
+        return;
+      }
+
+      if (
+        (key === 'x' || key === 'X' || key === ' ' || key === 'Spacebar') &&
+        onListToggleSelection
+      ) {
+        event.preventDefault();
+        onListToggleSelection();
+        return;
+      }
+
+      if ((key === 'a' || key === 'A') && onListSelectAll) {
+        event.preventDefault();
+        onListSelectAll();
+        return;
+      }
+
+      if (key === 'Delete' && onListDeleteSelected) {
+        event.preventDefault();
+        onListDeleteSelected();
+        return;
+      }
+
+      if ((key === 'e' || key === 'E') && onListEditSelected) {
+        event.preventDefault();
+        onListEditSelected();
         return;
       }
 
       // Open selected item
-      if (key === 'Enter') {
-        onListSelect?.();
+      if (key === 'Enter' && onListSelect) {
+        event.preventDefault();
+        onListSelect();
       }
     };
 
@@ -248,11 +361,22 @@ export function useKeyboardShortcuts(
     onNavigate,
     onNewTransaction,
     onFocusSearch,
+    onOpenCommandPalette,
     onListNavigate,
     onListSelect,
+    onListToggleSelection,
+    onListSelectAll,
+    onListDeleteSelected,
+    onListEditSelected,
     onTogglePrivacyMode,
     clearSequence,
+    singleKeyShortcutsEnabled,
   ]);
 
-  return { showHelp, setShowHelp, shortcutCategories: SHORTCUT_CATEGORIES };
+  return {
+    showHelp,
+    setShowHelp,
+    shortcutCategories: SHORTCUT_CATEGORIES,
+    singleKeyShortcutsEnabled,
+  };
 }

@@ -107,4 +107,13 @@ describe('SpendingBarChart', () => {
     expect(srOnly).toBeInTheDocument();
     expect(srOnly!.textContent).toContain('3 categories');
   });
+
+  it('provides a live region for focused category announcements', () => {
+    render(<SpendingBarChart data={sampleData} />);
+
+    expect(screen.getByRole('status', { name: /chart point announcement/i })).toHaveAttribute(
+      'aria-live',
+      'polite',
+    );
+  });
 });

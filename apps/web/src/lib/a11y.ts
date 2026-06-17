@@ -51,9 +51,10 @@ export function formatCurrencyForScreenReader(
   amountInCents: number,
   currency = 'USD',
   context?: string,
+  locale?: string,
 ): string {
   const isNegative = amountInCents < 0;
-  const formatted = formatCurrency(Math.abs(amountInCents), { currency });
+  const formatted = formatCurrency(Math.abs(amountInCents), { currency, locale });
   const base = isNegative ? `negative ${formatted}` : formatted;
 
   return context ? `${base}, ${context}` : base;

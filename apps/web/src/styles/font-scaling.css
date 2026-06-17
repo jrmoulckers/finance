@@ -28,6 +28,7 @@
 
 html {
   /* Ensure text scales with browser zoom / font-size settings */
+  --finance-font-scale: 1;
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
 }
@@ -62,6 +63,10 @@ html {
 .list-item__primary {
   font-size: clamp(0.875rem, 1vw + 0.25rem, 1.125rem);
   line-height: 1.4;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
 }
 
 .list-item__secondary {
@@ -159,6 +164,51 @@ html {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+/* Settings: large preference rows need one-column reflow before viewport breakpoints. */
+[data-font-scale='extra-large'] .settings-item,
+[data-font-scale='huge'] .settings-item {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+[data-font-scale='extra-large'] .settings-item__value,
+[data-font-scale='extra-large'] .settings-item__control,
+[data-font-scale='extra-large'] .settings-item__status,
+[data-font-scale='extra-large'] .settings-item__select,
+[data-font-scale='extra-large'] .settings-item__input,
+[data-font-scale='extra-large'] .settings-item__checkbox,
+[data-font-scale='huge'] .settings-item__value,
+[data-font-scale='huge'] .settings-item__control,
+[data-font-scale='huge'] .settings-item__status,
+[data-font-scale='huge'] .settings-item__select,
+[data-font-scale='huge'] .settings-item__input,
+[data-font-scale='huge'] .settings-item__checkbox {
+  grid-column: 1;
+  justify-self: stretch;
+  max-width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+
+[data-font-scale='extra-large'] .settings-item__description,
+[data-font-scale='extra-large'] .settings-item__help,
+[data-font-scale='huge'] .settings-item__description,
+[data-font-scale='huge'] .settings-item__help {
+  grid-column: 1;
+}
+
+/* Transactions: amounts and actions wrap instead of colliding at Huge text. */
+.transaction-list-item__trailing,
+.transaction-item__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.transaction-list-item__amount {
+  overflow-wrap: anywhere;
 }
 
 /* -------------------------------------------------------------------

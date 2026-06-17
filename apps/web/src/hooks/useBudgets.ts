@@ -20,13 +20,17 @@ import { useCallback, useState } from 'react';
 import { useDatabase } from '../db/DatabaseProvider';
 import {
   createBudget as repoCreateBudget,
+  createBudgetTemplate as repoCreateBudgetTemplate,
   deleteBudget as repoDeleteBudget,
   getAllBudgets,
+  getBudgetSpendingBreakdown as repoGetBudgetSpendingBreakdown,
   getBudgetWithSpending,
   reorderBudgets as repoReorderBudgets,
-  type BudgetWithSpending,
   updateBudget as repoUpdateBudget,
+  type BudgetSpendingBreakdownItem,
+  type BudgetWithSpending,
   type CreateBudgetInput,
+  type CreateBudgetTemplateInput,
   type UpdateBudgetInput,
 } from '../db/repositories/budgets';
 import type { SqliteDb } from '../db/sqlite-wasm';
@@ -39,26 +43,116 @@ export interface UseBudgetsResult {
   error: string | null;
   refresh: () => void;
   createBudget: (input: CreateBudgetInput) => Budget | null;
+  /**
+   * Create a full starter budget from a template and automatically refresh the list.
+   * @returns The created budgets, or `null` if creation failed.
+   */
+  createBudgetTemplate: (input: CreateBudgetTemplateInput) => Budget[] | null;
+  /**
+   * Update an existing budget and automatically refresh the list.
+   * @returns The updated budget, or `null` if the budget was not found or update failed.
+   */
   updateBudget: (budgetId: SyncId, updates: UpdateBudgetInput) => Budget | null;
   deleteBudget: (budgetId: SyncId) => boolean;
   reorderBudgets: (fromIndex: number, toIndex: number) => void;
+  /** Read the current spending breakdown for a budget's category tree. */
+  getBudgetSpendingBreakdown: (budgetId: SyncId) => BudgetSpendingBreakdownItem[];
+}
+
+/** Normalised budget snapshot used by the household scorecard UI. */
+export interface ScorecardBudgetSnapshot {
+  readonly id: SyncId;
+  readonly householdId: SyncId;
+  readonly categoryId: SyncId;
+  readonly name: string;
+  readonly budgetAmount: number;
+  readonly spentAmount: number;
+}
+
+const EMPTY_BUDGET_QUERY_PARAMS: readonly unknown[] = [];
+const EMPTY_BUDGETS: BudgetWithSpending[] = [];
+const BUDGET_LIVE_QUERY_TABLES = ['budget', 'transaction'] as const;
+
+const SCORECARD_DEMO_BUDGETS: readonly Omit<ScorecardBudgetSnapshot, 'householdId'>[] = [
+  {
+    id: 'demo-budget-groceries',
+    categoryId: 'demo-category-groceries',
+    name: 'Groceries',
+    budgetAmount: 90000,
+    spentAmount: 36000,
+  },
+  {
+    id: 'demo-budget-dining-out',
+    categoryId: 'demo-category-dining-out',
+    name: 'Dining Out',
+    budgetAmount: 45000,
+    spentAmount: 28000,
+  },
+  {
+    id: 'demo-budget-entertainment',
+    categoryId: 'demo-category-entertainment',
+    name: 'Entertainment',
+    budgetAmount: 25000,
+    spentAmount: 9000,
+  },
+];
+
+/**
+ * Return budget snapshots for the household scorecard.
+ *
+ * If the current household has no matching budgets yet, the helper falls back
+ * to any loaded budgets and finally to deterministic demo data so the local-
+ * first household experience still has a useful scorecard.
+ */
+export function getScorecardBudgetSnapshots(
+  budgets: BudgetWithSpending[],
+  householdId?: SyncId | null,
+): ScorecardBudgetSnapshot[] {
+  const matchingBudgets = householdId
+    ? budgets.filter((budget) => budget.householdId === householdId)
+    : [];
+  const sourceBudgets = matchingBudgets.length > 0 ? matchingBudgets : budgets;
+
+  if (sourceBudgets.length > 0) {
+    return sourceBudgets.map((budget) => ({
+      id: budget.id,
+      householdId: budget.householdId,
+      categoryId: budget.categoryId,
+      name: budget.name,
+      budgetAmount: budget.amount.amount,
+      spentAmount: budget.spentAmount.amount,
+    }));
+  }
+
+  const fallbackHouseholdId = householdId ?? 'demo-household';
+  return SCORECARD_DEMO_BUDGETS.map((budget) => ({
+    ...budget,
+    householdId: fallbackHouseholdId,
+  }));
 }
 
 function loadBudgetsWithSpending(db: SqliteDb): BudgetWithSpending[] {
-  const budgets = getAllBudgets(db);
+  try {
+    const budgets = getAllBudgets(db);
 
-  return budgets.map((budget): BudgetWithSpending => {
-    const enriched = getBudgetWithSpending(db, budget.id);
-    if (enriched) {
-      return enriched;
+    return budgets.map((budget): BudgetWithSpending => {
+      const enriched = getBudgetWithSpending(db, budget.id);
+      if (enriched) {
+        return enriched;
+      }
+
+      return {
+        ...budget,
+        spentAmount: { amount: 0 },
+        remainingAmount: { amount: budget.amount.amount },
+      };
+    });
+  } catch (budgetError) {
+    if (budgetError instanceof Error) {
+      throw budgetError;
     }
-
-    return {
-      ...budget,
-      spentAmount: { amount: 0 },
-      remainingAmount: { amount: budget.amount.amount },
-    };
-  });
+    throw new Error('Failed to load budgets.', { cause: budgetError });
+  }
 }
 
 export function useBudgets(): UseBudgetsResult {
@@ -69,23 +163,41 @@ export function useBudgets(): UseBudgetsResult {
     data: budgets,
     loading,
     error: liveError,
-    refresh,
-  } = useLiveQuery<BudgetWithSpending[]>('SELECT id FROM budget WHERE deleted_at IS NULL', [], {
-    initialData: [],
-    tables: ['budget', 'transaction'],
-    queryFn: runBudgetQuery,
-  });
+    refresh: refreshLiveQuery,
+  } = useLiveQuery<BudgetWithSpending[]>(
+    'SELECT id FROM budget WHERE deleted_at IS NULL',
+    EMPTY_BUDGET_QUERY_PARAMS,
+    {
+      initialData: EMPTY_BUDGETS,
+      tables: BUDGET_LIVE_QUERY_TABLES,
+      queryFn: runBudgetQuery,
+    },
+  );
 
   const error = mutationError ?? liveError;
+
+  const refresh = useCallback(() => {
+    try {
+      setMutationError(null);
+      runBudgetQuery(db);
+    } catch (budgetError) {
+      setMutationError(
+        budgetError instanceof Error ? budgetError.message : 'Failed to load budgets.',
+      );
+    }
+    refreshLiveQuery();
+  }, [db, refreshLiveQuery, runBudgetQuery]);
 
   const createBudget = useCallback(
     (input: CreateBudgetInput): Budget | null => {
       try {
         setMutationError(null);
-        return repoCreateBudget(db, {
+        const created = repoCreateBudget(db, {
           ...input,
           sortOrder: budgets.length,
         });
+        refresh();
+        return created;
       } catch (budgetError) {
         setMutationError(
           budgetError instanceof Error ? budgetError.message : 'Failed to create budget.',
@@ -93,14 +205,32 @@ export function useBudgets(): UseBudgetsResult {
         return null;
       }
     },
-    [budgets.length, db],
+    [budgets.length, db, refresh],
+  );
+
+  const createBudgetTemplate = useCallback(
+    (input: CreateBudgetTemplateInput): Budget[] | null => {
+      try {
+        const created = repoCreateBudgetTemplate(db, input);
+        refresh();
+        return created;
+      } catch (err) {
+        setMutationError(err instanceof Error ? err.message : 'Failed to create starter budget.');
+        return null;
+      }
+    },
+    [db, refresh],
   );
 
   const updateBudget = useCallback(
     (budgetId: SyncId, updates: UpdateBudgetInput): Budget | null => {
       try {
         setMutationError(null);
-        return repoUpdateBudget(db, budgetId, updates);
+        const updated = repoUpdateBudget(db, budgetId, updates);
+        if (updated !== null) {
+          refresh();
+        }
+        return updated;
       } catch (budgetError) {
         setMutationError(
           budgetError instanceof Error ? budgetError.message : 'Failed to update budget.',
@@ -108,14 +238,18 @@ export function useBudgets(): UseBudgetsResult {
         return null;
       }
     },
-    [db],
+    [db, refresh],
   );
 
   const deleteBudget = useCallback(
     (budgetId: SyncId): boolean => {
       try {
         setMutationError(null);
-        return repoDeleteBudget(db, budgetId);
+        const deleted = repoDeleteBudget(db, budgetId);
+        if (deleted) {
+          refresh();
+        }
+        return deleted;
       } catch (budgetError) {
         setMutationError(
           budgetError instanceof Error ? budgetError.message : 'Failed to delete budget.',
@@ -123,7 +257,7 @@ export function useBudgets(): UseBudgetsResult {
         return false;
       }
     },
-    [db],
+    [db, refresh],
   );
 
   const reorderBudgets = useCallback(
@@ -151,13 +285,26 @@ export function useBudgets(): UseBudgetsResult {
           db,
           reordered.map((budget) => budget.id),
         );
+        refresh();
       } catch (budgetError) {
         setMutationError(
           budgetError instanceof Error ? budgetError.message : 'Failed to reorder budgets.',
         );
       }
     },
-    [budgets, db],
+    [budgets, db, refresh],
+  );
+
+  const getBudgetSpendingBreakdown = useCallback(
+    (budgetId: SyncId): BudgetSpendingBreakdownItem[] => {
+      try {
+        return repoGetBudgetSpendingBreakdown(db, budgetId);
+      } catch (err) {
+        setMutationError(err instanceof Error ? err.message : 'Failed to load budget breakdown.');
+        return [];
+      }
+    },
+    [db],
   );
 
   return {
@@ -166,8 +313,10 @@ export function useBudgets(): UseBudgetsResult {
     error,
     refresh,
     createBudget,
+    createBudgetTemplate,
     updateBudget,
     deleteBudget,
+    getBudgetSpendingBreakdown,
     reorderBudgets,
   };
 }

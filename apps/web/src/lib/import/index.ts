@@ -127,3 +127,79 @@ export type {
   NormalisedTransaction,
   UniversalImportResult,
 } from './format-detector';
+
+export type { MintMigrationPreflightPanel, MintMigrationPreflightRow } from './mint-migration-preflight';
+export {
+  buildMintMigrationPreflightPanel,
+  createMintMigrationPreflightPanel,
+  isMintMigrationCandidate,
+} from './mint-migration-preflight';
+
+export type {
+  ExistingMigrationName,
+  QuickenCreationSuggestion,
+  QuickenDuplicateSourceId,
+  QuickenMigrationReview,
+  QuickenSplitReviewRow,
+} from './quicken-migration-review';
+export { buildQuickenMigrationReview } from './quicken-migration-review';
+
+export type { AccountMappingReviewRow, AccountMappingReviewState } from './account-mapping-review';
+export {
+  applyAccountMappingReview,
+  buildAccountMappingReview,
+  createAccountRouteOverrides,
+} from './account-mapping-review';
+
+export type { RoutedCommitPlan, RoutedCommitRow, RoutedTransferReviewPair } from './routed-commit-review';
+export { buildRoutedCommitPlan, transferKey } from './routed-commit-review';
+
+export type { BrowserStorageLike, ImportProfileStoreSnapshot } from './import-profile-store';
+export {
+  appendImportHistoryEntry,
+  deleteImportProfile,
+  exportImportDiagnostics,
+  loadImportHistory,
+  loadImportProfiles,
+  saveImportProfile,
+} from './import-profile-store';
+
+export type { RepairQueueFilters, RepairReviewSession } from './repair-queue-review';
+export {
+  applySessionRepair,
+  createRepairReviewSession,
+  filterRepairQueueRows,
+  setRepairQueueFilters,
+  summarizeRepairFilters,
+} from './repair-queue-review';
+
+export type { OcrRepairSuggestion, RepairedImportGate } from './repaired-import-gating';
+export { applyOcrRepairSuggestion, buildRepairedImportGate } from './repaired-import-gating';
+
+export type {
+  EncryptedImportKeyRecord,
+  ImportKeyMetadata,
+  ImportKeyMigrationCheckpoint,
+  ImportKeyStorageAdapter,
+  WebStorageAuditSource,
+} from './encrypted-import-key-manager';
+export {
+  auditWebStorageForRawImportKeys,
+  createEncryptedImportKeyRecord,
+  loadEncryptedImportKey,
+  migrateEncryptedImportKeys,
+  saveEncryptedImportKey,
+  wipeEncryptedImportKey,
+} from './encrypted-import-key-manager';
+
+export type {
+  BrokerageActivityKind,
+  BrokerageImportAdapter,
+  BrokerageImportResult,
+  BrokerageProviderMetadata,
+  BrokerageTradeActivity,
+} from './brokerage-trade-import';
+export { manualBrokerageCsvAdapter, parseManualBrokerageCsv } from './brokerage-trade-import';
+
+export type { P2PDirection, P2PImportResult, P2PProvider, P2PTransaction, P2PTransactionKind } from './p2p-importer';
+export { detectP2PProvider, parseP2PCsv } from './p2p-importer';

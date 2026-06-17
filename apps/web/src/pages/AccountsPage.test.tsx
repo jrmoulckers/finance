@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { PrivacyModeProvider } from '../contexts/PrivacyModeContext';
 import { useAccounts } from '../hooks';
+import { evaluatePrivacyScreenCoverage } from '../lib/security/privacy-screen';
+import { auditPrivacySurfaceCoverage, privacySurface } from '../lib/security/privacy-coverage';
 import { AccountsPage } from './AccountsPage';
 
 vi.mock('../hooks', () => ({
@@ -54,6 +57,7 @@ describe('AccountsPage', () => {
           type: 'CHECKING',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: 452000 },
+          purpose: 'personal',
           isArchived: false,
           sortOrder: 1,
           icon: 'bank',
@@ -67,6 +71,7 @@ describe('AccountsPage', () => {
           type: 'SAVINGS',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: 1500000 },
+          purpose: 'business',
           isArchived: false,
           sortOrder: 2,
           icon: 'piggy-bank',
@@ -80,6 +85,7 @@ describe('AccountsPage', () => {
           type: 'CREDIT_CARD',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: -125000 },
+          purpose: 'both',
           isArchived: false,
           sortOrder: 3,
           icon: 'credit-card',
@@ -93,6 +99,7 @@ describe('AccountsPage', () => {
           type: 'INVESTMENT',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: 1250000 },
+          purpose: 'personal',
           isArchived: false,
           sortOrder: 4,
           icon: 'chart',
@@ -118,19 +125,18 @@ describe('AccountsPage', () => {
     expect(screen.getByText('Accounts')).toBeInTheDocument();
   });
 
-  it('displays account categories', () => {
+  it('groups accounts by purpose', () => {
     render(
       <MemoryRouter>
         <AccountsPage />
       </MemoryRouter>,
     );
-    expect(screen.getByText('Checking')).toBeInTheDocument();
-    expect(screen.getByText('Savings')).toBeInTheDocument();
-    expect(screen.getByText('Credit Cards')).toBeInTheDocument();
-    expect(screen.getByText('Investments')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '🏠 Personal' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '💼 Business' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '🏠💼 Both' })).toBeInTheDocument();
   });
 
-  it('displays individual accounts', () => {
+  it('displays badges for account purposes', () => {
     render(
       <MemoryRouter>
         <AccountsPage />
@@ -139,7 +145,9 @@ describe('AccountsPage', () => {
     expect(screen.getByText('Primary Checking')).toBeInTheDocument();
     expect(screen.getByText('Emergency Fund')).toBeInTheDocument();
     expect(screen.getByText('Travel Card')).toBeInTheDocument();
-    expect(screen.getByText('Brokerage')).toBeInTheDocument();
+    expect(screen.getAllByText('🏠 Personal').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('💼 Business').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('🏠💼 Both').length).toBeGreaterThan(0);
   });
 
   it('shows net worth text', () => {
@@ -151,7 +159,7 @@ describe('AccountsPage', () => {
     expect(screen.getByText(/net worth/i)).toBeInTheDocument();
   });
 
-  it('shows multi-currency indicator when accounts have different currencies', () => {
+  it('shows multi-currency indicator when accounts have different currencies', async () => {
     mockedUseAccounts.mockReturnValue({
       accounts: [
         {
@@ -161,6 +169,7 @@ describe('AccountsPage', () => {
           type: 'CHECKING',
           currency: { code: 'USD', decimalPlaces: 2 },
           currentBalance: { amount: 150000 },
+          purpose: 'personal',
           isArchived: false,
           sortOrder: 1,
           icon: null,
@@ -174,6 +183,7 @@ describe('AccountsPage', () => {
           type: 'CHECKING',
           currency: { code: 'EUR', decimalPlaces: 2 },
           currentBalance: { amount: 120000 },
+          purpose: 'business',
           isArchived: false,
           sortOrder: 2,
           icon: null,
@@ -195,7 +205,7 @@ describe('AccountsPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0));
   });
 
   it('does not show multi-currency indicator when all accounts use the same currency', () => {
@@ -206,5 +216,92 @@ describe('AccountsPage', () => {
     );
 
     expect(screen.queryByText(/multiple currencies/i)).not.toBeInTheDocument();
+  });
+
+  it('covers account balances and net worth when privacy screen is active and reveals them when inactive', async () => {
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        {
+          id: 'account-usd',
+          householdId: 'household-1',
+          name: 'USD Checking',
+          type: 'CHECKING',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: 150000 },
+          purpose: 'personal',
+          isArchived: false,
+          sortOrder: 1,
+          icon: null,
+          color: null,
+          ...syncMetadata,
+        },
+        {
+          id: 'account-eur',
+          householdId: 'household-1',
+          name: 'EUR Savings',
+          type: 'CHECKING',
+          currency: { code: 'EUR', decimalPlaces: 2 },
+          currentBalance: { amount: 120000 },
+          purpose: 'business',
+          isArchived: false,
+          sortOrder: 2,
+          icon: null,
+          color: null,
+          ...syncMetadata,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
+
+    const renderAccounts = (initialValue: boolean) =>
+      render(
+        <PrivacyModeProvider initialValue={initialValue}>
+          <MemoryRouter>
+            <AccountsPage />
+          </MemoryRouter>
+        </PrivacyModeProvider>,
+      );
+
+    const active = renderAccounts(true);
+    const activeText = document.body.textContent ?? '';
+    const screenCoverage = evaluatePrivacyScreenCoverage([
+      {
+        id: 'accounts.net-worth-mixed-currency',
+        categories: ['net-worth'],
+        masked: !activeText.includes('$1,500.00') && !activeText.includes('€1,200.00'),
+      },
+      {
+        id: 'accounts.account-balances',
+        categories: ['balance'],
+        masked: !activeText.includes('$1,500.00') && !activeText.includes('€1,200.00'),
+      },
+    ]);
+    const manifestCoverage = auditPrivacySurfaceCoverage(
+      [
+        privacySurface('accounts.net-worth', 'dashboard', ['net-worth'], 'masked'),
+        privacySurface('accounts.account-balances', 'detail', ['balance'], 'masked'),
+      ],
+      ['dashboard', 'detail'],
+    );
+
+    await waitFor(() => expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0));
+
+    expect(screenCoverage.safe).toBe(true);
+    expect(manifestCoverage.complete).toBe(true);
+    expect(screen.getAllByLabelText('Amount hidden').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByLabelText('Total: Amount hidden').length).toBeGreaterThan(0);
+
+    active.unmount();
+    window.localStorage.clear();
+
+    renderAccounts(false);
+    await waitFor(() => expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0));
+    expect(document.body).toHaveTextContent('$1,500.00');
+    expect(document.body).toHaveTextContent('€1,200.00');
   });
 });

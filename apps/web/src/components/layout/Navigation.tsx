@@ -71,10 +71,13 @@ export interface NavigationProps {
   onNavigate: (path: string) => void;
   onOpenShortcuts?: () => void;
   onOpenFeedback?: () => void;
+  simpleMode?: boolean;
 }
 
 function isActive(activePath: string, href: string): boolean {
-  return activePath === href || activePath.startsWith(href + '/');
+  if (activePath === href) return true;
+  if (!activePath.startsWith(href + '/')) return false;
+  return !NAV_CONFIG.some((item) => item.href === activePath);
 }
 
 // ---------------------------------------------------------------------------
@@ -85,11 +88,14 @@ function isActive(activePath: string, href: string): boolean {
  * Bottom tab bar for narrow viewports. Renders the four highest-priority
  * destinations plus a "More" tab that opens {@link MoreNavSheet}.
  */
+const SIMPLE_MODE_BOTTOM_NAV_IDS = new Set(['dashboard', 'transactions', 'budgets', 'bills']);
+
 export const BottomNavigation: React.FC<NavigationProps> = ({
   activePath,
   onNavigate,
   onOpenShortcuts,
   onOpenFeedback,
+  simpleMode = false,
 }) => {
   const { logout } = useAuth();
   const { isSimplified } = useAccessibility();
@@ -103,14 +109,22 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
     [isSimplified],
   );
 
+  const bottomNavItems = useMemo(
+    () =>
+      simpleMode
+        ? NAV_CONFIG.filter((item) => SIMPLE_MODE_BOTTOM_NAV_IDS.has(item.id))
+        : priorityItems,
+    [priorityItems, simpleMode],
+  );
+
   const isMoreActive = useMemo(() => {
     // The "More" tab should appear active when the user is on any route
     // that is reachable only via the sheet (i.e. not a priority item).
-    if (priorityItems.some((item) => isActive(activePath, item.href))) {
+    if (bottomNavItems.some((item) => isActive(activePath, item.href))) {
       return false;
     }
     return visibleItems.some((item) => isActive(activePath, item.href));
-  }, [activePath, priorityItems, visibleItems]);
+  }, [activePath, bottomNavItems, visibleItems]);
 
   const handleSignOut = useCallback(async () => {
     await logout();
@@ -118,8 +132,8 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
 
   return (
     <>
-      <nav className="bottom-nav" aria-label="Main navigation">
-        {priorityItems.map((item) => {
+      <nav className="bottom-nav" aria-label="Main navigation" data-simple-mode={simpleMode || undefined}>
+        {bottomNavItems.map((item) => {
           const active = isActive(activePath, item.href);
           return (
             <button
@@ -262,6 +276,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
   onNavigate,
   onOpenShortcuts,
   onOpenFeedback,
+  simpleMode = false,
 }) => {
   const { logout } = useAuth();
   const { isSimplified } = useAccessibility();
@@ -276,7 +291,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
   }, [logout]);
 
   return (
-    <aside className="app-sidebar" aria-label="Main navigation">
+    <aside className="app-sidebar" aria-label="Main navigation" data-simple-mode={simpleMode || undefined}>
       <div className="app-sidebar__header">
         <span className="app-sidebar__logo">Finance</span>
       </div>
@@ -320,7 +335,7 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
               items={groupItems}
               activePath={activePath}
               onNavigate={onNavigate}
-              defaultExpanded={isSimplified || group === 'money' || group === 'plan'}
+              defaultExpanded={isSimplified || (!simpleMode && (group === 'money' || group === 'plan'))}
             />
           );
         })}

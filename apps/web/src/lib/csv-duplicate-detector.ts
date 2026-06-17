@@ -32,19 +32,31 @@ export interface DuplicateMatch {
 // ---------------------------------------------------------------------------
 
 /** Minimum score for a match to be reported. */
-const SCORE_THRESHOLD = 0.7;
+const SCORE_THRESHOLD = 0.72;
+
+/** Exact source IDs are authoritative for re-imports. */
+const SOURCE_ID_SCORE = 1.0;
 
 /** Score awarded for an exact date match. */
-const DATE_SCORE = 0.4;
+const DATE_SCORE = 0.28;
+
+/** Score awarded when dates drift within a posting window. */
+const DATE_WINDOW_SCORE = 0.18;
 
 /** Score awarded for an exact amount match. */
-const AMOUNT_SCORE = 0.4;
+const AMOUNT_SCORE = 0.34;
+
+/** Score awarded for account match. */
+const ACCOUNT_SCORE = 0.12;
 
 /** Score awarded for a matching description / payee. */
-const DESCRIPTION_SCORE = 0.1;
+const DESCRIPTION_SCORE = 0.2;
+
+/** Score awarded for matching raw statement text. */
+const STATEMENT_DESCRIPTION_SCORE = 0.14;
 
 /** Score awarded for a matching category. */
-const CATEGORY_SCORE = 0.1;
+const CATEGORY_SCORE = 0.08;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -99,10 +111,18 @@ function computeMatch(
   let score = 0;
   const reasons: string[] = [];
 
+  const importSourceId = getString(row.data, 'externalReferenceId');
+  if (importSourceId && existing.externalReferenceId && importSourceId === existing.externalReferenceId) {
+    return { score: SOURCE_ID_SCORE, reasons: ['same source transaction id'] };
+  }
+
   // --- Date comparison -----------------------------------------------------
   if (row.data.date === existing.date) {
     score += DATE_SCORE;
     reasons.push('exact date match');
+  } else if (Math.abs(daysBetween(row.data.date, existing.date)) <= 3) {
+    score += DATE_WINDOW_SCORE;
+    reasons.push('posting date within 3 days');
   }
 
   // --- Amount comparison ---------------------------------------------------
@@ -111,19 +131,40 @@ function computeMatch(
     reasons.push('same amount');
   }
 
+  // --- Account comparison --------------------------------------------------
+  if (row.data.accountId && row.data.accountId === existing.accountId) {
+    score += ACCOUNT_SCORE;
+    reasons.push('same account');
+  }
+
   // --- Description / payee comparison --------------------------------------
   const importDesc = normalizeText(row.data.payee ?? '');
   const existingDesc = normalizeText(existing.payee ?? '');
 
   if (importDesc && existingDesc && fuzzyMatch(importDesc, existingDesc)) {
     score += DESCRIPTION_SCORE;
-    reasons.push('similar description');
+    reasons.push('similar payee');
+  }
+
+  const importStatementDesc = normalizeText(getString(row.data, 'statementDescription') ?? '');
+  const existingStatementDesc = normalizeText(existing.statementDescription ?? '');
+  if (
+    importStatementDesc &&
+    (fuzzyMatch(importStatementDesc, existingStatementDesc) ||
+      fuzzyMatch(importStatementDesc, existingDesc))
+  ) {
+    score += STATEMENT_DESCRIPTION_SCORE;
+    reasons.push('similar statement description');
   }
 
   // --- Category comparison -------------------------------------------------
   if (row.data.categoryId && existing.categoryId && row.data.categoryId === existing.categoryId) {
     score += CATEGORY_SCORE;
     reasons.push('same category');
+  }
+
+  if (importDesc && existingDesc && !fuzzyMatch(importDesc, existingDesc) && !importStatementDesc) {
+    score = Math.min(score, SCORE_THRESHOLD - 0.01);
   }
 
   return { score, reasons };
@@ -152,5 +193,59 @@ function normalizeText(text: string): string {
 function fuzzyMatch(a: string, b: string): boolean {
   if (a === b) return true;
   if (a.length === 0 || b.length === 0) return false;
-  return a.includes(b) || b.includes(a);
+  if (a.includes(b) || b.includes(a)) return true;
+  return tokenOverlap(a, b) >= 0.67;
+}
+
+function tokenOverlap(a: string, b: string): number {
+  const aTokens = new Set(a.split(' ').filter(Boolean));
+  const bTokens = new Set(b.split(' ').filter(Boolean));
+  if (aTokens.size === 0 || bTokens.size === 0) return 0;
+  let shared = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) shared++;
+  }
+  return shared / Math.max(aTokens.size, bTokens.size);
+}
+
+function daysBetween(a: string, b: string): number {
+  const left = Date.parse(`${a}T00:00:00Z`);
+  const right = Date.parse(`${b}T00:00:00Z`);
+  if (Number.isNaN(left) || Number.isNaN(right)) return Number.POSITIVE_INFINITY;
+  return Math.round((left - right) / 86_400_000);
+}
+
+function getString(value: object, key: string): string | null {
+  const raw = (value as Record<string, unknown>)[key];
+  return typeof raw === 'string' && raw.trim().length > 0 ? raw.trim() : null;
+}
+
+export function mergeTransactionDetails(
+  existing: Transaction,
+  imported: Partial<{
+    payee: string | null;
+    note: string | null;
+    categoryId: string | null;
+    externalReferenceId: string | null;
+    statementDescription: string | null;
+    extraNotes: string | null;
+  }>,
+): Transaction {
+  return {
+    ...existing,
+    payee: existing.payee || imported.payee || null,
+    note: mergeText(existing.note, imported.note),
+    categoryId: existing.categoryId || imported.categoryId || null,
+    externalReferenceId: existing.externalReferenceId || imported.externalReferenceId || null,
+    statementDescription: existing.statementDescription || imported.statementDescription || null,
+    extraNotes: mergeText(existing.extraNotes, imported.extraNotes),
+  };
+}
+
+function mergeText(existing: string | null, incoming: string | null | undefined): string | null {
+  const left = existing?.trim() ?? '';
+  const right = incoming?.trim() ?? '';
+  if (!left) return right || null;
+  if (!right || left.includes(right)) return left;
+  return `${left}\n${right}`;
 }

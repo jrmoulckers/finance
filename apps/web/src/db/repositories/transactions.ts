@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import type {
+  ContributionDesignation,
   Currency,
   LocalDate,
   SyncId,
   Transaction,
+  TransactionSplit,
   TransactionStatus,
   TransactionType,
 } from '../../kmp/bridge';
 import { Currencies } from '../../kmp/bridge';
+import { validateTransactionSplits } from '../../lib/transactions/splits';
+import { isTransactionLockedByReconciliation } from '../../lib/reconciliation';
 import { execute, query, queryOne, type Row, type SqliteDb } from '../sqlite-wasm';
 import { notifyMilestoneDataChanged } from '../../lib/milestones';
 import { recomputeAccountBalance } from './accounts';
@@ -21,9 +25,11 @@ import {
   optionalString,
   parseCustomFields,
   parseTags,
+  parseTransactionSplits,
   requireString,
   serializeCustomFields,
   serializeTags,
+  serializeTransactionSplits,
   toBoolean,
 } from './helpers';
 
@@ -44,6 +50,9 @@ const TRANSACTION_COLUMNS = [
   'is_recurring',
   'recurring_rule_id',
   'tags',
+  'retirement_contribution_year',
+  'retirement_contribution_designation',
+  'splits',
   'mood_tag',
   'merchant_address',
   'merchant_city',
@@ -89,6 +98,9 @@ export interface CreateTransactionInput {
   isRecurring?: boolean;
   recurringRuleId?: SyncId | null;
   tags?: readonly string[];
+  retirementContributionYear?: number | null;
+  retirementContributionDesignation?: ContributionDesignation | null;
+  splits?: readonly TransactionSplit[] | null;
   moodTag?: string | null;
   merchantAddress?: string | null;
   merchantCity?: string | null;
@@ -120,6 +132,9 @@ export interface UpdateTransactionInput {
   isRecurring?: boolean;
   recurringRuleId?: SyncId | null;
   tags?: readonly string[];
+  retirementContributionYear?: number | null;
+  retirementContributionDesignation?: ContributionDesignation | null;
+  splits?: readonly TransactionSplit[] | null;
   moodTag?: string | null;
   merchantAddress?: string | null;
   merchantCity?: string | null;
@@ -152,6 +167,14 @@ function mapTransaction(row: Row): Transaction {
     isRecurring: toBoolean(row.is_recurring),
     recurringRuleId: optionalString(row.recurring_rule_id),
     tags: parseTags(row.tags),
+    retirementContributionYear:
+      row.retirement_contribution_year === null || row.retirement_contribution_year === undefined
+        ? null
+        : Number(row.retirement_contribution_year),
+    retirementContributionDesignation: optionalString(
+      row.retirement_contribution_designation,
+    ) as ContributionDesignation | null,
+    splits: parseTransactionSplits(row.splits),
     moodTag: optionalString(row.mood_tag),
     merchantAddress: optionalString(row.merchant_address),
     merchantCity: optionalString(row.merchant_city),
@@ -166,6 +189,31 @@ function mapTransaction(row: Row): Transaction {
     counterpartyAccountId: optionalString(row.counterparty_account_id),
     ...mapSyncMetadata(row),
   };
+}
+
+function normalizeTransactionSplits(
+  splits: readonly TransactionSplit[] | null | undefined,
+): readonly TransactionSplit[] {
+  if (!splits || splits.length === 0) {
+    return [];
+  }
+
+  return splits.map((split) => ({
+    ...(split.id ? { id: split.id } : {}),
+    categoryId: split.categoryId ?? null,
+    amount: { amount: Math.trunc(split.amount.amount) },
+    note: split.note?.trim() ? split.note.trim() : null,
+  }));
+}
+
+function assertBalancedSplits(
+  totalAmount: { amount: number },
+  splits: readonly TransactionSplit[],
+): void {
+  const validation = validateTransactionSplits(totalAmount.amount, splits);
+  if (!validation.isBalanced) {
+    throw new Error(validation.error ?? 'Split amounts must equal the transaction total.');
+  }
 }
 
 function buildTransactionQuery(additionalClauses: string[] = [], filters: TransactionFilters = {}) {
@@ -239,6 +287,8 @@ export function getTransactionById(db: SqliteDb, transactionId: SyncId): Transac
 export function createTransaction(db: SqliteDb, input: CreateTransactionInput): Transaction {
   const id = crypto.randomUUID();
   const currency = input.currency ?? Currencies.USD;
+  const splits = normalizeTransactionSplits(input.splits);
+  assertBalancedSplits(input.amount, splits);
 
   execute(
     db,
@@ -259,6 +309,9 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
       is_recurring,
       recurring_rule_id,
       tags,
+      retirement_contribution_year,
+      retirement_contribution_designation,
+      splits,
       mood_tag,
       merchant_address,
       merchant_city,
@@ -277,7 +330,7 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
       sync_version,
       is_synced
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
       ${SQLITE_NOW_EXPRESSION},
       ${SQLITE_NOW_EXPRESSION},
       NULL,
@@ -301,6 +354,9 @@ export function createTransaction(db: SqliteDb, input: CreateTransactionInput): 
       input.isRecurring ? 1 : 0,
       input.recurringRuleId ?? null,
       serializeTags(input.tags ?? []),
+      input.retirementContributionDesignation ? (input.retirementContributionYear ?? null) : null,
+      input.retirementContributionDesignation ?? null,
+      serializeTransactionSplits(splits),
       input.moodTag ?? null,
       input.merchantAddress ?? null,
       input.merchantCity ?? null,
@@ -338,6 +394,10 @@ export function updateTransaction(
     return null;
   }
 
+  if (isTransactionLockedByReconciliation(existingTransaction)) {
+    throw new Error('Reconciled transactions are locked and cannot be edited.');
+  }
+
   const mergedTransaction = {
     householdId: updates.householdId ?? existingTransaction.householdId,
     accountId: updates.accountId ?? existingTransaction.accountId,
@@ -364,6 +424,18 @@ export function updateTransaction(
         ? updates.recurringRuleId
         : existingTransaction.recurringRuleId,
     tags: updates.tags ?? existingTransaction.tags,
+    retirementContributionYear:
+      updates.retirementContributionYear !== undefined
+        ? updates.retirementContributionYear
+        : (existingTransaction.retirementContributionYear ?? null),
+    retirementContributionDesignation:
+      updates.retirementContributionDesignation !== undefined
+        ? updates.retirementContributionDesignation
+        : (existingTransaction.retirementContributionDesignation ?? null),
+    splits:
+      updates.splits !== undefined
+        ? normalizeTransactionSplits(updates.splits)
+        : (existingTransaction.splits ?? []),
     moodTag: updates.moodTag !== undefined ? updates.moodTag : existingTransaction.moodTag,
     merchantAddress:
       updates.merchantAddress !== undefined
@@ -403,6 +475,8 @@ export function updateTransaction(
         : existingTransaction.counterpartyAccountId,
   };
 
+  assertBalancedSplits(mergedTransaction.amount, mergedTransaction.splits);
+
   execute(
     db,
     `UPDATE "transaction"
@@ -421,6 +495,9 @@ export function updateTransaction(
             is_recurring = ?,
             recurring_rule_id = ?,
             tags = ?,
+            retirement_contribution_year = ?,
+            retirement_contribution_designation = ?,
+            splits = ?,
             mood_tag = ?,
             merchant_address = ?,
             merchant_city = ?,
@@ -454,6 +531,11 @@ export function updateTransaction(
       mergedTransaction.isRecurring ? 1 : 0,
       mergedTransaction.recurringRuleId,
       serializeTags(mergedTransaction.tags),
+      mergedTransaction.retirementContributionDesignation
+        ? (mergedTransaction.retirementContributionYear ?? null)
+        : null,
+      mergedTransaction.retirementContributionDesignation,
+      serializeTransactionSplits(mergedTransaction.splits),
       mergedTransaction.moodTag,
       mergedTransaction.merchantAddress,
       mergedTransaction.merchantCity,
@@ -488,6 +570,10 @@ export function deleteTransaction(db: SqliteDb, transactionId: SyncId): boolean 
   const existingTransaction = getTransactionById(db, transactionId);
   if (!existingTransaction) {
     return false;
+  }
+
+  if (isTransactionLockedByReconciliation(existingTransaction)) {
+    throw new Error('Reconciled transactions are locked and cannot be deleted.');
   }
 
   execute(
@@ -531,7 +617,18 @@ export function getTransactionsByCategory(
   categoryId: SyncId,
   filters: TransactionFilters = {},
 ): Transaction[] {
-  return listTransactions(db, ['category_id = ?'], [categoryId], filters);
+  return listTransactions(
+    db,
+    [
+      `(category_id = ? OR EXISTS (
+        SELECT 1
+          FROM json_each(COALESCE(splits, '[]')) AS split
+         WHERE json_extract(split.value, '$.categoryId') = ?
+      ))`,
+    ],
+    [categoryId, categoryId],
+    filters,
+  );
 }
 
 /** Return transactions within an inclusive local-date range. */

@@ -201,6 +201,80 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * Trusted helper
+ * ------------------------------------------------------------------------- */
+
+.household-trusted-helper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.household-trusted-helper__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.household-trusted-helper__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-3);
+  background: var(--color-green-50, #f0fdf4);
+  color: var(--semantic-status-positive);
+  border-radius: var(--border-radius-full, 9999px);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.household-trusted-helper__plain-language {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-3);
+}
+
+.household-trusted-helper__plain-language > div {
+  padding: var(--spacing-3);
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.household-trusted-helper__plain-language h3 {
+  margin: 0 0 var(--spacing-2);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.household-helper-capability-list {
+  margin: 0;
+  padding-left: var(--spacing-5);
+  color: var(--semantic-text-secondary);
+  line-height: var(--line-height-relaxed, 1.5);
+}
+
+.household-helper-capability-list li::marker {
+  color: var(--semantic-status-positive);
+}
+
+.household-helper-capability-list--cannot li::marker {
+  color: var(--semantic-status-negative);
+}
+
+.household-trusted-helper-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.household-trusted-helper-form__hint {
+  margin: var(--spacing-1) 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+/* ---------------------------------------------------------------------------
  * Member list
  * ------------------------------------------------------------------------- */
 
@@ -279,6 +353,242 @@
   font-size: var(--type-scale-caption-font-size);
   color: var(--semantic-status-warning);
   text-transform: capitalize;
+}
+
+/* ---------------------------------------------------------------------------
+ * Kids & allowances (#2200)
+ * ------------------------------------------------------------------------- */
+
+.household-kids-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-5);
+}
+
+.household-kids-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-3);
+}
+
+.household-kids-rollup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-5);
+}
+
+.household-kids-rollup > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.household-kids-rollup__label {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.household-kids-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.household-kid-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4);
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-lg, var(--border-radius-md));
+}
+
+.household-kid-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.household-kid-card__name {
+  margin: 0;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-title-font-size);
+}
+
+.household-kid-card__meta {
+  margin: var(--spacing-1) 0 0;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.household-kid-card__balance {
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+  white-space: nowrap;
+}
+
+.household-kid-card__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-3);
+  margin: 0;
+}
+
+.household-kid-card__stat {
+  min-width: 0;
+  padding: var(--spacing-3);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+}
+
+.household-kid-card__stat dt {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.household-kid-card__stat dd {
+  margin: var(--spacing-1) 0 0;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+  font-weight: var(--font-weight-semibold);
+}
+
+.household-kid-card__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.household-kid-card__section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.household-kid-card__section-title {
+  margin: 0;
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-body-font-size);
+}
+
+.household-kid-card__section-note {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.household-kid-card__chore-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.household-kid-card__chore-item {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+}
+
+.household-kid-card__chore-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  cursor: pointer;
+}
+
+.household-kid-card__chore-toggle input {
+  margin-top: 0.2rem;
+}
+
+.household-kid-card__chore-name {
+  display: block;
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.household-kid-card__chore-meta {
+  display: block;
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.household-kid-card__inline-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.household-kid-card__inline-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-2);
+}
+
+.household-kid-card__inline-fields--compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.household-kid-card__inline-fields--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.household-kid-card__stat--wide {
+  grid-column: 1 / -1;
+}
+
+.household-kid-card__college-fund,
+.household-kid-card__expense-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.household-kid-card__college-amounts,
+.household-kid-card__expense-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.household-kid-card__college-progress {
+  height: 8px;
+  overflow: hidden;
+  background: var(--semantic-border-default);
+  border-radius: var(--border-radius-full, 9999px);
+}
+
+.household-kid-card__college-progress span {
+  display: block;
+  height: 100%;
+  background: var(--semantic-interactive-default);
+  border-radius: inherit;
+}
+
+.household-kid-card__expense-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.household-kid-card__expense-item {
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--semantic-background-primary);
+  border-radius: var(--border-radius-md);
 }
 
 /* ---------------------------------------------------------------------------
@@ -368,6 +678,360 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * Household scorecard (#2188)
+ * ------------------------------------------------------------------------- */
+
+.household-scorecard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.household-scorecard__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+}
+
+.household-scorecard__summary {
+  min-width: min(100%, 280px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.household-scorecard__summary--positive {
+  background: var(--color-green-50, #f0fdf4);
+  border-color: var(--semantic-status-positive);
+}
+
+.household-scorecard__summary--negative {
+  background: var(--color-red-50, #fef2f2);
+  border-color: var(--semantic-status-negative);
+}
+
+.household-scorecard__summary-label,
+.household-scorecard__summary-meta,
+.household-scorecard-member__pace,
+.household-scorecard-member__amounts,
+.household-scorecard-member__bar-meta,
+.household-scorecard-member__category {
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.household-scorecard__summary-copy {
+  margin: 0;
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-relaxed, 1.5);
+}
+
+.household-scorecard__summary-amount {
+  color: inherit;
+}
+
+.household-scorecard__members {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacing-3);
+}
+
+.household-scorecard-member {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.household-scorecard-member__header,
+.household-scorecard-member__identity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.household-scorecard-member__identity {
+  justify-content: flex-start;
+}
+
+.household-scorecard-member__avatar {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius-full, 9999px);
+  background: var(--semantic-background-primary);
+  border: 1px solid var(--semantic-border-default);
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.household-scorecard-member__name {
+  display: block;
+  font-weight: var(--font-weight-semibold);
+  color: var(--semantic-text-primary);
+}
+
+.household-scorecard-member__role {
+  display: block;
+  font-size: var(--type-scale-caption-font-size);
+  color: var(--semantic-text-secondary);
+}
+
+.household-scorecard-member__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--border-radius-full, 9999px);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.household-scorecard-member__status--positive {
+  background: var(--color-green-50, #f0fdf4);
+  color: var(--semantic-status-positive);
+}
+
+.household-scorecard-member__status--warning {
+  background: var(--color-amber-50, #fffbeb);
+  color: var(--semantic-status-warning);
+}
+
+.household-scorecard-member__status--negative {
+  background: var(--color-red-50, #fef2f2);
+  color: var(--semantic-status-negative);
+}
+
+.household-scorecard-member__pace,
+.household-scorecard-member__motivation {
+  margin: 0;
+}
+
+.household-scorecard-member__amounts,
+.household-scorecard-member__bar-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.household-scorecard-member__bar-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.household-scorecard-member__bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.household-scorecard-member__progress {
+  width: 100%;
+  height: 0.5rem;
+  overflow: hidden;
+  background: var(--semantic-border-default);
+  border-radius: var(--border-radius-full, 9999px);
+}
+
+.household-scorecard-member__progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.household-scorecard-member__progress-fill--time {
+  background: var(--semantic-interactive-default);
+}
+
+.household-scorecard-member__progress-fill--positive {
+  background: var(--semantic-status-positive);
+}
+
+.household-scorecard-member__progress-fill--warning {
+  background: var(--semantic-status-warning);
+}
+
+.household-scorecard-member__progress-fill--negative {
+  background: var(--semantic-status-negative);
+}
+
+.household-scorecard-member__category {
+  margin: 0;
+}
+
+.household-scorecard-member__category--clear {
+  color: var(--semantic-status-positive);
+}
+
+.household-scorecard-member__motivation {
+  color: var(--semantic-text-primary);
+  line-height: var(--line-height-relaxed, 1.5);
+}
+
+/* ---------------------------------------------------------------------------
+ * Household beta tools (#2228, #2232, #2234, #2244, #2246)
+ * ------------------------------------------------------------------------- */
+
+.household-beta,
+.household-beta-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.household-beta-panel {
+  padding: var(--spacing-4);
+  background: var(--semantic-background-secondary);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.household-beta-panel__header,
+.household-beta-list__item,
+.household-beta-list__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.household-beta-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-3);
+}
+
+.household-beta-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.household-beta-list__item {
+  flex-wrap: wrap;
+  padding: var(--spacing-3);
+  background: var(--semantic-background-primary);
+  border-radius: var(--border-radius-md);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.household-beta-list__item strong {
+  color: var(--semantic-text-primary);
+}
+
+.household-beta-list__actions {
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------------------
+ * Shared expenses / settle-up (#2144)
+ * ------------------------------------------------------------------------- */
+
+.household-settle-up {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.household-settle-up-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.household-settle-up-form__grid,
+.household-settle-up__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-3);
+}
+
+.household-settle-up-members {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+}
+
+.household-settle-up-members legend,
+.household-settle-up__subtitle {
+  color: var(--semantic-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.household-settle-up-member-row,
+.household-settle-up-balance,
+.household-settle-up-suggestion,
+.household-settle-up-expense {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+}
+
+.household-settle-up-member-row__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--semantic-text-primary);
+}
+
+.household-settle-up-member-row__amount {
+  max-width: 9rem;
+}
+
+.household-settle-up-balance-list,
+.household-settle-up-suggestion-list,
+.household-settle-up-expense-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.household-settle-up-balance--positive strong {
+  color: var(--semantic-status-positive);
+}
+
+.household-settle-up-balance--negative strong {
+  color: var(--semantic-status-negative);
+}
+
+.household-settle-up-balance--zero strong {
+  color: var(--semantic-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
  * Responsive
  * ------------------------------------------------------------------------- */
 
@@ -379,7 +1043,8 @@
   .household-member-item,
   .household-invitation-item,
   .household-sharing-item,
-  .household-goal-item {
+  .household-goal-item,
+  .household-kid-card__header {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -390,12 +1055,29 @@
     justify-content: flex-end;
   }
 
+  .household-kid-card__stats,
+  .household-kid-card__inline-fields,
+  .household-kids-form__grid {
+    grid-template-columns: 1fr;
+  }
+
   .household-permissions-grid {
     grid-template-columns: 1fr;
   }
 
   .household-permissions-table-wrap {
     overflow-x: auto;
+  }
+
+  .household-scorecard__header,
+  .household-scorecard-member__header,
+  .household-trusted-helper__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .household-scorecard__members {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -408,7 +1090,8 @@
     background: rgba(239, 68, 68, 0.1);
   }
 
-  html:not([data-theme='light']) .household-banner--success {
+  html:not([data-theme='light']) .household-banner--success,
+  html:not([data-theme='light']) .household-trusted-helper__badge {
     background: rgba(34, 197, 94, 0.1);
   }
 }
@@ -417,7 +1100,8 @@
   background: rgba(239, 68, 68, 0.1);
 }
 
-[data-theme='dark'] .household-banner--success {
+[data-theme='dark'] .household-banner--success,
+[data-theme='dark'] .household-trusted-helper__badge {
   background: rgba(34, 197, 94, 0.1);
 }
 

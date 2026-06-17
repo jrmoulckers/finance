@@ -16,6 +16,11 @@ vi.mock('../../db/DatabaseProvider', () => ({
   useDatabase: () => mockDb,
 }));
 
+const mockQueryOne = vi.fn<(...args: unknown[]) => { id: string } | null>();
+vi.mock('../../db/sqlite-wasm', () => ({
+  queryOne: (...args: unknown[]) => mockQueryOne(...args),
+}));
+
 const mockGetAllCategories = vi.fn<(...args: unknown[]) => Category[]>();
 const mockCreateCategory = vi.fn<(...args: unknown[]) => Category>();
 const mockUpdateCategory = vi.fn<(...args: unknown[]) => Category | null>();
@@ -64,6 +69,7 @@ describe('useCategories', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetAllCategories.mockReturnValue([]);
+    mockQueryOne.mockReturnValue({ id: 'hh-1' });
   });
 
   // -----------------------------------------------------------------------
@@ -107,6 +113,89 @@ describe('useCategories', () => {
 
     expect(incomeCategories).toHaveLength(1);
     expect(expenseCategories).toHaveLength(2);
+  });
+
+  it('builds the Food & Meals template state from existing child categories', () => {
+    mockGetAllCategories.mockReturnValue([
+      makeCategory({ id: 'cat-food', name: 'Food', parentId: null }),
+      makeCategory({ id: 'cat-groceries', name: 'Groceries', parentId: 'cat-food', icon: '🛒' }),
+      makeCategory({ id: 'cat-dining', name: 'Dining Out', parentId: 'cat-food', icon: '🍽️' }),
+    ]);
+
+    const { result } = renderHook(() => useCategories());
+
+    expect(result.current.foodMealTemplate.parentCategory?.name).toBe('Food');
+    expect(result.current.foodMealTemplate.subcategories.map((category) => category.name)).toEqual([
+      'Groceries',
+      'Dining Out',
+    ]);
+    expect(result.current.foodMealTemplate.missingSubcategoryDefinitions).toHaveLength(3);
+  });
+
+  it('creates the missing Food & Meals categories under an existing parent', () => {
+    const existingFood = makeCategory({ id: 'cat-food', name: 'Food', parentId: null });
+    const existingGroceries = makeCategory({
+      id: 'cat-groceries',
+      name: 'Groceries',
+      parentId: 'cat-food',
+      icon: '🛒',
+      sortOrder: 2,
+    });
+    mockGetAllCategories.mockReturnValue([existingFood, existingGroceries]);
+    mockCreateCategory
+      .mockReturnValueOnce(
+        makeCategory({
+          id: 'cat-dining',
+          name: 'Dining Out',
+          parentId: 'cat-food',
+          icon: '🍽️',
+          sortOrder: 3,
+        }),
+      )
+      .mockReturnValueOnce(
+        makeCategory({
+          id: 'cat-delivery',
+          name: 'Delivery & Takeout',
+          parentId: 'cat-food',
+          icon: '🥡',
+          sortOrder: 4,
+        }),
+      )
+      .mockReturnValueOnce(
+        makeCategory({
+          id: 'cat-coffee',
+          name: 'Coffee & Snacks',
+          parentId: 'cat-food',
+          icon: '☕',
+          sortOrder: 5,
+        }),
+      )
+      .mockReturnValueOnce(
+        makeCategory({
+          id: 'cat-meal-prep',
+          name: 'Meal Prep',
+          parentId: 'cat-food',
+          icon: '🥗',
+          sortOrder: 6,
+        }),
+      );
+
+    const { result } = renderHook(() => useCategories());
+
+    let templateState!: ReturnType<typeof useCategories>['foodMealTemplate'] | null;
+    act(() => {
+      templateState = result.current.ensureFoodMealCategories();
+    });
+
+    expect(mockCreateCategory).toHaveBeenCalledTimes(4);
+    expect(templateState).not.toBeNull();
+    expect(templateState!.subcategories.map((category: Category) => category.name)).toEqual([
+      'Groceries',
+      'Dining Out',
+      'Delivery & Takeout',
+      'Coffee & Snacks',
+      'Meal Prep',
+    ]);
   });
 
   // -----------------------------------------------------------------------

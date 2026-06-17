@@ -47,7 +47,7 @@ describe('useMultiCurrency', () => {
     const { result } = renderHook(() => useMultiCurrency());
 
     expect(result.current.formatAmount(12345, Currencies.USD)).toBe('123.45');
-    expect(result.current.formatAmount(12345, Currencies.JPY)).toBe('12345');
+    expect(result.current.formatAmount(12345, Currencies.JPY)).toBe('12,345');
   });
 
   it('formats with currency symbol', () => {
@@ -56,7 +56,7 @@ describe('useMultiCurrency', () => {
     expect(result.current.formatWithSymbol(12345, Currencies.USD)).toBe('$123.45');
     expect(result.current.formatWithSymbol(12345, Currencies.EUR)).toBe('€123.45');
     expect(result.current.formatWithSymbol(12345, Currencies.GBP)).toBe('£123.45');
-    expect(result.current.formatWithSymbol(12345, Currencies.JPY)).toBe('¥12345');
+    expect(result.current.formatWithSymbol(12345, Currencies.JPY)).toBe('¥12,345');
   });
 
   it('gets exchange rate between currencies', () => {
@@ -112,6 +112,29 @@ describe('useMultiCurrency', () => {
     expect(eurTotal?.totalCents).toBe(5000);
     // EUR converted to USD: 5000 / 0.92 ≈ 5435
     expect(eurTotal?.convertedCents).toBeGreaterThan(5000);
+  });
+
+  it('falls back to USD when an unsupported default currency is stored', () => {
+    localStorage.setItem(
+      'finance-default-currency',
+      JSON.stringify({ code: 'ZZZ', decimalPlaces: 2 }),
+    );
+
+    const { result } = renderHook(() => useMultiCurrency());
+
+    expect(result.current.defaultCurrency.code).toBe('USD');
+  });
+
+  it('keeps zero-decimal currencies grouped without unsafe decimal conversion', () => {
+    const { result } = renderHook(() => useMultiCurrency());
+    const totals = result.current.calculateMultiCurrencyTotal([
+      { amountCents: 1000, currency: Currencies.JPY },
+      { amountCents: 250, currency: Currencies.JPY },
+    ]);
+
+    expect(totals).toHaveLength(1);
+    expect(totals[0]?.totalCents).toBe(1250);
+    expect(totals[0]?.currency.decimalPlaces).toBe(0);
   });
 
   it('provides list of supported currencies', () => {

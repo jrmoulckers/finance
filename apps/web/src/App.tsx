@@ -1,19 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { useCallback, useEffect, useRef, type FC } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, type FC } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { MilestoneToast } from './components/celebrations';
 import { ConsentDialog } from './components/gdpr';
 import { AppLayout } from './components/layout';
 import { PrivacyModeProvider } from './contexts/PrivacyModeContext';
-import { useBudgets, useNotifications } from './hooks';
+import { SessionSecurityBoundary } from './components/SessionSecurityBoundary';
+import { useBudgets, useNotifications, useTransactions } from './hooks';
 import { useHaptics } from './hooks/useHaptics';
 import { useMilestoneCheck } from './hooks/useMilestoneCheck';
 import { useRouteAnnouncer } from './hooks/useRouteAnnouncer';
 import { useSpendingPace } from './hooks/useSpendingPace';
 import type { HapticEventType } from './lib/haptics/types';
+import { isOnboardingComplete } from './lib/local-only-mode';
 import type { DetectedMilestone } from './lib/milestones';
-import type { AppNotification } from './lib/notifications';
+import {
+  detectScamAlerts,
+  scamAlertsToNotifications,
+  type AppNotification,
+} from './lib/notifications';
 import {
   buildWarrantyReminderNotifications,
   buildWarrantyReminders,
@@ -30,14 +36,18 @@ import { AppRoutes } from './routes';
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
   '/dashboard': 'Dashboard',
+  '/safety': 'Safety',
   '/accounts': 'Accounts',
   '/transactions': 'Transactions',
   '/budgets': 'Budgets',
+  '/debt': 'Debt',
   '/goals': 'Goals',
   '/insights': 'Insights',
   '/household': 'Household',
   '/investments': 'Investments',
+  '/investments/tax': 'Tax Center',
   '/bills': 'Bills',
+  '/invoices': 'Invoices',
   '/report-builder': 'Report Builder',
   '/achievements': 'Achievements',
   '/watchlists': 'Watchlists',
@@ -58,6 +68,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/estate': 'Estate Inventory',
   '/cash-flow': 'Cash Flow',
   '/net-worth': 'Net Worth',
+  '/client-profitability': 'Client Profitability',
   '/subscriptions': 'Subscriptions',
   '/bank-connections': 'Bank Connections',
   '/legal': 'Legal',
@@ -86,10 +97,26 @@ const STANDALONE_ROUTES: readonly string[] = [
   '/onboarding',
 ];
 
+const FIRST_RUN_ALLOWED_ROUTES: readonly string[] = [
+  '/forgot-password',
+  '/reset-password',
+  '/onboarding',
+];
+
 function isStandalonePath(pathname: string): boolean {
   return STANDALONE_ROUTES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
+}
+
+function isFirstRunAllowedPath(pathname: string): boolean {
+  return FIRST_RUN_ALLOWED_ROUTES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+export function shouldAutoLaunchOnboarding(pathname: string, onboardingComplete: boolean): boolean {
+  return !onboardingComplete && !isFirstRunAllowedPath(pathname);
 }
 
 function derivePageTitle(pathname: string): string {
@@ -251,6 +278,17 @@ const AuthenticatedShell: FC<{
     dismiss,
     addNotifications,
   } = useNotifications();
+  const scamTransactionFilters = useMemo(
+    () => ({
+      type: 'EXPENSE' as const,
+    }),
+    [],
+  );
+  const { transactions: scamNotificationTransactions } = useTransactions(scamTransactionFilters);
+  const scamNotifications = useMemo(
+    () => scamAlertsToNotifications(detectScamAlerts(scamNotificationTransactions)),
+    [scamNotificationTransactions],
+  );
 
   useEffect(() => {
     if (loading) {
@@ -270,6 +308,21 @@ const AuthenticatedShell: FC<{
       addNotifications(reminderNotifications);
     }
   }, [addNotifications, loading, notifications, warrantyEntries]);
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    const knownNotificationKeys = new Set(
+      notifications.map((notification) => notification.deduplicationKey ?? notification.id),
+    );
+    const newScamNotifications = scamNotifications.filter(
+      (notification) =>
+        !knownNotificationKeys.has(notification.deduplicationKey ?? notification.id),
+    );
+    addNotifications(newScamNotifications);
+  }, [addNotifications, loading, notifications, scamNotifications]);
 
   const handleNotificationAction = useCallback(
     (notification: AppNotification) => {
@@ -293,7 +346,9 @@ const AuthenticatedShell: FC<{
         onDismissNotification={dismiss}
         onNotificationAction={handleNotificationAction}
       >
-        <AppRoutes />
+        <SessionSecurityBoundary>
+          <AppRoutes />
+        </SessionSecurityBoundary>
       </AppLayout>
       <MilestoneNotifier />
     </>
@@ -314,9 +369,19 @@ export const App: FC = () => {
   const activePath = location.pathname === '/' ? '/' : location.pathname;
   const pageTitle = derivePageTitle(activePath);
   const isStandalonePage = isStandalonePath(activePath);
+  const shouldStartOnboarding = shouldAutoLaunchOnboarding(activePath, isOnboardingComplete());
 
   // Announce route transitions to screen readers (#1684)
   useRouteAnnouncer();
+
+  if (shouldStartOnboarding) {
+    return (
+      <PrivacyModeProvider>
+        <ConsentDialog />
+        <Navigate to="/onboarding" replace state={{ from: activePath }} />
+      </PrivacyModeProvider>
+    );
+  }
 
   return isStandalonePage ? (
     <PrivacyModeProvider>

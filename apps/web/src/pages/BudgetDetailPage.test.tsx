@@ -4,16 +4,32 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-import { useBudgets, useCategories } from '../hooks';
+import { useBudgets } from '../hooks/useBudgets';
+import { useCategories } from '../hooks/useCategories';
 import { BudgetDetailPage } from './BudgetDetailPage';
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/useBudgets', () => ({
   useBudgets: vi.fn(),
+}));
+
+vi.mock('../hooks/useCategories', () => ({
   useCategories: vi.fn(),
+  FOOD_MEAL_SUBCATEGORY_DEFINITIONS: [
+    { name: 'Dining Out', icon: '🍽️', color: '#F97316', description: 'Restaurants' },
+    { name: 'Delivery & Takeout', icon: '🥡', color: '#FB7185', description: 'Delivery' },
+    { name: 'Coffee & Snacks', icon: '☕', color: '#A16207', description: 'Coffee' },
+    { name: 'Meal Prep', icon: '🥗', color: '#0F766E', description: 'Meal prep' },
+  ],
+  isFoodMealBudgetParentCategory: (category: { id?: string; name?: string } | null) =>
+    category?.id === 'category-food' || category?.name === 'Food',
 }));
 
 vi.mock('../components/forms', () => ({
   BudgetForm: () => null,
+}));
+
+vi.mock('../components/charts', () => ({
+  BudgetDonutChart: ({ title }: { title: string }) => <div>{title}</div>,
 }));
 
 const mockedUseBudgets = vi.mocked(useBudgets);
@@ -66,8 +82,21 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn().mockReturnValue([
+        {
+          categoryId: 'category-groceries',
+          categoryName: 'Groceries',
+          spentAmount: { amount: 25000 },
+        },
+        {
+          categoryId: 'category-dining',
+          categoryName: 'Dining Out',
+          spentAmount: { amount: 17350 },
+        },
+      ]),
       reorderBudgets: vi.fn(),
     });
 
@@ -85,6 +114,18 @@ describe('BudgetDetailPage', () => {
           sortOrder: 1,
           ...syncMetadata,
         },
+        {
+          id: 'category-groceries',
+          householdId: 'household-1',
+          name: 'Groceries',
+          icon: '🛒',
+          color: '#16A34A',
+          parentId: 'category-food',
+          isIncome: false,
+          isSystem: false,
+          sortOrder: 2,
+          ...syncMetadata,
+        },
       ],
       loading: false,
       error: null,
@@ -92,6 +133,12 @@ describe('BudgetDetailPage', () => {
       createCategory: vi.fn(),
       updateCategory: vi.fn(),
       deleteCategory: vi.fn(),
+      foodMealTemplate: {
+        parentCategory: null,
+        subcategories: [],
+        missingSubcategoryDefinitions: [],
+      },
+      ensureFoodMealCategories: vi.fn(),
     });
   });
 
@@ -106,8 +153,10 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn(() => []),
       reorderBudgets: vi.fn(),
     });
 
@@ -125,6 +174,12 @@ describe('BudgetDetailPage', () => {
       createCategory: vi.fn(),
       updateCategory: vi.fn(),
       deleteCategory: vi.fn(),
+      foodMealTemplate: {
+        parentCategory: null,
+        subcategories: [],
+        missingSubcategoryDefinitions: [],
+      },
+      ensureFoodMealCategories: vi.fn(),
     });
 
     renderWithRoute();
@@ -143,8 +198,10 @@ describe('BudgetDetailPage', () => {
       error: 'Failed to load budgets.',
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn(() => []),
       reorderBudgets: vi.fn(),
     });
 
@@ -161,8 +218,10 @@ describe('BudgetDetailPage', () => {
       error: 'Database error',
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn(() => []),
       reorderBudgets: vi.fn(),
     });
 
@@ -242,6 +301,16 @@ describe('BudgetDetailPage', () => {
     expect(progressBar).toHaveAttribute('aria-valuemax', '100');
   });
 
+  it('shows the weekly meal budget target and food breakdown for food budgets', () => {
+    renderWithRoute();
+
+    expect(screen.getByText('Weekly Meal Budget')).toBeInTheDocument();
+    expect(screen.getByText('$138.57')).toBeInTheDocument();
+    expect(screen.getByText('Subcategory spending')).toBeInTheDocument();
+    expect(screen.getByText(/Groceries/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dining Out/i)).toBeInTheDocument();
+  });
+
   it('displays spent and remaining labels', () => {
     renderWithRoute();
 
@@ -272,8 +341,10 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn().mockReturnValue([]),
       reorderBudgets: vi.fn(),
     });
 
@@ -306,8 +377,10 @@ describe('BudgetDetailPage', () => {
       error: null,
       refresh: refreshMock,
       createBudget: vi.fn(),
+      createBudgetTemplate: vi.fn(() => null),
       updateBudget: vi.fn(),
       deleteBudget: vi.fn(),
+      getBudgetSpendingBreakdown: vi.fn().mockReturnValue([]),
       reorderBudgets: vi.fn(),
     });
 

@@ -2,9 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AccountPurposeBadge } from '../components/accounts';
 import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner } from '../components/common';
 import { AccountForm } from '../components/forms';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { useEffectiveMaskingMode } from '../contexts/PrivacyModeContext';
 import { useAccounts } from '../hooks';
 import { useExchangeRates } from '../hooks/useExchangeRates';
 import type { AccountType } from '../kmp/bridge';
@@ -14,7 +16,12 @@ import {
   getSingleCurrency,
   groupByCurrency,
 } from '../lib/currency-utils';
-import { formatCurrencyValue } from '../lib/currency';
+import {
+  ACCOUNT_PURPOSE_META,
+  ACCOUNT_PURPOSE_ORDER,
+  normalizeAccountPurpose,
+} from '../lib/accountPurpose';
+import { formatAmount, MaskingMode } from '../lib/ui/privacy';
 import '../styles/pages.css';
 
 const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
@@ -46,6 +53,7 @@ const MultiCurrencyTotal: React.FC<{
   accounts: ReadonlyArray<{ currentBalance: { amount: number }; currency: { code: string } }>;
   colorize?: boolean;
 }> = ({ accounts, colorize = false }) => {
+  const maskingMode = useEffectiveMaskingMode();
   const currencyItems = accounts.map((acc) => ({
     currency: acc.currency.code,
   }));
@@ -55,9 +63,7 @@ const MultiCurrencyTotal: React.FC<{
   if (!isMixed) {
     const singleCurrency = getSingleCurrency(currencyItems);
     const total = accounts.reduce((sum, acc) => sum + acc.currentBalance.amount, 0);
-    return (
-      <CurrencyDisplay amount={total} currency={singleCurrency ?? 'USD'} colorize={colorize} />
-    );
+    return <CurrencyDisplay amount={total} currency={singleCurrency ?? 'USD'} colorize={colorize} />;
   }
 
   const amounts = accounts.map((acc) => ({
@@ -65,10 +71,17 @@ const MultiCurrencyTotal: React.FC<{
     currency: acc.currency.code,
   }));
   const groups = groupByCurrency(amounts);
-  const formatted = formatCurrencyGroup(groups);
+  const formatted =
+    maskingMode === MaskingMode.Visible
+      ? formatCurrencyGroup(groups)
+      : Object.entries(groups)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([currency, amount]) => formatAmount(amount, maskingMode, undefined, { currency }))
+          .join(' · ');
+  const label = maskingMode === MaskingMode.Visible ? `Total: ${formatted}` : 'Total: Amount hidden';
 
   return (
-    <span className="multi-currency-total" aria-label={`Total: ${formatted}`}>
+    <span className="multi-currency-total" aria-label={label}>
       <span className="multi-currency-total__amounts">{formatted}</span>
       <span className="multi-currency-total__indicator" aria-hidden="true">
         {' '}
@@ -86,10 +99,16 @@ export const AccountsPage: React.FC = () => {
 
   const accountGroups = useMemo(
     () =>
-      ACCOUNT_TYPE_ORDER.map((type) => ({
-        type,
-        label: ACCOUNT_TYPE_LABELS[type],
-        accounts: accounts.filter((account) => account.type === type),
+      ACCOUNT_PURPOSE_ORDER.map((purpose) => ({
+        purpose,
+        label: ACCOUNT_PURPOSE_META[purpose].sectionLabel,
+        accounts: accounts
+          .filter((account) => normalizeAccountPurpose(account.purpose) === purpose)
+          .sort(
+            (left, right) =>
+              ACCOUNT_TYPE_ORDER.indexOf(left.type) - ACCOUNT_TYPE_ORDER.indexOf(right.type) ||
+              left.name.localeCompare(right.name),
+          ),
       })).filter((group) => group.accounts.length > 0),
     [accounts],
   );
@@ -210,10 +229,9 @@ export const AccountsPage: React.FC = () => {
           <span
             className="page-summary__converted"
             title={`Using approximate ${providerName.toLowerCase()}. Connect an exchange rate provider in Settings for live rates.`}
-            aria-label={`Approximately ${formatCurrencyValue(convertedTotal / 100)} USD converted at ${providerName.toLowerCase()}`}
           >
             {' '}
-            ≈ {formatCurrencyValue(convertedTotal / 100)} USD
+            ≈ <CurrencyDisplay amount={convertedTotal} currency="USD" context="converted net worth" /> USD
             <span className="page-summary__converted-hint">
               {' '}
               (converted at {providerName.toLowerCase()})
@@ -222,7 +240,7 @@ export const AccountsPage: React.FC = () => {
         )}
       </p>
       {accountGroups.map((group) => (
-        <section key={group.type} className="page-section" aria-label={group.label}>
+        <section key={group.purpose} className="page-section" aria-label={group.label}>
           <div className="page-section__header">
             <h3 className="page-section__title">{group.label}</h3>
             <MultiCurrencyTotal accounts={group.accounts} colorize />
@@ -237,11 +255,13 @@ export const AccountsPage: React.FC = () => {
                     aria-label={account.name}
                   >
                     <div className="list-item__content">
-                      <p className="list-item__primary">{account.name}</p>
+                      <p className="list-item__primary account-list-primary">
+                        <span>{account.name}</span>
+                        <AccountPurposeBadge purpose={account.purpose} />
+                      </p>
                       <p className="list-item__secondary">
-                        {account.isArchived
-                          ? `${account.currency.code} · Archived`
-                          : account.currency.code}
+                        {ACCOUNT_TYPE_LABELS[account.type]} · {account.currency.code}
+                        {account.isArchived ? ' · Archived' : ''}
                       </p>
                     </div>
                     <div className="list-item__trailing">

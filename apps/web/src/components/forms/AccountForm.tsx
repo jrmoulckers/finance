@@ -34,10 +34,27 @@ import { useDatabase } from '../../db/DatabaseProvider';
 import type { CreateAccountInput } from '../../db/repositories/accounts';
 import { useAmountInput } from '../../hooks/useAmountInput';
 import { useNavigationGuard } from '../../hooks/useNavigationGuard';
-import type { Account, AccountType, SyncId } from '../../kmp/bridge';
+import type {
+  Account,
+  AccountPurpose,
+  AccountType,
+  HsaCoverageLevel,
+  RetirementAccountType,
+  RetirementTaxTreatment,
+  SyncId,
+} from '../../kmp/bridge';
+import { getCurrencyMetadata, SUPPORTED_CURRENCY_METADATA } from '../../lib/currency-metadata';
 import { queryOne, type Row } from '../../db/sqlite-wasm';
 import { accountSchema } from '../../lib/validation';
+import { getFormCopy } from '../../lib/i18n/forms-catalog';
+import {
+  HSA_COVERAGE_OPTIONS,
+  RETIREMENT_ACCOUNT_TYPE_OPTIONS,
+  RETIREMENT_TAX_TREATMENT_OPTIONS,
+  getDefaultRetirementTaxTreatment,
+} from '../../lib/tax/retirement-contribution-metadata';
 import { AmountInput } from './AmountInput';
+import { FormErrorSummary, type FormErrorSummaryItem } from './FormErrorSummary';
 
 import './forms.css';
 
@@ -56,15 +73,14 @@ const ACCOUNT_TYPES: readonly { value: AccountType; label: string }[] = [
   { value: 'OTHER', label: 'Other' },
 ] as const;
 
-/** Common currency options. */
-const CURRENCY_OPTIONS: readonly { code: string; label: string }[] = [
-  { code: 'USD', label: 'USD – US Dollar' },
-  { code: 'EUR', label: 'EUR – Euro' },
-  { code: 'GBP', label: 'GBP – British Pound' },
-  { code: 'CAD', label: 'CAD – Canadian Dollar' },
-  { code: 'AUD', label: 'AUD – Australian Dollar' },
-  { code: 'JPY', label: 'JPY – Japanese Yen' },
+const ACCOUNT_PURPOSES: readonly { value: AccountPurpose; label: string }[] = [
+  { value: 'personal', label: '🏠 Personal' },
+  { value: 'business', label: '💼 Business' },
+  { value: 'both', label: '🏠💼 Both' },
 ] as const;
+
+/** Common currency options. */
+const CURRENCY_OPTIONS = SUPPORTED_CURRENCY_METADATA;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -102,7 +118,7 @@ function validate(name: string, accountType: AccountType, currencyCode: string):
   if (!result.success) {
     for (const issue of result.error.issues) {
       if (issue.path[0] === 'name') {
-        errors.name = 'Account name is required.';
+        errors.name = getFormCopy('accountNameRequired');
       }
     }
   }
@@ -137,6 +153,10 @@ function getInitialFormValues(initialData?: Account) {
       accountType: 'CHECKING' as AccountType,
       currency: 'USD',
       balanceCents: 0,
+      purpose: 'personal' as AccountPurpose,
+      retirementAccountType: '' as RetirementAccountType | '',
+      retirementTaxTreatment: 'PRE_TAX' as RetirementTaxTreatment,
+      hsaCoverageLevel: 'SELF_ONLY' as HsaCoverageLevel,
     };
   }
 
@@ -145,6 +165,14 @@ function getInitialFormValues(initialData?: Account) {
     accountType: initialData.type,
     currency: initialData.currency.code,
     balanceCents: initialData.currentBalance.amount,
+    purpose: initialData.purpose ?? 'personal',
+    retirementAccountType: initialData.retirementAccountType ?? '',
+    retirementTaxTreatment:
+      initialData.retirementTaxTreatment ??
+      (initialData.retirementAccountType
+        ? getDefaultRetirementTaxTreatment(initialData.retirementAccountType)
+        : 'PRE_TAX'),
+    hsaCoverageLevel: initialData.hsaCoverageLevel ?? 'SELF_ONLY',
   };
 }
 
@@ -163,15 +191,21 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   // -- refs ----------------------------------------------------------------
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   // -- state ---------------------------------------------------------------
   const [name, setName] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('CHECKING');
+  const [purpose, setPurpose] = useState<AccountPurpose>('personal');
+  const [retirementAccountType, setRetirementAccountType] = useState<RetirementAccountType | ''>('');
+  const [retirementTaxTreatment, setRetirementTaxTreatment] =
+    useState<RetirementTaxTreatment>('PRE_TAX');
+  const [hsaCoverageLevel, setHsaCoverageLevel] = useState<HsaCoverageLevel>('SELF_ONLY');
   const [currency, setCurrency] = useState('USD');
-  const decimalPlaces = currency === 'JPY' ? 0 : 2;
+  const selectedCurrency = useMemo(() => getCurrencyMetadata(currency), [currency]);
   const balanceInput = useAmountInput({
     currencySymbol: '$',
-    decimalPlaces,
+    decimalPlaces: selectedCurrency.decimalPlaces,
     allowNegative: true,
   });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -185,6 +219,10 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
     isOpen &&
     (name !== initialValues.name ||
       accountType !== initialValues.accountType ||
+      purpose !== initialValues.purpose ||
+      retirementAccountType !== initialValues.retirementAccountType ||
+      retirementTaxTreatment !== initialValues.retirementTaxTreatment ||
+      hsaCoverageLevel !== initialValues.hsaCoverageLevel ||
       currency !== initialValues.currency ||
       balanceInput.cents !== initialValues.balanceCents);
   const { confirmNavigation } = useNavigationGuard({
@@ -211,6 +249,10 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
     if (isOpen) {
       setName(initialValues.name);
       setAccountType(initialValues.accountType);
+      setPurpose(initialValues.purpose);
+      setRetirementAccountType(initialValues.retirementAccountType as RetirementAccountType | '');
+      setRetirementTaxTreatment(initialValues.retirementTaxTreatment);
+      setHsaCoverageLevel(initialValues.hsaCoverageLevel);
       setCurrency(initialValues.currency);
       balanceInput.setCents(initialValues.balanceCents);
       setErrors({});
@@ -247,24 +289,29 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
       setErrors(fieldErrors);
 
       if (Object.keys(fieldErrors).length > 0) {
+        requestAnimationFrame(() => errorSummaryRef.current?.focus());
         return;
       }
 
       const householdId = initialData?.householdId ?? getFirstHouseholdId(db);
       if (!householdId) {
-        setSubmitError('No household found. Please create a household before adding accounts.');
+        setSubmitError(getFormCopy('accountNoHousehold'));
         return;
       }
 
-      const currencyObj = CURRENCY_OPTIONS.find((c) => c.code === currency);
+      const currencyObj = getCurrencyMetadata(currency);
 
       const input: CreateAccountInput = {
         householdId,
         name: name.trim(),
         type: accountType,
+        purpose,
+        retirementAccountType: retirementAccountType || null,
+        retirementTaxTreatment: retirementAccountType ? retirementTaxTreatment : null,
+        hsaCoverageLevel: retirementAccountType === 'HSA' ? hsaCoverageLevel : null,
         currency: {
-          code: currencyObj?.code ?? currency,
-          decimalPlaces,
+          code: currencyObj.code,
+          decimalPlaces: currencyObj.decimalPlaces,
         },
         currentBalance: { amount: balanceInput.cents },
       };
@@ -277,6 +324,10 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         const initialValues = getInitialFormValues();
         setName(initialValues.name);
         setAccountType(initialValues.accountType);
+        setPurpose(initialValues.purpose);
+        setRetirementAccountType(initialValues.retirementAccountType as RetirementAccountType | '');
+        setRetirementTaxTreatment(initialValues.retirementTaxTreatment);
+        setHsaCoverageLevel(initialValues.hsaCoverageLevel);
         setCurrency(initialValues.currency);
         balanceInput.reset(initialValues.balanceCents);
         setErrors({});
@@ -285,8 +336,8 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
           err instanceof Error
             ? err.message
             : initialData
-              ? 'Failed to update account.'
-              : 'Failed to create account.',
+              ? getFormCopy('accountUpdateFailed')
+              : getFormCopy('accountCreateFailed'),
         );
       } finally {
         setSubmitting(false);
@@ -297,6 +348,10 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
       accountType,
       balanceInput.cents,
       balanceInput.reset,
+      purpose,
+      retirementAccountType,
+      retirementTaxTreatment,
+      hsaCoverageLevel,
       currency,
       db,
       initialData,
@@ -312,6 +367,13 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
 
   const hasNameError = Boolean(errors.name);
   const hasBalanceError = Boolean(errors.balance);
+  const isRetirementAccount = retirementAccountType !== '';
+  const validationErrorItems: FormErrorSummaryItem[] = [
+    hasNameError ? { fieldId: 'account-name', label: getFormCopy('accountNameLabel'), message: errors.name! } : null,
+    hasBalanceError
+      ? { fieldId: 'account-balance', label: getFormCopy('accountInitialBalanceLabel'), message: errors.balance! }
+      : null,
+  ].filter((item): item is FormErrorSummaryItem => item !== null);
 
   return (
     <div className="form-dialog" role="presentation" onKeyDown={handleKeyDown}>
@@ -327,7 +389,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
         aria-labelledby="account-form-title"
       >
         <h2 id="account-form-title" className="form-dialog__title">
-          {initialData ? 'Edit Account' : 'Create Account'}
+          {getFormCopy(initialData ? 'accountEditTitle' : 'accountCreateTitle')}
         </h2>
 
         {/* Form-level error */}
@@ -336,8 +398,20 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
             {submitError}
           </div>
         )}
+        <FormErrorSummary
+          id="account-form-error-summary"
+          errors={validationErrorItems}
+          title={getFormCopy('errorSummaryTitle')}
+          summaryRef={errorSummaryRef}
+        />
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          aria-describedby={
+            validationErrorItems.length > 0 ? 'account-form-error-summary' : undefined
+          }
+        >
           <div className="form-fields">
             {/* Name */}
             <div className="form-group">
@@ -345,7 +419,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
                 htmlFor="account-name"
                 className="form-group__label form-group__label--required"
               >
-                Account Name
+                {getFormCopy('accountNameLabel')}
               </label>
               <input
                 ref={firstInputRef}
@@ -385,6 +459,115 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
               </select>
             </div>
 
+            {/* Account Purpose */}
+            <div className="form-group">
+              <label htmlFor="account-purpose" className="form-group__label">
+                Account Purpose
+              </label>
+              <select
+                id="account-purpose"
+                className="form-select"
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value as AccountPurpose)}
+              >
+                {ACCOUNT_PURPOSES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <fieldset className="form-group form-fieldset">
+              <legend className="form-group__label">Retirement classification</legend>
+              <label className="form-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={isRetirementAccount}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      const defaultType = 'TRADITIONAL_IRA' as RetirementAccountType;
+                      setRetirementAccountType(defaultType);
+                      setRetirementTaxTreatment(getDefaultRetirementTaxTreatment(defaultType));
+                    } else {
+                      setRetirementAccountType('');
+                      setRetirementTaxTreatment('PRE_TAX');
+                      setHsaCoverageLevel('SELF_ONLY');
+                    }
+                  }}
+                />
+                Mark this as a retirement or tax-advantaged account
+              </label>
+              {isRetirementAccount && (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="account-retirement-type" className="form-group__label">
+                      Retirement account type
+                    </label>
+                    <select
+                      id="account-retirement-type"
+                      className="form-select"
+                      value={retirementAccountType}
+                      onChange={(event) => {
+                        const nextType = event.target.value as RetirementAccountType;
+                        setRetirementAccountType(nextType);
+                        setRetirementTaxTreatment(getDefaultRetirementTaxTreatment(nextType));
+                        if (nextType !== 'HSA') {
+                          setHsaCoverageLevel('SELF_ONLY');
+                        }
+                      }}
+                    >
+                      {RETIREMENT_ACCOUNT_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="account-tax-treatment" className="form-group__label">
+                      Tax treatment
+                    </label>
+                    <select
+                      id="account-tax-treatment"
+                      className="form-select"
+                      value={retirementTaxTreatment}
+                      onChange={(event) =>
+                        setRetirementTaxTreatment(event.target.value as RetirementTaxTreatment)
+                      }
+                    >
+                      {RETIREMENT_TAX_TREATMENT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {retirementAccountType === 'HSA' && (
+                    <div className="form-group">
+                      <label htmlFor="account-hsa-coverage" className="form-group__label">
+                        HSA coverage
+                      </label>
+                      <select
+                        id="account-hsa-coverage"
+                        className="form-select"
+                        value={hsaCoverageLevel}
+                        onChange={(event) =>
+                          setHsaCoverageLevel(event.target.value as HsaCoverageLevel)
+                        }
+                      >
+                        {HSA_COVERAGE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+            </fieldset>
+
             {/* Currency */}
             <div className="form-group">
               <label htmlFor="account-currency" className="form-group__label">
@@ -407,13 +590,13 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
             {/* Initial Balance */}
             <div className="form-group">
               <label htmlFor="account-balance" className="form-group__label">
-                Initial Balance
+                {getFormCopy('accountInitialBalanceLabel')}
               </label>
               <AmountInput
                 id="account-balance"
                 amountInput={balanceInput}
                 className={`form-input${hasBalanceError ? ' form-input--error' : ''}`}
-                placeholder="$0.00"
+                placeholder={balanceInput.placeholderValue}
                 aria-invalid={hasBalanceError}
                 aria-describedby={hasBalanceError ? 'account-balance-error' : undefined}
                 autoComplete="off"
@@ -434,7 +617,7 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
               onClick={handleCancel}
               disabled={submitting}
             >
-              Cancel
+              {getFormCopy('accountCancel')}
             </button>
             <button
               type="submit"
@@ -444,11 +627,11 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
             >
               {submitting
                 ? initialData
-                  ? 'Updating…'
-                  : 'Creating…'
+                  ? getFormCopy('accountUpdating')
+                  : getFormCopy('accountCreating')
                 : initialData
-                  ? 'Update Account'
-                  : 'Create Account'}
+                  ? getFormCopy('accountUpdate')
+                  : getFormCopy('accountCreate')}
             </button>
           </div>
         </form>

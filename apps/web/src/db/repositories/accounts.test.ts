@@ -43,6 +43,7 @@ describe('accounts repository', () => {
           household_id: 'hh-1',
           name: 'Checking',
           type: 'CHECKING',
+          purpose: 'business',
           currency: 'USD',
           current_balance: 100000,
           is_archived: 0,
@@ -60,6 +61,7 @@ describe('accounts repository', () => {
           household_id: 'hh-1',
           name: 'Savings',
           type: 'SAVINGS',
+          purpose: 'personal',
           currency: 'EUR',
           current_balance: 250000,
           is_archived: 1,
@@ -94,6 +96,7 @@ describe('accounts repository', () => {
         id: 'acc-1',
         name: 'Checking',
         type: 'CHECKING',
+        purpose: 'business',
         currency: Currencies.USD,
         currentBalance: { amount: 100000 },
         isArchived: false,
@@ -245,6 +248,7 @@ describe('accounts repository', () => {
           'hh-1',
           'New Account',
           'CHECKING',
+          'personal',
           'USD', // Default currency
           50000,
           0, // isArchived
@@ -285,7 +289,7 @@ describe('accounts repository', () => {
       createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      const amountParam = params[5]; // current_balance is 6th param
+      const amountParam = params[9]; // current_balance includes retirement metadata params
       expect(amountParam).toBe(123456);
       expect(Number.isInteger(amountParam as number)).toBe(true);
     });
@@ -302,7 +306,7 @@ describe('accounts repository', () => {
       createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      expect(params[4]).toBe('EUR');
+      expect(params[8]).toBe('EUR');
     });
 
     it('should default to USD when currency not provided', () => {
@@ -316,7 +320,7 @@ describe('accounts repository', () => {
       createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      expect(params[4]).toBe('USD');
+      expect(params[8]).toBe('USD');
     });
 
     it('should handle optional fields', () => {
@@ -334,10 +338,28 @@ describe('accounts repository', () => {
       createAccount(mockDb, input);
 
       const params = mockExecute.mock.calls[0][2] as unknown[];
-      expect(params[6]).toBe(1); // isArchived
-      expect(params[7]).toBe(5); // sortOrder
-      expect(params[8]).toBe('wallet'); // icon
-      expect(params[9]).toBe('#ff0000'); // color
+      expect(params[10]).toBe(1); // isArchived
+      expect(params[11]).toBe(5); // sortOrder
+      expect(params[12]).toBe('wallet'); // icon
+      expect(params[13]).toBe('#ff0000'); // color
+    });
+
+    it('stores retirement classification metadata', () => {
+      const input: CreateAccountInput = {
+        householdId: 'hh-1',
+        name: 'Roth IRA',
+        type: 'INVESTMENT' as AccountType,
+        currentBalance: { amount: 100000 },
+        retirementAccountType: 'ROTH_IRA',
+        retirementTaxTreatment: 'ROTH',
+      };
+
+      createAccount(mockDb, input);
+
+      const params = mockExecute.mock.calls[0][2] as unknown[];
+      expect(params[5]).toBe('ROTH_IRA');
+      expect(params[6]).toBe('ROTH');
+      expect(params[7]).toBeNull();
     });
   });
 
@@ -453,6 +475,7 @@ describe('accounts repository', () => {
       expect(params).toContain('hh-1'); // unchanged household_id
       expect(params).toContain('Updated Name'); // updated name
       expect(params).toContain('CHECKING'); // unchanged type
+      expect(params).toContain('personal'); // unchanged purpose
       expect(params).toContain('USD'); // unchanged currency
     });
 

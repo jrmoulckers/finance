@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ExchangeRate, ExchangeRateProvider } from '../lib/currency/exchange-rate-types';
 import { ExchangeRateService } from '../lib/currency/exchange-rate-service';
-import { getCacheTimestamp } from '../lib/currency/rate-cache';
+import { getCacheTimestamp, isCacheStale } from '../lib/currency/rate-cache';
 import { isNetworkError } from '../lib/network/network-errors';
 import { useOfflineStatus } from './useOfflineStatus';
 
@@ -43,6 +43,10 @@ export interface UseExchangeRatesResult {
   providerName: string;
   /** `true` when exchange-rate requests have degraded due to connectivity. */
   isOffline: boolean;
+  /** `true` when displayed rates came from an expired cache snapshot. */
+  isStale: boolean;
+  /** `true` when any displayed pair is using a manual override. */
+  hasManualOverrides: boolean;
   /** Convert an amount (cents) from one currency to another. */
   convert: (amount: number, from: string, to: string) => Promise<number>;
   /** Get the exchange rate for a pair. */
@@ -77,6 +81,7 @@ export function useExchangeRates(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [isStale, setIsStale] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, number>>({});
   const [refreshToken, setRefreshToken] = useState(0);
   const { isOffline, reportNetworkFailure, clearNetworkFailure } = useOfflineStatus();
@@ -103,6 +108,7 @@ export function useExchangeRates(
           clearNetworkFailure();
           setRates(allRates);
           setLastUpdated(getCacheTimestamp() ?? new Date().toISOString());
+          setIsStale(isCacheStale());
           setOverrides(service.getUserOverrides());
         }
       } catch (err) {
@@ -195,6 +201,8 @@ export function useExchangeRates(
     lastUpdated,
     providerName: service.providerName,
     isOffline,
+    isStale,
+    hasManualOverrides: Object.keys(overrides).length > 0,
     convert,
     getRate,
     setOverride,

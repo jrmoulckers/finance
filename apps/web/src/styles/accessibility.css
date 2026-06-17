@@ -1,5 +1,17 @@
 /* SPDX-License-Identifier: BUSL-1.1 */
 
+.simple-mode-summary {
+  margin-bottom: var(--spacing-4, 1rem);
+  padding: var(--spacing-3, 0.75rem);
+  border: 2px solid var(--semantic-border-focus, #3b82f6);
+  border-radius: var(--border-radius-md, 0.5rem);
+  background: var(--semantic-background-elevated, #fff);
+}
+
+.simple-mode-summary p {
+  margin: 0;
+}
+
 /* -------------------------------------------------------------------
  * WCAG 2.2 AA Accessibility Enhancements
  *
@@ -202,6 +214,15 @@ textarea {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+html[data-reduced-motion='true'] *,
+html[data-reduced-motion='true'] *::before,
+html[data-reduced-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* -------------------------------------------------------------------

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export { DashboardPage } from './DashboardPage';
+export { SafetyPage } from './SafetyPage';
 export { AccountsPage } from './AccountsPage';
 export { AccountDetailPage } from './AccountDetailPage';
 export { TransactionsPage } from './TransactionsPage';
@@ -21,13 +22,16 @@ export { WatchlistsPage } from './WatchlistsPage';
 export { DataImportWizardPage } from './DataImportWizardPage';
 export { InvestmentsPage } from './InvestmentsPage';
 export { InvestmentDetailPage } from './InvestmentDetailPage';
+export { TaxCenterPage } from './TaxCenterPage';
 export { BillsPage } from './BillsPage';
 export { BillDetailPage } from './BillDetailPage';
 export { CreateBillPage } from './CreateBillPage';
 export { ReportBuilderPage } from './ReportBuilderPage';
+export { ClientProfitabilityPage } from './ClientProfitabilityPage';
 export { PlanningPage } from './PlanningPage';
 export { HouseholdPage } from './HouseholdPage';
 export { CashFlowPage } from './CashFlowPage';
+export { InvoicesPage } from './InvoicesPage';
 export { NetWorthPage } from './NetWorthPage';
 export { SubscriptionsPage } from './SubscriptionsPage';
 export { BankConnectionsPage } from './BankConnectionsPage';

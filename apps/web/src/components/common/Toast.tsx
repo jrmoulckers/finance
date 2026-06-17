@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import './toast.css';
+import { getToastAriaLabel, getToastDismissLabel, getToastTypeLabel } from '../../lib/i18n/forms-catalog';
 
 /* --------------------------------------------------------------------------
  * Types
@@ -150,7 +151,7 @@ interface ToastItemProps {
   onDismiss: (id: string) => void;
 }
 
-/** Icon SVGs for each toast type. */
+
 const TOAST_ICONS: Record<ToastType, React.ReactNode> = {
   success: (
     <svg
@@ -253,16 +254,19 @@ const TOAST_ICONS: Record<ToastType, React.ReactNode> = {
  */
 const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   const role = toast.type === 'error' ? 'alert' : 'status';
+  const typeLabel = getToastTypeLabel(toast.type);
+  const ariaLabel = getToastAriaLabel(toast.type, toast.message);
 
   return (
-    <div className={`toast toast--${toast.type}`} role={role}>
+    <div className={`toast toast--${toast.type}`} role={role} aria-label={ariaLabel}>
       <span className="toast__icon">{TOAST_ICONS[toast.type]}</span>
+      <span className="toast__type-label">{typeLabel}</span>
       <p className="toast__message">{toast.message}</p>
       <button
         type="button"
         className="toast__dismiss"
         onClick={() => onDismiss(toast.id)}
-        aria-label="Dismiss notification"
+        aria-label={getToastDismissLabel()}
       >
         &times;
       </button>
@@ -271,3 +275,4 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
 };
 
 export default ToastProvider;
+

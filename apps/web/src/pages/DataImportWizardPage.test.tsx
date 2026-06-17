@@ -4,16 +4,26 @@ import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useAccounts } from '../hooks/useAccounts';
 import { DatabaseContext, type DatabaseContextValue } from '../db/DatabaseProvider';
 import type { SqliteDb } from '../db/sqlite-wasm';
 import { useDataImportWizard } from '../hooks/useDataImportWizard';
 import type { UseDataImportWizardResult } from '../hooks/useDataImportWizard';
 import { DataImportWizardPage } from './DataImportWizardPage';
 
+vi.mock('../components/common', () => ({
+  ErrorBanner: ({ message }: { message?: string }) => <div role="alert">{message}</div>,
+  LoadingSpinner: () => <div>Loading…</div>,
+}));
+
+vi.mock('../hooks/useAccounts', () => ({
+  useAccounts: vi.fn(),
+}));
 vi.mock('../hooks/useDataImportWizard', () => ({
   useDataImportWizard: vi.fn(),
 }));
 
+const mockedUseAccounts = vi.mocked(useAccounts);
 const mockedHook = vi.mocked(useDataImportWizard);
 
 const mockDb: SqliteDb = {
@@ -52,14 +62,20 @@ function mockResult(overrides: Partial<UseDataImportWizardResult> = {}): UseData
     unmappedFields: [],
     duplicateComparisons: [],
     duplicateActions: {},
+    mappingMemoryNotice: null,
     progress: null,
     result: null,
     error: null,
+    selectedAccountId: null,
+    setSelectedAccountId: vi.fn(),
+    selectedHouseholdId: null,
+    setSelectedHouseholdId: vi.fn(),
     uploadFile: vi.fn(),
     setColumnMapping: vi.fn(),
     updatePreviewField: vi.fn(),
     setDuplicateAction: vi.fn(),
     mapUnmappedToNotes: vi.fn(),
+    forgetSavedMapping: vi.fn(),
     goToPreview: vi.fn(),
     startImport: vi.fn(),
     goBack: vi.fn(),
@@ -71,6 +87,33 @@ function mockResult(overrides: Partial<UseDataImportWizardResult> = {}): UseData
 describe('DataImportWizardPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedUseAccounts.mockReturnValue({
+      accounts: [
+        {
+          id: 'account-1',
+          householdId: 'household-1',
+          name: 'Checking',
+          type: 'CHECKING',
+          currency: { code: 'USD', decimalPlaces: 2 },
+          currentBalance: { amount: 0 },
+          isArchived: false,
+          sortOrder: 1,
+          icon: 'bank',
+          color: '#2563EB',
+          createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+          deletedAt: null,
+          syncVersion: 1,
+          isSynced: true,
+        },
+      ],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      createAccount: vi.fn(),
+      updateAccount: vi.fn(),
+      deleteAccount: vi.fn(),
+    });
   });
 
   it('renders the wizard title', () => {
@@ -84,7 +127,7 @@ describe('DataImportWizardPage', () => {
     mockedHook.mockReturnValue(mockResult());
 
     renderWithDatabase(<DataImportWizardPage />);
-    expect(screen.getByText('Upload CSV File')).toBeInTheDocument();
+    expect(screen.getByText('Upload Import File')).toBeInTheDocument();
     expect(screen.getByText(/drag and drop/i)).toBeInTheDocument();
   });
 
@@ -101,6 +144,7 @@ describe('DataImportWizardPage', () => {
     mockedHook.mockReturnValue(mockResult());
 
     renderWithDatabase(<DataImportWizardPage />);
+    expect(screen.getByText(/Quicken and banks/)).toBeInTheDocument();
     expect(screen.getByText(/Chase, Amex, Wells Fargo, Citi/)).toBeInTheDocument();
   });
 

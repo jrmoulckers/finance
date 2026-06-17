@@ -9,7 +9,7 @@
  *
  * All monetary values are in cents (integers) to avoid floating-point errors.
  *
- * References: IRS Notice 2024-08 (2024 mileage rates), issue #1709
+ * References: IRS Notice 2024-08 (2024 rates), IRS 2025 standard mileage rates, issue #1709
  */
 
 // ---------------------------------------------------------------------------
@@ -37,6 +37,12 @@ export interface TripEntry {
   readonly startLocation: string;
   /** Ending location or description. */
   readonly endLocation: string;
+  /** Optional vehicle label for substantiation. */
+  readonly vehicle?: string;
+  /** Whether the trip is business-use; personal trips stay in the log but do not deduct. */
+  readonly isBusinessUse?: boolean;
+  /** Optional receipt or calendar reference. */
+  readonly supportReference?: string;
   /** Optional notes about the trip. */
   readonly notes?: string;
 }
@@ -90,7 +96,7 @@ export interface AnnualMileageSummary {
 }
 
 // ---------------------------------------------------------------------------
-// 2024 IRS Standard Mileage Rates (IRS Notice 2024-08)
+// IRS Standard Mileage Rates
 // ---------------------------------------------------------------------------
 
 /** 2024 IRS standard mileage rates (in cents per mile). */
@@ -99,6 +105,18 @@ export const MILEAGE_RATES_2024: readonly MileageRate[] = [
   { purpose: MileagePurpose.MEDICAL, centsPerMile: 21, taxYear: 2024 },
   { purpose: MileagePurpose.CHARITY, centsPerMile: 14, taxYear: 2024 },
 ];
+
+/** 2025 IRS standard mileage rates (in cents per mile). */
+export const MILEAGE_RATES_2025: readonly MileageRate[] = [
+  { purpose: MileagePurpose.BUSINESS, centsPerMile: 70, taxYear: 2025 },
+  { purpose: MileagePurpose.MEDICAL, centsPerMile: 21, taxYear: 2025 },
+  { purpose: MileagePurpose.CHARITY, centsPerMile: 14, taxYear: 2025 },
+];
+
+export const STANDARD_MILEAGE_RATES_BY_YEAR: Readonly<Record<number, readonly MileageRate[]>> = {
+  2024: MILEAGE_RATES_2024,
+  2025: MILEAGE_RATES_2025,
+};
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -112,8 +130,9 @@ export const MILEAGE_RATES_2024: readonly MileageRate[] = [
  * @returns Rate in cents per mile, or null if not found
  */
 export function getMileageRate(purpose: MileagePurpose, taxYear: number = 2024): number | null {
-  if (taxYear !== 2024) return null;
-  const rate = MILEAGE_RATES_2024.find((r) => r.purpose === purpose);
+  const rates = STANDARD_MILEAGE_RATES_BY_YEAR[taxYear];
+  if (rates === undefined) return null;
+  const rate = rates.find((r) => r.purpose === purpose);
   return rate?.centsPerMile ?? null;
 }
 
@@ -131,8 +150,8 @@ export function calculateTripDeduction(trip: TripEntry, taxYear: number = 2024):
     throw new Error(`No mileage rate found for ${trip.purpose} in ${taxYear}.`);
   }
 
-  // Deduction = miles * rate (cents per mile), rounded to nearest cent
-  const deduction = Math.round(trip.miles * rate);
+  const isPersonalTrip = trip.isBusinessUse === false;
+  const deduction = isPersonalTrip ? 0 : Math.round(trip.miles * rate);
 
   return {
     trip,

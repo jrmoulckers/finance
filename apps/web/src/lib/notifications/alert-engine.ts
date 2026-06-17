@@ -20,6 +20,7 @@ import type {
   BudgetThreshold,
   GoalAlertConfig,
   GoalMilestone,
+  NotificationChannel,
   NotificationPreferences,
   SpendingPace,
   WeeklyPaceSummary,
@@ -61,6 +62,10 @@ export interface BudgetEvalInput {
   readonly budgetName: string;
   readonly budgetAmountCents: number;
   readonly spentCents: number;
+  /** Optional budget-period key; include it so thresholds can fire again after reset. */
+  readonly periodKey?: string;
+  /** Optional recent transaction IDs that callers can highlight on navigation. */
+  readonly recentTransactionIds?: readonly string[];
 }
 
 /**
@@ -90,7 +95,8 @@ export function evaluateBudgetThresholds(
       continue;
     }
 
-    const deduplicationKey = `budget-${budget.budgetId}-${threshold}`;
+    const periodSegment = budget.periodKey === undefined ? '' : `-${budget.periodKey}`;
+    const deduplicationKey = `budget-${budget.budgetId}${periodSegment}-${threshold}`;
     if (alreadyFiredKeys.has(deduplicationKey)) {
       continue;
     }
@@ -154,9 +160,9 @@ function budgetThresholdMessage(
     case 75:
       return `${budgetName} is at ${percentUsed}% (${spent} of ${total}). ${remaining} still available.`;
     case 90:
-      return `${budgetName} is at ${percentUsed}% (${spent} of ${total}). Consider reviewing upcoming expenses.`;
+      return `${budgetName} is at ${percentUsed}% (${spent} of ${total}). ${remaining} remaining. Consider reviewing upcoming expenses.`;
     case 100:
-      return `${budgetName} has reached its limit (${spent} of ${total}). You may want to review recent spending.`;
+      return `${budgetName} has reached its limit (${spent} of ${total}). ${remaining} remaining. You may want to review recent spending.`;
   }
 }
 
@@ -537,6 +543,34 @@ export function isInQuietHours(
   }
 
   return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+}
+
+/**
+ * Check if a notification should be delivered on a channel after preferences,
+ * DND, and quiet hours are applied.
+ */
+export function shouldDeliverNotification(
+  notification: AppNotification,
+  prefs: NotificationPreferences,
+  channel: NotificationChannel = 'in_app',
+  nowDate: Date = new Date(),
+): boolean {
+  if (!prefs.enabled || prefs.doNotDisturb) {
+    return false;
+  }
+
+  const channelPreference = prefs.channelPreferences.find(
+    (preference) => preference.alertType === notification.type,
+  );
+  if (channelPreference !== undefined && !channelPreference.channels.includes(channel)) {
+    return false;
+  }
+
+  if (prefs.quietHours.enabled && notification.severity !== 'critical') {
+    return !isInQuietHours({ ...prefs, doNotDisturb: false }, nowDate);
+  }
+
+  return true;
 }
 
 // ---------------------------------------------------------------------------

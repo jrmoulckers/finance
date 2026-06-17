@@ -59,11 +59,25 @@ function mergeWithDefaults(partial: Partial<NotificationPreferences>): Notificat
     quietHours: partial.quietHours ?? DEFAULT_NOTIFICATION_PREFERENCES.quietHours,
     channelPreferences:
       partial.channelPreferences ?? DEFAULT_NOTIFICATION_PREFERENCES.channelPreferences,
+    billReminders: partial.billReminders ?? DEFAULT_NOTIFICATION_PREFERENCES.billReminders,
+    criticalBillAlerts:
+      partial.criticalBillAlerts ?? DEFAULT_NOTIFICATION_PREFERENCES.criticalBillAlerts,
     budgetAlerts: partial.budgetAlerts ?? DEFAULT_NOTIFICATION_PREFERENCES.budgetAlerts,
     goalAlerts: partial.goalAlerts ?? DEFAULT_NOTIFICATION_PREFERENCES.goalAlerts,
+    goalNudgesEnabled:
+      partial.goalNudgesEnabled ?? DEFAULT_NOTIFICATION_PREFERENCES.goalNudgesEnabled,
+    goalStreakCelebrationsEnabled:
+      partial.goalStreakCelebrationsEnabled ??
+      DEFAULT_NOTIFICATION_PREFERENCES.goalStreakCelebrationsEnabled,
     balanceAlerts: partial.balanceAlerts ?? DEFAULT_NOTIFICATION_PREFERENCES.balanceAlerts,
     transactionConfirmations:
       partial.transactionConfirmations ?? DEFAULT_NOTIFICATION_PREFERENCES.transactionConfirmations,
+    largeTransactionThresholdCents:
+      partial.largeTransactionThresholdCents ??
+      DEFAULT_NOTIFICATION_PREFERENCES.largeTransactionThresholdCents,
+    largeTransactionAccountThresholds:
+      partial.largeTransactionAccountThresholds ??
+      DEFAULT_NOTIFICATION_PREFERENCES.largeTransactionAccountThresholds,
     soundEnabled: partial.soundEnabled ?? DEFAULT_NOTIFICATION_PREFERENCES.soundEnabled,
     paceSensitivity: partial.paceSensitivity ?? DEFAULT_NOTIFICATION_PREFERENCES.paceSensitivity,
   };

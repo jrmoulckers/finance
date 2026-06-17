@@ -24,6 +24,26 @@ vi.mock('../../auth/auth-context', () => ({
 
 vi.mock('../../hooks', () => ({
   useKeyboardShortcuts: vi.fn(),
+  useNotifications: () => ({
+    notifications: [],
+    unreadCount: 0,
+    loading: false,
+    markAsRead: vi.fn(),
+    markAllAsRead: vi.fn(),
+    dismiss: vi.fn(),
+    clearDismissed: vi.fn(),
+    addNotification: vi.fn(),
+    addNotifications: vi.fn(),
+  }),
+  useTransactions: () => ({
+    transactions: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    createTransaction: vi.fn(),
+    updateTransaction: vi.fn(),
+    deleteTransaction: vi.fn(),
+  }),
 }));
 
 vi.mock('../../hooks/useEscapeBack', () => ({
@@ -83,11 +103,13 @@ const mockSetShowHelp = vi.fn();
 
 describe('AppLayout', () => {
   beforeEach(() => {
+    localStorage.clear();
     sessionStorage.clear();
     vi.mocked(useKeyboardShortcuts).mockReturnValue({
       showHelp: false,
       setShowHelp: mockSetShowHelp,
       shortcutCategories: [],
+      singleKeyShortcutsEnabled: true,
     });
     mockSetShowHelp.mockClear();
   });
@@ -133,6 +155,7 @@ describe('AppLayout', () => {
     const main = screen.getByRole('main', { name: 'Budgets' });
     expect(main).toBeInTheDocument();
     expect(main).toHaveAttribute('id', 'main-content');
+    expect(main).toHaveAttribute('tabindex', '-1');
   });
 
   it('renders the sidebar navigation', () => {
@@ -215,5 +238,18 @@ describe('AppLayout', () => {
     renderLayout();
 
     expect(screen.getByTestId('install-banner')).toBeInTheDocument();
+  });
+
+  it('applies the simple-mode route plan to core route content', () => {
+    localStorage.setItem('finance-simplified-mode', 'true');
+
+    render(<AppLayout {...defaultProps} activePath="/transactions" pageTitle="Transactions" />);
+
+    const main = screen.getByRole('main', { name: 'Transactions' });
+    expect(main).toHaveAttribute('data-simple-mode', 'true');
+    expect(main).toHaveAttribute('data-simple-mode-surface', 'transactions');
+    expect(
+      screen.getByRole('region', { name: /transactions simple mode plan/i }),
+    ).toHaveTextContent('Primary action: Add transaction.');
   });
 });

@@ -18,6 +18,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Currency } from '../kmp/bridge';
 import { Currencies } from '../kmp/bridge';
+import { formatCurrency } from '../lib/currency';
+import { SUPPORTED_CURRENCY_METADATA } from '../lib/currency-metadata';
+import { getCurrentLocale } from '../lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,35 +80,12 @@ const STORAGE_KEY_DEFAULT_CURRENCY = 'finance-default-currency';
 const STORAGE_KEY_RATES = 'finance-exchange-rates';
 const STORAGE_KEY_RATES_UPDATED = 'finance-exchange-rates-updated';
 
-const SUPPORTED_CURRENCIES: Currency[] = [
-  Currencies.USD,
-  Currencies.EUR,
-  Currencies.GBP,
-  Currencies.JPY,
-  Currencies.CAD,
-  { code: 'AUD', decimalPlaces: 2 },
-  { code: 'CHF', decimalPlaces: 2 },
-  { code: 'CNY', decimalPlaces: 2 },
-  { code: 'INR', decimalPlaces: 2 },
-  { code: 'MXN', decimalPlaces: 2 },
-  { code: 'BRL', decimalPlaces: 2 },
-  { code: 'KRW', decimalPlaces: 0 },
-];
+const SUPPORTED_CURRENCIES: Currency[] = SUPPORTED_CURRENCY_METADATA.map(({ code, decimalPlaces }) => ({
+  code,
+  decimalPlaces,
+}));
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  JPY: '¥',
-  CAD: 'C$',
-  AUD: 'A$',
-  CHF: 'CHF',
-  CNY: '¥',
-  INR: '₹',
-  MXN: 'MX$',
-  BRL: 'R$',
-  KRW: '₩',
-};
+const SUPPORTED_CURRENCY_CODES = new Set(SUPPORTED_CURRENCIES.map((currency) => currency.code));
 
 /**
  * Static exchange rates (USD base).
@@ -135,7 +115,11 @@ function loadDefaultCurrency(): Currency {
     const stored = localStorage.getItem(STORAGE_KEY_DEFAULT_CURRENCY);
     if (stored) {
       const parsed = JSON.parse(stored) as Currency;
-      if (parsed.code && typeof parsed.decimalPlaces === 'number') {
+      if (
+        parsed.code &&
+        typeof parsed.decimalPlaces === 'number' &&
+        SUPPORTED_CURRENCY_CODES.has(parsed.code)
+      ) {
         return parsed;
       }
     }
@@ -239,17 +223,15 @@ export function useMultiCurrency(): UseMultiCurrencyResult {
 
   const formatAmount = useCallback((amountCents: number, currency: Currency): string => {
     const divisor = Math.pow(10, currency.decimalPlaces);
-    return (amountCents / divisor).toFixed(currency.decimalPlaces);
+    return new Intl.NumberFormat(getCurrentLocale(), {
+      minimumFractionDigits: currency.decimalPlaces,
+      maximumFractionDigits: currency.decimalPlaces,
+    }).format(amountCents / divisor);
   }, []);
 
-  const formatWithSymbol = useCallback(
-    (amountCents: number, currency: Currency): string => {
-      const symbol = CURRENCY_SYMBOLS[currency.code] ?? currency.code;
-      const formatted = formatAmount(amountCents, currency);
-      return `${symbol}${formatted}`;
-    },
-    [formatAmount],
-  );
+  const formatWithSymbol = useCallback((amountCents: number, currency: Currency): string => {
+    return formatCurrency(amountCents, { currency: currency.code, locale: getCurrentLocale() });
+  }, []);
 
   const calculateMultiCurrencyTotal = useCallback(
     (items: Array<{ amountCents: number; currency: Currency }>): CurrencyTotal[] => {

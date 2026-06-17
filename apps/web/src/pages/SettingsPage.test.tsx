@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,7 +17,7 @@ const { clearLocalAccountDataMock, householdImpactMock, wipeLocalDataMock } = vi
     memberHouseholds: 2,
     pendingInvites: 3,
   })),
-  wipeLocalDataMock: vi.fn<() => Promise<void>>(),
+  wipeLocalDataMock: vi.fn<() => Promise<unknown>>(),
 }));
 
 vi.mock('../lib/account/account-deletion', () => ({
@@ -57,13 +57,46 @@ vi.mock('../hooks/useOfflineStatus', () => ({
   useOfflineStatus: () => offlineStatusMock,
 }));
 
+vi.mock('../components/common', () => ({
+  ErrorBanner: ({ message }: { message?: string }) => <div role="alert">{message}</div>,
+  LoadingSpinner: () => <div>Loading…</div>,
+  Icon: ({ label }: { label?: string }) => <span>{label}</span>,
+}));
+
+vi.mock('../lib/monitoring', () => ({
+  initMonitoring: vi.fn(),
+  captureError: vi.fn(),
+}));
+
+vi.mock('../hooks/useCategories', () => ({
+  useCategories: () => ({
+    categories: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    createCategory: vi.fn(),
+    updateCategory: vi.fn(),
+    deleteCategory: vi.fn(),
+    foodMealTemplate: {
+      parentCategory: null,
+      subcategories: [],
+      missingSubcategoryDefinitions: [],
+    },
+    ensureFoodMealCategories: vi.fn(),
+  }),
+}));
+
 const setThemeMock = vi.fn();
+const setDisplayDensityMock = vi.fn();
 vi.mock('../hooks/useTheme', () => ({
   useTheme: () => ({
     theme: 'system',
     resolvedTheme: 'light',
     setTheme: setThemeMock,
     themes: ['system', 'light', 'dark', 'dark-oled'],
+    displayDensity: 'comfortable',
+    setDisplayDensity: setDisplayDensityMock,
+    densities: ['comfortable', 'compact'],
   }),
 }));
 
@@ -78,6 +111,7 @@ vi.mock('../components/gdpr', () => ({
     </section>
   ),
   CrashReportingSettings: () => <div>Crash Reporting Settings Mock</div>,
+  ThirdPartyPermissionReview: () => <div>Third Party Permission Review Mock</div>,
 }));
 
 const togglePrivacyModeMock = vi.fn();
@@ -132,7 +166,7 @@ vi.mock('../lib/display-settings', () => ({
       settings.currencyDisplay === 'code' ? `USD ${formattedNumber}` : `$${formattedNumber}`;
     if (amount >= 0) return formatted;
     if (settings.negativeFormat === 'parentheses') return `(${formatted})`;
-    if (settings.negativeFormat === 'color-only') return formatted;
+    if (settings.negativeFormat === 'color-only') return `Negative ${formatted}`;
     return `-${formatted}`;
   },
   getAmountColor: (amount: number) => {
@@ -203,7 +237,17 @@ describe('SettingsPage', () => {
     clearLocalAccountDataMock.mockReset();
     clearLocalAccountDataMock.mockResolvedValue(undefined);
     wipeLocalDataMock.mockReset();
-    wipeLocalDataMock.mockResolvedValue(undefined);
+    wipeLocalDataMock.mockResolvedValue([
+      { area: 'opfs', status: 'not_applicable' },
+      { area: 'indexeddb', status: 'deleted' },
+      { area: 'caches', status: 'deleted' },
+      { area: 'service-workers', status: 'not_applicable' },
+      { area: 'local-storage', status: 'deleted' },
+      { area: 'session-storage', status: 'deleted' },
+      { area: 'sync-queues', status: 'deleted' },
+      { area: 'audit-log', status: 'deleted' },
+      { area: 'consent-records', status: 'deleted' },
+    ]);
     householdImpactMock.mockClear();
     householdImpactMock.mockReturnValue({
       soloOwnedHouseholds: 1,
@@ -372,7 +416,14 @@ describe('SettingsPage', () => {
       });
       await waitFor(() => expect(clearLocalAccountDataMock).toHaveBeenCalledTimes(1));
       expect(wipeLocalDataMock).toHaveBeenCalledTimes(1);
-      expect(logoutMock).toHaveBeenCalledTimes(1);
+      expect(await screen.findByRole('heading', { name: /account deletion receipt/i })).toBeInTheDocument();
+      expect(screen.getByText(/verification hash/i)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /download receipt/i })).toHaveAttribute('download');
+      expect(logoutMock).not.toHaveBeenCalled();
+      expect(assignSpy).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: /continue to login/i }));
+      await waitFor(() => expect(logoutMock).toHaveBeenCalledTimes(1));
       expect(assignSpy).toHaveBeenCalledWith('/login');
     });
 
@@ -447,9 +498,12 @@ describe('SettingsPage', () => {
       renderSettingsAt('/settings/preferences');
 
       const examples = screen.getByLabelText('Negative format examples');
-      expect(examples).toHaveTextContent('Standard-$1,234.56');
-      expect(examples).toHaveTextContent('Accounting($1,234.56)');
-      expect(examples).toHaveTextContent('Color Only$1,234.56');
+      expect(within(examples).getByText('Standard')).toBeInTheDocument();
+      expect(within(examples).getByText('-$1,234.56')).toBeInTheDocument();
+      expect(within(examples).getByText('Accounting')).toBeInTheDocument();
+      expect(within(examples).getByText('($1,234.56)')).toBeInTheDocument();
+      expect(within(examples).getByText('Text label')).toBeInTheDocument();
+      expect(within(examples).getByText('Negative $1,234.56')).toBeInTheDocument();
     });
 
     it('calls updateSettings when show decimals is toggled', () => {

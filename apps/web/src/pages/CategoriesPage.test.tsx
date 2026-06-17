@@ -60,6 +60,7 @@ const mockedUseTransactions = vi.mocked(useTransactions);
 const createCategoryMock = vi.fn();
 const updateCategoryMock = vi.fn();
 const deleteCategoryMock = vi.fn();
+const ensureFoodMealCategoriesMock = vi.fn();
 const refreshCategoriesMock = vi.fn();
 const refreshTransactionsMock = vi.fn();
 
@@ -152,12 +153,31 @@ describe('CategoriesPage', () => {
     createCategoryMock.mockReset();
     updateCategoryMock.mockReset();
     deleteCategoryMock.mockReset();
+    ensureFoodMealCategoriesMock.mockReset();
     refreshCategoriesMock.mockReset();
     refreshTransactionsMock.mockReset();
 
     createCategoryMock.mockReturnValue(categories[0]);
     updateCategoryMock.mockReturnValue(categories[0]);
     deleteCategoryMock.mockReturnValue(true);
+    ensureFoodMealCategoriesMock.mockReturnValue({
+      parentCategory: categories[0],
+      subcategories: [
+        {
+          ...categories[0],
+          id: 'category-groceries',
+          name: 'Groceries',
+          icon: '🛒',
+          parentId: 'category-food',
+        },
+      ],
+      missingSubcategoryDefinitions: [
+        { name: 'Dining Out', icon: '🍽️', color: '#F97316', description: 'Restaurants' },
+        { name: 'Delivery & Takeout', icon: '🥡', color: '#FB7185', description: 'Delivery' },
+        { name: 'Coffee & Snacks', icon: '☕', color: '#A16207', description: 'Coffee' },
+        { name: 'Meal Prep', icon: '🥗', color: '#0F766E', description: 'Meal prep' },
+      ],
+    });
 
     mockedUseCategories.mockReturnValue({
       categories,
@@ -167,6 +187,25 @@ describe('CategoriesPage', () => {
       createCategory: createCategoryMock,
       updateCategory: updateCategoryMock,
       deleteCategory: deleteCategoryMock,
+      foodMealTemplate: {
+        parentCategory: categories[0],
+        subcategories: [
+          {
+            ...categories[0],
+            id: 'category-groceries',
+            name: 'Groceries',
+            icon: '🛒',
+            parentId: 'category-food',
+          },
+        ],
+        missingSubcategoryDefinitions: [
+          { name: 'Dining Out', icon: '🍽️', color: '#F97316', description: 'Restaurants' },
+          { name: 'Delivery & Takeout', icon: '🥡', color: '#FB7185', description: 'Delivery' },
+          { name: 'Coffee & Snacks', icon: '☕', color: '#A16207', description: 'Coffee' },
+          { name: 'Meal Prep', icon: '🥗', color: '#0F766E', description: 'Meal prep' },
+        ],
+      },
+      ensureFoodMealCategories: ensureFoodMealCategoriesMock,
     });
 
     mockedUseTransactions.mockReturnValue({
@@ -193,6 +232,24 @@ describe('CategoriesPage', () => {
     expect(screen.getByText('Utilities')).toBeInTheDocument();
     expect(screen.getByText('#16A34A')).toBeInTheDocument();
     expect(screen.getByText('utensils')).toBeInTheDocument();
+  });
+
+  it('shows the Food & Meals setup helper', () => {
+    render(<CategoriesPage />);
+
+    expect(screen.getByText('Food & Meals setup')).toBeInTheDocument();
+    expect(screen.getAllByText(/Groceries/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('button', { name: /add food & meals categories/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('adds the Food & Meals category set', () => {
+    render(<CategoriesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /add food & meals categories/i }));
+
+    expect(ensureFoodMealCategoriesMock).toHaveBeenCalled();
   });
 
   it('adds a category', async () => {

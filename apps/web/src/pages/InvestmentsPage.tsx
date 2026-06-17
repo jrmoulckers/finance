@@ -7,7 +7,7 @@
  * References: issue #1105
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -17,10 +17,19 @@ import {
   ExplainThis,
   LoadingSpinner,
 } from '../components/common';
+import { DataExport } from '../components/DataExport';
+import {
+  InvestingBetaFeaturesPanel,
+  useInvestingBetaFeatures,
+} from '../components/investments/InvestingBetaFeatures';
 import { useInvestments } from '../hooks';
 import { formatCurrency, formatGainLoss } from '../lib/currency';
 import type { Investment, InvestmentType } from '../kmp/bridge';
 import { AppIcon, type IconName } from '../components/icons';
+import type {
+  InvestmentIncomeExportInput,
+  InvestmentRealizedGainExportInput,
+} from '../lib/export/investment-export';
 
 /** Color palette for the allocation pie chart. */
 const CHART_COLORS = [
@@ -93,11 +102,46 @@ function computeAllocation(
 
 /** Investment portfolio page component. */
 export const InvestmentsPage: React.FC = () => {
-  const { investments, summary, loading, error, refresh } = useInvestments();
+  const investmentState = useInvestments();
+  const { investments, summary, loading, error, refresh, getLots } = investmentState;
+  const optionalTaxData = investmentState as typeof investmentState & {
+    realizedGains?: readonly InvestmentRealizedGainExportInput[];
+    dividends?: readonly InvestmentIncomeExportInput[];
+    income?: readonly InvestmentIncomeExportInput[];
+  };
   const [sortField, setSortField] = useState<'symbol' | 'value' | 'gainLoss'>('symbol');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const allocation = computeAllocation(investments);
+  const investmentLots = useMemo(
+    () => investments.flatMap((investment) => getLots(investment.id)),
+    [getLots, investments],
+  );
+  const betaFeatures = useInvestingBetaFeatures({ investments, getLots });
+  const investmentExport = useMemo(
+    () => ({
+      investments,
+      lots: investmentLots,
+      realizedGains: [
+        ...(optionalTaxData.realizedGains ?? []),
+        ...betaFeatures.realizedGainExportRows,
+      ],
+      dividends: [
+        ...(optionalTaxData.dividends ?? []),
+        ...(optionalTaxData.income ?? []),
+        ...betaFeatures.dividendExportRows,
+      ],
+    }),
+    [
+      betaFeatures.dividendExportRows,
+      betaFeatures.realizedGainExportRows,
+      investments,
+      investmentLots,
+      optionalTaxData.dividends,
+      optionalTaxData.income,
+      optionalTaxData.realizedGains,
+    ],
+  );
 
   const handleSort = useCallback(
     (field: 'symbol' | 'value' | 'gainLoss') => {
@@ -205,6 +249,12 @@ export const InvestmentsPage: React.FC = () => {
             </div>
           </section>
 
+          <section className="page-section" aria-label="Investment export tools">
+            <div className="card" style={{ marginBottom: 'var(--spacing-6)' }}>
+              <DataExport showFinanceExports={false} investmentExport={investmentExport} />
+            </div>
+          </section>
+
           {/* Allocation Chart */}
           {allocation.length > 0 && (
             <section className="page-section" aria-label="Asset allocation chart">
@@ -308,6 +358,8 @@ export const InvestmentsPage: React.FC = () => {
           )}
 
           {/* Holdings Table */}
+          <InvestingBetaFeaturesPanel investments={investments} features={betaFeatures} />
+
           <section aria-label="Investment holdings">
             <div className="card">
               <div style={{ overflowX: 'auto' }}>

@@ -104,3 +104,11 @@ export {
   processMemoForExport,
   redactMemo,
 } from './encrypted-memo';
+
+export * from './app-lock-settings';
+export * from './deletion-endpoint';
+export * from './encryption-status';
+export * from './local-wipe-verification';
+export * from './privacy-coverage';
+export * from './privacy-screen-triggers';
+export * from './webauthn-challenge';

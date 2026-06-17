@@ -26,13 +26,20 @@ export type NotificationSeverity = 'info' | 'success' | 'warning' | 'critical';
 
 /** The category of alert that triggered the notification. */
 export type AlertType =
+  | 'bill_due'
   | 'budget_threshold'
   | 'goal_milestone'
+  | 'goal_nudge'
+  | 'goal_streak'
   | 'balance_low'
+  | 'balance_overdraft'
   | 'spending_pace'
   | 'predictive_overspend'
   | 'transaction_confirmation'
   | 'batch_confirmation'
+  | 'scam_check'
+  | 'spending_digest'
+  | 'subscription_price_change'
   | 'warranty_deadline'
   | 'return_window_deadline';
 
@@ -65,7 +72,7 @@ export interface AppNotification {
   /** Optional entity ID for quick navigation (budget, goal, account). */
   readonly entityId?: SyncId;
   /** Optional entity type for building navigation links. */
-  readonly entityType?: 'budget' | 'goal' | 'account' | 'transaction';
+  readonly entityType?: 'bill' | 'budget' | 'goal' | 'account' | 'transaction';
   /** Optional action label for a quick-action button. */
   readonly actionLabel?: string;
   /** Rate-limiting key to prevent duplicate alerts. */
@@ -81,6 +88,21 @@ export type BudgetThreshold = 50 | 75 | 90 | 100;
 
 /** Percentage thresholds at which goal milestone alerts fire. */
 export type GoalMilestone = 25 | 50 | 75 | 100;
+
+/** Lead times supported by bill reminder defaults. */
+export type BillReminderLeadDays = 7 | 3 | 0;
+
+/** Per-bill reminder configuration. */
+export interface BillReminderConfig {
+  /** The bill ID this config applies to. */
+  readonly billId: SyncId;
+  /** Whether reminders are enabled for this bill. */
+  readonly enabled: boolean;
+  /** Which lead times should generate reminders. */
+  readonly leadDays: readonly BillReminderLeadDays[];
+  /** Whether day-of reminders are allowed to become critical. */
+  readonly criticalDayOf: boolean;
+}
 
 /** Configuration for budget threshold alerts. */
 export interface BudgetAlertConfig {
@@ -108,8 +130,18 @@ export interface BalanceAlertConfig {
   readonly accountId: SyncId;
   /** Balance threshold in cents — alert when balance drops below. */
   readonly thresholdCents: number;
+  /** Whether projected overdraft alerts are enabled for this account. */
+  readonly projectedOverdraftEnabled?: boolean;
   /** Whether this alert is enabled. */
   readonly enabled: boolean;
+}
+
+/** Account-specific large-transaction threshold override. */
+export interface AccountTransactionThreshold {
+  /** The account ID this config applies to. */
+  readonly accountId: SyncId;
+  /** Large transaction threshold in cents. */
+  readonly thresholdCents: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -228,14 +260,26 @@ export interface NotificationPreferences {
   readonly quietHours: QuietHoursConfig;
   /** Per-alert-type channel preferences. */
   readonly channelPreferences: readonly AlertChannelPreference[];
+  /** Bill reminder configurations. */
+  readonly billReminders: readonly BillReminderConfig[];
+  /** Whether critical bill reminders may bypass quiet hours. */
+  readonly criticalBillAlerts: boolean;
   /** Budget alert configurations. */
   readonly budgetAlerts: readonly BudgetAlertConfig[];
   /** Goal alert configurations. */
   readonly goalAlerts: readonly GoalAlertConfig[];
+  /** Whether safe goal contribution nudges are enabled. */
+  readonly goalNudgesEnabled: boolean;
+  /** Whether savings streak celebrations are enabled. */
+  readonly goalStreakCelebrationsEnabled: boolean;
   /** Balance alert configurations. */
   readonly balanceAlerts: readonly BalanceAlertConfig[];
   /** Whether to show transaction confirmation notifications. */
   readonly transactionConfirmations: boolean;
+  /** Global large-transaction threshold in cents. */
+  readonly largeTransactionThresholdCents: number;
+  /** Account-specific large-transaction threshold overrides. */
+  readonly largeTransactionAccountThresholds: readonly AccountTransactionThreshold[];
   /** Whether sound/haptic feedback is enabled for confirmations. */
   readonly soundEnabled: boolean;
   /** Spending pace alert sensitivity: 'low' | 'medium' | 'high'. */
@@ -255,17 +299,24 @@ export const DEFAULT_QUIET_HOURS: QuietHoursConfig = {
 
 /** Default channel preferences (in-app only, conservative defaults). */
 export const DEFAULT_CHANNEL_PREFERENCES: readonly AlertChannelPreference[] = [
+  { alertType: 'bill_due', channels: ['in_app'] },
   { alertType: 'budget_threshold', channels: ['in_app'] },
   { alertType: 'goal_milestone', channels: ['in_app'] },
+  { alertType: 'goal_nudge', channels: ['in_app'] },
+  { alertType: 'goal_streak', channels: ['in_app'] },
   { alertType: 'balance_low', channels: ['in_app'] },
+  { alertType: 'balance_overdraft', channels: ['in_app'] },
   { alertType: 'spending_pace', channels: ['in_app'] },
   { alertType: 'predictive_overspend', channels: ['in_app'] },
   { alertType: 'transaction_confirmation', channels: ['in_app'] },
   { alertType: 'batch_confirmation', channels: ['in_app'] },
+  { alertType: 'scam_check', channels: ['in_app'] },
+  { alertType: 'spending_digest', channels: ['in_app'] },
+  { alertType: 'subscription_price_change', channels: ['in_app'] },
 ];
 
 /** Default global budget thresholds. */
-export const DEFAULT_BUDGET_THRESHOLDS: readonly BudgetThreshold[] = [75, 90, 100];
+export const DEFAULT_BUDGET_THRESHOLDS: readonly BudgetThreshold[] = [50, 75, 90, 100];
 
 /** Default goal milestones. */
 export const DEFAULT_GOAL_MILESTONES: readonly GoalMilestone[] = [25, 50, 75, 100];
@@ -276,10 +327,16 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   doNotDisturb: false,
   quietHours: DEFAULT_QUIET_HOURS,
   channelPreferences: DEFAULT_CHANNEL_PREFERENCES,
+  billReminders: [],
+  criticalBillAlerts: false,
   budgetAlerts: [{ budgetId: null, thresholds: DEFAULT_BUDGET_THRESHOLDS, enabled: true }],
   goalAlerts: [{ goalId: null, milestones: DEFAULT_GOAL_MILESTONES, enabled: true }],
+  goalNudgesEnabled: true,
+  goalStreakCelebrationsEnabled: true,
   balanceAlerts: [],
   transactionConfirmations: true,
+  largeTransactionThresholdCents: 50_000,
+  largeTransactionAccountThresholds: [],
   soundEnabled: false,
   paceSensitivity: 'medium',
 };

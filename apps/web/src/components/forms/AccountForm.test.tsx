@@ -7,6 +7,7 @@ import { queryOne } from '../../db/sqlite-wasm';
 import { AccountForm, type AccountFormProps } from './AccountForm';
 
 vi.mock('../../accessibility/aria', () => ({
+  announce: vi.fn(),
   useFocusTrap: vi.fn(),
 }));
 
@@ -56,6 +57,8 @@ describe('AccountForm', () => {
     expect(screen.getByRole('dialog', { name: 'Create Account' })).toBeInTheDocument();
     expect(screen.getByLabelText('Account Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Account Type')).toHaveValue('CHECKING');
+    expect(screen.getByLabelText('Account Purpose')).toHaveValue('personal');
+    expect(screen.getByLabelText('Mark this as a retirement or tax-advantaged account')).not.toBeChecked();
     expect(screen.getByLabelText('Currency')).toHaveValue('USD');
     expect(screen.getByLabelText('Initial Balance')).toHaveValue('');
 
@@ -77,6 +80,12 @@ describe('AccountForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
 
     expect(screen.getByText('Account name is required.')).toBeInTheDocument();
+    const summary = screen.getByText('Some fields need attention').closest('.form-error-summary');
+    expect(summary).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('link', { name: /Account Name: Account name is required/i })).toHaveAttribute(
+      'href',
+      '#account-name',
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -87,6 +96,7 @@ describe('AccountForm', () => {
       target: { value: 'Primary Savings' },
     });
     fireEvent.change(screen.getByLabelText('Account Type'), { target: { value: 'SAVINGS' } });
+    fireEvent.change(screen.getByLabelText('Account Purpose'), { target: { value: 'business' } });
     fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'EUR' } });
     fireEvent.change(screen.getByLabelText('Initial Balance'), { target: { value: '125.5' } });
     await act(async () => {
@@ -97,9 +107,56 @@ describe('AccountForm', () => {
       householdId: 'household-1',
       name: 'Primary Savings',
       type: 'SAVINGS',
+      purpose: 'business',
+      retirementAccountType: null,
+      retirementTaxTreatment: null,
+      hsaCoverageLevel: null,
       currency: { code: 'EUR', decimalPlaces: 2 },
       currentBalance: { amount: 12550 },
     });
+  });
+
+  it('submits retirement account classification metadata', async () => {
+    const { onSubmit } = renderAccountForm();
+
+    fireEvent.change(screen.getByLabelText('Account Name'), {
+      target: { value: 'Family HSA' },
+    });
+    fireEvent.click(screen.getByLabelText('Mark this as a retirement or tax-advantaged account'));
+    fireEvent.change(screen.getByLabelText('Retirement account type'), { target: { value: 'HSA' } });
+    fireEvent.change(screen.getByLabelText('HSA coverage'), { target: { value: 'FAMILY' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retirementAccountType: 'HSA',
+        retirementTaxTreatment: 'PRE_TAX',
+        hsaCoverageLevel: 'FAMILY',
+      }),
+    );
+  });
+
+  it('handles zero-decimal currency balances', async () => {
+    const { onSubmit } = renderAccountForm();
+
+    fireEvent.change(screen.getByLabelText('Account Name'), {
+      target: { value: 'Tokyo Cash' },
+    });
+    fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'JPY' } });
+    fireEvent.change(screen.getByLabelText('Initial Balance'), { target: { value: '1250' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currency: { code: 'JPY', decimalPlaces: 0 },
+        currentBalance: { amount: 1250 },
+      }),
+    );
   });
 
   it('shows a household error when no household is available', () => {

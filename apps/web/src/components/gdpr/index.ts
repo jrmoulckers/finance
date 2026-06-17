@@ -10,3 +10,5 @@ export { PrivacyGate } from './PrivacyGate';
 export type { PrivacyGateProps } from './PrivacyGate';
 export { PrivacySettings } from './PrivacySettings';
 export type { PrivacySettingsProps } from './PrivacySettings';
+export { SecurityAuditLogViewer } from './SecurityAuditLogViewer';
+export { ThirdPartyPermissionReview } from './ThirdPartyPermissionReview';

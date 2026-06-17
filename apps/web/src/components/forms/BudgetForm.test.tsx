@@ -3,6 +3,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Category } from '../../kmp/bridge';
+import type { BudgetStarterTemplate } from '../../lib/budgeting/starter-budget-templates';
 import { BudgetForm, type BudgetFormProps } from './BudgetForm';
 
 vi.mock('../../accessibility/aria', () => ({
@@ -44,21 +45,59 @@ const categories: Category[] = [
   },
 ];
 
+const starterTemplates: BudgetStarterTemplate[] = [
+  {
+    id: 'student',
+    name: 'Student',
+    description: 'A realistic starter budget for students.',
+    guidance: "Adjust these based on your income - we'll help you track what's realistic",
+    isAvailable: true,
+    categories: [
+      {
+        emoji: '🏠',
+        name: 'Rent/Housing',
+        amountCents: 80000,
+        icon: 'home',
+        color: '#7C3AED',
+      },
+      {
+        emoji: '🍕',
+        name: 'Food & Groceries',
+        amountCents: 30000,
+        icon: 'utensils',
+        color: '#16A34A',
+      },
+    ],
+  },
+  {
+    id: 'professional',
+    name: 'Professional',
+    description: 'Coming soon.',
+    guidance: 'Coming soon',
+    isAvailable: false,
+    availabilityLabel: 'Coming soon',
+    categories: [],
+  },
+];
+
 function renderBudgetForm(overrides: Partial<BudgetFormProps> = {}) {
   const onSubmit = overrides.onSubmit ?? vi.fn().mockResolvedValue(undefined);
+  const onSubmitTemplate = overrides.onSubmitTemplate ?? vi.fn().mockResolvedValue(undefined);
   const onCancel = overrides.onCancel ?? vi.fn();
 
   render(
     <BudgetForm
       isOpen={true}
       onSubmit={onSubmit}
+      onSubmitTemplate={onSubmitTemplate}
       onCancel={onCancel}
       categories={categories}
+      templates={starterTemplates}
       {...overrides}
     />,
   );
 
-  return { onSubmit, onCancel };
+  return { onSubmit, onSubmitTemplate, onCancel };
 }
 
 describe('BudgetForm', () => {
@@ -120,6 +159,48 @@ describe('BudgetForm', () => {
       endDate: null,
       isRollover: false,
     });
+  });
+
+  it('submits a starter budget template when selected', async () => {
+    const { onSubmit, onSubmitTemplate } = renderBudgetForm();
+
+    fireEvent.click(screen.getByLabelText('Start from template'));
+
+    expect(screen.getByText(/adjust these based on your income/i)).toBeInTheDocument();
+    expect(screen.getByText('Professional')).toBeInTheDocument();
+    expect(screen.getByText('Coming soon')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Starter Budget' }));
+    });
+
+    expect(onSubmitTemplate).toHaveBeenCalledWith({
+      templateId: 'student',
+      startDate: '2025-06-01',
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('submits rollover envelope budgets when checked', async () => {
+    const { onSubmit } = renderBudgetForm();
+
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'category-food' } });
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100.00' } });
+    fireEvent.click(screen.getByLabelText(/envelope \/ rollover category/i));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Budget' }));
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ isRollover: true }));
+  });
+
+  it('warns when the amount over-assigns expected income', () => {
+    renderBudgetForm({ expectedIncomeCents: 10000, assignedBeforeEditCents: 9000 });
+
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '20.00' } });
+
+    expect(screen.getByRole('status')).toHaveTextContent(/over expected income/i);
   });
 
   it('calls onCancel when the cancel button is clicked', () => {

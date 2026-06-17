@@ -4,7 +4,9 @@ import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Connect, type Plugin } from 'vite';
+
+import { getRouteChunkName } from './src/lib/perf/route-chunks';
 
 /**
  * Vite plugin that copies sql.js WASM binaries to the public assets directory.
@@ -98,13 +100,42 @@ function allowServiceWorkerRootScope(): Plugin {
   };
 }
 
+function stubAuthRefreshForCi(): Plugin {
+  const handleAuthRefresh: Connect.NextHandleFunction = (req, res, next) => {
+    if (process.env.CI !== 'true' || !req.url?.startsWith('/api/auth/refresh')) {
+      next();
+      return;
+    }
+
+    res.statusCode = 401;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ error: 'No refresh session in CI preview' }));
+  };
+
+  return {
+    name: 'stub-auth-refresh-for-ci',
+    configureServer(server) {
+      server.middlewares.use(handleAuthRefresh);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(handleAuthRefresh);
+    },
+  };
+}
+
 const functionsProxyTarget = process.env.VITE_FUNCTIONS_PROXY_TARGET ?? 'http://127.0.0.1:54321';
 const authProxyTarget =
   process.env.VITE_AUTH_PROXY_TARGET ?? `${functionsProxyTarget}/functions/v1`;
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), copySqlJsWasm(), swPrecacheManifest(), allowServiceWorkerRootScope()],
+  plugins: [
+    react(),
+    copySqlJsWasm(),
+    swPrecacheManifest(),
+    allowServiceWorkerRootScope(),
+    stubAuthRefreshForCi(),
+  ],
 
   resolve: {
     alias: {
@@ -117,6 +148,8 @@ export default defineConfig({
 
   build: {
     outDir: 'dist',
+    // Keep lazy route chunks lazy; the route prefetch policy opts in after app-shell paint.
+    modulePreload: false,
     // Security (#783): Disable source maps in production builds.
     // Source maps expose the full source code structure, including
     // security-relevant implementation details (auth flows, API
@@ -162,6 +195,8 @@ export default defineConfig({
           if (id.includes('node_modules/zod')) {
             return 'vendor-zod';
           }
+
+          return getRouteChunkName(id) ?? undefined;
         },
       },
     },

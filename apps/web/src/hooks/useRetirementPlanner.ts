@@ -20,6 +20,7 @@ import {
   type RetirementReadiness,
   type MonteCarloResult,
   assessRetirementReadiness,
+  calculateNetRetirementSpending,
   runMonteCarlo,
 } from '../lib/planning';
 import { useAccounts } from './useAccounts';
@@ -63,8 +64,126 @@ const DEFAULT_PARAMS: RetirementParams = {
   annualReturnRate: 0.07,
   annualInflationRate: 0.03,
   desiredMonthlySpendingCents: 400000, // $4,000
+  monthlyRetirementIncomeCents: 0,
   annualReturnStdDev: 0.15,
 };
+
+export type RetirementProjectionPhase = 'accumulation' | 'drawdown';
+
+export interface RetirementIncomeProjectionPoint {
+  readonly age: number;
+  readonly year: number;
+  readonly phase: RetirementProjectionPhase;
+  readonly startingBalanceCents: number;
+  readonly contributionCents: number;
+  readonly targetSpendCents: number;
+  readonly retirementIncomeCents: number;
+  readonly withdrawalCents: number;
+  readonly growthCents: number;
+  readonly endingBalanceCents: number;
+  readonly depleted: boolean;
+}
+
+export interface RetirementIncomeProjection {
+  readonly points: readonly RetirementIncomeProjectionPoint[];
+  readonly depletionAge: number | null;
+  readonly lastsThroughHorizon: boolean;
+  readonly finalBalanceCents: number;
+  readonly horizonAge: number;
+}
+
+export function buildRetirementIncomeProjection(
+  params: RetirementParams,
+): RetirementIncomeProjection {
+  const currentAge = Math.max(0, params.currentAge);
+  const retirementAge = params.retirementAge;
+  const horizonAge = Math.max(params.planningHorizonAge, 90, currentAge);
+  const annualReturnRate = Number.isFinite(params.annualReturnRate) ? params.annualReturnRate : 0;
+  const inflationRate = Number.isFinite(params.annualInflationRate)
+    ? params.annualInflationRate
+    : 0;
+  const annualContributionCents = Math.max(0, params.monthlyContributionCents) * 12;
+  const netMonthlyRetirementNeedCents = calculateNetRetirementSpending(
+    params.desiredMonthlySpendingCents,
+    params.monthlyRetirementIncomeCents,
+  );
+
+  let balance = Math.max(0, params.currentSavingsCents);
+  let depletionAge: number | null = null;
+  const points: RetirementIncomeProjectionPoint[] = [
+    {
+      age: currentAge,
+      year: 0,
+      phase: currentAge >= retirementAge ? 'drawdown' : 'accumulation',
+      startingBalanceCents: balance,
+      contributionCents: 0,
+      targetSpendCents: 0,
+      retirementIncomeCents: 0,
+      withdrawalCents: 0,
+      growthCents: 0,
+      endingBalanceCents: balance,
+      depleted: false,
+    },
+  ];
+
+  for (let year = 1; currentAge + year <= horizonAge; year++) {
+    const startAge = currentAge + year - 1;
+    const age = currentAge + year;
+    const phase: RetirementProjectionPhase = startAge < retirementAge ? 'accumulation' : 'drawdown';
+    const startingBalanceCents = balance;
+    const growthCents = Math.round(startingBalanceCents * annualReturnRate);
+    const contributionCents = phase === 'accumulation' ? annualContributionCents : 0;
+    const yearsInRetirement = Math.max(0, startAge - retirementAge);
+    const inflationMultiplier = Math.pow(1 + inflationRate, yearsInRetirement);
+    const targetSpendCents =
+      phase === 'drawdown'
+        ? Math.round(Math.max(0, params.desiredMonthlySpendingCents) * 12 * inflationMultiplier)
+        : 0;
+    const retirementIncomeCents =
+      phase === 'drawdown'
+        ? Math.round(Math.max(0, params.monthlyRetirementIncomeCents) * 12 * inflationMultiplier)
+        : 0;
+    const withdrawalCents =
+      phase === 'drawdown'
+        ? Math.round(netMonthlyRetirementNeedCents * 12 * inflationMultiplier)
+        : 0;
+
+    let endingBalanceCents = Math.round(
+      startingBalanceCents + growthCents + contributionCents - withdrawalCents,
+    );
+    const depleted = phase === 'drawdown' && withdrawalCents > 0 && endingBalanceCents <= 0;
+
+    if (depleted) {
+      endingBalanceCents = 0;
+      depletionAge ??= age;
+    }
+
+    balance = endingBalanceCents;
+    points.push({
+      age,
+      year,
+      phase,
+      startingBalanceCents,
+      contributionCents,
+      targetSpendCents,
+      retirementIncomeCents,
+      withdrawalCents,
+      growthCents,
+      endingBalanceCents,
+      depleted,
+    });
+  }
+
+  const finalBalanceCents = points.at(-1)?.endingBalanceCents ?? balance;
+
+  return {
+    points,
+    depletionAge,
+    lastsThroughHorizon: depletionAge === null,
+    finalBalanceCents,
+    horizonAge,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -76,6 +195,8 @@ export interface UseRetirementPlannerResult {
   params: RetirementParams;
   /** Computed retirement readiness assessment (null while loading). */
   readiness: RetirementReadiness | null;
+  /** Deterministic income projection through at least age 90. */
+  incomeProjection: RetirementIncomeProjection;
   /** Whether the assessment is being computed. */
   computing: boolean;
   /** Set current age. */
@@ -88,6 +209,8 @@ export interface UseRetirementPlannerResult {
   setMonthlyContribution: (cents: number) => void;
   /** Set desired monthly spending in cents. */
   setDesiredSpending: (cents: number) => void;
+  /** Set monthly Social Security/pension income in cents. */
+  setRetirementIncome: (cents: number) => void;
   /** Set expected annual return rate (0-1). */
   setAnnualReturn: (rate: number) => void;
   /** Set expected annual inflation rate (0-1). */
@@ -121,14 +244,21 @@ export function useRetirementPlanner(): UseRetirementPlannerResult {
       DEFAULT_PARAMS.currentSavingsCents,
   }));
 
-  // Compute readiness assessment
-  const readiness = useMemo(() => {
-    const effectiveParams: RetirementParams = {
+  const effectiveParams = useMemo<RetirementParams>(
+    () => ({
       ...params,
       currentSavingsCents: params.currentSavingsCents || currentSavingsFromAccounts,
-    };
-    return assessRetirementReadiness(effectiveParams);
-  }, [params, currentSavingsFromAccounts]);
+    }),
+    [params, currentSavingsFromAccounts],
+  );
+
+  // Compute readiness assessment
+  const readiness = useMemo(() => assessRetirementReadiness(effectiveParams), [effectiveParams]);
+
+  const incomeProjection = useMemo(
+    () => buildRetirementIncomeProjection(effectiveParams),
+    [effectiveParams],
+  );
 
   // Parameter setters
   const updateParam = useCallback(
@@ -157,6 +287,10 @@ export function useRetirementPlanner(): UseRetirementPlannerResult {
   );
   const setDesiredSpending = useCallback(
     (cents: number) => updateParam('desiredMonthlySpendingCents', cents),
+    [updateParam],
+  );
+  const setRetirementIncome = useCallback(
+    (cents: number) => updateParam('monthlyRetirementIncomeCents', cents),
     [updateParam],
   );
   const setAnnualReturn = useCallback(
@@ -188,12 +322,14 @@ export function useRetirementPlanner(): UseRetirementPlannerResult {
   return {
     params,
     readiness,
+    incomeProjection,
     computing: false,
     setCurrentAge,
     setRetirementAge,
     setPlanningHorizonAge,
     setMonthlyContribution,
     setDesiredSpending,
+    setRetirementIncome,
     setAnnualReturn,
     setInflationRate,
     simulateAtSpending,

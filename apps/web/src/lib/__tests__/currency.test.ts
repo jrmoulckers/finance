@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   formatCurrency,
@@ -13,6 +13,10 @@ import {
 // ---------------------------------------------------------------------------
 // formatCurrency (cents → display string)
 // ---------------------------------------------------------------------------
+
+beforeEach(() => {
+  localStorage.clear();
+});
 
 describe('formatCurrency', () => {
   it('formats a positive amount in cents to dollars', () => {
@@ -92,11 +96,16 @@ describe('formatCurrency', () => {
     expect(formatCurrency(999, { currency: 'GBP' })).toBe('£9.99');
   });
 
-  it('handles JPY currency (zero-decimal)', () => {
-    // JPY has 0 decimal places natively, but we force 2 by default
-    const result = formatCurrency(100, { currency: 'JPY' });
-    // The function divides by 100, so 100 cents = 1 yen displayed as ¥1.00
-    expect(result).toContain('¥');
+  it('handles JPY currency as zero-decimal minor units', () => {
+    expect(formatCurrency(1234, { currency: 'JPY', locale: 'en-US' })).toBe('¥1,234');
+  });
+
+  it('formats supported beta locales using Intl conventions', () => {
+    expect(formatCurrency(123456, { currency: 'EUR', locale: 'en-US' })).toBe('€1,234.56');
+    expect(formatCurrency(123456, { currency: 'EUR', locale: 'es-ES' })).toContain('1234,56');
+    expect(formatCurrency(123456, { currency: 'EUR', locale: 'de-DE' })).toContain('1.234,56');
+    expect(formatCurrency(123456, { currency: 'JPY', locale: 'ja-JP' })).toContain('￥123,456');
+    expect(formatCurrency(123456, { currency: 'USD', locale: 'ar' })).toContain('US$');
   });
 
   it('formats a fractional cent result correctly', () => {

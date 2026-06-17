@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { TrendLineChart, type TrendDataPoint, type TrendSeries } from './TrendLineChart';
 
@@ -110,5 +110,32 @@ describe('TrendLineChart', () => {
     const srOnly = document.querySelector('.sr-only');
     expect(srOnly).toBeInTheDocument();
     expect(srOnly!.textContent).toContain('3 data points');
+  });
+
+  it('renders a keyboard-focusable chart navigator and accessible data table', () => {
+    render(<TrendLineChart data={sampleData} series={sampleSeries} />);
+
+    const navigator = screen.getByRole('group', { name: /Trend over time data navigator/i });
+    expect(navigator).toHaveAttribute('tabindex', '0');
+
+    const table = screen.getByRole('table', { name: /Trend over time data table/i });
+    expect(table).toBeInTheDocument();
+    expect(screen.getByText('Jan').closest('tr')).toHaveAttribute(
+      'aria-label',
+      'Jan: Income $4,000, Expenses $2,400',
+    );
+  });
+
+  it('announces the active data point when arrow keys move between points', () => {
+    render(<TrendLineChart data={sampleData} series={sampleSeries} />);
+
+    const navigator = screen.getByRole('group', { name: /Trend over time data navigator/i });
+    fireEvent.focus(navigator);
+    expect(screen.getByRole('status')).toHaveTextContent('Focused point 1 of 3.');
+    expect(screen.getByRole('status')).toHaveTextContent('Income Jan: $4,000');
+
+    fireEvent.keyDown(navigator, { key: 'ArrowRight' });
+    expect(screen.getByRole('status')).toHaveTextContent('Focused point 2 of 3.');
+    expect(screen.getByRole('status')).toHaveTextContent('Expenses Feb: $1,398');
   });
 });

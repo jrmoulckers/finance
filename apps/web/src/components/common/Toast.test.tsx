@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -70,7 +73,8 @@ describe('ToastProvider + useToast', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Show Toast' }));
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Success: Saved' })).toBeInTheDocument();
+    expect(screen.getByText('Success')).toBeInTheDocument();
   });
 
   it('uses role="status" for info toasts', async () => {
@@ -127,5 +131,11 @@ describe('ToastProvider + useToast', () => {
     );
 
     expect(screen.getByLabelText('Notifications')).toBeInTheDocument();
+  });
+
+  it('documents app-level reduced-motion and forced-colors fallbacks', () => {
+    const css = readFileSync(resolve(__dirname, './toast.css'), 'utf-8');
+    expect(css).toContain("html[data-reduced-motion='true'] .toast");
+    expect(css).toContain('forced-colors: active');
   });
 });

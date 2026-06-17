@@ -27,6 +27,7 @@ import {
 } from '../db/repositories/accounts';
 import type { Row } from '../db/sqlite-wasm';
 import type { Account, SyncId } from '../kmp/bridge';
+import { filterAccountsByPurpose, type AccountPurposeFilter } from '../lib/accountPurpose';
 import { useRealtimeTable } from './useRealtimeTable';
 
 export interface UseAccountsResult {
@@ -39,7 +40,17 @@ export interface UseAccountsResult {
   deleteAccount: (accountId: SyncId) => boolean;
 }
 
-export function useAccounts(): UseAccountsResult {
+export interface UseAccountsFilters {
+  /** Restrict the returned accounts to a selected purpose scope. */
+  purpose?: AccountPurposeFilter;
+}
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
+/** Load all accounts from the local database and expose CRUD operations. */
+export function useAccounts(filters: UseAccountsFilters = {}): UseAccountsResult {
   const db = useDatabase();
   const [mutationError, setMutationError] = useState<string | null>(null);
   const {
@@ -100,8 +111,13 @@ export function useAccounts(): UseAccountsResult {
     [db],
   );
 
+  const visibleAccounts = useMemo(
+    () => filterAccountsByPurpose(accounts, filters.purpose ?? 'all'),
+    [accounts, filters.purpose],
+  );
+
   return {
-    accounts,
+    accounts: visibleAccounts,
     loading,
     error,
     refresh,

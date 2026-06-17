@@ -194,6 +194,36 @@
   font-weight: var(--font-weight-medium);
 }
 
+.form-error-summary {
+  margin-bottom: var(--spacing-4);
+  padding: var(--spacing-3);
+  border: 2px solid var(--semantic-status-negative);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-elevated);
+  color: var(--semantic-text-primary);
+}
+
+.form-error-summary:focus-visible {
+  outline: 3px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.form-error-summary__title {
+  margin: 0 0 var(--spacing-2);
+  font-weight: var(--font-weight-semibold);
+}
+
+.form-error-summary__list {
+  margin: 0;
+  padding-inline-start: var(--spacing-5);
+}
+
+.form-error-summary__list a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* ---------------------------------------------------------------------------
  * Radio group (fieldset)
  * ------------------------------------------------------------------------- */
@@ -232,6 +262,99 @@
 
 .form-radio-option__label {
   font-size: var(--type-scale-body-font-size);
+  color: var(--semantic-text-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Budget starter templates
+ * ------------------------------------------------------------------------- */
+
+.budget-form__template-list {
+  display: grid;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-3);
+}
+
+.budget-form__template-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+  cursor: pointer;
+}
+
+.budget-form__template-card--selected {
+  border-color: var(--semantic-interactive-default);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+}
+
+.budget-form__template-card--disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.budget-form__template-card input[type='radio'] {
+  margin-top: 0.125rem;
+}
+
+.budget-form__template-card-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  color: var(--semantic-text-primary);
+}
+
+.budget-form__template-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+}
+
+.budget-form__template-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-medium);
+}
+
+.budget-form__template-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-secondary);
+}
+
+.budget-form__template-guidance,
+.budget-form__template-total {
+  margin: 0;
+  color: var(--semantic-text-primary);
+}
+
+.budget-form__template-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.budget-form__template-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
   color: var(--semantic-text-primary);
 }
 
@@ -411,6 +534,15 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.keyboard-shortcuts__category-row th {
+  background: var(--semantic-background-secondary);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .keyboard-shortcuts__key {
   display: inline-flex;
   align-items: center;
@@ -428,6 +560,113 @@
 
 .keyboard-shortcuts__actions {
   justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------------------
+ * Command palette
+ * ------------------------------------------------------------------------- */
+
+.command-palette__panel {
+  max-width: 640px;
+  padding: var(--spacing-4);
+}
+
+.command-palette__title {
+  margin: 0 0 var(--spacing-1);
+  color: var(--semantic-text-primary);
+  font-size: var(--type-scale-title-font-size);
+  font-weight: var(--type-scale-title-font-weight);
+}
+
+.command-palette__description {
+  margin: 0 0 var(--spacing-3);
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.command-palette__input {
+  width: 100%;
+  padding: var(--spacing-3);
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-md);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-primary);
+  font: inherit;
+}
+
+.command-palette__input:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: 2px;
+}
+
+.command-palette__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  max-height: min(420px, 55dvh);
+  margin-top: var(--spacing-3);
+  overflow-y: auto;
+}
+
+.command-palette__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  width: 100%;
+  padding: var(--spacing-3);
+  border: 0;
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--semantic-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.command-palette__item:hover,
+.command-palette__item--active,
+.command-palette__item[aria-selected='true'] {
+  background: var(--semantic-background-secondary);
+}
+
+.command-palette__item:focus-visible {
+  outline: 2px solid var(--semantic-border-focus);
+  outline-offset: -2px;
+}
+
+.command-palette__item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.command-palette__item-label {
+  font-weight: var(--font-weight-medium);
+}
+
+.command-palette__item-description {
+  color: var(--semantic-text-secondary);
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.command-palette__shortcut {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--semantic-border-default);
+  border-radius: var(--border-radius-sm);
+  background: var(--semantic-background-primary);
+  color: var(--semantic-text-secondary);
+  font: inherit;
+  font-size: var(--type-scale-caption-font-size);
+}
+
+.command-palette__empty {
+  margin: 0;
+  padding: var(--spacing-4);
+  color: var(--semantic-text-secondary);
+  text-align: center;
 }
 
 /* ---------------------------------------------------------------------------

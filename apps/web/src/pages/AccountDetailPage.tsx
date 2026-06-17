@@ -1,17 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AppIcon } from '../components/icons';
 
 import { CurrencyDisplay, ErrorBanner, LoadingSpinner } from '../components/common';
-import { AccountDeleteDialog } from '../components/accounts';
+import { AccountDeleteDialog, AccountPurposeBadge } from '../components/accounts';
 import { AccountForm } from '../components/forms';
 import { Breadcrumb } from '../components/navigation';
-import { useAccounts, useTransactions } from '../hooks';
+import { useAccountReconciliation, useAccounts, useTransactions } from '../hooks';
 import type { Account } from '../kmp/bridge';
 import '../components/navigation/breadcrumb.css';
 import '../styles/pages.css';
+import { getAccountPurposeLabel } from '../lib/accountPurpose';
+import {
+  getHsaCoverageLabel,
+  getRetirementAccountTypeLabel,
+  getRetirementTaxTreatmentLabel,
+} from '../lib/tax/retirement-contribution-metadata';
+import {
+  calculateReconciliationDifference,
+  getReconciliationCandidates,
+  getTransactionReconciliationAmount,
+} from '../lib/reconciliation';
 import { formatDate } from '../utils/formatDate';
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
@@ -24,6 +35,32 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   OTHER: 'Other',
 };
 
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function parseMoneyInput(value: string): number | null {
+  const normalized = value.replace(/[$,\s]/g, '');
+  if (!/^[-+]?\d*(\.\d{0,2})?$/.test(normalized) || normalized === '' || normalized === '.') {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
+}
+
+function transactionLabel(transaction: {
+  payee: string | null;
+  note: string | null;
+  type: string;
+}): string {
+  return (
+    transaction.payee?.trim() ||
+    transaction.note?.trim() ||
+    (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction')
+  );
+}
+
 /** Detail view for a single account route. */
 export const AccountDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +68,11 @@ export const AccountDetailPage: React.FC = () => {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [statementDate, setStatementDate] = useState(todayISO);
+  const [statementBalanceInput, setStatementBalanceInput] = useState('');
+  const [clearedTransactionIds, setClearedTransactionIds] = useState<Set<string>>(new Set());
+  const [reconciliationMessage, setReconciliationMessage] = useState<string | null>(null);
 
   const { accounts, loading, error, refresh, updateAccount, deleteAccount } = useAccounts();
 
@@ -42,13 +84,124 @@ export const AccountDetailPage: React.FC = () => {
     error: recentTransactionsError,
     refresh: refreshRecentTransactions,
   } = useTransactions(recentFilters);
-  const { transactions: allAccountTransactions } = useTransactions(allAccountFilters);
+  const { transactions: allAccountTransactions, refresh: refreshAllAccountTransactions } =
+    useTransactions(allAccountFilters);
+  const {
+    history: reconciliationHistory,
+    lastReconciliation,
+    unclearedTransactionCount,
+    loading: reconciliationLoading,
+    error: reconciliationError,
+    closeReconciliation,
+  } = useAccountReconciliation(id);
 
   const account = id ? (accounts.find((a) => a.id === id) ?? null) : null;
 
   const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
   }, []);
+
+  const statementBalanceCents = useMemo(
+    () => parseMoneyInput(statementBalanceInput),
+    [statementBalanceInput],
+  );
+  const reconciliationCandidates = useMemo(
+    () => getReconciliationCandidates(allAccountTransactions, statementDate),
+    [allAccountTransactions, statementDate],
+  );
+  const startingBalance = lastReconciliation?.statementBalance.amount ?? 0;
+  const reconciliationCalculation = useMemo(
+    () =>
+      calculateReconciliationDifference({
+        startingBalance,
+        statementEndingBalance: statementBalanceCents ?? 0,
+        transactions: reconciliationCandidates,
+        clearedTransactionIds,
+      }),
+    [clearedTransactionIds, reconciliationCandidates, startingBalance, statementBalanceCents],
+  );
+
+  useEffect(() => {
+    if (!isReconciling) {
+      return;
+    }
+
+    setClearedTransactionIds(
+      new Set(
+        reconciliationCandidates
+          .filter((transaction) => transaction.status === 'CLEARED')
+          .map((transaction) => transaction.id),
+      ),
+    );
+  }, [isReconciling, reconciliationCandidates]);
+
+  const handleStartReconciliation = useCallback(() => {
+    setStatementDate(todayISO());
+    setStatementBalanceInput('');
+    setReconciliationMessage(null);
+    setIsReconciling(true);
+  }, []);
+
+  const handleToggleCleared = useCallback((transactionId: string) => {
+    setClearedTransactionIds((current) => {
+      const next = new Set(current);
+      if (next.has(transactionId)) {
+        next.delete(transactionId);
+      } else {
+        next.add(transactionId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleCloseReconciliation = useCallback(() => {
+    if (!account) {
+      return;
+    }
+
+    if (statementBalanceCents === null) {
+      setReconciliationMessage('Enter a valid statement ending balance.');
+      return;
+    }
+
+    if (statementDate.trim() === '') {
+      setReconciliationMessage('Enter a valid statement date.');
+      return;
+    }
+
+    if (!reconciliationCalculation.canClose) {
+      setReconciliationMessage('Difference must be zero before reconciliation can close.');
+      return;
+    }
+
+    const snapshot = closeReconciliation({
+      householdId: account.householdId,
+      statementDate,
+      statementBalance: { amount: statementBalanceCents },
+      startingBalance: { amount: startingBalance },
+      transactionIds: [...clearedTransactionIds],
+    });
+
+    if (snapshot === null) {
+      setReconciliationMessage('Failed to close reconciliation.');
+      return;
+    }
+
+    setReconciliationMessage('Reconciliation closed and transactions locked.');
+    setIsReconciling(false);
+    refreshRecentTransactions();
+    refreshAllAccountTransactions();
+  }, [
+    account,
+    clearedTransactionIds,
+    closeReconciliation,
+    reconciliationCalculation.canClose,
+    refreshAllAccountTransactions,
+    refreshRecentTransactions,
+    startingBalance,
+    statementBalanceCents,
+    statementDate,
+  ]);
 
   if (loading) {
     return (
@@ -80,7 +233,10 @@ export const AccountDetailPage: React.FC = () => {
       <Breadcrumb segments={[{ label: 'Accounts', href: '/accounts' }, { label: account.name }]} />
 
       <div className="page-header">
-        <h2 className="page-heading">{account.name}</h2>
+        <div className="page-heading-row">
+          <h2 className="page-heading">{account.name}</h2>
+          <AccountPurposeBadge purpose={account.purpose} />
+        </div>
         <div className="page-actions">
           <button
             type="button"
@@ -121,6 +277,22 @@ export const AccountDetailPage: React.FC = () => {
             <dt className="card__title">Currency</dt>
             <dd>{account.currency.code}</dd>
           </div>
+          <div>
+            <dt className="card__title">Purpose</dt>
+            <dd>{getAccountPurposeLabel(account.purpose)}</dd>
+          </div>
+          <div>
+            <dt className="card__title">Retirement classification</dt>
+            <dd>
+              {getRetirementAccountTypeLabel(account.retirementAccountType)}
+              {account.retirementAccountType
+                ? ' · ' + getRetirementTaxTreatmentLabel(account.retirementTaxTreatment)
+                : ''}
+              {account.retirementAccountType === 'HSA'
+                ? ' · ' + getHsaCoverageLabel(account.hsaCoverageLevel) + ' coverage'
+                : ''}
+            </dd>
+          </div>
           {account.isArchived && (
             <div>
               <dt className="card__title">Status</dt>
@@ -129,6 +301,197 @@ export const AccountDetailPage: React.FC = () => {
           )}
         </dl>
       </article>
+
+      <section className="card page-card--spaced" aria-label="Account reconciliation">
+        <div className="page-heading-row">
+          <div>
+            <h3 className="page-section-heading">Reconciliation</h3>
+            <p className="page-muted-text">
+              Last reconciled:{' '}
+              {lastReconciliation
+                ? formatDate(lastReconciliation.statementDate)
+                : 'Not reconciled yet'}
+            </p>
+            <p className="page-muted-text">
+              {reconciliationLoading
+                ? 'Loading reconciliation status…'
+                : `${unclearedTransactionCount} transactions uncleared`}
+            </p>
+          </div>
+          <button type="button" className="form-button" onClick={handleStartReconciliation}>
+            Start reconciliation
+          </button>
+        </div>
+
+        {reconciliationError && <ErrorBanner message={reconciliationError} />}
+        {reconciliationMessage && (
+          <p role="status" className="page-status-text">
+            {reconciliationMessage}
+          </p>
+        )}
+
+        {isReconciling && (
+          <div className="page-card--spaced">
+            <div className="page-detail-grid">
+              <div className="form-group">
+                <label className="form-group__label" htmlFor="statement-ending-balance">
+                  Statement ending balance
+                </label>
+                <input
+                  id="statement-ending-balance"
+                  className="form-input"
+                  inputMode="decimal"
+                  value={statementBalanceInput}
+                  onChange={(event) => setStatementBalanceInput(event.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-group__label" htmlFor="statement-date">
+                  Statement date
+                </label>
+                <input
+                  id="statement-date"
+                  className="form-input"
+                  type="date"
+                  value={statementDate}
+                  onChange={(event) => setStatementDate(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <dl className="page-detail-grid" aria-label="Reconciliation math">
+              <div>
+                <dt className="card__title">Starting balance</dt>
+                <dd>
+                  <CurrencyDisplay amount={startingBalance} currency={account.currency.code} />
+                </dd>
+              </div>
+              <div>
+                <dt className="card__title">Cleared total</dt>
+                <dd>
+                  <CurrencyDisplay
+                    amount={reconciliationCalculation.clearedTotal}
+                    currency={account.currency.code}
+                    colorize
+                    showSign
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="card__title">Computed balance</dt>
+                <dd>
+                  <CurrencyDisplay
+                    amount={reconciliationCalculation.computedEndingBalance}
+                    currency={account.currency.code}
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="card__title">Difference</dt>
+                <dd>
+                  <CurrencyDisplay
+                    amount={reconciliationCalculation.difference}
+                    currency={account.currency.code}
+                    colorize
+                    showSign
+                  />
+                </dd>
+              </div>
+            </dl>
+
+            <div className="card" aria-label="Transactions to clear">
+              {reconciliationCandidates.length === 0 ? (
+                <p className="page-empty-text">
+                  No unreconciled transactions through this statement date.
+                </p>
+              ) : (
+                <ul className="list-group" role="list">
+                  {reconciliationCandidates.map((transaction) => {
+                    const label = transactionLabel(transaction);
+                    const signedAmount = getTransactionReconciliationAmount(transaction);
+
+                    return (
+                      <li key={transaction.id} role="listitem" className="list-item">
+                        <label className="list-item__content">
+                          <input
+                            type="checkbox"
+                            checked={clearedTransactionIds.has(transaction.id)}
+                            onChange={() => handleToggleCleared(transaction.id)}
+                            aria-label={`Cleared ${label}`}
+                          />
+                          <span>
+                            <span className="list-item__primary">{label}</span>
+                            <span className="list-item__secondary">
+                              {formatDate(transaction.date)} · {transaction.status.toLowerCase()}
+                            </span>
+                          </span>
+                        </label>
+                        <div className="list-item__trailing">
+                          <CurrencyDisplay
+                            amount={signedAmount}
+                            currency={transaction.currency.code}
+                            colorize
+                            showSign
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="page-actions">
+              <button
+                type="button"
+                className="form-button form-button--secondary"
+                onClick={() => setIsReconciling(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="form-button"
+                onClick={handleCloseReconciliation}
+                disabled={
+                  statementBalanceCents === null ||
+                  statementDate.trim() === '' ||
+                  !reconciliationCalculation.canClose
+                }
+              >
+                Finish/Reconcile
+              </button>
+            </div>
+          </div>
+        )}
+
+        {reconciliationHistory.length > 0 && (
+          <section aria-label="Reconciliation history">
+            <h4 className="card__title">History</h4>
+            <ul className="list-group" role="list">
+              {reconciliationHistory.map((snapshot) => (
+                <li key={snapshot.id} role="listitem" className="list-item">
+                  <div className="list-item__content">
+                    <p className="list-item__primary">{formatDate(snapshot.statementDate)}</p>
+                    <p className="list-item__secondary">
+                      Closed by {snapshot.createdBy} on{' '}
+                      {formatDate(snapshot.createdAt.slice(0, 10))} ·{' '}
+                      {snapshot.clearedTransactionCount} cleared
+                    </p>
+                  </div>
+                  <div className="list-item__trailing">
+                    <CurrencyDisplay
+                      amount={snapshot.statementBalance.amount}
+                      currency={account.currency.code}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </section>
 
       <section aria-label="Recent transactions">
         <h3 className="page-section-heading">Recent Transactions</h3>
@@ -146,10 +509,7 @@ export const AccountDetailPage: React.FC = () => {
           <div className="card">
             <ul className="list-group" role="list">
               {recentTransactions.map((transaction) => {
-                const label =
-                  transaction.payee?.trim() ||
-                  transaction.note?.trim() ||
-                  (transaction.type === 'TRANSFER' ? 'Transfer' : 'Transaction');
+                const label = transactionLabel(transaction);
                 const displayAmount =
                   transaction.type === 'EXPENSE'
                     ? -Math.abs(transaction.amount.amount)
@@ -164,7 +524,10 @@ export const AccountDetailPage: React.FC = () => {
                     >
                       <div className="list-item__content">
                         <p className="list-item__primary">{label}</p>
-                        <p className="list-item__secondary">{formatDate(transaction.date)}</p>
+                        <p className="list-item__secondary">
+                          {formatDate(transaction.date)}
+                          {transaction.status === 'RECONCILED' ? ' · Reconciled · locked' : ''}
+                        </p>
                       </div>
                       <div className="list-item__trailing">
                         <CurrencyDisplay
@@ -192,6 +555,10 @@ export const AccountDetailPage: React.FC = () => {
             householdId: account.householdId,
             name: data.name,
             type: data.type,
+            purpose: data.purpose,
+            retirementAccountType: data.retirementAccountType,
+            retirementTaxTreatment: data.retirementTaxTreatment,
+            hsaCoverageLevel: data.hsaCoverageLevel,
             currency: data.currency,
             currentBalance: data.currentBalance,
           });

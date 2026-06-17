@@ -36,6 +36,21 @@ describe('parseCsv', () => {
     expect(result.rows).toHaveLength(2);
   });
 
+  it('handles quoted fields with embedded newlines', () => {
+    const csv = 'Date,Description,Amount\n2025-01-15,"Store\nMain",-45.00';
+    const result = parseCsv(csv);
+
+    expect(result.rows[0]).toEqual(['2025-01-15', 'Store\nMain', '-45.00']);
+  });
+
+  it('generates column headers when a file has no header row', () => {
+    const csv = '2025-01-15,Store,-45.00\n2025-01-16,Gas,-30.50';
+    const result = parseCsv(csv);
+
+    expect(result.headers).toEqual(['Column 1', 'Column 2', 'Column 3']);
+    expect(result.rows).toHaveLength(2);
+  });
+
   it('skips blank lines', () => {
     const csv = 'A,B\n1,2\n\n3,4\n';
     const result = parseCsv(csv);

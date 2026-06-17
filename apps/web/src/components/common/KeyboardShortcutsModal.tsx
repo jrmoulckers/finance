@@ -3,16 +3,22 @@
 import React, { useCallback, useEffect, useId, useRef, type KeyboardEvent } from 'react';
 
 import { useFocusTrap } from '../../accessibility/aria';
+import { SHORTCUT_CATEGORIES } from '../../hooks/useKeyboardShortcuts';
 
 import '../forms/forms.css';
 
 export interface KeyboardShortcutsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  singleKeyShortcutsEnabled?: boolean;
 }
 
 /** Accessible help dialog listing the app's keyboard shortcuts. */
-export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsModalProps) {
+export function KeyboardShortcutsModal({
+  isOpen,
+  onClose,
+  singleKeyShortcutsEnabled = true,
+}: KeyboardShortcutsModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -72,6 +78,9 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
         </h2>
         <p id={descriptionId} className="keyboard-shortcuts__description">
           Shortcuts work when focus is outside text fields and keep common actions within reach.
+          {singleKeyShortcutsEnabled
+            ? ' Character-key shortcuts are currently enabled.'
+            : ' Character-key shortcuts are currently disabled; use visible controls or Ctrl/Cmd+K.'}
         </p>
 
         <table className="keyboard-shortcuts__table">
@@ -82,28 +91,23 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <th scope="row">
-                <kbd className="keyboard-shortcuts__key">?</kbd>
-              </th>
-              <td>Open this shortcuts dialog</td>
-            </tr>
-            <tr>
-              <th scope="row">
-                <kbd className="keyboard-shortcuts__key">Esc</kbd>
-              </th>
-              <td>Close open dialogs, including this help dialog</td>
-            </tr>
-            <tr>
-              <th scope="row">
-                <kbd className="keyboard-shortcuts__key">Ctrl</kbd>
-                {' + '}
-                <kbd className="keyboard-shortcuts__key">Shift</kbd>
-                {' + '}
-                <kbd className="keyboard-shortcuts__key">P</kbd>
-              </th>
-              <td>Toggle privacy mode (mask/unmask financial amounts)</td>
-            </tr>
+            {SHORTCUT_CATEGORIES.map((category) => (
+              <React.Fragment key={category.title}>
+                <tr className="keyboard-shortcuts__category-row">
+                  <th scope="rowgroup" colSpan={2}>
+                    {category.title}
+                  </th>
+                </tr>
+                {category.shortcuts.map((shortcut) => (
+                  <tr key={`${category.title}-${shortcut.keys}`}>
+                    <th scope="row">
+                      <kbd className="keyboard-shortcuts__key">{shortcut.keys}</kbd>
+                    </th>
+                    <td>{shortcut.description}</td>
+                  </tr>
+                ))}
+              </React.Fragment>
+            ))}
           </tbody>
         </table>
 
