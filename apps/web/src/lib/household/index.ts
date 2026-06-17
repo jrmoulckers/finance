@@ -74,6 +74,24 @@ export {
   buildHouseholdDashboard,
 } from './household-dashboard';
 
+export { buildNetWorthContributionModel } from './net-worth-contribution-model';
+export type { NetWorthContributionModel, NetWorthContributionRow } from './net-worth-contribution-model';
+export {
+  buildNetWorthSnapshotTrendCopy,
+  compareNetWorthToMajorLiabilities,
+  compareNetWorthToSharedGoals,
+  upsertMonthlyNetWorthSnapshot,
+} from './net-worth-snapshot-goals';
+export type {
+  MajorLiabilityComparisonInput,
+  NetWorthGoalComparisonRow,
+  NetWorthLiabilityComparisonRow,
+  NetWorthSnapshotTrendCopy,
+  SharedNetWorthGoal,
+} from './net-worth-snapshot-goals';
+export { buildNetWorthDashboardPanelModel } from './net-worth-dashboard-panel';
+export type { NetWorthDashboardPanelModel } from './net-worth-dashboard-panel';
+
 export {
   bankersRound,
   totalGoalContributions,
@@ -106,3 +124,111 @@ export {
   calculateDepartingMemberContributions,
   buildDepartingContributionSummary,
 } from './offboarding';
+
+export type {
+  RedactedBudgetTransaction,
+  ReconciliationVisibilitySummary,
+  SharedBudgetVisibilitySummary,
+  VisibilityRuleChangeActivity,
+  VisibilityRuleChangeActivityInput,
+} from './spending-visibility-consumers';
+export {
+  buildVisibilityRuleChangeActivity,
+  summarizeReconciliationWithVisibility,
+  summarizeSharedBudgetSpendingWithVisibility,
+} from './spending-visibility-consumers';
+
+export type {
+  HouseholdBudgetFilter,
+  HouseholdBudgetMemberLabel,
+  HouseholdBudgetPageRow,
+} from './budget-ownership-view';
+export {
+  buildHouseholdBudgetPageRows,
+  filterHouseholdBudgetRows,
+  getHouseholdBudgetEditControlState,
+} from './budget-ownership-view';
+
+export type {
+  TeenLearningAction,
+  TeenApprovalStatus,
+  TeenLearningEnvelope,
+  TeenSavingsChallenge,
+  TeenLearningAccountInput,
+  TeenLearningAccount,
+  TeenActionReview,
+  TeenActivitySignal,
+  TeenActivitySummary,
+} from './teen-education';
+export {
+  buildTeenLearningAccount,
+  reviewTeenLearningAction,
+  buildTeenActivitySummary,
+} from './teen-education';
+export type {
+  TeenLearningChoreSeed,
+  TeenLearningChildSeed,
+  TeenLearningLocalRecord,
+  TeenLearningPersistencePayload,
+} from './teen-learning-local';
+export {
+  buildTeenLearningRecordFromChild,
+  upsertTeenLearningRecord,
+  buildTeenLearningPayload,
+} from './teen-learning-local';
+export type { TeenParentReviewSummary } from './teen-review-summaries';
+export {
+  TEEN_LEARNING_HOUSEHOLD_COPY,
+  buildTeenParentReviewSummary,
+} from './teen-review-summaries';
+
+export type {
+  PoaScope,
+  PoaCapability,
+  PoaGrantStatus,
+  PoaAccessGrant,
+  CreatePoaGrantInput,
+  PoaAccessDecision,
+  PoaAuditEvent,
+} from './poa-access';
+export {
+  createPoaAccessGrant,
+  revokePoaAccessGrant,
+  getPoaGrantStatus,
+  evaluatePoaAccess,
+  buildPoaAuditEvent,
+} from './poa-access';
+export type { PoaOwnerAuditEntry, PoaRenewalReminder } from './poa-audit-renewal';
+export {
+  POA_LEGAL_BOUNDARY_ONBOARDING_COPY,
+  buildPoaOwnerAuditEntry,
+  getPoaRenewalReminder,
+  buildPoaImmediateRevokeCopy,
+} from './poa-audit-renewal';
+export type { PoaLocalAccessSnapshot } from './poa-local-records';
+export {
+  createPoaLocalAccessSnapshot,
+  upsertPoaGrant,
+  revokePoaGrantInSnapshot,
+  appendPoaAuditEvent,
+} from './poa-local-records';
+
+export type {
+  SpendingVisibilityLevel,
+  SpendingVisibilityRule,
+  SpendingVisibilityTransaction,
+  SpendingVisibilityDecision,
+  SpendingVisibilityPreview,
+} from './spending-visibility';
+export {
+  evaluateSpendingVisibility,
+  buildSpendingVisibilityPreview,
+} from './spending-visibility';
+export type {
+  LegacyAccountSharingInput,
+  SpendingVisibilityMigrationResult,
+} from './spending-visibility-migration';
+export {
+  migrateAccountSharingToSpendingVisibility,
+  summarizeSpendingVisibilityMigration,
+} from './spending-visibility-migration';
