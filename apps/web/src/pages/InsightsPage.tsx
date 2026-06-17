@@ -24,6 +24,10 @@ import type {
   SpendingBenchmarkResult,
 } from '../hooks/useInsights';
 import type { AnnualSummary, CategoryDrillDown, SpendingTrendInsight } from '../lib/reports/reporting-beta';
+import {
+  buildInsightsPeerComparisonReport,
+  buildPeerComparisonCards,
+} from '../lib/reports/peer-insights-integration';
 import './InsightsPage.css';
 import { AppIcon, type IconName } from '../components/icons';
 
@@ -390,6 +394,7 @@ export const InsightsPage: React.FC = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null | undefined>(undefined);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [privateMode, setPrivateMode] = useState(false);
+  const [peerProfileOptedIn, setPeerProfileOptedIn] = useState(false);
 
   const activeDrillDown = useMemo(
     () => insights?.categoryDrillDowns.find((drillDown) => drillDown.categoryId === selectedCategoryId) ?? null,
@@ -399,6 +404,18 @@ export const InsightsPage: React.FC = () => {
     if (!insights || insights.annualSummaries.length === 0) return null;
     return insights.annualSummaries.find((summary) => summary.year === (selectedYear ?? insights.annualSummaries[0]?.year)) ?? insights.annualSummaries[0];
   }, [insights, selectedYear]);
+  const peerComparisonReport = useMemo(() => {
+    if (!insights) return null;
+    return buildInsightsPeerComparisonReport({
+      profile: { optedIn: peerProfileOptedIn },
+      categorySpending: insights.categorySpending,
+      monthlyIncomeCents: insights.totalIncomeThisMonth,
+    });
+  }, [insights, peerProfileOptedIn]);
+  const peerComparisonCards = useMemo(
+    () => (peerComparisonReport ? buildPeerComparisonCards(peerComparisonReport) : []),
+    [peerComparisonReport],
+  );
 
   if (loading) {
     return (
@@ -565,6 +582,53 @@ export const InsightsPage: React.FC = () => {
             <BenchmarkCard key={benchmark.key} benchmark={benchmark} />
           ))}
         </div>
+        <section className="insights-peer-comparisons" aria-label="Peer comparisons">
+          <div className="insights-section__header-row">
+            <div>
+              <h4>Peer comparisons</h4>
+              <p className="insights-section__description">
+                Optional category percentiles use local spending totals and only appear after opt-in.
+              </p>
+            </div>
+            <div className="insights-section__controls">
+              {peerProfileOptedIn ? (
+                <>
+                  <button className="insights-link-button" type="button" onClick={() => setPeerProfileOptedIn(false)}>
+                    Clear peer profile
+                  </button>
+                  <button className="insights-link-button" type="button">
+                    Edit cohort
+                  </button>
+                </>
+              ) : (
+                <button className="insights-link-button" type="button" onClick={() => setPeerProfileOptedIn(true)}>
+                  Opt in to peer comparisons
+                </button>
+              )}
+            </div>
+          </div>
+          {peerProfileOptedIn && peerComparisonCards.length > 0 ? (
+            <div className="insights-benchmark-grid" role="list" aria-label="Category peer comparison cards">
+              {peerComparisonCards.map((card) => (
+                <article
+                  className={`insights-benchmark-card insights-benchmark-card--${card.status}`}
+                  key={card.key}
+                  role="listitem"
+                  aria-label={card.ariaLabel}
+                >
+                  <h5 className="insights-benchmark-card__title">{card.title}</h5>
+                  <p className="insights-benchmark-card__badge">{card.percentLabel}</p>
+                  <p>{card.rangeLabel}</p>
+                  <p className="insights-benchmark-card__summary">{card.guidance}</p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="insights-section__note">
+              Current benchmark cards stay available without peer comparison opt-in.
+            </p>
+          )}
+        </section>
       </section>
 
       {insights.dailySpending.length > 0 && (
