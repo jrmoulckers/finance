@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { InsightsPage } from './InsightsPage';
@@ -308,6 +308,29 @@ describe('InsightsPage', () => {
     expect(screen.getByLabelText('Financial Health Score')).toBeInTheDocument();
     expect(screen.getByLabelText('50/30/20 rule')).toBeInTheDocument();
     expect(screen.getByText(/You spend 13% on food/i)).toBeInTheDocument();
+  });
+
+  it('keeps peer comparisons opt-in and then renders category peer cards', () => {
+    mockedUseInsights.mockReturnValue({
+      insights: makeInsightsData(),
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <InsightsPage />
+      </MemoryRouter>,
+    );
+
+    const peerSection = screen.getByLabelText('Peer comparisons');
+    expect(within(peerSection).getByText('Current benchmark cards stay available without peer comparison opt-in.')).toBeInTheDocument();
+
+    fireEvent.click(within(peerSection).getByRole('button', { name: 'Opt in to peer comparisons' }));
+
+    expect(within(peerSection).getByText('Clear peer profile')).toBeInTheDocument();
+    expect(within(peerSection).getByLabelText(/Housing: 15% of income, peer range/i)).toBeInTheDocument();
   });
 
   it('renders recommendations', () => {
