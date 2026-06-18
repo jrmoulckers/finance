@@ -12,7 +12,13 @@ const sync = {
   isSynced: true,
 };
 
-function tx(id: string, date: string, amount: number, merchant: string, categoryId = 'shopping'): Transaction {
+function tx(
+  id: string,
+  date: string,
+  amount: number,
+  merchant: string,
+  categoryId = 'shopping',
+): Transaction {
   return {
     ...sync,
     id,

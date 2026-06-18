@@ -40,8 +40,20 @@ describe('scheduled report persistence', () => {
     ).toThrow('must not place sensitive report data in URLs');
 
     const attempts = [
-      recordReportDeliveryAttempt({ id: 'a1', exportId: 'export-1', attemptedAt: '2026-06-01T01:00:00Z', status: 'queued' }),
-      recordReportDeliveryAttempt({ id: 'a2', exportId: 'export-1', attemptedAt: '2026-06-01T02:00:00Z', status: 'failed', errorClass: 'provider_unavailable', retryCount: 1 }),
+      recordReportDeliveryAttempt({
+        id: 'a1',
+        exportId: 'export-1',
+        attemptedAt: '2026-06-01T01:00:00Z',
+        status: 'queued',
+      }),
+      recordReportDeliveryAttempt({
+        id: 'a2',
+        exportId: 'export-1',
+        attemptedAt: '2026-06-01T02:00:00Z',
+        status: 'failed',
+        errorClass: 'provider_unavailable',
+        retryCount: 1,
+      }),
     ];
 
     expect(attempts[1].safeSummary).toContain('provider_unavailable');

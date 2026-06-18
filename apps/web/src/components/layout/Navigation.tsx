@@ -132,7 +132,11 @@ export const BottomNavigation: React.FC<NavigationProps> = ({
 
   return (
     <>
-      <nav className="bottom-nav" aria-label="Main navigation" data-simple-mode={simpleMode || undefined}>
+      <nav
+        className="bottom-nav"
+        aria-label="Main navigation"
+        data-simple-mode={simpleMode || undefined}
+      >
         {bottomNavItems.map((item) => {
           const active = isActive(activePath, item.href);
           return (
@@ -291,7 +295,11 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
   }, [logout]);
 
   return (
-    <aside className="app-sidebar" aria-label="Main navigation" data-simple-mode={simpleMode || undefined}>
+    <aside
+      className="app-sidebar"
+      aria-label="Main navigation"
+      data-simple-mode={simpleMode || undefined}
+    >
       <div className="app-sidebar__header">
         <span className="app-sidebar__logo">Finance</span>
       </div>
@@ -335,7 +343,9 @@ export const SidebarNavigation: React.FC<NavigationProps> = ({
               items={groupItems}
               activePath={activePath}
               onNavigate={onNavigate}
-              defaultExpanded={isSimplified || (!simpleMode && (group === 'money' || group === 'plan'))}
+              defaultExpanded={
+                isSimplified || (!simpleMode && (group === 'money' || group === 'plan'))
+              }
             />
           );
         })}

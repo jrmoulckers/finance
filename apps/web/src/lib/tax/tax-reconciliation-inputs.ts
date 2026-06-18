@@ -8,7 +8,12 @@
  */
 
 export type TaxReceiptStatus = 'not-required' | 'required-attached' | 'required-missing';
-export type TaxForm1099Status = 'not-expected' | 'expected' | 'received' | 'reconciled' | 'variance';
+export type TaxForm1099Status =
+  | 'not-expected'
+  | 'expected'
+  | 'received'
+  | 'reconciled'
+  | 'variance';
 export type TaxReconciliationChecklistStatus = 'open' | 'done';
 
 export interface TaxReconciliationTransactionInput {
@@ -33,7 +38,14 @@ export interface TaxForm1099Input {
   readonly id: string;
   readonly taxYear: number;
   readonly payerName: string;
-  readonly formType: '1099-NEC' | '1099-MISC' | '1099-K' | '1099-INT' | '1099-DIV' | '1099-B' | 'OTHER';
+  readonly formType:
+    | '1099-NEC'
+    | '1099-MISC'
+    | '1099-K'
+    | '1099-INT'
+    | '1099-DIV'
+    | '1099-B'
+    | 'OTHER';
   readonly expectedAmountCents?: number;
   readonly receivedAmountCents?: number;
   readonly reconciled?: boolean;
@@ -65,7 +77,8 @@ export interface TaxReconciliationSummary {
 }
 
 function receiptStatus(input: TaxReconciliationTransactionInput): TaxReceiptStatus {
-  if (!input.deductible && !input.charitable && input.receiptRequired !== true) return 'not-required';
+  if (!input.deductible && !input.charitable && input.receiptRequired !== true)
+    return 'not-required';
   return input.receiptId === undefined || input.receiptId.trim() === ''
     ? 'required-missing'
     : 'required-attached';
@@ -132,7 +145,10 @@ export function buildTaxReconciliationSummary(input: {
       .map((marker) => marker.transactionId),
     forms1099,
     unreconciledFormIds: forms1099
-      .filter((form) => form.status === 'expected' || form.status === 'received' || form.status === 'variance')
+      .filter(
+        (form) =>
+          form.status === 'expected' || form.status === 'received' || form.status === 'variance',
+      )
       .map((form) => form.formId),
     openChecklistItems,
   };

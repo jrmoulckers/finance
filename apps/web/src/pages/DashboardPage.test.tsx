@@ -754,9 +754,17 @@ describe('DashboardPage', () => {
     const active = renderDashboard(true);
     const activeText = document.body.textContent ?? '';
     const screenCoverage = evaluatePrivacyScreenCoverage([
-      { id: 'dashboard.net-worth', categories: ['net-worth'], masked: !activeText.includes('$37,250.00') },
+      {
+        id: 'dashboard.net-worth',
+        categories: ['net-worth'],
+        masked: !activeText.includes('$37,250.00'),
+      },
       { id: 'dashboard.spending', categories: ['amount'], masked: !activeText.includes('$67.42') },
-      { id: 'dashboard.safe-to-spend-copy', categories: ['amount'], masked: !activeText.includes('$3,200') },
+      {
+        id: 'dashboard.safe-to-spend-copy',
+        categories: ['amount'],
+        masked: !activeText.includes('$3,200'),
+      },
       {
         id: 'dashboard.recent-transactions',
         categories: ['amount'],

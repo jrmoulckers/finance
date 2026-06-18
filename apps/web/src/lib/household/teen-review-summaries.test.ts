@@ -3,11 +3,19 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildTeenLearningAccount } from './teen-education';
-import { buildTeenParentReviewSummary, TEEN_LEARNING_HOUSEHOLD_COPY } from './teen-review-summaries';
+import {
+  buildTeenParentReviewSummary,
+  TEEN_LEARNING_HOUSEHOLD_COPY,
+} from './teen-review-summaries';
 
 describe('buildTeenParentReviewSummary', () => {
   it('summarizes earn, spend, save, and lesson activity without adult finance details', () => {
-    const account = buildTeenLearningAccount({ teenId: 'teen-1', displayName: 'Jordan', age: 15, seedBalanceCents: 5_000 });
+    const account = buildTeenLearningAccount({
+      teenId: 'teen-1',
+      displayName: 'Jordan',
+      age: 15,
+      seedBalanceCents: 5_000,
+    });
 
     const summary = buildTeenParentReviewSummary(account, [
       { type: 'EARN', amountCents: 1_000, label: 'Allowance' },

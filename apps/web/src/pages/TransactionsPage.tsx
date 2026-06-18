@@ -1194,9 +1194,7 @@ export const TransactionsPage: React.FC = () => {
           style={style}
           onFocus={() => setActiveTransactionId(transaction.id)}
           onClick={(event) => {
-            if (
-              (event.target as HTMLElement).closest('a,button,input,label,select,textarea')
-            ) {
+            if ((event.target as HTMLElement).closest('a,button,input,label,select,textarea')) {
               return;
             }
             setActiveTransactionId(transaction.id);
@@ -1210,11 +1208,7 @@ export const TransactionsPage: React.FC = () => {
               readOnly
               aria-label={`Select ${transactionLabel}`}
               onClick={(event) =>
-                handleTransactionSelection(
-                  transaction,
-                  event.currentTarget.checked,
-                  event.shiftKey,
-                )
+                handleTransactionSelection(transaction, event.currentTarget.checked, event.shiftKey)
               }
             />
           </div>
@@ -1922,7 +1916,6 @@ export const TransactionsPage: React.FC = () => {
         />
       </>
     </DragDropProvider>
-
   );
 };
 

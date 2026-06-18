@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { buildPrivacySafeCheckInSummary, canStartCheckIn, selectNextPrompt } from './check-in-rules';
+import {
+  buildPrivacySafeCheckInSummary,
+  canStartCheckIn,
+  selectNextPrompt,
+} from './check-in-rules';
 
 describe('couples check-in shared rules', () => {
   it('requires consent and cadence before prompting', () => {

@@ -175,7 +175,9 @@ type InertSnapshot = {
 };
 
 function getFocusTrapRoot(container: HTMLElement): HTMLElement {
-  return (container.closest('.form-dialog, [data-focus-trap-root]') as HTMLElement | null) ?? container;
+  return (
+    (container.closest('.form-dialog, [data-focus-trap-root]') as HTMLElement | null) ?? container
+  );
 }
 
 function inertSiblingsBehindTrap(container: HTMLElement): () => void {

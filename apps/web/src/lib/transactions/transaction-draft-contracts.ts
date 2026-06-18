@@ -36,7 +36,13 @@ function normalize(value: string): string {
 function mapEntity(value: string | null, candidates: readonly EntityCandidate[]): string | null {
   if (value === null) return null;
   const normalized = normalize(value);
-  return candidates.find((candidate) => normalize(candidate.name) === normalized || candidate.aliases.map(normalize).includes(normalized))?.id ?? null;
+  return (
+    candidates.find(
+      (candidate) =>
+        normalize(candidate.name) === normalized ||
+        candidate.aliases.map(normalize).includes(normalized),
+    )?.id ?? null
+  );
 }
 
 export function buildTransactionDraft(
@@ -59,7 +65,13 @@ export function buildTransactionDraft(
     ...(input.category !== null && categoryId === null ? ['category'] : []),
     ...(input.account !== null && accountId === null ? ['account'] : []),
   ];
-  const populated = [input.amountCents !== null, merchantId !== null, categoryId !== null, accountId !== null, input.date !== null].filter(Boolean).length;
+  const populated = [
+    input.amountCents !== null,
+    merchantId !== null,
+    categoryId !== null,
+    accountId !== null,
+    input.date !== null,
+  ].filter(Boolean).length;
   return {
     amountCents: input.amountCents,
     merchantId,
@@ -74,6 +86,8 @@ export function buildTransactionDraft(
   };
 }
 
-export function privacySafeParseFailure(reason: string): Pick<TransactionDraft, 'validationErrors' | 'requiresConfirmation' | 'confidence'> {
+export function privacySafeParseFailure(
+  reason: string,
+): Pick<TransactionDraft, 'validationErrors' | 'requiresConfirmation' | 'confidence'> {
   return { validationErrors: [reason], requiresConfirmation: true, confidence: 0 };
 }

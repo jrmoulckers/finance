@@ -84,7 +84,10 @@ describe('detectDuplicates', () => {
   });
 
   it('does not match same amount on a different merchant', () => {
-    const matches = detectDuplicates([row({ payee: 'Coffee Shop' })], [txn({ payee: 'Book Store' })]);
+    const matches = detectDuplicates(
+      [row({ payee: 'Coffee Shop' })],
+      [txn({ payee: 'Book Store' })],
+    );
     expect(matches).toHaveLength(0);
   });
 

@@ -6,8 +6,17 @@ import type { UnusualSpendReviewOutcome, UnusualSpendReviewRecord } from './unus
 
 export type UnusualSpendRouteTarget =
   | { readonly kind: 'transaction_detail'; readonly path: string; readonly transactionId: string }
-  | { readonly kind: 'transaction_filter'; readonly path: string; readonly transactionIds: readonly string[]; readonly rule: ScamAlertRule }
-  | { readonly kind: 'notification_history'; readonly path: string; readonly outcome?: UnusualSpendReviewOutcome };
+  | {
+      readonly kind: 'transaction_filter';
+      readonly path: string;
+      readonly transactionIds: readonly string[];
+      readonly rule: ScamAlertRule;
+    }
+  | {
+      readonly kind: 'notification_history';
+      readonly path: string;
+      readonly outcome?: UnusualSpendReviewOutcome;
+    };
 
 export interface UnusualSpendHistoryFilter {
   readonly type: 'scam_check';
@@ -15,7 +24,11 @@ export interface UnusualSpendHistoryFilter {
 }
 
 export function routeUnusualSpendAlert(alert: ScamSpendingAlert): UnusualSpendRouteTarget {
-  if (alert.transactionIds.length === 1 && alert.rule !== 'possible-duplicate' && alert.rule !== 'rapid-succession') {
+  if (
+    alert.transactionIds.length === 1 &&
+    alert.rule !== 'possible-duplicate' &&
+    alert.rule !== 'rapid-succession'
+  ) {
     const transactionId = alert.transactionIds[0] ?? '';
     return { kind: 'transaction_detail', path: `/transactions/${transactionId}`, transactionId };
   }
@@ -33,15 +46,23 @@ export function routeUnusualSpendAlert(alert: ScamSpendingAlert): UnusualSpendRo
   };
 }
 
-export function routeUnusualSpendNotification(notification: AppNotification): UnusualSpendRouteTarget | null {
+export function routeUnusualSpendNotification(
+  notification: AppNotification,
+): UnusualSpendRouteTarget | null {
   if (notification.type !== 'scam_check') return null;
   if (notification.entityType === 'transaction' && notification.entityId) {
-    return { kind: 'transaction_detail', path: `/transactions/${notification.entityId}`, transactionId: notification.entityId };
+    return {
+      kind: 'transaction_detail',
+      path: `/transactions/${notification.entityId}`,
+      transactionId: notification.entityId,
+    };
   }
   return { kind: 'notification_history', path: '/notifications?type=scam_check' };
 }
 
-export function buildUnusualSpendHistoryFilter(outcome?: UnusualSpendReviewOutcome): UnusualSpendHistoryFilter {
+export function buildUnusualSpendHistoryFilter(
+  outcome?: UnusualSpendReviewOutcome,
+): UnusualSpendHistoryFilter {
   return { type: 'scam_check', outcome };
 }
 
@@ -52,7 +73,9 @@ export function matchesUnusualSpendHistoryFilter(
 ): boolean {
   if (notification.type !== filter.type) return false;
   if (filter.outcome === undefined) return true;
-  return reviews.some((review) => review.outcome === filter.outcome && review.alertId === notification.id);
+  return reviews.some(
+    (review) => review.outcome === filter.outcome && review.alertId === notification.id,
+  );
 }
 
 export function outcomeBadgeForNotification(

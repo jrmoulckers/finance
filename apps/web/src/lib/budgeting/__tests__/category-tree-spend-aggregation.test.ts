@@ -16,7 +16,13 @@ describe('aggregateCategoryTreeMonthlySpend', () => {
         { id: 'salary', name: 'Salary', type: 'income' },
       ],
       transactions: [
-        { id: 'jan', categoryId: 'groceries', amountCents: -40_000, date: '2025-01-05', kind: 'expense' },
+        {
+          id: 'jan',
+          categoryId: 'groceries',
+          amountCents: -40_000,
+          date: '2025-01-05',
+          kind: 'expense',
+        },
         {
           id: 'split',
           amountCents: -30_000,
@@ -27,9 +33,27 @@ describe('aggregateCategoryTreeMonthlySpend', () => {
             { categoryId: 'dining', amountCents: -10_000 },
           ],
         },
-        { id: 'income', categoryId: 'salary', amountCents: 300_000, date: '2025-02-10', kind: 'income' },
-        { id: 'transfer', categoryId: 'food', amountCents: -5_000, date: '2025-02-10', kind: 'transfer' },
-        { id: 'deleted', categoryId: 'food', amountCents: -5_000, date: '2025-02-10', deleted: true },
+        {
+          id: 'income',
+          categoryId: 'salary',
+          amountCents: 300_000,
+          date: '2025-02-10',
+          kind: 'income',
+        },
+        {
+          id: 'transfer',
+          categoryId: 'food',
+          amountCents: -5_000,
+          date: '2025-02-10',
+          kind: 'transfer',
+        },
+        {
+          id: 'deleted',
+          categoryId: 'food',
+          amountCents: -5_000,
+          date: '2025-02-10',
+          deleted: true,
+        },
       ],
     });
 
@@ -39,6 +63,10 @@ describe('aggregateCategoryTreeMonthlySpend', () => {
       groceries: 60_000,
       dining: 10_000,
     });
-    expect(result.monthlySpend.find((sample) => sample.categoryId === 'food' && sample.monthKey === '2025-02')?.amountCents).toBe(30_000);
+    expect(
+      result.monthlySpend.find(
+        (sample) => sample.categoryId === 'food' && sample.monthKey === '2025-02',
+      )?.amountCents,
+    ).toBe(30_000);
   });
 });

@@ -39,12 +39,20 @@ describe('dashboard summary snapshots', () => {
     const storage = memoryStorage();
     storage.setItem(
       DASHBOARD_SUMMARY_STORAGE_KEY,
-      JSON.stringify({ version: 1, capturedAt: 1_000, totalBalanceCents: 1, cashFlowCents: 1, accountCount: 1, transactionCount: 1 }),
+      JSON.stringify({
+        version: 1,
+        capturedAt: 1_000,
+        totalBalanceCents: 1,
+        cashFlowCents: 1,
+        accountCount: 1,
+        transactionCount: 1,
+      }),
     );
 
-    expect(readDashboardShellSnapshot(storage, { now: 3_000, sessionExpired: false, maxAgeMs: 500 }).mode).toBe(
-      'stale-snapshot',
-    );
+    expect(
+      readDashboardShellSnapshot(storage, { now: 3_000, sessionExpired: false, maxAgeMs: 500 })
+        .mode,
+    ).toBe('stale-snapshot');
     expect(storage.getItem(DASHBOARD_SUMMARY_STORAGE_KEY)).toBeNull();
 
     persistDashboardSummarySnapshot(storage, {

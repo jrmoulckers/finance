@@ -23,7 +23,9 @@ export const SUPPORTED_CURRENCY_METADATA: readonly CurrencyMetadata[] = [
   { code: 'KRW', decimalPlaces: 0, label: 'KRW – South Korean Won' },
 ] as const;
 
-const metadataByCode = new Map(SUPPORTED_CURRENCY_METADATA.map((currency) => [currency.code, currency]));
+const metadataByCode = new Map(
+  SUPPORTED_CURRENCY_METADATA.map((currency) => [currency.code, currency]),
+);
 
 export function normalizeCurrencyCode(code: string | null | undefined): string {
   const normalized = (code ?? FALLBACK_CURRENCY).trim().toUpperCase();
@@ -32,7 +34,13 @@ export function normalizeCurrencyCode(code: string | null | undefined): string {
 
 export function getCurrencyMetadata(code: string | null | undefined): CurrencyMetadata {
   const normalized = normalizeCurrencyCode(code);
-  return metadataByCode.get(normalized) ?? { code: normalized, decimalPlaces: getCurrencyFractionDigits(normalized), label: `${normalized} – ${normalized}` };
+  return (
+    metadataByCode.get(normalized) ?? {
+      code: normalized,
+      decimalPlaces: getCurrencyFractionDigits(normalized),
+      label: `${normalized} – ${normalized}`,
+    }
+  );
 }
 
 export function getSafeCurrencyCode(code: string | null | undefined): string {

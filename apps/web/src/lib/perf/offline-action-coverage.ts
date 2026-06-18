@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export type OfflineCoverageEntity = 'account' | 'transaction' | 'budget' | 'receipt' | 'settings';
-export type OfflineCoverageOperation = 'create' | 'edit' | 'delete' | 'categorize' | 'add-note' | 'upload' | 'change-preference';
+export type OfflineCoverageOperation =
+  | 'create'
+  | 'edit'
+  | 'delete'
+  | 'categorize'
+  | 'add-note'
+  | 'upload'
+  | 'change-preference';
 
 export interface OfflineActionCoverageRule {
   readonly entity: OfflineCoverageEntity;
@@ -26,16 +33,32 @@ export const OFFLINE_ACTION_COVERAGE: readonly OfflineActionCoverageRule[] = [
   supported('transaction', 'delete'),
   supported('transaction', 'categorize'),
   supported('transaction', 'add-note'),
-  unsupported('budget', 'edit', 'Reconnect to edit budgets. Budget rules must be opened online before offline writes are available.'),
-  unsupported('receipt', 'upload', 'Reconnect to upload receipts. Receipt images are not queued until the receipt service is available.'),
-  unsupported('settings', 'change-preference', 'Reconnect to change settings so all devices receive the same preference.'),
+  unsupported(
+    'budget',
+    'edit',
+    'Reconnect to edit budgets. Budget rules must be opened online before offline writes are available.',
+  ),
+  unsupported(
+    'receipt',
+    'upload',
+    'Reconnect to upload receipts. Receipt images are not queued until the receipt service is available.',
+  ),
+  unsupported(
+    'settings',
+    'change-preference',
+    'Reconnect to change settings so all devices receive the same preference.',
+  ),
 ];
 
 export function getOfflineActionCoverage(
   entity: OfflineCoverageEntity,
   operation: OfflineCoverageOperation,
 ): OfflineActionCoverageRule | null {
-  return OFFLINE_ACTION_COVERAGE.find((rule) => rule.entity === entity && rule.operation === operation) ?? null;
+  return (
+    OFFLINE_ACTION_COVERAGE.find(
+      (rule) => rule.entity === entity && rule.operation === operation,
+    ) ?? null
+  );
 }
 
 export function getDisabledOfflineActionCopy(

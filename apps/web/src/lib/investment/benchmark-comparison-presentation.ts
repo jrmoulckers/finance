@@ -5,7 +5,12 @@ import type { BenchmarkComparisonResult } from './benchmark-comparison';
 /** UI-ready table/chart model and return-method copy for benchmark comparison (#2484). */
 
 export interface BenchmarkMetricRow {
-  readonly id: 'portfolio-return' | 'benchmark-return' | 'delta' | 'portfolio-annualized' | 'benchmark-annualized';
+  readonly id:
+    | 'portfolio-return'
+    | 'benchmark-return'
+    | 'delta'
+    | 'portfolio-annualized'
+    | 'benchmark-annualized';
   readonly label: string;
   readonly portfolioPercent: number | null;
   readonly benchmarkPercent: number | null;
@@ -76,7 +81,11 @@ export function buildBenchmarkComparisonPresentation(
       'Modified Dietz estimates the effect of contributions and withdrawals, but it is not a full time-weighted return when valuations or cash-flow dates are sparse.',
     chart: [
       { label: 'Portfolio', percent: comparison.portfolioReturnPercent, series: 'portfolio' },
-      { label: comparison.benchmarkLabel, percent: comparison.benchmarkReturnPercent, series: 'benchmark' },
+      {
+        label: comparison.benchmarkLabel,
+        percent: comparison.benchmarkReturnPercent,
+        series: 'benchmark',
+      },
       { label: 'Delta', percent: comparison.deltaPercent, series: 'delta' },
     ],
     tableRows,

@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { detectSubscriptionPriceChanges, subscriptionPriceChangesToNotifications, type SubscriptionCharge } from './subscription-price-changes';
+import {
+  detectSubscriptionPriceChanges,
+  subscriptionPriceChangesToNotifications,
+  type SubscriptionCharge,
+} from './subscription-price-changes';
 
 function charge(overrides: Partial<SubscriptionCharge> = {}): SubscriptionCharge {
   return {
@@ -19,7 +23,12 @@ describe('detectSubscriptionPriceChanges', () => {
   it('detects material recurring amount increases', () => {
     const alerts = detectSubscriptionPriceChanges([
       charge({ id: 'jan', amountCents: 1000, chargedAt: '2025-01-01T12:00:00Z' }),
-      charge({ id: 'feb', amountCents: 1300, chargedAt: '2025-02-01T12:00:00Z', cycleKey: '2025-02' }),
+      charge({
+        id: 'feb',
+        amountCents: 1300,
+        chargedAt: '2025-02-01T12:00:00Z',
+        cycleKey: '2025-02',
+      }),
     ]);
 
     expect(alerts).toHaveLength(1);
@@ -31,13 +40,23 @@ describe('detectSubscriptionPriceChanges', () => {
   it('dedupes per subscription cycle and material amount bucket', () => {
     const alerts = detectSubscriptionPriceChanges([
       charge({ id: 'jan', amountCents: 1000, chargedAt: '2025-01-01T12:00:00Z' }),
-      charge({ id: 'feb', amountCents: 1300, chargedAt: '2025-02-01T12:00:00Z', cycleKey: '2025-02' }),
+      charge({
+        id: 'feb',
+        amountCents: 1300,
+        chargedAt: '2025-02-01T12:00:00Z',
+        cycleKey: '2025-02',
+      }),
     ]);
 
     const deduped = detectSubscriptionPriceChanges(
       [
         charge({ id: 'jan', amountCents: 1000, chargedAt: '2025-01-01T12:00:00Z' }),
-        charge({ id: 'feb', amountCents: 1300, chargedAt: '2025-02-01T12:00:00Z', cycleKey: '2025-02' }),
+        charge({
+          id: 'feb',
+          amountCents: 1300,
+          chargedAt: '2025-02-01T12:00:00Z',
+          cycleKey: '2025-02',
+        }),
       ],
       {},
       new Set(alerts.map((alert) => alert.deduplicationKey)),

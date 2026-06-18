@@ -84,7 +84,8 @@ export function resolveCatalogLocale(
 
   const language = canonical.split('-')[0]?.toLowerCase();
   const languageMatch = Object.keys(catalogs).find(
-    (candidate) => candidate.toLowerCase() === language || candidate.toLowerCase().startsWith(`${language}-`),
+    (candidate) =>
+      candidate.toLowerCase() === language || candidate.toLowerCase().startsWith(`${language}-`),
   );
 
   return languageMatch ?? defaultLocale;
@@ -133,7 +134,9 @@ export function createCatalogTranslator(options: CatalogTranslatorOptions): Cata
       const resolvedCatalog = catalogs[resolvedLocale];
       const fallbackCatalog = catalogs[defaultLocale];
       const hasResolvedMessage = hasOwnMessage(resolvedCatalog, messageId);
-      const message = hasResolvedMessage ? resolvedCatalog?.[messageId] : fallbackCatalog?.[messageId];
+      const message = hasResolvedMessage
+        ? resolvedCatalog?.[messageId]
+        : fallbackCatalog?.[messageId];
 
       if (!message) {
         onMissingMessage?.(messageId, requestedLocale);

@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { createRouteBundleAuditReport, type RouteChunkBudget, type RouteChunkSize } from '../route-bundle-artifacts';
+import {
+  createRouteBundleAuditReport,
+  type RouteChunkBudget,
+  type RouteChunkSize,
+} from '../route-bundle-artifacts';
 
 const budgets: readonly RouteChunkBudget[] = [
   { route: 'dashboard', maxInitialGzipBytes: 150_000, maxLazyGzipBytes: 80_000 },
@@ -21,14 +25,25 @@ describe('route bundle artifacts', () => {
     expect(report.initialGzipBytes).toBe(120_000);
     expect(report.largestLazyChunks[0].chunkName).toBe('charts');
     expect(report.findings).toEqual([
-      { route: 'dashboard', chunkName: 'charts', gzipBytes: 95_000, budgetBytes: 80_000, waived: false },
+      {
+        route: 'dashboard',
+        chunkName: 'charts',
+        gzipBytes: 95_000,
+        budgetBytes: 80_000,
+        waived: false,
+      },
     ]);
     expect(report.summary).toContain('Initial JS: 120000 gzip bytes');
   });
 
   it('marks approved waivers in CI summaries', () => {
     const report = createRouteBundleAuditReport(chunks, budgets, [
-      { route: 'dashboard', chunkName: 'charts', reason: 'temporary beta chart split', expiresOn: '2026-03-01' },
+      {
+        route: 'dashboard',
+        chunkName: 'charts',
+        reason: 'temporary beta chart split',
+        expiresOn: '2026-03-01',
+      },
     ]);
 
     expect(report.findings[0].waived).toBe(true);

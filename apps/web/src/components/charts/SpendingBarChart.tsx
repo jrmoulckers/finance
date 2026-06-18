@@ -92,7 +92,13 @@ export const SpendingBarChart: FC<SpendingBarChartProps> = ({
       <p id={`${chartId}-desc`} className="sr-only">
         {description}
       </p>
-      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" aria-label="Chart point announcement">
+      <div
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label="Chart point announcement"
+      >
         {announcement}
       </div>
       <ResponsiveContainer width="100%" height={height}>

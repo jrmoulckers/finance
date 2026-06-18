@@ -80,18 +80,23 @@ export function buildPrivacyAwareNetWorthRollup(
         visibility: 'DETAILED',
       });
     } else {
-      aggregateByKind.set(account.kind, (aggregateByKind.get(account.kind) ?? 0) + signedContribution(account));
+      aggregateByKind.set(
+        account.kind,
+        (aggregateByKind.get(account.kind) ?? 0) + signedContribution(account),
+      );
     }
   }
 
-  const aggregateAttributions = Array.from(aggregateByKind.entries()).map(([kind, amountCents]) => ({
-    accountId: null,
-    ownerMemberId: null,
-    label: kind === 'ASSET' ? 'Redacted household assets' : 'Redacted household liabilities',
-    kind,
-    amountCents,
-    visibility: 'AGGREGATE_ONLY' as const,
-  }));
+  const aggregateAttributions = Array.from(aggregateByKind.entries()).map(
+    ([kind, amountCents]) => ({
+      accountId: null,
+      ownerMemberId: null,
+      label: kind === 'ASSET' ? 'Redacted household assets' : 'Redacted household liabilities',
+      kind,
+      amountCents,
+      visibility: 'AGGREGATE_ONLY' as const,
+    }),
+  );
 
   return {
     assetCents,

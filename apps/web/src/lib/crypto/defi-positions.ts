@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 /** Manual-entry DeFi position model separate from spot holdings. References: issue #2689 */
-export type DeFiPositionType = 'staking' | 'liquidity-pool' | 'lending' | 'borrow' | 'vault' | 'farm';
+export type DeFiPositionType =
+  | 'staking'
+  | 'liquidity-pool'
+  | 'lending'
+  | 'borrow'
+  | 'vault'
+  | 'farm';
 export type LockStatus = 'liquid' | 'locked' | 'unbonding' | 'withdrawal-pending';
 
 export interface RewardBalance {
@@ -43,11 +49,18 @@ function rewardsValue(position: DeFiPosition): number {
 
 function isUnavailable(position: DeFiPosition, options: DeFiTotalsOptions): boolean {
   if (options.excludeLocked && position.lockStatus === 'locked') return true;
-  if (options.excludeUnbonding && (position.lockStatus === 'unbonding' || position.lockStatus === 'withdrawal-pending')) return true;
+  if (
+    options.excludeUnbonding &&
+    (position.lockStatus === 'unbonding' || position.lockStatus === 'withdrawal-pending')
+  )
+    return true;
   return false;
 }
 
-export function calculateDeFiTotals(positions: readonly DeFiPosition[], options: DeFiTotalsOptions = {}): DeFiTotals {
+export function calculateDeFiTotals(
+  positions: readonly DeFiPosition[],
+  options: DeFiTotalsOptions = {},
+): DeFiTotals {
   let totalValueCents = 0;
   let availableValueCents = 0;
   let lockedValueCents = 0;
@@ -67,7 +80,12 @@ export function calculateDeFiTotals(positions: readonly DeFiPosition[], options:
   return { totalValueCents, availableValueCents, lockedValueCents, rewardsValueCents, byProtocol };
 }
 
-export function upsertManualDeFiPosition(positions: readonly DeFiPosition[], next: DeFiPosition): readonly DeFiPosition[] {
+export function upsertManualDeFiPosition(
+  positions: readonly DeFiPosition[],
+  next: DeFiPosition,
+): readonly DeFiPosition[] {
   const withoutExisting = positions.filter((position) => position.id !== next.id);
-  return [...withoutExisting, next].sort((a, b) => a.protocol.localeCompare(b.protocol) || a.label.localeCompare(b.label));
+  return [...withoutExisting, next].sort(
+    (a, b) => a.protocol.localeCompare(b.protocol) || a.label.localeCompare(b.label),
+  );
 }

@@ -18,7 +18,11 @@ export interface LearnedDetectionThreshold {
   readonly transferThreshold?: number;
 }
 
-export type ReviewAction = 'merge-duplicate' | 'link-transfer' | 'keep-separate' | 'ignore-suggestion';
+export type ReviewAction =
+  | 'merge-duplicate'
+  | 'link-transfer'
+  | 'keep-separate'
+  | 'ignore-suggestion';
 
 export interface CandidateScore {
   readonly leftId: string;
@@ -79,13 +83,16 @@ export function scoreDuplicateCandidate(
     reasons.push('same account');
   }
   const learned = learnedThresholdFor(left, learnedThresholds).duplicateThreshold;
-  const confidence = clamp(score + (learned !== undefined && learned < DEFAULTS.duplicateThreshold ? 0.03 : 0));
+  const confidence = clamp(
+    score + (learned !== undefined && learned < DEFAULTS.duplicateThreshold ? 0.03 : 0),
+  );
   return {
     leftId: left.id,
     rightId: right.id,
     confidence,
     reasons,
-    recommendedAction: confidence >= DEFAULTS.duplicateThreshold ? 'merge-duplicate' : 'keep-separate',
+    recommendedAction:
+      confidence >= DEFAULTS.duplicateThreshold ? 'merge-duplicate' : 'keep-separate',
     autoMergeAllowed: confidence >= DEFAULTS.autoMergeThreshold,
   };
 }
@@ -128,7 +135,9 @@ export function scoreTransferCandidate(
     reasons.push('refund or payroll guardrail');
   }
   const learned = learnedThresholdFor(debit, learnedThresholds).transferThreshold;
-  const confidence = clamp(score + (learned !== undefined && learned < DEFAULTS.transferThreshold ? 0.03 : 0));
+  const confidence = clamp(
+    score + (learned !== undefined && learned < DEFAULTS.transferThreshold ? 0.03 : 0),
+  );
   return {
     leftId: debit.id,
     rightId: credit.id,
@@ -176,14 +185,23 @@ export function learnDetectionDecision(
   existing: readonly LearnedDetectionThreshold[] = [],
 ): LearnedDetectionThreshold[] {
   const index = existing.findIndex(
-    (entry) => entry.accountId === transaction.accountId && entry.importSource === transaction.importSource,
+    (entry) =>
+      entry.accountId === transaction.accountId && entry.importSource === transaction.importSource,
   );
-  const current = index >= 0 ? existing[index] : { accountId: transaction.accountId, importSource: transaction.importSource };
-  const adjustment = decision === 'keep-separate' || decision === 'ignore-suggestion' ? 0.04 : -0.03;
+  const current =
+    index >= 0
+      ? existing[index]
+      : { accountId: transaction.accountId, importSource: transaction.importSource };
+  const adjustment =
+    decision === 'keep-separate' || decision === 'ignore-suggestion' ? 0.04 : -0.03;
   const next: LearnedDetectionThreshold = {
     ...current,
-    duplicateThreshold: clampThreshold((current.duplicateThreshold ?? DEFAULTS.duplicateThreshold) + adjustment),
-    transferThreshold: clampThreshold((current.transferThreshold ?? DEFAULTS.transferThreshold) + adjustment),
+    duplicateThreshold: clampThreshold(
+      (current.duplicateThreshold ?? DEFAULTS.duplicateThreshold) + adjustment,
+    ),
+    transferThreshold: clampThreshold(
+      (current.transferThreshold ?? DEFAULTS.transferThreshold) + adjustment,
+    ),
   };
   if (index < 0) return [...existing, next];
   return existing.map((entry, entryIndex) => (entryIndex === index ? next : entry));
@@ -195,12 +213,17 @@ function learnedThresholdFor(
 ): LearnedDetectionThreshold {
   return (
     thresholds.find(
-      (entry) => entry.accountId === transaction.accountId && entry.importSource === transaction.importSource,
+      (entry) =>
+        entry.accountId === transaction.accountId &&
+        entry.importSource === transaction.importSource,
     ) ?? {}
   );
 }
 
-function looksLikeRefundOrPayroll(left: DetectionTransaction, right: DetectionTransaction): boolean {
+function looksLikeRefundOrPayroll(
+  left: DetectionTransaction,
+  right: DetectionTransaction,
+): boolean {
   const text = `${left.payee} ${right.payee}`.toLowerCase();
   return /refund|return|reversal|payroll|salary|paycheck/.test(text);
 }

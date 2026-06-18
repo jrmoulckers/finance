@@ -18,7 +18,13 @@ describe('report copy catalog', () => {
 
   it('reports missing ids while preserving formatted placeholders', () => {
     const catalog = { 'charts.category.tooltip': 'Categoría {categoryName}: {value}' } as const;
-    expect(resolveReportCopy({ id: 'charts.category.tooltip', catalog, values: { categoryName: 'Food', value: '$10.00' } }).text).toBe('Categoría Food: $10.00');
+    expect(
+      resolveReportCopy({
+        id: 'charts.category.tooltip',
+        catalog,
+        values: { categoryName: 'Food', value: '$10.00' },
+      }).text,
+    ).toBe('Categoría Food: $10.00');
     expect(listMissingReportCopyIds(catalog)).toContain('reports.monthly.heading');
   });
 });

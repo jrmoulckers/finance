@@ -67,7 +67,8 @@ export function resolveCashFlowSankeyDateRange(params: {
     return { startDate, endDate, label: month };
   }
   if (params.preset === 'CUSTOM') {
-    const startDate = params.customStartDate ?? params.customEndDate ?? new Date().toISOString().slice(0, 10);
+    const startDate =
+      params.customStartDate ?? params.customEndDate ?? new Date().toISOString().slice(0, 10);
     const endDate = params.customEndDate ?? startDate;
     return { startDate, endDate, label: dateRangeLabel(startDate, endDate) };
   }
@@ -91,15 +92,21 @@ function aggregateLines(transactions: readonly CashFlowSankeyTransaction[]): Cas
       amountCents: (existing?.amountCents ?? 0) + amountCents,
     });
   }
-  return [...groups.values()].sort((a, b) => b.amountCents - a.amountCents || a.label.localeCompare(b.label));
+  return [...groups.values()].sort(
+    (a, b) => b.amountCents - a.amountCents || a.label.localeCompare(b.label),
+  );
 }
 
 function groupSmallLinesByKind(
   lines: readonly CashFlowSankeyLine[],
   thresholdPercent: number,
-): { readonly lines: readonly CashFlowSankeyLine[]; readonly otherGroups: readonly CashFlowSankeyOtherGroup[] } {
+): {
+  readonly lines: readonly CashFlowSankeyLine[];
+  readonly otherGroups: readonly CashFlowSankeyOtherGroup[];
+} {
   const totalByKind = new Map<SankeyLineKind, number>();
-  for (const line of lines) totalByKind.set(line.kind, (totalByKind.get(line.kind) ?? 0) + line.amountCents);
+  for (const line of lines)
+    totalByKind.set(line.kind, (totalByKind.get(line.kind) ?? 0) + line.amountCents);
 
   const visible: CashFlowSankeyLine[] = [];
   const otherGroups: CashFlowSankeyOtherGroup[] = [];

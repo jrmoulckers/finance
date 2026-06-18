@@ -44,7 +44,10 @@ export function buildFirstBudgetTutorialEntryState(input: {
   const draft = normalizeFirstBudgetDraft(input.draft ?? EMPTY_FIRST_BUDGET_DRAFT);
   const review = buildFirstBudgetReview(draft);
   const nextStep = getNextFirstBudgetStep(draft);
-  const hasSavedDraft = draft.estimates.length > 0 || draft.completedStepIds.length > 0 || draft.pausedAtStepId !== undefined;
+  const hasSavedDraft =
+    draft.estimates.length > 0 ||
+    draft.completedStepIds.length > 0 ||
+    draft.pausedAtStepId !== undefined;
 
   return {
     surface: input.surface,

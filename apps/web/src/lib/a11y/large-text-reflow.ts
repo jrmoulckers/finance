@@ -23,11 +23,9 @@ export interface LargeTextAuditCase {
   expectedMode: ReflowMode;
 }
 
-export function estimateEffectiveTextScale(
-  browserZoomPercent: number,
-  inAppScale = 1,
-): number {
-  const zoom = Number.isFinite(browserZoomPercent) && browserZoomPercent > 0 ? browserZoomPercent / 100 : 1;
+export function estimateEffectiveTextScale(browserZoomPercent: number, inAppScale = 1): number {
+  const zoom =
+    Number.isFinite(browserZoomPercent) && browserZoomPercent > 0 ? browserZoomPercent / 100 : 1;
   const appScale = Number.isFinite(inAppScale) && inAppScale > 0 ? inAppScale : 1;
   return Number((zoom * appScale).toFixed(2));
 }
@@ -75,9 +73,29 @@ export function chooseLargeTextReflow(input: ReflowInput): ReflowDecision {
 
 export function buildLargeTextAuditMatrix(): LargeTextAuditCase[] {
   return [
-    { name: '200 percent browser zoom with default app scale', browserZoomPercent: 200, inAppScale: 1, expectedMode: 'stacked' },
-    { name: '300 percent browser zoom with large app scale', browserZoomPercent: 300, inAppScale: 1.25, expectedMode: 'stacked' },
-    { name: '400 percent browser zoom with huge app scale', browserZoomPercent: 400, inAppScale: 2, expectedMode: 'stacked' },
-    { name: 'dense table at 200 percent text scale', browserZoomPercent: 200, inAppScale: 1, expectedMode: 'card-alternative' },
+    {
+      name: '200 percent browser zoom with default app scale',
+      browserZoomPercent: 200,
+      inAppScale: 1,
+      expectedMode: 'stacked',
+    },
+    {
+      name: '300 percent browser zoom with large app scale',
+      browserZoomPercent: 300,
+      inAppScale: 1.25,
+      expectedMode: 'stacked',
+    },
+    {
+      name: '400 percent browser zoom with huge app scale',
+      browserZoomPercent: 400,
+      inAppScale: 2,
+      expectedMode: 'stacked',
+    },
+    {
+      name: 'dense table at 200 percent text scale',
+      browserZoomPercent: 200,
+      inAppScale: 1,
+      expectedMode: 'card-alternative',
+    },
   ];
 }

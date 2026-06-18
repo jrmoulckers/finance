@@ -65,7 +65,10 @@ import {
 } from '../lib/debt/debt-progress-rings';
 import { buildCreditScoreSimulatorPanelModel } from '../lib/debt/credit-score-simulator-panel';
 import { buildCreditScoreAssumptionSummary } from '../lib/debt/credit-score-simulator-assumptions';
-import { validateBnplObligationDraft, upsertBnplObligationFromDraft } from '../lib/debt/bnpl-obligation-entry';
+import {
+  validateBnplObligationDraft,
+  upsertBnplObligationFromDraft,
+} from '../lib/debt/bnpl-obligation-entry';
 import {
   markBnplInstallmentPaidById,
   readBnplObligations,
@@ -487,7 +490,9 @@ function PayoffPlannerPanel(): React.ReactElement {
   );
   const [selectedConsolidationDebtIds, setSelectedConsolidationDebtIds] = useState<string[]>([]);
   const [hasRestoredConsolidation, setHasRestoredConsolidation] = useState(false);
-  const [consolidationRestoreMessage, setConsolidationRestoreMessage] = useState<string | null>(null);
+  const [consolidationRestoreMessage, setConsolidationRestoreMessage] = useState<string | null>(
+    null,
+  );
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const importedDebts = useMemo(
@@ -622,7 +627,8 @@ function PayoffPlannerPanel(): React.ReactElement {
     });
   }, [activeStrategy, consolidationForm, debts, effectiveConsolidationDebtIds, extraPaymentCents]);
   const consolidationPanelModel = useMemo(
-    () => (consolidationComparison ? buildConsolidationOfferPanelModel(consolidationComparison) : null),
+    () =>
+      consolidationComparison ? buildConsolidationOfferPanelModel(consolidationComparison) : null,
     [consolidationComparison],
   );
   const debtProgressRing = useMemo(
@@ -678,12 +684,17 @@ function PayoffPlannerPanel(): React.ReactElement {
     [],
   );
 
-  const handleConsolidationDebtToggle = useCallback((debtId: string, checked: boolean) => {
-    setSelectedConsolidationDebtIds((current) => {
-      const base = current.length === 0 ? eligibleConsolidationDebtIds : current;
-      return checked ? Array.from(new Set([...base, debtId])) : base.filter((id) => id !== debtId);
-    });
-  }, [eligibleConsolidationDebtIds]);
+  const handleConsolidationDebtToggle = useCallback(
+    (debtId: string, checked: boolean) => {
+      setSelectedConsolidationDebtIds((current) => {
+        const base = current.length === 0 ? eligibleConsolidationDebtIds : current;
+        return checked
+          ? Array.from(new Set([...base, debtId]))
+          : base.filter((id) => id !== debtId);
+      });
+    },
+    [eligibleConsolidationDebtIds],
+  );
 
   const handleManualSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -776,7 +787,8 @@ function PayoffPlannerPanel(): React.ReactElement {
                 {milestones.milestones.filter((milestone) => milestone.isReached).length} milestone
                 {milestones.milestones.filter((milestone) => milestone.isReached).length === 1
                   ? ''
-                  : 's'}.
+                  : 's'}
+                .
               </p>
             </div>
             <div>
@@ -891,7 +903,10 @@ function PayoffPlannerPanel(): React.ReactElement {
                         />
                       </td>
                       <td>
-                        <CurrencyDisplay amount={point.monthlyIncomeCents} context="monthly income" />
+                        <CurrencyDisplay
+                          amount={point.monthlyIncomeCents}
+                          context="monthly income"
+                        />
                       </td>
                       <td>{point.ratioPercent.toFixed(1)}%</td>
                       <td>
@@ -1092,7 +1107,9 @@ function PayoffPlannerPanel(): React.ReactElement {
 
           <section aria-label="Consolidation offer comparison" className="debt-beta-panel">
             <h2>Consolidation Offer Beta</h2>
-            {consolidationRestoreMessage && <p className="form-help">{consolidationRestoreMessage}</p>}
+            {consolidationRestoreMessage && (
+              <p className="form-help">{consolidationRestoreMessage}</p>
+            )}
             <div className="debt-beta-form">
               <label>
                 Offer APR (%)
@@ -1180,15 +1197,24 @@ function PayoffPlannerPanel(): React.ReactElement {
               <dl className="debt-beta-stats">
                 <dt>Payment</dt>
                 <dd>
-                  <CurrencyDisplay amount={consolidationPanelModel.paymentCents} context="payment" />
+                  <CurrencyDisplay
+                    amount={consolidationPanelModel.paymentCents}
+                    context="payment"
+                  />
                 </dd>
                 <dt>Total paid</dt>
                 <dd>
-                  <CurrencyDisplay amount={consolidationPanelModel.totalPaidCents} context="total paid" />
+                  <CurrencyDisplay
+                    amount={consolidationPanelModel.totalPaidCents}
+                    context="total paid"
+                  />
                 </dd>
                 <dt>Interest</dt>
                 <dd>
-                  <CurrencyDisplay amount={consolidationPanelModel.interestCents} context="interest" />
+                  <CurrencyDisplay
+                    amount={consolidationPanelModel.interestCents}
+                    context="interest"
+                  />
                 </dd>
                 <dt>Payoff months</dt>
                 <dd>{consolidationPanelModel.payoffMonths ?? 'Not amortizing'}</dd>
@@ -1208,7 +1234,9 @@ function PayoffPlannerPanel(): React.ReactElement {
               </ul>
             )}
             {consolidationPanelModel && (
-              <p className="form-help">Assumptions: {consolidationPanelModel.assumptions.join(' ')}</p>
+              <p className="form-help">
+                Assumptions: {consolidationPanelModel.assumptions.join(' ')}
+              </p>
             )}
           </section>
 
@@ -1222,7 +1250,11 @@ function PayoffPlannerPanel(): React.ReactElement {
                     <CurrencyDisplay amount={debt.balanceCents} context="balance" />
                     <span
                       className="debt-list__rate"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-2)' }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 'var(--spacing-2)',
+                      }}
                     >
                       {formatRateBps(debt.annualRateBps)} APR
                       <ExplainThis tipKey="aprVsApy" buttonLabel="Explain APR versus APY" />
@@ -1258,7 +1290,9 @@ function PayoffPlannerPanel(): React.ReactElement {
                   title="Avalanche (Highest Rate First)"
                   result={comparison.avalanche}
                   recommended={recommendation?.recommendedStrategy === 'avalanche'}
-                  baselineMonths={minimumOnlyResult?.totalMonths ?? comparison.avalanche.totalMonths}
+                  baselineMonths={
+                    minimumOnlyResult?.totalMonths ?? comparison.avalanche.totalMonths
+                  }
                   todayIso={todayIso}
                 />
                 <StrategyCard
@@ -1273,10 +1307,15 @@ function PayoffPlannerPanel(): React.ReactElement {
                 Your {activeStrategy} plan saves{' '}
                 <CurrencyDisplay amount={interestSavedCents} context="interest savings" /> in
                 interest versus minimum-only payments and reaches debt-free{' '}
-                {Math.max(0, (minimumOnlyResult?.totalMonths ?? 0) - (activeResult?.totalMonths ?? 0))}{' '}
+                {Math.max(
+                  0,
+                  (minimumOnlyResult?.totalMonths ?? 0) - (activeResult?.totalMonths ?? 0),
+                )}{' '}
                 month
-                {Math.max(0, (minimumOnlyResult?.totalMonths ?? 0) - (activeResult?.totalMonths ?? 0)) ===
-                1
+                {Math.max(
+                  0,
+                  (minimumOnlyResult?.totalMonths ?? 0) - (activeResult?.totalMonths ?? 0),
+                ) === 1
                   ? ''
                   : 's'}{' '}
                 sooner.
@@ -1289,7 +1328,8 @@ function PayoffPlannerPanel(): React.ReactElement {
               <div>
                 <h2>Extra-Payment Impact</h2>
                 <p>
-                  Compare custom monthly extras without changing the active {formatStrategyName(activeStrategy)} plan.
+                  Compare custom monthly extras without changing the active{' '}
+                  {formatStrategyName(activeStrategy)} plan.
                 </p>
               </div>
               <label>
@@ -1327,7 +1367,10 @@ function PayoffPlannerPanel(): React.ReactElement {
                   {extraPaymentScenarios.map((scenario) => (
                     <tr key={scenario.extraPaymentCents}>
                       <td>
-                        <CurrencyDisplay amount={scenario.extraPaymentCents} context="extra payment" />
+                        <CurrencyDisplay
+                          amount={scenario.extraPaymentCents}
+                          context="extra payment"
+                        />
                       </td>
                       <td>{formatMonthYear(addMonthsToIsoDate(todayIso, scenario.totalMonths))}</td>
                       <td>{scenario.monthsSaved}</td>
@@ -1338,7 +1381,10 @@ function PayoffPlannerPanel(): React.ReactElement {
                         />
                       </td>
                       <td>
-                        <CurrencyDisplay amount={scenario.totalPaidCents} context="scenario total paid" />
+                        <CurrencyDisplay
+                          amount={scenario.totalPaidCents}
+                          context="scenario total paid"
+                        />
                       </td>
                     </tr>
                   ))}
@@ -1362,7 +1408,12 @@ function ProgressRingCard({ card }: { card: DebtProgressRingCard }): React.React
 
   return (
     <article className="debt-progress-ring-card" aria-label={card.ariaLabel}>
-      <svg className="debt-progress-ring" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+      <svg
+        className="debt-progress-ring"
+        viewBox="0 0 120 120"
+        aria-hidden="true"
+        focusable="false"
+      >
         <circle className="debt-progress-ring__track" cx="60" cy="60" r="44" />
         <circle
           className="debt-progress-ring__value"
@@ -1481,22 +1532,28 @@ function BnplDashboardPanel(): React.ReactElement {
     if (storage) writeBnplObligations(storage, obligations);
   }, [obligations]);
 
-  const handleFieldChange = useCallback(<K extends keyof BnplFormState>(field: K, value: BnplFormState[K]) => {
-    setFormState((current) => ({ ...current, [field]: value }));
-  }, []);
+  const handleFieldChange = useCallback(
+    <K extends keyof BnplFormState>(field: K, value: BnplFormState[K]) => {
+      setFormState((current) => ({ ...current, [field]: value }));
+    },
+    [],
+  );
 
-  const buildDraft = useCallback((): BnplObligationDraft => ({
-    id: formState.id || createBnplId(),
-    merchantName: formState.merchantName,
-    originalAmountCents: parseCurrencyInput(formState.originalAmount),
-    totalInstallments: Number.parseInt(formState.totalInstallments, 10) || 0,
-    paidInstallments: Number.parseInt(formState.paidInstallments, 10) || 0,
-    installmentAmountCents: parseCurrencyInput(formState.installmentAmount),
-    annualRateBps: parseRateInput(formState.annualRate),
-    totalFeesCents: parseCurrencyInput(formState.totalFees),
-    firstDueDateIso: formState.firstDueDate,
-    cadenceDays: Number.parseInt(formState.cadenceDays, 10) || 14,
-  }), [formState]);
+  const buildDraft = useCallback(
+    (): BnplObligationDraft => ({
+      id: formState.id || createBnplId(),
+      merchantName: formState.merchantName,
+      originalAmountCents: parseCurrencyInput(formState.originalAmount),
+      totalInstallments: Number.parseInt(formState.totalInstallments, 10) || 0,
+      paidInstallments: Number.parseInt(formState.paidInstallments, 10) || 0,
+      installmentAmountCents: parseCurrencyInput(formState.installmentAmount),
+      annualRateBps: parseRateInput(formState.annualRate),
+      totalFeesCents: parseCurrencyInput(formState.totalFees),
+      firstDueDateIso: formState.firstDueDate,
+      cadenceDays: Number.parseInt(formState.cadenceDays, 10) || 14,
+    }),
+    [formState],
+  );
 
   const handleSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -1511,20 +1568,23 @@ function BnplDashboardPanel(): React.ReactElement {
     [buildDraft],
   );
 
-  const handleEdit = useCallback((obligation: BnplObligation) => {
-    setFormState({
-      id: obligation.id,
-      merchantName: obligation.merchantName,
-      originalAmount: centsToInputValue(obligation.originalAmountCents),
-      totalInstallments: String(obligation.totalInstallments),
-      paidInstallments: String(obligation.paidInstallments),
-      installmentAmount: centsToInputValue(obligation.installmentAmountCents),
-      annualRate: bpsToInputValue(obligation.annualRateBps),
-      totalFees: centsToInputValue(obligation.totalFeesCents),
-      firstDueDate: obligation.upcomingDueDates[0] ?? todayIso,
-      cadenceDays: '14',
-    });
-  }, [todayIso]);
+  const handleEdit = useCallback(
+    (obligation: BnplObligation) => {
+      setFormState({
+        id: obligation.id,
+        merchantName: obligation.merchantName,
+        originalAmount: centsToInputValue(obligation.originalAmountCents),
+        totalInstallments: String(obligation.totalInstallments),
+        paidInstallments: String(obligation.paidInstallments),
+        installmentAmount: centsToInputValue(obligation.installmentAmountCents),
+        annualRate: bpsToInputValue(obligation.annualRateBps),
+        totalFees: centsToInputValue(obligation.totalFeesCents),
+        firstDueDate: obligation.upcomingDueDates[0] ?? todayIso,
+        cadenceDays: '14',
+      });
+    },
+    [todayIso],
+  );
 
   const handleMarkPaid = useCallback((obligationId: string) => {
     setObligations((current) => [...markBnplInstallmentPaidById(current, obligationId)]);
@@ -1636,7 +1696,9 @@ function BnplDashboardPanel(): React.ReactElement {
               onChange={(event) => handleFieldChange('cadenceDays', event.target.value)}
             />
           </label>
-          <button type="submit">{formState.id ? 'Update BNPL Purchase' : 'Add BNPL Purchase'}</button>
+          <button type="submit">
+            {formState.id ? 'Update BNPL Purchase' : 'Add BNPL Purchase'}
+          </button>
         </form>
       </section>
 
@@ -1650,7 +1712,8 @@ function BnplDashboardPanel(): React.ReactElement {
             >
               <span className="risk-badge__score">{riskScore.score}</span>
               <span className="risk-badge__label">
-                BNPL Risk: {riskScore.category.charAt(0).toUpperCase() + riskScore.category.slice(1)}
+                BNPL Risk:{' '}
+                {riskScore.category.charAt(0).toUpperCase() + riskScore.category.slice(1)}
               </span>
             </div>
             {riskScore.factors.length > 0 && (
@@ -1669,7 +1732,11 @@ function BnplDashboardPanel(): React.ReactElement {
               <h2>Alerts</h2>
               <ul role="list" className="bnpl-alerts">
                 {alerts.map((alert) => (
-                  <li key={alert.message} role="listitem" className={`bnpl-alert bnpl-alert--${alert.level}`}>
+                  <li
+                    key={alert.message}
+                    role="listitem"
+                    className={`bnpl-alert bnpl-alert--${alert.level}`}
+                  >
                     <span role="alert">{alert.message}</span>
                   </li>
                 ))}
@@ -1684,11 +1751,17 @@ function BnplDashboardPanel(): React.ReactElement {
               <dd>{summary.activeCount}</dd>
               <dt>Total Outstanding</dt>
               <dd>
-                <CurrencyDisplay amount={summary.totalOutstandingCents} context="total outstanding" />
+                <CurrencyDisplay
+                  amount={summary.totalOutstandingCents}
+                  context="total outstanding"
+                />
               </dd>
               <dt>Monthly Commitment</dt>
               <dd>
-                <CurrencyDisplay amount={summary.monthlyCommitmentCents} context="monthly commitment" />
+                <CurrencyDisplay
+                  amount={summary.monthlyCommitmentCents}
+                  context="monthly commitment"
+                />
               </dd>
               <dt>Total Fees Paid</dt>
               <dd>
@@ -1714,7 +1787,9 @@ function BnplDashboardPanel(): React.ReactElement {
                     <span>
                       {obligation.paidInstallments}/{obligation.totalInstallments} payments
                     </span>
-                    {obligation.upcomingDueDates[0] && <span>Next due: {obligation.upcomingDueDates[0]}</span>}
+                    {obligation.upcomingDueDates[0] && (
+                      <span>Next due: {obligation.upcomingDueDates[0]}</span>
+                    )}
                     <button type="button" onClick={() => handleEdit(obligation)}>
                       Edit
                     </button>
@@ -2607,7 +2682,9 @@ function CreditCardPanel(): React.ReactElement {
                 Card to pay down
                 <select
                   value={creditScoreForm.targetCardId || cards[0]?.id || ''}
-                  onChange={(event) => handleCreditScoreFieldChange('targetCardId', event.target.value)}
+                  onChange={(event) =>
+                    handleCreditScoreFieldChange('targetCardId', event.target.value)
+                  }
                 >
                   {cards.map((card) => (
                     <option key={card.id} value={card.id}>

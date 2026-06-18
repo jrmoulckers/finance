@@ -85,14 +85,19 @@ export function buildScheduleManagementState(
       asOfDate,
     ),
   );
-  const hasEmailRecipients = activeSchedules.some((schedule) => (schedule.recipients?.length ?? 0) > 0);
+  const hasEmailRecipients = activeSchedules.some(
+    (schedule) => (schedule.recipients?.length ?? 0) > 0,
+  );
 
   return {
     schedules: activeSchedules,
     previews,
     failedDeliveryBanners: activeSchedules
       .filter((schedule) => schedule.deliveryFailure !== undefined)
-      .map((schedule) => `${schedule.reportName}: ${schedule.deliveryFailure?.message ?? 'Delivery failed'}`),
+      .map(
+        (schedule) =>
+          `${schedule.reportName}: ${schedule.deliveryFailure?.message ?? 'Delivery failed'}`,
+      ),
     backendDeliveryNotice: hasEmailRecipients
       ? 'Email delivery, backend scheduling, and retry execution are deferred; local schedule previews and controls are available.'
       : null,

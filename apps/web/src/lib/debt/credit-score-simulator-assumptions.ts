@@ -23,17 +23,27 @@ export function buildCreditScoreAssumptionSummary(
     impact.assumptions.forEach((assumption) => assumptions.add(assumption));
   }
 
-  const missingLimitCards = cards.filter((card) => !card.creditLimitCents || card.creditLimitCents <= 0);
+  const missingLimitCards = cards.filter(
+    (card) => !card.creditLimitCents || card.creditLimitCents <= 0,
+  );
   if (missingLimitCards.length > 0) {
     missingStates.push(
       `${missingLimitCards.length} card${missingLimitCards.length === 1 ? '' : 's'} need credit limits before utilization can be modeled.`,
     );
   }
   if (!knownFromApp.has('planned on-time payment months')) {
-    missingStates.push('Payment-history direction needs a modeled on-time streak or imported late-payment history.');
+    missingStates.push(
+      'Payment-history direction needs a modeled on-time streak or imported late-payment history.',
+    );
   }
-  if (simulation.factorImpacts.some((impact) => impact.factor === 'account_age_mix' && impact.direction === 'unknown')) {
-    missingStates.push('Closure scenarios need account age and bureau history that may be outside the app.');
+  if (
+    simulation.factorImpacts.some(
+      (impact) => impact.factor === 'account_age_mix' && impact.direction === 'unknown',
+    )
+  ) {
+    missingStates.push(
+      'Closure scenarios need account age and bureau history that may be outside the app.',
+    );
   }
 
   return {

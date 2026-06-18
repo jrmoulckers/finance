@@ -84,7 +84,13 @@ export function normalizeFirePlanningAssumptions(
 ): FirePlanningAssumptions {
   return {
     annualExpensesCents: Math.round(
-      Math.max(0, finiteNumber(value.annualExpensesCents, DEFAULT_FIRE_PLANNING_ASSUMPTIONS.annualExpensesCents)),
+      Math.max(
+        0,
+        finiteNumber(
+          value.annualExpensesCents,
+          DEFAULT_FIRE_PLANNING_ASSUMPTIONS.annualExpensesCents,
+        ),
+      ),
     ),
     annualContributionsCents: Math.round(
       Math.max(
@@ -96,12 +102,20 @@ export function normalizeFirePlanningAssumptions(
       ),
     ),
     annualIncomeCents: Math.round(
-      Math.max(0, finiteNumber(value.annualIncomeCents, DEFAULT_FIRE_PLANNING_ASSUMPTIONS.annualIncomeCents)),
+      Math.max(
+        0,
+        finiteNumber(value.annualIncomeCents, DEFAULT_FIRE_PLANNING_ASSUMPTIONS.annualIncomeCents),
+      ),
     ),
-    currentAge: Math.round(clamp(finiteNumber(value.currentAge, DEFAULT_FIRE_PLANNING_ASSUMPTIONS.currentAge), 0, 120)),
+    currentAge: Math.round(
+      clamp(finiteNumber(value.currentAge, DEFAULT_FIRE_PLANNING_ASSUMPTIONS.currentAge), 0, 120),
+    ),
     targetRetirementAge: Math.round(
       clamp(
-        finiteNumber(value.targetRetirementAge, DEFAULT_FIRE_PLANNING_ASSUMPTIONS.targetRetirementAge),
+        finiteNumber(
+          value.targetRetirementAge,
+          DEFAULT_FIRE_PLANNING_ASSUMPTIONS.targetRetirementAge,
+        ),
         0,
         120,
       ),
@@ -115,7 +129,10 @@ export function normalizeFirePlanningAssumptions(
       25,
     ),
     withdrawalRatePercent: clamp(
-      finiteNumber(value.withdrawalRatePercent, DEFAULT_FIRE_PLANNING_ASSUMPTIONS.withdrawalRatePercent),
+      finiteNumber(
+        value.withdrawalRatePercent,
+        DEFAULT_FIRE_PLANNING_ASSUMPTIONS.withdrawalRatePercent,
+      ),
       0,
       20,
     ),
@@ -153,10 +170,13 @@ export function deriveFirePlanningDefaults(
 ): FirePlanningDefaults {
   const defaults = normalizeFirePlanningAssumptions({
     ...DEFAULT_FIRE_PLANNING_ASSUMPTIONS,
-    annualExpensesCents: sources.annualExpensesCents ?? DEFAULT_FIRE_PLANNING_ASSUMPTIONS.annualExpensesCents,
+    annualExpensesCents:
+      sources.annualExpensesCents ?? DEFAULT_FIRE_PLANNING_ASSUMPTIONS.annualExpensesCents,
     annualContributionsCents:
-      sources.annualContributionsCents ?? DEFAULT_FIRE_PLANNING_ASSUMPTIONS.annualContributionsCents,
-    annualIncomeCents: sources.annualIncomeCents ?? DEFAULT_FIRE_PLANNING_ASSUMPTIONS.annualIncomeCents,
+      sources.annualContributionsCents ??
+      DEFAULT_FIRE_PLANNING_ASSUMPTIONS.annualContributionsCents,
+    annualIncomeCents:
+      sources.annualIncomeCents ?? DEFAULT_FIRE_PLANNING_ASSUMPTIONS.annualIncomeCents,
     ...overrides,
   });
   const warnings: string[] = [];
@@ -188,7 +208,10 @@ export function deriveFirePlanningDefaults(
   };
 }
 
-function scenarioForCard(scenario: FireScenarioOverride, input: FirePlanningInput): FireScenarioOverride {
+function scenarioForCard(
+  scenario: FireScenarioOverride,
+  input: FirePlanningInput,
+): FireScenarioOverride {
   if (scenario.id === 'save-more') {
     return {
       ...scenario,

@@ -29,7 +29,11 @@ import type {
   Recommendation,
   SpendingBenchmarkResult,
 } from '../hooks/useInsights';
-import type { AnnualSummary, CategoryDrillDown, SpendingTrendInsight } from '../lib/reports/reporting-beta';
+import type {
+  AnnualSummary,
+  CategoryDrillDown,
+  SpendingTrendInsight,
+} from '../lib/reports/reporting-beta';
 import {
   buildInsightsPeerComparisonReport,
   buildPeerComparisonCards,
@@ -265,7 +269,11 @@ interface SpendingTrendCardProps {
 const SpendingTrendCard: React.FC<SpendingTrendCardProps> = ({ trend }) => {
   const latest = trend.monthlyTotals.at(-1);
   return (
-    <article className="insights-trend-card" role="listitem" aria-label={`${trend.periodMonths} month spending trend`}>
+    <article
+      className="insights-trend-card"
+      role="listitem"
+      aria-label={`${trend.periodMonths} month spending trend`}
+    >
       <div className="insights-trend-card__header">
         <h4>{trend.periodMonths} months</h4>
         <span>{trend.insufficientData ? 'Insufficient history' : 'Trend ready'}</span>
@@ -320,7 +328,12 @@ const CategoryDrillDownPanel: React.FC<CategoryDrillDownPanelProps> = ({ drillDo
               : 'None'}
           </span>
         </div>
-        <div className="insights-drilldown__table-wrap" role="region" tabIndex={0} aria-label="Drill-down transactions">
+        <div
+          className="insights-drilldown__table-wrap"
+          role="region"
+          tabIndex={0}
+          aria-label="Drill-down transactions"
+        >
           <table className="insights-drilldown__table">
             <thead>
               <tr>
@@ -365,15 +378,29 @@ const YearInReviewCard: React.FC<YearInReviewCardProps> = ({ summary, privateMod
         {summary.isPartialYear ? ` (${summary.monthCount} months; partial-year data)` : ''}
       </p>
       <div className="insights-comparison">
-        <div className="insights-comparison__item"><span>Total income</span><strong>{money(summary.totalIncome)}</strong></div>
-        <div className="insights-comparison__item"><span>Total expenses</span><strong>{money(summary.totalExpenses)}</strong></div>
-        <div className="insights-comparison__item"><span>Net cash flow</span><strong>{money(summary.netCashFlow)}</strong></div>
-        <div className="insights-comparison__item"><span>Savings rate</span><strong>{summary.savingsRate}%</strong></div>
+        <div className="insights-comparison__item">
+          <span>Total income</span>
+          <strong>{money(summary.totalIncome)}</strong>
+        </div>
+        <div className="insights-comparison__item">
+          <span>Total expenses</span>
+          <strong>{money(summary.totalExpenses)}</strong>
+        </div>
+        <div className="insights-comparison__item">
+          <span>Net cash flow</span>
+          <strong>{money(summary.netCashFlow)}</strong>
+        </div>
+        <div className="insights-comparison__item">
+          <span>Savings rate</span>
+          <strong>{summary.savingsRate}%</strong>
+        </div>
       </div>
       <h4>Top categories</h4>
       <ul>
         {summary.topCategories.map((category) => (
-          <li key={category.categoryName}>{category.categoryName}: {money(category.amount)}</li>
+          <li key={category.categoryName}>
+            {category.categoryName}: {money(category.amount)}
+          </li>
         ))}
       </ul>
       <h4>Highlights and cautions</h4>
@@ -411,18 +438,27 @@ export const InsightsPage: React.FC = () => {
     error: insightsError,
     refresh: refreshInsights,
   } = useInsights();
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null | undefined>(undefined);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null | undefined>(
+    undefined,
+  );
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [privateMode, setPrivateMode] = useState(false);
   const [peerProfileOptedIn, setPeerProfileOptedIn] = useState(false);
 
   const activeDrillDown = useMemo(
-    () => insights?.categoryDrillDowns.find((drillDown) => drillDown.categoryId === selectedCategoryId) ?? null,
+    () =>
+      insights?.categoryDrillDowns.find(
+        (drillDown) => drillDown.categoryId === selectedCategoryId,
+      ) ?? null,
     [insights?.categoryDrillDowns, selectedCategoryId],
   );
   const activeAnnualSummary = useMemo(() => {
     if (!insights || insights.annualSummaries.length === 0) return null;
-    return insights.annualSummaries.find((summary) => summary.year === (selectedYear ?? insights.annualSummaries[0]?.year)) ?? insights.annualSummaries[0];
+    return (
+      insights.annualSummaries.find(
+        (summary) => summary.year === (selectedYear ?? insights.annualSummaries[0]?.year),
+      ) ?? insights.annualSummaries[0]
+    );
   }, [insights, selectedYear]);
   const peerComparisonReport = useMemo(() => {
     if (!insights) return null;
@@ -494,7 +530,13 @@ export const InsightsPage: React.FC = () => {
 
   return (
     <div className="wealth-insights-page insights-page">
-      {digest ? <WeeklyDigest digest={digest} activePeriod={activePeriod} onPeriodChange={setActivePeriod} /> : null}
+      {digest ? (
+        <WeeklyDigest
+          digest={digest}
+          activePeriod={activePeriod}
+          onPeriodChange={setActivePeriod}
+        />
+      ) : null}
       <RecommendationsFeed
         recommendations={recommendations}
         summary={recommendationSummary}
@@ -505,264 +547,284 @@ export const InsightsPage: React.FC = () => {
       {wellness ? <WellnessOverview overview={wellness} /> : null}
       {insights ? (
         <>
-      <div className="page-section__header">
-        <h2 className="insights-page__title">Financial Insights</h2>
-      </div>
+          <div className="page-section__header">
+            <h2 className="insights-page__title">Financial Insights</h2>
+          </div>
 
-      <section className="insights-section" aria-label="Key metrics">
-        <div className="insights-metrics-grid">
-          <MetricCard
-            label="Spent This Month"
-            value={<CurrencyDisplay amount={insights.totalSpentThisMonth} />}
-            comparison={insights.spendingComparison}
-          />
-          <MetricCard
-            label="Income This Month"
-            value={<CurrencyDisplay amount={insights.totalIncomeThisMonth} />}
-            comparison={insights.incomeComparison}
-          />
-          <MetricCard
-            label="Net Cash Flow"
-            value={<CurrencyDisplay amount={insights.netCashFlow} />}
-          />
-          <MetricCard
-            label="Savings Rate"
-            value={
-              <span aria-label={`Savings rate: ${insights.savingsRate} percent`}>
-                {insights.savingsRate}%
-              </span>
-            }
-          />
-          <MetricCard
-            label="Avg. Daily Spending"
-            value={<CurrencyDisplay amount={insights.averageDailySpending} />}
-          />
-        </div>
-      </section>
-
-      {insights.topCategories.length > 0 && (
-        <section className="insights-section" aria-label="Spending by category">
-          <h3 className="insights-section__title">Top Spending Categories</h3>
-          <div className="insights-categories" role="list">
-            {insights.topCategories.map((cat, idx) => (
-              <CategoryBar
-                key={cat.categoryId ?? 'uncategorized'}
-                name={cat.categoryName}
-                amount={cat.amount}
-                percent={cat.percentOfTotal}
-                index={idx}
-                onDrillDown={() => setSelectedCategoryId(cat.categoryId)}
+          <section className="insights-section" aria-label="Key metrics">
+            <div className="insights-metrics-grid">
+              <MetricCard
+                label="Spent This Month"
+                value={<CurrencyDisplay amount={insights.totalSpentThisMonth} />}
+                comparison={insights.spendingComparison}
               />
-            ))}
-          </div>
-          {insights.categorySpending.length > 5 && (
-            <p className="insights-section__note">
-              Showing top 5 of {insights.categorySpending.length} categories
-            </p>
-          )}
-          {activeDrillDown ? (
-            <CategoryDrillDownPanel
-              drillDown={activeDrillDown}
-              onClose={() => setSelectedCategoryId(undefined)}
-            />
-          ) : null}
-        </section>
-      )}
-
-      {insights.spendingTrends.length > 0 && (
-       <section className="insights-section" aria-label="Spending trends and seasonality">
-         <h3 className="insights-section__title">Spending Trends & Seasonality</h3>
-         <p className="insights-section__description">
-           Review 6, 12, and 24 month spending windows, recurring seasonal spikes, and current-month pacing.
-         </p>
-         <div className="insights-trend-grid" role="list">
-           {insights.spendingTrends.map((trend) => (
-             <SpendingTrendCard key={trend.periodMonths} trend={trend} />
-           ))}
-         </div>
-       </section>
-      )}
-
-      {activeAnnualSummary ? (
-       <section className="insights-section" aria-label="Year in review">
-         <div className="insights-section__header-row">
-           <h3 className="insights-section__title">Year in Review</h3>
-           <div className="insights-section__controls">
-             <label>
-               Year{' '}
-               <select
-                 value={activeAnnualSummary.year}
-                 onChange={(event) => setSelectedYear(Number(event.target.value))}
-               >
-                 {insights.annualSummaries.map((summary) => (
-                   <option key={summary.year} value={summary.year}>
-                     {summary.year}
-                   </option>
-                 ))}
-               </select>
-             </label>
-             <label>
-               <input
-                 type="checkbox"
-                 checked={privateMode}
-                 onChange={(event) => setPrivateMode(event.target.checked)}
-               />{' '}
-               Privacy mode
-             </label>
-           </div>
-         </div>
-         <YearInReviewCard summary={activeAnnualSummary} privateMode={privateMode} />
-         <div className="insights-export-actions">
-           <a
-             className="insights-link-button"
-             href={`data:text/csv;charset=utf-8,${encodeURIComponent(
-               [
-                 Object.keys(activeAnnualSummary.csvRows[0] ?? { Metric: '', Amount: '' }).join(','),
-                 ...activeAnnualSummary.csvRows.map((row) => Object.values(row).join(',')),
-               ].join('\n'),
-             )}`}
-             download={`year-in-review-${activeAnnualSummary.year}.csv`}
-           >
-             Export CSV
-           </a>
-           <button className="insights-link-button" type="button">
-             PDF-ready summary
-           </button>
-         </div>
-       </section>
-      ) : null}
-
-      <section className="insights-section" aria-label="How do I compare">
-        <h3 className="insights-section__title">How Do I Compare?</h3>
-        <p className="insights-section__description">
-          Compare each category to student-friendly spending benchmarks and use the 50/30/20 rule as
-          a quick health check.
-        </p>
-        <div className="insights-benchmark-overview">
-          <FinancialHealthScoreCard score={insights.financialHealthScore} />
-          <BudgetRuleCard overview={insights.budgetRuleOverview} />
-        </div>
-        <div className="insights-benchmark-grid" role="list">
-          {insights.spendingBenchmarks.map((benchmark) => (
-            <BenchmarkCard key={benchmark.key} benchmark={benchmark} />
-          ))}
-        </div>
-        <section className="insights-peer-comparisons" aria-label="Peer comparisons">
-          <div className="insights-section__header-row">
-            <div>
-              <h4>Peer comparisons</h4>
-              <p className="insights-section__description">
-                Optional category percentiles use local spending totals and only appear after opt-in.
-              </p>
+              <MetricCard
+                label="Income This Month"
+                value={<CurrencyDisplay amount={insights.totalIncomeThisMonth} />}
+                comparison={insights.incomeComparison}
+              />
+              <MetricCard
+                label="Net Cash Flow"
+                value={<CurrencyDisplay amount={insights.netCashFlow} />}
+              />
+              <MetricCard
+                label="Savings Rate"
+                value={
+                  <span aria-label={`Savings rate: ${insights.savingsRate} percent`}>
+                    {insights.savingsRate}%
+                  </span>
+                }
+              />
+              <MetricCard
+                label="Avg. Daily Spending"
+                value={<CurrencyDisplay amount={insights.averageDailySpending} />}
+              />
             </div>
-            <div className="insights-section__controls">
-              {peerProfileOptedIn ? (
-                <>
-                  <button className="insights-link-button" type="button" onClick={() => setPeerProfileOptedIn(false)}>
-                    Clear peer profile
-                  </button>
-                  <button className="insights-link-button" type="button">
-                    Edit cohort
-                  </button>
-                </>
-              ) : (
-                <button className="insights-link-button" type="button" onClick={() => setPeerProfileOptedIn(true)}>
-                  Opt in to peer comparisons
-                </button>
+          </section>
+
+          {insights.topCategories.length > 0 && (
+            <section className="insights-section" aria-label="Spending by category">
+              <h3 className="insights-section__title">Top Spending Categories</h3>
+              <div className="insights-categories" role="list">
+                {insights.topCategories.map((cat, idx) => (
+                  <CategoryBar
+                    key={cat.categoryId ?? 'uncategorized'}
+                    name={cat.categoryName}
+                    amount={cat.amount}
+                    percent={cat.percentOfTotal}
+                    index={idx}
+                    onDrillDown={() => setSelectedCategoryId(cat.categoryId)}
+                  />
+                ))}
+              </div>
+              {insights.categorySpending.length > 5 && (
+                <p className="insights-section__note">
+                  Showing top 5 of {insights.categorySpending.length} categories
+                </p>
               )}
-            </div>
-          </div>
-          {peerProfileOptedIn && peerComparisonCards.length > 0 ? (
-            <div className="insights-benchmark-grid" role="list" aria-label="Category peer comparison cards">
-              {peerComparisonCards.map((card) => (
-                <article
-                  className={`insights-benchmark-card insights-benchmark-card--${card.status}`}
-                  key={card.key}
-                  role="listitem"
-                  aria-label={card.ariaLabel}
+              {activeDrillDown ? (
+                <CategoryDrillDownPanel
+                  drillDown={activeDrillDown}
+                  onClose={() => setSelectedCategoryId(undefined)}
+                />
+              ) : null}
+            </section>
+          )}
+
+          {insights.spendingTrends.length > 0 && (
+            <section className="insights-section" aria-label="Spending trends and seasonality">
+              <h3 className="insights-section__title">Spending Trends & Seasonality</h3>
+              <p className="insights-section__description">
+                Review 6, 12, and 24 month spending windows, recurring seasonal spikes, and
+                current-month pacing.
+              </p>
+              <div className="insights-trend-grid" role="list">
+                {insights.spendingTrends.map((trend) => (
+                  <SpendingTrendCard key={trend.periodMonths} trend={trend} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {activeAnnualSummary ? (
+            <section className="insights-section" aria-label="Year in review">
+              <div className="insights-section__header-row">
+                <h3 className="insights-section__title">Year in Review</h3>
+                <div className="insights-section__controls">
+                  <label>
+                    Year{' '}
+                    <select
+                      value={activeAnnualSummary.year}
+                      onChange={(event) => setSelectedYear(Number(event.target.value))}
+                    >
+                      {insights.annualSummaries.map((summary) => (
+                        <option key={summary.year} value={summary.year}>
+                          {summary.year}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={privateMode}
+                      onChange={(event) => setPrivateMode(event.target.checked)}
+                    />{' '}
+                    Privacy mode
+                  </label>
+                </div>
+              </div>
+              <YearInReviewCard summary={activeAnnualSummary} privateMode={privateMode} />
+              <div className="insights-export-actions">
+                <a
+                  className="insights-link-button"
+                  href={`data:text/csv;charset=utf-8,${encodeURIComponent(
+                    [
+                      Object.keys(
+                        activeAnnualSummary.csvRows[0] ?? { Metric: '', Amount: '' },
+                      ).join(','),
+                      ...activeAnnualSummary.csvRows.map((row) => Object.values(row).join(',')),
+                    ].join('\n'),
+                  )}`}
+                  download={`year-in-review-${activeAnnualSummary.year}.csv`}
                 >
-                  <h5 className="insights-benchmark-card__title">{card.title}</h5>
-                  <p className="insights-benchmark-card__badge">{card.percentLabel}</p>
-                  <p>{card.rangeLabel}</p>
-                  <p className="insights-benchmark-card__summary">{card.guidance}</p>
-                </article>
+                  Export CSV
+                </a>
+                <button className="insights-link-button" type="button">
+                  PDF-ready summary
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          <section className="insights-section" aria-label="How do I compare">
+            <h3 className="insights-section__title">How Do I Compare?</h3>
+            <p className="insights-section__description">
+              Compare each category to student-friendly spending benchmarks and use the 50/30/20
+              rule as a quick health check.
+            </p>
+            <div className="insights-benchmark-overview">
+              <FinancialHealthScoreCard score={insights.financialHealthScore} />
+              <BudgetRuleCard overview={insights.budgetRuleOverview} />
+            </div>
+            <div className="insights-benchmark-grid" role="list">
+              {insights.spendingBenchmarks.map((benchmark) => (
+                <BenchmarkCard key={benchmark.key} benchmark={benchmark} />
               ))}
             </div>
-          ) : (
-            <p className="insights-section__note">
-              Current benchmark cards stay available without peer comparison opt-in.
-            </p>
-          )}
-        </section>
-      </section>
-
-      {insights.dailySpending.length > 0 && (
-        <section className="insights-section" aria-label="Daily spending trend">
-          <h3 className="insights-section__title">Daily Spending Trend</h3>
-          <div className="insights-daily-chart" role="img" aria-label="Daily spending bar chart">
-            {insights.dailySpending.map((day) => {
-              const maxAmount = Math.max(...insights.dailySpending.map((d) => d.amount));
-              const heightPercent = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
-              return (
-                <div
-                  key={day.date}
-                  className="insights-daily-chart__bar-wrapper"
-                  title={`${day.date}: ${formatCurrency(day.amount)}`}
-                >
-                  <div
-                    className="insights-daily-chart__bar"
-                    style={{ height: `${Math.max(heightPercent, 2)}%` }}
-                  />
-                  <span className="insights-daily-chart__label">
-                    {new Date(`${day.date}T00:00:00`).getDate()}
-                  </span>
+            <section className="insights-peer-comparisons" aria-label="Peer comparisons">
+              <div className="insights-section__header-row">
+                <div>
+                  <h4>Peer comparisons</h4>
+                  <p className="insights-section__description">
+                    Optional category percentiles use local spending totals and only appear after
+                    opt-in.
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+                <div className="insights-section__controls">
+                  {peerProfileOptedIn ? (
+                    <>
+                      <button
+                        className="insights-link-button"
+                        type="button"
+                        onClick={() => setPeerProfileOptedIn(false)}
+                      >
+                        Clear peer profile
+                      </button>
+                      <button className="insights-link-button" type="button">
+                        Edit cohort
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="insights-link-button"
+                      type="button"
+                      onClick={() => setPeerProfileOptedIn(true)}
+                    >
+                      Opt in to peer comparisons
+                    </button>
+                  )}
+                </div>
+              </div>
+              {peerProfileOptedIn && peerComparisonCards.length > 0 ? (
+                <div
+                  className="insights-benchmark-grid"
+                  role="list"
+                  aria-label="Category peer comparison cards"
+                >
+                  {peerComparisonCards.map((card) => (
+                    <article
+                      className={`insights-benchmark-card insights-benchmark-card--${card.status}`}
+                      key={card.key}
+                      role="listitem"
+                      aria-label={card.ariaLabel}
+                    >
+                      <h5 className="insights-benchmark-card__title">{card.title}</h5>
+                      <p className="insights-benchmark-card__badge">{card.percentLabel}</p>
+                      <p>{card.rangeLabel}</p>
+                      <p className="insights-benchmark-card__summary">{card.guidance}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="insights-section__note">
+                  Current benchmark cards stay available without peer comparison opt-in.
+                </p>
+              )}
+            </section>
+          </section>
 
-      <section className="insights-section" aria-label="Month comparison">
-        <h3 className="insights-section__title">Month-Over-Month</h3>
-        <div className="insights-comparison">
-          <div className="insights-comparison__item">
-            <span className="insights-comparison__label">Last Month Spending</span>
-            <span className="insights-comparison__value">
-              <CurrencyDisplay amount={insights.totalSpentLastMonth} />
-            </span>
-          </div>
-          <div className="insights-comparison__item">
-            <span className="insights-comparison__label">This Month Spending</span>
-            <span className="insights-comparison__value">
-              <CurrencyDisplay amount={insights.totalSpentThisMonth} />
-            </span>
-          </div>
-          <div className="insights-comparison__item">
-            <span className="insights-comparison__label">Last Month Income</span>
-            <span className="insights-comparison__value">
-              <CurrencyDisplay amount={insights.totalIncomeLastMonth} />
-            </span>
-          </div>
-          <div className="insights-comparison__item">
-            <span className="insights-comparison__label">This Month Income</span>
-            <span className="insights-comparison__value">
-              <CurrencyDisplay amount={insights.totalIncomeThisMonth} />
-            </span>
-          </div>
-        </div>
-      </section>
+          {insights.dailySpending.length > 0 && (
+            <section className="insights-section" aria-label="Daily spending trend">
+              <h3 className="insights-section__title">Daily Spending Trend</h3>
+              <div
+                className="insights-daily-chart"
+                role="img"
+                aria-label="Daily spending bar chart"
+              >
+                {insights.dailySpending.map((day) => {
+                  const maxAmount = Math.max(...insights.dailySpending.map((d) => d.amount));
+                  const heightPercent = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
+                  return (
+                    <div
+                      key={day.date}
+                      className="insights-daily-chart__bar-wrapper"
+                      title={`${day.date}: ${formatCurrency(day.amount)}`}
+                    >
+                      <div
+                        className="insights-daily-chart__bar"
+                        style={{ height: `${Math.max(heightPercent, 2)}%` }}
+                      />
+                      <span className="insights-daily-chart__label">
+                        {new Date(`${day.date}T00:00:00`).getDate()}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
-      {insights.recommendations.length > 0 && (
-        <section className="insights-section" aria-label="Recommendations">
-          <h3 className="insights-section__title">Recommendations</h3>
-          <div className="insights-recommendations" role="list">
-            {insights.recommendations.map((rec) => (
-              <RecommendationCard key={rec.id} recommendation={rec} />
-            ))}
-          </div>
-        </section>
-      )}
+          <section className="insights-section" aria-label="Month comparison">
+            <h3 className="insights-section__title">Month-Over-Month</h3>
+            <div className="insights-comparison">
+              <div className="insights-comparison__item">
+                <span className="insights-comparison__label">Last Month Spending</span>
+                <span className="insights-comparison__value">
+                  <CurrencyDisplay amount={insights.totalSpentLastMonth} />
+                </span>
+              </div>
+              <div className="insights-comparison__item">
+                <span className="insights-comparison__label">This Month Spending</span>
+                <span className="insights-comparison__value">
+                  <CurrencyDisplay amount={insights.totalSpentThisMonth} />
+                </span>
+              </div>
+              <div className="insights-comparison__item">
+                <span className="insights-comparison__label">Last Month Income</span>
+                <span className="insights-comparison__value">
+                  <CurrencyDisplay amount={insights.totalIncomeLastMonth} />
+                </span>
+              </div>
+              <div className="insights-comparison__item">
+                <span className="insights-comparison__label">This Month Income</span>
+                <span className="insights-comparison__value">
+                  <CurrencyDisplay amount={insights.totalIncomeThisMonth} />
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {insights.recommendations.length > 0 && (
+            <section className="insights-section" aria-label="Recommendations">
+              <h3 className="insights-section__title">Recommendations</h3>
+              <div className="insights-recommendations" role="list">
+                {insights.recommendations.map((rec) => (
+                  <RecommendationCard key={rec.id} recommendation={rec} />
+                ))}
+              </div>
+            </section>
+          )}
         </>
       ) : null}
     </div>

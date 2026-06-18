@@ -36,7 +36,8 @@ export const EN_US_CATALOG: MessageCatalog = {
   'settings.currencyRates.cancel': 'Cancel',
   'settings.currencyRates.override': 'Override',
   'settings.currencyRates.reset': 'Reset',
-  'settings.currencyRates.disclaimer': 'Converted values are estimates and not settlement-grade exchange quotes. Stored and cached rates may differ from live market prices.',
+  'settings.currencyRates.disclaimer':
+    'Converted values are estimates and not settlement-grade exchange quotes. Stored and cached rates may differ from live market prices.',
   'settings.currencyRates.source.static': 'Static',
   'settings.currencyRates.source.stored': 'Stored',
   'settings.currencyRates.source.api': 'API',
@@ -58,14 +59,16 @@ export const EN_US_CATALOG: MessageCatalog = {
   'transaction.localAmount.fee': 'Fee',
   'transaction.localAmount.error.required': 'Enter an amount in {currency}.',
   'transaction.localAmount.error.invalid': 'Enter a valid {currency} amount.',
-  'transaction.localAmount.error.tooManyDecimals': '{currency} supports {decimalPlaces} decimal places.',
+  'transaction.localAmount.error.tooManyDecimals':
+    '{currency} supports {decimalPlaces} decimal places.',
   'transaction.localAmount.error.notPositive': 'Amount must be greater than zero.',
   'transaction.localAmount.error.tooLarge': 'Amount is too large.',
   'transaction.timestamp.occurredAt.label': 'Occurred at',
   'transaction.timestamp.timeZone.label': 'Transaction time zone',
   'transaction.timestamp.offset.label': 'Original UTC offset',
   'transaction.timestamp.merchantLocalDate.label': 'Merchant-local date',
-  'transaction.timestamp.legacyDateOnly': 'Date-only legacy transaction; do not shift across time zones.',
+  'transaction.timestamp.legacyDateOnly':
+    'Date-only legacy transaction; do not shift across time zones.',
   'forms.errorSummary.title': 'Some fields need attention',
   'forms.validation.errorCount': {
     one: '{count} field needs attention',
@@ -77,7 +80,8 @@ export const EN_US_CATALOG: MessageCatalog = {
   'forms.account.name.required': 'Account name is required.',
   'forms.account.initialBalance.label': 'Initial Balance',
   'forms.account.initialBalance.invalid': 'Initial balance must be a valid number.',
-  'forms.account.noHousehold': 'No household found. Please create a household before adding accounts.',
+  'forms.account.noHousehold':
+    'No household found. Please create a household before adding accounts.',
   'forms.account.createFailed': 'Failed to create account.',
   'forms.account.updateFailed': 'Failed to update account.',
   'forms.account.action.cancel': 'Cancel',
@@ -97,7 +101,8 @@ export const EN_US_CATALOG: MessageCatalog = {
   'nav.budgets': 'Budgets',
   'nav.settings': 'Settings',
   'onboarding.welcome.title': 'Welcome to Finance',
-  'onboarding.welcome.body': 'Set up your accounts, budgets, and preferences to start tracking money confidently.',
+  'onboarding.welcome.body':
+    'Set up your accounts, budgets, and preferences to start tracking money confidently.',
   'onboarding.action.getStarted': 'Get started',
   'accounts.empty.title': 'No accounts yet',
   'accounts.empty.body': 'Add an account to see balances and spending in one place.',
@@ -112,13 +117,16 @@ export const EN_US_CATALOG: MessageCatalog = {
   'errors.unexpected': 'Something went wrong. Try again.',
   'errors.validation': 'Check the highlighted fields and try again.',
   'tips.budget-create-first.title': 'Set up your first budget',
-  'tips.budget-create-first.description': 'Creating a budget helps you track spending and stay on target. Start with your largest expense category.',
+  'tips.budget-create-first.description':
+    'Creating a budget helps you track spending and stay on target. Start with your largest expense category.',
   'tips.budget-create-first.action': 'Create Budget',
   'tips.account-create-first.title': 'Add your first account',
-  'tips.account-create-first.description': 'Adding accounts is the first step to getting a complete picture of your finances.',
+  'tips.account-create-first.description':
+    'Adding accounts is the first step to getting a complete picture of your finances.',
   'tips.account-create-first.action': 'Add Account',
   'tips.spending-no-transactions.title': 'Start tracking your spending',
-  'tips.spending-no-transactions.description': 'You have no transactions recorded this month. Adding transactions helps you understand your spending patterns.',
+  'tips.spending-no-transactions.description':
+    'You have no transactions recorded this month. Adding transactions helps you understand your spending patterns.',
   'tips.spending-no-transactions.action': 'Add Transaction',
   'tips.transaction-count': {
     one: '{count} transaction',
@@ -126,4 +134,3 @@ export const EN_US_CATALOG: MessageCatalog = {
   },
   'tips.fallbackNotice': 'Shown in English until this education content is translated.',
 };
-

@@ -79,7 +79,9 @@ describe('data-access-package', () => {
       redactionProfile: 'full',
       generatedAt: new Date('2026-05-26T12:00:00Z'),
     });
-    const categories = readZipJson(result.zipBytes, 'data/categories.json') as { records: unknown[] };
+    const categories = readZipJson(result.zipBytes, 'data/categories.json') as {
+      records: unknown[];
+    };
     const transactions = readZipJson(result.zipBytes, 'data/transactions.json') as {
       records: Array<Record<string, unknown>>;
     };

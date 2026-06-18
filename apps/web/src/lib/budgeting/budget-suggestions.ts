@@ -144,7 +144,10 @@ export function suggestCategoryBudgetAmount(input: BudgetSuggestionInput): Budge
   const spendByMonth = new Map(months.map((month) => [month, 0]));
 
   for (const transaction of input.transactions) {
-    if (!isExpenseTransaction(transaction, categoryById) || !categoryIds.has(transaction.categoryId ?? '')) {
+    if (
+      !isExpenseTransaction(transaction, categoryById) ||
+      !categoryIds.has(transaction.categoryId ?? '')
+    ) {
       continue;
     }
 
@@ -153,11 +156,16 @@ export function suggestCategoryBudgetAmount(input: BudgetSuggestionInput): Budge
       continue;
     }
 
-    spendByMonth.set(key, (spendByMonth.get(key) ?? 0) + Math.abs(bankersRound(transaction.amountCents)));
+    spendByMonth.set(
+      key,
+      (spendByMonth.get(key) ?? 0) + Math.abs(bankersRound(transaction.amountCents)),
+    );
   }
 
   const samples = months.map((key) => ({ monthKey: key, amountCents: spendByMonth.get(key) ?? 0 }));
-  const positiveSamples = samples.map((sample) => sample.amountCents).filter((amount) => amount > 0);
+  const positiveSamples = samples
+    .map((sample) => sample.amountCents)
+    .filter((amount) => amount > 0);
   const monthsWithSpend = positiveSamples.length;
 
   if (monthsWithSpend === 0) {
@@ -177,7 +185,9 @@ export function suggestCategoryBudgetAmount(input: BudgetSuggestionInput): Budge
   }
 
   const medianSpend = median(positiveSamples);
-  const averageSpend = bankersRound(positiveSamples.reduce((sum, amount) => sum + amount, 0) / monthsWithSpend);
+  const averageSpend = bankersRound(
+    positiveSamples.reduce((sum, amount) => sum + amount, 0) / monthsWithSpend,
+  );
   const highWaterSpend = Math.max(...positiveSamples);
   const outlierThreshold = medianSpend > 0 ? medianSpend * 2.5 : Number.POSITIVE_INFINITY;
   const outlierMonthKeys = samples
@@ -186,7 +196,9 @@ export function suggestCategoryBudgetAmount(input: BudgetSuggestionInput): Budge
   const nonOutlierSamples = positiveSamples.filter((amount) => amount <= outlierThreshold);
   const stableAverage =
     nonOutlierSamples.length > 0
-      ? bankersRound(nonOutlierSamples.reduce((sum, amount) => sum + amount, 0) / nonOutlierSamples.length)
+      ? bankersRound(
+          nonOutlierSamples.reduce((sum, amount) => sum + amount, 0) / nonOutlierSamples.length,
+        )
       : averageSpend;
   const suggestedAmountCents =
     rule === 'median'

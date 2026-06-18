@@ -44,7 +44,10 @@ const DEFAULT_MIN_INCREASE_CENTS = 200;
 const DEFAULT_MIN_INCREASE_PERCENT = 10;
 
 function normalizedMerchantKey(merchantName: string): string {
-  return merchantName.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return merchantName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 function subscriptionKey(charge: SubscriptionCharge): string {
@@ -80,8 +83,10 @@ function buildAlert(
   current: SubscriptionCharge,
 ): SubscriptionPriceChangeAlert {
   const increaseCents = current.amountCents - previous.amountCents;
-  const increasePercent = previous.amountCents > 0 ? Math.round((increaseCents / previous.amountCents) * 100) : null;
-  const annualImpactCents = increaseCents * cadenceAnnualMultiplier(current.cadence ?? previous.cadence);
+  const increasePercent =
+    previous.amountCents > 0 ? Math.round((increaseCents / previous.amountCents) * 100) : null;
+  const annualImpactCents =
+    increaseCents * cadenceAnnualMultiplier(current.cadence ?? previous.cadence);
   const isTrialConversion = previous.isTrial === true || previous.amountCents <= 0;
   const key = subscriptionKey(current);
 
@@ -112,7 +117,8 @@ function isMaterialChange(
 
   const minimumIncreaseCents = config.minimumIncreaseCents ?? DEFAULT_MIN_INCREASE_CENTS;
   const minimumIncreasePercent = config.minimumIncreasePercent ?? DEFAULT_MIN_INCREASE_PERCENT;
-  const increasePercent = previous.amountCents > 0 ? (increaseCents / previous.amountCents) * 100 : 100;
+  const increasePercent =
+    previous.amountCents > 0 ? (increaseCents / previous.amountCents) * 100 : 100;
   return increaseCents >= minimumIncreaseCents || increasePercent >= minimumIncreasePercent;
 }
 
@@ -133,7 +139,9 @@ export function detectSubscriptionPriceChanges(
 
   const alerts: SubscriptionPriceChangeAlert[] = [];
   for (const group of bySubscription.values()) {
-    const sorted = [...group].sort((left, right) => Date.parse(left.chargedAt) - Date.parse(right.chargedAt));
+    const sorted = [...group].sort(
+      (left, right) => Date.parse(left.chargedAt) - Date.parse(right.chargedAt),
+    );
     for (let index = 1; index < sorted.length; index += 1) {
       const previous = sorted[index - 1];
       const current = sorted[index];
@@ -154,7 +162,10 @@ export function subscriptionPriceChangesToNotifications(
   createdAt: string = new Date().toISOString(),
 ): AppNotification[] {
   return alerts.map((alert) => {
-    const percentCopy = alert.increasePercent === null ? 'trial converted to paid' : `${alert.increasePercent}% increase`;
+    const percentCopy =
+      alert.increasePercent === null
+        ? 'trial converted to paid'
+        : `${alert.increasePercent}% increase`;
     return {
       id: alert.deduplicationKey,
       type: 'subscription_price_change',

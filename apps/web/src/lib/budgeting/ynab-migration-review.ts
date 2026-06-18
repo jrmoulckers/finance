@@ -42,13 +42,17 @@ function parseMoney(value: string | undefined): number | null {
   return Math.round(parsed * 100) * (negative ? -1 : 1);
 }
 
-function parseCategory(row: YnabMigrationRow): { categoryGroupName: string | null; categoryName: string | null } {
+function parseCategory(row: YnabMigrationRow): {
+  categoryGroupName: string | null;
+  categoryName: string | null;
+} {
   const explicitGroup = row['Category Group']?.trim();
   const combined = row['Category Group/Category']?.trim() ?? row.Category?.trim() ?? '';
   if (combined.includes(':')) {
     const [group, ...categoryParts] = combined.split(':');
     return {
-      categoryGroupName: explicitGroup && explicitGroup.length > 0 ? explicitGroup : group.trim() || null,
+      categoryGroupName:
+        explicitGroup && explicitGroup.length > 0 ? explicitGroup : group.trim() || null,
       categoryName: categoryParts.join(':').trim() || null,
     };
   }
@@ -75,7 +79,9 @@ function chooseAmount(row: YnabMigrationRow): { amountCents: number; warnings: r
 
   if (signedAmount !== null) {
     if ((row.Inflow || row.Outflow) && splitAmount !== 0 && signedAmount !== splitAmount) {
-      warnings.push('Signed amount differs from inflow/outflow columns; signed amount was preserved.');
+      warnings.push(
+        'Signed amount differs from inflow/outflow columns; signed amount was preserved.',
+      );
     }
     return { amountCents: signedAmount, warnings };
   }

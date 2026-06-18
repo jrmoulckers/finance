@@ -61,7 +61,15 @@ const CATEGORY_WORDS = new Set([
   'payroll',
 ]);
 
-const INCOME_WORDS = new Set(['salary', 'paycheck', 'payroll', 'deposit', 'bonus', 'income', 'interest']);
+const INCOME_WORDS = new Set([
+  'salary',
+  'paycheck',
+  'payroll',
+  'deposit',
+  'bonus',
+  'income',
+  'interest',
+]);
 const TRANSFER_WORDS = new Set(['transfer', 'moved', 'move', 'sent', 'send', 'between']);
 
 interface AmountMatch {
@@ -80,7 +88,8 @@ export function parseRichNaturalLanguageTransaction(
   if (!rawInput) return emptyResult(rawInput, baseDate);
 
   const note = extractNote(rawInput);
-  const withoutNote = note === null ? rawInput : rawInput.replace(/\b(?:note|memo)\s*:\s*.+$/i, '').trim();
+  const withoutNote =
+    note === null ? rawInput : rawInput.replace(/\b(?:note|memo)\s*:\s*.+$/i, '').trim();
   const dateResult = resolveDate(withoutNote, baseDate, options);
   const amounts = extractAmounts(withoutNote);
   const amount = amounts[0]?.amount ?? null;
@@ -134,11 +143,15 @@ function resolveDate(
   options: RichParserOptions,
 ): { readonly date: Date; readonly explicit: boolean; readonly matchedText: string | null } {
   const lower = text.toLowerCase();
-  if (/\byesterday\b/.test(lower)) return { date: addDays(baseDate, -1), explicit: true, matchedText: 'yesterday' };
+  if (/\byesterday\b/.test(lower))
+    return { date: addDays(baseDate, -1), explicit: true, matchedText: 'yesterday' };
   if (/\btoday\b/.test(lower)) return { date: baseDate, explicit: true, matchedText: 'today' };
-  if (/\btomorrow\b/.test(lower)) return { date: addDays(baseDate, 1), explicit: true, matchedText: 'tomorrow' };
+  if (/\btomorrow\b/.test(lower))
+    return { date: addDays(baseDate, 1), explicit: true, matchedText: 'tomorrow' };
 
-  const lastWeekday = lower.match(/\blast\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
+  const lastWeekday = lower.match(
+    /\blast\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/,
+  );
   if (lastWeekday) {
     const target = WEEKDAYS[lastWeekday[1]];
     const delta = (baseDate.getDay() - target + 7) % 7 || 7;
@@ -187,7 +200,11 @@ function extractAmounts(text: string): AmountMatch[] {
   return matches;
 }
 
-function parseSplits(text: string, amounts: readonly AmountMatch[], total: number): SplitCandidate[] {
+function parseSplits(
+  text: string,
+  amounts: readonly AmountMatch[],
+  total: number,
+): SplitCandidate[] {
   if (amounts.length < 2) return [];
   const splits: SplitCandidate[] = [];
   for (let index = 1; index < amounts.length; index += 1) {
@@ -197,7 +214,11 @@ function parseSplits(text: string, amounts: readonly AmountMatch[], total: numbe
   const assigned = splits.reduce((sum, split) => sum + split.amount, 0);
   const trailingLabel = cleanLabel(text.slice(amounts[amounts.length - 1].end));
   if (trailingLabel && assigned < total) {
-    splits.push({ label: trailingLabel, amount: Number((total - assigned).toFixed(2)), confidence: 0.7 });
+    splits.push({
+      label: trailingLabel,
+      amount: Number((total - assigned).toFixed(2)),
+      confidence: 0.7,
+    });
   }
   return splits;
 }
@@ -211,7 +232,10 @@ function inferType(text: string, amount: number | null): ParsedTransactionType {
 
 function extractCategoryHints(text: string, splits: readonly SplitCandidate[]): string[] {
   const hints = new Set<string>();
-  for (const word of text.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/)) {
+  for (const word of text
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)) {
     if (CATEGORY_WORDS.has(word)) hints.add(word === 'grocery' ? 'groceries' : word);
   }
   for (const split of splits) hints.add(split.label.toLowerCase());
@@ -220,7 +244,9 @@ function extractCategoryHints(text: string, splits: readonly SplitCandidate[]): 
 
 function extractAccountHints(text: string): string[] {
   const hints: string[] = [];
-  for (const match of text.matchAll(/\b(?:from|to|into)\s+([a-z][a-z0-9 -]*?)(?=\s+(?:from|to|into|for|on|at|note|memo)|\s*[$\d]|$)/gi)) {
+  for (const match of text.matchAll(
+    /\b(?:from|to|into)\s+([a-z][a-z0-9 -]*?)(?=\s+(?:from|to|into|for|on|at|note|memo)|\s*[$\d]|$)/gi,
+  )) {
     hints.push(titleCase(cleanLabel(match[1])));
   }
   return [...new Set(hints.filter(Boolean))];
@@ -234,12 +260,19 @@ function extractPayee(
   type: ParsedTransactionType,
 ): string {
   if (type === 'TRANSFER') return '';
-  const atMatch = text.match(/\bat\s+([^$]+?)(?=\s+(?:for|on|note|memo|yesterday|today|tomorrow|last|next|$))/i);
+  const atMatch = text.match(
+    /\bat\s+([^$]+?)(?=\s+(?:for|on|note|memo|yesterday|today|tomorrow|last|next|$))/i,
+  );
   const fromMatch = text.match(/\bfrom\s+([^$]+?)(?=\s+(?:for|on|note|memo|$))/i);
-  let candidate = atMatch?.[1] ?? fromMatch?.[1] ?? (amounts[0] ? text.slice(0, amounts[0].index) : text);
+  let candidate =
+    atMatch?.[1] ?? fromMatch?.[1] ?? (amounts[0] ? text.slice(0, amounts[0].index) : text);
   if (matchedDate) candidate = candidate.replace(new RegExp(escapeRegex(matchedDate), 'i'), ' ');
-  for (const hint of categoryHints) candidate = candidate.replace(new RegExp(`\\b${escapeRegex(hint)}\\b`, 'i'), ' ');
-  candidate = candidate.replace(/\b(?:paid|spent|bought|buy|for|at|from|on|note|memo|yesterday|today|tomorrow)\b/gi, ' ');
+  for (const hint of categoryHints)
+    candidate = candidate.replace(new RegExp(`\\b${escapeRegex(hint)}\\b`, 'i'), ' ');
+  candidate = candidate.replace(
+    /\b(?:paid|spent|bought|buy|for|at|from|on|note|memo|yesterday|today|tomorrow)\b/gi,
+    ' ',
+  );
   return titleCase(cleanLabel(candidate));
 }
 

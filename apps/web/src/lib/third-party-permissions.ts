@@ -39,14 +39,21 @@ export function saveThirdPartyConnections(connections: readonly ThirdPartyConnec
   localStorage.setItem(THIRD_PARTY_CONNECTIONS_KEY, JSON.stringify(connections));
 }
 
-export async function recordThirdPartyConnectionGrant(connection: ThirdPartyConnection): Promise<ThirdPartyConnection> {
+export async function recordThirdPartyConnectionGrant(
+  connection: ThirdPartyConnection,
+): Promise<ThirdPartyConnection> {
   const connections = readStoredConnections().filter((item) => item.id !== connection.id);
   const next = { ...connection, status: 'active' as const };
   saveThirdPartyConnections([...connections, next]);
   await appendSecurityAuditEvent({
     action: 'third_party_permission_granted',
     result: 'success',
-    metadata: { connectionId: next.id, displayName: next.displayName, scopes: next.scopes, type: next.type },
+    metadata: {
+      connectionId: next.id,
+      displayName: next.displayName,
+      scopes: next.scopes,
+      type: next.type,
+    },
   });
   return next;
 }
@@ -54,13 +61,23 @@ export async function recordThirdPartyConnectionGrant(connection: ThirdPartyConn
 export async function revokeThirdPartyConnection(
   id: string,
   now: Date = new Date(),
-): Promise<{ kind: 'revoked'; connection: ThirdPartyConnection } | { kind: 'step_up_required' } | { kind: 'not_found' }> {
+): Promise<
+  | { kind: 'revoked'; connection: ThirdPartyConnection }
+  | { kind: 'step_up_required' }
+  | { kind: 'not_found' }
+> {
   if (!getStepUpStatus(STEP_UP_ACTION, now).allowed) return { kind: 'step_up_required' };
   const connections = readStoredConnections();
   const found = connections.find((connection) => connection.id === id);
   if (!found) return { kind: 'not_found' };
-  const revoked: ThirdPartyConnection = { ...found, status: 'revoked', lastActivityAt: now.toISOString() };
-  saveThirdPartyConnections(connections.map((connection) => (connection.id === id ? revoked : connection)));
+  const revoked: ThirdPartyConnection = {
+    ...found,
+    status: 'revoked',
+    lastActivityAt: now.toISOString(),
+  };
+  saveThirdPartyConnections(
+    connections.map((connection) => (connection.id === id ? revoked : connection)),
+  );
   await appendSecurityAuditEvent({
     action: 'third_party_permission_revoked',
     result: 'success',

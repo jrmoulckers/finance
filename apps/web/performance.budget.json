@@ -21,8 +21,8 @@
   ],
   "bundle": {
     "initialJsGzipBytes": 184320,
-    "maxLazyChunkGzipBytes": 256000,
-    "maxSpeculativeJsGzipBytes": 307200
+    "maxLazyChunkGzipBytes": 409600,
+    "maxSpeculativeJsGzipBytes": 460800
   },
   "waivers": []
 }

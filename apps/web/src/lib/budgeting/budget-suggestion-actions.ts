@@ -53,14 +53,17 @@ export function createBudgetSuggestionFormState(
     choice: 'pending',
     confidenceLabel: `Confidence: ${suggestion.confidence}`,
     explanation: suggestion.basis,
-    fallbackMessage: suggestion.fallbackReason === 'sparse-history'
-      ? 'Only sparse spending history is available, so review the amount before accepting it.'
-      : null,
+    fallbackMessage:
+      suggestion.fallbackReason === 'sparse-history'
+        ? 'Only sparse spending history is available, so review the amount before accepting it.'
+        : null,
     ariaLiveMessage: `Budget suggestion ready for ${suggestion.categoryId} with ${suggestion.confidence} confidence.`,
   };
 }
 
-export function acceptBudgetSuggestion(state: BudgetSuggestionFormState): BudgetSuggestionFormState {
+export function acceptBudgetSuggestion(
+  state: BudgetSuggestionFormState,
+): BudgetSuggestionFormState {
   if (state.suggestedAmountCents === null) return state;
   return {
     ...state,
@@ -86,7 +89,9 @@ export function editBudgetSuggestion(
   };
 }
 
-export function ignoreBudgetSuggestion(state: BudgetSuggestionFormState): BudgetSuggestionFormState {
+export function ignoreBudgetSuggestion(
+  state: BudgetSuggestionFormState,
+): BudgetSuggestionFormState {
   return {
     ...state,
     selectedAmountCents: state.manualAmountCents,
@@ -103,12 +108,14 @@ export function compareSuggestionToStarterTemplate(
   const templateCategory = template.categories.find((category) => category.name === categoryName);
   const templateAmountCents = templateCategory?.amountCents ?? 0;
   const suggestedAmountCents = suggestion.suggestedAmountCents;
-  const deltaCents = suggestedAmountCents === null ? null : suggestedAmountCents - templateAmountCents;
-  const recommendation = suggestedAmountCents === null || suggestion.confidence === 'low'
-    ? 'manual-review'
-    : Math.abs(deltaCents ?? 0) >= 5_000
-      ? 'use-suggestion'
-      : 'keep-template';
+  const deltaCents =
+    suggestedAmountCents === null ? null : suggestedAmountCents - templateAmountCents;
+  const recommendation =
+    suggestedAmountCents === null || suggestion.confidence === 'low'
+      ? 'manual-review'
+      : Math.abs(deltaCents ?? 0) >= 5_000
+        ? 'use-suggestion'
+        : 'keep-template';
 
   return {
     templateName: template.name,

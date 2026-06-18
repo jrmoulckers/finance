@@ -63,10 +63,15 @@ function addDays(date: string, days: number): string {
 }
 
 function minutesBetween(startIso: string, endDate: string): number {
-  return Math.floor((new Date(`${endDate}T00:00:00Z`).getTime() - new Date(startIso).getTime()) / 60_000);
+  return Math.floor(
+    (new Date(`${endDate}T00:00:00Z`).getTime() - new Date(startIso).getTime()) / 60_000,
+  );
 }
 
-function determineLastUpdatedState(input: WidgetPredictionInput, hasMissingBalances: boolean): WidgetLastUpdatedState {
+function determineLastUpdatedState(
+  input: WidgetPredictionInput,
+  hasMissingBalances: boolean,
+): WidgetLastUpdatedState {
   if (input.offline) return 'offline';
   if (hasMissingBalances) return 'missing-balances';
   if (!input.lastUpdatedAt) return 'stale';
@@ -74,7 +79,10 @@ function determineLastUpdatedState(input: WidgetPredictionInput, hasMissingBalan
   return minutesBetween(input.lastUpdatedAt, input.asOfDate) > staleAfter ? 'stale' : 'fresh';
 }
 
-function confidenceFor(state: WidgetLastUpdatedState, billCount: number): WidgetPredictionConfidence {
+function confidenceFor(
+  state: WidgetLastUpdatedState,
+  billCount: number,
+): WidgetPredictionConfidence {
   if (state === 'offline' || state === 'missing-balances') return 'low';
   if (state === 'stale' || billCount === 0) return 'medium';
   return 'high';
@@ -102,14 +110,17 @@ export function buildWidgetSnapshot(input: WidgetPredictionInput): WidgetSnapsho
   const futureIncomeCents = input.transactions
     .filter((tx) => tx.date > input.asOfDate && tx.date <= horizonEnd && tx.type === 'INCOME')
     .reduce((sum, tx) => sum + tx.amountCents, 0);
-  const predictedBalanceCents = balanceCents === null ? null : balanceCents + futureIncomeCents - upcomingBillsCents;
+  const predictedBalanceCents =
+    balanceCents === null ? null : balanceCents + futureIncomeCents - upcomingBillsCents;
   const staleReason =
     lastUpdatedState === 'stale'
       ? 'Widget data is older than the configured freshness window.'
       : lastUpdatedState === 'missing-balances'
         ? 'One or more included accounts are missing balances.'
         : null;
-  const offlineReason = input.offline ? 'Device is offline; predictions use the last local snapshot.' : null;
+  const offlineReason = input.offline
+    ? 'Device is offline; predictions use the last local snapshot.'
+    : null;
   const confidence = confidenceFor(lastUpdatedState, input.recurringBills.length);
   const baseSnapshot = {
     todaySpendCents: amountMasked ? null : todaySpendCents,

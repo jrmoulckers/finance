@@ -32,7 +32,10 @@ export function deleteImportProfile(store: BrowserStorageLike, profileId: string
   store.removeItem(`${PROFILE_PREFIX}${profileId}`);
 }
 
-export function appendImportHistoryEntry(store: BrowserStorageLike, entry: ImportRunHistoryEntry): void {
+export function appendImportHistoryEntry(
+  store: BrowserStorageLike,
+  entry: ImportRunHistoryEntry,
+): void {
   store.setItem(`${HISTORY_PREFIX}${entry.runId}`, JSON.stringify(entry));
 }
 

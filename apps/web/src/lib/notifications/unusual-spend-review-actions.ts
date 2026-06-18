@@ -83,5 +83,11 @@ export function findReviewForNotification(
   notification: AppNotification,
   reviews: readonly UnusualSpendReviewRecord[],
 ): UnusualSpendReviewRecord | null {
-  return reviews.find((review) => review.alertId === notification.id || review.transactionIds.includes(notification.entityId ?? '')) ?? null;
+  return (
+    reviews.find(
+      (review) =>
+        review.alertId === notification.id ||
+        review.transactionIds.includes(notification.entityId ?? ''),
+    ) ?? null
+  );
 }

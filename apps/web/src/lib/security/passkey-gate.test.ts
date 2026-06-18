@@ -20,8 +20,14 @@ describe('passkey gate helpers', () => {
   it('requires lock for manual, resume, and idle timeout triggers', () => {
     const policy = { enabled: true, idleTimeoutMs: 5_000, lockOnResume: true };
 
-    expect(shouldLockApp(policy, 1_000, 2_000, 'manual')).toEqual({ locked: true, reason: 'manual' });
-    expect(shouldLockApp(policy, 1_000, 2_000, 'resume')).toEqual({ locked: true, reason: 'resume' });
+    expect(shouldLockApp(policy, 1_000, 2_000, 'manual')).toEqual({
+      locked: true,
+      reason: 'manual',
+    });
+    expect(shouldLockApp(policy, 1_000, 2_000, 'resume')).toEqual({
+      locked: true,
+      reason: 'resume',
+    });
     expect(shouldLockApp(policy, 1_000, 7_000, 'activity')).toEqual({
       locked: true,
       reason: 'idle_timeout',
@@ -61,12 +67,15 @@ describe('passkey gate helpers', () => {
 
   it('maps successful, cancelled, and failed verification paths', async () => {
     const credential = { type: 'public-key', rawId: new ArrayBuffer(1) } as PublicKeyCredential;
-    const publicKeyCredential = function PublicKeyCredential() {} as unknown as typeof PublicKeyCredential;
+    const publicKeyCredential =
+      function PublicKeyCredential() {} as unknown as typeof PublicKeyCredential;
 
     await expect(
       verifyPasskeyGate({
         challenge: { challengeBase64Url: base64Url([1]) },
-        credentials: { get: vi.fn().mockResolvedValue(credential) } as unknown as CredentialsContainer,
+        credentials: {
+          get: vi.fn().mockResolvedValue(credential),
+        } as unknown as CredentialsContainer,
         publicKeyCredential,
       }),
     ).resolves.toMatchObject({ status: 'unlocked', credential });

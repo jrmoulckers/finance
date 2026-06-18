@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { BudgetScenario, BudgetScenarioBaseline, BudgetScenarioSummary } from './budget-scenarios';
+import type {
+  BudgetScenario,
+  BudgetScenarioBaseline,
+  BudgetScenarioSummary,
+} from './budget-scenarios';
 import {
   addScenarioSinkingFundContribution,
   createBudgetScenarioFromBaseline,
@@ -91,7 +95,9 @@ export function getScenarioEntryPointDecision(
   entryPoint: BudgetScenarioEntryPoint,
   state: BudgetScenarioEditorState,
 ): BudgetScenarioEntryPointDecision {
-  const changeCount = state.dirtyBudgetIds.length + (state.hasIncomeChange ? 1 : 0) +
+  const changeCount =
+    state.dirtyBudgetIds.length +
+    (state.hasIncomeChange ? 1 : 0) +
     (state.hasSinkingFundChanges ? 1 : 0);
 
   if (entryPoint === 'duplicate') {
@@ -109,9 +115,10 @@ export function getScenarioEntryPointDecision(
       entryPoint,
       requiresConfirmation: changeCount > 0,
       title: 'Discard scenario',
-      message: changeCount > 0
-        ? `Discard ${changeCount} scenario change${changeCount === 1 ? '' : 's'} without touching live budgets.`
-        : 'Discard this unchanged scenario without touching live budgets.',
+      message:
+        changeCount > 0
+          ? `Discard ${changeCount} scenario change${changeCount === 1 ? '' : 's'} without touching live budgets.`
+          : 'Discard this unchanged scenario without touching live budgets.',
       destructive: true,
     };
   }

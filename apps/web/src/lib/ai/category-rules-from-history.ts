@@ -88,7 +88,12 @@ export function mineCategoryRulesFromHistory(
       .filter(([, count]) => count / group.length >= 0.7)
       .map(([tag]) => tag)
       .sort();
-    const confidence = clamp(0.38 + Math.min(0.25, group.length * 0.04) + categoryStability * 0.3 + stableTags.length * 0.03);
+    const confidence = clamp(
+      0.38 +
+        Math.min(0.25, group.length * 0.04) +
+        categoryStability * 0.3 +
+        stableTags.length * 0.03,
+    );
     if (confidence < minConfidence) continue;
     const conflictRuleIds = detectRuleConflicts(merchantContains, categoryId, band, existingRules);
     candidates.push({
@@ -108,7 +113,9 @@ export function mineCategoryRulesFromHistory(
     });
   }
 
-  return candidates.sort((a, b) => b.confidence - a.confidence || b.coverageCount - a.coverageCount);
+  return candidates.sort(
+    (a, b) => b.confidence - a.confidence || b.coverageCount - a.coverageCount,
+  );
 }
 
 export function detectRuleConflicts(
@@ -190,7 +197,10 @@ function amountRangeValue(band: string | undefined): string {
   return `${range.min}:${range.max === Number.MAX_SAFE_INTEGER ? '' : range.max}`;
 }
 
-function rangesOverlap(range: { readonly min: number; readonly max: number }, rule: ExistingCategoryRule): boolean {
+function rangesOverlap(
+  range: { readonly min: number; readonly max: number },
+  rule: ExistingCategoryRule,
+): boolean {
   const min = rule.minAmountCents ?? Number.MIN_SAFE_INTEGER;
   const max = rule.maxAmountCents ?? Number.MAX_SAFE_INTEGER;
   return range.min <= max && min <= range.max;

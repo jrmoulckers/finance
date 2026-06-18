@@ -48,7 +48,11 @@ export function rememberColumnMapping(input: {
 }): MappingMemoryEntry | null {
   if (!input.store || input.headers.length === 0) return null;
   const normalizedHeaders = normalizeHeaders(input.headers);
-  const key = buildMappingMemoryKey(normalizedHeaders, input.detectedSource, input.fingerprint ?? null);
+  const key = buildMappingMemoryKey(
+    normalizedHeaders,
+    input.detectedSource,
+    input.fingerprint ?? null,
+  );
   const existing = readMappingMemory(input.store).find((entry) => entry.key === key);
   const now = (input.now ?? new Date()).toISOString();
   const entry: MappingMemoryEntry = {
@@ -82,7 +86,9 @@ export function findRememberedColumnMapping(input: {
     .filter((entry) => entry.fingerprint === desiredFingerprint || entry.fingerprint === null)
     .map((entry) => buildMatch(entry, normalizedHeaders))
     .filter((match) => match.confidence >= 0.6)
-    .sort((a, b) => b.confidence - a.confidence || b.entry.updatedAt.localeCompare(a.entry.updatedAt));
+    .sort(
+      (a, b) => b.confidence - a.confidence || b.entry.updatedAt.localeCompare(a.entry.updatedAt),
+    );
   return candidates[0] ?? null;
 }
 
@@ -148,7 +154,10 @@ function buildMatch(entry: MappingMemoryEntry, headers: readonly string[]): Mapp
   };
 }
 
-function writeMappingMemory(store: MappingMemoryStore, entries: readonly MappingMemoryEntry[]): void {
+function writeMappingMemory(
+  store: MappingMemoryStore,
+  entries: readonly MappingMemoryEntry[],
+): void {
   store.setItem(CSV_MAPPING_MEMORY_STORAGE_KEY, JSON.stringify([...entries].slice(-25)));
 }
 
@@ -180,5 +189,9 @@ function normalizeFingerprint(value: string | null): string | null {
 }
 
 function normalizeHeader(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

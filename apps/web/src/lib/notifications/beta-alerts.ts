@@ -152,8 +152,7 @@ function autopayLabel(bill: BillReminderEvalInput): string {
 }
 
 function billReminderMessage(bill: BillReminderEvalInput, lead: number): string {
-  const dateConfidence =
-    bill.dueDateConfidence === 'estimated' ? 'estimated due date' : 'due date';
+  const dateConfidence = bill.dueDateConfidence === 'estimated' ? 'estimated due date' : 'due date';
   const timing = lead === 0 ? 'today' : `in ${lead} days`;
   return `${bill.billName} for ${formatOptionalAmount(bill.amountCents)} is due ${timing} (${dateConfidence}: ${
     bill.dueDate ?? 'not confirmed'
@@ -198,7 +197,8 @@ export function evaluateBalanceWarnings(
       return [];
     }
 
-    const severity: NotificationSeverity = currentOverdraft || projectedOverdraft ? 'critical' : 'warning';
+    const severity: NotificationSeverity =
+      currentOverdraft || projectedOverdraft ? 'critical' : 'warning';
     const type = severity === 'critical' ? 'balance_overdraft' : 'balance_low';
     const projectionBucket =
       account.projectedBalanceCents === undefined
@@ -222,7 +222,9 @@ export function evaluateBalanceWarnings(
         : formatCentsForAlert(account.projectedBalanceCents);
     const action =
       account.nextBestAction ??
-      (severity === 'critical' ? 'Move money or review upcoming bills.' : 'Consider a transfer or spending pause.');
+      (severity === 'critical'
+        ? 'Move money or review upcoming bills.'
+        : 'Consider a transfer or spending pause.');
 
     const projectionCopy =
       projected === null
@@ -445,8 +447,8 @@ function thresholdForAccount(
   config: LargeTransactionConfirmationConfig,
 ): number {
   return (
-    config.accountThresholds?.find((threshold) => threshold.accountId === accountId)?.thresholdCents ??
-    config.globalThresholdCents
+    config.accountThresholds?.find((threshold) => threshold.accountId === accountId)
+      ?.thresholdCents ?? config.globalThresholdCents
   );
 }
 
@@ -477,7 +479,10 @@ function buildLargeTransactionBatchNotification(
   transactions: readonly LargeTransactionConfirmationInput[],
   deduplicationKey: string,
 ): AppNotification {
-  const totalCents = transactions.reduce((sum, transaction) => sum + Math.abs(transaction.amountCents), 0);
+  const totalCents = transactions.reduce(
+    (sum, transaction) => sum + Math.abs(transaction.amountCents),
+    0,
+  );
   const accounts = [...new Set(transactions.map((transaction) => transaction.accountName))];
   const latestTimestamp = transactions
     .map((transaction) => transaction.timestamp)

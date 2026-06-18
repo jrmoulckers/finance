@@ -195,7 +195,6 @@ describe('generatePaymentAlerts', () => {
   });
 });
 
-
 describe('calculateCreditUtilizationSummary', () => {
   it('calculates per-card utilization and aggregate utilization', () => {
     const summary = calculateCreditUtilizationSummary([CARD_A, CARD_B]);

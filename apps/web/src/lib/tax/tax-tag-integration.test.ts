@@ -23,8 +23,20 @@ const transactions: TaxReserveTaggedTransaction[] = [
       'tax.receiptStatus': 'ATTACHED',
     },
   },
-  { id: 'fallback', date: '2025-01-02', type: 'EXPENSE', amountCents: -125_00, accountPurpose: 'business' },
-  { id: 'income', date: '2025-01-03', type: 'INCOME', amountCents: 500_00, accountPurpose: 'business' },
+  {
+    id: 'fallback',
+    date: '2025-01-02',
+    type: 'EXPENSE',
+    amountCents: -125_00,
+    accountPurpose: 'business',
+  },
+  {
+    id: 'income',
+    date: '2025-01-03',
+    type: 'INCOME',
+    amountCents: 500_00,
+    accountPurpose: 'business',
+  },
 ];
 
 describe('tax-tag-integration', () => {
@@ -49,7 +61,9 @@ describe('tax-tag-integration', () => {
       receiptStatus: 'MISSING',
       source: 'business-account-heuristic',
     });
-    expect(inputs.find((row) => row.transactionId === 'income')).toMatchObject({ category: 'SCHEDULE_C_INCOME' });
+    expect(inputs.find((row) => row.transactionId === 'income')).toMatchObject({
+      category: 'SCHEDULE_C_INCOME',
+    });
   });
 
   it('builds year-end export rows with tax category, receipt status, and review flags', () => {
@@ -62,13 +76,19 @@ describe('tax-tag-integration', () => {
       receiptMissing: false,
       reviewFlags: '',
     });
-    expect(rows.find((row) => row.transactionId === 'fallback')?.reviewFlags).toBe('missing-receipt|review-needed');
+    expect(rows.find((row) => row.transactionId === 'fallback')?.reviewFlags).toBe(
+      'missing-receipt|review-needed',
+    );
   });
 
   it('produces shared category records for deduction helper consumers', () => {
     const records = buildSharedTaxCategoryConsumerRecords(transactions, 2025);
 
     expect(records[0]).toMatchObject({ transactionId: 'explicit', taxCategory: 'BUSINESS_MEALS' });
-    expect(records.map((record) => record.transactionId)).toEqual(['explicit', 'fallback', 'income']);
+    expect(records.map((record) => record.transactionId)).toEqual([
+      'explicit',
+      'fallback',
+      'income',
+    ]);
   });
 });

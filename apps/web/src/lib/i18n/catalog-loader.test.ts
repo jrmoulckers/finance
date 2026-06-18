@@ -37,7 +37,11 @@ describe('catalog-loader', () => {
 
   it('translates with fallback diagnostics', () => {
     const onMissingMessage = vi.fn();
-    const translator = createCatalogTranslator({ defaultLocale: 'en-US', catalogs, onMissingMessage });
+    const translator = createCatalogTranslator({
+      defaultLocale: 'en-US',
+      catalogs,
+      onMissingMessage,
+    });
 
     expect(translator.translate('greeting', { name: 'Ana' }, 'es-ES')).toMatchObject({
       text: 'Hola, Ana',

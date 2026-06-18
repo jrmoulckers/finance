@@ -41,9 +41,15 @@ type StepUpStore = Partial<Record<RiskyAction, string>>;
 
 export function loadIdleSessionPolicy(): IdleSessionPolicy {
   try {
-    const parsed = JSON.parse(localStorage.getItem(IDLE_POLICY_STORAGE_KEY) ?? 'null') as Partial<IdleSessionPolicy> | null;
-    const timeoutMs = typeof parsed?.timeoutMs === 'number' ? parsed.timeoutMs : DEFAULT_IDLE_POLICY.timeoutMs;
-    const warningMs = typeof parsed?.warningMs === 'number' ? parsed.warningMs : Math.min(DEFAULT_IDLE_POLICY.warningMs, timeoutMs);
+    const parsed = JSON.parse(
+      localStorage.getItem(IDLE_POLICY_STORAGE_KEY) ?? 'null',
+    ) as Partial<IdleSessionPolicy> | null;
+    const timeoutMs =
+      typeof parsed?.timeoutMs === 'number' ? parsed.timeoutMs : DEFAULT_IDLE_POLICY.timeoutMs;
+    const warningMs =
+      typeof parsed?.warningMs === 'number'
+        ? parsed.warningMs
+        : Math.min(DEFAULT_IDLE_POLICY.warningMs, timeoutMs);
     return {
       timeoutMs: Math.max(timeoutMs, 60_000),
       warningMs: Math.min(Math.max(warningMs, 10_000), Math.max(timeoutMs - 1_000, 10_000)),
@@ -82,7 +88,9 @@ export function getStepUpStatus(action: RiskyAction, now: Date = new Date()): St
     required: !allowed,
     allowed,
     expiresAt: expires.toISOString(),
-    reason: allowed ? 'Recent re-authentication is active.' : 'Your recent re-authentication expired.',
+    reason: allowed
+      ? 'Recent re-authentication is active.'
+      : 'Your recent re-authentication expired.',
   };
 }
 

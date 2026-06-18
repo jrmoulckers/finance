@@ -228,7 +228,10 @@ describe('useOfflineStatus', () => {
   });
 
   it('defers heavy assets on data saver connections', () => {
-    const connection = new EventTarget() as EventTarget & { saveData: boolean; effectiveType: string };
+    const connection = new EventTarget() as EventTarget & {
+      saveData: boolean;
+      effectiveType: string;
+    };
     connection.saveData = true;
     connection.effectiveType = '4g';
     Object.defineProperty(navigator, 'connection', {

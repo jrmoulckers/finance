@@ -315,7 +315,10 @@ export function buildExportManifest(
   };
 }
 
-export function buildXlsxWorkbook(exportData: FullJsonExport, options: ExportScopeOptions = {}): Uint8Array {
+export function buildXlsxWorkbook(
+  exportData: FullJsonExport,
+  options: ExportScopeOptions = {},
+): Uint8Array {
   const encoder = new TextEncoder();
   const entities = options.entities ?? FULL_EXPORT_ENTITY_KEYS;
   const sheets = entities.map((key, index) => ({
@@ -328,9 +331,15 @@ export function buildXlsxWorkbook(exportData: FullJsonExport, options: ExportSco
     { path: '[Content_Types].xml', bytes: encoder.encode(renderXlsxContentTypes(sheets.length)) },
     { path: '_rels/.rels', bytes: encoder.encode(renderXlsxRootRels()) },
     { path: 'xl/workbook.xml', bytes: encoder.encode(renderWorkbookXml(sheets)) },
-    { path: 'xl/_rels/workbook.xml.rels', bytes: encoder.encode(renderWorkbookRels(sheets.length)) },
+    {
+      path: 'xl/_rels/workbook.xml.rels',
+      bytes: encoder.encode(renderWorkbookRels(sheets.length)),
+    },
     { path: 'docProps/core.xml', bytes: encoder.encode(renderCoreProperties(exportData, options)) },
-    { path: 'docProps/app.xml', bytes: encoder.encode(renderAppProperties(sheets.map((sheet) => sheet.name))) },
+    {
+      path: 'docProps/app.xml',
+      bytes: encoder.encode(renderAppProperties(sheets.map((sheet) => sheet.name))),
+    },
     ...sheets.map((sheet) => ({
       path: `xl/worksheets/sheet${sheet.id}.xml`,
       bytes: encoder.encode(renderWorksheetXml(sheet.records)),
@@ -439,7 +448,10 @@ function filterTransactions(
   const categoryIds = new Set(filters.categoryIds ?? []);
   return transactions.filter((transaction) => {
     if (accountIds.size > 0 && !accountIds.has(transaction.accountId)) return false;
-    if (categoryIds.size > 0 && (!transaction.categoryId || !categoryIds.has(transaction.categoryId))) {
+    if (
+      categoryIds.size > 0 &&
+      (!transaction.categoryId || !categoryIds.has(transaction.categoryId))
+    ) {
       return false;
     }
     if (filters.dateRange?.from && transaction.date < filters.dateRange.from) return false;
@@ -450,10 +462,18 @@ function filterTransactions(
 
 function renderWorksheetXml(records: readonly unknown[]): string {
   const headers = collectHeaders(records);
-  const rows = records.length === 0 ? [['(empty)']] : [headers, ...records.map((record) => {
-    const flat = isPlainRecord(record) ? flattenForCsv(record) : { value: stringify(record) };
-    return headers.map((header) => flat[header] ?? '');
-  })];
+  const rows =
+    records.length === 0
+      ? [['(empty)']]
+      : [
+          headers,
+          ...records.map((record) => {
+            const flat = isPlainRecord(record)
+              ? flattenForCsv(record)
+              : { value: stringify(record) };
+            return headers.map((header) => flat[header] ?? '');
+          }),
+        ];
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows
     .map(
@@ -483,7 +503,10 @@ function renderXlsxRootRels(): string {
 
 function renderWorkbookXml(sheets: readonly { name: string; id: number }[]): string {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets
-    .map((sheet) => `<sheet name="${escapeXml(sheet.name)}" sheetId="${sheet.id}" r:id="rId${sheet.id}"/>`)
+    .map(
+      (sheet) =>
+        `<sheet name="${escapeXml(sheet.name)}" sheetId="${sheet.id}" r:id="rId${sheet.id}"/>`,
+    )
     .join('')}</sheets></workbook>`;
 }
 
@@ -508,7 +531,9 @@ function renderAppProperties(sheetNames: readonly string[]): string {
 }
 
 function renderSimplePdf(lines: readonly string[]): Uint8Array {
-  const escapedLines = lines.map((line, index) => `BT /F1 12 Tf 72 ${760 - index * 18} Td (${escapePdfText(line)}) Tj ET`).join('\n');
+  const escapedLines = lines
+    .map((line, index) => `BT /F1 12 Tf 72 ${760 - index * 18} Td (${escapePdfText(line)}) Tj ET`)
+    .join('\n');
   const objects = [
     '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
     '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
@@ -526,7 +551,9 @@ function renderSimplePdf(lines: readonly string[]): Uint8Array {
   body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets
     .slice(1)
     .map((offset) => `${String(offset).padStart(10, '0')} 00000 n `)
-    .join('\n')}\ntrailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+    .join(
+      '\n',
+    )}\ntrailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
   return new TextEncoder().encode(body);
 }
 
@@ -542,7 +569,10 @@ function columnName(index: number): string {
 }
 
 function humanizeSheetName(value: string): string {
-  return value.replace(/([A-Z])/g, ' $1').replace(/^./, (char) => char.toUpperCase()).slice(0, 31);
+  return value
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (char) => char.toUpperCase())
+    .slice(0, 31);
 }
 
 function escapeXml(value: unknown): string {

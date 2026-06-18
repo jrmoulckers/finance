@@ -93,8 +93,12 @@ export function mapAccount(row: Row): Account {
     name: requireString(row.name, 'account.name'),
     type: requireString(row.type, 'account.type') as AccountType,
     purpose: mapAccountPurpose(row.purpose),
-    retirementAccountType: optionalString(row.retirement_account_type) as RetirementAccountType | null,
-    retirementTaxTreatment: optionalString(row.retirement_tax_treatment) as RetirementTaxTreatment | null,
+    retirementAccountType: optionalString(
+      row.retirement_account_type,
+    ) as RetirementAccountType | null,
+    retirementTaxTreatment: optionalString(
+      row.retirement_tax_treatment,
+    ) as RetirementTaxTreatment | null,
     hsaCoverageLevel: optionalString(row.hsa_coverage_level) as HsaCoverageLevel | null,
     currency: mapCurrency(row.currency),
     currentBalance: mapCents(row.current_balance, 'account.current_balance'),
@@ -125,8 +129,11 @@ export function createAccount(db: SqliteDb, input: CreateAccountInput): Account 
   const currency = input.currency ?? Currencies.USD;
   const purpose = input.purpose ?? 'personal';
   const retirementAccountType = input.retirementAccountType ?? null;
-  const retirementTaxTreatment = retirementAccountType ? (input.retirementTaxTreatment ?? null) : null;
-  const hsaCoverageLevel = retirementAccountType === 'HSA' ? (input.hsaCoverageLevel ?? null) : null;
+  const retirementTaxTreatment = retirementAccountType
+    ? (input.retirementTaxTreatment ?? null)
+    : null;
+  const hsaCoverageLevel =
+    retirementAccountType === 'HSA' ? (input.hsaCoverageLevel ?? null) : null;
 
   execute(
     db,

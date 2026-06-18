@@ -35,9 +35,15 @@ export interface SinkingFundKeyValueStorage {
 
 export interface SinkingFundRepository {
   create(input: SinkingFundRepositoryInput): SinkingFundRepositoryDto;
-  update(id: string, updates: Partial<Omit<SinkingFundRepositoryInput, 'id'>>): SinkingFundRepositoryDto | null;
+  update(
+    id: string,
+    updates: Partial<Omit<SinkingFundRepositoryInput, 'id'>>,
+  ): SinkingFundRepositoryDto | null;
   archive(id: string): SinkingFundRepositoryDto | null;
-  listByHousehold(householdId: string, options?: { readonly includeArchived?: boolean }): readonly SinkingFundRepositoryDto[];
+  listByHousehold(
+    householdId: string,
+    options?: { readonly includeArchived?: boolean },
+  ): readonly SinkingFundRepositoryDto[];
   getById(id: string): SinkingFundRepositoryDto | null;
 }
 
@@ -63,7 +69,11 @@ function readAll(storage: SinkingFundKeyValueStorage, key: string): SinkingFundR
   return Array.isArray(parsed) ? parsed : [];
 }
 
-function writeAll(storage: SinkingFundKeyValueStorage, key: string, funds: readonly SinkingFundRepositoryDto[]): void {
+function writeAll(
+  storage: SinkingFundKeyValueStorage,
+  key: string,
+  funds: readonly SinkingFundRepositoryDto[],
+): void {
   storage.setItem(key, JSON.stringify(funds));
 }
 
@@ -110,8 +120,14 @@ export function createSinkingFundRepository(
         ...existing,
         householdId: updates.householdId ?? existing.householdId,
         name: updates.name?.trim() ?? existing.name,
-        targetCents: updates.targetCents === undefined ? existing.targetCents : normalizeCents(updates.targetCents),
-        savedCents: updates.savedCents === undefined ? existing.savedCents : normalizeCents(updates.savedCents),
+        targetCents:
+          updates.targetCents === undefined
+            ? existing.targetCents
+            : normalizeCents(updates.targetCents),
+        savedCents:
+          updates.savedCents === undefined
+            ? existing.savedCents
+            : normalizeCents(updates.savedCents),
         dueDate: updates.dueDate ?? existing.dueDate,
         cadence: updates.cadence ?? existing.cadence,
         linkedCategoryId: updates.linkedCategoryId ?? existing.linkedCategoryId,
@@ -127,7 +143,12 @@ export function createSinkingFundRepository(
       const index = funds.findIndex((fund) => fund.id === id);
       if (index < 0) return null;
       const timestamp = nowIso();
-      const archived = { ...funds[index], isArchived: true, archivedAt: timestamp, updatedAt: timestamp };
+      const archived = {
+        ...funds[index],
+        isArchived: true,
+        archivedAt: timestamp,
+        updatedAt: timestamp,
+      };
       funds[index] = archived;
       writeAll(storage, storageKey, funds);
       return archived;

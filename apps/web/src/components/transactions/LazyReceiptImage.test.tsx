@@ -74,7 +74,11 @@ describe('LazyReceiptImage', () => {
   });
 
   it('does not attach an image src until the receipt is near the viewport', () => {
-    render(<LazyReceiptImage transaction={makeTransaction({ receiptThumbnailUrl: '/receipts/r-1.webp' })} />);
+    render(
+      <LazyReceiptImage
+        transaction={makeTransaction({ receiptThumbnailUrl: '/receipts/r-1.webp' })}
+      />,
+    );
 
     expect(screen.getByRole('img', { name: /receipt deferred/i })).toBeInTheDocument();
     expect(screen.queryByAltText(/receipt for coffee shop/i)).not.toBeInTheDocument();
@@ -90,7 +94,11 @@ describe('LazyReceiptImage', () => {
     offlineStatusMock.isOffline = true;
     offlineStatusMock.shouldDeferHeavyAssets = true;
 
-    render(<LazyReceiptImage transaction={makeTransaction({ receiptThumbnailUrl: '/receipts/r-1.webp' })} />);
+    render(
+      <LazyReceiptImage
+        transaction={makeTransaction({ receiptThumbnailUrl: '/receipts/r-1.webp' })}
+      />,
+    );
 
     expect(screen.getByRole('img', { name: /receipt unavailable offline/i })).toBeInTheDocument();
   });

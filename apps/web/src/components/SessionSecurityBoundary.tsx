@@ -14,7 +14,10 @@ import {
   type AppLockRuntimeState,
   type AppLockSettings,
 } from '../lib/security/app-lock-settings';
-import { completeWebAuthnAppLockChallenge, createWebAuthnAppLockChallenge } from '../lib/security/webauthn-challenge';
+import {
+  completeWebAuthnAppLockChallenge,
+  createWebAuthnAppLockChallenge,
+} from '../lib/security/webauthn-challenge';
 
 export interface SessionSecurityBoundaryProps {
   readonly children: ReactNode;
@@ -27,7 +30,9 @@ export const SessionSecurityBoundary: React.FC<SessionSecurityBoundaryProps> = (
   const [warningMs, setWarningMs] = useState<number | null>(null);
   const [unlocking, setUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState<string | null>(null);
-  const [appLockSettings, setAppLockSettings] = useState<AppLockSettings>(() => loadEffectiveAppLockSettings());
+  const [appLockSettings, setAppLockSettings] = useState<AppLockSettings>(() =>
+    loadEffectiveAppLockSettings(),
+  );
   const [appLockState, setAppLockState] = useState<AppLockRuntimeState>(() =>
     initialAppLockState(loadEffectiveAppLockSettings()),
   );
@@ -77,7 +82,8 @@ export const SessionSecurityBoundary: React.FC<SessionSecurityBoundaryProps> = (
     setUnlocking(true);
 
     try {
-      const method = appLockSettings.requirePasskey && user?.hasPasskey ? 'passkey' : 'existing_auth';
+      const method =
+        appLockSettings.requirePasskey && user?.hasPasskey ? 'passkey' : 'existing_auth';
       if (method === 'passkey') {
         const nowMs = Date.now();
         const challenge = createWebAuthnAppLockChallenge({
@@ -87,13 +93,23 @@ export const SessionSecurityBoundary: React.FC<SessionSecurityBoundaryProps> = (
         });
         const result = await completeWebAuthnAppLockChallenge({ challenge, nowMs: Date.now() });
         if (result.status !== 'verified') {
-          setUnlockError(result.error ?? 'Passkey unlock failed. Try again or use your account recovery flow.');
+          setUnlockError(
+            result.error ?? 'Passkey unlock failed. Try again or use your account recovery flow.',
+          );
           return;
         }
       }
 
-      const unlockSettings = method === 'existing_auth' ? { ...appLockSettings, requirePasskey: false } : appLockSettings;
-      const transition = reduceAppLockEvent(unlockSettings, appLockStateRef.current, 'unlock_success', Date.now());
+      const unlockSettings =
+        method === 'existing_auth'
+          ? { ...appLockSettings, requirePasskey: false }
+          : appLockSettings;
+      const transition = reduceAppLockEvent(
+        unlockSettings,
+        appLockStateRef.current,
+        'unlock_success',
+        Date.now(),
+      );
       setAppLockState(transition.state);
       recordAppLockAudit(transition.audit);
     } finally {
@@ -115,7 +131,10 @@ export const SessionSecurityBoundary: React.FC<SessionSecurityBoundaryProps> = (
         void appendSecurityAuditEvent({
           action: 'session_timeout',
           result: 'success',
-          metadata: { lockBehavior: appLockActive ? 'lock' : policy.lockBehavior, demoMode: isDemoMode },
+          metadata: {
+            lockBehavior: appLockActive ? 'lock' : policy.lockBehavior,
+            demoMode: isDemoMode,
+          },
         });
 
         if (appLockActive) {
@@ -183,28 +202,48 @@ interface LockedAppShellProps {
   readonly onUnlock: () => void;
 }
 
-const LockedAppShell: React.FC<LockedAppShellProps> = ({ canUsePasskey, error, unlocking, onUnlock }) => (
+const LockedAppShell: React.FC<LockedAppShellProps> = ({
+  canUsePasskey,
+  error,
+  unlocking,
+  onUnlock,
+}) => (
   <section role="status" aria-live="polite" className="app-lock-shell" data-testid="app-lock-shell">
     <h2>Finance is locked</h2>
     <p>Unlock this local app lock to show balances, transactions, budgets, and recent activity.</p>
-    <p>This is separate from account sign-in; your existing authenticated session remains active.</p>
+    <p>
+      This is separate from account sign-in; your existing authenticated session remains active.
+    </p>
     {error && <p role="alert">{error}</p>}
     <button type="button" onClick={onUnlock} disabled={unlocking} autoFocus>
-      {unlocking ? 'Unlocking…' : canUsePasskey ? 'Unlock with passkey' : 'Continue with current session'}
+      {unlocking
+        ? 'Unlocking…'
+        : canUsePasskey
+          ? 'Unlock with passkey'
+          : 'Continue with current session'}
     </button>
   </section>
 );
 
 function loadEffectiveAppLockSettings(): AppLockSettings {
   const idlePolicy = loadIdleSessionPolicy();
-  return normalizeAppLockSettings({ ...loadAppLockSettings(), idleTimeoutMs: idlePolicy.timeoutMs });
+  return normalizeAppLockSettings({
+    ...loadAppLockSettings(),
+    idleTimeoutMs: idlePolicy.timeoutMs,
+  });
 }
 
 function initialAppLockState(settings: AppLockSettings): AppLockRuntimeState {
-  return settings.enabled ? { locked: true, reason: 'idle_timeout', lastUnlockedAtMs: null } : DEFAULT_APP_LOCK_STATE;
+  return settings.enabled
+    ? { locked: true, reason: 'idle_timeout', lastUnlockedAtMs: null }
+    : DEFAULT_APP_LOCK_STATE;
 }
 
-function lockApp(settings: AppLockSettings, state: AppLockRuntimeState, event: 'idle_check' | 'manual_lock') {
+function lockApp(
+  settings: AppLockSettings,
+  state: AppLockRuntimeState,
+  event: 'idle_check' | 'manual_lock',
+) {
   return reduceAppLockEvent(settings, state, event, Date.now());
 }
 

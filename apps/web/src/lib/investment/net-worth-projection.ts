@@ -32,7 +32,8 @@ function roundCents(value: number): number {
 
 export function calculateCurrentNetWorthCents(accounts: readonly NetWorthAccount[]): number {
   return accounts.reduce(
-    (total, account) => total + (account.kind === 'asset' ? account.balanceCents : -account.balanceCents),
+    (total, account) =>
+      total + (account.kind === 'asset' ? account.balanceCents : -account.balanceCents),
     0,
   );
 }

@@ -30,9 +30,9 @@ describe('buildCreditScoreSimulatorPanelModel', () => {
 
     expect(model.targetPaymentCents).toBe(1_000_00);
     expect(model.modeledPaymentCents).toBe(1_000_00);
-    expect(model.result.factorImpacts.find((impact) => impact.factor === 'utilization')?.direction).toBe(
-      'positive',
-    );
+    expect(
+      model.result.factorImpacts.find((impact) => impact.factor === 'utilization')?.direction,
+    ).toBe('positive');
     expect(model.result.disclaimer).toContain('score-factor direction');
   });
 });

@@ -435,7 +435,10 @@ describe('shouldDeliverNotification', () => {
 
   it('blocks globally disabled notifications and do-not-disturb', () => {
     expect(
-      shouldDeliverNotification(notification, { ...DEFAULT_NOTIFICATION_PREFERENCES, enabled: false }),
+      shouldDeliverNotification(notification, {
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
+        enabled: false,
+      }),
     ).toBe(false);
     expect(
       shouldDeliverNotification(notification, {

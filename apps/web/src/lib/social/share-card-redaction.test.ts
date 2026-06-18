@@ -7,7 +7,14 @@ describe('share card redaction rules', () => {
   it('hides sensitive balances and account names for amount-hidden cards', () => {
     expect(
       redactShareCard(
-        { type: 'goal-milestone', title: 'Emergency fund', nickname: 'Jay', amountCents: 5000_00, percentComplete: 50, accountName: 'Checking 1234' },
+        {
+          type: 'goal-milestone',
+          title: 'Emergency fund',
+          nickname: 'Jay',
+          amountCents: 5000_00,
+          percentComplete: 50,
+          accountName: 'Checking 1234',
+        },
         'amount-hidden',
       ),
     ).toEqual({
@@ -21,7 +28,30 @@ describe('share card redaction rules', () => {
   });
 
   it('uses percent-only and private-household redactions without leaking balances', () => {
-    expect(redactShareCard({ type: 'streak-milestone', title: 'Saving streak', nickname: 'J', amountCents: 99_00, percentComplete: 80, householdName: 'Home' }, 'percent-only').amountCents).toBeNull();
-    expect(redactShareCard({ type: 'badge-unlock', title: 'Badge', nickname: 'J', amountCents: 99_00, householdName: 'Home' }, 'private-household').householdName).toBeNull();
+    expect(
+      redactShareCard(
+        {
+          type: 'streak-milestone',
+          title: 'Saving streak',
+          nickname: 'J',
+          amountCents: 99_00,
+          percentComplete: 80,
+          householdName: 'Home',
+        },
+        'percent-only',
+      ).amountCents,
+    ).toBeNull();
+    expect(
+      redactShareCard(
+        {
+          type: 'badge-unlock',
+          title: 'Badge',
+          nickname: 'J',
+          amountCents: 99_00,
+          householdName: 'Home',
+        },
+        'private-household',
+      ).householdName,
+    ).toBeNull();
   });
 });

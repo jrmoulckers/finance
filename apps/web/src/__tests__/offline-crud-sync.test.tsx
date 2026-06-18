@@ -546,4 +546,3 @@ describe('Data integrity after offline → online (#1333)', () => {
     });
   });
 });
-

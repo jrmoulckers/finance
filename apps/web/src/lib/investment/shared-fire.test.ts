@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { calculateSharedFirePlan, calculateSharedFiNumber, calculateSharedYearsToFi } from './shared-fire';
+import {
+  calculateSharedFirePlan,
+  calculateSharedFiNumber,
+  calculateSharedYearsToFi,
+} from './shared-fire';
 
 describe('shared FIRE logic', () => {
   it('calculates FI target, coast FI, savings rate, and years to FI using cents', () => {

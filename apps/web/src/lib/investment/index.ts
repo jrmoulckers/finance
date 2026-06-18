@@ -126,7 +126,12 @@ export type {
 } from './net-worth-projections';
 
 // #2239 — FIRE planning scenarios
-export { DEFAULT_FIRE_SCENARIOS, calculateFirePlan, compareFirePlans, getFirePlanningWarnings } from './fire-planning';
+export {
+  DEFAULT_FIRE_SCENARIOS,
+  calculateFirePlan,
+  compareFirePlans,
+  getFirePlanningWarnings,
+} from './fire-planning';
 export type { FirePlanningInput, FirePlanResult, FireScenarioOverride } from './fire-planning';
 
 // #2243 — Net-worth over time report
@@ -243,7 +248,10 @@ export type {
   CashFlowSankeyPresentation,
   CashFlowSankeyTableRow,
 } from './cash-flow-sankey-presentation';
-export { buildCashFlowSankeyRangeReport, resolveCashFlowSankeyDateRange } from './cash-flow-sankey-integration';
+export {
+  buildCashFlowSankeyRangeReport,
+  resolveCashFlowSankeyDateRange,
+} from './cash-flow-sankey-integration';
 export type {
   CashFlowSankeyDateRange,
   CashFlowSankeyOtherGroup,
@@ -266,7 +274,10 @@ export type {
   BenchmarkComparisonPresentation,
   BenchmarkMetricRow,
 } from './benchmark-comparison-presentation';
-export { buildPortfolioBenchmarkComparison, resolveBenchmarkRange } from './portfolio-benchmark-adapter';
+export {
+  buildPortfolioBenchmarkComparison,
+  resolveBenchmarkRange,
+} from './portfolio-benchmark-adapter';
 export type {
   BenchmarkRangeKey,
   BenchmarkSourceAttribution,

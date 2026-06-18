@@ -33,7 +33,11 @@ export function readBnplObligations(storage: BnplStorageLike): readonly BnplObli
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object' || (parsed as PersistedBnplObligations).version !== 1) {
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      (parsed as PersistedBnplObligations).version !== 1
+    ) {
       return [];
     }
     const obligations = (parsed as PersistedBnplObligations).obligations;

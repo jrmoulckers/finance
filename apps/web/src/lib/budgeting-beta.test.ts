@@ -43,7 +43,12 @@ describe('budgeting beta utilities', () => {
   it('normalizes weekly, biweekly, and monthly cadence amounts', () => {
     expect(normalizeBudgetAmountCents(10_000, 'WEEKLY', 'MONTHLY')).toBe(43_333);
     expect(normalizeBudgetAmountCents(100_000, 'MONTHLY', 'WEEKLY')).toBe(23_077);
-    expect(summarizeCadenceIncome([{ id: 'p1', source: 'Paycheck', amountCents: 80_000, date: '2025-03-07' }], 'WEEKLY')).toEqual({
+    expect(
+      summarizeCadenceIncome(
+        [{ id: 'p1', source: 'Paycheck', amountCents: 80_000, date: '2025-03-07' }],
+        'WEEKLY',
+      ),
+    ).toEqual({
       cadenceIncomeCents: 80_000,
       projectedMonthlyIncomeCents: 346_667,
       eventCount: 1,
@@ -74,14 +79,41 @@ describe('budgeting beta utilities', () => {
 
   it('generates deterministic variance coaching for over, under, and no-prior cases', () => {
     const insights = generateVarianceInsights([
-      { categoryId: 'food', name: 'Food', budgetedCents: 50_000, actualCents: 65_000, priorActualCents: 60_000 },
-      { categoryId: 'fun', name: 'Fun', budgetedCents: 40_000, actualCents: 10_000, priorActualCents: null },
-      { categoryId: 'gas', name: 'Gas', budgetedCents: 30_000, actualCents: 28_000, priorActualCents: 31_000 },
+      {
+        categoryId: 'food',
+        name: 'Food',
+        budgetedCents: 50_000,
+        actualCents: 65_000,
+        priorActualCents: 60_000,
+      },
+      {
+        categoryId: 'fun',
+        name: 'Fun',
+        budgetedCents: 40_000,
+        actualCents: 10_000,
+        priorActualCents: null,
+      },
+      {
+        categoryId: 'gas',
+        name: 'Gas',
+        budgetedCents: 30_000,
+        actualCents: 28_000,
+        priorActualCents: 31_000,
+      },
     ]);
 
     expect(insights).toHaveLength(2);
-    expect(insights[0]).toMatchObject({ categoryId: 'fun', kind: 'under', trend: 'no-prior-period' });
-    expect(insights[1]).toMatchObject({ categoryId: 'food', kind: 'over', trend: 'recurring-trend', variancePercent: 30 });
+    expect(insights[0]).toMatchObject({
+      categoryId: 'fun',
+      kind: 'under',
+      trend: 'no-prior-period',
+    });
+    expect(insights[1]).toMatchObject({
+      categoryId: 'food',
+      kind: 'over',
+      trend: 'recurring-trend',
+      variancePercent: 30,
+    });
   });
 
   it('forecasts month-end balance with positive, shortfall, missing-income, and overdrawn cases', () => {

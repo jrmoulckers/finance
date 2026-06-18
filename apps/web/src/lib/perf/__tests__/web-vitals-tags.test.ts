@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { createTaggedWebVitalSample, sanitizeRoute, shouldSampleWebVital } from '../web-vitals-tags';
+import {
+  createTaggedWebVitalSample,
+  sanitizeRoute,
+  shouldSampleWebVital,
+} from '../web-vitals-tags';
 
 describe('web vitals tags', () => {
   it('tags samples by sanitized route, device class, network, and app version', () => {

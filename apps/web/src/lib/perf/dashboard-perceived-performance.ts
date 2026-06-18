@@ -36,7 +36,12 @@ export interface DashboardStartupPlan {
 }
 
 const PRIMARY_DASHBOARD_WIDGETS = ['balance-summary', 'cash-flow-summary'] as const;
-const DEFERRED_DASHBOARD_WIDGETS = ['recent-transactions', 'budget-progress', 'insights', 'receipts'] as const;
+const DEFERRED_DASHBOARD_WIDGETS = [
+  'recent-transactions',
+  'budget-progress',
+  'insights',
+  'receipts',
+] as const;
 const IDLE_DASHBOARD_WIDGETS = ['achievement-strip', 'education-card'] as const;
 
 export function isDashboardSnapshotUsable(

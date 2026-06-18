@@ -35,14 +35,22 @@ describe('subscription price change integration', () => {
 
   it('builds dispatch plans with review/update/cancel commands and routes', () => {
     const alerts = detectSubscriptionPriceChanges([
-      ...subscriptionsToPriceChangeCharges([{ ...subscription, amountCents: 1000, lastDate: '2025-05-01' }]),
-      ...subscriptionsToPriceChangeCharges([{ ...subscription, amountCents: 1300, lastDate: '2025-06-01' }]),
+      ...subscriptionsToPriceChangeCharges([
+        { ...subscription, amountCents: 1000, lastDate: '2025-05-01' },
+      ]),
+      ...subscriptionsToPriceChangeCharges([
+        { ...subscription, amountCents: 1300, lastDate: '2025-06-01' },
+      ]),
     ]);
 
     const [plan] = buildSubscriptionPriceChangeDispatchPlans(alerts, '2025-06-01T13:00:00Z');
 
     expect(plan?.notification.type).toBe('subscription_price_change');
     expect(plan?.route).toContain('/subscriptions?subscriptionId=sub-streamco');
-    expect(plan?.commands.map((command) => command.action)).toEqual(['review', 'update_budget', 'cancel_subscription']);
+    expect(plan?.commands.map((command) => command.action)).toEqual([
+      'review',
+      'update_budget',
+      'cancel_subscription',
+    ]);
   });
 });

@@ -2,7 +2,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from './types';
-import { buildNotificationPreferenceViewModel, toggleNotificationPreferenceChannel } from './preference-controls';
+import {
+  buildNotificationPreferenceViewModel,
+  toggleNotificationPreferenceChannel,
+} from './preference-controls';
 
 describe('notification preference controls', () => {
   const availability = { in_app: true, browser_push: false, email: true } as const;
@@ -14,7 +17,9 @@ describe('notification preference controls', () => {
     });
 
     expect(model.keyboardHelp).toContain('Space');
-    expect(model.controls.find((control) => control.channel === 'browser_push')?.disabled).toBe(true);
+    expect(model.controls.find((control) => control.channel === 'browser_push')?.disabled).toBe(
+      true,
+    );
     expect(model.quietHoursErrors).toEqual([]);
   });
 
@@ -34,7 +39,10 @@ describe('notification preference controls', () => {
       availability,
     });
 
-    expect(withEmail.channelPreferences.find((preference) => preference.alertType === 'bill_due')?.channels).toContain('email');
+    expect(
+      withEmail.channelPreferences.find((preference) => preference.alertType === 'bill_due')
+        ?.channels,
+    ).toContain('email');
     expect(unchanged).toBe(withEmail);
   });
 });

@@ -40,18 +40,39 @@ export interface RetirementTaxSummaryExport {
 }
 
 function sourceByGroup(taxYear: number): Map<ContributionLimitGroup, string> {
-  return new Map(getRetirementLimitDefinitions(taxYear).map((definition) => [definition.group, definition.source]));
+  return new Map(
+    getRetirementLimitDefinitions(taxYear).map((definition) => [
+      definition.group,
+      definition.source,
+    ]),
+  );
 }
 
 export function getRetirementContributionConstantsUpdateWorkflow(): RetirementContributionConstantsUpdateStep[] {
   return [
-    { order: 1, label: 'Monitor IRS annual inflation-adjustment notices and revenue procedures for the next tax year.', owner: 'tax-sme' },
-    { order: 2, label: 'Add new constants as a new tax-year entry without overwriting prior-year values.', owner: 'tax-sme' },
-    { order: 3, label: 'Add tests for base limits, catch-up limits, and source strings before enabling exports.', owner: 'engineering' },
+    {
+      order: 1,
+      label:
+        'Monitor IRS annual inflation-adjustment notices and revenue procedures for the next tax year.',
+      owner: 'tax-sme',
+    },
+    {
+      order: 2,
+      label: 'Add new constants as a new tax-year entry without overwriting prior-year values.',
+      owner: 'tax-sme',
+    },
+    {
+      order: 3,
+      label:
+        'Add tests for base limits, catch-up limits, and source strings before enabling exports.',
+      owner: 'engineering',
+    },
   ];
 }
 
-export function buildRetirementTaxSummaryExport(summary: RetirementContributionLimitSummary): RetirementTaxSummaryExport {
+export function buildRetirementTaxSummaryExport(
+  summary: RetirementContributionLimitSummary,
+): RetirementTaxSummaryExport {
   const sources = sourceByGroup(summary.taxYear);
   return {
     taxYear: summary.taxYear,
@@ -68,6 +89,7 @@ export function buildRetirementTaxSummaryExport(summary: RetirementContributionL
       irsSource: sources.get(row.group) ?? 'No IRS source configured for this tax year/group.',
     })),
     constantsUpdateWorkflow: getRetirementContributionConstantsUpdateWorkflow(),
-    disclaimer: 'Retirement limit summaries use documented IRS constants for educational planning and are not tax advice.',
+    disclaimer:
+      'Retirement limit summaries use documented IRS constants for educational planning and are not tax advice.',
   };
 }

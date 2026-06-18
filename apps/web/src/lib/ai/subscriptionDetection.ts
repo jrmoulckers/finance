@@ -41,7 +41,13 @@ export interface SubscriptionCandidate {
 
 export interface SubscriptionDecision {
   readonly candidateId: string;
-  readonly action: 'confirm' | 'rename' | 'merge' | 'dismiss' | 'cancel' | 'acknowledge-price-change';
+  readonly action:
+    | 'confirm'
+    | 'rename'
+    | 'merge'
+    | 'dismiss'
+    | 'cancel'
+    | 'acknowledge-price-change';
   readonly name?: string;
   readonly mergeIntoId?: string;
   readonly effectiveDate?: string;
@@ -55,7 +61,9 @@ export function normalizeSubscriptionMerchant(value: string): string {
     .trim();
 }
 
-export function detectSubscriptions(transactions: readonly SubscriptionTransaction[]): SubscriptionCandidate[] {
+export function detectSubscriptions(
+  transactions: readonly SubscriptionTransaction[],
+): SubscriptionCandidate[] {
   const groups = new Map<string, SubscriptionTransaction[]>();
   for (const transaction of transactions) {
     if (transaction.amountCents >= 0) continue;
@@ -63,23 +71,38 @@ export function detectSubscriptions(transactions: readonly SubscriptionTransacti
     if (!key) continue;
     groups.set(key, [...(groups.get(key) ?? []), transaction]);
   }
-  return [...groups.entries()].flatMap(([merchant, group]) => buildSubscription(merchant, group)).sort((left, right) => right.confidence - left.confidence);
+  return [...groups.entries()]
+    .flatMap(([merchant, group]) => buildSubscription(merchant, group))
+    .sort((left, right) => right.confidence - left.confidence);
 }
 
-function buildSubscription(merchantKey: string, group: readonly SubscriptionTransaction[]): SubscriptionCandidate[] {
+function buildSubscription(
+  merchantKey: string,
+  group: readonly SubscriptionTransaction[],
+): SubscriptionCandidate[] {
   const sorted = [...group].sort((left, right) => left.date.localeCompare(right.date));
   if (sorted.length < 2) return [];
-  const intervals = sorted.slice(1).map((transaction, index) => daysBetween(sorted[index].date, transaction.date));
+  const intervals = sorted
+    .slice(1)
+    .map((transaction, index) => daysBetween(sorted[index].date, transaction.date));
   const amounts = sorted.map((transaction) => Math.abs(transaction.amountCents));
   const cadence = detectSubscriptionCadence(intervals, amounts);
   if (!cadence) return [];
   const last = sorted[sorted.length - 1];
   const latestAmount = Math.abs(last.amountCents);
-  const priceHistory = sorted.map((transaction) => ({ transactionId: transaction.id, date: transaction.date, amountCents: Math.abs(transaction.amountCents) }));
+  const priceHistory = sorted.map((transaction) => ({
+    transactionId: transaction.id,
+    date: transaction.date,
+    amountCents: Math.abs(transaction.amountCents),
+  }));
   const priceChanges = detectPriceChanges(priceHistory, cadence);
   const countScore = Math.min(0.2, sorted.length * 0.04);
   const cadenceScore = cadence === 'trial_conversion' ? 0.55 : 0.6;
-  const categoryScore = /subscription|software|streaming|membership/iu.test(sorted.map((item) => item.category ?? '').join(' ')) ? 0.1 : 0;
+  const categoryScore = /subscription|software|streaming|membership/iu.test(
+    sorted.map((item) => item.category ?? '').join(' '),
+  )
+    ? 0.1
+    : 0;
   return [
     {
       id: `sub-${merchantKey}`,
@@ -95,8 +118,16 @@ function buildSubscription(merchantKey: string, group: readonly SubscriptionTran
   ];
 }
 
-export function detectSubscriptionCadence(intervals: readonly number[], amounts: readonly number[]): SubscriptionCadence | undefined {
-  if (amounts.length >= 2 && Math.min(...amounts) <= Math.max(...amounts) * 0.25 && intervals.some((interval) => interval >= 5 && interval <= 45)) return 'trial_conversion';
+export function detectSubscriptionCadence(
+  intervals: readonly number[],
+  amounts: readonly number[],
+): SubscriptionCadence | undefined {
+  if (
+    amounts.length >= 2 &&
+    Math.min(...amounts) <= Math.max(...amounts) * 0.25 &&
+    intervals.some((interval) => interval >= 5 && interval <= 45)
+  )
+    return 'trial_conversion';
   const typical = median(intervals);
   if (near(typical, 7, 2)) return 'weekly';
   if (near(typical, 30, 5)) return 'monthly';
@@ -104,7 +135,10 @@ export function detectSubscriptionCadence(intervals: readonly number[], amounts:
   return undefined;
 }
 
-export function detectPriceChanges(history: readonly SubscriptionPricePoint[], cadence: SubscriptionCadence): SubscriptionPriceChange[] {
+export function detectPriceChanges(
+  history: readonly SubscriptionPricePoint[],
+  cadence: SubscriptionCadence,
+): SubscriptionPriceChange[] {
   return history.slice(1).flatMap((point, index) => {
     const prior = history[index];
     const delta = point.amountCents - prior.amountCents;
@@ -124,41 +158,65 @@ export function detectPriceChanges(history: readonly SubscriptionPricePoint[], c
   });
 }
 
-export function applySubscriptionDecision(candidates: readonly SubscriptionCandidate[], decision: SubscriptionDecision): SubscriptionCandidate[] {
+export function applySubscriptionDecision(
+  candidates: readonly SubscriptionCandidate[],
+  decision: SubscriptionDecision,
+): SubscriptionCandidate[] {
   if (decision.action === 'merge' && decision.mergeIntoId) {
     const source = candidates.find((candidate) => candidate.id === decision.candidateId);
     return candidates
       .filter((candidate) => candidate.id !== decision.candidateId)
       .map((candidate) => {
         if (candidate.id !== decision.mergeIntoId || !source) return candidate;
-        const history = [...candidate.priceHistory, ...source.priceHistory].sort((left, right) => left.date.localeCompare(right.date));
-        return { ...candidate, priceHistory: history, priceChanges: detectPriceChanges(history, candidate.cadence), confidence: Math.max(candidate.confidence, source.confidence) };
+        const history = [...candidate.priceHistory, ...source.priceHistory].sort((left, right) =>
+          left.date.localeCompare(right.date),
+        );
+        return {
+          ...candidate,
+          priceHistory: history,
+          priceChanges: detectPriceChanges(history, candidate.cadence),
+          confidence: Math.max(candidate.confidence, source.confidence),
+        };
       });
   }
 
   return candidates.map((candidate) => {
     if (candidate.id !== decision.candidateId) return candidate;
     if (decision.action === 'confirm') return { ...candidate, status: 'confirmed' };
-    if (decision.action === 'rename' && decision.name) return { ...candidate, merchant: decision.name, status: 'confirmed' };
+    if (decision.action === 'rename' && decision.name)
+      return { ...candidate, merchant: decision.name, status: 'confirmed' };
     if (decision.action === 'dismiss') return { ...candidate, status: 'dismissed' };
     if (decision.action === 'cancel') return { ...candidate, status: 'cancelled' };
     if (decision.action === 'acknowledge-price-change') {
       return {
         ...candidate,
-        priceChanges: candidate.priceChanges.map((change) => (change.effectiveDate === decision.effectiveDate ? { ...change, acknowledged: true } : change)),
+        priceChanges: candidate.priceChanges.map((change) =>
+          change.effectiveDate === decision.effectiveDate
+            ? { ...change, acknowledged: true }
+            : change,
+        ),
       };
     }
     return candidate;
   });
 }
 
-export function priceChangeAlerts(candidates: readonly SubscriptionCandidate[], lastAlertedKeys: readonly string[] = []): readonly { readonly subscriptionId: string; readonly key: string; readonly change: SubscriptionPriceChange }[] {
+export function priceChangeAlerts(
+  candidates: readonly SubscriptionCandidate[],
+  lastAlertedKeys: readonly string[] = [],
+): readonly {
+  readonly subscriptionId: string;
+  readonly key: string;
+  readonly change: SubscriptionPriceChange;
+}[] {
   const alerted = new Set(lastAlertedKeys);
   return candidates.flatMap((candidate) => {
     if (candidate.status === 'dismissed' || candidate.status === 'cancelled') return [];
     return candidate.priceChanges.flatMap((change) => {
       const key = `${candidate.id}:${change.effectiveDate}:${change.newAmountCents}`;
-      return change.acknowledged || alerted.has(key) ? [] : [{ subscriptionId: candidate.id, key, change }];
+      return change.acknowledged || alerted.has(key)
+        ? []
+        : [{ subscriptionId: candidate.id, key, change }];
     });
   });
 }
@@ -176,7 +234,9 @@ function addDays(value: string, days: number): string {
 function median(values: readonly number[]): number {
   const sorted = [...values].sort((left, right) => left - right);
   if (sorted.length === 0) return 30;
-  return sorted.length % 2 === 0 ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 : sorted[Math.floor(sorted.length / 2)];
+  return sorted.length % 2 === 0
+    ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+    : sorted[Math.floor(sorted.length / 2)];
 }
 
 function near(value: number, target: number, tolerance: number): boolean {
@@ -196,7 +256,11 @@ function annualize(amountCents: number, cadence: SubscriptionCadence): number {
 }
 
 function titleCase(value: string): string {
-  return value.split(' ').filter(Boolean).map((word) => `${word[0].toUpperCase()}${word.slice(1)}`).join(' ');
+  return value
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => `${word[0].toUpperCase()}${word.slice(1)}`)
+    .join(' ');
 }
 
 function round(value: number): number {

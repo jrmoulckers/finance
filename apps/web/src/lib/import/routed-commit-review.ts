@@ -39,7 +39,10 @@ export function buildRoutedCommitPlan(input: {
   const skippedCreditRows = new Map<number, string>();
   for (const pair of transferPairs) {
     if (pair.selected) {
-      skippedCreditRows.set(pair.creditRowIndex, `Covered by transfer from row ${pair.debitRowIndex + 1}`);
+      skippedCreditRows.set(
+        pair.creditRowIndex,
+        `Covered by transfer from row ${pair.debitRowIndex + 1}`,
+      );
     }
   }
 
@@ -57,7 +60,9 @@ export function buildRoutedCommitPlan(input: {
 
   const blockedRows = rows.filter((row) => row.blockedReason !== null);
   const skippedRows = rows.filter((row) => row.skippedReason !== null);
-  const importableRows = rows.filter((row) => row.blockedReason === null && row.skippedReason === null);
+  const importableRows = rows.filter(
+    (row) => row.blockedReason === null && row.skippedReason === null,
+  );
 
   return {
     importableRows,
@@ -68,6 +73,8 @@ export function buildRoutedCommitPlan(input: {
   };
 }
 
-export function transferKey(candidate: Pick<TransferCandidate, 'debitRowIndex' | 'creditRowIndex'>): string {
+export function transferKey(
+  candidate: Pick<TransferCandidate, 'debitRowIndex' | 'creditRowIndex'>,
+): string {
   return `${candidate.debitRowIndex}->${candidate.creditRowIndex}`;
 }

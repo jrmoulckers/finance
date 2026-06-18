@@ -83,7 +83,9 @@ export function buildInsightsPeerComparisonReport(params: {
   });
 }
 
-export function buildPeerComparisonCards(report: PeerBenchmarkReport): readonly PeerComparisonCard[] {
+export function buildPeerComparisonCards(
+  report: PeerBenchmarkReport,
+): readonly PeerComparisonCard[] {
   return report.comparisons.map((comparison) => ({
     key: comparison.key,
     title: comparison.label,

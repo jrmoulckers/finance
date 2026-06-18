@@ -116,11 +116,16 @@ export function formatCurrencyValue(
     maximumFractionDigits,
   } = options;
 
-  return formatAmount(Math.round(amountInMajorUnits * minorUnitFactor(currency)), MaskingMode.Visible, locale, {
-    currency,
-    minimumFractionDigits,
-    maximumFractionDigits,
-  });
+  return formatAmount(
+    Math.round(amountInMajorUnits * minorUnitFactor(currency)),
+    MaskingMode.Visible,
+    locale,
+    {
+      currency,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------

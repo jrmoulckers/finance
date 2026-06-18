@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { createMigrationPreflight, type MigrationPreflight, type MigrationTransaction } from './migration-importers';
+import {
+  createMigrationPreflight,
+  type MigrationPreflight,
+  type MigrationTransaction,
+} from './migration-importers';
 import { isMintFormat } from './mint-parser';
 
 export interface MintMigrationPreflightRow {
@@ -49,7 +53,9 @@ export function buildMintMigrationPreflightPanel(
   const rows = preflight.transactions.map(toMintRow);
   const issues = [
     ...preflight.parserErrors,
-    ...preflight.unsupportedFields.map((field) => `Unsupported Mint field preserved in raw data: ${field}`),
+    ...preflight.unsupportedFields.map(
+      (field) => `Unsupported Mint field preserved in raw data: ${field}`,
+    ),
   ];
 
   return {

@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { calculateSinkingFundPlan, type SinkingFundPlannerInput, type SinkingFundPlan } from './sinking-fund-planner';
+import {
+  calculateSinkingFundPlan,
+  type SinkingFundPlannerInput,
+  type SinkingFundPlan,
+} from './sinking-fund-planner';
 
 export interface BudgetListRowInput {
   readonly id: string;
@@ -43,8 +47,12 @@ export function buildSinkingFundBudgetListState(input: {
 }): SinkingFundBudgetListState {
   const activeFunds = input.funds.filter((fund) => fund.isArchived !== true);
   const linkedFundCategoryIds = new Set(activeFunds.map((fund) => fund.linkedCategoryId));
-  const sinkingFundContributions = activeFunds.map((fund) => toContributionRow(calculateSinkingFundPlan(fund, input.today)));
-  const normalBudgets = input.budgets.filter((budget) => !linkedFundCategoryIds.has(budget.categoryId));
+  const sinkingFundContributions = activeFunds.map((fund) =>
+    toContributionRow(calculateSinkingFundPlan(fund, input.today)),
+  );
+  const normalBudgets = input.budgets.filter(
+    (budget) => !linkedFundCategoryIds.has(budget.categoryId),
+  );
   const isLoading = input.isLoading === true;
   const errorMessage = input.errorMessage ?? null;
 
@@ -54,7 +62,10 @@ export function buildSinkingFundBudgetListState(input: {
     isLoading,
     errorMessage,
     emptyMessage:
-      !isLoading && !errorMessage && normalBudgets.length === 0 && sinkingFundContributions.length === 0
+      !isLoading &&
+      !errorMessage &&
+      normalBudgets.length === 0 &&
+      sinkingFundContributions.length === 0
         ? 'No budgets or sinking funds yet. Add one when you are ready.'
         : null,
   };

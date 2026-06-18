@@ -41,11 +41,17 @@ export function recordLastActive(state: WelcomeBackState, now: Date): WelcomeBac
   return { ...state, lastActiveAt: now.toISOString() };
 }
 
-export function dismissWelcomeBack(state: WelcomeBackState, now: Date, snoozeDays = 7): WelcomeBackState {
+export function dismissWelcomeBack(
+  state: WelcomeBackState,
+  now: Date,
+  snoozeDays = 7,
+): WelcomeBackState {
   return { ...state, dismissedUntil: nextDismissedUntil(now, snoozeDays).toISOString() };
 }
 
-export const RE_ENGAGEMENT_ACTION_ROUTES: Readonly<Record<Exclude<ReEngagementAction['id'], 'dismiss'>, string>> = {
+export const RE_ENGAGEMENT_ACTION_ROUTES: Readonly<
+  Record<Exclude<ReEngagementAction['id'], 'dismiss'>, string>
+> = {
   'review-comfort-settings': '/onboarding?step=comfort-settings',
   'choose-privacy-mode': '/onboarding?step=privacy-choice',
   'pick-life-stage': '/onboarding?step=life-stage',

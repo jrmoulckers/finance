@@ -2,7 +2,13 @@
 
 export type OfflineEntity = 'account' | 'transaction' | 'budget' | 'receipt' | 'settings';
 export type OfflineOperation = 'create' | 'edit' | 'delete' | 'categorize' | 'add-note' | 'view';
-export type OfflineActionStatus = 'queued' | 'syncing' | 'synced' | 'failed' | 'needs-review' | 'disabled';
+export type OfflineActionStatus =
+  | 'queued'
+  | 'syncing'
+  | 'synced'
+  | 'failed'
+  | 'needs-review'
+  | 'disabled';
 
 export interface OfflineActionRequest {
   readonly entity: OfflineEntity;
@@ -56,12 +62,16 @@ export function decideOfflineAction(request: OfflineActionRequest): OfflineActio
   };
 }
 
-export function describeQueuedAction(status: OfflineActionStatus, pendingPosition?: number): QueuedActionViewModel {
+export function describeQueuedAction(
+  status: OfflineActionStatus,
+  pendingPosition?: number,
+): QueuedActionViewModel {
   switch (status) {
     case 'queued':
       return {
         status,
-        label: pendingPosition === undefined ? 'Queued offline' : `Queued offline #${pendingPosition}`,
+        label:
+          pendingPosition === undefined ? 'Queued offline' : `Queued offline #${pendingPosition}`,
         description: 'Saved locally and will sync automatically when the connection returns.',
         canRetry: false,
         canReview: false,

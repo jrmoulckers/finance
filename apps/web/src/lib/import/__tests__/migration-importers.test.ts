@@ -60,7 +60,10 @@ LInterest
 
     expect(preflight.source).toBe('quicken-qif');
     expect(preflight.accounts).toEqual(['Checking', 'Savings']);
-    expect(preflight.transactions.map((transaction) => transaction.clearedStatus)).toEqual(['*', 'X']);
+    expect(preflight.transactions.map((transaction) => transaction.clearedStatus)).toEqual([
+      '*',
+      'X',
+    ]);
   });
 
   it('counts duplicate source transaction IDs in QFX/OFX results', () => {

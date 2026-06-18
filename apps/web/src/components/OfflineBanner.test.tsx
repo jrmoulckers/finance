@@ -28,7 +28,8 @@ describe('OfflineBanner', () => {
     offlineStatusMock.isOffline = true;
     offlineStatusMock.isOnline = false;
     offlineStatusMock.isDegraded = true;
-    offlineStatusMock.degradedMessage = 'You are offline. Changes will sync when connectivity is restored.';
+    offlineStatusMock.degradedMessage =
+      'You are offline. Changes will sync when connectivity is restored.';
 
     render(<OfflineBanner />);
 

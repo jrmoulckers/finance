@@ -114,14 +114,20 @@ function recurringImpactThrough(
       dueMs += stepDays * DAY_MS
     ) {
       if (dueMs <= startMs) continue;
-      impact += recurring.type === 'income' ? Math.abs(recurring.amountCents) : -Math.abs(recurring.amountCents);
+      impact +=
+        recurring.type === 'income'
+          ? Math.abs(recurring.amountCents)
+          : -Math.abs(recurring.amountCents);
     }
   }
 
   return impact;
 }
 
-function computeCurrentMonthPace(transactions: readonly Transaction[], asOfDate: string): number | null {
+function computeCurrentMonthPace(
+  transactions: readonly Transaction[],
+  asOfDate: string,
+): number | null {
   const asOf = parseDate(asOfDate);
   const monthStart = formatDate(new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), 1)));
   const elapsedDays = Math.max(1, asOf.getUTCDate());
@@ -157,7 +163,9 @@ function buildFactors(
   } else {
     factors.push('daily cash flow has stable variance');
   }
-  factors.push(hasCurrentPace ? 'current-month pace is blended in' : 'current-month pace is still early');
+  factors.push(
+    hasCurrentPace ? 'current-month pace is blended in' : 'current-month pace is still early',
+  );
   if (recurringCount > 0) factors.push(`${recurringCount} known recurring item(s) included`);
   return factors;
 }
@@ -207,7 +215,12 @@ export function generateCashFlowForecast(input: CashFlowForecastInput): CashFlow
 
   const dailyNet = new Map<string, number>();
   for (const transaction of input.transactions) {
-    if (transaction.status === 'VOID' || transaction.type === 'TRANSFER' || transaction.date > asOfDate) continue;
+    if (
+      transaction.status === 'VOID' ||
+      transaction.type === 'TRANSFER' ||
+      transaction.date > asOfDate
+    )
+      continue;
     dailyNet.set(transaction.date, (dailyNet.get(transaction.date) ?? 0) + amountFor(transaction));
   }
 

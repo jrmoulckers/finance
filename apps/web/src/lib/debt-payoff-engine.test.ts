@@ -543,7 +543,6 @@ describe('calculateDebtToIncomeTrend', () => {
   });
 });
 
-
 describe('calculatePayoffStrategyRecommendation', () => {
   it('recommends avalanche when it saves interest and preserves snowball motivation copy', () => {
     const comparison = compareStrategies(
@@ -598,7 +597,11 @@ describe('calculateExtraPaymentImpactScenarios', () => {
   });
 
   it('marks diminishing returns when incremental savings taper', () => {
-    const scenarios = calculateExtraPaymentImpactScenarios(debts, 'avalanche', [5_000, 20_000, 100_000]);
+    const scenarios = calculateExtraPaymentImpactScenarios(
+      debts,
+      'avalanche',
+      [5_000, 20_000, 100_000],
+    );
 
     expect(scenarios.some((scenario) => scenario.isDiminishingReturn)).toBe(true);
   });
@@ -622,9 +625,9 @@ describe('debt beta milestone and DTI additions', () => {
       3_000,
     );
 
-    expect(summary.milestones.find((milestone) => milestone.thresholdPercent === 10)?.isReached).toBe(
-      true,
-    );
+    expect(
+      summary.milestones.find((milestone) => milestone.thresholdPercent === 10)?.isReached,
+    ).toBe(true);
     expect(summary.totalInterestPaidToDateCents).toBe(15_000);
   });
 
@@ -664,9 +667,9 @@ describe('debt beta milestone and DTI additions', () => {
     );
 
     expect(trend.trend).toHaveLength(3);
-    expect(trend.thresholdCrossings.find((crossing) => crossing.thresholdPercent === 20)?.month).toBe(
-      2,
-    );
+    expect(
+      trend.thresholdCrossings.find((crossing) => crossing.thresholdPercent === 20)?.month,
+    ).toBe(2);
   });
 
   it('supports zero income and income changes by month', () => {

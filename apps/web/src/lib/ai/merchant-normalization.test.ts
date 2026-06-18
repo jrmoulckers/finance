@@ -2,7 +2,11 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { learnMerchantAlias, normalizeMerchantName, stripMerchantNoise } from './merchant-normalization';
+import {
+  learnMerchantAlias,
+  normalizeMerchantName,
+  stripMerchantNoise,
+} from './merchant-normalization';
 
 describe('normalizeMerchantName', () => {
   it('normalizes store numbers and location suffixes to seeded merchants', () => {

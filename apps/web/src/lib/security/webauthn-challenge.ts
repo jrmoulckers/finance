@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { buildPasskeyGateRequestOptions, isPasskeyAppLockSupported, type PasskeyGateChallenge } from './passkey-gate';
+import {
+  buildPasskeyGateRequestOptions,
+  isPasskeyAppLockSupported,
+  type PasskeyGateChallenge,
+} from './passkey-gate';
 
 export type WebAuthnChallengeStatus =
   | 'created'
@@ -52,7 +56,8 @@ export function createWebAuthnAppLockChallenge({
 }: CreateWebAuthnChallengeOptions): WebAuthnAppLockChallenge {
   if (ttlMs <= 0) throw new Error('WebAuthn challenge TTL must be positive.');
   const bytes = randomBytes ?? crypto.getRandomValues(new Uint8Array(32));
-  if (bytes.byteLength < 16) throw new Error('WebAuthn challenges must contain at least 16 random bytes.');
+  if (bytes.byteLength < 16)
+    throw new Error('WebAuthn challenges must contain at least 16 random bytes.');
   const challengeBase64Url = bytesToBase64Url(bytes);
 
   return {
@@ -82,14 +87,26 @@ export async function completeWebAuthnAppLockChallenge({
     });
 
     if (!isPublicKeyCredential(credential)) {
-      return finishChallenge(challenge, nowMs, 'failed', undefined, 'Passkey unlock did not return a public-key credential.');
+      return finishChallenge(
+        challenge,
+        nowMs,
+        'failed',
+        undefined,
+        'Passkey unlock did not return a public-key credential.',
+      );
     }
 
     return finishChallenge(challenge, nowMs, 'verified', credential);
   } catch (error) {
     const name = error instanceof DOMException ? error.name : '';
     if (name === 'NotAllowedError' || name === 'AbortError') {
-      return finishChallenge(challenge, nowMs, 'cancelled', undefined, 'Passkey unlock was cancelled.');
+      return finishChallenge(
+        challenge,
+        nowMs,
+        'cancelled',
+        undefined,
+        'Passkey unlock was cancelled.',
+      );
     }
     return finishChallenge(
       challenge,
@@ -108,13 +125,31 @@ export function evaluateChallengePreflight(
   publicKeyCredential: typeof PublicKeyCredential | undefined = globalThis.PublicKeyCredential,
 ): WebAuthnChallengeResult | null {
   if (!isPasskeyAppLockSupported(credentials, publicKeyCredential)) {
-    return finishChallenge(challenge, nowMs, 'unsupported', undefined, 'Passkey app lock is not supported in this browser.');
+    return finishChallenge(
+      challenge,
+      nowMs,
+      'unsupported',
+      undefined,
+      'Passkey app lock is not supported in this browser.',
+    );
   }
   if (challenge.usedAtMs !== undefined) {
-    return finishChallenge(challenge, nowMs, 'replayed', undefined, 'This passkey challenge was already used.');
+    return finishChallenge(
+      challenge,
+      nowMs,
+      'replayed',
+      undefined,
+      'This passkey challenge was already used.',
+    );
   }
   if (nowMs > challenge.expiresAtMs) {
-    return finishChallenge(challenge, nowMs, 'expired', undefined, 'This passkey challenge expired.');
+    return finishChallenge(
+      challenge,
+      nowMs,
+      'expired',
+      undefined,
+      'This passkey challenge expired.',
+    );
   }
   return null;
 }

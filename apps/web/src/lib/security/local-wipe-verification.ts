@@ -50,12 +50,18 @@ export function buildLocalWipeReceipt(
   const byArea = new Map(outcomes.map((outcome) => [outcome.area, outcome]));
   const missingOutcomes = requiredAreas
     .filter((area) => !byArea.has(area))
-    .map((area) => ({ area, status: 'failed', detail: 'No wipe verification was recorded.' }) as const);
-  const completeOutcomes = [...outcomes, ...missingOutcomes].filter((outcome) => requiredAreas.includes(outcome.area));
+    .map(
+      (area) => ({ area, status: 'failed', detail: 'No wipe verification was recorded.' }) as const,
+    );
+  const completeOutcomes = [...outcomes, ...missingOutcomes].filter((outcome) =>
+    requiredAreas.includes(outcome.area),
+  );
   const failed = completeOutcomes
     .filter((outcome) => outcome.status === 'failed')
     .map((outcome) => ({ area: outcome.area, detail: outcome.detail }));
-  const deleted = completeOutcomes.filter((outcome) => outcome.status === 'deleted').map((outcome) => outcome.area);
+  const deleted = completeOutcomes
+    .filter((outcome) => outcome.status === 'deleted')
+    .map((outcome) => outcome.area);
   const notApplicable = completeOutcomes
     .filter((outcome) => outcome.status === 'not_applicable')
     .map((outcome) => outcome.area);
@@ -84,6 +90,10 @@ export function buildDeletionModeCopy(mode: DeletionRunMode, failureCount: numbe
   return 'Local browser data was verified as deleted or not applicable for this device.';
 }
 
-export function localWipeOutcome(area: LocalWipeArea, status: LocalWipeStatus, detail?: string): LocalWipeOutcome {
+export function localWipeOutcome(
+  area: LocalWipeArea,
+  status: LocalWipeStatus,
+  detail?: string,
+): LocalWipeOutcome {
   return { area, status, detail };
 }

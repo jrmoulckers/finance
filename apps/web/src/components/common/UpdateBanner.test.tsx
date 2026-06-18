@@ -78,4 +78,3 @@ describe('UpdateBanner', () => {
     expect(banner).toHaveAttribute('aria-atomic', 'true');
   });
 });
-

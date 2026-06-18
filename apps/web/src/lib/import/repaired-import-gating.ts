@@ -35,12 +35,14 @@ export function buildRepairedImportGate(input: {
   readonly warningsConfirmed?: boolean;
 }): RepairedImportGate {
   const plan = buildRepairCommitPlan(input.rows, input.duplicateActions);
-  const requiresWarningConfirmation = plan.warningRows.length > 0 && input.warningsConfirmed !== true;
-  const blockedReason = plan.blockedRows.length > 0
-    ? `${plan.blockedRows.length} row(s) still have blocking errors`
-    : requiresWarningConfirmation
-      ? `${plan.warningRows.length} row(s) have warnings that need confirmation`
-      : null;
+  const requiresWarningConfirmation =
+    plan.warningRows.length > 0 && input.warningsConfirmed !== true;
+  const blockedReason =
+    plan.blockedRows.length > 0
+      ? `${plan.blockedRows.length} row(s) still have blocking errors`
+      : requiresWarningConfirmation
+        ? `${plan.warningRows.length} row(s) have warnings that need confirmation`
+        : null;
 
   return {
     plan,

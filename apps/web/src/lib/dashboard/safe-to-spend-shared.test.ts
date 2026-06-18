@@ -16,9 +16,17 @@ describe('shared safe to spend policy', () => {
         lastUpdatedAt: '2026-04-10T09:00:00Z',
         bills: [
           { id: 'rent', amountCents: 1200_00, dueDate: '2026-04-20', paid: false, critical: true },
-          { id: 'streaming', amountCents: 20_00, dueDate: '2026-04-20', paid: false, critical: false },
+          {
+            id: 'streaming',
+            amountCents: 20_00,
+            dueDate: '2026-04-20',
+            paid: false,
+            critical: false,
+          },
         ],
-        pinnedCategories: [{ id: 'groceries', budgetCents: 400_00, spentCents: 125_00, pinned: true }],
+        pinnedCategories: [
+          { id: 'groceries', budgetCents: 400_00, spentCents: 125_00, pinned: true },
+        ],
       }),
     ).toEqual({
       safeToSpendCents: 825_00,

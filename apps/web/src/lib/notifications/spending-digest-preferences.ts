@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { buildSpendingDigestNotification, scheduleDigestDelivery, type SpendingDigestCadence, type SpendingDigestInput } from './spending-digests';
+import {
+  buildSpendingDigestNotification,
+  scheduleDigestDelivery,
+  type SpendingDigestCadence,
+  type SpendingDigestInput,
+} from './spending-digests';
 import type { AppNotification, NotificationPreferences } from './types';
 
 export type SpendingDigestPreferenceCadence = SpendingDigestCadence | 'both' | 'off';
@@ -40,12 +45,22 @@ export function normalizeSpendingDigestPreferences(
 ): SpendingDigestPreferences {
   return {
     cadence: partial.cadence ?? DEFAULT_DIGEST_PREFS.cadence,
-    deliveryHourLocal: clamp(partial.deliveryHourLocal ?? DEFAULT_DIGEST_PREFS.deliveryHourLocal, 0, 23),
-    deliveryMinuteLocal: clamp(partial.deliveryMinuteLocal ?? DEFAULT_DIGEST_PREFS.deliveryMinuteLocal, 0, 59),
+    deliveryHourLocal: clamp(
+      partial.deliveryHourLocal ?? DEFAULT_DIGEST_PREFS.deliveryHourLocal,
+      0,
+      23,
+    ),
+    deliveryMinuteLocal: clamp(
+      partial.deliveryMinuteLocal ?? DEFAULT_DIGEST_PREFS.deliveryMinuteLocal,
+      0,
+      59,
+    ),
   };
 }
 
-export function enabledDigestCadences(preferences: SpendingDigestPreferences): readonly SpendingDigestCadence[] {
+export function enabledDigestCadences(
+  preferences: SpendingDigestPreferences,
+): readonly SpendingDigestCadence[] {
   if (preferences.cadence === 'off') return [];
   if (preferences.cadence === 'both') return ['weekly', 'monthly'];
   return [preferences.cadence];
@@ -81,12 +96,22 @@ export function planSpendingDigestSchedules(
     const scheduled = scheduleDigestDelivery(requested, notificationPreferences);
 
     if (!enabled.has(input.cadence)) {
-      return { cadence: input.cadence, due: false, scheduledAt: scheduled.toISOString(), reason: 'off' };
+      return {
+        cadence: input.cadence,
+        due: false,
+        scheduledAt: scheduled.toISOString(),
+        reason: 'off',
+      };
     }
 
     const notification = buildSpendingDigestNotification(input);
     if (history.some((entry) => entry.digestId === notification.id)) {
-      return { cadence: input.cadence, due: false, scheduledAt: scheduled.toISOString(), reason: 'already_delivered' };
+      return {
+        cadence: input.cadence,
+        due: false,
+        scheduledAt: scheduled.toISOString(),
+        reason: 'already_delivered',
+      };
     }
 
     return {

@@ -12,7 +12,14 @@ export interface SmartNotification {
   readonly createdAt: string;
   readonly status: SmartNotificationStatus;
   readonly entityId?: string;
-  readonly entityType?: 'bill' | 'budget' | 'goal' | 'account' | 'transaction' | 'merchant' | 'category';
+  readonly entityType?:
+    | 'bill'
+    | 'budget'
+    | 'goal'
+    | 'account'
+    | 'transaction'
+    | 'merchant'
+    | 'category';
   readonly dueDate?: string;
   readonly financialImpactCents?: number;
   readonly deduplicationKey?: string;
@@ -56,7 +63,10 @@ const SEVERITY_POINTS: Readonly<Record<SmartNotificationSeverity, number>> = {
   critical: 90,
 };
 
-export function scoreNotification(notification: SmartNotification, options: NotificationPrioritizationOptions): PrioritizedNotification {
+export function scoreNotification(
+  notification: SmartNotification,
+  options: NotificationPrioritizationOptions,
+): PrioritizedNotification {
   const reasons: string[] = [];
   let score = SEVERITY_POINTS[notification.severity];
   reasons.push(`${notification.severity} severity`);
@@ -90,7 +100,10 @@ export function scoreNotification(notification: SmartNotification, options: Noti
   }
 
   const history = options.history;
-  if (notification.status === 'dismissed' || history?.dismissedNotificationIds?.includes(notification.id)) {
+  if (
+    notification.status === 'dismissed' ||
+    history?.dismissedNotificationIds?.includes(notification.id)
+  ) {
     score -= 60;
     reasons.push('previously dismissed');
   }
@@ -107,8 +120,13 @@ export function scoreNotification(notification: SmartNotification, options: Noti
   return { notification, score: Math.max(0, Math.round(score)), reasons, pinned };
 }
 
-export function prioritizeAndBundleNotifications(notifications: readonly SmartNotification[], options: NotificationPrioritizationOptions): NotificationBundle[] {
-  const scored = notifications.map((notification) => scoreNotification(notification, options)).filter((item) => item.notification.status !== 'dismissed' || item.score > 0);
+export function prioritizeAndBundleNotifications(
+  notifications: readonly SmartNotification[],
+  options: NotificationPrioritizationOptions,
+): NotificationBundle[] {
+  const scored = notifications
+    .map((notification) => scoreNotification(notification, options))
+    .filter((item) => item.notification.status !== 'dismissed' || item.score > 0);
   const singles: NotificationBundle[] = [];
   const groups = new Map<string, PrioritizedNotification[]>();
 
@@ -139,11 +157,23 @@ export function prioritizeAndBundleNotifications(notifications: readonly SmartNo
     }
   }
 
-  return singles.sort((left, right) => Number(right.pinned) - Number(left.pinned) || right.score - left.score || left.title.localeCompare(right.title));
+  return singles.sort(
+    (left, right) =>
+      Number(right.pinned) - Number(left.pinned) ||
+      right.score - left.score ||
+      left.title.localeCompare(right.title),
+  );
 }
 
 export function serializeNotificationBundles(bundles: readonly NotificationBundle[]): string {
-  return JSON.stringify(bundles.map((bundle) => ({ id: bundle.id, kind: bundle.kind, count: bundle.count, childIds: bundle.children.map((child) => child.notification.id) })));
+  return JSON.stringify(
+    bundles.map((bundle) => ({
+      id: bundle.id,
+      kind: bundle.kind,
+      count: bundle.count,
+      childIds: bundle.children.map((child) => child.notification.id),
+    })),
+  );
 }
 
 function singleBundle(item: PrioritizedNotification): NotificationBundle {
@@ -162,7 +192,11 @@ function singleBundle(item: PrioritizedNotification): NotificationBundle {
 function bundleKey(notification: SmartNotification, windowHours: number): string {
   const date = new Date(notification.createdAt);
   const bucket = Math.floor(date.getTime() / (Math.max(1, windowHours) * 3_600_000));
-  return [notification.entityType ?? notification.type, notification.entityId ?? notification.deduplicationKey ?? notification.type, bucket].join(':');
+  return [
+    notification.entityType ?? notification.type,
+    notification.entityId ?? notification.deduplicationKey ?? notification.type,
+    bucket,
+  ].join(':');
 }
 
 function daysBetween(start: string, end: string): number {

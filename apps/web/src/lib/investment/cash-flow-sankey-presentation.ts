@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { CashFlowSankeyLink, CashFlowSankeyNode, CashFlowSankeyReport, SankeyLineKind } from './cash-flow-sankey';
+import type {
+  CashFlowSankeyLink,
+  CashFlowSankeyNode,
+  CashFlowSankeyReport,
+  SankeyLineKind,
+} from './cash-flow-sankey';
 
 /** UI-ready, accessible presentation model for cash-flow Sankey reports (#2480). */
 

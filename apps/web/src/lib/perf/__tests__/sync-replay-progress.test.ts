@@ -11,19 +11,51 @@ import {
 describe('sync replay progress', () => {
   it('broadcasts progress every two seconds only for long replays', () => {
     expect(
-      shouldBroadcastReplayProgress({ totalCount: 100, completedCount: 1, mergedCount: 0, failedCount: 0, conflictCount: 0, now: 1_000, lastBroadcastAt: null }),
+      shouldBroadcastReplayProgress({
+        totalCount: 100,
+        completedCount: 1,
+        mergedCount: 0,
+        failedCount: 0,
+        conflictCount: 0,
+        now: 1_000,
+        lastBroadcastAt: null,
+      }),
     ).toBe(true);
     expect(
-      shouldBroadcastReplayProgress({ totalCount: 100, completedCount: 2, mergedCount: 0, failedCount: 0, conflictCount: 0, now: 2_000, lastBroadcastAt: 1_000 }),
+      shouldBroadcastReplayProgress({
+        totalCount: 100,
+        completedCount: 2,
+        mergedCount: 0,
+        failedCount: 0,
+        conflictCount: 0,
+        now: 2_000,
+        lastBroadcastAt: 1_000,
+      }),
     ).toBe(false);
     expect(
-      shouldBroadcastReplayProgress({ totalCount: 10, completedCount: 2, mergedCount: 0, failedCount: 0, conflictCount: 0, now: 3_000, lastBroadcastAt: null }),
+      shouldBroadcastReplayProgress({
+        totalCount: 10,
+        completedCount: 2,
+        mergedCount: 0,
+        failedCount: 0,
+        conflictCount: 0,
+        now: 3_000,
+        lastBroadcastAt: null,
+      }),
     ).toBe(false);
   });
 
   it('creates cross-tab replay messages with counts and percentages', () => {
     expect(
-      createSyncReplayProgressMessage({ totalCount: 100, completedCount: 25, mergedCount: 3, failedCount: 1, conflictCount: 2, now: 5_000, lastBroadcastAt: null }),
+      createSyncReplayProgressMessage({
+        totalCount: 100,
+        completedCount: 25,
+        mergedCount: 3,
+        failedCount: 1,
+        conflictCount: 2,
+        now: 5_000,
+        lastBroadcastAt: null,
+      }),
     ).toEqual({
       type: 'sync-replay-progress',
       totalCount: 100,
@@ -38,7 +70,14 @@ describe('sync replay progress', () => {
   });
 
   it('summarizes synced, merged, failed, and conflicted replay results', () => {
-    expect(createSyncReplayToastSummary({ syncedCount: 8, mergedCount: 2, failedCount: 0, conflictCount: 1 })).toEqual({
+    expect(
+      createSyncReplayToastSummary({
+        syncedCount: 8,
+        mergedCount: 2,
+        failedCount: 0,
+        conflictCount: 1,
+      }),
+    ).toEqual({
       tone: 'warning',
       message: '8 synced, 2 merged, 0 failed, 1 conflicted.',
     });

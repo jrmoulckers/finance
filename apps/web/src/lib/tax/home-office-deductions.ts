@@ -53,7 +53,11 @@ export function calculateHomeOfficeDeduction(entry: HomeOfficeEntry): HomeOffice
   const deductibleSquareFeet = clamp(entry.businessSquareFeet, 0, SIMPLIFIED_HOME_OFFICE_MAX_SQFT);
   const businessUsePercent =
     entry.totalHomeSquareFeet > 0
-      ? Math.round((clamp(entry.businessSquareFeet, 0, entry.totalHomeSquareFeet) / entry.totalHomeSquareFeet) * 10_000) / 100
+      ? Math.round(
+          (clamp(entry.businessSquareFeet, 0, entry.totalHomeSquareFeet) /
+            entry.totalHomeSquareFeet) *
+            10_000,
+        ) / 100
       : 0;
 
   if (entry.businessSquareFeet <= 0) {
@@ -71,8 +75,14 @@ export function calculateHomeOfficeDeduction(entry: HomeOfficeEntry): HomeOffice
 
   const deductionCents =
     entry.method === 'SIMPLIFIED'
-      ? Math.round(deductibleSquareFeet * SIMPLIFIED_HOME_OFFICE_RATE_CENTS_PER_SQFT * (activeMonths / 12))
-      : Math.round(Math.max(0, entry.actualHomeExpenseCents ?? 0) * (businessUsePercent / 100) * (activeMonths / 12));
+      ? Math.round(
+          deductibleSquareFeet * SIMPLIFIED_HOME_OFFICE_RATE_CENTS_PER_SQFT * (activeMonths / 12),
+        )
+      : Math.round(
+          Math.max(0, entry.actualHomeExpenseCents ?? 0) *
+            (businessUsePercent / 100) *
+            (activeMonths / 12),
+        );
 
   return {
     entryId: entry.id,

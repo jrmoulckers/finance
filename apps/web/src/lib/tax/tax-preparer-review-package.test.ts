@@ -25,7 +25,12 @@ const report: TaxYearSummaryReport = {
     },
   ],
   qualityFlags: [
-    { id: 'missing-receipt:office', severity: 'warning', label: 'Missing receipt', sourceLinks: [] },
+    {
+      id: 'missing-receipt:office',
+      severity: 'warning',
+      label: 'Missing receipt',
+      sourceLinks: [],
+    },
     { id: 'uncategorized:client', severity: 'warning', label: 'Uncategorized', sourceLinks: [] },
   ],
   notes: [],
@@ -46,9 +51,21 @@ describe('tax-preparer-review-package', () => {
       },
     });
 
-    expect(pkg.csvSchemas['summary-sections']).toEqual(['taxYear', 'sectionKey', 'sectionLabel', 'amountCents', 'sourceCount']);
-    expect(pkg.csvRows['summary-sections'][0]).toMatchObject({ sectionKey: 'deductible-expenses', amountCents: 25_00 });
-    expect(pkg.csvRows['source-links'][0]).toMatchObject({ sourceType: 'transaction', sourceId: 'office' });
+    expect(pkg.csvSchemas['summary-sections']).toEqual([
+      'taxYear',
+      'sectionKey',
+      'sectionLabel',
+      'amountCents',
+      'sourceCount',
+    ]);
+    expect(pkg.csvRows['summary-sections'][0]).toMatchObject({
+      sectionKey: 'deductible-expenses',
+      amountCents: 25_00,
+    });
+    expect(pkg.csvRows['source-links'][0]).toMatchObject({
+      sourceType: 'transaction',
+      sourceId: 'office',
+    });
     expect(pkg.printableSectionOrder.at(-1)).toBe('validation-summary');
     expect(pkg.validationSummary).toEqual({
       missingReceiptCount: 1,

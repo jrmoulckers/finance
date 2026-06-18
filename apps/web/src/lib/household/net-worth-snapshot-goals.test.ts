@@ -26,7 +26,14 @@ describe('net worth snapshot goals', () => {
     );
 
     expect(result.map((item) => item.month)).toEqual(['2025-04', '2025-05']);
-    expect(Object.keys(result[1])).toEqual(['householdId', 'month', 'assetCents', 'liabilityCents', 'netWorthCents', 'createdAt']);
+    expect(Object.keys(result[1])).toEqual([
+      'householdId',
+      'month',
+      'assetCents',
+      'liabilityCents',
+      'netWorthCents',
+      'createdAt',
+    ]);
   });
 
   it('compares shared goals and liabilities without revealing aggregate-only liability names', () => {
@@ -34,7 +41,12 @@ describe('net worth snapshot goals', () => {
       { goalId: 'goal-1', label: 'First million', targetNetWorthCents: 1_000_000 },
     ]);
     const liabilities = compareNetWorthToMajorLiabilities(snapshot, [
-      { liabilityId: 'loan', label: 'Private student loan', balanceCents: 50_000, visibility: 'AGGREGATE_ONLY' },
+      {
+        liabilityId: 'loan',
+        label: 'Private student loan',
+        balanceCents: 50_000,
+        visibility: 'AGGREGATE_ONLY',
+      },
     ]);
 
     expect(goals[0]).toMatchObject({ gapCents: 300_000, percentComplete: 70 });

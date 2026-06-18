@@ -36,9 +36,13 @@ export interface ManualReimportIntent {
   readonly blockReasons: readonly string[];
 }
 
-function reminderEligible(profile: SavedImportProfile, options: Required<Pick<ImportReminderOptions, 'includeManualProfiles'>> & ImportReminderOptions): boolean {
+function reminderEligible(
+  profile: SavedImportProfile,
+  options: Required<Pick<ImportReminderOptions, 'includeManualProfiles'>> & ImportReminderOptions,
+): boolean {
   if (options.snoozedProfileIds?.has(profile.id) === true) return false;
-  if (profile.cadence.kind === 'manual') return options.includeManualProfiles && profile.remindersEnabled;
+  if (profile.cadence.kind === 'manual')
+    return options.includeManualProfiles && profile.remindersEnabled;
   return isImportProfileDue(profile, options.now ?? new Date());
 }
 
@@ -73,10 +77,12 @@ export function planManualReimport(request: ManualReimportRequest): ManualReimpo
     parserErrorCount: request.parserErrorCount,
     now: request.now,
   });
-  const rememberedMappingMatches = request.mappingFingerprint === undefined
-    || request.mappingFingerprint === request.profile.mappingFingerprint;
-  const accountRoutingMatches = request.accountRoutingFingerprint === undefined
-    || request.accountRoutingFingerprint === request.profile.accountRoutingFingerprint;
+  const rememberedMappingMatches =
+    request.mappingFingerprint === undefined ||
+    request.mappingFingerprint === request.profile.mappingFingerprint;
+  const accountRoutingMatches =
+    request.accountRoutingFingerprint === undefined ||
+    request.accountRoutingFingerprint === request.profile.accountRoutingFingerprint;
   const runKey = [
     request.profile.id,
     request.mappingFingerprint ?? request.profile.mappingFingerprint,
@@ -90,13 +96,15 @@ export function planManualReimport(request: ManualReimportRequest): ManualReimpo
 
   if (!rememberedMappingMatches) blockReasons.push('saved mapping does not match this file');
   if (!accountRoutingMatches) blockReasons.push('saved account routing does not match this file');
-  if (request.existingRunKeys?.has(runKey) === true) blockReasons.push('matching re-import was already planned');
+  if (request.existingRunKeys?.has(runKey) === true)
+    blockReasons.push('matching re-import was already planned');
 
   return {
     profileId: request.profile.id,
     plan,
     allowed: blockReasons.length === 0,
-    duplicateProtected: request.profile.duplicatePolicy !== 'keep_both' && request.duplicateCount > 0,
+    duplicateProtected:
+      request.profile.duplicatePolicy !== 'keep_both' && request.duplicateCount > 0,
     rememberedMappingMatches: rememberedMappingMatches && accountRoutingMatches,
     requiresUserConfirmation: plan.requiresUserConfirmation,
     runKey,

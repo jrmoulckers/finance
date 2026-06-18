@@ -68,33 +68,52 @@ export function calculateSharedYearsToFi(
 }
 
 export function calculateSharedFirePlan(input: SharedFireInput): SharedFirePlan {
-  const fiNumberCents = calculateSharedFiNumber(input.annualExpensesCents, input.withdrawalRatePercent);
+  const fiNumberCents = calculateSharedFiNumber(
+    input.annualExpensesCents,
+    input.withdrawalRatePercent,
+  );
   const currentPortfolioCents = cents(input.currentPortfolioCents);
   const annualSavingsCents = cents(input.annualSavingsCents);
   const annualIncomeCents = cents(input.annualIncomeCents);
   const yearsToRetirement = Math.max(0, Math.trunc(input.targetRetirementAge - input.currentAge));
   const returnRate = input.expectedReturnPercent / 100;
-  const coastFiCents = yearsToRetirement === 0 ? fiNumberCents : cents(fiNumberCents / (1 + returnRate) ** yearsToRetirement);
-  const yearsToFi = calculateSharedYearsToFi(currentPortfolioCents, annualSavingsCents, input.expectedReturnPercent, fiNumberCents);
+  const coastFiCents =
+    yearsToRetirement === 0
+      ? fiNumberCents
+      : cents(fiNumberCents / (1 + returnRate) ** yearsToRetirement);
+  const yearsToFi = calculateSharedYearsToFi(
+    currentPortfolioCents,
+    annualSavingsCents,
+    input.expectedReturnPercent,
+    fiNumberCents,
+  );
   const swrSensitivity = [3.5, 4, 4.5].map((withdrawalRatePercent) => {
     const target = calculateSharedFiNumber(input.annualExpensesCents, withdrawalRatePercent);
     return {
       withdrawalRatePercent,
       fiNumberCents: target,
-      yearsToFi: calculateSharedYearsToFi(currentPortfolioCents, annualSavingsCents, input.expectedReturnPercent, target),
+      yearsToFi: calculateSharedYearsToFi(
+        currentPortfolioCents,
+        annualSavingsCents,
+        input.expectedReturnPercent,
+        target,
+      ),
     };
   });
   const warnings: string[] = [];
   if (input.withdrawalRatePercent > 5) warnings.push('high-withdrawal-rate');
-  if (annualSavingsCents <= 0 && currentPortfolioCents < fiNumberCents) warnings.push('no-positive-savings');
+  if (annualSavingsCents <= 0 && currentPortfolioCents < fiNumberCents)
+    warnings.push('no-positive-savings');
   if (input.expectedReturnPercent < 0) warnings.push('negative-return-assumption');
 
   return {
     fiNumberCents,
-    fiProgressPercent: fiNumberCents === 0 ? 0 : percent((currentPortfolioCents / fiNumberCents) * 100),
+    fiProgressPercent:
+      fiNumberCents === 0 ? 0 : percent((currentPortfolioCents / fiNumberCents) * 100),
     coastFiCents,
     isCoastFi: currentPortfolioCents >= coastFiCents,
-    savingsRatePercent: annualIncomeCents === 0 ? 0 : percent((annualSavingsCents / annualIncomeCents) * 100),
+    savingsRatePercent:
+      annualIncomeCents === 0 ? 0 : percent((annualSavingsCents / annualIncomeCents) * 100),
     yearsToFi,
     projectedFiAge: input.currentAge + yearsToFi,
     swrSensitivity,

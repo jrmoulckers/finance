@@ -12,7 +12,13 @@ import type { MintParseResult, MintTransaction } from './mint-parser';
 import type { YnabParseResult, YnabTransaction } from './ynab-parser';
 import type { ImportResult, ParsedTransaction } from './types';
 
-export type MigrationSource = 'mint' | 'ynab' | 'quicken-qif' | 'quicken-qfx' | 'quicken-ofx' | 'generic';
+export type MigrationSource =
+  | 'mint'
+  | 'ynab'
+  | 'quicken-qif'
+  | 'quicken-qfx'
+  | 'quicken-ofx'
+  | 'generic';
 
 export interface MigrationTransaction {
   readonly source: MigrationSource;
@@ -122,7 +128,9 @@ function extractMigrationTransactions(
   }
 
   if (isImportResultWithTransactions(result.rawResult)) {
-    return result.rawResult.transactions.map((transaction, index) => fromParsed(transaction, source, index));
+    return result.rawResult.transactions.map((transaction, index) =>
+      fromParsed(transaction, source, index),
+    );
   }
 
   return result.transactions.map((transaction, index) => ({

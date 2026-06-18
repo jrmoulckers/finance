@@ -9,7 +9,13 @@
  */
 
 import type { Transaction } from '../../kmp/bridge';
-import { detectScamAlerts, scamAlertsToNotifications, type ScamAlertDetectionOptions, type ScamAlertRule, type ScamSpendingAlert } from './scam-alerts';
+import {
+  detectScamAlerts,
+  scamAlertsToNotifications,
+  type ScamAlertDetectionOptions,
+  type ScamAlertRule,
+  type ScamSpendingAlert,
+} from './scam-alerts';
 import type { AppNotification, NotificationSeverity } from './types';
 
 export type UnusualSpendReviewOutcome = 'recognized' | 'not_mine' | 'dismissed';
@@ -40,7 +46,10 @@ const SEVERITY_RANK: Record<NotificationSeverity, number> = {
 
 function merchantKey(merchantName: string | undefined): string | null {
   if (merchantName === undefined) return null;
-  const key = merchantName.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const key = merchantName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
   return key.length === 0 ? null : key;
 }
 
@@ -57,7 +66,10 @@ function isSuppressedByReview(
   const alertMerchant = merchantKey(alert.merchantName);
 
   return reviews.some((review) => {
-    if (review.alertId === alert.id || sameTransactionSet(review.transactionIds, alert.transactionIds)) {
+    if (
+      review.alertId === alert.id ||
+      sameTransactionSet(review.transactionIds, alert.transactionIds)
+    ) {
       return true;
     }
 
@@ -74,7 +86,10 @@ function isSuppressedByReview(
   });
 }
 
-function meetsMinimumSeverity(alert: ScamSpendingAlert, minimumSeverity?: NotificationSeverity): boolean {
+function meetsMinimumSeverity(
+  alert: ScamSpendingAlert,
+  minimumSeverity?: NotificationSeverity,
+): boolean {
   if (minimumSeverity === undefined) return true;
   return SEVERITY_RANK[alert.severity] >= SEVERITY_RANK[minimumSeverity];
 }

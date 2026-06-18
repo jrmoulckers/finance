@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export type ExpectedIncomeStatus = 'expected' | 'cleared' | 'late' | 'partial' | 'missed';
-export type ExpectedIncomeSourceType = 'child_support' | 'freelance' | 'reimbursement' | 'tips' | 'other';
+export type ExpectedIncomeSourceType =
+  | 'child_support'
+  | 'freelance'
+  | 'reimbursement'
+  | 'tips'
+  | 'other';
 
 export interface ExpectedIncomeRecord {
   readonly id: string;
@@ -108,7 +113,8 @@ export function summarizeExpectedIncome(params: {
     const status = deriveExpectedIncomeStatus(record, params.asOfDate);
     if (status === 'cleared' || status === 'partial') {
       clearedCashCents += record.clearedAmountCents ?? 0;
-      if (status === 'partial') atRiskCashCents += Math.max(0, record.amountCents - (record.clearedAmountCents ?? 0));
+      if (status === 'partial')
+        atRiskCashCents += Math.max(0, record.amountCents - (record.clearedAmountCents ?? 0));
       continue;
     }
     if (status === 'expected' && record.reliability === 'high') {

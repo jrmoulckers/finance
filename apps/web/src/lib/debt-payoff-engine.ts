@@ -459,8 +459,9 @@ function normalizeDtiThresholds(targetRatioPercent?: number): number[] {
   return Array.from(
     new Set(
       [...DEFAULT_DTI_THRESHOLDS, targetRatioPercent]
-        .filter((threshold): threshold is number =>
-          typeof threshold === 'number' && Number.isFinite(threshold) && threshold > 0,
+        .filter(
+          (threshold): threshold is number =>
+            typeof threshold === 'number' && Number.isFinite(threshold) && threshold > 0,
         )
         .map((threshold) => roundToOneDecimal(threshold)),
     ),
@@ -571,7 +572,11 @@ export function calculateDebtToIncomeTrend(
         requiredDebtPaymentCents += debt?.minimumPaymentCents ?? 0;
       }
     }
-    const projectedIncomeCents = calculateProjectedMonthlyIncome(monthlyIncomeCents, month, options);
+    const projectedIncomeCents = calculateProjectedMonthlyIncome(
+      monthlyIncomeCents,
+      month,
+      options,
+    );
     trend.push(buildDtiPoint(month, requiredDebtPaymentCents, projectedIncomeCents, thresholds));
   }
 

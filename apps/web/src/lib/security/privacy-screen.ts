@@ -55,7 +55,10 @@ export function maskPrivacyScreenValue(
   mode: PrivacyScreenMode,
 ): string {
   if (mode === 'visible') return value;
-  if (mode === 'bucketed' && (category === 'amount' || category === 'balance' || category === 'net-worth')) {
+  if (
+    mode === 'bucketed' &&
+    (category === 'amount' || category === 'balance' || category === 'net-worth')
+  ) {
     return 'Approximate amount';
   }
   return DEFAULT_MASKS[category];
@@ -65,7 +68,9 @@ export function evaluatePrivacyScreenCoverage(
   surfaces: readonly SensitiveSurfaceDescriptor[],
 ): PrivacyCoverageReport {
   const relevantSurfaces = surfaces.filter((surface) => !surface.exportSurface);
-  const unmasked = relevantSurfaces.filter((surface) => surface.categories.length > 0 && !surface.masked);
+  const unmasked = relevantSurfaces.filter(
+    (surface) => surface.categories.length > 0 && !surface.masked,
+  );
   const categories = new Set<SensitiveSurfaceCategory>();
   for (const surface of unmasked) {
     for (const category of surface.categories) categories.add(category);

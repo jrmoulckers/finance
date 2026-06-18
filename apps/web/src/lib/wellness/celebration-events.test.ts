@@ -6,7 +6,9 @@ import { deriveHabitStreak, emitCelebrationEvents, isNearWin } from './celebrati
 describe('celebration event rules', () => {
   it('derives streaks and near wins without using spending volume', () => {
     expect(deriveHabitStreak(['2026-04-10', '2026-04-09', '2026-04-08'])).toBe(3);
-    expect(isNearWin({ domain: 'goals', date: '2026-04-10', percentComplete: 85, completed: false })).toBe(true);
+    expect(
+      isNearWin({ domain: 'goals', date: '2026-04-10', percentComplete: 85, completed: false }),
+    ).toBe(true);
     expect(
       emitCelebrationEvents([
         { domain: 'goals', date: '2026-04-10', percentComplete: 85, completed: false },

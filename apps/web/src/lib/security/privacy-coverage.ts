@@ -41,7 +41,9 @@ export function auditPrivacySurfaceCoverage(
   surfaces: readonly PrivacySurfaceCoverageItem[],
   requiredAreas: readonly SensitiveSurfaceArea[] = REQUIRED_PRIVACY_SURFACE_AREAS,
 ): PrivacyCoverageAudit {
-  const coveredAreas = requiredAreas.filter((area) => surfaces.some((surface) => surface.area === area));
+  const coveredAreas = requiredAreas.filter((area) =>
+    surfaces.some((surface) => surface.area === area),
+  );
   const uncoveredAreas = requiredAreas.filter((area) => !coveredAreas.includes(area));
   const sensitiveSurfaces = surfaces.filter((surface) => surface.categories.length > 0);
   const missingMaskingIds = sensitiveSurfaces
@@ -49,11 +51,18 @@ export function auditPrivacySurfaceCoverage(
     .map((surface) => surface.id);
   const missingExportRedactionIds = sensitiveSurfaces
     .filter((surface) => surface.area === 'export')
-    .filter((surface) => surface.maskingBehavior !== 'redacted_on_export' || surface.exportRedactionExplicit !== true)
+    .filter(
+      (surface) =>
+        surface.maskingBehavior !== 'redacted_on_export' ||
+        surface.exportRedactionExplicit !== true,
+    )
     .map((surface) => surface.id);
 
   return {
-    complete: uncoveredAreas.length === 0 && missingMaskingIds.length === 0 && missingExportRedactionIds.length === 0,
+    complete:
+      uncoveredAreas.length === 0 &&
+      missingMaskingIds.length === 0 &&
+      missingExportRedactionIds.length === 0,
     missingMaskingIds,
     missingExportRedactionIds,
     coveredAreas,

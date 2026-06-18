@@ -2,7 +2,12 @@
 
 /** App-lock helpers built on WebAuthn user verification/passkeys. */
 
-export type AppLockDecisionReason = 'disabled' | 'manual' | 'idle_timeout' | 'resume' | 'unsupported';
+export type AppLockDecisionReason =
+  | 'disabled'
+  | 'manual'
+  | 'idle_timeout'
+  | 'resume'
+  | 'unsupported';
 export type PasskeyGateStatus = 'unlocked' | 'unsupported' | 'cancelled' | 'failed';
 
 export interface AppLockPolicy {
@@ -97,7 +102,10 @@ export async function verifyPasskeyGate({
     if (name === 'NotAllowedError' || name === 'AbortError') {
       return { status: 'cancelled', error: 'Passkey unlock was cancelled.' };
     }
-    return { status: 'failed', error: error instanceof Error ? error.message : 'Passkey unlock failed.' };
+    return {
+      status: 'failed',
+      error: error instanceof Error ? error.message : 'Passkey unlock failed.',
+    };
   }
 }
 

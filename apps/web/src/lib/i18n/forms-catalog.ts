@@ -60,6 +60,10 @@ export function getToastDismissLabel(locale?: string): string {
   return getFormCopy('toastDismiss', locale);
 }
 
-export function getToastAriaLabel(type: ToastMessageType, message: string, locale?: string): string {
+export function getToastAriaLabel(
+  type: ToastMessageType,
+  message: string,
+  locale?: string,
+): string {
   return getFormCopy('toastAria', locale, { type: getToastTypeLabel(type, locale), message });
 }

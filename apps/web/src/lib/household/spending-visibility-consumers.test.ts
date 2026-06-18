@@ -85,7 +85,11 @@ describe('spending visibility consumers', () => {
   });
 
   it('routes reconciliation totals through the same redaction decisions', () => {
-    const summary = summarizeReconciliationWithVisibility([aggregateRule, detailRule], transactions, 'partner');
+    const summary = summarizeReconciliationWithVisibility(
+      [aggregateRule, detailRule],
+      transactions,
+      'partner',
+    );
 
     expect(summary).toMatchObject({
       clearedCents: 20_000,

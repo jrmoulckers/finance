@@ -30,7 +30,11 @@ describe('budget scenario editor helpers', () => {
       name: 'Try less food spend',
       createdAt: '2025-03-02T00:00:00Z',
     });
-    const edited = editScenarioCategoryAmount(editScenarioIncome(scenario, 525_000), 'budget-food', 60_000);
+    const edited = editScenarioCategoryAmount(
+      editScenarioIncome(scenario, 525_000),
+      'budget-food',
+      60_000,
+    );
     const comparison = summarizeScenarioComparison(baseline, edited);
 
     expect(comparison).toMatchObject({
@@ -62,7 +66,9 @@ describe('budget scenario editor helpers', () => {
       requiresConfirmation: true,
       destructive: true,
     });
-    expect(getScenarioEntryPointDecision('apply', state).message).toContain('Apply 3 scenario changes');
+    expect(getScenarioEntryPointDecision('apply', state).message).toContain(
+      'Apply 3 scenario changes',
+    );
   });
 
   it('duplicates drafts without mutating the original scenario', () => {

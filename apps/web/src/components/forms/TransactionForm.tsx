@@ -840,8 +840,12 @@ export function TransactionForm({
     hasDescriptionError
       ? { fieldId: 'txn-description', label: 'Payee', message: errors.description! }
       : null,
-    hasAccountError ? { fieldId: 'txn-account', label: 'Account', message: errors.accountId! } : null,
-    hasSplitError ? { fieldId: 'txn-splits-status', label: 'Splits', message: errors.splits! } : null,
+    hasAccountError
+      ? { fieldId: 'txn-account', label: 'Account', message: errors.accountId! }
+      : null,
+    hasSplitError
+      ? { fieldId: 'txn-splits-status', label: 'Splits', message: errors.splits! }
+      : null,
   ].filter((item): item is FormErrorSummaryItem => item !== null);
   const dictationControls = {
     amount: buildDictationControlProps({ id: 'txn-amount', visibleLabel: 'Amount' }),

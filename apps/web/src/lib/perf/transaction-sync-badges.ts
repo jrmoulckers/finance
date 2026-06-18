@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-export type TransactionSyncState = 'saved-local' | 'queued' | 'syncing' | 'failed' | 'conflicted' | 'synced';
+export type TransactionSyncState =
+  | 'saved-local'
+  | 'queued'
+  | 'syncing'
+  | 'failed'
+  | 'conflicted'
+  | 'synced';
 export type TransactionSyncTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 export type TransactionSyncAction = 'retry-sync' | 'review-conflict' | null;
 
@@ -73,7 +79,8 @@ export function mapTransactionSyncBadges(
 function badgeFromQueueState(queueState: TransactionQueueState): TransactionSyncBadge {
   switch (queueState.state) {
     case 'queued': {
-      const label = queueState.queuePosition === undefined ? 'Queued' : `Queued #${queueState.queuePosition}`;
+      const label =
+        queueState.queuePosition === undefined ? 'Queued' : `Queued #${queueState.queuePosition}`;
       return createBadge(
         queueState.transactionId,
         'queued',

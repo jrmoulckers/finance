@@ -16,7 +16,9 @@ export type TaxPreparerCsvName = 'summary-sections' | 'source-links' | 'validati
 export interface TaxPreparerReviewPackage {
   readonly taxYear: number;
   readonly csvSchemas: Readonly<Record<TaxPreparerCsvName, readonly string[]>>;
-  readonly csvRows: Readonly<Record<TaxPreparerCsvName, ReadonlyArray<Readonly<Record<string, string | number>>>> >;
+  readonly csvRows: Readonly<
+    Record<TaxPreparerCsvName, ReadonlyArray<Readonly<Record<string, string | number>>>>
+  >;
   readonly printableSectionOrder: readonly string[];
   readonly explanatoryNotes: readonly string[];
   readonly validationSummary: {
@@ -97,10 +99,14 @@ export function buildTaxPreparerReviewPackage(input: {
       'This package is an educational preparer review aid, not legal or tax advice.',
     ],
     validationSummary: {
-      missingReceiptCount: reconciliation?.missingReceiptTransactionIds.length ?? countFlags(report, 'missing-receipt:'),
+      missingReceiptCount:
+        reconciliation?.missingReceiptTransactionIds.length ??
+        countFlags(report, 'missing-receipt:'),
       uncategorizedTaxTransactionCount: countFlags(report, 'uncategorized:'),
-      unreconciledFormCount: reconciliation?.unreconciledFormIds.length ?? countFlags(report, 'unreconciled-1099:'),
-      openChecklistItemCount: reconciliation?.openChecklistItems.length ?? countFlags(report, 'open-checklist:'),
+      unreconciledFormCount:
+        reconciliation?.unreconciledFormIds.length ?? countFlags(report, 'unreconciled-1099:'),
+      openChecklistItemCount:
+        reconciliation?.openChecklistItems.length ?? countFlags(report, 'open-checklist:'),
     },
   };
 }

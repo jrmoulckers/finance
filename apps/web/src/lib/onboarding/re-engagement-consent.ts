@@ -10,12 +10,10 @@ export interface ReEngagementReminderPlan {
     readonly allowed: boolean;
     readonly reason: string;
   }[];
-  readonly analyticsEvent:
-    | {
-        readonly name: 'onboarding_re_engagement_shown';
-        readonly properties: Readonly<Record<string, string | number | boolean>>;
-      }
-    | null;
+  readonly analyticsEvent: {
+    readonly name: 'onboarding_re_engagement_shown';
+    readonly properties: Readonly<Record<string, string | number | boolean>>;
+  } | null;
   readonly interruptionSuppressed: boolean;
   readonly copy: string;
 }

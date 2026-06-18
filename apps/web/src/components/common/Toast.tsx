@@ -2,7 +2,11 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import './toast.css';
-import { getToastAriaLabel, getToastDismissLabel, getToastTypeLabel } from '../../lib/i18n/forms-catalog';
+import {
+  getToastAriaLabel,
+  getToastDismissLabel,
+  getToastTypeLabel,
+} from '../../lib/i18n/forms-catalog';
 
 /* --------------------------------------------------------------------------
  * Types
@@ -151,7 +155,6 @@ interface ToastItemProps {
   onDismiss: (id: string) => void;
 }
 
-
 const TOAST_ICONS: Record<ToastType, React.ReactNode> = {
   success: (
     <svg
@@ -275,4 +278,3 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
 };
 
 export default ToastProvider;
-

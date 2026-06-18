@@ -11,8 +11,13 @@ import {
 
 describe('spending digest preferences', () => {
   it('supports weekly, monthly, both, and off cadence choices', () => {
-    expect(enabledDigestCadences(normalizeSpendingDigestPreferences({ cadence: 'both' }))).toEqual(['weekly', 'monthly']);
-    expect(enabledDigestCadences(normalizeSpendingDigestPreferences({ cadence: 'off' }))).toEqual([]);
+    expect(enabledDigestCadences(normalizeSpendingDigestPreferences({ cadence: 'both' }))).toEqual([
+      'weekly',
+      'monthly',
+    ]);
+    expect(enabledDigestCadences(normalizeSpendingDigestPreferences({ cadence: 'off' }))).toEqual(
+      [],
+    );
   });
 
   it('plans due digest delivery and records history entries', () => {
@@ -29,8 +34,17 @@ describe('spending digest preferences', () => {
   });
 
   it('skips already delivered digest periods', () => {
-    const input = { cadence: 'monthly' as const, periodStart: '2025-04-01', periodEnd: '2025-04-30' };
-    const [first] = planSpendingDigestSchedules([input], { cadence: 'monthly' }, DEFAULT_NOTIFICATION_PREFERENCES, []);
+    const input = {
+      cadence: 'monthly' as const,
+      periodStart: '2025-04-01',
+      periodEnd: '2025-04-30',
+    };
+    const [first] = planSpendingDigestSchedules(
+      [input],
+      { cadence: 'monthly' },
+      DEFAULT_NOTIFICATION_PREFERENCES,
+      [],
+    );
     const [second] = planSpendingDigestSchedules(
       [input],
       { cadence: 'monthly' },

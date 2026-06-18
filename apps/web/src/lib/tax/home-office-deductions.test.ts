@@ -42,6 +42,8 @@ describe('home-office deductions', () => {
 
     expect(summary.totalDeductionCents).toBe(1_800_00);
     expect(summary.missingSupportCount).toBe(1);
-    expect(summary.results[0].warnings).toContain('Add supporting notes or receipt references for tax-prep review.');
+    expect(summary.results[0].warnings).toContain(
+      'Add supporting notes or receipt references for tax-prep review.',
+    );
   });
 });

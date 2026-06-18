@@ -79,9 +79,11 @@ export function buildAccountRoutingPlan(
 
   const accounts = Array.from(grouped.entries()).map(([sourceKey, rows]) => {
     const first = rows[0];
-    const sourceName = first.sourceAccountName?.trim() || first.sourceAccountId?.trim() || 'Unknown account';
+    const sourceName =
+      first.sourceAccountName?.trim() || first.sourceAccountId?.trim() || 'Unknown account';
     const match = findBestAccountMatch(sourceName, first.sourceAccountId ?? null, existingAccounts);
-    const action: AccountMappingAction = match.confidence >= 0.9 ? 'match' : match.confidence >= 0.65 ? 'needs_review' : 'create';
+    const action: AccountMappingAction =
+      match.confidence >= 0.9 ? 'match' : match.confidence >= 0.65 ? 'needs_review' : 'create';
 
     return {
       sourceKey,
@@ -169,13 +171,23 @@ function findBestAccountMatch(
   for (const account of existingAccounts) {
     let confidence = 0;
     const normalizedName = normalizeAccountText(account.name);
-    if (sourceAccountId && account.externalAccountId && sourceAccountId === account.externalAccountId) {
+    if (
+      sourceAccountId &&
+      account.externalAccountId &&
+      sourceAccountId === account.externalAccountId
+    ) {
       confidence = 1;
     } else if (normalizedName === normalizedSource) {
       confidence = 0.95;
-    } else if (sourceLast4 && lastFourDigits(account.externalAccountId ?? account.name) === sourceLast4) {
+    } else if (
+      sourceLast4 &&
+      lastFourDigits(account.externalAccountId ?? account.name) === sourceLast4
+    ) {
       confidence = 0.75;
-    } else if (normalizedName.includes(normalizedSource) || normalizedSource.includes(normalizedName)) {
+    } else if (
+      normalizedName.includes(normalizedSource) ||
+      normalizedSource.includes(normalizedName)
+    ) {
       confidence = 0.7;
     }
 
@@ -195,8 +207,13 @@ function getSourceAccountKey(transaction: SourceAccountTransaction): string | nu
   return null;
 }
 
-function sameSourceAccount(left: SourceAccountTransaction, right: SourceAccountTransaction): boolean {
-  return getSourceAccountKey(left) !== null && getSourceAccountKey(left) === getSourceAccountKey(right);
+function sameSourceAccount(
+  left: SourceAccountTransaction,
+  right: SourceAccountTransaction,
+): boolean {
+  return (
+    getSourceAccountKey(left) !== null && getSourceAccountKey(left) === getSourceAccountKey(right)
+  );
 }
 
 function scoreTransferPair(
@@ -206,14 +223,18 @@ function scoreTransferPair(
   maxDateDistanceDays: number,
 ): number {
   let score = 0.5;
-  const text = `${left.payee} ${right.payee} ${left.category ?? ''} ${right.category ?? ''}`.toLowerCase();
+  const text =
+    `${left.payee} ${right.payee} ${left.category ?? ''} ${right.category ?? ''}`.toLowerCase();
   if (/transfer|xfer|payment|autopay/.test(text)) score += 0.25;
   if (mentionsAccount(left, right) || mentionsAccount(right, left)) score += 0.15;
-  score += (maxDateDistanceDays - dateDistance) / Math.max(maxDateDistanceDays, 1) * 0.1;
+  score += ((maxDateDistanceDays - dateDistance) / Math.max(maxDateDistanceDays, 1)) * 0.1;
   return Math.min(1, Number(score.toFixed(2)));
 }
 
-function mentionsAccount(transaction: SourceAccountTransaction, other: SourceAccountTransaction): boolean {
+function mentionsAccount(
+  transaction: SourceAccountTransaction,
+  other: SourceAccountTransaction,
+): boolean {
   const account = normalizeAccountText(other.sourceAccountName ?? other.sourceAccountId ?? '');
   if (!account) return false;
   return normalizeAccountText(transaction.payee).includes(account);
@@ -228,7 +249,11 @@ function buildTransferReason(
 }
 
 function normalizeAccountText(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function lastFourDigits(value: string): string | null {

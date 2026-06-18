@@ -38,13 +38,20 @@ export interface NarrationSummary {
 }
 
 function confidencePhrase(confidence: ConfidenceLevel, uncertainty?: string): string {
-  const base = confidence === 'high' ? 'High confidence' : confidence === 'medium' ? 'Moderate confidence' : 'Low confidence';
+  const base =
+    confidence === 'high'
+      ? 'High confidence'
+      : confidence === 'medium'
+        ? 'Moderate confidence'
+        : 'Low confidence';
   return uncertainty ? `${base}; ${uncertainty}.` : `${base}.`;
 }
 
 function trendPhrase(trend: ChartTrendInput): string {
-  const change = trend.changePercent === undefined ? '' : ` ${Math.abs(trend.changePercent).toFixed(1)}%`;
-  if (trend.direction === 'volatile') return `${trend.label} is moving around more than usual${change}.`;
+  const change =
+    trend.changePercent === undefined ? '' : ` ${Math.abs(trend.changePercent).toFixed(1)}%`;
+  if (trend.direction === 'volatile')
+    return `${trend.label} is moving around more than usual${change}.`;
   if (trend.direction === 'down') return `${trend.label} is lower${change}.`;
   if (trend.direction === 'up') return `${trend.label} is higher${change}.`;
   return `${trend.label} is mostly unchanged.`;
@@ -55,12 +62,22 @@ function spendingPhrase(change: SpendingChangeInput): string {
   return `${change.category} spending is ${change.direction}.`;
 }
 
-export function narrateFinanceState(input: NarrationInput, mode: NarrationMode = 'concise'): NarrationSummary {
+export function narrateFinanceState(
+  input: NarrationInput,
+  mode: NarrationMode = 'concise',
+): NarrationSummary {
   const details = [
     ...input.trends.map(trendPhrase),
     ...input.spendingChanges.map(spendingPhrase),
-    ...input.alerts.map((alert) => (alert.severity === 'critical' ? `Needs attention: ${alert.message}` : alert.message)),
+    ...input.alerts.map((alert) =>
+      alert.severity === 'critical' ? `Needs attention: ${alert.message}` : alert.message,
+    ),
   ];
   const headline = details[0] ?? 'No finance activity to summarize yet.';
-  return { mode, headline, details: mode === 'concise' ? details.slice(0, 3) : details, confidencePhrase: confidencePhrase(input.confidence, input.uncertainty) };
+  return {
+    mode,
+    headline,
+    details: mode === 'concise' ? details.slice(0, 3) : details,
+    confidencePhrase: confidencePhrase(input.confidence, input.uncertainty),
+  };
 }

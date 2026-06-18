@@ -181,7 +181,9 @@ export function parseQif(content: string): ImportResult {
   }
 
   const accountIds = Array.from(
-    new Set(records.map((record) => record.accountName).filter((value): value is string => !!value)),
+    new Set(
+      records.map((record) => record.accountName).filter((value): value is string => !!value),
+    ),
   );
 
   return {
@@ -312,7 +314,10 @@ export function parseQifRecords(
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function createEmptyRecord(qifType: QifType | null, accountName: string | null): {
+function createEmptyRecord(
+  qifType: QifType | null,
+  accountName: string | null,
+): {
   date: string | null;
   amount: string | null;
   payee: string | null;

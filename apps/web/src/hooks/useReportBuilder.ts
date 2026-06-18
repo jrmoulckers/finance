@@ -611,7 +611,9 @@ function customTransactionPreview(
   );
   const accountMap = new Map(accounts.map((account) => [account.id, account]));
   const categoryMap = new Map(categories.map((category) => [category.id, category]));
-  const visibleFields = config.fields.filter((field) => field.visible).sort((a, b) => a.sortOrder - b.sortOrder);
+  const visibleFields = config.fields
+    .filter((field) => field.visible)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   let headers: string[];
   let rows: ReportPreviewRow[];
@@ -621,7 +623,10 @@ function customTransactionPreview(
     headers = visibleFields.map((field) => field.label);
     rows = filtered.map((tx) =>
       Object.fromEntries(
-        visibleFields.map((field) => [field.label, transactionFieldValue(field, tx, accountMap, categoryMap)]),
+        visibleFields.map((field) => [
+          field.label,
+          transactionFieldValue(field, tx, accountMap, categoryMap),
+        ]),
       ),
     ) as ReportPreviewRow[];
     chartData = rows.map((row, index) => ({
@@ -657,7 +662,10 @@ function customTransactionPreview(
         Transactions: value.count,
       }))
       .sort((a, b) => String(a.Group).localeCompare(String(b.Group)));
-    chartData = rows.map((row) => ({ name: String(row.Group), value: Math.abs(Number(row.Expenses || row.Income || 0)) }));
+    chartData = rows.map((row) => ({
+      name: String(row.Group),
+      value: Math.abs(Number(row.Expenses || row.Income || 0)),
+    }));
   }
 
   const totalIncome = filtered
@@ -801,15 +809,22 @@ export function useReportBuilder(): UseReportBuilderResult {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedReports, setSavedReports] = useState<SavedReport[]>(loadSavedReports);
-  const [anomalyStatuses, setAnomalyStatuses] = useState<Record<string, AnomalyStatus>>(loadAnomalyStatuses);
+  const [anomalyStatuses, setAnomalyStatuses] =
+    useState<Record<string, AnomalyStatus>>(loadAnomalyStatuses);
 
   const { transactions, error: transactionsError } = useTransactions();
   const { accounts, error: accountsError } = useAccounts();
   const { categories, error: categoriesError } = useCategories();
 
   const availableFields = useMemo(() => config.fields.filter((f) => !f.visible), [config.fields]);
-  const availableCategories = useMemo(() => categories.filter((category) => !category.deletedAt), [categories]);
-  const availableAccounts = useMemo(() => accounts.filter((account) => !account.isArchived), [accounts]);
+  const availableCategories = useMemo(
+    () => categories.filter((category) => !category.deletedAt),
+    [categories],
+  );
+  const availableAccounts = useMemo(
+    () => accounts.filter((account) => !account.isArchived),
+    [accounts],
+  );
   const anomalies = useMemo(
     () =>
       detectReportAnomalies(
@@ -1065,7 +1080,12 @@ export function useReportBuilder(): UseReportBuilderResult {
       const now = Date.now();
       const updated = savedReports.map((report) =>
         report.id === reportId
-          ? { ...report, name: trimmed, config: { ...report.config, name: trimmed }, updatedAt: now }
+          ? {
+              ...report,
+              name: trimmed,
+              config: { ...report.config, name: trimmed },
+              updatedAt: now,
+            }
           : report,
       );
       setSavedReports(updated);

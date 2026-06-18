@@ -26,7 +26,9 @@ export const SafeToSpendCard: React.FC<SafeToSpendCardProps> = ({
   const isPrivacyMode = useIsPrivacyModeActive();
   const displayAmount = Math.max(0, breakdown.safeToSpendCents);
   const isOverPlan = breakdown.safeToSpendCents < 0;
-  const displayAmountText = isPrivacyMode ? 'a hidden amount' : formatCurrencyAmount(displayAmount, currency);
+  const displayAmountText = isPrivacyMode
+    ? 'a hidden amount'
+    : formatCurrencyAmount(displayAmount, currency);
 
   const toggleBreakdown = useCallback(() => {
     setShowBreakdown((current) => !current);

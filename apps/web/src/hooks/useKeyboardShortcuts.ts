@@ -197,8 +197,7 @@ export function useKeyboardShortcuts(
     }
   }, []);
 
-  const singleKeyShortcutsEnabled =
-    allowSingleKeyShortcuts ?? storedSingleKeyShortcutsEnabled;
+  const singleKeyShortcutsEnabled = allowSingleKeyShortcuts ?? storedSingleKeyShortcutsEnabled;
 
   useEffect(() => {
     const updatePreference = () => {

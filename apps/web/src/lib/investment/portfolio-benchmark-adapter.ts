@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { comparePortfolioToBenchmark } from './benchmark-comparison';
-import type { BenchmarkComparisonResult, BenchmarkPoint, PortfolioPerformancePoint } from './benchmark-comparison';
+import type {
+  BenchmarkComparisonResult,
+  BenchmarkPoint,
+  PortfolioPerformancePoint,
+} from './benchmark-comparison';
 
 /** Portfolio history to benchmark comparison adapter with coverage diagnostics (#2483, #2485). */
 
@@ -51,20 +55,35 @@ export function resolveBenchmarkRange(params: {
   readonly firstPortfolioDate?: string;
 }): { readonly startDate: string; readonly endDate: string } {
   const end = new Date(`${params.asOfDate}T00:00:00.000Z`);
-  if (params.range === '1M') return { startDate: isoDate(addMonths(end, -1)), endDate: params.asOfDate };
-  if (params.range === '3M') return { startDate: isoDate(addMonths(end, -3)), endDate: params.asOfDate };
-  if (params.range === '1Y') return { startDate: isoDate(addMonths(end, -12)), endDate: params.asOfDate };
-  if (params.range === '5Y') return { startDate: isoDate(addMonths(end, -60)), endDate: params.asOfDate };
-  if (params.range === 'YTD') return { startDate: `${params.asOfDate.slice(0, 4)}-01-01`, endDate: params.asOfDate };
+  if (params.range === '1M')
+    return { startDate: isoDate(addMonths(end, -1)), endDate: params.asOfDate };
+  if (params.range === '3M')
+    return { startDate: isoDate(addMonths(end, -3)), endDate: params.asOfDate };
+  if (params.range === '1Y')
+    return { startDate: isoDate(addMonths(end, -12)), endDate: params.asOfDate };
+  if (params.range === '5Y')
+    return { startDate: isoDate(addMonths(end, -60)), endDate: params.asOfDate };
+  if (params.range === 'YTD')
+    return { startDate: `${params.asOfDate.slice(0, 4)}-01-01`, endDate: params.asOfDate };
   return { startDate: params.firstPortfolioDate ?? params.asOfDate, endDate: params.asOfDate };
 }
 
-function firstOnOrAfter<T extends { readonly date: string }>(points: readonly T[], date: string): T | undefined {
-  return [...points].sort((a, b) => a.date.localeCompare(b.date)).find((point) => point.date >= date);
+function firstOnOrAfter<T extends { readonly date: string }>(
+  points: readonly T[],
+  date: string,
+): T | undefined {
+  return [...points]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .find((point) => point.date >= date);
 }
 
-function lastOnOrBefore<T extends { readonly date: string }>(points: readonly T[], date: string): T | undefined {
-  return [...points].sort((a, b) => b.date.localeCompare(a.date)).find((point) => point.date <= date);
+function lastOnOrBefore<T extends { readonly date: string }>(
+  points: readonly T[],
+  date: string,
+): T | undefined {
+  return [...points]
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .find((point) => point.date <= date);
 }
 
 function uniqueSorted<T extends { readonly date: string }>(points: readonly T[]): readonly T[] {
@@ -90,15 +109,21 @@ export function buildPortfolioBenchmarkComparison(params: {
   const start = firstOnOrAfter(sortedValuations, requested.startDate);
   const end = lastOnOrBefore(sortedValuations, requested.endDate);
 
-  if (!start || !end) warnings.push('Portfolio valuation history does not cover the selected range.');
-  if (start && start.date !== requested.startDate) warnings.push('Portfolio start date was aligned to first available valuation.');
-  if (end && end.date !== requested.endDate) warnings.push('Portfolio end date was aligned to latest available valuation.');
+  if (!start || !end)
+    warnings.push('Portfolio valuation history does not cover the selected range.');
+  if (start && start.date !== requested.startDate)
+    warnings.push('Portfolio start date was aligned to first available valuation.');
+  if (end && end.date !== requested.endDate)
+    warnings.push('Portfolio end date was aligned to latest available valuation.');
 
   const missingSymbols = new Set<string>();
-  for (const point of sortedValuations.filter((valuation) => valuation.date >= requested.startDate && valuation.date <= requested.endDate)) {
+  for (const point of sortedValuations.filter(
+    (valuation) => valuation.date >= requested.startDate && valuation.date <= requested.endDate,
+  )) {
     for (const symbol of point.missingPriceSymbols ?? []) missingSymbols.add(symbol);
   }
-  if (missingSymbols.size > 0) warnings.push(`Missing historical prices for: ${[...missingSymbols].sort().join(', ')}.`);
+  if (missingSymbols.size > 0)
+    warnings.push(`Missing historical prices for: ${[...missingSymbols].sort().join(', ')}.`);
 
   const startDate = start?.date ?? requested.startDate;
   const endDate = end?.date ?? requested.endDate;
@@ -121,11 +146,16 @@ export function buildPortfolioBenchmarkComparison(params: {
     (date) => !portfolioPoints.some((point) => point.date === date),
   );
   if (unappliedCashFlowDates.length > 0) {
-    warnings.push(`Cash-flow events without same-day valuations were not included: ${unappliedCashFlowDates.sort().join(', ')}.`);
+    warnings.push(
+      `Cash-flow events without same-day valuations were not included: ${unappliedCashFlowDates.sort().join(', ')}.`,
+    );
   }
 
-  const benchmarkPoints = params.benchmarkHistory.filter((point) => point.date >= startDate && point.date <= endDate);
-  if (benchmarkPoints.length < 2) warnings.push('Benchmark history has fewer than two points in the aligned range.');
+  const benchmarkPoints = params.benchmarkHistory.filter(
+    (point) => point.date >= startDate && point.date <= endDate,
+  );
+  if (benchmarkPoints.length < 2)
+    warnings.push('Benchmark history has fewer than two points in the aligned range.');
 
   const comparison = comparePortfolioToBenchmark({
     portfolioPoints,

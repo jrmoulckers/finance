@@ -34,13 +34,21 @@ describe('P2P CSV importer', () => {
 2024-01-15,Payment,Casey,-20.00,,Complete,Coffee,c1
 2024-01-16,Refund,Shop,5.00,,Complete,Refund,c2`;
 
-    expect(detectP2PProvider(['Date', 'Transaction Type', 'Name', 'Amount', 'Notes'])).toBe('cash-app');
+    expect(detectP2PProvider(['Date', 'Transaction Type', 'Name', 'Amount', 'Notes'])).toBe(
+      'cash-app',
+    );
 
     const result = parseP2PCsv(csv);
 
     expect(result.provider).toBe('cash-app');
-    expect(result.transactions.map((transaction) => transaction.direction)).toEqual(['outflow', 'inflow']);
-    expect(result.transactions.map((transaction) => transaction.kind)).toEqual(['payment', 'refund']);
+    expect(result.transactions.map((transaction) => transaction.direction)).toEqual([
+      'outflow',
+      'inflow',
+    ]);
+    expect(result.transactions.map((transaction) => transaction.kind)).toEqual([
+      'payment',
+      'refund',
+    ]);
     expect(result.transactions[0].counterpartyHash).not.toBeNull();
     expect(result.transactions[0].memoPreview).toBe('Coffee');
   });

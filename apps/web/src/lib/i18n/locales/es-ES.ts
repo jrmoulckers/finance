@@ -36,7 +36,8 @@ export const ES_ES_CATALOG: MessageCatalog = {
   'settings.currencyRates.cancel': 'Cancelar',
   'settings.currencyRates.override': 'Ajustar',
   'settings.currencyRates.reset': 'Restablecer',
-  'settings.currencyRates.disclaimer': 'Los valores convertidos son estimaciones y no cotizaciones de liquidación. Los tipos guardados y en caché pueden diferir de los precios de mercado en vivo.',
+  'settings.currencyRates.disclaimer':
+    'Los valores convertidos son estimaciones y no cotizaciones de liquidación. Los tipos guardados y en caché pueden diferir de los precios de mercado en vivo.',
   'settings.currencyRates.source.static': 'Estático',
   'settings.currencyRates.source.stored': 'Guardado',
   'settings.currencyRates.source.api': 'API',
@@ -65,7 +66,8 @@ export const ES_ES_CATALOG: MessageCatalog = {
   'transaction.timestamp.timeZone.label': 'Zona horaria de la transacción',
   'transaction.timestamp.offset.label': 'Desfase UTC original',
   'transaction.timestamp.merchantLocalDate.label': 'Fecha local del comercio',
-  'transaction.timestamp.legacyDateOnly': 'Transacción heredada solo con fecha; no cambiar entre zonas horarias.',
+  'transaction.timestamp.legacyDateOnly':
+    'Transacción heredada solo con fecha; no cambiar entre zonas horarias.',
   'forms.errorSummary.title': 'Algunos campos necesitan atención',
   'forms.validation.errorCount': {
     one: '{count} campo necesita atención',
@@ -77,7 +79,8 @@ export const ES_ES_CATALOG: MessageCatalog = {
   'forms.account.name.required': 'El nombre de la cuenta es obligatorio.',
   'forms.account.initialBalance.label': 'Saldo inicial',
   'forms.account.initialBalance.invalid': 'El saldo inicial debe ser un número válido.',
-  'forms.account.noHousehold': 'No se encontró ningún hogar. Crea un hogar antes de añadir cuentas.',
+  'forms.account.noHousehold':
+    'No se encontró ningún hogar. Crea un hogar antes de añadir cuentas.',
   'forms.account.createFailed': 'No se pudo crear la cuenta.',
   'forms.account.updateFailed': 'No se pudo actualizar la cuenta.',
   'forms.account.action.cancel': 'Cancelar',
@@ -97,7 +100,8 @@ export const ES_ES_CATALOG: MessageCatalog = {
   'nav.budgets': 'Presupuestos',
   'nav.settings': 'Ajustes',
   'onboarding.welcome.title': 'Te damos la bienvenida a Finance',
-  'onboarding.welcome.body': 'Configura cuentas, presupuestos y preferencias para empezar a controlar tu dinero con confianza.',
+  'onboarding.welcome.body':
+    'Configura cuentas, presupuestos y preferencias para empezar a controlar tu dinero con confianza.',
   'onboarding.action.getStarted': 'Empezar',
   'accounts.empty.title': 'Todavía no hay cuentas',
   'accounts.empty.body': 'Añade una cuenta para ver saldos y gastos en un solo lugar.',
@@ -108,17 +112,21 @@ export const ES_ES_CATALOG: MessageCatalog = {
   'budgets.empty.title': 'Todavía no hay presupuestos',
   'budgets.empty.body': 'Crea un presupuesto para planificar y controlar gastos por categoría.',
   'budgets.action.create': 'Crear presupuesto',
-  'errors.offline': 'Parece que no tienes conexión. Los cambios se sincronizarán cuando vuelva la conexión.',
+  'errors.offline':
+    'Parece que no tienes conexión. Los cambios se sincronizarán cuando vuelva la conexión.',
   'errors.unexpected': 'Algo salió mal. Inténtalo de nuevo.',
   'errors.validation': 'Revisa los campos resaltados e inténtalo de nuevo.',
   'tips.budget-create-first.title': 'Configura tu primer presupuesto',
-  'tips.budget-create-first.description': 'Crear un presupuesto te ayuda a controlar gastos y mantenerte en objetivo. Empieza por tu categoría de gasto más grande.',
+  'tips.budget-create-first.description':
+    'Crear un presupuesto te ayuda a controlar gastos y mantenerte en objetivo. Empieza por tu categoría de gasto más grande.',
   'tips.budget-create-first.action': 'Crear presupuesto',
   'tips.account-create-first.title': 'Añade tu primera cuenta',
-  'tips.account-create-first.description': 'Añadir cuentas es el primer paso para tener una visión completa de tus finanzas.',
+  'tips.account-create-first.description':
+    'Añadir cuentas es el primer paso para tener una visión completa de tus finanzas.',
   'tips.account-create-first.action': 'Añadir cuenta',
   'tips.spending-no-transactions.title': 'Empieza a registrar tus gastos',
-  'tips.spending-no-transactions.description': 'No tienes transacciones registradas este mes. Añadir transacciones te ayuda a entender tus patrones de gasto.',
+  'tips.spending-no-transactions.description':
+    'No tienes transacciones registradas este mes. Añadir transacciones te ayuda a entender tus patrones de gasto.',
   'tips.spending-no-transactions.action': 'Añadir transacción',
   'tips.transaction-count': {
     one: '{count} transacción',
@@ -126,4 +134,3 @@ export const ES_ES_CATALOG: MessageCatalog = {
   },
   'tips.fallbackNotice': 'Se muestra en inglés hasta que este contenido educativo esté traducido.',
 };
-

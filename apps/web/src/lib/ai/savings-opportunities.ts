@@ -33,7 +33,14 @@ export interface SavingsOpportunity {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const DISCRETIONARY_WORDS = ['dining', 'restaurant', 'coffee', 'shopping', 'entertainment', 'travel'];
+const DISCRETIONARY_WORDS = [
+  'dining',
+  'restaurant',
+  'coffee',
+  'shopping',
+  'entertainment',
+  'travel',
+];
 
 function parseDate(date: string): number {
   return Date.parse(`${date.slice(0, 10)}T00:00:00Z`);
@@ -61,7 +68,8 @@ function amount(transaction: Transaction): number {
 }
 
 function isFee(transaction: Transaction): boolean {
-  const text = `${transaction.payee ?? ''} ${transaction.counterpartyName ?? ''} ${transaction.note ?? ''} ${transaction.statementDescription ?? ''}`.toLowerCase();
+  const text =
+    `${transaction.payee ?? ''} ${transaction.counterpartyName ?? ''} ${transaction.note ?? ''} ${transaction.statementDescription ?? ''}`.toLowerCase();
   return /\b(fee|atm|overdraft|maintenance|service charge|late payment)\b/.test(text);
 }
 
@@ -105,10 +113,13 @@ export function findSavingsOpportunities(
     const dates = merchantTransactions.map((transaction) => transaction.date).sort();
     const intervals = dates.slice(1).map((date, index) => daysBetween(dates[index] ?? date, date));
     const averageInterval =
-      intervals.length > 0 ? intervals.reduce((sum, value) => sum + value, 0) / intervals.length : 0;
-    const medianAmount = merchantTransactions
-      .map(amount)
-      .sort((left, right) => left - right)[Math.floor(merchantTransactions.length / 2)] ?? 0;
+      intervals.length > 0
+        ? intervals.reduce((sum, value) => sum + value, 0) / intervals.length
+        : 0;
+    const medianAmount =
+      merchantTransactions.map(amount).sort((left, right) => left - right)[
+        Math.floor(merchantTransactions.length / 2)
+      ] ?? 0;
 
     if (merchantTransactions.length >= 3 && averageInterval >= 25 && averageInterval <= 35) {
       pushOpportunity(opportunities, dismissed, {
@@ -119,13 +130,20 @@ export function findSavingsOpportunities(
         safeTransferCents: Math.min(safeCap, Math.round(medianAmount)),
         confidence: Math.min(0.92, 0.55 + merchantTransactions.length * 0.08),
         effort: 'medium',
-        assumptions: ['Similar merchant charge repeats roughly monthly.', 'Savings assumes cancelling or downgrading one recurring charge.'],
+        assumptions: [
+          'Similar merchant charge repeats roughly monthly.',
+          'Savings assumes cancelling or downgrading one recurring charge.',
+        ],
         transactionIds: merchantTransactions.map((transaction) => transaction.id),
       });
     }
 
     const lastDate = dates[dates.length - 1];
-    if (lastDate !== undefined && daysBetween(lastDate, asOfDate) > 60 && merchantTransactions.length >= 2) {
+    if (
+      lastDate !== undefined &&
+      daysBetween(lastDate, asOfDate) > 60 &&
+      merchantTransactions.length >= 2
+    ) {
       pushOpportunity(opportunities, dismissed, {
         id: `unused-${merchant}`,
         kind: 'unused-merchant',
@@ -134,14 +152,18 @@ export function findSavingsOpportunities(
         safeTransferCents: Math.min(safeCap, Math.round(medianAmount * 0.5)),
         confidence: 0.55,
         effort: 'low',
-        assumptions: ['Merchant has not appeared recently.', 'Savings estimate uses half of its typical charge.'],
+        assumptions: [
+          'Merchant has not appeared recently.',
+          'Savings estimate uses half of its typical charge.',
+        ],
         transactionIds: merchantTransactions.map((transaction) => transaction.id),
       });
     }
   }
 
   const feeTransactions = expenses.filter(isFee);
-  const monthlyFees = feeTransactions.reduce((sum, transaction) => sum + amount(transaction), 0) / 3;
+  const monthlyFees =
+    feeTransactions.reduce((sum, transaction) => sum + amount(transaction), 0) / 3;
   if (feeTransactions.length > 0) {
     pushOpportunity(opportunities, dismissed, {
       id: 'fees',
@@ -151,7 +173,10 @@ export function findSavingsOpportunities(
       safeTransferCents: Math.min(safeCap, Math.round(monthlyFees)),
       confidence: Math.min(0.9, 0.5 + feeTransactions.length * 0.1),
       effort: 'medium',
-      assumptions: ['Recent fee-like transactions can often be avoided or refunded.', 'Estimate spreads observed fees across a quarter.'],
+      assumptions: [
+        'Recent fee-like transactions can often be avoided or refunded.',
+        'Estimate spreads observed fees across a quarter.',
+      ],
       transactionIds: feeTransactions.map((transaction) => transaction.id),
     });
   }
@@ -183,20 +208,27 @@ export function findSavingsOpportunities(
         safeTransferCents: Math.min(safeCap, savings),
         confidence: 0.7,
         effort: 'low',
-        assumptions: ['Recent 30-day category spending is above the prior 30-day baseline.', 'Estimate targets 40% of the increase.'],
+        assumptions: [
+          'Recent 30-day category spending is above the prior 30-day baseline.',
+          'Estimate targets 40% of the increase.',
+        ],
         transactionIds: totals.ids,
       });
     }
   }
 
   const discretionary = expenses.filter((transaction) => {
-    const text = `${transaction.categoryId ?? ''} ${transaction.payee ?? ''} ${transaction.counterpartyName ?? ''}`.toLowerCase();
+    const text =
+      `${transaction.categoryId ?? ''} ${transaction.payee ?? ''} ${transaction.counterpartyName ?? ''}`.toLowerCase();
     return DISCRETIONARY_WORDS.some((word) => text.includes(word));
   });
   const discretionaryRecent = discretionary.filter(
     (transaction) => parseDate(transaction.date) >= recentCutoff,
   );
-  const discretionaryTotal = discretionaryRecent.reduce((sum, transaction) => sum + amount(transaction), 0);
+  const discretionaryTotal = discretionaryRecent.reduce(
+    (sum, transaction) => sum + amount(transaction),
+    0,
+  );
   if (discretionaryRecent.length >= 3 && discretionaryTotal > 25_000) {
     const savings = Math.round(discretionaryTotal * 0.15);
     pushOpportunity(opportunities, dismissed, {
@@ -207,7 +239,10 @@ export function findSavingsOpportunities(
       safeTransferCents: Math.min(safeCap, savings),
       confidence: 0.68,
       effort: 'low',
-      assumptions: ['Recent discretionary spending is large enough to trim safely.', 'Estimate targets a modest 15% reduction.'],
+      assumptions: [
+        'Recent discretionary spending is large enough to trim safely.',
+        'Estimate targets a modest 15% reduction.',
+      ],
       transactionIds: discretionaryRecent.map((transaction) => transaction.id),
     });
   }
@@ -221,7 +256,10 @@ export function findSavingsOpportunities(
       safeTransferCents: Math.min(safeCap, 50_000),
       confidence: input.forecastLowBalanceCents === undefined ? 0.55 : 0.78,
       effort: 'low',
-      assumptions: ['Uses half of the amount above the safety buffer.', 'Does not require changing real transactions.'],
+      assumptions: [
+        'Uses half of the amount above the safety buffer.',
+        'Does not require changing real transactions.',
+      ],
       transactionIds: [],
     });
   }

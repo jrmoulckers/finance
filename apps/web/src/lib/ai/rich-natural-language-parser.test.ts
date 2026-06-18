@@ -8,7 +8,9 @@ const BASE = new Date('2025-03-12T10:00:00');
 
 describe('parseRichNaturalLanguageTransaction', () => {
   it('preserves simple amount and merchant parsing', () => {
-    const parsed = parseRichNaturalLanguageTransaction('coffee at starbucks $5.50', { baseDate: BASE });
+    const parsed = parseRichNaturalLanguageTransaction('coffee at starbucks $5.50', {
+      baseDate: BASE,
+    });
 
     expect(parsed.amount).toBe(5.5);
     expect(parsed.payee).toBe('Starbucks');
@@ -18,12 +20,12 @@ describe('parseRichNaturalLanguageTransaction', () => {
   });
 
   it('supports relative dates including yesterday, last Friday, and next payday', () => {
-    expect(parseRichNaturalLanguageTransaction('groceries $30 yesterday', { baseDate: BASE }).date).toBe(
-      '2025-03-11',
-    );
-    expect(parseRichNaturalLanguageTransaction('dinner $20 last friday', { baseDate: BASE }).date).toBe(
-      '2025-03-07',
-    );
+    expect(
+      parseRichNaturalLanguageTransaction('groceries $30 yesterday', { baseDate: BASE }).date,
+    ).toBe('2025-03-11');
+    expect(
+      parseRichNaturalLanguageTransaction('dinner $20 last friday', { baseDate: BASE }).date,
+    ).toBe('2025-03-07');
     expect(
       parseRichNaturalLanguageTransaction('salary $2000 next payday', {
         baseDate: BASE,
@@ -59,7 +61,9 @@ describe('parseRichNaturalLanguageTransaction', () => {
   });
 
   it('parses split transactions with a validated remainder candidate', () => {
-    const parsed = parseRichNaturalLanguageTransaction('Costco $90 groceries $30 gas', { baseDate: BASE });
+    const parsed = parseRichNaturalLanguageTransaction('Costco $90 groceries $30 gas', {
+      baseDate: BASE,
+    });
 
     expect(parsed.amount).toBe(90);
     expect(parsed.payee).toBe('Costco');

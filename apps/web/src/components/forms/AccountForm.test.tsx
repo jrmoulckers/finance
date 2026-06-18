@@ -58,7 +58,9 @@ describe('AccountForm', () => {
     expect(screen.getByLabelText('Account Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Account Type')).toHaveValue('CHECKING');
     expect(screen.getByLabelText('Account Purpose')).toHaveValue('personal');
-    expect(screen.getByLabelText('Mark this as a retirement or tax-advantaged account')).not.toBeChecked();
+    expect(
+      screen.getByLabelText('Mark this as a retirement or tax-advantaged account'),
+    ).not.toBeChecked();
     expect(screen.getByLabelText('Currency')).toHaveValue('USD');
     expect(screen.getByLabelText('Initial Balance')).toHaveValue('');
 
@@ -82,10 +84,9 @@ describe('AccountForm', () => {
     expect(screen.getByText('Account name is required.')).toBeInTheDocument();
     const summary = screen.getByText('Some fields need attention').closest('.form-error-summary');
     expect(summary).toHaveAttribute('tabindex', '-1');
-    expect(screen.getByRole('link', { name: /Account Name: Account name is required/i })).toHaveAttribute(
-      'href',
-      '#account-name',
-    );
+    expect(
+      screen.getByRole('link', { name: /Account Name: Account name is required/i }),
+    ).toHaveAttribute('href', '#account-name');
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -123,7 +124,9 @@ describe('AccountForm', () => {
       target: { value: 'Family HSA' },
     });
     fireEvent.click(screen.getByLabelText('Mark this as a retirement or tax-advantaged account'));
-    fireEvent.change(screen.getByLabelText('Retirement account type'), { target: { value: 'HSA' } });
+    fireEvent.change(screen.getByLabelText('Retirement account type'), {
+      target: { value: 'HSA' },
+    });
     fireEvent.change(screen.getByLabelText('HSA coverage'), { target: { value: 'FAMILY' } });
 
     await act(async () => {

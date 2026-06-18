@@ -46,13 +46,26 @@ function daysBetween(start: string, end: string): number {
   return Math.max(0, Math.floor((Date.parse(end) - Date.parse(start)) / MS_PER_DAY));
 }
 
-export function calculateSharedSafeToSpend(input: SharedSafeToSpendInput): SharedSafeToSpendSummary {
+export function calculateSharedSafeToSpend(
+  input: SharedSafeToSpendInput,
+): SharedSafeToSpendSummary {
   const remainingCriticalBillsCents = input.bills
-    .filter((bill) => !bill.paid && bill.critical && bill.dueDate >= input.today && bill.dueDate <= input.periodEnd)
+    .filter(
+      (bill) =>
+        !bill.paid &&
+        bill.critical &&
+        bill.dueDate >= input.today &&
+        bill.dueDate <= input.periodEnd,
+    )
     .reduce((sum, bill) => sum + normalizeCents(bill.amountCents), 0);
   const pinnedCategoryReserveCents = input.pinnedCategories
     .filter((category) => category.pinned)
-    .reduce((sum, category) => sum + Math.max(0, normalizeCents(category.budgetCents) - normalizeCents(category.spentCents)), 0);
+    .reduce(
+      (sum, category) =>
+        sum +
+        Math.max(0, normalizeCents(category.budgetCents) - normalizeCents(category.spentCents)),
+      0,
+    );
   const safeToSpendCents =
     normalizeCents(input.expectedIncomeCents) -
     remainingCriticalBillsCents -

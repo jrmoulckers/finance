@@ -80,10 +80,12 @@ const STORAGE_KEY_DEFAULT_CURRENCY = 'finance-default-currency';
 const STORAGE_KEY_RATES = 'finance-exchange-rates';
 const STORAGE_KEY_RATES_UPDATED = 'finance-exchange-rates-updated';
 
-const SUPPORTED_CURRENCIES: Currency[] = SUPPORTED_CURRENCY_METADATA.map(({ code, decimalPlaces }) => ({
-  code,
-  decimalPlaces,
-}));
+const SUPPORTED_CURRENCIES: Currency[] = SUPPORTED_CURRENCY_METADATA.map(
+  ({ code, decimalPlaces }) => ({
+    code,
+    decimalPlaces,
+  }),
+);
 
 const SUPPORTED_CURRENCY_CODES = new Set(SUPPORTED_CURRENCIES.map((currency) => currency.code));
 

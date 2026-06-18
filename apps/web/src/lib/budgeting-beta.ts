@@ -191,7 +191,11 @@ export function generateVarianceInsights(
       const variancePercent =
         budget.budgetedCents > 0 ? Math.round((varianceCents / budget.budgetedCents) * 100) : 0;
       const kind: VarianceKind =
-        varianceCents > 0 ? 'over' : budget.actualCents <= budget.budgetedCents * 0.5 ? 'under' : 'on-track';
+        varianceCents > 0
+          ? 'over'
+          : budget.actualCents <= budget.budgetedCents * 0.5
+            ? 'under'
+            : 'on-track';
       const priorVariance =
         budget.priorActualCents == null ? null : budget.priorActualCents - budget.budgetedCents;
       const trend: VarianceTrend =
@@ -264,8 +268,14 @@ export interface MonthEndForecast {
 
 export function forecastMonthEndBalance(input: MonthEndForecastInput): MonthEndForecast {
   const events = [
-    ...input.expectedIncome.map((event) => ({ ...event, amountCents: Math.abs(event.amountCents) })),
-    ...input.scheduledOutflows.map((event) => ({ ...event, amountCents: -Math.abs(event.amountCents) })),
+    ...input.expectedIncome.map((event) => ({
+      ...event,
+      amountCents: Math.abs(event.amountCents),
+    })),
+    ...input.scheduledOutflows.map((event) => ({
+      ...event,
+      amountCents: -Math.abs(event.amountCents),
+    })),
     {
       id: 'remaining-budget',
       label: 'Remaining budgeted spending',

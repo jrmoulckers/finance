@@ -11,14 +11,38 @@ const topics = [
 
 describe('beginner mode curriculum gating', () => {
   it('gates teen beginner advanced topics unless opted in', () => {
-    expect(decideBeginnerCurriculum(topics, { age: 16, persona: 'teen', expertiseTier: 'beginner', optedInAdvancedTopicIds: [], completedTopicIds: ['first-paycheck'] })).toEqual({
+    expect(
+      decideBeginnerCurriculum(topics, {
+        age: 16,
+        persona: 'teen',
+        expertiseTier: 'beginner',
+        optedInAdvancedTopicIds: [],
+        completedTopicIds: ['first-paycheck'],
+      }),
+    ).toEqual({
       eligibleTopicIds: ['first-paycheck'],
       copyToken: 'teen-beginner',
     });
   });
 
   it('allows adult opt-in and non-beginner advanced paths', () => {
-    expect(decideBeginnerCurriculum(topics, { age: 30, persona: 'adult', expertiseTier: 'beginner', optedInAdvancedTopicIds: ['investing'], completedTopicIds: ['first-paycheck'] }).eligibleTopicIds).toEqual(['first-paycheck', 'investing']);
-    expect(decideBeginnerCurriculum(topics, { age: 30, persona: 'adult', expertiseTier: 'intermediate', optedInAdvancedTopicIds: [], completedTopicIds: ['first-paycheck'] }).copyToken).toBe('standard');
+    expect(
+      decideBeginnerCurriculum(topics, {
+        age: 30,
+        persona: 'adult',
+        expertiseTier: 'beginner',
+        optedInAdvancedTopicIds: ['investing'],
+        completedTopicIds: ['first-paycheck'],
+      }).eligibleTopicIds,
+    ).toEqual(['first-paycheck', 'investing']);
+    expect(
+      decideBeginnerCurriculum(topics, {
+        age: 30,
+        persona: 'adult',
+        expertiseTier: 'intermediate',
+        optedInAdvancedTopicIds: [],
+        completedTopicIds: ['first-paycheck'],
+      }).copyToken,
+    ).toBe('standard');
   });
 });

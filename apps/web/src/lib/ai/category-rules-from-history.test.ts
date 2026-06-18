@@ -10,10 +10,37 @@ import {
 } from './category-rules-from-history';
 
 const HISTORY: RuleMiningTransaction[] = [
-  { id: 't1', date: '2025-01-01', merchant: 'Target Optical 123', amountCents: -12_000, categoryId: 'health', tags: ['vision'] },
-  { id: 't2', date: '2025-01-15', merchant: 'Target Optical 999', amountCents: -11_500, categoryId: 'health', tags: ['vision'] },
-  { id: 't3', date: '2025-02-01', merchant: 'Target Optical', amountCents: -13_000, categoryId: 'health', tags: ['vision'] },
-  { id: 't4', date: '2025-02-15', merchant: 'Target Store', amountCents: -5_000, categoryId: 'shopping' },
+  {
+    id: 't1',
+    date: '2025-01-01',
+    merchant: 'Target Optical 123',
+    amountCents: -12_000,
+    categoryId: 'health',
+    tags: ['vision'],
+  },
+  {
+    id: 't2',
+    date: '2025-01-15',
+    merchant: 'Target Optical 999',
+    amountCents: -11_500,
+    categoryId: 'health',
+    tags: ['vision'],
+  },
+  {
+    id: 't3',
+    date: '2025-02-01',
+    merchant: 'Target Optical',
+    amountCents: -13_000,
+    categoryId: 'health',
+    tags: ['vision'],
+  },
+  {
+    id: 't4',
+    date: '2025-02-15',
+    merchant: 'Target Store',
+    amountCents: -5_000,
+    categoryId: 'shopping',
+  },
 ];
 
 describe('mineCategoryRulesFromHistory', () => {
@@ -34,7 +61,14 @@ describe('mineCategoryRulesFromHistory', () => {
 
   it('detects overlapping conflicting existing rules', () => {
     const conflicts = detectRuleConflicts('target optical', 'health', 'medium', [
-      { id: 'r1', merchantContains: 'target', categoryId: 'shopping', minAmountCents: 0, maxAmountCents: 50_000, enabled: true },
+      {
+        id: 'r1',
+        merchantContains: 'target',
+        categoryId: 'shopping',
+        minAmountCents: 0,
+        maxAmountCents: 50_000,
+        enabled: true,
+      },
       { id: 'r2', merchantContains: 'coffee', categoryId: 'dining', enabled: true },
     ]);
 

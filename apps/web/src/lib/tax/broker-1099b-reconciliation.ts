@@ -38,13 +38,22 @@ export interface Broker1099BLotRow {
 }
 
 export interface Broker1099BReconciliationDifference {
-  readonly field: 'proceedsCents' | 'costBasisCents' | 'feesCents' | 'washSaleAdjustmentCents' | 'shares';
+  readonly field:
+    | 'proceedsCents'
+    | 'costBasisCents'
+    | 'feesCents'
+    | 'washSaleAdjustmentCents'
+    | 'shares';
   readonly appValue: number;
   readonly brokerValue: number;
   readonly variance: number;
 }
 
-export type Broker1099BReconciliationStatus = 'match' | 'variance' | 'missing-in-app' | 'missing-in-broker';
+export type Broker1099BReconciliationStatus =
+  | 'match'
+  | 'variance'
+  | 'missing-in-app'
+  | 'missing-in-broker';
 
 export interface Broker1099BReconciliationRow {
   readonly key: string;
@@ -66,14 +75,29 @@ function parseBoolean(value: string | undefined): boolean | null {
   return ['true', 'yes', 'y', 'covered'].includes(value.trim().toLowerCase());
 }
 
-function rowKey(input: { readonly saleId?: string; readonly lotId?: string; readonly symbol: string; readonly acquiredDate: string; readonly soldDate: string; readonly shares: number }): string {
-  if (input.saleId !== undefined && input.lotId !== undefined) return `${input.saleId}:${input.lotId}`;
+function rowKey(input: {
+  readonly saleId?: string;
+  readonly lotId?: string;
+  readonly symbol: string;
+  readonly acquiredDate: string;
+  readonly soldDate: string;
+  readonly shares: number;
+}): string {
+  if (input.saleId !== undefined && input.lotId !== undefined)
+    return `${input.saleId}:${input.lotId}`;
   if (input.lotId !== undefined) return `lot:${input.lotId}`;
   return `${input.symbol.toUpperCase()}:${input.acquiredDate}:${input.soldDate}:${input.shares}`;
 }
 
 function appKey(lot: ReportClosedTaxLot): string {
-  return rowKey({ saleId: lot.saleId, lotId: lot.lotId, symbol: lot.symbol, acquiredDate: lot.acquiredDate, soldDate: lot.soldDate, shares: lot.shares });
+  return rowKey({
+    saleId: lot.saleId,
+    lotId: lot.lotId,
+    symbol: lot.symbol,
+    acquiredDate: lot.acquiredDate,
+    soldDate: lot.soldDate,
+    shares: lot.shares,
+  });
 }
 
 export function mapBroker1099BRows(
@@ -83,25 +107,60 @@ export function mapBroker1099BRows(
   return rows.map((row) => ({
     saleId: mapping.saleId === undefined ? undefined : row[mapping.saleId],
     symbol: row[mapping.symbol].trim().toUpperCase(),
-    lotId: mapping.lotId === undefined || row[mapping.lotId] === '' ? undefined : row[mapping.lotId],
+    lotId:
+      mapping.lotId === undefined || row[mapping.lotId] === '' ? undefined : row[mapping.lotId],
     acquiredDate: row[mapping.acquiredDate],
     soldDate: row[mapping.soldDate],
     shares: Number(row[mapping.shares]),
     proceedsCents: parseMoneyCents(row[mapping.proceedsCents]),
     costBasisCents: parseMoneyCents(row[mapping.costBasisCents]),
-    feesCents: parseMoneyCents(mapping.feesCents === undefined ? undefined : row[mapping.feesCents]),
+    feesCents: parseMoneyCents(
+      mapping.feesCents === undefined ? undefined : row[mapping.feesCents],
+    ),
     covered: parseBoolean(mapping.covered === undefined ? undefined : row[mapping.covered]),
-    washSaleAdjustmentCents: parseMoneyCents(mapping.washSaleAdjustmentCents === undefined ? undefined : row[mapping.washSaleAdjustmentCents]),
+    washSaleAdjustmentCents: parseMoneyCents(
+      mapping.washSaleAdjustmentCents === undefined
+        ? undefined
+        : row[mapping.washSaleAdjustmentCents],
+    ),
   }));
 }
 
-function compare(appLot: ReportClosedTaxLot, brokerLot: Broker1099BLotRow): Broker1099BReconciliationDifference[] {
+function compare(
+  appLot: ReportClosedTaxLot,
+  brokerLot: Broker1099BLotRow,
+): Broker1099BReconciliationDifference[] {
   const pairs: Broker1099BReconciliationDifference[] = [
-    { field: 'proceedsCents', appValue: appLot.proceeds, brokerValue: brokerLot.proceedsCents, variance: brokerLot.proceedsCents - appLot.proceeds },
-    { field: 'costBasisCents', appValue: appLot.costBasis, brokerValue: brokerLot.costBasisCents, variance: brokerLot.costBasisCents - appLot.costBasis },
-    { field: 'feesCents', appValue: appLot.saleFeesAllocated, brokerValue: brokerLot.feesCents, variance: brokerLot.feesCents - appLot.saleFeesAllocated },
-    { field: 'washSaleAdjustmentCents', appValue: appLot.washSaleDisallowedLoss, brokerValue: brokerLot.washSaleAdjustmentCents, variance: brokerLot.washSaleAdjustmentCents - appLot.washSaleDisallowedLoss },
-    { field: 'shares', appValue: appLot.shares, brokerValue: brokerLot.shares, variance: brokerLot.shares - appLot.shares },
+    {
+      field: 'proceedsCents',
+      appValue: appLot.proceeds,
+      brokerValue: brokerLot.proceedsCents,
+      variance: brokerLot.proceedsCents - appLot.proceeds,
+    },
+    {
+      field: 'costBasisCents',
+      appValue: appLot.costBasis,
+      brokerValue: brokerLot.costBasisCents,
+      variance: brokerLot.costBasisCents - appLot.costBasis,
+    },
+    {
+      field: 'feesCents',
+      appValue: appLot.saleFeesAllocated,
+      brokerValue: brokerLot.feesCents,
+      variance: brokerLot.feesCents - appLot.saleFeesAllocated,
+    },
+    {
+      field: 'washSaleAdjustmentCents',
+      appValue: appLot.washSaleDisallowedLoss,
+      brokerValue: brokerLot.washSaleAdjustmentCents,
+      variance: brokerLot.washSaleAdjustmentCents - appLot.washSaleDisallowedLoss,
+    },
+    {
+      field: 'shares',
+      appValue: appLot.shares,
+      brokerValue: brokerLot.shares,
+      variance: brokerLot.shares - appLot.shares,
+    },
   ];
   return pairs.filter((pair) => Math.abs(pair.variance) > 0.000001);
 }
@@ -118,8 +177,15 @@ export function reconcileBroker1099B(input: {
     const appLot = appByKey.get(key);
     const brokerLot = brokerByKey.get(key);
     if (appLot === undefined) return { key, status: 'missing-in-app', brokerLot, differences: [] };
-    if (brokerLot === undefined) return { key, status: 'missing-in-broker', appLot, differences: [] };
+    if (brokerLot === undefined)
+      return { key, status: 'missing-in-broker', appLot, differences: [] };
     const differences = compare(appLot, brokerLot);
-    return { key, status: differences.length === 0 ? 'match' : 'variance', appLot, brokerLot, differences };
+    return {
+      key,
+      status: differences.length === 0 ? 'match' : 'variance',
+      appLot,
+      brokerLot,
+      differences,
+    };
   });
 }

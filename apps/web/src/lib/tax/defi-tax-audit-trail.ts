@@ -8,7 +8,11 @@
  * References: issue #2677.
  */
 
-import type { CryptoTaxDisposition, CryptoTaxEngineResult, CryptoTaxEvent } from './crypto-tax-events';
+import type {
+  CryptoTaxDisposition,
+  CryptoTaxEngineResult,
+  CryptoTaxEvent,
+} from './crypto-tax-events';
 
 export interface DefiPriceSource {
   readonly eventId: string;
@@ -29,7 +33,11 @@ export interface DefiTaxAuditLogEntry {
   readonly eventId: string;
   readonly sourceEvent: CryptoTaxEvent;
   readonly normalizedEvent: Readonly<Record<string, string | number | undefined>>;
-  readonly lotMatches: readonly { readonly lotId: string; readonly quantity: number; readonly costBasisCents: number }[];
+  readonly lotMatches: readonly {
+    readonly lotId: string;
+    readonly quantity: number;
+    readonly costBasisCents: number;
+  }[];
   readonly userOverrides: readonly DefiUserOverride[];
   readonly priceSource?: DefiPriceSource;
 }
@@ -72,9 +80,14 @@ export function buildDefiTaxAuditTrail(input: {
   const dispositions = dispositionByEvent(input.result);
   const overridesByEvent = new Map<string, DefiUserOverride[]>();
   for (const override of input.userOverrides ?? []) {
-    overridesByEvent.set(override.eventId, [...(overridesByEvent.get(override.eventId) ?? []), override]);
+    overridesByEvent.set(override.eventId, [
+      ...(overridesByEvent.get(override.eventId) ?? []),
+      override,
+    ]);
   }
-  const priceByEvent = new Map((input.priceSources ?? []).map((source) => [source.eventId, source]));
+  const priceByEvent = new Map(
+    (input.priceSources ?? []).map((source) => [source.eventId, source]),
+  );
 
   return input.sourceEvents.map((event) => {
     const disposition = dispositions.get(event.id);
@@ -97,7 +110,10 @@ export function buildDefiTaxAuditTrail(input: {
   });
 }
 
-export function exportDefiForm8949Rows(result: CryptoTaxEngineResult, events: readonly CryptoTaxEvent[]): DefiForm8949Row[] {
+export function exportDefiForm8949Rows(
+  result: CryptoTaxEngineResult,
+  events: readonly CryptoTaxEvent[],
+): DefiForm8949Row[] {
   const eventDates = new Map(events.map((event) => [event.id, event.timestamp.slice(0, 10)]));
   return result.dispositions.map((disposition) => ({
     asset: disposition.asset,
@@ -111,14 +127,25 @@ export function exportDefiForm8949Rows(result: CryptoTaxEngineResult, events: re
   }));
 }
 
-export function summarizeDefiOrdinaryIncome(events: readonly CryptoTaxEvent[]): DefiOrdinaryIncomeSummaryRow[] {
-  const incomeTypes: DefiOrdinaryIncomeSummaryRow['incomeType'][] = ['staking_reward', 'airdrop', 'mining', 'income_receipt'];
+export function summarizeDefiOrdinaryIncome(
+  events: readonly CryptoTaxEvent[],
+): DefiOrdinaryIncomeSummaryRow[] {
+  const incomeTypes: DefiOrdinaryIncomeSummaryRow['incomeType'][] = [
+    'staking_reward',
+    'airdrop',
+    'mining',
+    'income_receipt',
+  ];
   return incomeTypes
     .map((incomeType) => {
       const matching = events.filter((event) => event.type === incomeType);
       return {
         incomeType,
-        amountCents: matching.reduce((sum, event) => sum + (event.totalValueCents ?? (event.fairMarketValueCents ?? 0) * event.quantity), 0),
+        amountCents: matching.reduce(
+          (sum, event) =>
+            sum + (event.totalValueCents ?? (event.fairMarketValueCents ?? 0) * event.quantity),
+          0,
+        ),
         eventCount: matching.length,
       };
     })
@@ -127,10 +154,25 @@ export function summarizeDefiOrdinaryIncome(events: readonly CryptoTaxEvent[]): 
 
 export function getDefiTaxExportRequirements(): DefiTaxExportRequirements {
   return {
-    requiredFiles: ['audit-log.json', 'form-8949-style.csv', 'ordinary-income-summary.csv', 'price-sources.csv'],
-    form8949Columns: ['asset', 'dateAcquired', 'dateSold', 'proceedsCents', 'costBasisCents', 'gainLossCents', 'sourceEventId', 'lotIds'],
+    requiredFiles: [
+      'audit-log.json',
+      'form-8949-style.csv',
+      'ordinary-income-summary.csv',
+      'price-sources.csv',
+    ],
+    form8949Columns: [
+      'asset',
+      'dateAcquired',
+      'dateSold',
+      'proceedsCents',
+      'costBasisCents',
+      'gainLossCents',
+      'sourceEventId',
+      'lotIds',
+    ],
     ordinaryIncomeColumns: ['incomeType', 'amountCents', 'eventCount'],
     requiredFixtureTypes: ['airdrop', 'staking_reward', 'bridge', 'swap'],
-    disclaimer: 'DeFi exports are planning records for tax-preparer review and are not official IRS forms or tax advice.',
+    disclaimer:
+      'DeFi exports are planning records for tax-preparer review and are not official IRS forms or tax advice.',
   };
 }

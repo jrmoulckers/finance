@@ -23,7 +23,6 @@ import { getBudgetStarterTemplates } from '../lib/budgeting/starter-budget-templ
 import {
   calculateActiveCadenceRange,
   generateVarianceInsights,
-  normalizeBudgetAmountCents,
   summarizeCadenceIncome,
   summarizeEnvelopePlan,
   type IncomeEventInput,
@@ -482,8 +481,7 @@ export const BudgetsPage: React.FC = () => {
               <ul style={{ marginTop: 'var(--spacing-3)', paddingLeft: '1.25rem' }}>
                 {incomeEvents.map((event) => (
                   <li key={event.id}>
-                    {event.source} on {event.date}:{' '}
-                    <CurrencyDisplay amount={event.amountCents} />
+                    {event.source} on {event.date}: <CurrencyDisplay amount={event.amountCents} />
                   </li>
                 ))}
               </ul>
@@ -639,9 +637,10 @@ export const BudgetsPage: React.FC = () => {
                 <ul style={{ display: 'grid', gap: 'var(--spacing-3)', paddingLeft: '1.25rem' }}>
                   {varianceInsights.map((insight) => (
                     <li key={insight.categoryId}>
-                      <strong>{insight.name}</strong> is {insight.kind === 'over' ? 'over' : 'under'} by{' '}
-                      <CurrencyDisplay amount={Math.abs(insight.varianceCents)} /> ({Math.abs(insight.variancePercent)}%).{' '}
-                      {insight.action}
+                      <strong>{insight.name}</strong> is{' '}
+                      {insight.kind === 'over' ? 'over' : 'under'} by{' '}
+                      <CurrencyDisplay amount={Math.abs(insight.varianceCents)} /> (
+                      {Math.abs(insight.variancePercent)}%). {insight.action}
                     </li>
                   ))}
                 </ul>

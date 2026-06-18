@@ -59,7 +59,8 @@ export const REPORT_COPY_MESSAGES: readonly ReportCopyMessage[] = [
   {
     id: 'charts.category.tooltip',
     defaultMessage: '{categoryName}: {value}',
-    translatorNote: '{categoryName} is a user category; {value} is already formatted with Intl currency utilities.',
+    translatorNote:
+      '{categoryName} is a user category; {value} is already formatted with Intl currency utilities.',
   },
   {
     id: 'charts.budgetDonut.aria',
@@ -71,7 +72,9 @@ export const REPORT_COPY_MESSAGES: readonly ReportCopyMessage[] = [
 const messagesById = new Map(REPORT_COPY_MESSAGES.map((message) => [message.id, message]));
 
 function interpolate(template: string, values: Readonly<Record<string, string | number>>): string {
-  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_match, key: string) => String(values[key] ?? `{${key}}`));
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (_match, key: string) =>
+    String(values[key] ?? `{${key}}`),
+  );
 }
 
 export function resolveReportCopy(params: {
@@ -92,5 +95,7 @@ export function resolveReportCopy(params: {
 }
 
 export function listMissingReportCopyIds(catalog: ReportCopyCatalog): ReportCopyId[] {
-  return REPORT_COPY_MESSAGES.map((message) => message.id).filter((id) => catalog[id] === undefined);
+  return REPORT_COPY_MESSAGES.map((message) => message.id).filter(
+    (id) => catalog[id] === undefined,
+  );
 }

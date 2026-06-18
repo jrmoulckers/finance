@@ -47,15 +47,24 @@ export interface DecryptLocalBytesOptions {
   readonly crypto?: Crypto;
 }
 
-export function isWebCryptoEncryptionSupported(cryptoImpl: Crypto | undefined = globalThis.crypto): boolean {
-  return typeof cryptoImpl?.subtle?.encrypt === 'function' && typeof cryptoImpl.getRandomValues === 'function';
+export function isWebCryptoEncryptionSupported(
+  cryptoImpl: Crypto | undefined = globalThis.crypto,
+): boolean {
+  return (
+    typeof cryptoImpl?.subtle?.encrypt === 'function' &&
+    typeof cryptoImpl.getRandomValues === 'function'
+  );
 }
 
-export function generateLocalEncryptionSalt(cryptoImpl: Crypto | undefined = globalThis.crypto): Uint8Array {
+export function generateLocalEncryptionSalt(
+  cryptoImpl: Crypto | undefined = globalThis.crypto,
+): Uint8Array {
   return getCrypto(cryptoImpl).getRandomValues(new Uint8Array(PBKDF2_SALT_BYTES));
 }
 
-export function generateLocalEncryptionIv(cryptoImpl: Crypto | undefined = globalThis.crypto): Uint8Array {
+export function generateLocalEncryptionIv(
+  cryptoImpl: Crypto | undefined = globalThis.crypto,
+): Uint8Array {
   return getCrypto(cryptoImpl).getRandomValues(new Uint8Array(AES_GCM_IV_BYTES));
 }
 
@@ -124,7 +133,9 @@ export async function encryptLocalBytes(
     algorithm: LOCAL_ENCRYPTION_ALGORITHM,
     ivBase64Url: bytesToBase64Url(iv),
     ciphertextBase64Url: bytesToBase64Url(new Uint8Array(ciphertext)),
-    ...(options.additionalData ? { additionalDataBase64Url: bytesToBase64Url(options.additionalData) } : {}),
+    ...(options.additionalData
+      ? { additionalDataBase64Url: bytesToBase64Url(options.additionalData) }
+      : {}),
   };
 }
 
@@ -133,7 +144,10 @@ export async function decryptLocalBytes(
   key: CryptoKey,
   options: DecryptLocalBytesOptions = {},
 ): Promise<Uint8Array> {
-  if (envelope.version !== LOCAL_ENCRYPTION_VERSION || envelope.algorithm !== LOCAL_ENCRYPTION_ALGORITHM) {
+  if (
+    envelope.version !== LOCAL_ENCRYPTION_VERSION ||
+    envelope.algorithm !== LOCAL_ENCRYPTION_ALGORITHM
+  ) {
     throw new Error('Unsupported local encryption envelope.');
   }
 
@@ -170,7 +184,9 @@ export function base64UrlToBytes(value: string): Uint8Array {
 }
 
 function decodeOptionalAdditionalData(envelope: LocalEncryptionEnvelope): Uint8Array | undefined {
-  return envelope.additionalDataBase64Url ? base64UrlToBytes(envelope.additionalDataBase64Url) : undefined;
+  return envelope.additionalDataBase64Url
+    ? base64UrlToBytes(envelope.additionalDataBase64Url)
+    : undefined;
 }
 
 function getCrypto(cryptoImpl: Crypto | undefined): Crypto {

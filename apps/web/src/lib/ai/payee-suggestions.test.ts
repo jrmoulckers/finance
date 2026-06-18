@@ -6,7 +6,13 @@ import { rankPayeeSuggestions, type PayeeHistoryEntry } from './payee-suggestion
 
 const HISTORY: PayeeHistoryEntry[] = [
   { payee: 'Starbucks', date: '2025-03-01', accountId: 'checking', categoryId: 'dining' },
-  { payee: 'Starbucks', date: '2025-02-15', accountId: 'checking', categoryId: 'dining', correctedFrom: 'SBUX 1234' },
+  {
+    payee: 'Starbucks',
+    date: '2025-02-15',
+    accountId: 'checking',
+    categoryId: 'dining',
+    correctedFrom: 'SBUX 1234',
+  },
   { payee: 'Staples', date: '2025-03-03', accountId: 'business', categoryId: 'office' },
   { payee: 'Costco', date: '2024-09-01', accountId: 'checking', categoryId: 'groceries' },
 ];
@@ -26,9 +32,14 @@ describe('rankPayeeSuggestions', () => {
   });
 
   it('uses normalized alias matches for noisy partial tokens', () => {
-    const suggestions = rankPayeeSuggestions('sbux', HISTORY, [{ alias: 'SBUX', canonicalPayee: 'Starbucks' }], {
-      now: new Date('2025-03-10T00:00:00.000Z'),
-    });
+    const suggestions = rankPayeeSuggestions(
+      'sbux',
+      HISTORY,
+      [{ alias: 'SBUX', canonicalPayee: 'Starbucks' }],
+      {
+        now: new Date('2025-03-10T00:00:00.000Z'),
+      },
+    );
 
     expect(suggestions[0]).toMatchObject({ payee: 'Starbucks', source: 'alias' });
     expect(suggestions[0].explanation).toContain('normalized alias match');

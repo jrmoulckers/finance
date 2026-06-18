@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { getCurrencyFractionDigits, minorUnitFactor, normalizeCurrencyCode } from '../currency-metadata';
+import {
+  getCurrencyFractionDigits,
+  minorUnitFactor,
+  normalizeCurrencyCode,
+} from '../currency-metadata';
 
-export type LocalCurrencyAmountError = 'required' | 'invalid' | 'too-many-decimals' | 'not-positive' | 'too-large';
+export type LocalCurrencyAmountError =
+  | 'required'
+  | 'invalid'
+  | 'too-many-decimals'
+  | 'not-positive'
+  | 'too-large';
 
 export interface LocalCurrencyAmountParseSuccess {
   readonly ok: true;
@@ -21,7 +30,9 @@ export interface LocalCurrencyAmountParseFailure {
   readonly messageValues: Readonly<Record<string, string | number>>;
 }
 
-export type LocalCurrencyAmountParseResult = LocalCurrencyAmountParseSuccess | LocalCurrencyAmountParseFailure;
+export type LocalCurrencyAmountParseResult =
+  | LocalCurrencyAmountParseSuccess
+  | LocalCurrencyAmountParseFailure;
 
 const LOCAL_CURRENCY_AMOUNT_ERROR_IDS: Readonly<Record<LocalCurrencyAmountError, string>> = {
   required: 'transaction.localAmount.error.required',
@@ -54,7 +65,9 @@ function normalizeNumberInput(input: string, decimalPlaces: number): string {
   if (lastDot >= 0 && lastComma >= 0) {
     const decimalSeparator = lastDot > lastComma ? '.' : ',';
     const groupSeparator = decimalSeparator === '.' ? ',' : '.';
-    return compact.replace(new RegExp(`\\${groupSeparator}`, 'g'), '').replace(decimalSeparator, '.');
+    return compact
+      .replace(new RegExp(`\\${groupSeparator}`, 'g'), '')
+      .replace(decimalSeparator, '.');
   }
 
   if (lastComma >= 0 && lastDot < 0) {
@@ -76,18 +89,23 @@ export function parseLocalCurrencyAmountInput(
   const normalizedInput = normalizeNumberInput(input, decimalPlaces);
 
   if (normalizedInput.length === 0) return failure(currency, decimalPlaces, 'required');
-  if (!/^\+?\d+(?:\.\d+)?$/.test(normalizedInput)) return failure(currency, decimalPlaces, 'invalid');
+  if (!/^\+?\d+(?:\.\d+)?$/.test(normalizedInput))
+    return failure(currency, decimalPlaces, 'invalid');
 
   const [wholePart, fractionPart = ''] = normalizedInput.replace(/^\+/, '').split('.');
-  if (fractionPart.length > decimalPlaces) return failure(currency, decimalPlaces, 'too-many-decimals');
+  if (fractionPart.length > decimalPlaces)
+    return failure(currency, decimalPlaces, 'too-many-decimals');
 
   const factor = BigInt(minorUnitFactor(currency));
   const whole = BigInt(wholePart);
-  const fraction = BigInt((fractionPart + '0'.repeat(decimalPlaces)).slice(0, decimalPlaces) || '0');
+  const fraction = BigInt(
+    (fractionPart + '0'.repeat(decimalPlaces)).slice(0, decimalPlaces) || '0',
+  );
   const minorUnits = whole * factor + fraction;
 
   if (minorUnits <= 0n) return failure(currency, decimalPlaces, 'not-positive');
-  if (minorUnits > BigInt(Number.MAX_SAFE_INTEGER)) return failure(currency, decimalPlaces, 'too-large');
+  if (minorUnits > BigInt(Number.MAX_SAFE_INTEGER))
+    return failure(currency, decimalPlaces, 'too-large');
 
   return {
     ok: true,

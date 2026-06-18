@@ -102,9 +102,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const [showConflicts, setShowConflicts] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const simpleModeSurface = getSimpleModeSurface(activePath);
-  const simpleModePlan = simpleModeEnabled && simpleModeSurface
-    ? getSimpleModePlan(simpleModeSurface)
-    : null;
+  const simpleModePlan =
+    simpleModeEnabled && simpleModeSurface ? getSimpleModePlan(simpleModeSurface) : null;
 
   useEffect(() => {
     setSimpleModeEnabled(getStoredSimplifiedModePreference());
@@ -198,7 +197,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         perform: () => onNavigate('/settings/preferences'),
       },
     ],
-    [isPrivacyMode, onNavigate, openKeyboardShortcuts, openNewTransaction, shortcutItems, togglePrivacyMode],
+    [
+      isPrivacyMode,
+      onNavigate,
+      openKeyboardShortcuts,
+      openNewTransaction,
+      shortcutItems,
+      togglePrivacyMode,
+    ],
   );
 
   const openFeedbackDialog = useCallback(() => {
@@ -338,8 +344,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                 {simpleModePlan.primaryAction}.
               </p>
               <p className="sr-only">
-                Visible regions: {simpleModePlan.visibleRegions.join(', ')}. Advanced regions collapsed:{' '}
-                {simpleModePlan.collapsedRegions.join(', ')}.
+                Visible regions: {simpleModePlan.visibleRegions.join(', ')}. Advanced regions
+                collapsed: {simpleModePlan.collapsedRegions.join(', ')}.
               </p>
             </section>
           )}

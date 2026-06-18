@@ -156,7 +156,12 @@ export interface RealizedGainRow {
 export interface CostBasisAnalysis {
   readonly lotRows: readonly LotBasisRow[];
   readonly realizedGainRows: readonly RealizedGainRow[];
-  readonly realizedByYear: readonly { year: number; shortTermCents: number; longTermCents: number; totalCents: number }[];
+  readonly realizedByYear: readonly {
+    year: number;
+    shortTermCents: number;
+    longTermCents: number;
+    totalCents: number;
+  }[];
   readonly warnings: readonly string[];
 }
 
@@ -239,7 +244,8 @@ export function buildAllocationVisualAnalysis(
       label: `${investment.symbol} — ${investment.name}`,
       kind: 'holding' as const,
       valueCents: marketValue(investment),
-      percent: totalValueCents > 0 ? roundPercent((marketValue(investment) / totalValueCents) * 100) : 0,
+      percent:
+        totalValueCents > 0 ? roundPercent((marketValue(investment) / totalValueCents) * 100) : 0,
     }))
     .sort(sortByValueDesc);
   const driftSignals = buildDriftSignals(assetClassGroups, normalizedBands);
@@ -316,7 +322,10 @@ export function buildRebalancingSuggestions(
         Math.round((comparison.targetPercent / 100) * futureTotal) - comparison.currentValue,
       ),
     }))
-    .filter(({ comparison, deficitCents }) => deficitCents > 0 && comparison.deviationPercent <= -thresholdPercent);
+    .filter(
+      ({ comparison, deficitCents }) =>
+        deficitCents > 0 && comparison.deviationPercent <= -thresholdPercent,
+    );
   const totalDeficit = deficits.reduce((sum, item) => sum + item.deficitCents, 0);
   if (totalDeficit <= 0) return [];
 
@@ -326,7 +335,10 @@ export function buildRebalancingSuggestions(
       label: comparison.label,
       direction: 'BUY',
       mode: 'BUY_ONLY',
-      amountCents: Math.min(cashAvailableCents, Math.round((deficitCents / totalDeficit) * cashAvailableCents)),
+      amountCents: Math.min(
+        cashAvailableCents,
+        Math.round((deficitCents / totalDeficit) * cashAvailableCents),
+      ),
       currentPercent: comparison.actualPercent,
       targetPercent: comparison.targetPercent,
       driftPercent: comparison.deviationPercent,
@@ -334,7 +346,9 @@ export function buildRebalancingSuggestions(
     });
   }
 
-  return suggestions.filter((suggestion) => suggestion.amountCents > 0).sort((a, b) => b.amountCents - a.amountCents);
+  return suggestions
+    .filter((suggestion) => suggestion.amountCents > 0)
+    .sort((a, b) => b.amountCents - a.amountCents);
 }
 
 export function analyzeDividendIncome(
@@ -344,7 +358,10 @@ export function analyzeDividendIncome(
   asOfDate: LocalDate = todayIso(),
 ): DividendIncomeAnalysis {
   const investmentById = new Map(investments.map((investment) => [investment.id, investment]));
-  const totalPortfolioValue = investments.reduce((sum, investment) => sum + marketValue(investment), 0);
+  const totalPortfolioValue = investments.reduce(
+    (sum, investment) => sum + marketValue(investment),
+    0,
+  );
   const asOf = parseIso(asOfDate);
   const trailingStart = new Date(asOf);
   trailingStart.setFullYear(trailingStart.getFullYear() - 1);
@@ -388,7 +405,8 @@ export function analyzeDividendIncome(
       investmentId: investment.id,
       symbol: investment.symbol,
       annualIncomeCents,
-      currentYieldPercent: currentValue > 0 ? roundPercent((annualIncomeCents / currentValue) * 100) : 0,
+      currentYieldPercent:
+        currentValue > 0 ? roundPercent((annualIncomeCents / currentValue) * 100) : 0,
       yieldOnCostPercent: costBasis > 0 ? roundPercent((annualIncomeCents / costBasis) * 100) : 0,
       warning,
     });
@@ -424,7 +442,9 @@ export function analyzeDividendIncome(
     forwardTwelveMonthIncomeCents,
     monthlyAverageCents: Math.round(forwardTwelveMonthIncomeCents / 12),
     currentYieldPercent:
-      totalPortfolioValue > 0 ? roundPercent((forwardTwelveMonthIncomeCents / totalPortfolioValue) * 100) : 0,
+      totalPortfolioValue > 0
+        ? roundPercent((forwardTwelveMonthIncomeCents / totalPortfolioValue) * 100)
+        : 0,
     holdingSummaries,
     monthlyCalendar,
     forecastRows,
@@ -490,12 +510,15 @@ export function analyzeCostBasis(
     if (lots.length === 0) {
       warnings.push(`${investment.symbol} has no tax lots; using holding-level basis only.`);
     } else if (Math.abs(lotShareTotal - investment.shares) > 0.0001) {
-      warnings.push(`${investment.symbol} lot shares do not match current shares; verify splits, deleted lots, or partial sales.`);
+      warnings.push(
+        `${investment.symbol} lot shares do not match current shares; verify splits, deleted lots, or partial sales.`,
+      );
     }
 
     for (const lot of lots) {
       const currentValueCents = Math.round(lot.shares * investment.currentPricePerShare.amount);
-      const costBasisCents = lot.totalCost.amount || Math.round(lot.shares * lot.costPerShare.amount);
+      const costBasisCents =
+        lot.totalCost.amount || Math.round(lot.shares * lot.costPerShare.amount);
       const holdingPeriod = holdingPeriodTerm(lot.purchaseDate, asOfDate);
       lotRows.push({
         investmentId: investment.id,
@@ -547,13 +570,20 @@ export function analyzeCostBasis(
     }
 
     if (remainingShares > 0) {
-      warnings.push(`${investment.symbol} sale exceeds available FIFO lot shares by ${remainingShares.toFixed(4)} shares.`);
+      warnings.push(
+        `${investment.symbol} sale exceeds available FIFO lot shares by ${remainingShares.toFixed(4)} shares.`,
+      );
     }
   }
 
   const realizedByYear = Array.from(
     realizedGainRows.reduce((map, row) => {
-      const current = map.get(row.year) ?? { year: row.year, shortTermCents: 0, longTermCents: 0, totalCents: 0 };
+      const current = map.get(row.year) ?? {
+        year: row.year,
+        shortTermCents: 0,
+        longTermCents: 0,
+        totalCents: 0,
+      };
       const next = {
         year: row.year,
         shortTermCents:
@@ -600,7 +630,8 @@ function buildDriftSignals(
   targetBands: readonly TargetAllocationBand[],
 ): DiversificationSignal[] {
   return targetBands.flatMap((band) => {
-    const actualPercent = assetClassGroups.find((group) => group.key === band.assetClass)?.percent ?? 0;
+    const actualPercent =
+      assetClassGroups.find((group) => group.key === band.assetClass)?.percent ?? 0;
     if (actualPercent >= band.minPercent && actualPercent <= band.maxPercent) return [];
     const direction = actualPercent > band.maxPercent ? 'above' : 'below';
     return [
@@ -735,9 +766,11 @@ function staleDividendWarning(
   assumption: DividendAssumption,
   asOfDate: LocalDate,
 ): string | null {
-  if (!assumption.lastExDate) return `${symbol} dividend forecast uses an assumed schedule because no ex-date is set.`;
+  if (!assumption.lastExDate)
+    return `${symbol} dividend forecast uses an assumed schedule because no ex-date is set.`;
   const ageDays = daysBetween(assumption.lastExDate, asOfDate);
-  if (ageDays > 370) return `${symbol} dividend ex-date is over a year old; verify the rate before relying on the forecast.`;
+  if (ageDays > 370)
+    return `${symbol} dividend ex-date is over a year old; verify the rate before relying on the forecast.`;
   return null;
 }
 
@@ -797,6 +830,9 @@ function daysBetween(startDate: LocalDate, endDate: LocalDate): number {
   return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function holdingPeriodTerm(acquisitionDate: LocalDate, saleOrAsOfDate: LocalDate): 'SHORT_TERM' | 'LONG_TERM' {
+function holdingPeriodTerm(
+  acquisitionDate: LocalDate,
+  saleOrAsOfDate: LocalDate,
+): 'SHORT_TERM' | 'LONG_TERM' {
   return daysBetween(acquisitionDate, saleOrAsOfDate) > 365 ? 'LONG_TERM' : 'SHORT_TERM';
 }

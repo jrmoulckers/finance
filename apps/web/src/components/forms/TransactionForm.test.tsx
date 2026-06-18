@@ -162,10 +162,9 @@ describe('TransactionForm', () => {
     expect(
       screen.getByRole('link', { name: /Amount: Amount must be greater than zero/i }),
     ).toHaveAttribute('href', '#txn-amount');
-    expect(screen.getByRole('link', { name: /Account: Please select an account/i })).toHaveAttribute(
-      'href',
-      '#txn-account',
-    );
+    expect(
+      screen.getByRole('link', { name: /Account: Please select an account/i }),
+    ).toHaveAttribute('href', '#txn-account');
     expect(screen.getByRole('status')).toHaveTextContent(/Some fields need attention/);
     expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
     expect(onSubmit).not.toHaveBeenCalled();
@@ -226,7 +225,9 @@ describe('TransactionForm', () => {
     fireEvent.change(screen.getByLabelText('Payee'), { target: { value: 'IRA contribution' } });
     fireEvent.change(screen.getByLabelText('Account'), { target: { value: 'account-1' } });
     fireEvent.click(
-      screen.getByLabelText('Count this transaction or transfer toward an annual contribution limit'),
+      screen.getByLabelText(
+        'Count this transaction or transfer toward an annual contribution limit',
+      ),
     );
     fireEvent.change(screen.getByLabelText('Contribution year'), { target: { value: '2025' } });
     fireEvent.change(screen.getByLabelText('Contribution designation'), {
@@ -316,7 +317,9 @@ describe('TransactionForm', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add Transaction' }));
     });
 
-    expect(screen.getAllByText(/Split amounts must equal the transaction total/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Split amounts must equal the transaction total/i).length,
+    ).toBeGreaterThan(0);
     expect(screen.getAllByText(/Remaining: \$2\.34/i).length).toBeGreaterThan(0);
     expect(onSubmit).not.toHaveBeenCalled();
   });

@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { localWipeOutcome, type LocalWipeOutcome, type LocalWipeStatus } from '../lib/security/local-wipe-verification';
+import {
+  localWipeOutcome,
+  type LocalWipeOutcome,
+  type LocalWipeStatus,
+} from '../lib/security/local-wipe-verification';
 
 const INDEXED_DB_DATABASES = [
   'finance-sqlite',
@@ -66,17 +70,27 @@ export async function wipeLocalData(): Promise<LocalWipeOutcome[]> {
   ];
 }
 
-function clearStorage(storage: Storage | undefined, area: LocalWipeOutcome['area']): LocalWipeOutcome {
+function clearStorage(
+  storage: Storage | undefined,
+  area: LocalWipeOutcome['area'],
+): LocalWipeOutcome {
   if (!storage) return localWipeOutcome(area, 'not_applicable');
   try {
     storage.clear();
     return localWipeOutcome(area, 'deleted');
   } catch (error) {
-    return localWipeOutcome(area, 'failed', error instanceof Error ? error.message : 'Storage clear failed.');
+    return localWipeOutcome(
+      area,
+      'failed',
+      error instanceof Error ? error.message : 'Storage clear failed.',
+    );
   }
 }
 
-function deriveLocalWipeOutcome(area: LocalWipeOutcome['area'], source: LocalWipeOutcome): LocalWipeOutcome {
+function deriveLocalWipeOutcome(
+  area: LocalWipeOutcome['area'],
+  source: LocalWipeOutcome,
+): LocalWipeOutcome {
   const status: LocalWipeStatus = source.status === 'failed' ? 'failed' : source.status;
   return localWipeOutcome(area, status, source.status === 'failed' ? source.detail : undefined);
 }
@@ -95,7 +109,11 @@ async function deleteIndexedDbDatabases(): Promise<LocalWipeOutcome> {
     );
     return localWipeOutcome('indexeddb', 'deleted');
   } catch (error) {
-    return localWipeOutcome('indexeddb', 'failed', error instanceof Error ? error.message : 'IndexedDB wipe failed.');
+    return localWipeOutcome(
+      'indexeddb',
+      'failed',
+      error instanceof Error ? error.message : 'IndexedDB wipe failed.',
+    );
   }
 }
 
@@ -157,7 +175,8 @@ function deleteIndexedDbDatabase(name: string): Promise<void> {
 
 async function deleteOpfsDatabaseFiles(): Promise<LocalWipeOutcome> {
   const storage = globalThis.navigator?.storage as unknown as StorageWithDirectory | undefined;
-  if (typeof storage?.getDirectory !== 'function') return localWipeOutcome('opfs', 'not_applicable');
+  if (typeof storage?.getDirectory !== 'function')
+    return localWipeOutcome('opfs', 'not_applicable');
 
   try {
     const root = await storage.getDirectory();
@@ -166,17 +185,24 @@ async function deleteOpfsDatabaseFiles(): Promise<LocalWipeOutcome> {
     );
     return localWipeOutcome('opfs', 'deleted');
   } catch (error) {
-    return localWipeOutcome('opfs', 'failed', error instanceof Error ? error.message : 'OPFS wipe failed.');
+    return localWipeOutcome(
+      'opfs',
+      'failed',
+      error instanceof Error ? error.message : 'OPFS wipe failed.',
+    );
   }
 }
 
 async function unregisterServiceWorkers(): Promise<LocalWipeOutcome> {
   const serviceWorker = globalThis.navigator?.serviceWorker;
-  if (typeof serviceWorker?.getRegistrations !== 'function') return localWipeOutcome('service-workers', 'not_applicable');
+  if (typeof serviceWorker?.getRegistrations !== 'function')
+    return localWipeOutcome('service-workers', 'not_applicable');
 
   try {
     const registrations = await serviceWorker.getRegistrations();
-    const results = await Promise.allSettled(registrations.map((registration) => registration.unregister()));
+    const results = await Promise.allSettled(
+      registrations.map((registration) => registration.unregister()),
+    );
     const failed = results.some((result) => result.status === 'rejected' || result.value === false);
     return localWipeOutcome(
       'service-workers',
@@ -193,13 +219,18 @@ async function unregisterServiceWorkers(): Promise<LocalWipeOutcome> {
 }
 
 async function deleteAllCaches(): Promise<LocalWipeOutcome> {
-  if (typeof globalThis.caches?.keys !== 'function' || typeof globalThis.caches.delete !== 'function') {
+  if (
+    typeof globalThis.caches?.keys !== 'function' ||
+    typeof globalThis.caches.delete !== 'function'
+  ) {
     return localWipeOutcome('caches', 'not_applicable');
   }
 
   try {
     const cacheNames = await globalThis.caches.keys();
-    const results = await Promise.allSettled(cacheNames.map((name) => globalThis.caches.delete(name)));
+    const results = await Promise.allSettled(
+      cacheNames.map((name) => globalThis.caches.delete(name)),
+    );
     const failed = results.some((result) => result.status === 'rejected' || result.value === false);
     return localWipeOutcome(
       'caches',
@@ -207,7 +238,11 @@ async function deleteAllCaches(): Promise<LocalWipeOutcome> {
       failed ? 'One or more browser caches could not be deleted.' : undefined,
     );
   } catch (error) {
-    return localWipeOutcome('caches', 'failed', error instanceof Error ? error.message : 'Cache wipe failed.');
+    return localWipeOutcome(
+      'caches',
+      'failed',
+      error instanceof Error ? error.message : 'Cache wipe failed.',
+    );
   }
 }
 

@@ -15,7 +15,13 @@ const accounts: RetirementAccountClassification[] = [
   { accountId: 'work', accountType: '401K', taxTreatment: 'PRE_TAX' },
 ];
 const contributions: RetirementContributionTransaction[] = [
-  { id: 'deferral', accountId: 'work', date: '2025-01-10', amountCents: 23_000_00, designation: 'EMPLOYEE' },
+  {
+    id: 'deferral',
+    accountId: 'work',
+    date: '2025-01-10',
+    amountCents: 23_000_00,
+    designation: 'EMPLOYEE',
+  },
 ];
 
 describe('retirement-tax-summary-export', () => {

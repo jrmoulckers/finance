@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { applyRepair, buildRepairQueue, type RepairableImportRow, type RepairChangeSet, type RepairQueue } from './import-repair';
+import {
+  applyRepair,
+  buildRepairQueue,
+  type RepairableImportRow,
+  type RepairChangeSet,
+  type RepairQueue,
+} from './import-repair';
 
 export interface RepairQueueFilters {
   readonly blocking?: boolean;
@@ -29,10 +35,14 @@ export function filterRepairQueueRows(
 ): readonly RepairableImportRow[] {
   const normalizedSearch = filters.search?.toLowerCase().trim() ?? '';
   return queue.rows.filter((row) => {
-    if (filters.blocking && !row.issues.some((issue) => issue.severity === 'blocking')) return false;
+    if (filters.blocking && !row.issues.some((issue) => issue.severity === 'blocking'))
+      return false;
     if (filters.warnings && !row.issues.some((issue) => issue.severity === 'warning')) return false;
     if (filters.duplicates && !row.duplicate) return false;
-    if (filters.attachmentNeeded && !row.issues.some((issue) => issue.code === 'attachment_needed')) {
+    if (
+      filters.attachmentNeeded &&
+      !row.issues.some((issue) => issue.code === 'attachment_needed')
+    ) {
       return false;
     }
     if (normalizedSearch && !rowMatchesSearch(row, normalizedSearch)) return false;
@@ -45,7 +55,9 @@ export function applySessionRepair(
   rowIndex: number,
   changes: RepairChangeSet,
 ): RepairReviewSession {
-  const rows = session.rows.map((row) => (row.rowIndex === rowIndex ? applyRepair(row, changes) : row));
+  const rows = session.rows.map((row) =>
+    row.rowIndex === rowIndex ? applyRepair(row, changes) : row,
+  );
   return createRepairReviewSession(rows, session.filters);
 }
 
@@ -56,7 +68,9 @@ export function setRepairQueueFilters(
   return createRepairReviewSession(session.rows, filters);
 }
 
-export function summarizeRepairFilters(queue: RepairQueue): Record<keyof Omit<RepairQueueFilters, 'search'>, number> {
+export function summarizeRepairFilters(
+  queue: RepairQueue,
+): Record<keyof Omit<RepairQueueFilters, 'search'>, number> {
   return {
     blocking: queue.blocking.length,
     warnings: queue.warnings.length,

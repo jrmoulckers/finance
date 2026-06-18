@@ -125,14 +125,21 @@ describe('AccountDeletionModal receipt flow', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /yes, delete everything/i }));
 
-    expect(await screen.findByRole('heading', { name: /account deletion receipt/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: /account deletion receipt/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText('verification-hash-123')).toBeInTheDocument();
     expect(screen.getByText('server-account')).toBeInTheDocument();
     expect(screen.getByText('local-indexeddb')).toBeInTheDocument();
 
     const downloadLink = screen.getByRole('link', { name: /download receipt/i });
-    expect(downloadLink).toHaveAttribute('download', 'finance-account-deletion-receipt-delete-request-1.json');
-    expect(downloadLink.getAttribute('href')).toContain(encodeURIComponent('verification-hash-123'));
+    expect(downloadLink).toHaveAttribute(
+      'download',
+      'finance-account-deletion-receipt-delete-request-1.json',
+    );
+    expect(downloadLink.getAttribute('href')).toContain(
+      encodeURIComponent('verification-hash-123'),
+    );
     expect(screen.getByText(/"type": "account_deletion_receipt"/)).toBeInTheDocument();
     expect(logoutMock).not.toHaveBeenCalled();
 

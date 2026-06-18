@@ -82,7 +82,11 @@ export {
   recordUnusualSpendReview,
   summarizeUnusualSpendReviews,
 } from './unusual-spend';
-export type { UnusualSpendAlertOptions, UnusualSpendReviewOutcome, UnusualSpendReviewRecord } from './unusual-spend';
+export type {
+  UnusualSpendAlertOptions,
+  UnusualSpendReviewOutcome,
+  UnusualSpendReviewRecord,
+} from './unusual-spend';
 
 export { buildSpendingDigestNotification, scheduleDigestDelivery } from './spending-digests';
 export type {
@@ -126,7 +130,11 @@ export {
   canCommitReimportPlan,
   planManualReimport,
 } from './import-rerun-reminders';
-export type { ImportReminderOptions, ManualReimportIntent, ManualReimportRequest } from './import-rerun-reminders';
+export type {
+  ImportReminderOptions,
+  ManualReimportIntent,
+  ManualReimportRequest,
+} from './import-rerun-reminders';
 
 export {
   applyUnusualSpendReviewOutcome,
@@ -134,7 +142,11 @@ export {
   findReviewForNotification,
   getUnusualSpendReviewActions,
 } from './unusual-spend-review-actions';
-export type { UnusualSpendOutcomeBadge, UnusualSpendReviewAction, UnusualSpendReviewResult } from './unusual-spend-review-actions';
+export type {
+  UnusualSpendOutcomeBadge,
+  UnusualSpendReviewAction,
+  UnusualSpendReviewResult,
+} from './unusual-spend-review-actions';
 
 export {
   buildUnusualSpendHistoryFilter,
@@ -159,7 +171,11 @@ export type {
 } from './spending-digest-preferences';
 
 export { buildSpendingDigestDetailView } from './spending-digest-detail';
-export type { SpendingDigestDetailSection, SpendingDigestDetailSectionKind, SpendingDigestDetailView } from './spending-digest-detail';
+export type {
+  SpendingDigestDetailSection,
+  SpendingDigestDetailSectionKind,
+  SpendingDigestDetailView,
+} from './spending-digest-detail';
 
 export {
   buildSubscriptionPriceChangeCommands,
@@ -168,7 +184,11 @@ export {
   subscriptionToPriceChangeCharge,
   subscriptionsToPriceChangeCharges,
 } from './subscription-price-change-integration';
-export type { SubscriptionPriceChangeAction, SubscriptionPriceChangeCommand, SubscriptionPriceChangeDispatchPlan } from './subscription-price-change-integration';
+export type {
+  SubscriptionPriceChangeAction,
+  SubscriptionPriceChangeCommand,
+  SubscriptionPriceChangeDispatchPlan,
+} from './subscription-price-change-integration';
 
 export {
   DEFAULT_SUBSCRIPTION_PRICE_CHANGE_PREFERENCES,
@@ -185,7 +205,12 @@ export type {
 } from './subscription-price-change-preferences';
 
 export { chooseNotificationTime } from './smart-timing-policy';
-export type { AlertPriority, NotificationTimingDecision, NotificationTimingInput, QuietHours } from './smart-timing-policy';
+export type {
+  AlertPriority,
+  NotificationTimingDecision,
+  NotificationTimingInput,
+  QuietHours,
+} from './smart-timing-policy';
 
 export {
   buildNotificationPreferenceViewModel,
@@ -197,7 +222,14 @@ export type {
   NotificationPreferenceViewModel,
 } from './preference-controls';
 
-export { dispatchableChannels, planNotificationDelivery, suppressedChannels } from './notification-delivery-plan';
-export type { NotificationChannelDispatch, NotificationDeliveryPlan } from './notification-delivery-plan';
+export {
+  dispatchableChannels,
+  planNotificationDelivery,
+  suppressedChannels,
+} from './notification-delivery-plan';
+export type {
+  NotificationChannelDispatch,
+  NotificationDeliveryPlan,
+} from './notification-delivery-plan';
 
 export { loadNotificationPreferences, saveNotificationPreferences } from './preferences';

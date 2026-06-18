@@ -575,7 +575,12 @@ export function HouseholdPage() {
         return;
       }
       const budget = createShoppingBudget({
-        budgetId: 'shopping-' + shoppingBudgetName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        budgetId:
+          'shopping-' +
+          shoppingBudgetName
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-'),
         name: shoppingBudgetName,
         monthlyLimit,
         categoryIds: shoppingBudgetCategories
@@ -599,7 +604,13 @@ export function HouseholdPage() {
       const budgetId = shoppingTripBudgetId || shoppingBudgets[0]?.id || '';
       const payer = shoppingTripPayer || members[0]?.id || '';
       const receiptTotal = Number(shoppingTripTotal);
-      if (!budgetId || !shoppingTripStore.trim() || !Number.isFinite(receiptTotal) || receiptTotal <= 0 || !payer) {
+      if (
+        !budgetId ||
+        !shoppingTripStore.trim() ||
+        !Number.isFinite(receiptTotal) ||
+        receiptTotal <= 0 ||
+        !payer
+      ) {
         setHouseholdBetaError('Shopping trip needs a budget, store, total, and payer.');
         return;
       }
@@ -652,9 +663,17 @@ export function HouseholdPage() {
         sourceType: 'BILL' as const,
       })),
     ];
-    const obligations = (obligationSeeds.length
-      ? obligationSeeds
-      : [{ label: 'Shared household obligation', amount: 200, sourceId: 'demo-shared', sourceType: 'CATEGORY' as const }]
+    const obligations = (
+      obligationSeeds.length
+        ? obligationSeeds
+        : [
+            {
+              label: 'Shared household obligation',
+              amount: 200,
+              sourceId: 'demo-shared',
+              sourceType: 'CATEGORY' as const,
+            },
+          ]
     ).map((entry) => ({
       ...entry,
       memberIds: participantMemberIds,
@@ -1068,7 +1087,11 @@ export function HouseholdPage() {
     [goalPledges],
   );
   const shoppingBudgetSummaries = useMemo(
-    () => shoppingBudgets.map((budget) => ({ budget, summary: calculateShoppingBudgetSummary(budget) })),
+    () =>
+      shoppingBudgets.map((budget) => ({
+        budget,
+        summary: calculateShoppingBudgetSummary(budget),
+      })),
     [shoppingBudgets],
   );
   const activeReconciliationPlan = reconciliationPlans[0] ?? null;
@@ -1584,7 +1607,9 @@ export function HouseholdPage() {
               <select
                 className="household-form-select"
                 value={shoppingTripAllocation}
-                onChange={(e) => setShoppingTripAllocation(e.target.value as ShoppingTripAllocation)}
+                onChange={(e) =>
+                  setShoppingTripAllocation(e.target.value as ShoppingTripAllocation)
+                }
                 aria-label="Shopping trip allocation"
               >
                 <option value="SHARED">Shared</option>
@@ -1601,8 +1626,9 @@ export function HouseholdPage() {
               <li key={budget.id} className="household-beta-list__item">
                 <span>
                   <strong>{budget.name}</strong> remaining{' '}
-                  <CurrencyDisplay amount={dollarsToCents(summary.remainingAmount)} /> · average trip{' '}
-                  <CurrencyDisplay amount={dollarsToCents(summary.averageTripSize)} /> · projected{' '}
+                  <CurrencyDisplay amount={dollarsToCents(summary.remainingAmount)} /> · average
+                  trip <CurrencyDisplay amount={dollarsToCents(summary.averageTripSize)} /> ·
+                  projected{' '}
                   <CurrencyDisplay amount={dollarsToCents(summary.projectedMonthEndSpend)} />
                 </span>
                 <span>{summary.recentTrips[0]?.store ?? 'No trips yet'}</span>

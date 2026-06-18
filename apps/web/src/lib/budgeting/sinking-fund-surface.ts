@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { summarizeSinkingFundPortfolio, type SinkingFundPlannerInput, type SinkingFundStatus } from './sinking-fund-planner';
+import {
+  summarizeSinkingFundPortfolio,
+  type SinkingFundPlannerInput,
+  type SinkingFundStatus,
+} from './sinking-fund-planner';
 
 export interface SinkingFundSurfaceInput extends SinkingFundPlannerInput {
   readonly isArchived?: boolean;
@@ -40,11 +44,14 @@ export function buildSinkingFundSurfaceState(
     archivedCards: archivedSummary.plans.map((plan) => ({ ...toCard(plan), isArchived: true })),
     totalActiveContributionCents: activeSummary.totalContributionCents,
     totalActiveRemainingCents: activeSummary.totalRemainingCents,
-    offlineFriendlyMessage: 'Sinking funds are calculated from locally saved plans and remain available offline.',
+    offlineFriendlyMessage:
+      'Sinking funds are calculated from locally saved plans and remain available offline.',
   };
 }
 
-function toCard(plan: ReturnType<typeof summarizeSinkingFundPortfolio>['plans'][number]): Omit<SinkingFundSurfaceCard, 'isArchived'> {
+function toCard(
+  plan: ReturnType<typeof summarizeSinkingFundPortfolio>['plans'][number],
+): Omit<SinkingFundSurfaceCard, 'isArchived'> {
   return {
     fundId: plan.fundId,
     name: plan.name,

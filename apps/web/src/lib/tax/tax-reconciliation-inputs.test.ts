@@ -8,7 +8,14 @@ describe('tax-reconciliation-inputs', () => {
     const summary = buildTaxReconciliationSummary({
       taxYear: 2025,
       transactions: [
-        { id: 'office', taxYear: 2025, label: 'Office', amountCents: -125_00, deductible: true, charitable: false },
+        {
+          id: 'office',
+          taxYear: 2025,
+          label: 'Office',
+          amountCents: -125_00,
+          deductible: true,
+          charitable: false,
+        },
         {
           id: 'donation',
           taxYear: 2025,
@@ -18,18 +25,35 @@ describe('tax-reconciliation-inputs', () => {
           charitable: true,
           receiptId: 'receipt-1',
         },
-        { id: 'personal', taxYear: 2025, label: 'Groceries', amountCents: -80_00, deductible: false, charitable: false },
+        {
+          id: 'personal',
+          taxYear: 2025,
+          label: 'Groceries',
+          amountCents: -80_00,
+          deductible: false,
+          charitable: false,
+        },
       ],
     });
 
     expect(summary.missingReceiptTransactionIds).toEqual(['office']);
-    expect(summary.receiptMarkers.find((marker) => marker.transactionId === 'donation')?.status).toBe('required-attached');
-    expect(summary.receiptMarkers.find((marker) => marker.transactionId === 'personal')?.status).toBe('not-required');
+    expect(
+      summary.receiptMarkers.find((marker) => marker.transactionId === 'donation')?.status,
+    ).toBe('required-attached');
+    expect(
+      summary.receiptMarkers.find((marker) => marker.transactionId === 'personal')?.status,
+    ).toBe('not-required');
   });
 
   it('tracks expected, received, reconciled, and variance 1099 states', () => {
     expect(
-      reconcileTaxForm1099({ id: 'expected', taxYear: 2025, payerName: 'Client', formType: '1099-NEC', expectedAmountCents: 1_000_00 }).status,
+      reconcileTaxForm1099({
+        id: 'expected',
+        taxYear: 2025,
+        payerName: 'Client',
+        formType: '1099-NEC',
+        expectedAmountCents: 1_000_00,
+      }).status,
     ).toBe('expected');
     expect(
       reconcileTaxForm1099({
@@ -58,7 +82,15 @@ describe('tax-reconciliation-inputs', () => {
     const summary = buildTaxReconciliationSummary({
       taxYear: 2025,
       transactions: [],
-      forms1099: [{ id: 'nec', taxYear: 2025, payerName: 'Client', formType: '1099-NEC', expectedAmountCents: 500_00 }],
+      forms1099: [
+        {
+          id: 'nec',
+          taxYear: 2025,
+          payerName: 'Client',
+          formType: '1099-NEC',
+          expectedAmountCents: 500_00,
+        },
+      ],
       checklistItems: [
         { id: 'upload-nec', taxYear: 2025, label: 'Upload 1099-NEC', status: 'open' },
         { id: 'done', taxYear: 2025, label: 'Confirm address', status: 'done' },

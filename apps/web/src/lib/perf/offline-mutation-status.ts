@@ -79,8 +79,10 @@ function labelForMutation(record: OfflineMutationRecord, position: number): stri
 
 function detailForMutation(record: OfflineMutationRecord): string {
   if (record.state === 'failed' && record.errorMessage !== undefined) return record.errorMessage;
-  if (record.state === 'queued') return 'Saved locally and will sync automatically after reconnect.';
-  if (record.state === 'conflicted') return 'Review local and server values before replay continues.';
+  if (record.state === 'queued')
+    return 'Saved locally and will sync automatically after reconnect.';
+  if (record.state === 'conflicted')
+    return 'Review local and server values before replay continues.';
   if (record.state === 'syncing') return 'Uploading this saved offline action now.';
   return 'Saved locally and online.';
 }

@@ -49,12 +49,19 @@ const review: UnusualSpendReviewRecord = {
 
 describe('unusual spend routing', () => {
   it('routes single-transaction alerts to transaction detail', () => {
-    expect(routeUnusualSpendAlert(alert({}))).toMatchObject({ kind: 'transaction_detail', path: '/transactions/t1' });
-    expect(routeUnusualSpendNotification(notification)).toMatchObject({ kind: 'transaction_detail' });
+    expect(routeUnusualSpendAlert(alert({}))).toMatchObject({
+      kind: 'transaction_detail',
+      path: '/transactions/t1',
+    });
+    expect(routeUnusualSpendNotification(notification)).toMatchObject({
+      kind: 'transaction_detail',
+    });
   });
 
   it('routes duplicate and rapid alerts to filtered transaction sets', () => {
-    const route = routeUnusualSpendAlert(alert({ rule: 'possible-duplicate', transactionIds: ['t1', 't2'] }));
+    const route = routeUnusualSpendAlert(
+      alert({ rule: 'possible-duplicate', transactionIds: ['t1', 't2'] }),
+    );
 
     expect(route.kind).toBe('transaction_filter');
     expect(route.path).toContain('transactionIds=t1%2Ct2');

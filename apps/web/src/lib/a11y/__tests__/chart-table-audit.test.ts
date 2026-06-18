@@ -54,9 +54,9 @@ describe('chart table accessibility helpers', () => {
   });
 
   it('describes table captions and sortable headers', () => {
-    expect(buildDataTableCaption('Transactions table', 2, { columnId: 'date', direction: 'descending' })).toBe(
-      'Transactions table. 2 rows. Sorted by date descending.',
-    );
+    expect(
+      buildDataTableCaption('Transactions table', 2, { columnId: 'date', direction: 'descending' }),
+    ).toBe('Transactions table. 2 rows. Sorted by date descending.');
 
     expect(
       getSortableColumnA11yProps({

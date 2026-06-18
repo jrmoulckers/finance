@@ -37,7 +37,9 @@ describe('third-party-permissions', () => {
     expect(loadThirdPartyConnections(new Date('2026-05-01T00:00:00.000Z'))[0]).toMatchObject({
       status: 'needs_review',
     });
-    expect(summarizeThirdPartyPermissions([connection], new Date('2026-05-01T00:00:00.000Z'))).toMatchObject({
+    expect(
+      summarizeThirdPartyPermissions([connection], new Date('2026-05-01T00:00:00.000Z')),
+    ).toMatchObject({
       total: 1,
       stale: 1,
     });
@@ -46,9 +48,13 @@ describe('third-party-permissions', () => {
   it('requires step-up before revocation', async () => {
     saveThirdPartyConnections([connection]);
 
-    await expect(revokeThirdPartyConnection(connection.id)).resolves.toMatchObject({ kind: 'step_up_required' });
+    await expect(revokeThirdPartyConnection(connection.id)).resolves.toMatchObject({
+      kind: 'step_up_required',
+    });
     await markStepUpAuthenticated('third_party_permission_change');
-    await expect(revokeThirdPartyConnection(connection.id)).resolves.toMatchObject({ kind: 'revoked' });
+    await expect(revokeThirdPartyConnection(connection.id)).resolves.toMatchObject({
+      kind: 'revoked',
+    });
   });
 
   it('records education acknowledgement', async () => {

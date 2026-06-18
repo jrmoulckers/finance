@@ -36,9 +36,12 @@ export function shouldBroadcastReplayProgress(
   return input.now - input.lastBroadcastAt >= intervalMs;
 }
 
-export function createSyncReplayProgressMessage(input: SyncReplayProgressInput): SyncReplayProgressMessage {
+export function createSyncReplayProgressMessage(
+  input: SyncReplayProgressInput,
+): SyncReplayProgressMessage {
   const remainingCount = Math.max(0, input.totalCount - input.completedCount);
-  const percentComplete = input.totalCount === 0 ? 100 : Math.round((input.completedCount / input.totalCount) * 100);
+  const percentComplete =
+    input.totalCount === 0 ? 100 : Math.round((input.completedCount / input.totalCount) * 100);
   return {
     type: 'sync-replay-progress',
     totalCount: input.totalCount,

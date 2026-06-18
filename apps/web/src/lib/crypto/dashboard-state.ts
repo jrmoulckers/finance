@@ -47,7 +47,14 @@ export interface CryptoDashboardState {
   readonly sourceStatuses: readonly CryptoSourceStatus[];
 }
 
-export function buildCryptoDashboardState(input: { readonly holdings: readonly CryptoHoldingInput[]; readonly quotes: readonly CryptoQuoteInput[]; readonly sourceStatuses?: readonly CryptoSourceStatus[]; readonly now: string; readonly staleAfterMs: number; readonly currency: string }): CryptoDashboardState {
+export function buildCryptoDashboardState(input: {
+  readonly holdings: readonly CryptoHoldingInput[];
+  readonly quotes: readonly CryptoQuoteInput[];
+  readonly sourceStatuses?: readonly CryptoSourceStatus[];
+  readonly now: string;
+  readonly staleAfterMs: number;
+  readonly currency: string;
+}): CryptoDashboardState {
   const quoteByAsset = new Map(input.quotes.map((quote) => [quote.asset.toUpperCase(), quote]));
   const groups = new Map<string, CryptoHoldingInput[]>();
   for (const holding of input.holdings) {
@@ -63,7 +70,9 @@ export function buildCryptoDashboardState(input: { readonly holdings: readonly C
     const quantity = holdings.reduce((sum, holding) => sum + holding.quantity, 0);
     const costBasis = holdings.reduce((sum, holding) => sum + (holding.costBasisCents ?? 0), 0);
     const sourceBreakdown: Record<string, number> = {};
-    for (const holding of holdings) sourceBreakdown[holding.sourceId] = (sourceBreakdown[holding.sourceId] ?? 0) + holding.quantity;
+    for (const holding of holdings)
+      sourceBreakdown[holding.sourceId] =
+        (sourceBreakdown[holding.sourceId] ?? 0) + holding.quantity;
     const rowWarnings: string[] = [];
     if (!quote) {
       rowWarnings.push('missing quote');
@@ -73,12 +82,29 @@ export function buildCryptoDashboardState(input: { readonly holdings: readonly C
       warnings.add(`${asset}: stale quote`);
     }
     const valueCents = quote ? Math.round(quantity * quote.priceCents) : 0;
-    rows.push({ asset, quantity, valueCents, costBasisCents: costBasis || undefined, unrealizedPnlCents: costBasis ? valueCents - costBasis : undefined, move24hBps: quote?.move24hBps, move7dBps: quote?.move7dBps, sourceBreakdown, warnings: rowWarnings });
+    rows.push({
+      asset,
+      quantity,
+      valueCents,
+      costBasisCents: costBasis || undefined,
+      unrealizedPnlCents: costBasis ? valueCents - costBasis : undefined,
+      move24hBps: quote?.move24hBps,
+      move7dBps: quote?.move7dBps,
+      sourceBreakdown,
+      warnings: rowWarnings,
+    });
   }
 
   for (const status of input.sourceStatuses ?? []) {
-    if (status.state === 'failed' || status.state === 'stale') warnings.add(`${status.sourceId}: ${status.message ?? status.state}`);
+    if (status.state === 'failed' || status.state === 'stale')
+      warnings.add(`${status.sourceId}: ${status.message ?? status.state}`);
   }
 
-  return { currency: input.currency, rows: rows.sort((a, b) => b.valueCents - a.valueCents || a.asset.localeCompare(b.asset)), totalValueCents: rows.reduce((sum, row) => sum + row.valueCents, 0), warnings: [...warnings].sort(), sourceStatuses: input.sourceStatuses ?? [] };
+  return {
+    currency: input.currency,
+    rows: rows.sort((a, b) => b.valueCents - a.valueCents || a.asset.localeCompare(b.asset)),
+    totalValueCents: rows.reduce((sum, row) => sum + row.valueCents, 0),
+    warnings: [...warnings].sort(),
+    sourceStatuses: input.sourceStatuses ?? [],
+  };
 }

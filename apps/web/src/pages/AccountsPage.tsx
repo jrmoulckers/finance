@@ -63,7 +63,9 @@ const MultiCurrencyTotal: React.FC<{
   if (!isMixed) {
     const singleCurrency = getSingleCurrency(currencyItems);
     const total = accounts.reduce((sum, acc) => sum + acc.currentBalance.amount, 0);
-    return <CurrencyDisplay amount={total} currency={singleCurrency ?? 'USD'} colorize={colorize} />;
+    return (
+      <CurrencyDisplay amount={total} currency={singleCurrency ?? 'USD'} colorize={colorize} />
+    );
   }
 
   const amounts = accounts.map((acc) => ({
@@ -78,7 +80,8 @@ const MultiCurrencyTotal: React.FC<{
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([currency, amount]) => formatAmount(amount, maskingMode, undefined, { currency }))
           .join(' · ');
-  const label = maskingMode === MaskingMode.Visible ? `Total: ${formatted}` : 'Total: Amount hidden';
+  const label =
+    maskingMode === MaskingMode.Visible ? `Total: ${formatted}` : 'Total: Amount hidden';
 
   return (
     <span className="multi-currency-total" aria-label={label}>
@@ -231,7 +234,13 @@ export const AccountsPage: React.FC = () => {
             title={`Using approximate ${providerName.toLowerCase()}. Connect an exchange rate provider in Settings for live rates.`}
           >
             {' '}
-            ≈ <CurrencyDisplay amount={convertedTotal} currency="USD" context="converted net worth" /> USD
+            ≈{' '}
+            <CurrencyDisplay
+              amount={convertedTotal}
+              currency="USD"
+              context="converted net worth"
+            />{' '}
+            USD
             <span className="page-summary__converted-hint">
               {' '}
               (converted at {providerName.toLowerCase()})

@@ -28,16 +28,19 @@ export function buildHouseholdBudgetPageRows(
   const memberNames = new Map(members.map((member) => [member.memberId, member.displayName]));
 
   return buildHouseholdBudgetProgress(budgets, viewer).map((budget) => {
-    const mine = budget.ownerMemberId === viewer.memberId || budget.participantMemberIds.includes(viewer.memberId);
+    const mine =
+      budget.ownerMemberId === viewer.memberId ||
+      budget.participantMemberIds.includes(viewer.memberId);
     const filterBuckets: HouseholdBudgetFilter[] = ['all'];
     if (mine) filterBuckets.push('mine');
     if (budget.responsibility === 'SHARED') filterBuckets.push('shared');
 
     return {
       ...budget,
-      indicatorLabel: budget.responsibility === 'SHARED'
-        ? 'Shared household budget'
-        : `Owner-only budget${budget.ownerMemberId === viewer.memberId ? ' you own' : ''}`,
+      indicatorLabel:
+        budget.responsibility === 'SHARED'
+          ? 'Shared household budget'
+          : `Owner-only budget${budget.ownerMemberId === viewer.memberId ? ' you own' : ''}`,
       lastChangedLabel: formatLastChangedLabel(budget.lastChangedByMemberId, memberNames),
       filterBuckets,
     };
@@ -58,9 +61,10 @@ export function getHouseholdBudgetEditControlState(row: HouseholdBudgetPageRow):
   if (row.canEdit) return { disabled: false, reason: null };
   return {
     disabled: true,
-    reason: row.responsibility === 'SHARED'
-      ? 'Only household members with edit permission can change this shared budget.'
-      : 'Only the owner or household admin can change this budget.',
+    reason:
+      row.responsibility === 'SHARED'
+        ? 'Only household members with edit permission can change this shared budget.'
+        : 'Only the owner or household admin can change this budget.',
   };
 }
 

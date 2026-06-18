@@ -2,11 +2,11 @@
 
 ## API permission matrix
 
-| Exchange | Required permissions | Never request |
-| --- | --- | --- |
-| Coinbase | Read balances, accounts, transactions/fills. | Trade, transfer, withdrawal. |
-| Kraken | Read-only balance, ledger, trades. | Order placement, withdrawal, funding writes. |
-| CSV fallback | No API permissions. | Credentials of any kind. |
+| Exchange     | Required permissions                         | Never request                                |
+| ------------ | -------------------------------------------- | -------------------------------------------- |
+| Coinbase     | Read balances, accounts, transactions/fills. | Trade, transfer, withdrawal.                 |
+| Kraken       | Read-only balance, ledger, trades.           | Order placement, withdrawal, funding writes. |
+| CSV fallback | No API permissions.                          | Credentials of any kind.                     |
 
 ## Threat model and storage
 

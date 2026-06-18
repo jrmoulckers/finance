@@ -2,8 +2,14 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { confirmFirstBudgetForSave, upsertFirstBudgetEstimate } from '../../onboarding/first-budget-tutorial';
-import { buildFirstBudgetRollbackPlan, previewFirstBudgetRecords } from '../first-budget-draft-records';
+import {
+  confirmFirstBudgetForSave,
+  upsertFirstBudgetEstimate,
+} from '../../onboarding/first-budget-tutorial';
+import {
+  buildFirstBudgetRollbackPlan,
+  previewFirstBudgetRecords,
+} from '../first-budget-draft-records';
 
 function confirmedDraft() {
   const empty = { estimates: [], completedStepIds: [], confirmedForSave: false };
@@ -19,7 +25,13 @@ function confirmedDraft() {
         }),
         { id: 'rent', label: 'Rent', kind: 'fixed', amountCents: 120_000, isRoughEstimate: false },
       ),
-      { id: 'groceries', label: 'Groceries', kind: 'flexible', amountCents: 60_000, isRoughEstimate: true },
+      {
+        id: 'groceries',
+        label: 'Groceries',
+        kind: 'flexible',
+        amountCents: 60_000,
+        isRoughEstimate: true,
+      },
     ),
   );
 }

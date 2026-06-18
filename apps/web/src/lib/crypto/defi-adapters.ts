@@ -32,7 +32,9 @@ export class FixtureDeFiProtocolProvider implements DeFiProtocolProvider {
 
   constructor(fixtures: readonly ProtocolPositionFixture[]) {
     this.fixtures = fixtures;
-    this.supportedProtocols = [...new Set(fixtures.map((fixture) => fixture.position.protocol))].sort();
+    this.supportedProtocols = [
+      ...new Set(fixtures.map((fixture) => fixture.position.protocol)),
+    ].sort();
   }
 
   async listPositions(_accountId: string): Promise<readonly DeFiPosition[]> {
@@ -40,15 +42,29 @@ export class FixtureDeFiProtocolProvider implements DeFiProtocolProvider {
   }
 
   async getRewardBalances(positionId: string): Promise<readonly RewardBalance[]> {
-    return this.fixtures.find((fixture) => fixture.position.id === positionId)?.position.rewardTokens ?? [];
+    return (
+      this.fixtures.find((fixture) => fixture.position.id === positionId)?.position.rewardTokens ??
+      []
+    );
   }
 
   async getValuationMetadata(positionId: string): Promise<ValuationSourceMetadata> {
-    return this.fixtures.find((fixture) => fixture.position.id === positionId)?.valuation ?? { source: this.id, asOf: new Date(0).toISOString(), state: 'failed', message: 'Position not found.' };
+    return (
+      this.fixtures.find((fixture) => fixture.position.id === positionId)?.valuation ?? {
+        source: this.id,
+        asOf: new Date(0).toISOString(),
+        state: 'failed',
+        message: 'Position not found.',
+      }
+    );
   }
 }
 
-export function evaluateProviderState(metadata: ValuationSourceMetadata, now: string, staleAfterMs: number): ProviderState {
+export function evaluateProviderState(
+  metadata: ValuationSourceMetadata,
+  now: string,
+  staleAfterMs: number,
+): ProviderState {
   if (metadata.state === 'failed') return 'failed';
   const age = new Date(now).getTime() - new Date(metadata.asOf).getTime();
   return age > staleAfterMs ? 'stale' : metadata.state;

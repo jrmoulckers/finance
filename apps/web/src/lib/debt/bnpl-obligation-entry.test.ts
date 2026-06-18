@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { upsertBnplObligationFromDraft, validateBnplObligationDraft } from './bnpl-obligation-entry';
+import {
+  upsertBnplObligationFromDraft,
+  validateBnplObligationDraft,
+} from './bnpl-obligation-entry';
 import type { BnplObligation } from '../debt-types';
 
 const draft = {
@@ -31,7 +34,9 @@ describe('BNPL obligation entry', () => {
     expect(validation.errors).toContain('Enter a valid first due date.');
     expect(validation.errors).toContain('Total installments must be greater than zero.');
     expect(validation.errors).toContain('Paid installments cannot exceed total installments.');
-    expect(validation.errors).toContain('Paid schedule cannot exceed the original purchase amount.');
+    expect(validation.errors).toContain(
+      'Paid schedule cannot exceed the original purchase amount.',
+    );
   });
 
   it('edits active obligations without replacing an unchanged remaining due-date schedule', () => {
@@ -48,7 +53,10 @@ describe('BNPL obligation entry', () => {
       upcomingDueDates: ['2025-02-03', '2025-02-17', '2025-03-03'],
     };
 
-    const [updated] = upsertBnplObligationFromDraft([existing], { ...draft, merchantName: 'New Store' });
+    const [updated] = upsertBnplObligationFromDraft([existing], {
+      ...draft,
+      merchantName: 'New Store',
+    });
 
     expect(updated.merchantName).toBe('New Store');
     expect(updated.upcomingDueDates).toEqual(existing.upcomingDueDates);

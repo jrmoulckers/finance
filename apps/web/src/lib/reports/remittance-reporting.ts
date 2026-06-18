@@ -74,7 +74,8 @@ export function buildRemittanceMetadata(input: RemittanceMetadataInput): Remitta
     throw new Error('exchangeRate must be positive when provided.');
   }
 
-  const effectiveRateIncludingFee = input.receivedAmountMinor / (input.sendAmountMinor + input.feeAmountMinor);
+  const effectiveRateIncludingFee =
+    input.receivedAmountMinor / (input.sendAmountMinor + input.feeAmountMinor);
   const metadata = {
     ...input,
     exchangeRate: roundRate(exchangeRate),

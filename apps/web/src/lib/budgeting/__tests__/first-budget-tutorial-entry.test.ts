@@ -2,7 +2,11 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { markFirstBudgetStepComplete, pauseFirstBudgetTutorial, upsertFirstBudgetEstimate } from '../../onboarding/first-budget-tutorial';
+import {
+  markFirstBudgetStepComplete,
+  pauseFirstBudgetTutorial,
+  upsertFirstBudgetEstimate,
+} from '../../onboarding/first-budget-tutorial';
 import {
   deserializeFirstBudgetTutorialDraft,
   buildFirstBudgetTutorialEntryState,
@@ -15,7 +19,13 @@ describe('first budget tutorial entry state', () => {
       markFirstBudgetStepComplete(
         upsertFirstBudgetEstimate(
           { estimates: [], completedStepIds: [], confirmedForSave: false },
-          { id: 'income', label: 'Paycheck', kind: 'income', amountCents: 250_000, isRoughEstimate: true },
+          {
+            id: 'income',
+            label: 'Paycheck',
+            kind: 'income',
+            amountCents: 250_000,
+            isRoughEstimate: true,
+          },
         ),
         'income',
       ),

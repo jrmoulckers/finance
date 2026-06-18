@@ -164,8 +164,11 @@ function inferDateRange(lower: string, baseDate: Date): DateRangeFilter | undefi
 }
 
 function inferAmountRange(lower: string): AmountRangeFilter | undefined {
-  const between = lower.match(/\bbetween\s+\$?(\d+(?:\.\d{1,2})?)\s+(?:and|to)\s+\$?(\d+(?:\.\d{1,2})?)/);
-  if (between) return { minCents: dollarsToCents(between[1]), maxCents: dollarsToCents(between[2]) };
+  const between = lower.match(
+    /\bbetween\s+\$?(\d+(?:\.\d{1,2})?)\s+(?:and|to)\s+\$?(\d+(?:\.\d{1,2})?)/,
+  );
+  if (between)
+    return { minCents: dollarsToCents(between[1]), maxCents: dollarsToCents(between[2]) };
   const over = lower.match(/\b(?:over|above|more than|greater than)\s+\$?(\d+(?:\.\d{1,2})?)/);
   if (over) return { minCents: dollarsToCents(over[1]) };
   const under = lower.match(/\b(?:under|below|less than)\s+\$?(\d+(?:\.\d{1,2})?)/);
@@ -183,47 +186,79 @@ function inferType(lower: string): SearchTransactionType | undefined {
 function inferCategory(
   lower: string,
   categories: readonly SearchCategoryOption[],
-): { readonly category?: SearchCategoryOption; readonly ambiguous: readonly string[]; readonly names: readonly string[] } {
+): {
+  readonly category?: SearchCategoryOption;
+  readonly ambiguous: readonly string[];
+  readonly names: readonly string[];
+} {
   const matches = categories.filter((category) => {
     const names = [category.name, ...(category.synonyms ?? [])].map((name) => name.toLowerCase());
     return names.some((name) => new RegExp(`\\b${escapeRegex(name)}\\b`).test(lower));
   });
-  return { category: matches.length === 1 ? matches[0] : undefined, ambiguous: matches.map((item) => item.name), names: matches.map((item) => item.name.toLowerCase()) };
+  return {
+    category: matches.length === 1 ? matches[0] : undefined,
+    ambiguous: matches.map((item) => item.name),
+    names: matches.map((item) => item.name.toLowerCase()),
+  };
 }
 
 function inferMerchant(lower: string, categoryNames: readonly string[]): string | undefined {
-  const explicit = lower.match(/\b(?:at|from|merchant|payee)\s+([a-z0-9 '&.-]+?)(?=\s+(?:over|under|above|below|last|this|year|in|on|for|count|average|$))/);
+  const explicit = lower.match(
+    /\b(?:at|from|merchant|payee)\s+([a-z0-9 '&.-]+?)(?=\s+(?:over|under|above|below|last|this|year|in|on|for|count|average|$))/,
+  );
   if (explicit) return cleanTerm(explicit[1]);
-  const show = lower.match(/\bshow\s+([a-z0-9 '&.-]+?)(?=\s+(?:over|under|above|below|last|this|year|in|on|for|$))/);
+  const show = lower.match(
+    /\bshow\s+([a-z0-9 '&.-]+?)(?=\s+(?:over|under|above|below|last|this|year|in|on|for|$))/,
+  );
   const candidate = cleanTerm(show?.[1] ?? '');
   if (!candidate || categoryNames.includes(candidate)) return undefined;
   return candidate;
 }
 
 function inferAccount(lower: string): string | undefined {
-  const match = lower.match(/\b(?:account|from account|in account)\s+([a-z0-9 -]+?)(?=\s+(?:over|under|last|this|year|in|on|for|$))/);
+  const match = lower.match(
+    /\b(?:account|from account|in account)\s+([a-z0-9 -]+?)(?=\s+(?:over|under|last|this|year|in|on|for|$))/,
+  );
   return match ? cleanTerm(match[1]) : undefined;
 }
 
-function matchesFilters(transaction: SearchTransaction, filters: TransactionSearchFilters): boolean {
-  if (filters.dateRange && (transaction.date < filters.dateRange.start || transaction.date > filters.dateRange.end)) return false;
+function matchesFilters(
+  transaction: SearchTransaction,
+  filters: TransactionSearchFilters,
+): boolean {
+  if (
+    filters.dateRange &&
+    (transaction.date < filters.dateRange.start || transaction.date > filters.dateRange.end)
+  )
+    return false;
   if (filters.categoryId && transaction.categoryId !== filters.categoryId) return false;
-  if (filters.categoryName && transaction.categoryName?.toLowerCase() !== filters.categoryName.toLowerCase()) return false;
-  if (filters.merchant && !`${transaction.payee}`.toLowerCase().includes(filters.merchant)) return false;
+  if (
+    filters.categoryName &&
+    transaction.categoryName?.toLowerCase() !== filters.categoryName.toLowerCase()
+  )
+    return false;
+  if (filters.merchant && !`${transaction.payee}`.toLowerCase().includes(filters.merchant))
+    return false;
   if (filters.account) {
-    const accountText = `${transaction.accountName ?? ''} ${transaction.accountId ?? ''}`.toLowerCase();
+    const accountText =
+      `${transaction.accountName ?? ''} ${transaction.accountId ?? ''}`.toLowerCase();
     if (!accountText.includes(filters.account)) return false;
   }
   if (filters.type && transaction.type !== filters.type) return false;
   if (filters.amountRange) {
     const amount = Math.abs(transaction.amountCents);
-    if (filters.amountRange.minCents !== undefined && amount <= filters.amountRange.minCents) return false;
-    if (filters.amountRange.maxCents !== undefined && amount >= filters.amountRange.maxCents) return false;
+    if (filters.amountRange.minCents !== undefined && amount <= filters.amountRange.minCents)
+      return false;
+    if (filters.amountRange.maxCents !== undefined && amount >= filters.amountRange.maxCents)
+      return false;
   }
   return true;
 }
 
-function aggregateMatches(matches: readonly SearchTransaction[], aggregate: SearchAggregate): number | null {
+function aggregateMatches(
+  matches: readonly SearchTransaction[],
+  aggregate: SearchAggregate,
+): number | null {
   if (aggregate === 'list') return null;
   if (aggregate === 'count') return matches.length;
   const sum = matches.reduce((total, transaction) => total + Math.abs(transaction.amountCents), 0);
@@ -249,7 +284,10 @@ function dollarsToCents(value: string): number {
 }
 
 function cleanTerm(value: string): string {
-  return value.replace(/\b(transactions|spending|expenses|income|payments|for|on|in)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .replace(/\b(transactions|spending|expenses|income|payments|for|on|in)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function addDays(date: Date, days: number): Date {

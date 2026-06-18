@@ -14,7 +14,9 @@ describe('settings-catalog', () => {
     const copy = createSettingsCopy('es-ES');
 
     expect(copy.text('currencyRatesTitle')).toBe('Tipos de cambio');
-    expect(copy.text('currencyRatesTableAria', { baseCurrency: 'USD' })).toBe('Tipos de cambio desde USD');
+    expect(copy.text('currencyRatesTableAria', { baseCurrency: 'USD' })).toBe(
+      'Tipos de cambio desde USD',
+    );
     expect(copy.sourceLabel('user-override')).toBe('Manual');
   });
 });

@@ -738,7 +738,9 @@ describe('TransactionsPage', () => {
     );
 
     expect(screen.getByText(/showing 3 transactions as cards for large text/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('list', { name: /large text transaction card list/i })).toHaveLength(2);
+    expect(screen.getAllByRole('list', { name: /large text transaction card list/i })).toHaveLength(
+      2,
+    );
   });
 
   it('virtualizes large transaction registers instead of rendering every row', () => {
@@ -758,8 +760,12 @@ describe('TransactionsPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('list', { name: /virtualized transaction register/i })).toBeInTheDocument();
-    expect(screen.getByText(/showing 500 transactions with virtual scrolling/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('list', { name: /virtualized transaction register/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/showing 500 transactions with virtual scrolling/i),
+    ).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^edit /i }).length).toBeLessThan(100);
   });
 

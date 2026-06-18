@@ -21,7 +21,14 @@ describe('goal projection and milestone engine', () => {
   });
 
   it('classifies behind, ahead, and complete goals', () => {
-    const common = { startCents: 0, targetCents: 10000_00, startDate: '2026-01-01', today: '2026-03-01', dueDate: '2026-04-01', paychecksRemaining: 2 };
+    const common = {
+      startCents: 0,
+      targetCents: 10000_00,
+      startDate: '2026-01-01',
+      today: '2026-03-01',
+      dueDate: '2026-04-01',
+      paychecksRemaining: 2,
+    };
     expect(projectGoalMilestones({ ...common, currentCents: 1000_00 }).state).toBe('behind');
     expect(projectGoalMilestones({ ...common, currentCents: 9500_00 }).state).toBe('ahead');
     expect(projectGoalMilestones({ ...common, currentCents: 10000_00 }).state).toBe('complete');

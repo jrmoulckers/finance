@@ -79,10 +79,19 @@ function displayLot(investment: Investment, lot: InvestmentLot): DisplayTaxLot {
 }
 
 export const TaxCenterPage: React.FC = () => {
-  const { investments, loading: investmentsLoading, error: investmentsError, refresh, getLots } =
-    useInvestments();
-  const { accounts, loading: accountsLoading, error: accountsError, refresh: refreshAccounts } =
-    useAccounts();
+  const {
+    investments,
+    loading: investmentsLoading,
+    error: investmentsError,
+    refresh,
+    getLots,
+  } = useInvestments();
+  const {
+    accounts,
+    loading: accountsLoading,
+    error: accountsError,
+    refresh: refreshAccounts,
+  } = useAccounts();
   const {
     transactions,
     loading: transactionsLoading,
@@ -251,7 +260,8 @@ export const TaxCenterPage: React.FC = () => {
                 Retirement contribution limits
               </h3>
               <p style={{ color: 'var(--semantic-text-secondary)', margin: 0 }}>
-                Tracks transactions tagged as retirement contributions against configured IRS limits.
+                Tracks transactions tagged as retirement contributions against configured IRS
+                limits.
               </p>
             </div>
             <label>
@@ -340,7 +350,9 @@ export const TaxCenterPage: React.FC = () => {
                     <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
                       {formatPercent(row.percentUsed)}
                     </td>
-                    <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>{row.status}</td>
+                    <td style={{ padding: 'var(--spacing-3)', textAlign: 'right' }}>
+                      {row.status}
+                    </td>
                   </tr>
                 ))}
               </tbody>

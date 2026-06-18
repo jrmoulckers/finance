@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { SubscriptionPriceChangeConfig, SubscriptionPriceChangeAlert } from './subscription-price-changes';
+import type {
+  SubscriptionPriceChangeConfig,
+  SubscriptionPriceChangeAlert,
+} from './subscription-price-changes';
 
 export interface SubscriptionPriceChangePreferences {
   readonly enabled: boolean;
@@ -36,10 +39,28 @@ export function normalizeSubscriptionPriceChangePreferences(
 ): SubscriptionPriceChangePreferences {
   return {
     enabled: partial.enabled ?? DEFAULT_SUBSCRIPTION_PRICE_CHANGE_PREFERENCES.enabled,
-    minimumIncreaseCents: Math.max(0, Math.round(partial.minimumIncreaseCents ?? DEFAULT_SUBSCRIPTION_PRICE_CHANGE_PREFERENCES.minimumIncreaseCents)),
-    minimumIncreasePercent: Math.max(0, partial.minimumIncreasePercent ?? DEFAULT_SUBSCRIPTION_PRICE_CHANGE_PREFERENCES.minimumIncreasePercent),
-    trialToPaidEnabled: partial.trialToPaidEnabled ?? DEFAULT_SUBSCRIPTION_PRICE_CHANGE_PREFERENCES.trialToPaidEnabled,
-    materialRealertCents: Math.max(0, Math.round(partial.materialRealertCents ?? DEFAULT_SUBSCRIPTION_PRICE_CHANGE_PREFERENCES.materialRealertCents)),
+    minimumIncreaseCents: Math.max(
+      0,
+      Math.round(
+        partial.minimumIncreaseCents ??
+          DEFAULT_SUBSCRIPTION_PRICE_CHANGE_PREFERENCES.minimumIncreaseCents,
+      ),
+    ),
+    minimumIncreasePercent: Math.max(
+      0,
+      partial.minimumIncreasePercent ??
+        DEFAULT_SUBSCRIPTION_PRICE_CHANGE_PREFERENCES.minimumIncreasePercent,
+    ),
+    trialToPaidEnabled:
+      partial.trialToPaidEnabled ??
+      DEFAULT_SUBSCRIPTION_PRICE_CHANGE_PREFERENCES.trialToPaidEnabled,
+    materialRealertCents: Math.max(
+      0,
+      Math.round(
+        partial.materialRealertCents ??
+          DEFAULT_SUBSCRIPTION_PRICE_CHANGE_PREFERENCES.materialRealertCents,
+      ),
+    ),
   };
 }
 
@@ -47,12 +68,15 @@ export function validateSubscriptionPriceChangePreferences(
   preferences: SubscriptionPriceChangePreferences,
 ): SubscriptionPriceChangePreferenceValidation {
   const errors: string[] = [];
-  if (preferences.minimumIncreaseCents < 0) errors.push('Minimum dollar increase cannot be negative.');
-  if (preferences.minimumIncreasePercent < 0) errors.push('Minimum percentage increase cannot be negative.');
+  if (preferences.minimumIncreaseCents < 0)
+    errors.push('Minimum dollar increase cannot be negative.');
+  if (preferences.minimumIncreasePercent < 0)
+    errors.push('Minimum percentage increase cannot be negative.');
   if (preferences.minimumIncreaseCents === 0 && preferences.minimumIncreasePercent === 0) {
     errors.push('At least one price-change threshold must be greater than zero.');
   }
-  if (preferences.materialRealertCents < 0) errors.push('Material re-alert amount cannot be negative.');
+  if (preferences.materialRealertCents < 0)
+    errors.push('Material re-alert amount cannot be negative.');
   return { valid: errors.length === 0, errors };
 }
 

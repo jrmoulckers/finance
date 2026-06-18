@@ -46,7 +46,8 @@ function findInitialScripts(distDir) {
   const html = readFileSync(indexPath, 'utf8');
   const initial = new Set();
   const scriptRe = /<script\b[^>]*\bsrc=["']([^"']+\.js)["'][^>]*>/g;
-  const preloadRe = /<link\b[^>]*\brel=["']modulepreload["'][^>]*\bhref=["']([^"']+\.js)["'][^>]*>/g;
+  const preloadRe =
+    /<link\b[^>]*\brel=["']modulepreload["'][^>]*\bhref=["']([^"']+\.js)["'][^>]*>/g;
   for (const re of [scriptRe, preloadRe]) {
     for (const match of html.matchAll(re)) {
       initial.add(match[1].replace(/^\//, ''));
@@ -86,14 +87,18 @@ function findStaticJsImports(source, importerRelativePath) {
 
 function resolveDistSpecifier(importerRelativePath, specifier) {
   if (specifier.startsWith('/')) return specifier.replace(/^\//, '');
-  return resolve(dirname(join('/', importerRelativePath)), specifier).replace(/^\\?\//, '').replaceAll('\\', '/');
+  return resolve(dirname(join('/', importerRelativePath)), specifier)
+    .replace(/^\\?\//, '')
+    .replaceAll('\\', '/');
 }
 
 function checkBundleBudget(distDir, budget) {
   const bundleBudget = budget.bundle;
   if (!bundleBudget) return [];
 
-  const jsFiles = walkFiles(distDir).filter((file) => file.endsWith('.js') && basename(file) !== 'sw.js');
+  const jsFiles = walkFiles(distDir).filter(
+    (file) => file.endsWith('.js') && basename(file) !== 'sw.js',
+  );
   const initialScripts = findInitialScripts(distDir);
   const failures = [];
   let initialTotal = 0;
@@ -107,19 +112,27 @@ function checkBundleBudget(distDir, budget) {
       speculativeTotal += size;
     } else if (relative.includes('route-') || relative.includes('vendor-')) {
       if (size > bundleBudget.maxLazyChunkGzipBytes) {
-        failures.push(`${relative} gzip ${formatBytes(size)} exceeds lazy chunk budget ${formatBytes(bundleBudget.maxLazyChunkGzipBytes)}`);
+        failures.push(
+          `${relative} gzip ${formatBytes(size)} exceeds lazy chunk budget ${formatBytes(bundleBudget.maxLazyChunkGzipBytes)}`,
+        );
       }
     }
   }
 
   if (initialTotal > bundleBudget.initialJsGzipBytes) {
-    failures.push(`Initial JS gzip ${formatBytes(initialTotal)} exceeds budget ${formatBytes(bundleBudget.initialJsGzipBytes)}`);
+    failures.push(
+      `Initial JS gzip ${formatBytes(initialTotal)} exceeds budget ${formatBytes(bundleBudget.initialJsGzipBytes)}`,
+    );
   }
   if (speculativeTotal > bundleBudget.maxSpeculativeJsGzipBytes) {
-    failures.push(`Speculative JS gzip ${formatBytes(speculativeTotal)} exceeds budget ${formatBytes(bundleBudget.maxSpeculativeJsGzipBytes)}`);
+    failures.push(
+      `Speculative JS gzip ${formatBytes(speculativeTotal)} exceeds budget ${formatBytes(bundleBudget.maxSpeculativeJsGzipBytes)}`,
+    );
   }
 
-  console.log(`Initial JS gzip: ${formatBytes(initialTotal)} across ${initialScripts.size} entry/preload scripts`);
+  console.log(
+    `Initial JS gzip: ${formatBytes(initialTotal)} across ${initialScripts.size} entry/preload scripts`,
+  );
   return failures;
 }
 
@@ -184,7 +197,9 @@ function checkMetric(failures, report, auditName, audits, budgetValue, label = a
   const numericValue = audits[auditName]?.numericValue;
   if (typeof numericValue !== 'number') return;
   if (numericValue > budgetValue) {
-    failures.push(`${basename(report)} ${label} ${round(numericValue)} exceeds budget ${budgetValue}`);
+    failures.push(
+      `${basename(report)} ${label} ${round(numericValue)} exceeds budget ${budgetValue}`,
+    );
   }
 }
 

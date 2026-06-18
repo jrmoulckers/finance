@@ -35,7 +35,8 @@ export interface PaydayBillTimeline {
 }
 
 function assertCents(value: number): void {
-  if (!Number.isInteger(value) || value < 0) throw new Error('Amounts must be non-negative integer cents.');
+  if (!Number.isInteger(value) || value < 0)
+    throw new Error('Amounts must be non-negative integer cents.');
 }
 
 function parseDate(date: string): Date {
@@ -54,7 +55,11 @@ function weekStart(date: string): string {
   return formatDate(parsed);
 }
 
-function classifyRisk(dueAmountCents: number, incomeAmountCents: number, itemCount: number): PaydayRiskLevel {
+function classifyRisk(
+  dueAmountCents: number,
+  incomeAmountCents: number,
+  itemCount: number,
+): PaydayRiskLevel {
   if (dueAmountCents > incomeAmountCents || itemCount >= 4) return 'high';
   if (dueAmountCents > incomeAmountCents * 0.7 || itemCount >= 2) return 'medium';
   return 'low';
@@ -103,7 +108,10 @@ export function buildPaydayBillTimeline(params: {
         runningCash += event.delta;
         lowestCash = Math.min(lowestCash, runningCash);
       }
-      const risk = lowestCash < 0 ? 'high' : classifyRisk(dueAmountCents, runningCash + dueAmountCents, dueItems.length);
+      const risk =
+        lowestCash < 0
+          ? 'high'
+          : classifyRisk(dueAmountCents, runningCash + dueAmountCents, dueItems.length);
       return {
         weekStart: key,
         dueAmountCents,

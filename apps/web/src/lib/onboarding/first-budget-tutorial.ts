@@ -57,7 +57,8 @@ export const FIRST_BUDGET_TUTORIAL_STEPS: readonly FirstBudgetTutorialStep[] = [
   {
     id: 'income',
     title: 'Start with money coming in',
-    plainLanguageGoal: 'Add paychecks, benefits, or other money you expect this month. A close estimate is enough to begin.',
+    plainLanguageGoal:
+      'Add paychecks, benefits, or other money you expect this month. A close estimate is enough to begin.',
     example: 'Example: two paychecks of $1,200 each becomes $2,400 of monthly income.',
     categoryKind: 'income',
     allowsRoughEstimate: true,
@@ -65,7 +66,8 @@ export const FIRST_BUDGET_TUTORIAL_STEPS: readonly FirstBudgetTutorialStep[] = [
   {
     id: 'fixed-expenses',
     title: 'List bills that are hard to change',
-    plainLanguageGoal: 'Capture rent, utilities, subscriptions, minimum debt payments, and other regular commitments.',
+    plainLanguageGoal:
+      'Capture rent, utilities, subscriptions, minimum debt payments, and other regular commitments.',
     example: 'Example: rent $950, phone $45, transit pass $80.',
     categoryKind: 'fixed',
     allowsRoughEstimate: true,
@@ -73,7 +75,8 @@ export const FIRST_BUDGET_TUTORIAL_STEPS: readonly FirstBudgetTutorialStep[] = [
   {
     id: 'flexible-spending',
     title: 'Estimate flexible spending',
-    plainLanguageGoal: 'Plan categories you can adjust during the month, like groceries, restaurants, fun, or household supplies.',
+    plainLanguageGoal:
+      'Plan categories you can adjust during the month, like groceries, restaurants, fun, or household supplies.',
     example: 'Example: groceries $320, eating out $120, fun $60.',
     categoryKind: 'flexible',
     allowsRoughEstimate: true,
@@ -81,7 +84,8 @@ export const FIRST_BUDGET_TUTORIAL_STEPS: readonly FirstBudgetTutorialStep[] = [
   {
     id: 'savings',
     title: 'Choose a savings target',
-    plainLanguageGoal: 'Set aside money for a buffer or goal if there is room. Small amounts still count.',
+    plainLanguageGoal:
+      'Set aside money for a buffer or goal if there is room. Small amounts still count.',
     example: 'Example: $50 toward an emergency buffer.',
     categoryKind: 'savings',
     allowsRoughEstimate: true,
@@ -89,8 +93,10 @@ export const FIRST_BUDGET_TUTORIAL_STEPS: readonly FirstBudgetTutorialStep[] = [
   {
     id: 'review',
     title: 'Review before saving',
-    plainLanguageGoal: 'Check what will be created, revise any number, then save only when you explicitly confirm.',
-    example: 'Example: if planned spending is higher than income, lower a flexible category before saving.',
+    plainLanguageGoal:
+      'Check what will be created, revise any number, then save only when you explicitly confirm.',
+    example:
+      'Example: if planned spending is higher than income, lower a flexible category before saving.',
     categoryKind: 'review',
     allowsRoughEstimate: false,
   },
@@ -126,9 +132,8 @@ export function normalizeFirstBudgetDraft(draft: Partial<FirstBudgetDraft> = {})
     STEP_IDS.has(id),
   );
 
-  const pausedAtStepId = draft.pausedAtStepId && STEP_IDS.has(draft.pausedAtStepId)
-    ? draft.pausedAtStepId
-    : undefined;
+  const pausedAtStepId =
+    draft.pausedAtStepId && STEP_IDS.has(draft.pausedAtStepId) ? draft.pausedAtStepId : undefined;
 
   return {
     estimates,
@@ -205,7 +210,9 @@ export function buildFirstBudgetReview(draft: FirstBudgetDraft): FirstBudgetRevi
     sumByKind(current.estimates, 'flexible') +
     sumByKind(current.estimates, 'savings');
   const remainingCents = totalIncomeCents - totalPlannedOutflowCents;
-  const roughEstimateCount = current.estimates.filter((estimate) => estimate.isRoughEstimate).length;
+  const roughEstimateCount = current.estimates.filter(
+    (estimate) => estimate.isRoughEstimate,
+  ).length;
   const warnings: string[] = [];
 
   if (totalIncomeCents === 0) {
@@ -217,7 +224,9 @@ export function buildFirstBudgetReview(draft: FirstBudgetDraft): FirstBudgetRevi
   }
 
   if (remainingCents < 0) {
-    warnings.push('Planned spending is higher than income; revise a flexible category before saving.');
+    warnings.push(
+      'Planned spending is higher than income; revise a flexible category before saving.',
+    );
   }
 
   const canSave = current.confirmedForSave && totalIncomeCents > 0 && remainingCents >= 0;
@@ -243,7 +252,8 @@ function sumByKind(
 }
 
 function buildReviewSummary(remainingCents: number, roughEstimateCount: number): string {
-  const roughCopy = roughEstimateCount === 1 ? '1 rough estimate' : `${roughEstimateCount} rough estimates`;
+  const roughCopy =
+    roughEstimateCount === 1 ? '1 rough estimate' : `${roughEstimateCount} rough estimates`;
 
   if (remainingCents > 0) {
     return `Your first budget leaves ${remainingCents} cents unassigned and includes ${roughCopy}.`;

@@ -98,7 +98,14 @@ function findSplitRows(transactions: readonly MigrationTransaction[]): QuickenSp
     const splitFieldNames = Object.keys(transaction.rawFields).filter(isSplitFieldName).sort();
     const hasSplitCategory = /^\[?split\]?$/i.test(transaction.category ?? '');
     if (splitFieldNames.length === 0 && !hasSplitCategory) return [];
-    return [{ rowNumber: transaction.sourceRow, payee: transaction.payee, category: transaction.category, splitFieldNames }];
+    return [
+      {
+        rowNumber: transaction.sourceRow,
+        payee: transaction.payee,
+        category: transaction.category,
+        splitFieldNames,
+      },
+    ];
   });
 }
 
@@ -106,10 +113,16 @@ function isSplitFieldName(field: string): boolean {
   return /^S\d*$/i.test(field) || /^\$\d*$/i.test(field) || /^E\d*$/i.test(field);
 }
 
-function isQuickenSource(source: MigrationPreflight['source']): source is QuickenMigrationReview['source'] {
+function isQuickenSource(
+  source: MigrationPreflight['source'],
+): source is QuickenMigrationReview['source'] {
   return source === 'quicken-qif' || source === 'quicken-qfx' || source === 'quicken-ofx';
 }
 
 function normalizeName(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

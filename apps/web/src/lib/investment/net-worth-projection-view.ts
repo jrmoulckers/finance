@@ -114,12 +114,16 @@ export function normalizeNetWorthProjectionAssumptions(
   };
 }
 
-export function loadNetWorthProjectionAssumptions(storage: StorageLike): NetWorthProjectionAssumptions {
+export function loadNetWorthProjectionAssumptions(
+  storage: StorageLike,
+): NetWorthProjectionAssumptions {
   const raw = storage.getItem(STORAGE_KEY);
   if (!raw) return DEFAULT_NET_WORTH_PROJECTION_ASSUMPTIONS;
 
   try {
-    return normalizeNetWorthProjectionAssumptions(JSON.parse(raw) as Partial<NetWorthProjectionAssumptions>);
+    return normalizeNetWorthProjectionAssumptions(
+      JSON.parse(raw) as Partial<NetWorthProjectionAssumptions>,
+    );
   } catch {
     return DEFAULT_NET_WORTH_PROJECTION_ASSUMPTIONS;
   }
@@ -134,7 +138,9 @@ export function saveNetWorthProjectionAssumptions(
   return normalized;
 }
 
-export function resetNetWorthProjectionAssumptions(storage: StorageLike): NetWorthProjectionAssumptions {
+export function resetNetWorthProjectionAssumptions(
+  storage: StorageLike,
+): NetWorthProjectionAssumptions {
   storage.removeItem(STORAGE_KEY);
   return DEFAULT_NET_WORTH_PROJECTION_ASSUMPTIONS;
 }
@@ -197,7 +203,9 @@ export function buildProjectionTableRows(
 }
 
 function isDebtFreeMilestone(milestone: NetWorthProjectionMilestone): boolean {
-  return milestone.id.toLowerCase().includes('debt') || milestone.label.toLowerCase() === 'debt-free';
+  return (
+    milestone.id.toLowerCase().includes('debt') || milestone.label.toLowerCase() === 'debt-free'
+  );
 }
 
 function firstReachedPoint(

@@ -102,7 +102,9 @@ export function filterSelfEmploymentIncomeByYear(
   records: readonly SelfEmploymentIncomeRecord[],
   taxYear: number,
 ): SelfEmploymentIncomeRecord[] {
-  return records.filter((record) => record.taxYear === taxYear || record.date.startsWith(String(taxYear)));
+  return records.filter(
+    (record) => record.taxYear === taxYear || record.date.startsWith(String(taxYear)),
+  );
 }
 
 export function summarizeSelfEmploymentIncome(
@@ -151,7 +153,8 @@ export function summarizeSelfEmploymentIncome(
         recordCount: payerRecords.length,
         expectedFormStatus,
         missingPayerDetails:
-          normalizePayerName(first.payerName) === 'Unknown payer' || first.payerTinLast4 === undefined,
+          normalizePayerName(first.payerName) === 'Unknown payer' ||
+          first.payerTinLast4 === undefined,
       } satisfies PayerIncomeSummary;
     })
     .sort((a, b) => a.payerName.localeCompare(b.payerName) || a.formType.localeCompare(b.formType));
@@ -170,7 +173,10 @@ export function reconcileSelfEmploymentIncome(
   const results: IncomeReconciliationResult[] = summaries.map((summary) => {
     const form = formMap.get(groupingKey(summary.payerName, summary.formType));
     const formGrossCents = form?.reportedGrossCents ?? null;
-    const varianceCents = formGrossCents === null ? summary.grossIncomeCents : formGrossCents - summary.grossIncomeCents;
+    const varianceCents =
+      formGrossCents === null
+        ? summary.grossIncomeCents
+        : formGrossCents - summary.grossIncomeCents;
     const status: IncomeReconciliationStatus =
       formGrossCents === null
         ? 'MISSING_FORM'
@@ -189,7 +195,13 @@ export function reconcileSelfEmploymentIncome(
   });
 
   for (const form of forms) {
-    if (summaries.some((summary) => groupingKey(summary.payerName, summary.formType) === groupingKey(form.payerName, form.formType))) {
+    if (
+      summaries.some(
+        (summary) =>
+          groupingKey(summary.payerName, summary.formType) ===
+          groupingKey(form.payerName, form.formType),
+      )
+    ) {
       continue;
     }
 
@@ -203,7 +215,9 @@ export function reconcileSelfEmploymentIncome(
     });
   }
 
-  return results.sort((a, b) => a.payerName.localeCompare(b.payerName) || a.formType.localeCompare(b.formType));
+  return results.sort(
+    (a, b) => a.payerName.localeCompare(b.payerName) || a.formType.localeCompare(b.formType),
+  );
 }
 
 export function buildSelfEmploymentIncomeExportRows(

@@ -70,17 +70,26 @@ export const DEFAULT_ACCOUNT_DELETION_DOMAINS: readonly DeletionDomain[] = [
   'consent-records',
 ];
 
-export function verifyAccountDeletion(input: DeletionVerificationInput): DeletionVerificationResult {
+export function verifyAccountDeletion(
+  input: DeletionVerificationInput,
+): DeletionVerificationResult {
   const requiredDomains = input.requiredDomains ?? DEFAULT_ACCOUNT_DELETION_DOMAINS;
   const byDomain = new Map(input.domains.map((result) => [result.domain, result]));
   const missingDomains = requiredDomains.filter((domain) => !byDomain.has(domain));
-  const failedDomains = requiredDomains.filter((domain) => byDomain.get(domain)?.status === 'failed');
-  const retainedDomains = requiredDomains.filter((domain) => byDomain.get(domain)?.status === 'retained');
+  const failedDomains = requiredDomains.filter(
+    (domain) => byDomain.get(domain)?.status === 'failed',
+  );
+  const retainedDomains = requiredDomains.filter(
+    (domain) => byDomain.get(domain)?.status === 'retained',
+  );
   const deletedDomains = input.domains
     .filter((result) => result.status === 'deleted' && requiredDomains.includes(result.domain))
     .map((result) => result.domain);
   const verified =
-    input.serverConfirmed && missingDomains.length === 0 && failedDomains.length === 0 && retainedDomains.length === 0;
+    input.serverConfirmed &&
+    missingDomains.length === 0 &&
+    failedDomains.length === 0 &&
+    retainedDomains.length === 0;
 
   return {
     verified,
@@ -108,7 +117,11 @@ export function serializeDeletionReceipt(receipt: DeletionReceipt): string {
   return JSON.stringify(receipt, null, 2);
 }
 
-export function deletionResult(domain: DeletionDomain, status: DeletionStatus, detail = ''): DeletionDomainResult {
+export function deletionResult(
+  domain: DeletionDomain,
+  status: DeletionStatus,
+  detail = '',
+): DeletionDomainResult {
   return {
     domain,
     status,

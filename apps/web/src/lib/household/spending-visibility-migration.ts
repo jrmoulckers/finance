@@ -40,7 +40,9 @@ export function migrateAccountSharingToSpendingVisibility(
   };
 }
 
-export function summarizeSpendingVisibilityMigration(result: SpendingVisibilityMigrationResult): string {
+export function summarizeSpendingVisibilityMigration(
+  result: SpendingVisibilityMigrationResult,
+): string {
   const sharedCount = result.rules.filter((rule) => rule.level === 'SHARED_TRANSACTIONS').length;
   const privateCount = result.rules.filter((rule) => rule.level === 'PRIVATE').length;
   return `${result.migratedCount} account visibility settings ready: ${sharedCount} shared with details, ${privateCount} private.`;

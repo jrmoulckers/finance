@@ -75,7 +75,10 @@ export {
 } from './household-dashboard';
 
 export { buildNetWorthContributionModel } from './net-worth-contribution-model';
-export type { NetWorthContributionModel, NetWorthContributionRow } from './net-worth-contribution-model';
+export type {
+  NetWorthContributionModel,
+  NetWorthContributionRow,
+} from './net-worth-contribution-model';
 export {
   buildNetWorthSnapshotTrendCopy,
   compareNetWorthToMajorLiabilities,
@@ -220,10 +223,7 @@ export type {
   SpendingVisibilityDecision,
   SpendingVisibilityPreview,
 } from './spending-visibility';
-export {
-  evaluateSpendingVisibility,
-  buildSpendingVisibilityPreview,
-} from './spending-visibility';
+export { evaluateSpendingVisibility, buildSpendingVisibilityPreview } from './spending-visibility';
 export type {
   LegacyAccountSharingInput,
   SpendingVisibilityMigrationResult,

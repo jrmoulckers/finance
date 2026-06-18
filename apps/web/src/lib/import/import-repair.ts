@@ -8,7 +8,14 @@
 import { parseCurrencyToCents, parseDate } from './csv-parser';
 
 export type RepairSeverity = 'blocking' | 'warning' | 'info';
-export type RepairField = 'date' | 'amount' | 'payee' | 'category' | 'account' | 'note' | 'sourceReference';
+export type RepairField =
+  | 'date'
+  | 'amount'
+  | 'payee'
+  | 'category'
+  | 'account'
+  | 'note'
+  | 'sourceReference';
 export type DuplicateRepairAction = 'skip' | 'import' | 'replace';
 
 export interface RepairIssue {
@@ -72,8 +79,12 @@ export interface RepairCommitPlan {
 }
 
 export function buildRepairQueue(rows: readonly RepairableImportRow[]): RepairQueue {
-  const blocking = rows.flatMap((row) => row.issues.filter((issue) => issue.severity === 'blocking'));
-  const warnings = rows.flatMap((row) => row.issues.filter((issue) => issue.severity === 'warning'));
+  const blocking = rows.flatMap((row) =>
+    row.issues.filter((issue) => issue.severity === 'blocking'),
+  );
+  const warnings = rows.flatMap((row) =>
+    row.issues.filter((issue) => issue.severity === 'warning'),
+  );
   const duplicates = rows.filter((row) => row.duplicate);
   const attachmentNeeded = rows.filter((row) =>
     row.issues.some((issue) => issue.code === 'attachment_needed'),
@@ -113,16 +124,22 @@ export function createRepairableRow(input: {
   return validateRepairRow(row);
 }
 
-export function applyRepair(row: RepairableImportRow, changes: RepairChangeSet): RepairableImportRow {
+export function applyRepair(
+  row: RepairableImportRow,
+  changes: RepairChangeSet,
+): RepairableImportRow {
   const next = {
     ...row,
     parsed: {
       ...row.parsed,
       date: changes.date !== undefined ? parseDate(changes.date) : row.parsed.date,
       amountCents:
-        changes.amount !== undefined ? parseCurrencyToCents(changes.amount) : row.parsed.amountCents,
+        changes.amount !== undefined
+          ? parseCurrencyToCents(changes.amount)
+          : row.parsed.amountCents,
       payee: changes.payee !== undefined ? emptyToNull(changes.payee) : row.parsed.payee,
-      category: changes.category !== undefined ? emptyToNull(changes.category) : row.parsed.category,
+      category:
+        changes.category !== undefined ? emptyToNull(changes.category) : row.parsed.category,
       account: changes.account !== undefined ? emptyToNull(changes.account) : row.parsed.account,
       note: changes.note !== undefined ? emptyToNull(changes.note) : row.parsed.note,
       sourceReference:
@@ -151,7 +168,9 @@ export function buildRepairCommitPlan(
     (row) => row.duplicate && (duplicateActions[row.rowIndex] ?? 'skip') === 'skip',
   );
   const importableRows = rows.filter(
-    (row) => !hasBlockingIssue(row) && !skippedDuplicateRows.some((skip) => skip.rowIndex === row.rowIndex),
+    (row) =>
+      !hasBlockingIssue(row) &&
+      !skippedDuplicateRows.some((skip) => skip.rowIndex === row.rowIndex),
   );
   const warningRows = importableRows.filter((row) =>
     row.issues.some((issue) => issue.severity === 'warning'),
@@ -170,19 +189,41 @@ export function buildRepairCommitPlan(
 function validateRepairRow(row: RepairableImportRow): RepairableImportRow {
   const issues: RepairIssue[] = [];
   if (!row.parsed.date) {
-    issues.push(makeIssue(row.rowIndex, 'date', 'blocking', 'missing_date', 'A valid date is required.'));
+    issues.push(
+      makeIssue(row.rowIndex, 'date', 'blocking', 'missing_date', 'A valid date is required.'),
+    );
   }
   if (row.parsed.amountCents === null) {
-    issues.push(makeIssue(row.rowIndex, 'amount', 'blocking', 'missing_amount', 'A valid amount is required.'));
+    issues.push(
+      makeIssue(
+        row.rowIndex,
+        'amount',
+        'blocking',
+        'missing_amount',
+        'A valid amount is required.',
+      ),
+    );
   }
   if (!row.parsed.payee) {
-    issues.push(makeIssue(row.rowIndex, 'payee', 'warning', 'missing_payee', 'Add a payee for easier review.'));
+    issues.push(
+      makeIssue(
+        row.rowIndex,
+        'payee',
+        'warning',
+        'missing_payee',
+        'Add a payee for easier review.',
+      ),
+    );
   }
   if (!row.parsed.account) {
-    issues.push(makeIssue(row.rowIndex, 'account', 'blocking', 'missing_account', 'Choose a target account.'));
+    issues.push(
+      makeIssue(row.rowIndex, 'account', 'blocking', 'missing_account', 'Choose a target account.'),
+    );
   }
   if (row.duplicate) {
-    issues.push(makeIssue(row.rowIndex, null, 'warning', 'possible_duplicate', 'Review duplicate action.'));
+    issues.push(
+      makeIssue(row.rowIndex, null, 'warning', 'possible_duplicate', 'Review duplicate action.'),
+    );
   }
   if (/receipt|invoice/i.test(row.parsed.note ?? '') && row.attachments.length === 0) {
     issues.push(

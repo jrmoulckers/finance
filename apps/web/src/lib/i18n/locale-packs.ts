@@ -96,5 +96,7 @@ export function getLocalePack(locale: string): LocalePack | null {
 }
 
 export function getActiveCatalogs(): Readonly<Record<string, MessageCatalog>> {
-  return Object.fromEntries(Object.entries(LOCALE_PACKS).map(([locale, pack]) => [locale, pack.messages]));
+  return Object.fromEntries(
+    Object.entries(LOCALE_PACKS).map(([locale, pack]) => [locale, pack.messages]),
+  );
 }

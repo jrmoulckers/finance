@@ -49,7 +49,10 @@ function percentChange(current: number, previous: number | undefined): number | 
   return Math.round(((current - previous) / Math.abs(previous)) * 100);
 }
 
-function dataQuality(historyMonths: number | undefined, claims: readonly NarrativeClaim[]): FinancialNarrative['dataQuality'] {
+function dataQuality(
+  historyMonths: number | undefined,
+  claims: readonly NarrativeClaim[],
+): FinancialNarrative['dataQuality'] {
   if ((historyMonths ?? 0) < 2 || claims.length < 2) return 'low';
   if ((historyMonths ?? 0) < 6) return 'medium';
   return 'high';
@@ -176,7 +179,8 @@ export function generateFinancialNarrative(input: FinancialNarrativeInput): Fina
       : quality === 'medium'
         ? 'Based on the recent trend, '
         : 'Based on a fuller history, ';
-  const mainClaim = orderedClaims[0]?.text ?? 'there was not enough activity to identify a major driver.';
+  const mainClaim =
+    orderedClaims[0]?.text ?? 'there was not enough activity to identify a major driver.';
 
   return {
     summary: `${confidencePrefix}${input.periodLabel} shows ${mainClaim.charAt(0).toLowerCase()}${mainClaim.slice(1)}`,

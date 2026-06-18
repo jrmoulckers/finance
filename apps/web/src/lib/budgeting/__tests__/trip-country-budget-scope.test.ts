@@ -39,10 +39,18 @@ function tx(overrides: Partial<TripBudgetTransaction>): TripBudgetTransaction {
 describe('trip country budget scope', () => {
   it('filters transactions by country date tags and linked accounts', () => {
     expect(transactionMatchesTripBudgetScope(scope, tx({ id: 'included' }))).toBe(true);
-    expect(transactionMatchesTripBudgetScope(scope, tx({ id: 'wrong-country', merchantCountry: 'US' }))).toBe(false);
-    expect(transactionMatchesTripBudgetScope(scope, tx({ id: 'wrong-date', date: '2025-04-01' }))).toBe(false);
-    expect(transactionMatchesTripBudgetScope(scope, tx({ id: 'wrong-tag', tags: ['work'] }))).toBe(false);
-    expect(transactionMatchesTripBudgetScope(scope, tx({ id: 'wrong-account', accountId: 'card-2' }))).toBe(false);
+    expect(
+      transactionMatchesTripBudgetScope(scope, tx({ id: 'wrong-country', merchantCountry: 'US' })),
+    ).toBe(false);
+    expect(
+      transactionMatchesTripBudgetScope(scope, tx({ id: 'wrong-date', date: '2025-04-01' })),
+    ).toBe(false);
+    expect(transactionMatchesTripBudgetScope(scope, tx({ id: 'wrong-tag', tags: ['work'] }))).toBe(
+      false,
+    );
+    expect(
+      transactionMatchesTripBudgetScope(scope, tx({ id: 'wrong-account', accountId: 'card-2' })),
+    ).toBe(false);
   });
 
   it('rolls up local and display currency spend', () => {

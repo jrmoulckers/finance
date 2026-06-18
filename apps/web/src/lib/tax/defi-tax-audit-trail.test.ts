@@ -10,11 +10,62 @@ import {
 } from './defi-tax-audit-trail';
 
 const events: CryptoTaxEvent[] = [
-  { id: 'buy', type: 'buy', timestamp: '2025-01-01T00:00:00Z', asset: 'ETH', quantity: 1, totalValueCents: 100_000_00, chain: 'ethereum', walletAddress: '0xabc', txHash: '0x1' },
-  { id: 'stake', type: 'staking_reward', timestamp: '2025-01-10T00:00:00Z', asset: 'ETH', quantity: 0.1, totalValueCents: 12_000_00, chain: 'ethereum', walletAddress: '0xabc', txHash: '0x2' },
-  { id: 'swap', type: 'swap', timestamp: '2025-02-01T00:00:00Z', asset: 'ETH', quantity: 0.5, totalValueCents: 80_000_00, toAsset: 'USDC', toQuantity: 80_000, chain: 'ethereum', walletAddress: '0xabc', txHash: '0x3' },
-  { id: 'bridge', type: 'bridge', timestamp: '2025-02-02T00:00:00Z', asset: 'USDC', quantity: 80_000, chain: 'base', walletAddress: '0xabc', txHash: '0x4' },
-  { id: 'airdrop', type: 'airdrop', timestamp: '2025-03-01T00:00:00Z', asset: 'ARB', quantity: 100, totalValueCents: 150_00, chain: 'arbitrum', walletAddress: '0xabc', txHash: '0x5' },
+  {
+    id: 'buy',
+    type: 'buy',
+    timestamp: '2025-01-01T00:00:00Z',
+    asset: 'ETH',
+    quantity: 1,
+    totalValueCents: 100_000_00,
+    chain: 'ethereum',
+    walletAddress: '0xabc',
+    txHash: '0x1',
+  },
+  {
+    id: 'stake',
+    type: 'staking_reward',
+    timestamp: '2025-01-10T00:00:00Z',
+    asset: 'ETH',
+    quantity: 0.1,
+    totalValueCents: 12_000_00,
+    chain: 'ethereum',
+    walletAddress: '0xabc',
+    txHash: '0x2',
+  },
+  {
+    id: 'swap',
+    type: 'swap',
+    timestamp: '2025-02-01T00:00:00Z',
+    asset: 'ETH',
+    quantity: 0.5,
+    totalValueCents: 80_000_00,
+    toAsset: 'USDC',
+    toQuantity: 80_000,
+    chain: 'ethereum',
+    walletAddress: '0xabc',
+    txHash: '0x3',
+  },
+  {
+    id: 'bridge',
+    type: 'bridge',
+    timestamp: '2025-02-02T00:00:00Z',
+    asset: 'USDC',
+    quantity: 80_000,
+    chain: 'base',
+    walletAddress: '0xabc',
+    txHash: '0x4',
+  },
+  {
+    id: 'airdrop',
+    type: 'airdrop',
+    timestamp: '2025-03-01T00:00:00Z',
+    asset: 'ARB',
+    quantity: 100,
+    totalValueCents: 150_00,
+    chain: 'arbitrum',
+    walletAddress: '0xabc',
+    txHash: '0x5',
+  },
 ];
 
 describe('defi-tax-audit-trail', () => {
@@ -23,8 +74,23 @@ describe('defi-tax-audit-trail', () => {
     const audit = buildDefiTaxAuditTrail({
       sourceEvents: events,
       result,
-      userOverrides: [{ eventId: 'swap', field: 'totalValueCents', oldValue: 79_000_00, newValue: 80_000_00, reason: 'CoinGecko close price' }],
-      priceSources: [{ eventId: 'swap', sourceName: 'CoinGecko', observedAt: '2025-02-01T00:00:00Z', priceCents: 80_000_00 }],
+      userOverrides: [
+        {
+          eventId: 'swap',
+          field: 'totalValueCents',
+          oldValue: 79_000_00,
+          newValue: 80_000_00,
+          reason: 'CoinGecko close price',
+        },
+      ],
+      priceSources: [
+        {
+          eventId: 'swap',
+          sourceName: 'CoinGecko',
+          observedAt: '2025-02-01T00:00:00Z',
+          priceCents: 80_000_00,
+        },
+      ],
     });
 
     const swap = audit.find((entry) => entry.eventId === 'swap');
@@ -55,7 +121,9 @@ describe('defi-tax-audit-trail', () => {
 
     expect(requirements.requiredFiles).toContain('audit-log.json');
     expect(requirements.form8949Columns).toContain('gainLossCents');
-    expect(requirements.requiredFixtureTypes).toEqual(expect.arrayContaining(['airdrop', 'staking_reward', 'bridge', 'swap']));
+    expect(requirements.requiredFixtureTypes).toEqual(
+      expect.arrayContaining(['airdrop', 'staking_reward', 'bridge', 'swap']),
+    );
     expect(requirements.disclaimer).toContain('not official IRS forms');
   });
 });

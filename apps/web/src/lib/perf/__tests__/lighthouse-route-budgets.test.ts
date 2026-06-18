@@ -33,6 +33,8 @@ describe('lighthouse route budgets', () => {
   });
 
   it('uses stable artifact names for CI uploads', () => {
-    expect(createLighthouseArtifactName('transactions', '42')).toBe('lighthouse-transactions-42.json');
+    expect(createLighthouseArtifactName('transactions', '42')).toBe(
+      'lighthouse-transactions-42.json',
+    );
   });
 });

@@ -3,7 +3,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { createSavedImportProfile, recordImportRun, planReimportRun } from '../scheduled-reimport';
-import { appendImportHistoryEntry, exportImportDiagnostics, loadImportHistory, loadImportProfiles, saveImportProfile, type BrowserStorageLike } from '../import-profile-store';
+import {
+  appendImportHistoryEntry,
+  exportImportDiagnostics,
+  loadImportHistory,
+  loadImportProfiles,
+  saveImportProfile,
+  type BrowserStorageLike,
+} from '../import-profile-store';
 
 class MemoryStorage implements BrowserStorageLike {
   private readonly values = new Map<string, string>();
@@ -39,8 +46,18 @@ describe('import profile store', () => {
       mappingKeys: ['date', 'amount'],
       now: new Date('2024-01-01T00:00:00Z'),
     });
-    const plan = planReimportRun({ profile, parsedTransactionCount: 2, duplicateCount: 1, parserErrorCount: 0 });
-    const recorded = recordImportRun({ profile, plan, importedCount: 1, now: new Date('2024-01-02T00:00:00Z') });
+    const plan = planReimportRun({
+      profile,
+      parsedTransactionCount: 2,
+      duplicateCount: 1,
+      parserErrorCount: 0,
+    });
+    const recorded = recordImportRun({
+      profile,
+      plan,
+      importedCount: 1,
+      now: new Date('2024-01-02T00:00:00Z'),
+    });
 
     saveImportProfile(store, profile);
     appendImportHistoryEntry(store, recorded.run);

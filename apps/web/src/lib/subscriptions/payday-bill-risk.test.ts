@@ -8,11 +8,37 @@ describe('payday bill risk', () => {
     const timeline = buildPaydayBillTimeline({
       asOfDate: '2026-03-01',
       openingCashCents: 20_000,
-      incomeEvents: [{ id: 'pay-1', label: 'Payday', date: '2026-03-08', amountCents: 100_000, confidence: 'expected' }],
+      incomeEvents: [
+        {
+          id: 'pay-1',
+          label: 'Payday',
+          date: '2026-03-08',
+          amountCents: 100_000,
+          confidence: 'expected',
+        },
+      ],
       items: [
-        { id: 'rent', label: 'Rent', dueDate: '2026-03-03', amountCents: 90_000, kind: 'recurring-bill' },
-        { id: 'field-trip', label: 'Field trip', dueDate: '2026-03-05', amountCents: 2_500, kind: 'one-off-family-expense' },
-        { id: 'utility', label: 'Utility', dueDate: '2026-03-10', amountCents: 15_000, kind: 'recurring-bill' },
+        {
+          id: 'rent',
+          label: 'Rent',
+          dueDate: '2026-03-03',
+          amountCents: 90_000,
+          kind: 'recurring-bill',
+        },
+        {
+          id: 'field-trip',
+          label: 'Field trip',
+          dueDate: '2026-03-05',
+          amountCents: 2_500,
+          kind: 'one-off-family-expense',
+        },
+        {
+          id: 'utility',
+          label: 'Utility',
+          dueDate: '2026-03-10',
+          amountCents: 15_000,
+          kind: 'recurring-bill',
+        },
       ],
     });
 

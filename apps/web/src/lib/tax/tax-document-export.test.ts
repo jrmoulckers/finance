@@ -57,7 +57,9 @@ describe('tax document checklist and export', () => {
       jsonPayload: { taxYear: 2025, checklist },
     });
 
-    expect(rowsToCsv([{ name: 'Client, Inc.', amount: 100 }])).toBe('name,amount\n"Client, Inc.",100');
+    expect(rowsToCsv([{ name: 'Client, Inc.', amount: 100 }])).toBe(
+      'name,amount\n"Client, Inc.",100',
+    );
     expect(bundle.manifest.files).toEqual(['2025/income.csv', '2025/tax-data.json']);
     expect(bundle.files.map((file) => file.path)).toEqual([
       '2025/manifest.json',

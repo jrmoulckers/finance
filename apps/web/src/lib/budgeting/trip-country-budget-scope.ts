@@ -39,13 +39,20 @@ export interface TripBudgetRollup {
   readonly appearsInActiveAlerts: boolean;
 }
 
-export type TripCurrencyConverter = (amountCents: number, fromCurrency: string, toCurrency: string) => number;
+export type TripCurrencyConverter = (
+  amountCents: number,
+  fromCurrency: string,
+  toCurrency: string,
+) => number;
 
 function normalizeCode(value: string): string {
   return value.trim().toUpperCase();
 }
 
-function intersects(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
+function intersects(
+  left: readonly string[] | undefined,
+  right: readonly string[] | undefined,
+): boolean {
   if (!left || left.length === 0) return true;
   if (!right || right.length === 0) return false;
   const rightSet = new Set(right.map((item) => item.toLowerCase()));
@@ -56,15 +63,20 @@ export function transactionMatchesTripBudgetScope(
   scope: TripCountryBudgetScope,
   transaction: TripBudgetTransaction,
 ): boolean {
-  if (transaction.deleted || transaction.kind === 'income' || transaction.kind === 'transfer') return false;
+  if (transaction.deleted || transaction.kind === 'income' || transaction.kind === 'transfer')
+    return false;
   if (transaction.date < scope.startDate || transaction.date > scope.endDate) return false;
   if (scope.countries.length > 0) {
-    const merchantCountry = transaction.merchantCountry ? normalizeCode(transaction.merchantCountry) : null;
-    if (!merchantCountry || !scope.countries.map(normalizeCode).includes(merchantCountry)) return false;
+    const merchantCountry = transaction.merchantCountry
+      ? normalizeCode(transaction.merchantCountry)
+      : null;
+    if (!merchantCountry || !scope.countries.map(normalizeCode).includes(merchantCountry))
+      return false;
   }
   if (!intersects(scope.tags, transaction.tags)) return false;
   if (scope.linkedAccountIds && scope.linkedAccountIds.length > 0) {
-    if (!transaction.accountId || !scope.linkedAccountIds.includes(transaction.accountId)) return false;
+    if (!transaction.accountId || !scope.linkedAccountIds.includes(transaction.accountId))
+      return false;
   }
 
   return true;
@@ -82,13 +94,27 @@ export function buildTripBudgetRollup(
 ): TripBudgetRollup {
   const localCurrency = normalizeCode(scope.localCurrency);
   const displayCurrency = normalizeCode(scope.displayCurrency ?? scope.localCurrency);
-  const included = transactions.filter((transaction) => transactionMatchesTripBudgetScope(scope, transaction));
+  const included = transactions.filter((transaction) =>
+    transactionMatchesTripBudgetScope(scope, transaction),
+  );
   const localSpendCents = included.reduce(
-    (sum, transaction) => sum + Math.abs(bankersRound(convert(transaction.amountCents, normalizeCode(transaction.currency), localCurrency))),
+    (sum, transaction) =>
+      sum +
+      Math.abs(
+        bankersRound(
+          convert(transaction.amountCents, normalizeCode(transaction.currency), localCurrency),
+        ),
+      ),
     0,
   );
   const displaySpendCents = included.reduce(
-    (sum, transaction) => sum + Math.abs(bankersRound(convert(transaction.amountCents, normalizeCode(transaction.currency), displayCurrency))),
+    (sum, transaction) =>
+      sum +
+      Math.abs(
+        bankersRound(
+          convert(transaction.amountCents, normalizeCode(transaction.currency), displayCurrency),
+        ),
+      ),
     0,
   );
   const isArchived = scope.archived === true;

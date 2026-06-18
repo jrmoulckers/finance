@@ -13,8 +13,17 @@ describe('finance query parser', () => {
   });
 
   it('parses category, account, and net worth read-only intents', () => {
-    expect(parseFinanceQuery('spend on groceries last month')).toMatchObject({ intent: 'spend-by-category', category: 'groceries' });
-    expect(parseFinanceQuery('spend from checking today')).toMatchObject({ intent: 'spend-by-account', account: 'checking' });
-    expect(parseFinanceQuery('net worth this year')).toMatchObject({ intent: 'net-worth', dateRange: 'this-year' });
+    expect(parseFinanceQuery('spend on groceries last month')).toMatchObject({
+      intent: 'spend-by-category',
+      category: 'groceries',
+    });
+    expect(parseFinanceQuery('spend from checking today')).toMatchObject({
+      intent: 'spend-by-account',
+      account: 'checking',
+    });
+    expect(parseFinanceQuery('net worth this year')).toMatchObject({
+      intent: 'net-worth',
+      dateRange: 'this-year',
+    });
   });
 });

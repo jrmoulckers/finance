@@ -61,7 +61,9 @@ export function createRouteBundleAuditReport(
     }
   }
 
-  const initialGzipBytes = chunks.filter((chunk) => chunk.initial).reduce((total, chunk) => total + chunk.gzipBytes, 0);
+  const initialGzipBytes = chunks
+    .filter((chunk) => chunk.initial)
+    .reduce((total, chunk) => total + chunk.gzipBytes, 0);
   const largestLazyChunks = chunks
     .filter((chunk) => !chunk.initial)
     .slice()
@@ -84,12 +86,14 @@ export function createRouteBundleCiSummary(
   const lazySummary = largestLazyChunks
     .map((chunk) => `${chunk.route}/${chunk.chunkName}: ${chunk.gzipBytes} gzip bytes`)
     .join('; ');
-  const findingSummary = findings.length === 0
-    ? 'No budget findings.'
-    : findings
-        .map((finding) =>
-          `${finding.route}/${finding.chunkName} ${finding.gzipBytes}/${finding.budgetBytes}${finding.waived ? ' waived' : ''}`,
-        )
-        .join('; ');
+  const findingSummary =
+    findings.length === 0
+      ? 'No budget findings.'
+      : findings
+          .map(
+            (finding) =>
+              `${finding.route}/${finding.chunkName} ${finding.gzipBytes}/${finding.budgetBytes}${finding.waived ? ' waived' : ''}`,
+          )
+          .join('; ');
   return `Initial JS: ${initialGzipBytes} gzip bytes. Largest lazy chunks: ${lazySummary || 'none'}. ${findingSummary}`;
 }

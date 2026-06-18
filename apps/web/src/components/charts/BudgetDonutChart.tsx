@@ -49,8 +49,9 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
   );
   const pointAnnouncements = useMemo(
     () =>
-      data.map((entry, index) =>
-        `${title}. Focused slice ${index + 1} of ${data.length}. ${entry.name}: ${formatChartCurrency(entry.value, currency)} (${total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0'}%).`,
+      data.map(
+        (entry, index) =>
+          `${title}. Focused slice ${index + 1} of ${data.length}. ${entry.name}: ${formatChartCurrency(entry.value, currency)} (${total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0'}%).`,
       ),
     [currency, data, title, total],
   );
@@ -76,7 +77,13 @@ export const BudgetDonutChart: FC<BudgetDonutChartProps> = ({
       <p id={`${chartId}-desc`} className="sr-only">
         {description}
       </p>
-      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" aria-label="Chart point announcement">
+      <div
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label="Chart point announcement"
+      >
         {announcement}
       </div>
       <ResponsiveContainer width="100%" height={height}>

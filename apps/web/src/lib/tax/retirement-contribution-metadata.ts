@@ -42,7 +42,10 @@ export const RETIREMENT_TAX_TREATMENT_OPTIONS: readonly {
   { value: 'EMPLOYER', label: 'Employer funded' },
 ] as const;
 
-export const HSA_COVERAGE_OPTIONS: readonly { readonly value: HsaCoverageLevel; readonly label: string }[] = [
+export const HSA_COVERAGE_OPTIONS: readonly {
+  readonly value: HsaCoverageLevel;
+  readonly label: string;
+}[] = [
   { value: 'SELF_ONLY', label: 'Self-only' },
   { value: 'FAMILY', label: 'Family' },
 ] as const;
@@ -61,12 +64,16 @@ const ACCOUNT_TYPE_LABELS = new Map(
 const TAX_TREATMENT_LABELS = new Map(
   RETIREMENT_TAX_TREATMENT_OPTIONS.map((option) => [option.value, option.label]),
 );
-const HSA_COVERAGE_LABELS = new Map(HSA_COVERAGE_OPTIONS.map((option) => [option.value, option.label]));
+const HSA_COVERAGE_LABELS = new Map(
+  HSA_COVERAGE_OPTIONS.map((option) => [option.value, option.label]),
+);
 const DESIGNATION_LABELS = new Map(
   CONTRIBUTION_DESIGNATION_OPTIONS.map((option) => [option.value, option.label]),
 );
 
-export function getRetirementAccountTypeLabel(type: RetirementAccountType | null | undefined): string {
+export function getRetirementAccountTypeLabel(
+  type: RetirementAccountType | null | undefined,
+): string {
   return type ? (ACCOUNT_TYPE_LABELS.get(type) ?? type) : 'Not a retirement account';
 }
 
@@ -90,27 +97,37 @@ export function getDefaultRetirementTaxTreatment(
   accountType: RetirementAccountType,
 ): RetirementTaxTreatment {
   return (
-    RETIREMENT_ACCOUNT_TYPE_OPTIONS.find((option) => option.value === accountType)?.defaultTaxTreatment ??
-    'PRE_TAX'
+    RETIREMENT_ACCOUNT_TYPE_OPTIONS.find((option) => option.value === accountType)
+      ?.defaultTaxTreatment ?? 'PRE_TAX'
   );
 }
 
 export function supportsEmployerRetirementContributions(
   accountType: RetirementAccountType | null | undefined,
 ): boolean {
-  return accountType === '401K' || accountType === 'ROTH_401K' || accountType === '403B' || accountType === 'SEP_IRA' || accountType === 'HSA';
+  return (
+    accountType === '401K' ||
+    accountType === 'ROTH_401K' ||
+    accountType === '403B' ||
+    accountType === 'SEP_IRA' ||
+    accountType === 'HSA'
+  );
 }
 
 export function buildRetirementAccountClassifications(
   accounts: readonly Account[],
 ): RetirementAccountClassification[] {
   return accounts
-    .filter((account) => account.retirementAccountType !== null && account.retirementAccountType !== undefined)
+    .filter(
+      (account) =>
+        account.retirementAccountType !== null && account.retirementAccountType !== undefined,
+    )
     .map((account) => ({
       accountId: account.id,
       accountType: account.retirementAccountType!,
       taxTreatment:
-        account.retirementTaxTreatment ?? getDefaultRetirementTaxTreatment(account.retirementAccountType!),
+        account.retirementTaxTreatment ??
+        getDefaultRetirementTaxTreatment(account.retirementAccountType!),
       ...(account.retirementAccountType === 'HSA'
         ? { hsaCoverageLevel: account.hsaCoverageLevel ?? 'SELF_ONLY' }
         : {}),
@@ -121,13 +138,18 @@ export function buildRetirementContributionTransactions(
   transactions: readonly Transaction[],
 ): RetirementContributionTransaction[] {
   return transactions
-    .filter((transaction) => transaction.retirementContributionDesignation !== null && transaction.retirementContributionDesignation !== undefined)
+    .filter(
+      (transaction) =>
+        transaction.retirementContributionDesignation !== null &&
+        transaction.retirementContributionDesignation !== undefined,
+    )
     .map((transaction) => ({
       id: transaction.id,
       accountId: transaction.accountId,
       date: transaction.date,
       amountCents: Math.abs(transaction.amount.amount),
-      ...(transaction.retirementContributionYear !== null && transaction.retirementContributionYear !== undefined
+      ...(transaction.retirementContributionYear !== null &&
+      transaction.retirementContributionYear !== undefined
         ? { contributionYear: transaction.retirementContributionYear }
         : {}),
       designation: transaction.retirementContributionDesignation!,

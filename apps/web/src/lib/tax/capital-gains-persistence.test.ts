@@ -18,17 +18,41 @@ const lots: TaxLot[] = [
 describe('capital-gains-persistence', () => {
   it('normalizes imported closed-sale rows while preserving specific lot IDs', () => {
     const sales = normalizeImportedClosedSales([
-      { saleId: 'sale-1', symbol: ' msft ', shares: 1, soldDate: '2025-02-01', salePricePerShare: 150_00, feesCents: 5_00, lotId: 'lot-a' },
+      {
+        saleId: 'sale-1',
+        symbol: ' msft ',
+        shares: 1,
+        soldDate: '2025-02-01',
+        salePricePerShare: 150_00,
+        feesCents: 5_00,
+        lotId: 'lot-a',
+      },
     ]);
 
-    expect(sales[0]).toMatchObject({ symbol: 'MSFT', matchingMethod: 'SPECIFIC_ID', specificLotIds: ['lot-a'] });
+    expect(sales[0]).toMatchObject({
+      symbol: 'MSFT',
+      matchingMethod: 'SPECIFIC_ID',
+      specificLotIds: ['lot-a'],
+    });
   });
 
   it('saves sales by id without mutating existing state', () => {
     const state: CapitalGainsReportState = { savedSales: [], reportsByTaxYear: {} };
     const sales = normalizeImportedClosedSales([
-      { saleId: 'sale-1', symbol: 'MSFT', shares: 1, soldDate: '2025-02-01', salePricePerShare: 150_00 },
-      { saleId: 'sale-1', symbol: 'MSFT', shares: 1, soldDate: '2025-02-01', salePricePerShare: 155_00 },
+      {
+        saleId: 'sale-1',
+        symbol: 'MSFT',
+        shares: 1,
+        soldDate: '2025-02-01',
+        salePricePerShare: 150_00,
+      },
+      {
+        saleId: 'sale-1',
+        symbol: 'MSFT',
+        shares: 1,
+        soldDate: '2025-02-01',
+        salePricePerShare: 155_00,
+      },
     ]);
 
     const next = saveCapitalGainsSales(state, sales);
@@ -42,8 +66,20 @@ describe('capital-gains-persistence', () => {
     const state = saveCapitalGainsSales(
       { savedSales: [], reportsByTaxYear: {} },
       normalizeImportedClosedSales([
-        { saleId: 'sale-msft', symbol: 'MSFT', shares: 1, soldDate: '2025-02-01', salePricePerShare: 150_00 },
-        { saleId: 'sale-aapl', symbol: 'AAPL', shares: 2, soldDate: '2025-03-01', salePricePerShare: 40_00 },
+        {
+          saleId: 'sale-msft',
+          symbol: 'MSFT',
+          shares: 1,
+          soldDate: '2025-02-01',
+          salePricePerShare: 150_00,
+        },
+        {
+          saleId: 'sale-aapl',
+          symbol: 'AAPL',
+          shares: 2,
+          soldDate: '2025-03-01',
+          salePricePerShare: 40_00,
+        },
       ]),
     );
     const withReport = buildSavedCapitalGainsReport({ state, purchaseLots: lots, taxYear: 2025 });

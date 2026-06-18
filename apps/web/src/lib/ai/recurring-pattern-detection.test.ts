@@ -2,18 +2,84 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { detectRecurringTransactions, type RecurringTransactionInput } from './recurring-pattern-detection';
+import {
+  detectRecurringTransactions,
+  type RecurringTransactionInput,
+} from './recurring-pattern-detection';
 
 const TRANSACTIONS: RecurringTransactionInput[] = [
-  { id: 'n1', date: '2025-01-01', amountCents: -1_599, merchant: 'Netflix', accountId: 'card', categoryId: 'entertainment' },
-  { id: 'n2', date: '2025-02-01', amountCents: -1_599, merchant: 'Netflix', accountId: 'card', categoryId: 'entertainment' },
-  { id: 'n3', date: '2025-03-01', amountCents: -1_699, merchant: 'Netflix', accountId: 'card', categoryId: 'entertainment' },
-  { id: 'p1', date: '2025-01-03', amountCents: 250_000, merchant: 'Payroll ACH', accountId: 'checking', categoryId: 'income' },
-  { id: 'p2', date: '2025-01-17', amountCents: 251_000, merchant: 'Payroll ACH', accountId: 'checking', categoryId: 'income' },
-  { id: 'p3', date: '2025-01-31', amountCents: 250_500, merchant: 'Payroll ACH', accountId: 'checking', categoryId: 'income' },
-  { id: 'x1', date: '2025-01-01', amountCents: -1_000, merchant: 'Random Cafe', accountId: 'card', categoryId: 'dining' },
-  { id: 'x2', date: '2025-01-09', amountCents: -5_000, merchant: 'Random Cafe', accountId: 'card', categoryId: 'dining' },
-  { id: 'x3', date: '2025-02-22', amountCents: -900, merchant: 'Random Cafe', accountId: 'card', categoryId: 'dining' },
+  {
+    id: 'n1',
+    date: '2025-01-01',
+    amountCents: -1_599,
+    merchant: 'Netflix',
+    accountId: 'card',
+    categoryId: 'entertainment',
+  },
+  {
+    id: 'n2',
+    date: '2025-02-01',
+    amountCents: -1_599,
+    merchant: 'Netflix',
+    accountId: 'card',
+    categoryId: 'entertainment',
+  },
+  {
+    id: 'n3',
+    date: '2025-03-01',
+    amountCents: -1_699,
+    merchant: 'Netflix',
+    accountId: 'card',
+    categoryId: 'entertainment',
+  },
+  {
+    id: 'p1',
+    date: '2025-01-03',
+    amountCents: 250_000,
+    merchant: 'Payroll ACH',
+    accountId: 'checking',
+    categoryId: 'income',
+  },
+  {
+    id: 'p2',
+    date: '2025-01-17',
+    amountCents: 251_000,
+    merchant: 'Payroll ACH',
+    accountId: 'checking',
+    categoryId: 'income',
+  },
+  {
+    id: 'p3',
+    date: '2025-01-31',
+    amountCents: 250_500,
+    merchant: 'Payroll ACH',
+    accountId: 'checking',
+    categoryId: 'income',
+  },
+  {
+    id: 'x1',
+    date: '2025-01-01',
+    amountCents: -1_000,
+    merchant: 'Random Cafe',
+    accountId: 'card',
+    categoryId: 'dining',
+  },
+  {
+    id: 'x2',
+    date: '2025-01-09',
+    amountCents: -5_000,
+    merchant: 'Random Cafe',
+    accountId: 'card',
+    categoryId: 'dining',
+  },
+  {
+    id: 'x3',
+    date: '2025-02-22',
+    amountCents: -900,
+    merchant: 'Random Cafe',
+    accountId: 'card',
+    categoryId: 'dining',
+  },
 ];
 
 describe('detectRecurringTransactions', () => {
@@ -31,7 +97,9 @@ describe('detectRecurringTransactions', () => {
   });
 
   it('detects biweekly paychecks despite small amount variance', () => {
-    const payroll = detectRecurringTransactions(TRANSACTIONS).find((candidate) => candidate.kind === 'paycheck');
+    const payroll = detectRecurringTransactions(TRANSACTIONS).find(
+      (candidate) => candidate.kind === 'paycheck',
+    );
 
     expect(payroll).toMatchObject({ cadence: 'biweekly', accountId: 'checking' });
     expect(payroll!.amountVarianceRatio).toBeLessThan(0.01);

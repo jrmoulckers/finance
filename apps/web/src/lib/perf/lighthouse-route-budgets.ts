@@ -29,7 +29,11 @@ export interface LighthouseBudgetFailure {
 export const REQUIRED_LIGHTHOUSE_ROUTES: readonly LighthouseRouteFixture[] = [
   { name: 'dashboard', path: '/dashboard', fixtureName: 'dashboard-returning-user' },
   { name: 'transactions', path: '/transactions', fixtureName: 'transactions-list-200' },
-  { name: 'transaction-detail', path: '/transactions/fixture-transaction', fixtureName: 'transaction-detail' },
+  {
+    name: 'transaction-detail',
+    path: '/transactions/fixture-transaction',
+    fixtureName: 'transaction-detail',
+  },
   { name: 'settings', path: '/settings/account', fixtureName: 'settings-account' },
 ];
 

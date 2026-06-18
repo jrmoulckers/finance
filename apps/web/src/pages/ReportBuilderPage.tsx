@@ -460,7 +460,9 @@ export function ReportBuilderPage() {
               multiple
               value={[...config.categoryIds]}
               onChange={(e) =>
-                setCategoryFilter(Array.from(e.currentTarget.selectedOptions, (option) => option.value))
+                setCategoryFilter(
+                  Array.from(e.currentTarget.selectedOptions, (option) => option.value),
+                )
               }
               aria-label="Filter categories"
             >
@@ -482,7 +484,9 @@ export function ReportBuilderPage() {
               multiple
               value={[...config.accountIds]}
               onChange={(e) =>
-                setAccountFilter(Array.from(e.currentTarget.selectedOptions, (option) => option.value))
+                setAccountFilter(
+                  Array.from(e.currentTarget.selectedOptions, (option) => option.value),
+                )
               }
               aria-label="Filter accounts"
             >
@@ -591,7 +595,8 @@ export function ReportBuilderPage() {
           Anomaly Modules
         </h2>
         <p className="report-card__description">
-          Save these modules with the template so recurring reviews flag unusual activity automatically.
+          Save these modules with the template so recurring reviews flag unusual activity
+          automatically.
         </p>
         <div className="report-checkbox-grid">
           {ANOMALY_OPTIONS.map((option) => (
@@ -728,7 +733,9 @@ export function ReportBuilderPage() {
                 <select
                   aria-label={`Status for ${anomaly.title}`}
                   value={anomaly.status}
-                  onChange={(event) => markAnomaly(anomaly.id, event.target.value as typeof anomaly.status)}
+                  onChange={(event) =>
+                    markAnomaly(anomaly.id, event.target.value as typeof anomaly.status)
+                  }
                 >
                   <option value="needs-review">Needs review</option>
                   <option value="expected">Expected</option>
@@ -847,7 +854,11 @@ function ReportDrillDown({ drillDown, onClose }: ReportDrillDownProps) {
     <div className="report-drilldown" aria-label={`${drillDown.categoryName} report drill-down`}>
       <div className="report-drilldown__header">
         <h3>{drillDown.categoryName} details</h3>
-        <button type="button" className="report-button report-button--secondary report-button--sm" onClick={onClose}>
+        <button
+          type="button"
+          className="report-button report-button--secondary report-button--sm"
+          onClick={onClose}
+        >
           Back to chart
         </button>
       </div>
@@ -860,7 +871,12 @@ function ReportDrillDown({ drillDown, onClose }: ReportDrillDownProps) {
             <span>{drillDown.transactionCount} transactions</span>
             <span>Average {formatChartCurrency(drillDown.averageTransaction, 'USD')}</span>
           </div>
-          <div className="report-table-wrapper" role="region" tabIndex={0} aria-label="Report drill-down transactions">
+          <div
+            className="report-table-wrapper"
+            role="region"
+            tabIndex={0}
+            aria-label="Report drill-down transactions"
+          >
             <table className="report-table">
               <thead>
                 <tr>

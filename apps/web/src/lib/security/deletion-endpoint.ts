@@ -62,7 +62,15 @@ export async function submitAccountDeletion({
     const bodyText = await response.text();
     return mapAccountDeletionEndpointResponse(response, bodyText, nowIso);
   } catch {
-    return receipt('retryable_error', 'delete-unavailable', nowIso, [], [], true, 'Deletion could not be reached. Try again later.');
+    return receipt(
+      'retryable_error',
+      'delete-unavailable',
+      nowIso,
+      [],
+      [],
+      true,
+      'Deletion could not be reached. Try again later.',
+    );
   }
 }
 
@@ -73,10 +81,26 @@ export function mapAccountDeletionEndpointResponse(
 ): AccountDeletionReceiptContract {
   if (response.status === 401 || response.status === 403) return authRequiredReceipt(nowIso);
   if (isHtmlFallback(response, bodyText)) {
-    return receipt('html_fallback', 'delete-html-fallback', nowIso, [], [], true, 'Deletion endpoint returned an app shell instead of a receipt.');
+    return receipt(
+      'html_fallback',
+      'delete-html-fallback',
+      nowIso,
+      [],
+      [],
+      true,
+      'Deletion endpoint returned an app shell instead of a receipt.',
+    );
   }
   if (response.status === 429 || response.status >= 500) {
-    return receipt('retryable_error', 'delete-retryable', nowIso, [], [], true, 'Deletion is temporarily unavailable. Try again later.');
+    return receipt(
+      'retryable_error',
+      'delete-retryable',
+      nowIso,
+      [],
+      [],
+      true,
+      'Deletion is temporarily unavailable. Try again later.',
+    );
   }
   if (response.ok && bodyText.trim().length === 0) {
     return receipt(
@@ -92,12 +116,23 @@ export function mapAccountDeletionEndpointResponse(
 
   const payload = parseJson(bodyText);
   if (!response.ok || payload === null) {
-    return receipt('fatal_error', 'delete-failed', nowIso, [], [], false, 'Deletion failed before a privacy-safe receipt was created.');
+    return receipt(
+      'fatal_error',
+      'delete-failed',
+      nowIso,
+      [],
+      [],
+      false,
+      'Deletion failed before a privacy-safe receipt was created.',
+    );
   }
 
   const deletedDomains = readDomains(payload.deletedDomains);
   const failedDomains = readDomains(payload.failedDomains);
-  const requestId = typeof payload.requestId === 'string' && payload.requestId.length > 0 ? payload.requestId : 'delete-receipt';
+  const requestId =
+    typeof payload.requestId === 'string' && payload.requestId.length > 0
+      ? payload.requestId
+      : 'delete-receipt';
   const partial = failedDomains.length > 0 || payload.status === 'partial_failure';
 
   return receipt(
@@ -114,7 +149,15 @@ export function mapAccountDeletionEndpointResponse(
 }
 
 function authRequiredReceipt(nowIso: string): AccountDeletionReceiptContract {
-  return receipt('auth_required', 'delete-auth-required', nowIso, [], [], true, 'Confirm your identity again before deleting the account.');
+  return receipt(
+    'auth_required',
+    'delete-auth-required',
+    nowIso,
+    [],
+    [],
+    true,
+    'Confirm your identity again before deleting the account.',
+  );
 }
 
 function receipt(
@@ -126,7 +169,15 @@ function receipt(
   retryable: boolean,
   privacySafeMessage: string,
 ): AccountDeletionReceiptContract {
-  return { requestId, completedAt, status, deletedDomains, failedDomains, retryable, privacySafeMessage };
+  return {
+    requestId,
+    completedAt,
+    status,
+    deletedDomains,
+    failedDomains,
+    retryable,
+    privacySafeMessage,
+  };
 }
 
 function isHtmlFallback(response: Pick<Response, 'headers'>, bodyText: string): boolean {
@@ -135,7 +186,8 @@ function isHtmlFallback(response: Pick<Response, 'headers'>, bodyText: string): 
 }
 
 function readRequestId(response: Pick<Response, 'headers'>, fallback: string): string {
-  const requestId = response.headers.get('x-request-id') ?? response.headers.get('x-correlation-id');
+  const requestId =
+    response.headers.get('x-request-id') ?? response.headers.get('x-correlation-id');
   return requestId && requestId.length > 0 ? requestId : fallback;
 }
 
@@ -149,5 +201,7 @@ function parseJson(bodyText: string): RawDeletionResponse | null {
 }
 
 function readDomains(value: unknown): readonly DeletionDomain[] {
-  return Array.isArray(value) ? value.filter((item): item is DeletionDomain => typeof item === 'string') : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is DeletionDomain => typeof item === 'string')
+    : [];
 }

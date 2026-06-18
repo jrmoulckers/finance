@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export type OptionalChunkRoute = 'dashboard' | 'transactions';
-export type OptionalChunkCategory = 'primary-shell' | 'chart' | 'analytics' | 'tax' | 'investment' | 'receipt' | 'education';
+export type OptionalChunkCategory =
+  | 'primary-shell'
+  | 'chart'
+  | 'analytics'
+  | 'tax'
+  | 'investment'
+  | 'receipt'
+  | 'education';
 
 export interface RouteImportDescriptor {
   readonly route: OptionalChunkRoute;
@@ -30,7 +37,8 @@ export function planOptionalRouteChunks(
   imports: readonly RouteImportDescriptor[],
 ): readonly OptionalChunkDecision[] {
   return imports.map((descriptor) => {
-    const shouldLazyLoad = !descriptor.requiredForPrimaryShell && OPTIONAL_CATEGORIES.has(descriptor.category);
+    const shouldLazyLoad =
+      !descriptor.requiredForPrimaryShell && OPTIONAL_CATEGORIES.has(descriptor.category);
     return {
       moduleId: descriptor.moduleId,
       shouldLazyLoad,
@@ -40,11 +48,15 @@ export function planOptionalRouteChunks(
   });
 }
 
-export function shouldKeepOptionalChunkFailureNonBlocking(decision: OptionalChunkDecision): boolean {
+export function shouldKeepOptionalChunkFailureNonBlocking(
+  decision: OptionalChunkDecision,
+): boolean {
   return decision.shouldLazyLoad && decision.tolerateLoadFailure;
 }
 
-function prefetchPolicyForCategory(category: OptionalChunkCategory): OptionalChunkDecision['prefetchPolicy'] {
+function prefetchPolicyForCategory(
+  category: OptionalChunkCategory,
+): OptionalChunkDecision['prefetchPolicy'] {
   if (category === 'chart' || category === 'education') return 'idle';
   if (category === 'receipt') return 'viewport';
   return 'none';

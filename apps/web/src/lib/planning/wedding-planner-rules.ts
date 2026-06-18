@@ -33,7 +33,8 @@ export function buildWeddingPlanSummary(
   today: string,
 ): WeddingPlanSummary {
   const estimatedTotalCents = vendors.reduce(
-    (sum, vendor) => sum + vendor.contractedCents + (vendor.perGuestCents ?? 0) * Math.max(0, guestCount),
+    (sum, vendor) =>
+      sum + vendor.contractedCents + (vendor.perGuestCents ?? 0) * Math.max(0, guestCount),
     0,
   );
   const paidCents = vendors.reduce((sum, vendor) => sum + Math.max(0, vendor.paidCents), 0);
@@ -45,7 +46,12 @@ export function buildWeddingPlanSummary(
       vendorId: vendor.id,
       vendorName: vendor.name,
       dueDate: vendor.nextDueDate ?? '',
-      amountCents: Math.max(0, vendor.contractedCents + (vendor.perGuestCents ?? 0) * Math.max(0, guestCount) - vendor.paidCents),
+      amountCents: Math.max(
+        0,
+        vendor.contractedCents +
+          (vendor.perGuestCents ?? 0) * Math.max(0, guestCount) -
+          vendor.paidCents,
+      ),
     }))
     .filter((item) => {
       const days = (Date.parse(item.dueDate) - todayMs) / MS_PER_DAY;

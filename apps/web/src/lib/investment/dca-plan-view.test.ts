@@ -76,7 +76,12 @@ describe('DCA plan view helpers', () => {
       [investment],
       new Map<string, readonly InvestmentLot[]>([['inv-1', [lot]]]),
     );
-    const dashboard = buildDCADashboardViewModel([plan], purchases, '2025-02-15', new Map([['VTI', 250_00]]));
+    const dashboard = buildDCADashboardViewModel(
+      [plan],
+      purchases,
+      '2025-02-15',
+      new Map([['VTI', 250_00]]),
+    );
 
     expect(purchases).toEqual([
       { symbol: 'VTI', purchaseDate: '2025-01-03', shares: 2, totalCostCents: 400_00 },

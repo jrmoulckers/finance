@@ -22,7 +22,8 @@ export function buildLocaleCompletenessReport(
   const sourceIdSet = new Set(sourceIds);
   const missing = sourceIds.filter((id) => !localeIdSet.has(id));
   const obsolete = localeIds.filter((id) => !sourceIdSet.has(id));
-  const completionRatio = sourceIds.length === 0 ? 1 : (sourceIds.length - missing.length) / sourceIds.length;
+  const completionRatio =
+    sourceIds.length === 0 ? 1 : (sourceIds.length - missing.length) / sourceIds.length;
 
   return {
     locale,
@@ -33,7 +34,10 @@ export function buildLocaleCompletenessReport(
   };
 }
 
-export function canExposeLocaleInProduct(status: LocalePackStatus, report: LocaleCompletenessWorkflowReport): boolean {
+export function canExposeLocaleInProduct(
+  status: LocalePackStatus,
+  report: LocaleCompletenessWorkflowReport,
+): boolean {
   return status !== 'fallback-only' && report.activationAllowed;
 }
 

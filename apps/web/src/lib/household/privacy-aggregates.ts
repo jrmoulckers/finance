@@ -22,9 +22,15 @@ export interface PrivacySafeAggregate {
   readonly summaryOnlyCents: number;
 }
 
-export function validateHouseholdVisibility(items: readonly HouseholdLineItem[]): PrivacyValidationResult {
+export function validateHouseholdVisibility(
+  items: readonly HouseholdLineItem[],
+): PrivacyValidationResult {
   const errors = items
-    .filter((item) => (item.visibility === 'summary-only' || item.visibility === 'hidden') && item.description.trim().length > 0)
+    .filter(
+      (item) =>
+        (item.visibility === 'summary-only' || item.visibility === 'hidden') &&
+        item.description.trim().length > 0,
+    )
     .map((item) => `${item.id}:line-item-leakage`);
   return { valid: errors.length === 0, errors };
 }

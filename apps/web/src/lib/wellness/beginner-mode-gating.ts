@@ -38,6 +38,11 @@ export function decideBeginnerCurriculum(
       return input.optedInAdvancedTopicIds.includes(topic.id);
     })
     .map((topic) => topic.id);
-  const copyToken = input.persona === 'teen' || input.age < 18 ? 'teen-beginner' : input.expertiseTier === 'beginner' ? 'adult-beginner' : 'standard';
+  const copyToken =
+    input.persona === 'teen' || input.age < 18
+      ? 'teen-beginner'
+      : input.expertiseTier === 'beginner'
+        ? 'adult-beginner'
+        : 'standard';
   return { eligibleTopicIds, copyToken };
 }

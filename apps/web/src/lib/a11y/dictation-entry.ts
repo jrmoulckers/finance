@@ -56,12 +56,14 @@ export function buildDictationParsingFeedback(input: {
   suggestions?: readonly string[];
 }): string {
   const parsed = input.parsedFields.length > 0 ? input.parsedFields.join(', ') : 'no fields';
-  const missing = input.missingFields && input.missingFields.length > 0
-    ? ` Missing: ${input.missingFields.join(', ')}.`
-    : ' All required fields are present.';
-  const suggestions = input.suggestions && input.suggestions.length > 0
-    ? ` Suggestions: ${input.suggestions.map(normalizeSpeechText).join('; ')}.`
-    : '';
+  const missing =
+    input.missingFields && input.missingFields.length > 0
+      ? ` Missing: ${input.missingFields.join(', ')}.`
+      : ' All required fields are present.';
+  const suggestions =
+    input.suggestions && input.suggestions.length > 0
+      ? ` Suggestions: ${input.suggestions.map(normalizeSpeechText).join('; ')}.`
+      : '';
 
   return normalizeSpeechText(`Parsed ${parsed}.${missing}${suggestions}`);
 }
@@ -78,6 +80,8 @@ export function applyDictationCorrection(
       [field]: normalizedValue,
     },
     focusField: field,
-    announcement: normalizeSpeechText(`${field} updated to ${normalizedValue}. Focus remains on ${field}.`),
+    announcement: normalizeSpeechText(
+      `${field} updated to ${normalizedValue}. Focus remains on ${field}.`,
+    ),
   };
 }

@@ -2,15 +2,30 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { buildSinkingFundBudgetListState, buildSinkingFundDetailView } from '../sinking-fund-budget-view';
+import {
+  buildSinkingFundBudgetListState,
+  buildSinkingFundDetailView,
+} from '../sinking-fund-budget-view';
 
 describe('sinking fund budget view', () => {
   it('separates sinking fund contributions from normal budget spend limits', () => {
     const state = buildSinkingFundBudgetListState({
       today: '2025-01-01',
       budgets: [
-        { id: 'budget-food', name: 'Food', categoryId: 'cat-food', amountCents: 60_000, spentCents: 20_000 },
-        { id: 'budget-car', name: 'Car insurance', categoryId: 'cat-car', amountCents: 20_000, spentCents: 0 },
+        {
+          id: 'budget-food',
+          name: 'Food',
+          categoryId: 'cat-food',
+          amountCents: 60_000,
+          spentCents: 20_000,
+        },
+        {
+          id: 'budget-car',
+          name: 'Car insurance',
+          categoryId: 'cat-car',
+          amountCents: 20_000,
+          spentCents: 0,
+        },
       ],
       funds: [
         {

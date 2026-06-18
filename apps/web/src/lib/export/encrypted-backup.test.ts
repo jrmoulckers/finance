@@ -80,7 +80,10 @@ describe('encrypted-backup', () => {
 
   it('rejects corrupted backup data', async () => {
     await expect(
-      decryptBackupPreview(new TextEncoder().encode('{"manifest":'), 'correct horse battery staple'),
+      decryptBackupPreview(
+        new TextEncoder().encode('{"manifest":'),
+        'correct horse battery staple',
+      ),
     ).rejects.toThrow(/corrupted|not valid JSON/);
   });
 
@@ -112,6 +115,8 @@ describe('encrypted-backup', () => {
     );
 
     const preview = await decryptBackupPreview(tampered, 'correct horse battery staple');
-    expect(preview.warnings).toContain('Envelope metadata differs from decrypted payload metadata.');
+    expect(preview.warnings).toContain(
+      'Envelope metadata differs from decrypted payload metadata.',
+    );
   });
 });

@@ -33,6 +33,10 @@ export function selectNextPrompt(
   return prompts.find((prompt) => !usedPromptIds.includes(prompt.id)) ?? prompts[0] ?? null;
 }
 
-export function buildPrivacySafeCheckInSummary(entries: readonly CheckInEntry[]): readonly string[] {
-  return entries.map((entry) => (entry.private ? `${entry.participantId}: redacted` : `${entry.participantId}: ${entry.text}`));
+export function buildPrivacySafeCheckInSummary(
+  entries: readonly CheckInEntry[],
+): readonly string[] {
+  return entries.map((entry) =>
+    entry.private ? `${entry.participantId}: redacted` : `${entry.participantId}: ${entry.text}`,
+  );
 }

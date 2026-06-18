@@ -27,7 +27,9 @@ describe('offline mutation status', () => {
     const restored = deserializeOfflineMutations(serializeOfflineMutations(records));
 
     expect(restored).toHaveLength(50);
-    expect(buildOfflineMutationStatusViewModels(restored)[49].label).toBe('Queued transaction change #50');
+    expect(buildOfflineMutationStatusViewModels(restored)[49].label).toBe(
+      'Queued transaction change #50',
+    );
   });
 
   it('surfaces retry and review affordances from durable queue states', () => {
@@ -41,8 +43,14 @@ describe('offline mutation status', () => {
   });
 
   it('autostarts replay within five seconds of reconnect', () => {
-    expect(shouldStartOfflineReplay({ pendingCount: 3, cameOnlineAt: 1_000, now: 5_000 })).toBe(true);
-    expect(shouldStartOfflineReplay({ pendingCount: 3, cameOnlineAt: 1_000, now: 7_000 })).toBe(false);
-    expect(shouldStartOfflineReplay({ pendingCount: 0, cameOnlineAt: 1_000, now: 2_000 })).toBe(false);
+    expect(shouldStartOfflineReplay({ pendingCount: 3, cameOnlineAt: 1_000, now: 5_000 })).toBe(
+      true,
+    );
+    expect(shouldStartOfflineReplay({ pendingCount: 3, cameOnlineAt: 1_000, now: 7_000 })).toBe(
+      false,
+    );
+    expect(shouldStartOfflineReplay({ pendingCount: 0, cameOnlineAt: 1_000, now: 2_000 })).toBe(
+      false,
+    );
   });
 });
