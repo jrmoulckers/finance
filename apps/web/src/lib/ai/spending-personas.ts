@@ -90,7 +90,9 @@ export function buildMonthlyFeatureVectors(
 
   const incomeValues = Array.from(incomeByMonth.values());
   const incomeAverage =
-    incomeValues.length > 0 ? incomeValues.reduce((sum, value) => sum + value, 0) / incomeValues.length : 0;
+    incomeValues.length > 0
+      ? incomeValues.reduce((sum, value) => sum + value, 0) / incomeValues.length
+      : 0;
   const incomeVolatility = incomeAverage > 0 ? standardDeviation(incomeValues) / incomeAverage : 0;
 
   const grouped = new Map<string, Transaction[]>();
@@ -135,7 +137,9 @@ export function buildMonthlyFeatureVectors(
     });
 }
 
-function labelVector(vector: SpendingFeatureVector): Omit<SpendingPersonaAssignment, 'month' | 'vector'> {
+function labelVector(
+  vector: SpendingFeatureVector,
+): Omit<SpendingPersonaAssignment, 'month' | 'vector'> {
   const scores: Array<{ label: SpendingPersonaLabel; score: number; evidence: string[] }> = [
     {
       label: 'subscription-optimizer',
@@ -149,7 +153,10 @@ function labelVector(vector: SpendingFeatureVector): Omit<SpendingPersonaAssignm
     },
     {
       label: 'essentials-steady',
-      score: vector.topCategoryShare >= 0.45 && vector.merchantDiversity < 0.55 ? vector.topCategoryShare : 0,
+      score:
+        vector.topCategoryShare >= 0.45 && vector.merchantDiversity < 0.55
+          ? vector.topCategoryShare
+          : 0,
       evidence: ['Spending is concentrated in a smaller set of merchants or categories.'],
     },
     {
@@ -169,7 +176,8 @@ function labelVector(vector: SpendingFeatureVector): Omit<SpendingPersonaAssignm
     },
   ];
 
-  const best = scores.sort((left, right) => right.score - left.score)[0] ?? scores[scores.length - 1];
+  const best =
+    scores.sort((left, right) => right.score - left.score)[0] ?? scores[scores.length - 1];
   return {
     label: best.label,
     confidence: Math.max(0.35, Math.min(0.95, best.score)),

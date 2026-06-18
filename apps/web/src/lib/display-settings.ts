@@ -173,13 +173,18 @@ export function formatAmountWithSettings(
   const absAmountInCents = Math.abs(amountInCents);
   const absValue = absAmountInCents / minorUnitFactor(currency) || 0;
 
-  const formatted = formatAmount(Math.round(absValue * minorUnitFactor(currency)), MaskingMode.Visible, locale, {
-    currency,
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-    signDisplay: 'never',
-    currencyDisplay: settings.currencyDisplay,
-  });
+  const formatted = formatAmount(
+    Math.round(absValue * minorUnitFactor(currency)),
+    MaskingMode.Visible,
+    locale,
+    {
+      currency,
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+      signDisplay: 'never',
+      currencyDisplay: settings.currencyDisplay,
+    },
+  );
 
   if (!isNegative) {
     return formatted;

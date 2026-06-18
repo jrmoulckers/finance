@@ -416,7 +416,9 @@ describe('SettingsPage', () => {
       });
       await waitFor(() => expect(clearLocalAccountDataMock).toHaveBeenCalledTimes(1));
       expect(wipeLocalDataMock).toHaveBeenCalledTimes(1);
-      expect(await screen.findByRole('heading', { name: /account deletion receipt/i })).toBeInTheDocument();
+      expect(
+        await screen.findByRole('heading', { name: /account deletion receipt/i }),
+      ).toBeInTheDocument();
       expect(screen.getByText(/verification hash/i)).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /download receipt/i })).toHaveAttribute('download');
       expect(logoutMock).not.toHaveBeenCalled();

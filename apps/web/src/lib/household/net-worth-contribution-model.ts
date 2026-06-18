@@ -28,22 +28,28 @@ export function buildNetWorthContributionModel(
   accounts: readonly NetWorthAccountInput[],
 ): NetWorthContributionModel {
   const rollup = buildPrivacyAwareNetWorthRollup(accounts);
-  const detailedRows = rollup.detailedAttributions.map((item): NetWorthContributionRow => ({
-    label: item.label,
-    amountCents: item.amountCents,
-    visibility: 'DETAILED',
-    ownerMemberId: item.ownerMemberId,
-    accountId: item.accountId,
-    explanation: 'Detailed accounts show account name and owner attribution in the shared roll-up.',
-  }));
-  const aggregateRows = rollup.aggregateAttributions.map((item): NetWorthContributionRow => ({
-    label: item.label,
-    amountCents: item.amountCents,
-    visibility: 'AGGREGATE_ONLY',
-    ownerMemberId: null,
-    accountId: null,
-    explanation: 'Aggregate-only accounts add to totals without exposing account names or owners.',
-  }));
+  const detailedRows = rollup.detailedAttributions.map(
+    (item): NetWorthContributionRow => ({
+      label: item.label,
+      amountCents: item.amountCents,
+      visibility: 'DETAILED',
+      ownerMemberId: item.ownerMemberId,
+      accountId: item.accountId,
+      explanation:
+        'Detailed accounts show account name and owner attribution in the shared roll-up.',
+    }),
+  );
+  const aggregateRows = rollup.aggregateAttributions.map(
+    (item): NetWorthContributionRow => ({
+      label: item.label,
+      amountCents: item.amountCents,
+      visibility: 'AGGREGATE_ONLY',
+      ownerMemberId: null,
+      accountId: null,
+      explanation:
+        'Aggregate-only accounts add to totals without exposing account names or owners.',
+    }),
+  );
   const excludedRow: NetWorthContributionRow[] =
     rollup.excludedAccountCount > 0
       ? [
@@ -53,7 +59,8 @@ export function buildNetWorthContributionModel(
             visibility: 'EXCLUDED',
             ownerMemberId: null,
             accountId: null,
-            explanation: 'Excluded accounts are omitted from household assets, liabilities, and net worth.',
+            explanation:
+              'Excluded accounts are omitted from household assets, liabilities, and net worth.',
           },
         ]
       : [];
@@ -63,7 +70,8 @@ export function buildNetWorthContributionModel(
     rows: [...detailedRows, ...aggregateRows, ...excludedRow],
     copy: {
       detailed: 'Detailed: included in totals with account and owner attribution.',
-      aggregateOnly: 'Aggregate-only: included in totals, but names and owner attribution are redacted.',
+      aggregateOnly:
+        'Aggregate-only: included in totals, but names and owner attribution are redacted.',
       excluded: 'Excluded: omitted entirely from shared net-worth totals.',
     },
   };

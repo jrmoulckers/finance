@@ -33,7 +33,10 @@ export interface SharedGoalContributionSummary {
 function monthsUntil(today: string, dueDate: string): number {
   const start = new Date(`${today}T00:00:00.000Z`);
   const end = new Date(`${dueDate}T00:00:00.000Z`);
-  return Math.max(1, (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + end.getUTCMonth() - start.getUTCMonth());
+  return Math.max(
+    1,
+    (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + end.getUTCMonth() - start.getUTCMonth(),
+  );
 }
 
 export function summarizeGoalContributions(
@@ -47,15 +50,21 @@ export function summarizeGoalContributions(
   const remainingCents = Math.max(0, targetCents - currentCents);
   const monthlyTargetCents = Math.ceil(remainingCents / monthsUntil(today, dueDate));
   const contributedTotal = history.reduce((sum, item) => sum + item.amountCents, 0);
-  const expectedBySplit = contributors.reduce((sum, item) => sum + Math.round((contributedTotal * item.splitPercent) / 100), 0);
+  const expectedBySplit = contributors.reduce(
+    (sum, item) => sum + Math.round((contributedTotal * item.splitPercent) / 100),
+    0,
+  );
   const catchUpCents = Math.max(0, expectedBySplit - contributedTotal);
   const contributorsSummary = contributors.map((contributor) => {
-    const amount = history.filter((item) => item.contributorId === contributor.id).reduce((sum, item) => sum + item.amountCents, 0);
+    const amount = history
+      .filter((item) => item.contributorId === contributor.id)
+      .reduce((sum, item) => sum + item.amountCents, 0);
     return {
       contributorId: contributor.id,
       displayName: contributor.privacy === 'hidden' ? null : contributor.name,
       amountCents: contributor.privacy === 'visible' ? amount : null,
-      percentOfTotal: contributedTotal === 0 ? 0 : Math.round((amount / contributedTotal) * 10000) / 100,
+      percentOfTotal:
+        contributedTotal === 0 ? 0 : Math.round((amount / contributedTotal) * 10000) / 100,
     };
   });
 

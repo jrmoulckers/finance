@@ -50,7 +50,10 @@ export const DEFAULT_FIRE_SCENARIOS: readonly FireScenarioOverride[] = [
   { id: 'lower-return', label: 'Lower return' },
 ];
 
-function applyOverride(input: FirePlanningInput, override: FireScenarioOverride): FirePlanningInput {
+function applyOverride(
+  input: FirePlanningInput,
+  override: FireScenarioOverride,
+): FirePlanningInput {
   const annualContributionsCents =
     override.id === 'higher-savings' && override.annualContributionsCents === undefined
       ? Math.round(input.annualContributionsCents * 1.1)

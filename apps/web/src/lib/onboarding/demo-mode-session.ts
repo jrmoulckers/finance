@@ -49,7 +49,9 @@ export function tagDemoRecords<T extends DemoTaggedRecord>(records: readonly T[]
   }));
 }
 
-export function resetDemoRecords<T extends DemoTaggedRecord>(records: readonly T[]): DemoResetResult<T> {
+export function resetDemoRecords<T extends DemoTaggedRecord>(
+  records: readonly T[],
+): DemoResetResult<T> {
   const keptRecords = records.filter((record) => !isDemoTagged(record));
   return {
     keptRecords,
@@ -72,7 +74,8 @@ export function buildDemoModeEntryState(params: {
     return {
       canStartDemo: false,
       primaryLabel: 'Demo unavailable',
-      warning: 'Demo mode starts from a clean fictional workspace to avoid mixing with real records.',
+      warning:
+        'Demo mode starts from a clean fictional workspace to avoid mixing with real records.',
     };
   }
   return { canStartDemo: true, primaryLabel: 'Try demo mode' };

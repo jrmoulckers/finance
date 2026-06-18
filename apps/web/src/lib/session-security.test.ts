@@ -21,8 +21,12 @@ describe('session-security', () => {
 
     expect(getStepUpStatus('data_export', now).allowed).toBe(false);
     await markStepUpAuthenticated('data_export', {}, now);
-    expect(getStepUpStatus('data_export', new Date(now.getTime() + STEP_UP_WINDOW_MS - 1)).allowed).toBe(true);
-    expect(getStepUpStatus('data_export', new Date(now.getTime() + STEP_UP_WINDOW_MS + 1)).allowed).toBe(false);
+    expect(
+      getStepUpStatus('data_export', new Date(now.getTime() + STEP_UP_WINDOW_MS - 1)).allowed,
+    ).toBe(true);
+    expect(
+      getStepUpStatus('data_export', new Date(now.getTime() + STEP_UP_WINDOW_MS + 1)).allowed,
+    ).toBe(false);
   });
 
   it('normalizes and persists idle timeout settings', () => {

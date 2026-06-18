@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { DebtMilestoneSummary, StrategyResult, StudentLoanDashboardSummary } from '../debt-types';
+import type {
+  DebtMilestoneSummary,
+  StrategyResult,
+  StudentLoanDashboardSummary,
+} from '../debt-types';
 
 export interface DebtProgressRingCard {
   readonly id: 'debt-payoff' | 'student-loans';

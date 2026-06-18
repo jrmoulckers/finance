@@ -13,7 +13,12 @@ const ACCOUNTS: RetirementAccountClassification[] = [
   { accountId: 'trad-ira', accountType: 'TRADITIONAL_IRA', taxTreatment: 'PRE_TAX' },
   { accountId: 'roth-ira', accountType: 'ROTH_IRA', taxTreatment: 'ROTH' },
   { accountId: 'work-401k', accountType: '401K', taxTreatment: 'PRE_TAX' },
-  { accountId: 'family-hsa', accountType: 'HSA', taxTreatment: 'PRE_TAX', hsaCoverageLevel: 'FAMILY' },
+  {
+    accountId: 'family-hsa',
+    accountType: 'HSA',
+    taxTreatment: 'PRE_TAX',
+    hsaCoverageLevel: 'FAMILY',
+  },
   { accountId: 'health-fsa', accountType: 'FSA', taxTreatment: 'PRE_TAX' },
 ];
 
@@ -22,10 +27,12 @@ describe('retirement-contribution-limits', () => {
     const limits = getRetirementLimitDefinitions(2025);
 
     expect(limits.map((limit) => limit.group)).toContain('IRA_COMBINED');
-    expect(limits.find((limit) => limit.group === 'EMPLOYER_PLAN_EMPLOYEE_DEFERRAL')).toMatchObject({
-      baseLimitCents: 23_500_00,
-      superCatchUpLimitCents: 11_250_00,
-    });
+    expect(limits.find((limit) => limit.group === 'EMPLOYER_PLAN_EMPLOYEE_DEFERRAL')).toMatchObject(
+      {
+        baseLimitCents: 23_500_00,
+        superCatchUpLimitCents: 11_250_00,
+      },
+    );
   });
 
   it('applies 2025 age 60-63 super catch-up for employer plan deferrals', () => {

@@ -28,9 +28,13 @@ export const LOGICAL_CSS_PROPERTY_MAP: Readonly<Record<PhysicalCssProperty, stri
   right: 'inset-inline-end',
 };
 
-const PHYSICAL_PROPERTY_PATTERN = /(?:^|[\s{;])((?:margin|padding|border)-(?:left|right)|left|right)\s*:/g;
+const PHYSICAL_PROPERTY_PATTERN =
+  /(?:^|[\s{;])((?:margin|padding|border)-(?:left|right)|left|right)\s*:/g;
 
-function lineColumn(content: string, index: number): { readonly line: number; readonly column: number } {
+function lineColumn(
+  content: string,
+  index: number,
+): { readonly line: number; readonly column: number } {
   const prefix = content.slice(0, index);
   const lines = prefix.split('\n');
   return { line: lines.length, column: lines[lines.length - 1].length + 1 };

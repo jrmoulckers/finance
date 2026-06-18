@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { buildInsightsPeerComparisonReport, buildPeerComparisonCards } from './peer-insights-integration';
+import {
+  buildInsightsPeerComparisonReport,
+  buildPeerComparisonCards,
+} from './peer-insights-integration';
 
 describe('peer insights integration', () => {
   it('preserves opt-in before exposing category peer cards', () => {

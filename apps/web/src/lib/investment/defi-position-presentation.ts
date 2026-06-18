@@ -43,9 +43,13 @@ export interface DefiPortfolioPresentation {
   readonly inclusionRulesCopy: string;
 }
 
-function valuationStatus(position: DefiPositionInput, staleAfterDate?: string): DefiValuationStatus {
+function valuationStatus(
+  position: DefiPositionInput,
+  staleAfterDate?: string,
+): DefiValuationStatus {
   if (position.valueCents === null) return 'UNPRICED';
-  if (staleAfterDate && (!position.valuationAsOf || position.valuationAsOf < staleAfterDate)) return 'STALE';
+  if (staleAfterDate && (!position.valuationAsOf || position.valuationAsOf < staleAfterDate))
+    return 'STALE';
   return 'FRESH';
 }
 
@@ -64,10 +68,20 @@ function netWorthContribution(position: DefiPositionInput, status: DefiValuation
   return valueCents;
 }
 
-function accessibilityText(position: DefiPositionInput, status: DefiValuationStatus, contributionCents: number): string {
-  const apy = position.apyPercent === undefined ? 'APY not provided' : `${position.apyPercent}% APY`;
+function accessibilityText(
+  position: DefiPositionInput,
+  status: DefiValuationStatus,
+  contributionCents: number,
+): string {
+  const apy =
+    position.apyPercent === undefined ? 'APY not provided' : `${position.apyPercent}% APY`;
   const lock = position.lockUntil ? `locked until ${position.lockUntil}` : 'no lock date';
-  const valuation = status === 'FRESH' ? 'valuation is current' : status === 'STALE' ? 'valuation may be stale' : 'valuation unavailable';
+  const valuation =
+    status === 'FRESH'
+      ? 'valuation is current'
+      : status === 'STALE'
+        ? 'valuation may be stale'
+        : 'valuation unavailable';
   return `${rowLabel(position.kind)}: ${position.quantity} ${position.assetSymbol} on ${position.protocol}, ${apy}, ${lock}, ${valuation}, net-worth contribution ${contributionCents} cents.`;
 }
 
@@ -85,7 +99,9 @@ function buildRow(position: DefiPositionInput, staleAfterDate?: string): DefiExp
     valuationStatus: status,
     label: rowLabel(position.kind),
     accessibilityText: accessibilityText(position, status, contribution),
-    riskCopy: position.protocolRiskLabel ?? 'Protocol, smart-contract, liquidity, and oracle risks can affect this DeFi position.',
+    riskCopy:
+      position.protocolRiskLabel ??
+      'Protocol, smart-contract, liquidity, and oracle risks can affect this DeFi position.',
   };
 }
 

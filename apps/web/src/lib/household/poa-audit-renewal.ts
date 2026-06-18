@@ -66,7 +66,10 @@ export function getPoaRenewalReminder(
   }
 
   const daysUntilExpiration = wholeDaysBetween(now, grant.expiresAt);
-  const due = daysUntilExpiration !== null && daysUntilExpiration >= 0 && daysUntilExpiration <= reminderWindowDays;
+  const due =
+    daysUntilExpiration !== null &&
+    daysUntilExpiration >= 0 &&
+    daysUntilExpiration <= reminderWindowDays;
 
   return {
     grantId: grant.id,

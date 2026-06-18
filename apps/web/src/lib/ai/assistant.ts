@@ -114,7 +114,10 @@ function defaultRange(today: string): AssistantDateRange {
   return { start: startOfMonth(today), end: today, label: 'this month to date' };
 }
 
-export function extractAssistantDateRange(question: string, today = iso(new Date())): AssistantDateRange {
+export function extractAssistantDateRange(
+  question: string,
+  today = iso(new Date()),
+): AssistantDateRange {
   const text = question.toLowerCase();
   if (text.includes('last month')) {
     const date = parseIso(today);
@@ -140,19 +143,40 @@ export function extractAssistantDateRange(question: string, today = iso(new Date
 export function parseAssistantQuestion(question: string, today?: string): ParsedAssistantQuestion {
   const text = question.toLowerCase();
   const range = extractAssistantDateRange(question, today);
-  if (/(net worth|balance|balances|cash on hand)/u.test(text)) return { intent: 'net_worth', range };
-  if (/(budget|pace|pacing|left in)/u.test(text)) return { intent: 'budget_pace', range, entity: extractAfter(text, ['budget', 'for', 'my']) };
-  if (/(goal|progress|saved|saving)/u.test(text)) return { intent: 'goal_progress', range, entity: extractAfter(text, ['goal', 'for', 'my']) };
+  if (/(net worth|balance|balances|cash on hand)/u.test(text))
+    return { intent: 'net_worth', range };
+  if (/(budget|pace|pacing|left in)/u.test(text))
+    return { intent: 'budget_pace', range, entity: extractAfter(text, ['budget', 'for', 'my']) };
+  if (/(goal|progress|saved|saving)/u.test(text))
+    return { intent: 'goal_progress', range, entity: extractAfter(text, ['goal', 'for', 'my']) };
   if (/(bill|due|upcoming|payment)/u.test(text)) return { intent: 'upcoming_bills', range };
-  if (/(last|recent|latest|visit|merchant|payee)/u.test(text)) return { intent: 'recent_merchant', range, entity: extractMerchant(question) };
-  if (/(spend|spent|spending|category|how much)/u.test(text)) return { intent: 'category_spending', range, entity: extractCategory(question) };
+  if (/(last|recent|latest|visit|merchant|payee)/u.test(text))
+    return { intent: 'recent_merchant', range, entity: extractMerchant(question) };
+  if (/(spend|spent|spending|category|how much)/u.test(text))
+    return { intent: 'category_spending', range, entity: extractCategory(question) };
   return { intent: 'unsupported', range };
 }
 
 function extractAfter(text: string, stopWords: readonly string[]): string | undefined {
-  const words = text.replace(/[^a-z0-9 ]/gu, ' ').split(/\s+/u).filter(Boolean);
-  const ignored = new Set(['how', 'is', 'are', 'am', 'i', 'doing', 'pacing', 'progress', ...stopWords]);
-  const entity = words.filter((word) => !ignored.has(word)).join(' ').trim();
+  const words = text
+    .replace(/[^a-z0-9 ]/gu, ' ')
+    .split(/\s+/u)
+    .filter(Boolean);
+  const ignored = new Set([
+    'how',
+    'is',
+    'are',
+    'am',
+    'i',
+    'doing',
+    'pacing',
+    'progress',
+    ...stopWords,
+  ]);
+  const entity = words
+    .filter((word) => !ignored.has(word))
+    .join(' ')
+    .trim();
   return entity || undefined;
 }
 
@@ -188,7 +212,10 @@ function money(cents: number): string {
 }
 
 function normalize(value: string | undefined): string {
-  return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/gu, ' ').trim();
+  return (value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, ' ')
+    .trim();
 }
 
 function textIncludes(value: string | undefined, needle: string | undefined): boolean {
@@ -200,7 +227,9 @@ export function answerFinancialQuestion(question: string, data: AssistantData): 
   const parsed = parseAssistantQuestion(question, data.today);
   switch (parsed.intent) {
     case 'net_worth': {
-      const netWorth = data.accounts.filter((account) => account.includeInNetWorth !== false).reduce((sum, account) => sum + account.balanceCents, 0);
+      const netWorth = data.accounts
+        .filter((account) => account.includeInNetWorth !== false)
+        .reduce((sum, account) => sum + account.balanceCents, 0);
       return {
         intent: parsed.intent,
         answer: `Your net worth across ${data.accounts.length} accounts is ${money(netWorth)}.`,
@@ -208,14 +237,24 @@ export function answerFinancialQuestion(question: string, data: AssistantData): 
       };
     }
     case 'category_spending': {
-      const expenses = data.transactions.filter((transaction) => transaction.type === 'expense' && inRange(transaction.date, parsed.range));
-      const matching = expenses.filter((transaction) => textIncludes(transaction.category, parsed.entity));
-      const spent = matching.reduce((sum, transaction) => sum + Math.abs(transaction.amountCents), 0);
+      const expenses = data.transactions.filter(
+        (transaction) => transaction.type === 'expense' && inRange(transaction.date, parsed.range),
+      );
+      const matching = expenses.filter((transaction) =>
+        textIncludes(transaction.category, parsed.entity),
+      );
+      const spent = matching.reduce(
+        (sum, transaction) => sum + Math.abs(transaction.amountCents),
+        0,
+      );
       const label = parsed.entity ?? 'all categories';
       return {
         intent: parsed.intent,
         answer: `You spent ${money(spent)} on ${label} during ${parsed.range.label}.`,
-        sources: [`transactions from ${parsed.range.start} through ${parsed.range.end}`, `${matching.length} matching transactions`],
+        sources: [
+          `transactions from ${parsed.range.start} through ${parsed.range.end}`,
+          `${matching.length} matching transactions`,
+        ],
       };
     }
     case 'recent_merchant': {
@@ -232,10 +271,17 @@ export function answerFinancialQuestion(question: string, data: AssistantData): 
       };
     }
     case 'budget_pace': {
-      const budget = data.budgets.find((item) => textIncludes(item.name, parsed.entity) || textIncludes(item.category, parsed.entity)) ?? data.budgets[0];
+      const budget =
+        data.budgets.find(
+          (item) =>
+            textIncludes(item.name, parsed.entity) || textIncludes(item.category, parsed.entity),
+        ) ?? data.budgets[0];
       if (!budget) return unsupported(parsed.intent);
       const totalDays = Math.max(1, daysBetween(budget.periodStart, budget.periodEnd) + 1);
-      const elapsedDays = Math.min(totalDays, Math.max(1, daysBetween(budget.periodStart, data.today ?? parsed.range.end) + 1));
+      const elapsedDays = Math.min(
+        totalDays,
+        Math.max(1, daysBetween(budget.periodStart, data.today ?? parsed.range.end) + 1),
+      );
       const expected = Math.round((budget.amountCents * elapsedDays) / totalDays);
       const delta = budget.spentCents - expected;
       return {
@@ -245,9 +291,11 @@ export function answerFinancialQuestion(question: string, data: AssistantData): 
       };
     }
     case 'goal_progress': {
-      const goal = data.goals.find((item) => textIncludes(item.name, parsed.entity)) ?? data.goals[0];
+      const goal =
+        data.goals.find((item) => textIncludes(item.name, parsed.entity)) ?? data.goals[0];
       if (!goal) return unsupported(parsed.intent);
-      const percent = goal.targetCents > 0 ? Math.round((goal.currentCents / goal.targetCents) * 100) : 0;
+      const percent =
+        goal.targetCents > 0 ? Math.round((goal.currentCents / goal.targetCents) * 100) : 0;
       return {
         intent: parsed.intent,
         answer: `${goal.name} is ${percent}% funded at ${money(goal.currentCents)} of ${money(goal.targetCents)}.`,
@@ -257,8 +305,18 @@ export function answerFinancialQuestion(question: string, data: AssistantData): 
     case 'upcoming_bills': {
       const today = data.today ?? parsed.range.end;
       const end = addDays(today, 30);
-      const bills = data.bills.filter((bill) => bill.nextDueDate >= today && bill.nextDueDate <= end).sort((left, right) => left.nextDueDate.localeCompare(right.nextDueDate));
-      const summary = bills.length > 0 ? bills.map((bill) => `${bill.merchant} on ${bill.nextDueDate} (${money(bill.expectedAmountCents)})`).join('; ') : 'No predicted bills are due in the next 30 days.';
+      const bills = data.bills
+        .filter((bill) => bill.nextDueDate >= today && bill.nextDueDate <= end)
+        .sort((left, right) => left.nextDueDate.localeCompare(right.nextDueDate));
+      const summary =
+        bills.length > 0
+          ? bills
+              .map(
+                (bill) =>
+                  `${bill.merchant} on ${bill.nextDueDate} (${money(bill.expectedAmountCents)})`,
+              )
+              .join('; ')
+          : 'No predicted bills are due in the next 30 days.';
       return {
         intent: parsed.intent,
         answer: summary,
@@ -277,7 +335,8 @@ function daysBetween(start: string, end: string): number {
 function unsupported(intent: AssistantIntent): AssistantAnswer {
   return {
     intent,
-    answer: 'I can only answer source-backed questions about local balances, spending, merchants, budgets, goals, and upcoming bills right now.',
+    answer:
+      'I can only answer source-backed questions about local balances, spending, merchants, budgets, goals, and upcoming bills right now.',
     sources: [ASSISTANT_PRIVACY_COPY],
     examples: EXAMPLES,
   };

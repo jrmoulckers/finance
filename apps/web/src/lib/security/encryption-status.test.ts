@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 import { buildEncryptionStatusDashboard, summarizeEncryptionRecovery } from './encryption-status';
 
-const supportedCrypto = { subtle: { encrypt: () => undefined }, getRandomValues: () => new Uint8Array(1) } as unknown as Crypto;
+const supportedCrypto = {
+  subtle: { encrypt: () => undefined },
+  getRandomValues: () => new Uint8Array(1),
+} as unknown as Crypto;
 
 describe('encryption status dashboard helpers', () => {
   it('reports first-run setup, unlock, encrypted, and not-applicable states', () => {

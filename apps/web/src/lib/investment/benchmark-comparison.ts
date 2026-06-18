@@ -54,7 +54,9 @@ function pointOnOrAfter(
   points: readonly BenchmarkPoint[],
   date: string,
 ): BenchmarkPoint | undefined {
-  return [...points].sort((a, b) => a.date.localeCompare(b.date)).find((point) => point.date >= date);
+  return [...points]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .find((point) => point.date >= date);
 }
 
 function pointOnOrBefore(
@@ -96,7 +98,8 @@ export function comparePortfolioToBenchmark(
   const warnings: string[] = [];
   const benchmarkStart = pointOnOrAfter(input.benchmarkPoints, input.startDate);
   const benchmarkEnd = pointOnOrBefore(input.benchmarkPoints, input.endDate);
-  if (!benchmarkStart || !benchmarkEnd) warnings.push('Benchmark data does not cover the selected range.');
+  if (!benchmarkStart || !benchmarkEnd)
+    warnings.push('Benchmark data does not cover the selected range.');
   if (benchmarkStart && benchmarkStart.date !== input.startDate) {
     warnings.push('Benchmark start date was aligned to first available data point.');
   }

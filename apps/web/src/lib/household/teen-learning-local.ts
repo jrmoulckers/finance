@@ -71,7 +71,8 @@ export function upsertTeenLearningRecord(
   next: TeenLearningLocalRecord,
 ): readonly TeenLearningLocalRecord[] {
   const withoutDuplicate = records.filter(
-    (record) => record.householdId !== next.householdId || record.childProfileId !== next.childProfileId,
+    (record) =>
+      record.householdId !== next.householdId || record.childProfileId !== next.childProfileId,
   );
   return [...withoutDuplicate, next];
 }

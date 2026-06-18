@@ -94,7 +94,9 @@ describe('retirement-contribution-metadata', () => {
 
   it('surfaces unsupported tagged contributions as warnings', () => {
     const summary = summarizeTaggedRetirementContributions({
-      accounts: [account({ id: 'checking', retirementAccountType: null, retirementTaxTreatment: null })],
+      accounts: [
+        account({ id: 'checking', retirementAccountType: null, retirementTaxTreatment: null }),
+      ],
       transactions: [transaction({ accountId: 'checking' })],
       profile: { taxYear: 2025 },
     });

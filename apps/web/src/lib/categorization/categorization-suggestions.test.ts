@@ -34,7 +34,13 @@ describe('shared categorization suggestions', () => {
       }).categoryId,
     ).toBe('transportation');
     expect(
-      suggestCategory({ merchant: '', description: '', amountCents: 1_00, rules: [], corrections: [] }).needsReview,
+      suggestCategory({
+        merchant: '',
+        description: '',
+        amountCents: 1_00,
+        rules: [],
+        corrections: [],
+      }).needsReview,
     ).toBe(true);
   });
 });

@@ -92,7 +92,10 @@ export function buildChartTextSummary(input: ChartSummaryInput): string {
     .join('; ');
 
   const remainingCount = Math.max(input.points.length - sampledPoints.length, 0);
-  const remaining = remainingCount > 0 ? ` ${remainingCount} additional points are available in the data table.` : '';
+  const remaining =
+    remainingCount > 0
+      ? ` ${remainingCount} additional points are available in the data table.`
+      : '';
   const points = pointSummary || 'No chart data is available.';
 
   return cleanText(
@@ -116,7 +119,11 @@ export function buildChartA11yMetadata(
   };
 }
 
-export function buildDataTableCaption(title: string, rowCount: number, sort?: SortState | null): string {
+export function buildDataTableCaption(
+  title: string,
+  rowCount: number,
+  sort?: SortState | null,
+): string {
   const rowLabel = rowCount === 1 ? '1 row' : `${Math.max(rowCount, 0)} rows`;
   const sortLabel = sort ? ` Sorted by ${sort.columnId} ${sort.direction}.` : '';
   return cleanText(`${title}. ${rowLabel}.${sortLabel}`);
@@ -130,9 +137,10 @@ export function getSortableColumnA11yProps(input: SortableColumnInput): {
   const sort = input.sort;
   const isSorted = sort?.columnId === input.columnId;
   const ariaSort = isSorted && sort ? sort.direction : 'none';
-  const action = isSorted && sort
-    ? `Sorted ${sort.direction}. Activate to reverse sort.`
-    : 'Not sorted. Activate to sort.';
+  const action =
+    isSorted && sort
+      ? `Sorted ${sort.direction}. Activate to reverse sort.`
+      : 'Not sorted. Activate to sort.';
 
   return {
     scope: 'col',

@@ -13,7 +13,9 @@ describe('privacy screen helpers', () => {
     expect(maskPrivacyScreenValue('$12,345', 'amount', 'visible')).toBe('$12,345');
     expect(maskPrivacyScreenValue('$12,345', 'amount', 'masked')).toBe('•••');
     expect(maskPrivacyScreenValue('$12,345', 'amount', 'bucketed')).toBe('Approximate amount');
-    expect(maskPrivacyScreenValue('Coffee Shop', 'merchant-name', 'masked')).toBe('Hidden merchant');
+    expect(maskPrivacyScreenValue('Coffee Shop', 'merchant-name', 'masked')).toBe(
+      'Hidden merchant',
+    );
   });
 
   it('reports unmasked sensitive surfaces while excluding explicit export flows', () => {

@@ -41,9 +41,15 @@ describe('buildPeerBenchmarkDatasetGovernanceReport', () => {
 
     expect(report.version).toBe('2025.04');
     expect(report.isStale).toBe(true);
-    expect(report.sourceRows[0]).toMatchObject({ source: 'Curated beta cohort', confidence: 'low', cohortLabel: '2-person • Midwest' });
+    expect(report.sourceRows[0]).toMatchObject({
+      source: 'Curated beta cohort',
+      confidence: 'low',
+      cohortLabel: '2-person • Midwest',
+    });
     expect(report.lowConfidenceKeys).toEqual(['housing-midwest']);
     expect(report.fallbackDefinitionKeys).toEqual(['housing-default']);
-    expect(report.warnings).toEqual(expect.arrayContaining([expect.stringContaining('Fallback defaults available')]));
+    expect(report.warnings).toEqual(
+      expect.arrayContaining([expect.stringContaining('Fallback defaults available')]),
+    );
   });
 });

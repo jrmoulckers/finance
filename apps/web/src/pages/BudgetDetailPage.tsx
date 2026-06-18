@@ -414,7 +414,10 @@ export const BudgetDetailPage: React.FC = () => {
             <div>
               <p className="card__title">Spent</p>
               <p className="card__value">
-                <CurrencyDisplay amount={budget.spentAmount.amount} currency={budget.currency.code} />
+                <CurrencyDisplay
+                  amount={budget.spentAmount.amount}
+                  currency={budget.currency.code}
+                />
               </p>
             </div>
             <div>

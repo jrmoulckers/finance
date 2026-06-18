@@ -35,7 +35,13 @@ export interface NetWorthReportViewModel {
 
 const STORAGE_KEY = 'finance.netWorthReport.snapshots.v1';
 
-export const NET_WORTH_REPORT_RANGES: readonly NetWorthReportRange[] = ['6M', '12M', '24M', 'YTD', 'ALL'];
+export const NET_WORTH_REPORT_RANGES: readonly NetWorthReportRange[] = [
+  '6M',
+  '12M',
+  '24M',
+  'YTD',
+  'ALL',
+];
 
 function isSnapshot(value: unknown): value is NetWorthSnapshot {
   if (typeof value !== 'object' || value === null) return false;

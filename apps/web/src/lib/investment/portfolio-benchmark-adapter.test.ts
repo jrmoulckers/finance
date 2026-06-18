@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { buildPortfolioBenchmarkComparison, resolveBenchmarkRange } from './portfolio-benchmark-adapter';
+import {
+  buildPortfolioBenchmarkComparison,
+  resolveBenchmarkRange,
+} from './portfolio-benchmark-adapter';
 
 describe('resolveBenchmarkRange', () => {
   it('resolves common benchmark ranges', () => {
@@ -9,7 +12,13 @@ describe('resolveBenchmarkRange', () => {
       startDate: '2025-01-01',
       endDate: '2025-08-15',
     });
-    expect(resolveBenchmarkRange({ range: 'ALL', asOfDate: '2025-08-15', firstPortfolioDate: '2022-02-03' })).toEqual({
+    expect(
+      resolveBenchmarkRange({
+        range: 'ALL',
+        asOfDate: '2025-08-15',
+        firstPortfolioDate: '2022-02-03',
+      }),
+    ).toEqual({
       startDate: '2022-02-03',
       endDate: '2025-08-15',
     });
@@ -61,6 +70,10 @@ describe('buildPortfolioBenchmarkComparison', () => {
         'Benchmark history has fewer than two points in the aligned range.',
       ]),
     );
-    expect(result.coverageWarnings.some((warning) => warning.includes('Cash-flow events without same-day valuations'))).toBe(true);
+    expect(
+      result.coverageWarnings.some((warning) =>
+        warning.includes('Cash-flow events without same-day valuations'),
+      ),
+    ).toBe(true);
   });
 });

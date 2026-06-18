@@ -81,7 +81,9 @@ function clampCents(value: number | undefined): number {
 }
 
 function uniqueActions(actions: readonly TeenLearningAction[] | undefined): TeenLearningAction[] {
-  return Array.from(new Set(actions ?? ['SIMULATED_TRANSFER', 'SPENDING_CATEGORY_CHANGE', 'GOAL_WITHDRAWAL']));
+  return Array.from(
+    new Set(actions ?? ['SIMULATED_TRANSFER', 'SPENDING_CATEGORY_CHANGE', 'GOAL_WITHDRAWAL']),
+  );
 }
 
 export function buildTeenLearningAccount(input: TeenLearningAccountInput): TeenLearningAccount {
@@ -98,7 +100,8 @@ export function buildTeenLearningAccount(input: TeenLearningAccountInput): TeenL
     envelopes: input.envelopes ?? [],
     savingsChallenges: input.savingsChallenges ?? [],
     approvalRequiredFor: uniqueActions(input.requireApprovalFor),
-    privacyNotice: 'Teen learning accounts show practice balances only; adult household finances stay hidden.',
+    privacyNotice:
+      'Teen learning accounts show practice balances only; adult household finances stay hidden.',
   };
 }
 
@@ -108,18 +111,34 @@ export function reviewTeenLearningAction(
   amountCents = 0,
 ): TeenActionReview {
   if (account.age < 13) {
-    return { action, status: 'DENIED', reason: 'Teen learning accounts require a child age of at least 13.' };
+    return {
+      action,
+      status: 'DENIED',
+      reason: 'Teen learning accounts require a child age of at least 13.',
+    };
   }
 
   if (amountCents > account.learningBalanceCents && action !== 'LEARNING_PROMPT_COMPLETE') {
-    return { action, status: 'DENIED', reason: 'The simulated action exceeds the teen learning balance.' };
+    return {
+      action,
+      status: 'DENIED',
+      reason: 'The simulated action exceeds the teen learning balance.',
+    };
   }
 
   if (account.approvalRequiredFor.includes(action)) {
-    return { action, status: 'REQUIRES_PARENT_APPROVAL', reason: 'A parent must review this learning action first.' };
+    return {
+      action,
+      status: 'REQUIRES_PARENT_APPROVAL',
+      reason: 'A parent must review this learning action first.',
+    };
   }
 
-  return { action, status: 'NOT_REQUIRED', reason: 'This learning action can be completed without approval.' };
+  return {
+    action,
+    status: 'NOT_REQUIRED',
+    reason: 'This learning action can be completed without approval.',
+  };
 }
 
 export function buildTeenActivitySummary(
@@ -137,9 +156,15 @@ export function buildTeenActivitySummary(
     .reduce((sum, signal) => sum + clampCents(signal.amountCents), 0);
 
   const teachableMoments = [
-    spentCents > earnedCents ? 'Spending is ahead of earning; review tradeoffs before the next purchase.' : null,
-    savedCents > 0 ? 'Celebrate progress toward savings challenges and discuss what made it easier to save.' : null,
-    signals.some((signal) => signal.type === 'LEARN') ? 'Ask the teen to explain one concept they practiced this week.' : null,
+    spentCents > earnedCents
+      ? 'Spending is ahead of earning; review tradeoffs before the next purchase.'
+      : null,
+    savedCents > 0
+      ? 'Celebrate progress toward savings challenges and discuss what made it easier to save.'
+      : null,
+    signals.some((signal) => signal.type === 'LEARN')
+      ? 'Ask the teen to explain one concept they practiced this week.'
+      : null,
   ].filter((message): message is string => Boolean(message));
 
   return {

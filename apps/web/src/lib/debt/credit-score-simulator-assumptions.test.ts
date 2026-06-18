@@ -20,7 +20,9 @@ describe('buildCreditScoreAssumptionSummary', () => {
     const simulation = simulateCreditScoreImpact({ cards: [card] });
     const summary = buildCreditScoreAssumptionSummary([card], simulation);
 
-    expect(summary.missingStates).toContain('1 card need credit limits before utilization can be modeled.');
+    expect(summary.missingStates).toContain(
+      '1 card need credit limits before utilization can be modeled.',
+    );
     expect(summary.missingStates).toContain(
       'Payment-history direction needs a modeled on-time streak or imported late-payment history.',
     );
@@ -29,7 +31,10 @@ describe('buildCreditScoreAssumptionSummary', () => {
 
   it('surfaces closure missing-data state when account effects are unknown', () => {
     const withLimit = { ...card, creditLimitCents: 1_000_00 };
-    const simulation = simulateCreditScoreImpact({ cards: [withLimit], closeAccountIds: ['card-a'] });
+    const simulation = simulateCreditScoreImpact({
+      cards: [withLimit],
+      closeAccountIds: ['card-a'],
+    });
     const summary = buildCreditScoreAssumptionSummary([withLimit], simulation);
 
     expect(summary.missingStates).toContain(

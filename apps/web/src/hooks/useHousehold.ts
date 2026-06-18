@@ -586,11 +586,15 @@ export interface UseHouseholdResult {
   /** Pause or resume a recurring bill without deleting it. */
   setRecurringBillPaused: (billId: SyncId, paused: boolean) => boolean;
   /** Override, skip, or settle a single recurring bill cycle. */
-  updateRecurringBillCycle: (input: UpdateRecurringBillCycleInput) => RecurringSharedBillCycle | null;
+  updateRecurringBillCycle: (
+    input: UpdateRecurringBillCycleInput,
+  ) => RecurringSharedBillCycle | null;
   /** Mark a recurring bill cycle paid and generate a shared expense for it. */
   markRecurringBillCyclePaid: (input: MarkRecurringBillCyclePaidInput) => SharedExpense | null;
   /** Create or update a member-level contribution pledge for a shared goal. */
-  setGoalContributionPledge: (input: SetGoalContributionPledgeInput) => GoalContributionPledge | null;
+  setGoalContributionPledge: (
+    input: SetGoalContributionPledgeInput,
+  ) => GoalContributionPledge | null;
   /** Record an attributed contribution toward a shared goal pledge. */
   recordGoalContribution: (input: RecordGoalContributionInput) => GoalContributionPledge | null;
   /** Create or update a shared shopping budget. */
@@ -600,7 +604,9 @@ export interface UseHouseholdResult {
   /** Create or replace a reconciliation plan. */
   setReconciliationPlan: (input: SetReconciliationPlanInput) => HouseholdReconciliationPlan | null;
   /** Preserve an immutable reconciliation snapshot for a period. */
-  markReconciliationPeriodReconciled: (input: MarkReconciliationPeriodInput) => ReconciliationSnapshot | null;
+  markReconciliationPeriodReconciled: (
+    input: MarkReconciliationPeriodInput,
+  ) => ReconciliationSnapshot | null;
 
   // -- Kids & allowances (#2200) ---
   /** Create a child profile for chore and allowance tracking. */
@@ -729,8 +735,9 @@ export function getRecurringBillCyclePayer(
 
   if (bill.rotationMode === 'WEIGHTED') {
     const weightedIds = rotationIds.flatMap((memberId) =>
-      Array.from({ length: Math.max(1, Math.round(bill.rotationWeights[memberId] ?? 1)) }, () =>
-        memberId,
+      Array.from(
+        { length: Math.max(1, Math.round(bill.rotationWeights[memberId] ?? 1)) },
+        () => memberId,
       ),
     );
     return weightedIds[cycleIndex % weightedIds.length] ?? bill.defaultPayerMemberId;
@@ -807,7 +814,10 @@ export function calculateGoalPledgeProgress(
 ): GoalPledgeProgress {
   const activePledges = pledges.filter((pledge) => pledge.goalId === goalId && !pledge.deletedAt);
   const members = activePledges.map((pledge) => {
-    const remainingAmount = Math.max(0, normalizeMoney(pledge.pledgedAmount - pledge.contributedAmount));
+    const remainingAmount = Math.max(
+      0,
+      normalizeMoney(pledge.pledgedAmount - pledge.contributedAmount),
+    );
     return {
       memberId: pledge.memberId,
       pledgedAmount: normalizeMoney(pledge.pledgedAmount),
@@ -823,7 +833,9 @@ export function calculateGoalPledgeProgress(
     totalContributed: normalizeMoney(
       members.reduce((sum, member) => sum + member.contributedAmount, 0),
     ),
-    totalRemaining: normalizeMoney(members.reduce((sum, member) => sum + member.remainingAmount, 0)),
+    totalRemaining: normalizeMoney(
+      members.reduce((sum, member) => sum + member.remainingAmount, 0),
+    ),
     members,
   };
 }
@@ -1130,7 +1142,9 @@ export function useHousehold(): UseHouseholdResult {
   const [goalPledges, setGoalPledges] = useState<GoalContributionPledge[]>([]);
   const [shoppingBudgets, setShoppingBudgets] = useState<SharedShoppingBudget[]>([]);
   const [reconciliationPlans, setReconciliationPlans] = useState<HouseholdReconciliationPlan[]>([]);
-  const [reconciliationSnapshots, setReconciliationSnapshots] = useState<ReconciliationSnapshot[]>([]);
+  const [reconciliationSnapshots, setReconciliationSnapshots] = useState<ReconciliationSnapshot[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -1608,7 +1622,10 @@ export function useHousehold(): UseHouseholdResult {
             affectedObjectType: 'accountSharing',
             affectedObjectId: existing.id,
             summary: 'Account sharing changed to ' + input.sharingMode,
-            detail: input.sharingMode === 'PRIVATE' ? 'Account details are hidden.' : 'Account is visible to the household.',
+            detail:
+              input.sharingMode === 'PRIVATE'
+                ? 'Account details are hidden.'
+                : 'Account is visible to the household.',
             privacy: input.sharingMode === 'PRIVATE' ? 'REDACTED' : 'PUBLIC',
           });
           return updated.find((as) => as.accountId === input.accountId) ?? null;
@@ -1636,7 +1653,10 @@ export function useHousehold(): UseHouseholdResult {
           affectedObjectType: 'accountSharing',
           affectedObjectId: newSharing.id,
           summary: 'Account sharing set to ' + input.sharingMode,
-          detail: input.sharingMode === 'PRIVATE' ? 'Account details are hidden.' : 'Account is visible to the household.',
+          detail:
+            input.sharingMode === 'PRIVATE'
+              ? 'Account details are hidden.'
+              : 'Account is visible to the household.',
           privacy: input.sharingMode === 'PRIVATE' ? 'REDACTED' : 'PUBLIC',
         });
         return newSharing;
@@ -1951,7 +1971,12 @@ export function useHousehold(): UseHouseholdResult {
       const amountCents = toCents(input.estimatedAmount);
       const splitMemberIds = Array.from(new Set(input.splitMemberIds.filter(Boolean)));
       const rotationIds = Array.from(
-        new Set((input.payerRotationMemberIds?.length ? input.payerRotationMemberIds : [input.defaultPayerMemberId]).filter(Boolean)),
+        new Set(
+          (input.payerRotationMemberIds?.length
+            ? input.payerRotationMemberIds
+            : [input.defaultPayerMemberId]
+          ).filter(Boolean),
+        ),
       );
 
       if (!name || amountCents <= 0 || splitMemberIds.length === 0 || !input.defaultPayerMemberId) {
@@ -2041,7 +2066,8 @@ export function useHousehold(): UseHouseholdResult {
               status: input.status ?? cycle.status,
               payerMemberId: input.payerMemberId ?? cycle.payerMemberId,
               amount: input.amount === undefined ? cycle.amount : normalizeMoney(input.amount),
-              skippedReason: input.skippedReason === undefined ? cycle.skippedReason : input.skippedReason,
+              skippedReason:
+                input.skippedReason === undefined ? cycle.skippedReason : input.skippedReason,
               settlementStatus: input.settlementStatus ?? cycle.settlementStatus,
               updatedAt: now,
             };
@@ -2180,7 +2206,11 @@ export function useHousehold(): UseHouseholdResult {
           updatedAt: now,
           history: [
             ...existing.history,
-            { changedAt: now, changedByMemberId: getActorMemberId(), summary: 'Pledge rule updated' },
+            {
+              changedAt: now,
+              changedByMemberId: getActorMemberId(),
+              summary: 'Pledge rule updated',
+            },
           ],
         };
       } else {
@@ -2196,7 +2226,9 @@ export function useHousehold(): UseHouseholdResult {
           schedule: input.schedule ?? [],
           contributedAmount: 0,
           nextDueDate: input.nextDueDate ?? null,
-          history: [{ changedAt: now, changedByMemberId: getActorMemberId(), summary: 'Pledge created' }],
+          history: [
+            { changedAt: now, changedByMemberId: getActorMemberId(), summary: 'Pledge created' },
+          ],
           createdAt: now,
           updatedAt: now,
           deletedAt: null,
@@ -2243,7 +2275,11 @@ export function useHousehold(): UseHouseholdResult {
           updatedAt: now,
           history: [
             ...pledge.history,
-            { changedAt: now, changedByMemberId: getActorMemberId(), summary: input.note ?? 'Contribution recorded' },
+            {
+              changedAt: now,
+              changedByMemberId: getActorMemberId(),
+              summary: input.note ?? 'Contribution recorded',
+            },
           ],
         };
         return saved;
@@ -2319,7 +2355,8 @@ export function useHousehold(): UseHouseholdResult {
         affectedObjectType: 'shoppingBudget',
         affectedObjectId: saved.id,
         summary: name + ' shopping budget saved',
-        detail: 'Trips can be shared, reimbursable, or personal without exposing private transactions.',
+        detail:
+          'Trips can be shared, reimbursable, or personal without exposing private transactions.',
         privacy: 'PUBLIC',
       });
       setError(null);
@@ -2382,7 +2419,9 @@ export function useHousehold(): UseHouseholdResult {
         updatedAt: now,
       };
       const updatedBudgets = shoppingBudgets.map((entry) =>
-        entry.id === budget.id ? { ...entry, trips: [...entry.trips, trip], updatedAt: now } : entry,
+        entry.id === budget.id
+          ? { ...entry, trips: [...entry.trips, trip], updatedAt: now }
+          : entry,
       );
       saveToStorage(STORAGE_KEY_SHOPPING_BUDGETS, updatedBudgets);
       setShoppingBudgets(updatedBudgets);
@@ -2392,7 +2431,10 @@ export function useHousehold(): UseHouseholdResult {
         affectedObjectType: 'shoppingTrip',
         affectedObjectId: trip.id,
         summary: store + ' shopping trip logged',
-        detail: input.allocation === 'PERSONAL' ? 'Marked personal; no shared expense generated.' : 'Receipt total added to shared shopping budget.',
+        detail:
+          input.allocation === 'PERSONAL'
+            ? 'Marked personal; no shared expense generated.'
+            : 'Receipt total added to shared shopping budget.',
         privacy: input.allocation === 'PERSONAL' ? 'REDACTED' : 'AGGREGATED',
       });
       setError(null);
@@ -2428,7 +2470,10 @@ export function useHousehold(): UseHouseholdResult {
           id: crypto.randomUUID(),
           amount: normalizeMoney(obligation.amount),
           memberIds: Array.from(new Set(obligation.memberIds.filter(Boolean))),
-          shares: obligation.shares.map((share) => ({ ...share, amount: normalizeMoney(share.amount) })),
+          shares: obligation.shares.map((share) => ({
+            ...share,
+            amount: normalizeMoney(share.amount),
+          })),
         })),
         contributions: input.contributions.map((contribution) => ({
           ...contribution,

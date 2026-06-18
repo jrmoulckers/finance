@@ -12,7 +12,14 @@ describe('predictWhatIfScenario', () => {
       horizonDays: 10,
       asOfDate: '2025-01-01',
       changes: [
-        { id: 'bill', description: 'New bill', type: 'expense', amountCents: 20_000, startDate: '2025-01-05', frequency: 'once' },
+        {
+          id: 'bill',
+          description: 'New bill',
+          type: 'expense',
+          amountCents: 20_000,
+          startDate: '2025-01-05',
+          frequency: 'once',
+        },
       ],
     });
 
@@ -29,7 +36,14 @@ describe('predictWhatIfScenario', () => {
       horizonDays: 21,
       asOfDate: '2025-01-01',
       changes: [
-        { id: 'pay', description: 'Side income', type: 'income', amountCents: 10_000, startDate: '2025-01-02', frequency: 'weekly' },
+        {
+          id: 'pay',
+          description: 'Side income',
+          type: 'income',
+          amountCents: 10_000,
+          startDate: '2025-01-02',
+          frequency: 'weekly',
+        },
       ],
     });
 
@@ -45,7 +59,14 @@ describe('predictWhatIfScenario', () => {
       asOfDate: '2025-01-01',
       safetyBufferCents: 15_000,
       changes: [
-        { id: 'goal', description: 'Goal transfer', type: 'goal-contribution', amountCents: 15_000, startDate: '2025-01-02', frequency: 'once' },
+        {
+          id: 'goal',
+          description: 'Goal transfer',
+          type: 'goal-contribution',
+          amountCents: 15_000,
+          startDate: '2025-01-02',
+          frequency: 'once',
+        },
       ],
     });
 
@@ -55,8 +76,16 @@ describe('predictWhatIfScenario', () => {
   });
 
   it('saves, edits, and deletes local drafts without mutating real inputs', () => {
-    const first = saveScenarioDraft([], { id: 'd1', name: 'Move', changes: [] }, '2025-01-01T00:00:00Z');
-    const edited = saveScenarioDraft(first, { id: 'd1', name: 'Move later', changes: [] }, '2025-01-02T00:00:00Z');
+    const first = saveScenarioDraft(
+      [],
+      { id: 'd1', name: 'Move', changes: [] },
+      '2025-01-01T00:00:00Z',
+    );
+    const edited = saveScenarioDraft(
+      first,
+      { id: 'd1', name: 'Move later', changes: [] },
+      '2025-01-02T00:00:00Z',
+    );
     const deleted = deleteScenarioDraft(edited, 'd1');
 
     expect(first[0].name).toBe('Move');

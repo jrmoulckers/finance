@@ -2,7 +2,20 @@
 
 export type TextDirection = 'ltr' | 'rtl';
 
-const RTL_LANGUAGES = new Set(['ar', 'arc', 'dv', 'fa', 'ha', 'he', 'khw', 'ks', 'ku', 'ps', 'ur', 'yi']);
+const RTL_LANGUAGES = new Set([
+  'ar',
+  'arc',
+  'dv',
+  'fa',
+  'ha',
+  'he',
+  'khw',
+  'ks',
+  'ku',
+  'ps',
+  'ur',
+  'yi',
+]);
 const FIRST_STRONG_ISOLATE = '\u2068';
 const POP_DIRECTIONAL_ISOLATE = '\u2069';
 

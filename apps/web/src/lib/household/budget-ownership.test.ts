@@ -54,14 +54,24 @@ describe('normalizeHouseholdBudgetMetadata', () => {
 
 describe('budget permissions', () => {
   it('shows private owner-only budgets only to the owner', () => {
-    expect(canViewHouseholdBudget(ownedBudget, { memberId: 'member-a', role: 'MEMBER' })).toBe(true);
-    expect(canViewHouseholdBudget(ownedBudget, { memberId: 'member-b', role: 'MEMBER' })).toBe(false);
+    expect(canViewHouseholdBudget(ownedBudget, { memberId: 'member-a', role: 'MEMBER' })).toBe(
+      true,
+    );
+    expect(canViewHouseholdBudget(ownedBudget, { memberId: 'member-b', role: 'MEMBER' })).toBe(
+      false,
+    );
   });
 
   it('allows admins and assigned members to edit visible shared budgets but blocks viewers', () => {
-    expect(canEditHouseholdBudget(sharedBudget, { memberId: 'member-c', role: 'ADMIN' })).toBe(true);
-    expect(canEditHouseholdBudget(sharedBudget, { memberId: 'member-a', role: 'MEMBER' })).toBe(true);
-    expect(canEditHouseholdBudget(sharedBudget, { memberId: 'member-a', role: 'VIEWER' })).toBe(false);
+    expect(canEditHouseholdBudget(sharedBudget, { memberId: 'member-c', role: 'ADMIN' })).toBe(
+      true,
+    );
+    expect(canEditHouseholdBudget(sharedBudget, { memberId: 'member-a', role: 'MEMBER' })).toBe(
+      true,
+    );
+    expect(canEditHouseholdBudget(sharedBudget, { memberId: 'member-a', role: 'VIEWER' })).toBe(
+      false,
+    );
   });
 });
 
@@ -73,7 +83,11 @@ describe('buildHouseholdBudgetProgress', () => {
     });
 
     expect(result.map((budget) => budget.budgetId)).toEqual(['budget-shared']);
-    expect(result[0]).toMatchObject({ remainingCents: 15_000, ownerLabel: 'Shared responsibility', canEdit: true });
+    expect(result[0]).toMatchObject({
+      remainingCents: 15_000,
+      ownerLabel: 'Shared responsibility',
+      canEdit: true,
+    });
   });
 });
 

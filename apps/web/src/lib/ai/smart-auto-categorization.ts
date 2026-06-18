@@ -51,7 +51,16 @@ interface CandidateDraft {
 }
 
 const DEFAULT_AUTO_APPLY_THRESHOLD = 0.82;
-const TOKEN_STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'from', 'payment', 'purchase', 'pos']);
+const TOKEN_STOP_WORDS = new Set([
+  'the',
+  'and',
+  'for',
+  'with',
+  'from',
+  'payment',
+  'purchase',
+  'pos',
+]);
 
 export function getCategorizationAmountBand(amountCents: number | undefined): string | undefined {
   if (amountCents === undefined) return undefined;
@@ -147,7 +156,9 @@ function scoreLearnedCorrections(
 ): CandidateDraft[] {
   const merchant = normalizeMerchantKey(input.description);
   const band = getCategorizationAmountBand(input.amountCents);
-  const tokens = new Set(extractCategorizationMemoTokens(`${input.description} ${input.memo ?? ''}`));
+  const tokens = new Set(
+    extractCategorizationMemoTokens(`${input.description} ${input.memo ?? ''}`),
+  );
 
   return corrections.flatMap((correction) => {
     const category = categories.find((item) => item.id === correction.categoryId);
@@ -197,7 +208,9 @@ function scoreBuiltInRules(
 ): CandidateDraft[] {
   const drafts: CandidateDraft[] = [];
   for (const rule of BUILTIN_RULES) {
-    const category = categories.find((item) => item.name.toLowerCase() === rule.categoryName.toLowerCase());
+    const category = categories.find(
+      (item) => item.name.toLowerCase() === rule.categoryName.toLowerCase(),
+    );
     if (!category) continue;
     for (const keyword of rule.keywords) {
       if (description === keyword || description.includes(keyword)) {
@@ -224,7 +237,9 @@ function scoreAmountHint(
   if (amountCents === undefined) return [];
   const hint = getAmountHint(amountCents);
   if (!hint) return [];
-  const category = categories.find((item) => item.name.toLowerCase() === hint.categoryName.toLowerCase());
+  const category = categories.find(
+    (item) => item.name.toLowerCase() === hint.categoryName.toLowerCase(),
+  );
   if (!category) return [];
   return [
     {

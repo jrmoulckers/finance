@@ -86,7 +86,8 @@ export function mergeNonOverlappingChanges<T extends Record<string, unknown>>(
   }
 
   return {
-    mode: conflicts.length > 0 ? 'needs-review' : autoMergedFields.length > 0 ? 'auto-merged' : 'clean',
+    mode:
+      conflicts.length > 0 ? 'needs-review' : autoMergedFields.length > 0 ? 'auto-merged' : 'clean',
     merged: merged as T,
     autoMergedFields,
     conflicts,

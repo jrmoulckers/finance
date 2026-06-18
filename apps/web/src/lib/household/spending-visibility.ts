@@ -64,15 +64,23 @@ function hasIntersection(left: readonly string[] | undefined, right: readonly st
   return right.some((value) => allowed.has(normalized(value)));
 }
 
-function customRuleMatches(rule: SpendingVisibilityRule, transaction: SpendingVisibilityTransaction): boolean {
+function customRuleMatches(
+  rule: SpendingVisibilityRule,
+  transaction: SpendingVisibilityTransaction,
+): boolean {
   if (rule.categoryIds?.length && !transaction.categoryId) return false;
-  if (rule.categoryIds?.length && !rule.categoryIds.includes(transaction.categoryId ?? '')) return false;
+  if (rule.categoryIds?.length && !rule.categoryIds.includes(transaction.categoryId ?? ''))
+    return false;
   if (rule.merchants?.length && !transaction.merchant) return false;
-  if (rule.merchants?.length && !rule.merchants.map(normalized).includes(normalized(transaction.merchant ?? ''))) {
+  if (
+    rule.merchants?.length &&
+    !rule.merchants.map(normalized).includes(normalized(transaction.merchant ?? ''))
+  ) {
     return false;
   }
   if (!hasIntersection(rule.tags, transaction.tags)) return false;
-  if (rule.minimumAmountCents !== undefined && transaction.amountCents < rule.minimumAmountCents) return false;
+  if (rule.minimumAmountCents !== undefined && transaction.amountCents < rule.minimumAmountCents)
+    return false;
   if (rule.startDate && transaction.date.localeCompare(rule.startDate) < 0) return false;
   if (rule.endDate && transaction.date.localeCompare(rule.endDate) > 0) return false;
   if (rule.recurringOnly && !transaction.isRecurringBill) return false;
@@ -89,16 +97,29 @@ export function evaluateSpendingVisibility(
   }
 
   const candidates = rules.filter(
-    (rule) => rule.accountId === transaction.accountId && rule.ownerMemberId === transaction.ownerMemberId,
+    (rule) =>
+      rule.accountId === transaction.accountId && rule.ownerMemberId === transaction.ownerMemberId,
   );
   const detailRule = candidates.find((rule) => rule.level === 'SHARED_TRANSACTIONS');
   if (detailRule) {
-    return { visible: true, detailLevel: 'DETAIL', redactionLabel: null, matchedRuleId: detailRule.id };
+    return {
+      visible: true,
+      detailLevel: 'DETAIL',
+      redactionLabel: null,
+      matchedRuleId: detailRule.id,
+    };
   }
 
-  const customRule = candidates.find((rule) => rule.level === 'CUSTOM' && customRuleMatches(rule, transaction));
+  const customRule = candidates.find(
+    (rule) => rule.level === 'CUSTOM' && customRuleMatches(rule, transaction),
+  );
   if (customRule) {
-    return { visible: true, detailLevel: 'DETAIL', redactionLabel: null, matchedRuleId: customRule.id };
+    return {
+      visible: true,
+      detailLevel: 'DETAIL',
+      redactionLabel: null,
+      matchedRuleId: customRule.id,
+    };
   }
 
   const aggregateRule = candidates.find((rule) => rule.level === 'AGGREGATE_ONLY');
@@ -144,5 +165,11 @@ export function buildSpendingVisibilityPreview(
     }
   }
 
-  return { visibleTransactionIds, redactedTransactionIds, hiddenTransactionIds, aggregateVisibleCents, detailVisibleCents };
+  return {
+    visibleTransactionIds,
+    redactedTransactionIds,
+    hiddenTransactionIds,
+    aggregateVisibleCents,
+    detailVisibleCents,
+  };
 }

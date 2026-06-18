@@ -31,7 +31,10 @@ describe('poa local records', () => {
 
   it('records audit events and local revoke state without needing sync', () => {
     const event = buildPoaAuditEvent(grant, 'BILLS', 'VIEW', '2025-05-01T00:00:00Z');
-    const snapshot = appendPoaAuditEvent(upsertPoaGrant(createPoaLocalAccessSnapshot('household-1'), grant), event);
+    const snapshot = appendPoaAuditEvent(
+      upsertPoaGrant(createPoaLocalAccessSnapshot('household-1'), grant),
+      event,
+    );
     const revoked = revokePoaGrantInSnapshot(snapshot, 'grant-1', '2025-05-02T00:00:00Z');
 
     expect(snapshot.auditEvents).toEqual([event]);

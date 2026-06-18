@@ -125,13 +125,20 @@ export function aggregateDisplayCurrencyAmounts(
   const convertedAmounts = amounts.map((amount) =>
     convertDisplayCurrencyAmount(amount, targetCurrency, rates, options),
   );
-  const originalTotalsByCurrency = convertedAmounts.reduce<Record<string, number>>((totals, amount) => {
-    totals[amount.currency] = (totals[amount.currency] ?? 0) + amount.amountCents;
-    return totals;
-  }, {});
-  const convertedCurrencyCodes = [...new Set(convertedAmounts
-    .filter((amount) => amount.currency !== targetCurrency)
-    .map((amount) => amount.currency))].sort();
+  const originalTotalsByCurrency = convertedAmounts.reduce<Record<string, number>>(
+    (totals, amount) => {
+      totals[amount.currency] = (totals[amount.currency] ?? 0) + amount.amountCents;
+      return totals;
+    },
+    {},
+  );
+  const convertedCurrencyCodes = [
+    ...new Set(
+      convertedAmounts
+        .filter((amount) => amount.currency !== targetCurrency)
+        .map((amount) => amount.currency),
+    ),
+  ].sort();
   const rateSources = [...new Set(convertedAmounts.map((amount) => amount.rate.source))].sort();
   const rateTimestamps = convertedAmounts
     .map((amount) => amount.rate.timestamp)
@@ -150,24 +157,42 @@ export function aggregateDisplayCurrencyAmounts(
     hasStaleRates,
     rateSources,
     oldestRateTimestamp: rateTimestamps[0] ?? null,
-    disclosure: buildDisclosure(targetCurrency, convertedCurrencyCodes, hasStaleRates, rateTimestamps[0] ?? null),
+    disclosure: buildDisclosure(
+      targetCurrency,
+      convertedCurrencyCodes,
+      hasStaleRates,
+      rateTimestamps[0] ?? null,
+    ),
   };
 }
 
 export function calculateBudgetDisplayRollup(
-  rows: readonly { readonly id: string; readonly budgetedCents: number; readonly spentCents: number; readonly currency: string }[],
+  rows: readonly {
+    readonly id: string;
+    readonly budgetedCents: number;
+    readonly spentCents: number;
+    readonly currency: string;
+  }[],
   displayCurrency: string,
   rates: readonly DisplayExchangeRate[],
   options: DisplayCurrencyRollupOptions = {},
 ): BudgetDisplayRollup {
   const budgeted = aggregateDisplayCurrencyAmounts(
-    rows.map((row) => ({ id: `${row.id}:budgeted`, amountCents: row.budgetedCents, currency: row.currency })),
+    rows.map((row) => ({
+      id: `${row.id}:budgeted`,
+      amountCents: row.budgetedCents,
+      currency: row.currency,
+    })),
     displayCurrency,
     rates,
     options,
   );
   const spent = aggregateDisplayCurrencyAmounts(
-    rows.map((row) => ({ id: `${row.id}:spent`, amountCents: row.spentCents, currency: row.currency })),
+    rows.map((row) => ({
+      id: `${row.id}:spent`,
+      amountCents: row.spentCents,
+      currency: row.currency,
+    })),
     displayCurrency,
     rates,
     options,
@@ -184,18 +209,26 @@ export function calculateBudgetDisplayRollup(
   };
 }
 
-export function calculateDashboardDisplayRollup(
-  input: {
-    readonly accountBalances: readonly DisplayCurrencyAmount[];
-    readonly cashFlowTransactions: readonly DisplayCurrencyAmount[];
-    readonly displayCurrency: string;
-    readonly rates: readonly DisplayExchangeRate[];
-    readonly options?: DisplayCurrencyRollupOptions;
-  },
-): DashboardDisplayRollup {
+export function calculateDashboardDisplayRollup(input: {
+  readonly accountBalances: readonly DisplayCurrencyAmount[];
+  readonly cashFlowTransactions: readonly DisplayCurrencyAmount[];
+  readonly displayCurrency: string;
+  readonly rates: readonly DisplayExchangeRate[];
+  readonly options?: DisplayCurrencyRollupOptions;
+}): DashboardDisplayRollup {
   return {
-    netWorth: aggregateDisplayCurrencyAmounts(input.accountBalances, input.displayCurrency, input.rates, input.options),
-    cashFlow: aggregateDisplayCurrencyAmounts(input.cashFlowTransactions, input.displayCurrency, input.rates, input.options),
+    netWorth: aggregateDisplayCurrencyAmounts(
+      input.accountBalances,
+      input.displayCurrency,
+      input.rates,
+      input.options,
+    ),
+    cashFlow: aggregateDisplayCurrencyAmounts(
+      input.cashFlowTransactions,
+      input.displayCurrency,
+      input.rates,
+      input.options,
+    ),
   };
 }
 

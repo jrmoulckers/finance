@@ -7,7 +7,12 @@ import type { HomeOfficeSummary } from './home-office-deductions';
 import type { AnnualMileageSummary } from './mileage-log';
 import type { PayerIncomeSummary } from './self-employment-income';
 
-export type TaxChecklistSection = 'INCOME' | 'INVESTMENTS' | 'DEDUCTIONS' | 'ESTIMATED_PAYMENTS' | 'DOCUMENTS';
+export type TaxChecklistSection =
+  | 'INCOME'
+  | 'INVESTMENTS'
+  | 'DEDUCTIONS'
+  | 'ESTIMATED_PAYMENTS'
+  | 'DOCUMENTS';
 export type TaxChecklistStatus =
   | 'NOT_STARTED'
   | 'REQUESTED'
@@ -69,7 +74,10 @@ const TAX_EXPORT_DISCLAIMER =
 function item(
   input: Omit<TaxChecklistItem, 'status'> & { readonly status?: TaxChecklistStatus },
 ): TaxChecklistItem {
-  return { ...input, status: input.status ?? (input.warnings.length > 0 ? 'REQUESTED' : 'REVIEWED') };
+  return {
+    ...input,
+    status: input.status ?? (input.warnings.length > 0 ? 'REQUESTED' : 'REVIEWED'),
+  };
 }
 
 export function buildTaxDocumentChecklist(input: TaxDocumentChecklistInput): TaxDocumentChecklist {
@@ -86,8 +94,13 @@ export function buildTaxDocumentChecklist(input: TaxDocumentChecklistInput): Tax
       label: '1099 and self-employment income reconciliation',
       linkedRecordCount: incomeSummaries.reduce((sum, summary) => sum + summary.recordCount, 0),
       warnings: incomeSummaries
-        .filter((summary) => summary.missingPayerDetails || summary.expectedFormStatus === 'MISSING')
-        .map((summary) => `${summary.payerName} ${summary.formType} needs payer details or expected form follow-up.`),
+        .filter(
+          (summary) => summary.missingPayerDetails || summary.expectedFormStatus === 'MISSING',
+        )
+        .map(
+          (summary) =>
+            `${summary.payerName} ${summary.formType} needs payer details or expected form follow-up.`,
+        ),
       status: incomeSummaries.length === 0 ? 'NOT_APPLICABLE' : undefined,
     }),
     item({
@@ -95,7 +108,10 @@ export function buildTaxDocumentChecklist(input: TaxDocumentChecklistInput): Tax
       section: 'INVESTMENTS',
       label: 'Brokerage 1099-B and capital-gain lot detail',
       linkedRecordCount: input.investmentSaleCount ?? 0,
-      warnings: input.investmentSaleCount === undefined ? ['Confirm brokerage tax forms before export.'] : [],
+      warnings:
+        input.investmentSaleCount === undefined
+          ? ['Confirm brokerage tax forms before export.']
+          : [],
       status: input.investmentSaleCount === 0 ? 'NOT_APPLICABLE' : undefined,
     }),
     item({
@@ -118,14 +134,18 @@ export function buildTaxDocumentChecklist(input: TaxDocumentChecklistInput): Tax
       section: 'ESTIMATED_PAYMENTS',
       label: 'Quarterly estimated tax payment records',
       linkedRecordCount: input.estimatedPaymentCount ?? 0,
-      warnings: (input.estimatedPaymentCount ?? 0) === 0 ? ['No estimated payments recorded for this tax year.'] : [],
+      warnings:
+        (input.estimatedPaymentCount ?? 0) === 0
+          ? ['No estimated payments recorded for this tax year.']
+          : [],
     }),
     item({
       id: 'source-documents',
       section: 'DOCUMENTS',
       label: 'W-2, 1099, brokerage, receipt, and preparer documents',
       linkedRecordCount: manuallyReceivedDocuments.length,
-      warnings: manuallyReceivedDocuments.length === 0 ? ['No source documents marked received yet.'] : [],
+      warnings:
+        manuallyReceivedDocuments.length === 0 ? ['No source documents marked received yet.'] : [],
     }),
   ];
 
@@ -147,7 +167,9 @@ function csvEscape(value: string | number | boolean | null | undefined): string 
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
-export function rowsToCsv(rows: ReadonlyArray<Readonly<Record<string, string | number | boolean | null | undefined>>>): string {
+export function rowsToCsv(
+  rows: ReadonlyArray<Readonly<Record<string, string | number | boolean | null | undefined>>>,
+): string {
   if (rows.length === 0) {
     return '';
   }
@@ -164,7 +186,12 @@ export function buildTaxExportBundle(input: {
   readonly householdName: string;
   readonly generatedAt: string;
   readonly checklist: TaxDocumentChecklist;
-  readonly csvFiles: Readonly<Record<string, ReadonlyArray<Readonly<Record<string, string | number | boolean | null | undefined>>>>>;
+  readonly csvFiles: Readonly<
+    Record<
+      string,
+      ReadonlyArray<Readonly<Record<string, string | number | boolean | null | undefined>>>
+    >
+  >;
   readonly jsonPayload: Readonly<Record<string, unknown>>;
 }): TaxExportBundle {
   const files: TaxExportFile[] = Object.entries(input.csvFiles).map(([name, rows]) => ({

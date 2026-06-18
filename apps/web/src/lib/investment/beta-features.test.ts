@@ -20,7 +20,9 @@ const syncMetadata = {
   isSynced: true,
 };
 
-function investment(overrides: Partial<Investment> & Pick<Investment, 'id' | 'symbol'>): Investment {
+function investment(
+  overrides: Partial<Investment> & Pick<Investment, 'id' | 'symbol'>,
+): Investment {
   return {
     id: overrides.id,
     householdId: 'household-1',
@@ -37,7 +39,9 @@ function investment(overrides: Partial<Investment> & Pick<Investment, 'id' | 'sy
   };
 }
 
-function lot(overrides: Partial<InvestmentLot> & Pick<InvestmentLot, 'id' | 'investmentId'>): InvestmentLot {
+function lot(
+  overrides: Partial<InvestmentLot> & Pick<InvestmentLot, 'id' | 'investmentId'>,
+): InvestmentLot {
   return {
     id: overrides.id,
     investmentId: overrides.investmentId,
@@ -53,7 +57,13 @@ describe('investing beta allocation visuals', () => {
   it('groups by asset class, type, account, and holding with concentration signals', () => {
     const holdings = [
       investment({ id: 'vti', symbol: 'VTI', shares: 80, currentPricePerShare: { amount: 10000 } }),
-      investment({ id: 'btc', symbol: 'BTC', type: 'CRYPTO', shares: 20, currentPricePerShare: { amount: 10000 } }),
+      investment({
+        id: 'btc',
+        symbol: 'BTC',
+        type: 'CRYPTO',
+        shares: 20,
+        currentPricePerShare: { amount: 10000 },
+      }),
     ];
 
     const analysis = buildAllocationVisualAnalysis(holdings, DEFAULT_TARGET_BANDS);
@@ -62,7 +72,11 @@ describe('investing beta allocation visuals', () => {
     expect(analysis.typeGroups.find((group) => group.key === 'CRYPTO')?.valueCents).toBe(200000);
     expect(analysis.accountGroups[0].label).toContain('Account account-1');
     expect(analysis.holdingGroups[0].label).toContain('VTI');
-    expect(analysis.diversificationSignals.some((signal) => signal.label === 'Top holding concentration')).toBe(true);
+    expect(
+      analysis.diversificationSignals.some(
+        (signal) => signal.label === 'Top holding concentration',
+      ),
+    ).toBe(true);
     expect(analysis.driftSignals.some((signal) => signal.id === 'drift-US_STOCKS')).toBe(true);
   });
 });
@@ -71,7 +85,13 @@ describe('investing beta rebalancing suggestions', () => {
   it('produces buy-only suggestions from cash and sell suggestions only when enabled', () => {
     const holdings = [
       investment({ id: 'vti', symbol: 'VTI', shares: 90, currentPricePerShare: { amount: 10000 } }),
-      investment({ id: 'bnd', symbol: 'BND', type: 'BOND', shares: 10, currentPricePerShare: { amount: 10000 } }),
+      investment({
+        id: 'bnd',
+        symbol: 'BND',
+        type: 'BOND',
+        shares: 10,
+        currentPricePerShare: { amount: 10000 },
+      }),
     ];
     const analysis = computeTargetAllocationAnalysis(holdings, DEFAULT_TARGET_BANDS);
 
@@ -96,13 +116,36 @@ describe('investing beta rebalancing suggestions', () => {
 describe('investing beta dividend tracking', () => {
   it('forecasts forward income, yield on cost, monthly calendar, and stale warnings', () => {
     const holdings = [
-      investment({ id: 'vti', symbol: 'VTI', shares: 10, costBasisPerShare: { amount: 10000 }, currentPricePerShare: { amount: 20000 } }),
+      investment({
+        id: 'vti',
+        symbol: 'VTI',
+        shares: 10,
+        costBasisPerShare: { amount: 10000 },
+        currentPricePerShare: { amount: 20000 },
+      }),
     ];
 
     const analysis = analyzeDividendIncome(
       holdings,
-      [{ investmentId: 'vti', dividendPerShareCents: 50, frequency: 'QUARTERLY', lastExDate: '2024-01-01', taxClassification: 'Qualified' }],
-      [{ investmentId: 'vti', exDate: '2024-12-01', payDate: '2024-12-31', amountCents: 500, currency: 'USD', taxClassification: 'Qualified' }],
+      [
+        {
+          investmentId: 'vti',
+          dividendPerShareCents: 50,
+          frequency: 'QUARTERLY',
+          lastExDate: '2024-01-01',
+          taxClassification: 'Qualified',
+        },
+      ],
+      [
+        {
+          investmentId: 'vti',
+          exDate: '2024-12-01',
+          payDate: '2024-12-31',
+          amountCents: 500,
+          currency: 'USD',
+          taxClassification: 'Qualified',
+        },
+      ],
       '2025-01-15',
     );
 
@@ -149,8 +192,22 @@ describe('investing beta cost-basis tracking', () => {
       [
         'vti',
         [
-          lot({ id: 'lot-1', investmentId: 'vti', purchaseDate: '2022-01-01', shares: 5, costPerShare: { amount: 10000 }, totalCost: { amount: 50000 } }),
-          lot({ id: 'lot-2', investmentId: 'vti', purchaseDate: '2024-12-01', shares: 5, costPerShare: { amount: 12000 }, totalCost: { amount: 60000 } }),
+          lot({
+            id: 'lot-1',
+            investmentId: 'vti',
+            purchaseDate: '2022-01-01',
+            shares: 5,
+            costPerShare: { amount: 10000 },
+            totalCost: { amount: 50000 },
+          }),
+          lot({
+            id: 'lot-2',
+            investmentId: 'vti',
+            purchaseDate: '2024-12-01',
+            shares: 5,
+            costPerShare: { amount: 12000 },
+            totalCost: { amount: 60000 },
+          }),
         ],
       ],
     ]);
@@ -165,8 +222,18 @@ describe('investing beta cost-basis tracking', () => {
     expect(analysis.lotRows).toHaveLength(2);
     expect(analysis.lotRows[0].unrealizedGainLossCents).toBe(25000);
     expect(analysis.realizedGainRows).toHaveLength(2);
-    expect(analysis.realizedGainRows[0]).toMatchObject({ lotId: 'lot-1', sharesSold: 5, gainLossCents: 30000, holdingPeriod: 'LONG_TERM' });
-    expect(analysis.realizedGainRows[1]).toMatchObject({ lotId: 'lot-2', sharesSold: 2, gainLossCents: 8000, holdingPeriod: 'SHORT_TERM' });
+    expect(analysis.realizedGainRows[0]).toMatchObject({
+      lotId: 'lot-1',
+      sharesSold: 5,
+      gainLossCents: 30000,
+      holdingPeriod: 'LONG_TERM',
+    });
+    expect(analysis.realizedGainRows[1]).toMatchObject({
+      lotId: 'lot-2',
+      sharesSold: 2,
+      gainLossCents: 8000,
+      holdingPeriod: 'SHORT_TERM',
+    });
     expect(analysis.realizedByYear[0].totalCents).toBe(38000);
   });
 });

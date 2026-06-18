@@ -63,7 +63,11 @@ export interface CryptoTaxDisposition {
   readonly proceedsCents: number;
   readonly costBasisCents: number;
   readonly gainLossCents: number;
-  readonly lotMatches: readonly { readonly lotId: string; readonly quantity: number; readonly costBasisCents: number }[];
+  readonly lotMatches: readonly {
+    readonly lotId: string;
+    readonly quantity: number;
+    readonly costBasisCents: number;
+  }[];
 }
 
 export interface CryptoTaxEngineResult {
@@ -99,7 +103,8 @@ function roundCents(value: number): number {
 
 function eventValue(event: CryptoTaxEvent): number | null {
   if (event.totalValueCents !== undefined) return roundCents(event.totalValueCents);
-  if (event.fairMarketValueCents !== undefined) return roundCents(event.fairMarketValueCents * event.quantity);
+  if (event.fairMarketValueCents !== undefined)
+    return roundCents(event.fairMarketValueCents * event.quantity);
   return null;
 }
 
@@ -111,7 +116,13 @@ function toPublicLot(lot: MutableCryptoLot): CryptoTaxLot {
   return { ...lot };
 }
 
-function addLot(lots: MutableCryptoLot[], event: CryptoTaxEvent, quantity: number, basisCents: number, asset = event.asset): void {
+function addLot(
+  lots: MutableCryptoLot[],
+  event: CryptoTaxEvent,
+  quantity: number,
+  basisCents: number,
+  asset = event.asset,
+): void {
   if (quantity <= 0) return;
   lots.push({
     id: event.lotId ?? `${event.id}:lot`,
@@ -127,7 +138,11 @@ function addLot(lots: MutableCryptoLot[], event: CryptoTaxEvent, quantity: numbe
   });
 }
 
-function orderedLots(lots: readonly MutableCryptoLot[], asset: string, method: CryptoLotMatchingMethod): MutableCryptoLot[] {
+function orderedLots(
+  lots: readonly MutableCryptoLot[],
+  asset: string,
+  method: CryptoLotMatchingMethod,
+): MutableCryptoLot[] {
   const candidates = lots.filter((lot) => lot.asset === normalizeAsset(asset) && lot.quantity > 0);
   return candidates.sort((a, b) => {
     if (method === 'HIFO') {
@@ -214,7 +229,12 @@ export function processCryptoTaxEvents(input: {
       continue;
     }
 
-    if (event.type === 'staking_reward' || event.type === 'airdrop' || event.type === 'mining' || event.type === 'income_receipt') {
+    if (
+      event.type === 'staking_reward' ||
+      event.type === 'airdrop' ||
+      event.type === 'mining' ||
+      event.type === 'income_receipt'
+    ) {
       ordinaryIncomeCents += value ?? 0;
       addLot(lots, event, event.quantity, value ?? 0);
       continue;
@@ -224,7 +244,9 @@ export function processCryptoTaxEvents(input: {
       const fee = event.feeCents ?? 0;
       const proceeds = Math.max(0, (value ?? 0) - (gasFeePolicy === 'CAPITALIZE' ? fee : 0));
       if (gasFeePolicy === 'EXPENSE') deductibleGasExpenseCents += fee;
-      dispositions.push(disposeLots({ lots, event, proceedsCents: proceeds, method: matchingMethod }));
+      dispositions.push(
+        disposeLots({ lots, event, proceedsCents: proceeds, method: matchingMethod }),
+      );
       if (event.type === 'swap' && event.toAsset !== undefined && event.toQuantity !== undefined) {
         addLot(lots, event, event.toQuantity, value ?? 0, event.toAsset);
       }
@@ -232,7 +254,9 @@ export function processCryptoTaxEvents(input: {
     }
 
     if (event.type === 'bridge' || event.type === 'wrap' || event.type === 'unwrap') {
-      warnings.push(`${event.type} event ${event.id} is represented as a non-taxable transfer/wrapper event; retain source provenance for review.`);
+      warnings.push(
+        `${event.type} event ${event.id} is represented as a non-taxable transfer/wrapper event; retain source provenance for review.`,
+      );
     }
   }
 

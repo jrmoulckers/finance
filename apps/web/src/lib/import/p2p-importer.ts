@@ -28,8 +28,13 @@ export interface P2PImportResult {
 
 export function detectP2PProvider(headers: readonly string[]): P2PProvider | null {
   const normalized = headers.map(normalizeHeader);
-  if (normalized.includes('datetime') && normalized.includes('note') && normalized.includes('from')) return 'venmo';
-  if (normalized.includes('transaction type') && normalized.includes('name') && normalized.includes('notes')) {
+  if (normalized.includes('datetime') && normalized.includes('note') && normalized.includes('from'))
+    return 'venmo';
+  if (
+    normalized.includes('transaction type') &&
+    normalized.includes('name') &&
+    normalized.includes('notes')
+  ) {
     return 'cash-app';
   }
   return null;
@@ -38,7 +43,8 @@ export function detectP2PProvider(headers: readonly string[]): P2PProvider | nul
 export function parseP2PCsv(content: string, provider?: P2PProvider): P2PImportResult {
   const { headers, rows } = parseCsv(content);
   const detected = provider ?? detectP2PProvider(headers);
-  if (!detected) return { provider: 'venmo', transactions: [], errors: ['Unsupported P2P CSV headers'] };
+  if (!detected)
+    return { provider: 'venmo', transactions: [], errors: ['Unsupported P2P CSV headers'] };
 
   const transactions: P2PTransaction[] = [];
   const errors: string[] = [];
@@ -55,7 +61,9 @@ export function parseP2PCsv(content: string, provider?: P2PProvider): P2PImportR
   return { provider: detected, transactions, errors };
 }
 
-function parseVenmoRow(rawFields: Readonly<Record<string, string>>): { transaction: P2PTransaction; error?: never } | { transaction?: never; error: string } {
+function parseVenmoRow(
+  rawFields: Readonly<Record<string, string>>,
+): { transaction: P2PTransaction; error?: never } | { transaction?: never; error: string } {
   const date = parseDate(read(rawFields, ['datetime', 'date']));
   const amountCents = parseCurrencyToCents(read(rawFields, ['amount', 'total']));
   if (!date) return { error: 'missing or invalid date' };
@@ -78,7 +86,9 @@ function parseVenmoRow(rawFields: Readonly<Record<string, string>>): { transacti
   };
 }
 
-function parseCashAppRow(rawFields: Readonly<Record<string, string>>): { transaction: P2PTransaction; error?: never } | { transaction?: never; error: string } {
+function parseCashAppRow(
+  rawFields: Readonly<Record<string, string>>,
+): { transaction: P2PTransaction; error?: never } | { transaction?: never; error: string } {
   const date = parseDate(read(rawFields, ['date', 'transaction date']));
   const amountCents = parseCurrencyToCents(read(rawFields, ['amount', 'net amount']));
   if (!date) return { error: 'missing or invalid date' };
@@ -123,28 +133,40 @@ function makeTransaction(input: {
   };
 }
 
-function toP2PKind(type: string, note: string, amountCents: number, feeCents: number): P2PTransactionKind {
+function toP2PKind(
+  type: string,
+  note: string,
+  amountCents: number,
+  feeCents: number,
+): P2PTransactionKind {
   const normalized = normalizeHeader(`${type} ${note}`);
   if (/\b(refund|reversal)\b/.test(normalized)) return 'refund';
-  if (/\b(instant transfer|cash out|transfer to bank)\b/.test(normalized)) return 'instant_transfer';
+  if (/\b(instant transfer|cash out|transfer to bank)\b/.test(normalized))
+    return 'instant_transfer';
   if (/\b(request|charge)\b/.test(normalized)) return 'request';
   if (feeCents !== 0 && amountCents === 0) return 'fee';
   if (/\bfee\b/.test(normalized)) return 'fee';
   return 'payment';
 }
 
-function sanitizeRawFields(fields: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
+function sanitizeRawFields(
+  fields: Readonly<Record<string, string>>,
+): Readonly<Record<string, string>> {
   const sanitized: Record<string, string> = {};
   for (const [key, value] of Object.entries(fields)) {
-    sanitized[key] = /^(from|to|name|counterparty)$/i.test(key.trim()) && value.trim()
-      ? `[hash:${stableHash(value)}]`
-      : value;
+    sanitized[key] =
+      /^(from|to|name|counterparty)$/i.test(key.trim()) && value.trim()
+        ? `[hash:${stableHash(value)}]`
+        : value;
   }
   return sanitized;
 }
 
 function sanitizeMemo(value: string): string | null {
-  const trimmed = value.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const trimmed = value
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!trimmed) return null;
   return trimmed.length <= 80 ? trimmed : `${trimmed.slice(0, 77)}...`;
 }
@@ -169,14 +191,20 @@ function toRawFields(headers: readonly string[], row: readonly string[]): Record
 
 function read(fields: Readonly<Record<string, string>>, names: readonly string[]): string {
   for (const name of names) {
-    const entry = Object.entries(fields).find(([key]) => normalizeHeader(key) === normalizeHeader(name));
+    const entry = Object.entries(fields).find(
+      ([key]) => normalizeHeader(key) === normalizeHeader(name),
+    );
     if (entry && entry[1].trim()) return entry[1].trim();
   }
   return '';
 }
 
 function normalizeHeader(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function emptyToNull(value: string): string | null {

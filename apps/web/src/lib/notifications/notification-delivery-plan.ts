@@ -30,18 +30,23 @@ export function planNotificationDelivery(
       shouldDispatch: decision.deliver,
       reason: decision.reason,
     })),
-    criticalBypassCopy: notification.severity === 'critical'
-      ? 'Critical alerts may appear even during quiet hours so urgent account risks are not missed.'
-      : null,
+    criticalBypassCopy:
+      notification.severity === 'critical'
+        ? 'Critical alerts may appear even during quiet hours so urgent account risks are not missed.'
+        : null,
   };
 }
 
-export function dispatchableChannels(plan: NotificationDeliveryPlan): readonly NotificationChannel[] {
+export function dispatchableChannels(
+  plan: NotificationDeliveryPlan,
+): readonly NotificationChannel[] {
   return plan.dispatches
     .filter((dispatch) => dispatch.shouldDispatch)
     .map((dispatch) => dispatch.channel);
 }
 
-export function suppressedChannels(plan: NotificationDeliveryPlan): readonly NotificationChannelDispatch[] {
+export function suppressedChannels(
+  plan: NotificationDeliveryPlan,
+): readonly NotificationChannelDispatch[] {
   return plan.dispatches.filter((dispatch) => !dispatch.shouldDispatch);
 }

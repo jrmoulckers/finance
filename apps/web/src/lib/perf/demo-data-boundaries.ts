@@ -23,13 +23,20 @@ export interface DemoGuardTelemetryEvent {
 }
 
 export function isDemoRecord(record: DemoGuardedRecord): boolean {
-  return record.metadata?.isDemo === true || record.syncPolicy === 'local-only' || record.exportPolicy === 'exclude-by-default';
+  return (
+    record.metadata?.isDemo === true ||
+    record.syncPolicy === 'local-only' ||
+    record.exportPolicy === 'exclude-by-default'
+  );
 }
 
 export function filterDemoRecordsForSync<T extends DemoGuardedRecord>(
   records: readonly T[],
 ): DemoGuardResult<T> {
-  return partitionDemoRecords(records, (record) => record.metadata?.isDemo === true || record.syncPolicy === 'local-only');
+  return partitionDemoRecords(
+    records,
+    (record) => record.metadata?.isDemo === true || record.syncPolicy === 'local-only',
+  );
 }
 
 export function filterDemoRecordsForExport<T extends DemoGuardedRecord>(

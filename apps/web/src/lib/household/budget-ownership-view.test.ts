@@ -53,14 +53,10 @@ const budgets: HouseholdBudgetProgressInput[] = [
 
 describe('household budget page rows', () => {
   it('builds owner/shared indicators, last-changed labels, and fallback local metadata', () => {
-    const rows = buildHouseholdBudgetPageRows(
-      budgets,
-      { memberId: 'member-a', role: 'MEMBER' },
-      [
-        { memberId: 'member-a', displayName: 'Alex' },
-        { memberId: 'member-b', displayName: 'Blake' },
-      ],
-    );
+    const rows = buildHouseholdBudgetPageRows(budgets, { memberId: 'member-a', role: 'MEMBER' }, [
+      { memberId: 'member-a', displayName: 'Alex' },
+      { memberId: 'member-b', displayName: 'Blake' },
+    ]);
 
     expect(rows.map((row) => row.budgetId)).toEqual(['mine', 'shared', 'demo-local']);
     expect(rows[0]).toMatchObject({

@@ -12,7 +12,13 @@ const sync = {
   isSynced: true,
 };
 
-function tx(id: string, date: string, type: Transaction['type'], amount: number, recurring = false): Transaction {
+function tx(
+  id: string,
+  date: string,
+  type: Transaction['type'],
+  amount: number,
+  recurring = false,
+): Transaction {
   return {
     ...sync,
     id,

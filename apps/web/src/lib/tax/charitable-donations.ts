@@ -63,7 +63,9 @@ export function filterDonationsByYear(
   entries: readonly CharitableDonationEntry[],
   taxYear: number,
 ): CharitableDonationEntry[] {
-  return entries.filter((entry) => entry.taxYear === taxYear || entry.date.startsWith(String(taxYear)));
+  return entries.filter(
+    (entry) => entry.taxYear === taxYear || entry.date.startsWith(String(taxYear)),
+  );
 }
 
 export function summarizeCharitableDonations(
@@ -93,8 +95,14 @@ export function summarizeCharitableDonations(
     if (isMissingReceipt(entry)) {
       warnings.push(`Donation ${entry.id} needs written acknowledgement for $250+ gifts.`);
     }
-    if (entry.donationType === 'NON_CASH' && amount >= NON_CASH_FORM_8283_THRESHOLD_CENTS && entry.acknowledgementReceived !== true) {
-      warnings.push(`Donation ${entry.id} is non-cash over $500 and should be reviewed for Form 8283 support.`);
+    if (
+      entry.donationType === 'NON_CASH' &&
+      amount >= NON_CASH_FORM_8283_THRESHOLD_CENTS &&
+      entry.acknowledgementReceived !== true
+    ) {
+      warnings.push(
+        `Donation ${entry.id} is non-cash over $500 and should be reviewed for Form 8283 support.`,
+      );
     }
     return warnings;
   });

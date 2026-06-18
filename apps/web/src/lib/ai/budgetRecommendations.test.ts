@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { applyBudgetRecommendationDecision, getBudgetDataNeededMessage, recommendBudgetsFromHistory, type BudgetRecommendationTransaction } from './budgetRecommendations';
+import {
+  applyBudgetRecommendationDecision,
+  getBudgetDataNeededMessage,
+  recommendBudgetsFromHistory,
+  type BudgetRecommendationTransaction,
+} from './budgetRecommendations';
 
 const transactions: readonly BudgetRecommendationTransaction[] = [
   { id: 'g1', date: '2026-01-05', amountCents: -40_000, type: 'expense', category: 'Groceries' },
@@ -32,7 +37,11 @@ describe('smart budget recommendations', () => {
   });
 
   it('suggests new categories and explains source period, average, variance, and confidence', () => {
-    const recommendations = recommendBudgetsFromHistory(transactions, [], { startDate: '2026-01-01', endDate: '2026-04-30', minimumMonths: 2 });
+    const recommendations = recommendBudgetsFromHistory(transactions, [], {
+      startDate: '2026-01-01',
+      endDate: '2026-04-30',
+      minimumMonths: 2,
+    });
     const uncategorized = recommendations.find((item) => item.category === 'Uncategorized');
     expect(uncategorized).toMatchObject({ action: 'create', status: 'suggested' });
     expect(uncategorized?.explanation).toContain('average monthly spend');
@@ -40,16 +49,45 @@ describe('smart budget recommendations', () => {
   });
 
   it('returns a clear data-needed path when history is insufficient', () => {
-    const recommendations = recommendBudgetsFromHistory(transactions, [], { startDate: '2026-04-01', endDate: '2026-04-30', minimumMonths: 2 });
+    const recommendations = recommendBudgetsFromHistory(transactions, [], {
+      startDate: '2026-04-01',
+      endDate: '2026-04-30',
+      minimumMonths: 2,
+    });
     expect(recommendations).toEqual([]);
-    expect(getBudgetDataNeededMessage({ startDate: '2026-04-01', endDate: '2026-04-30', minimumMonths: 2 })).toContain('At least 2 months');
+    expect(
+      getBudgetDataNeededMessage({
+        startDate: '2026-04-01',
+        endDate: '2026-04-30',
+        minimumMonths: 2,
+      }),
+    ).toContain('At least 2 months');
   });
 
   it('requires user-controlled apply, edit, ignore, and snooze flows', () => {
-    const [recommendation] = recommendBudgetsFromHistory(transactions, [], { startDate: '2026-01-01', endDate: '2026-04-30', minimumMonths: 2 });
-    const applied = applyBudgetRecommendationDecision([recommendation], { recommendationId: recommendation.id, action: 'edit', amountCents: 50_000 });
+    const [recommendation] = recommendBudgetsFromHistory(transactions, [], {
+      startDate: '2026-01-01',
+      endDate: '2026-04-30',
+      minimumMonths: 2,
+    });
+    const applied = applyBudgetRecommendationDecision([recommendation], {
+      recommendationId: recommendation.id,
+      action: 'edit',
+      amountCents: 50_000,
+    });
     expect(applied.change).toMatchObject({ amountCents: 50_000, status: 'applied' });
-    expect(applyBudgetRecommendationDecision([recommendation], { recommendationId: recommendation.id, action: 'ignore' }).recommendations[0].status).toBe('ignored');
-    expect(applyBudgetRecommendationDecision([recommendation], { recommendationId: recommendation.id, action: 'snooze', snoozeUntil: '2026-05-01' }).recommendations[0].status).toBe('snoozed');
+    expect(
+      applyBudgetRecommendationDecision([recommendation], {
+        recommendationId: recommendation.id,
+        action: 'ignore',
+      }).recommendations[0].status,
+    ).toBe('ignored');
+    expect(
+      applyBudgetRecommendationDecision([recommendation], {
+        recommendationId: recommendation.id,
+        action: 'snooze',
+        snoozeUntil: '2026-05-01',
+      }).recommendations[0].status,
+    ).toBe('snoozed');
   });
 });

@@ -148,7 +148,8 @@ export function decideReEngagement(input: ReEngagementInput): ReEngagementDecisi
   if (!input.lastActiveAt) reasons.push('No previous activity timestamp is available.');
   if (inactiveDays < thresholdDays) reasons.push('User has not been inactive long enough.');
   if (remaining.length === 0) reasons.push('Setup is already complete.');
-  if (input.dismissedUntil && input.dismissedUntil > input.now) reasons.push('Re-engagement was dismissed recently.');
+  if (input.dismissedUntil && input.dismissedUntil > input.now)
+    reasons.push('Re-engagement was dismissed recently.');
 
   const shouldShow = reasons.length === 0;
   const primaryAction = remaining[0]

@@ -37,7 +37,10 @@ const CHANNEL_LABELS: Record<NotificationChannel, string> = {
 
 const ALL_CHANNELS: readonly NotificationChannel[] = ['in_app', 'browser_push', 'email'];
 
-function isAvailable(channel: NotificationChannel, availability: NotificationChannelAvailability): boolean {
+function isAvailable(
+  channel: NotificationChannel,
+  availability: NotificationChannelAvailability,
+): boolean {
   return availability[channel];
 }
 
@@ -48,23 +51,26 @@ export function buildNotificationPreferenceViewModel(params: {
   const preferences = normalizeNotificationPreferences(params.preferences);
   const quietHoursValidation = validateQuietHours(preferences.quietHours);
   const controls = preferences.channelPreferences.flatMap((preference) =>
-    ALL_CHANNELS.map((channel): NotificationPreferenceControl => ({
-      alertType: preference.alertType,
-      channel,
-      checked: preference.channels.includes(channel),
-      disabled: !isAvailable(channel, params.availability),
-      label: `${CHANNEL_LABELS[channel]} ${preference.alertType.replaceAll('_', ' ')}`,
-      describedBy: !isAvailable(channel, params.availability)
-        ? `${CHANNEL_LABELS[channel]} delivery is not available on this device yet.`
-        : 'Press Space to toggle this delivery channel.',
-    })),
+    ALL_CHANNELS.map(
+      (channel): NotificationPreferenceControl => ({
+        alertType: preference.alertType,
+        channel,
+        checked: preference.channels.includes(channel),
+        disabled: !isAvailable(channel, params.availability),
+        label: `${CHANNEL_LABELS[channel]} ${preference.alertType.replaceAll('_', ' ')}`,
+        describedBy: !isAvailable(channel, params.availability)
+          ? `${CHANNEL_LABELS[channel]} delivery is not available on this device yet.`
+          : 'Press Space to toggle this delivery channel.',
+      }),
+    ),
   );
 
   return {
     preferences,
     controls,
     quietHoursErrors: quietHoursValidation.errors,
-    keyboardHelp: 'Use Tab to move between notification controls and Space to toggle a focused checkbox.',
+    keyboardHelp:
+      'Use Tab to move between notification controls and Space to toggle a focused checkbox.',
   };
 }
 

@@ -2,7 +2,10 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { createMintMigrationPreflightPanel, isMintMigrationCandidate } from '../mint-migration-preflight';
+import {
+  createMintMigrationPreflightPanel,
+  isMintMigrationCandidate,
+} from '../mint-migration-preflight';
 
 describe('mint migration preflight panel', () => {
   it('detects Mint CSV and preserves source-specific fields', () => {

@@ -32,10 +32,7 @@ export function createTaggedWebVitalSample(input: WebVitalSampleInput): TaggedWe
   };
 }
 
-export function shouldSampleWebVital(
-  sessionId: string,
-  sampleRate: number,
-): boolean {
+export function shouldSampleWebVital(sessionId: string, sampleRate: number): boolean {
   if (sampleRate <= 0) return false;
   if (sampleRate >= 1) return true;
   return stableHash(sessionId) / 0xffffffff < sampleRate;

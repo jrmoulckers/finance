@@ -46,7 +46,10 @@ describe('getPoaRenewalReminder', () => {
   });
 
   it('does not remind for revoked grants', () => {
-    const reminder = getPoaRenewalReminder(revokePoaAccessGrant(grant, '2025-04-01T00:00:00Z'), '2025-05-01T00:00:00Z');
+    const reminder = getPoaRenewalReminder(
+      revokePoaAccessGrant(grant, '2025-04-01T00:00:00Z'),
+      '2025-05-01T00:00:00Z',
+    );
 
     expect(reminder.due).toBe(false);
     expect(reminder.daysUntilExpiration).toBeNull();

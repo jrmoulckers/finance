@@ -286,7 +286,10 @@ describe('evaluateLargeTransactionConfirmations', () => {
 
   it('batches multiple large confirmations to avoid overload', () => {
     const [alert] = evaluateLargeTransactionConfirmations(
-      [baseTransaction, { ...baseTransaction, transactionId: 'txn-2', payee: 'Furniture', amountCents: 80_000 }],
+      [
+        baseTransaction,
+        { ...baseTransaction, transactionId: 'txn-2', payee: 'Furniture', amountCents: 80_000 },
+      ],
       { enabled: true, globalThresholdCents: 50_000 },
     );
 

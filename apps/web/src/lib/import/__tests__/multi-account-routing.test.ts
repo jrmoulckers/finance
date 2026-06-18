@@ -54,9 +54,9 @@ describe('buildAccountRoutingPlan', () => {
 
     expect(plan.accounts).toHaveLength(2);
     expect(plan.unroutedRowIndexes).toEqual([3]);
-    expect(plan.accounts.find((account) => account.sourceName.includes('Checking'))?.matchedAccountId).toBe(
-      'acct-checking',
-    );
+    expect(
+      plan.accounts.find((account) => account.sourceName.includes('Checking'))?.matchedAccountId,
+    ).toBe('acct-checking');
     expect(plan.accounts.find((account) => account.sourceName === 'Savings')?.action).toBe('match');
   });
 
@@ -80,7 +80,11 @@ describe('findTransferCandidates', () => {
     const candidates = findTransferCandidates(transactions);
 
     expect(candidates).toHaveLength(1);
-    expect(candidates[0]).toMatchObject({ debitRowIndex: 1, creditRowIndex: 2, amountCents: 10000 });
+    expect(candidates[0]).toMatchObject({
+      debitRowIndex: 1,
+      creditRowIndex: 2,
+      amountCents: 10000,
+    });
     expect(candidates[0].confidence).toBeGreaterThanOrEqual(0.75);
   });
 });

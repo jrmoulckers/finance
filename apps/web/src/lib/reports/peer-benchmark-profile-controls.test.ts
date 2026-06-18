@@ -29,7 +29,13 @@ describe('peer benchmark profile controls', () => {
       region: 'Midwest',
     });
 
-    expect(saved).toEqual({ optedIn: true, householdSize: 2, incomeBand: '75k-100k', region: 'Midwest', lifeStage: undefined });
+    expect(saved).toEqual({
+      optedIn: true,
+      householdSize: 2,
+      incomeBand: '75k-100k',
+      region: 'Midwest',
+      lifeStage: undefined,
+    });
     expect(loadPeerBenchmarkProfile(storage)).toEqual(saved);
     expect(clearStoredPeerBenchmarkProfile(storage)).toEqual({ optedIn: false });
     expect(loadPeerBenchmarkProfile(storage)).toEqual({ optedIn: false });
@@ -41,6 +47,11 @@ describe('peer benchmark profile controls', () => {
     expect(model.primaryActionLabel).toBe('Opt in to peer benchmarks');
     expect(model.fallbackCopy).toContain('50/30/20 baseline');
     expect(model.dataUseCopy).toContain('only after you opt in');
-    expect(model.fields.map((field) => field.id)).toEqual(['householdSize', 'incomeBand', 'region', 'lifeStage']);
+    expect(model.fields.map((field) => field.id)).toEqual([
+      'householdSize',
+      'incomeBand',
+      'region',
+      'lifeStage',
+    ]);
   });
 });

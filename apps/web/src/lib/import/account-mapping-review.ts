@@ -95,7 +95,9 @@ export function applyAccountMappingReview(input: {
 
 function fingerprintRows(rows: readonly AccountMappingReviewRow[]): string {
   let hash = 2166136261;
-  for (const row of [...rows].sort((left, right) => left.sourceKey.localeCompare(right.sourceKey))) {
+  for (const row of [...rows].sort((left, right) =>
+    left.sourceKey.localeCompare(right.sourceKey),
+  )) {
     const part = `${row.sourceKey}|${row.selectedAccountId ?? ''}|${row.action}`;
     for (let index = 0; index < part.length; index++) {
       hash ^= part.charCodeAt(index);

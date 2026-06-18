@@ -88,12 +88,17 @@ export function updateScenarioBudgetAmount(
   return {
     ...scenario,
     budgets: scenario.budgets.map((budget) =>
-      budget.id === budgetId ? { ...budget, amountCents: Math.max(0, Math.round(amountCents)) } : budget,
+      budget.id === budgetId
+        ? { ...budget, amountCents: Math.max(0, Math.round(amountCents)) }
+        : budget,
     ),
   };
 }
 
-export function updateScenarioIncome(scenario: BudgetScenario, incomeCents: number): BudgetScenario {
+export function updateScenarioIncome(
+  scenario: BudgetScenario,
+  incomeCents: number,
+): BudgetScenario {
   return { ...scenario, incomeCents: Math.max(0, Math.round(incomeCents)) };
 }
 
@@ -131,11 +136,14 @@ export function summarizeBudgetScenario(
 ): BudgetScenarioSummary {
   const baselineAssignedCents = totalAssignedCents(baseline.budgets);
   const scenarioBudgetAssignedCents = totalAssignedCents(scenario.budgets);
-  const sinkingFundContributionCents = totalSinkingFundContributions(scenario.sinkingFundContributions);
+  const sinkingFundContributionCents = totalSinkingFundContributions(
+    scenario.sinkingFundContributions,
+  );
   const scenarioAssignedCents = scenarioBudgetAssignedCents + sinkingFundContributionCents;
   const baselineRemainingCashFlowCents = baseline.incomeCents - baselineAssignedCents;
   const scenarioRemainingCashFlowCents = scenario.incomeCents - scenarioAssignedCents;
-  const baselineProjectedMonthEndBalanceCents = baseline.startingBalanceCents + baselineRemainingCashFlowCents;
+  const baselineProjectedMonthEndBalanceCents =
+    baseline.startingBalanceCents + baselineRemainingCashFlowCents;
   const scenarioProjectedMonthEndBalanceCents =
     scenario.startingBalanceCents + scenarioRemainingCashFlowCents;
 

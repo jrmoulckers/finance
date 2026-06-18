@@ -47,7 +47,11 @@ export function planDashboardHydration(
 
 export function createDashboardHydrationEvent(
   item: DashboardHydrationPlanItem,
-  context: { readonly hydratedAtMs: number; readonly effectiveConnectionType: string; readonly appVersion: string },
+  context: {
+    readonly hydratedAtMs: number;
+    readonly effectiveConnectionType: string;
+    readonly appVersion: string;
+  },
 ): DashboardHydrationTelemetryEvent {
   return {
     name: 'dashboard-widget-hydrated',

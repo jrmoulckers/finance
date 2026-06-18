@@ -32,7 +32,15 @@ describe('net-worth report view helpers', () => {
     const storage = new MemoryStorage();
     const january = snapshotFromCurrentNetWorth(
       { label: '2025-01-10', assets: 10_000_00, liabilities: 5_000_00, netWorth: 5_000_00 },
-      [{ className: 'Investments', balance: 10_000_00, percent: 100, accountCount: 1, accountTypes: ['INVESTMENT'] }],
+      [
+        {
+          className: 'Investments',
+          balance: 10_000_00,
+          percent: 100,
+          accountCount: 1,
+          accountTypes: ['INVESTMENT'],
+        },
+      ],
     );
     const replacement = { ...january, date: '2025-01-31', assetsCents: 12_000_00 };
 

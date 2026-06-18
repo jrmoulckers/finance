@@ -77,7 +77,10 @@ export function canEditHouseholdBudget(
   if (!canViewHouseholdBudget(metadata, viewer)) return false;
   if (viewer.role === 'OWNER' || viewer.role === 'ADMIN') return true;
   if (viewer.role === 'VIEWER') return false;
-  return metadata.ownerMemberId === viewer.memberId || metadata.participantMemberIds.includes(viewer.memberId);
+  return (
+    metadata.ownerMemberId === viewer.memberId ||
+    metadata.participantMemberIds.includes(viewer.memberId)
+  );
 }
 
 export function buildHouseholdBudgetProgress(

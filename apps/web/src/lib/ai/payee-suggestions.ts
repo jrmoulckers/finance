@@ -40,10 +40,18 @@ export function rankPayeeSuggestions(
 ): PayeeSuggestion[] {
   if (context.privacyEnabled === false) return [];
   const normalizedQuery = normalize(query);
-  const candidates = new Map<string, { score: number; reasons: string[]; source: PayeeSuggestion['source'] }>();
+  const candidates = new Map<
+    string,
+    { score: number; reasons: string[]; source: PayeeSuggestion['source'] }
+  >();
 
   for (const entry of history) {
-    addScore(candidates, entry.payee, scoreHistoryEntry(normalizedQuery, entry, context), 'history');
+    addScore(
+      candidates,
+      entry.payee,
+      scoreHistoryEntry(normalizedQuery, entry, context),
+      'history',
+    );
     if (entry.correctedFrom) {
       const correctedScore = scoreText(normalizedQuery, entry.correctedFrom);
       if (correctedScore >= 0.45) {
@@ -52,12 +60,18 @@ export function rankPayeeSuggestions(
     }
   }
   for (const alias of aliases) {
-    addScore(candidates, alias.canonicalPayee, scoreText(normalizedQuery, alias.alias) + 0.18, 'alias', [
-      'normalized alias match',
-    ]);
+    addScore(
+      candidates,
+      alias.canonicalPayee,
+      scoreText(normalizedQuery, alias.alias) + 0.18,
+      'alias',
+      ['normalized alias match'],
+    );
   }
   for (const seeded of SEEDED_PAYEES) {
-    addScore(candidates, seeded, scoreText(normalizedQuery, seeded) * 0.72, 'seeded', ['seeded merchant']);
+    addScore(candidates, seeded, scoreText(normalizedQuery, seeded) * 0.72, 'seeded', [
+      'seeded merchant',
+    ]);
   }
 
   return [...candidates.entries()]
@@ -84,7 +98,10 @@ function scoreHistoryEntry(
   if (score >= 0.9) reasons.push('prefix match');
   else if (score >= 0.45) reasons.push('fuzzy match');
 
-  const ageDays = Math.max(0, ((context.now ?? new Date()).getTime() - Date.parse(entry.date)) / 86_400_000);
+  const ageDays = Math.max(
+    0,
+    ((context.now ?? new Date()).getTime() - Date.parse(entry.date)) / 86_400_000,
+  );
   if (ageDays <= 30) {
     score += 0.18;
     reasons.push('recent');
@@ -111,7 +128,8 @@ function addScore(
   extraReasons: readonly string[] = [],
 ): void {
   const score = typeof scoreOrResult === 'number' ? scoreOrResult : scoreOrResult.score;
-  const reasons = typeof scoreOrResult === 'number' ? extraReasons : [...scoreOrResult.reasons, ...extraReasons];
+  const reasons =
+    typeof scoreOrResult === 'number' ? extraReasons : [...scoreOrResult.reasons, ...extraReasons];
   if (score <= 0) return;
   const existing = candidates.get(payee);
   if (!existing) {
@@ -133,7 +151,7 @@ function scoreText(normalizedQuery: string, text: string): number {
   const prefixTokens = queryTokens.filter((queryToken) =>
     textTokens.some((textToken) => textToken.startsWith(queryToken)),
   ).length;
-  if (prefixTokens > 0) return 0.45 + prefixTokens / Math.max(queryTokens.length, 1) * 0.2;
+  if (prefixTokens > 0) return 0.45 + (prefixTokens / Math.max(queryTokens.length, 1)) * 0.2;
   return diceCoefficient(normalizedQuery, normalizedText) * 0.55;
 }
 
@@ -154,11 +172,17 @@ function diceCoefficient(left: string, right: string): number {
 }
 
 function pairs(value: string): string[] {
-  return Array.from({ length: Math.max(0, value.length - 1) }, (_, index) => value.slice(index, index + 2));
+  return Array.from({ length: Math.max(0, value.length - 1) }, (_, index) =>
+    value.slice(index, index + 2),
+  );
 }
 
 function normalize(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function clamp(value: number): number {

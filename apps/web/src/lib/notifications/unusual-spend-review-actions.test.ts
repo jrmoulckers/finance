@@ -46,7 +46,12 @@ describe('unusual spend review actions', () => {
   });
 
   it('records the chosen outcome and updates notification state', () => {
-    const result = applyUnusualSpendReviewOutcome(alert, notification, 'not_mine', '2025-02-01T13:00:00Z');
+    const result = applyUnusualSpendReviewOutcome(
+      alert,
+      notification,
+      'not_mine',
+      '2025-02-01T13:00:00Z',
+    );
 
     expect(result.review.outcome).toBe('not_mine');
     expect(result.notification.status).toBe('read');

@@ -419,7 +419,9 @@ export function DataImportWizardPage() {
         file.type === 'application/vnd.intu.qfx';
 
       if (!isTransactionImport) {
-        setBackupError('Choose a .json backup, .zip backup, .csv, .ofx, .qfx, or .qif transaction import file.');
+        setBackupError(
+          'Choose a .json backup, .zip backup, .csv, .ofx, .qfx, or .qif transaction import file.',
+        );
         return;
       }
       setBackupPackage(null);
@@ -562,9 +564,9 @@ export function DataImportWizardPage() {
             Upload Import File
           </h2>
           <p className="import-card__description">
-            Drag and drop a JSON/ZIP backup for full restore, or a CSV, OFX/QFX, or QIF file
-            for transaction import. Supports Quicken, Mint, YNAB, Chase, American Express,
-            Wells Fargo, Citi, and custom CSV formats.
+            Drag and drop a JSON/ZIP backup for full restore, or a CSV, OFX/QFX, or QIF file for
+            transaction import. Supports Quicken, Mint, YNAB, Chase, American Express, Wells Fargo,
+            Citi, and custom CSV formats.
           </p>
 
           <div className="import-account-selector">
@@ -614,8 +616,8 @@ export function DataImportWizardPage() {
               {dragActive ? 'Drop your file here' : 'Click or drag backup/import file here'}
             </span>
             <span className="import-dropzone__hint">
-              Supported: .json/.zip Finance backups, .csv, .ofx, .qfx, and .qif files from
-              Quicken and banks, including Mint, YNAB, Chase, Amex, Wells Fargo, Citi, or custom exports
+              Supported: .json/.zip Finance backups, .csv, .ofx, .qfx, and .qif files from Quicken
+              and banks, including Mint, YNAB, Chase, Amex, Wells Fargo, Citi, or custom exports
             </span>
           </div>
 

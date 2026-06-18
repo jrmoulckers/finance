@@ -71,11 +71,7 @@ describe('KeyboardShortcutsModal', () => {
 
   it('announces when character-key shortcuts are disabled', () => {
     render(
-      <KeyboardShortcutsModal
-        isOpen={true}
-        onClose={vi.fn()}
-        singleKeyShortcutsEnabled={false}
-      />,
+      <KeyboardShortcutsModal isOpen={true} onClose={vi.fn()} singleKeyShortcutsEnabled={false} />,
     );
 
     expect(screen.getByText(/character-key shortcuts are currently disabled/i)).toBeInTheDocument();

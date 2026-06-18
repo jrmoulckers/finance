@@ -197,7 +197,9 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   const [name, setName] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('CHECKING');
   const [purpose, setPurpose] = useState<AccountPurpose>('personal');
-  const [retirementAccountType, setRetirementAccountType] = useState<RetirementAccountType | ''>('');
+  const [retirementAccountType, setRetirementAccountType] = useState<RetirementAccountType | ''>(
+    '',
+  );
   const [retirementTaxTreatment, setRetirementTaxTreatment] =
     useState<RetirementTaxTreatment>('PRE_TAX');
   const [hsaCoverageLevel, setHsaCoverageLevel] = useState<HsaCoverageLevel>('SELF_ONLY');
@@ -369,9 +371,15 @@ export function AccountForm({ onSubmit, onCancel, isOpen, initialData }: Account
   const hasBalanceError = Boolean(errors.balance);
   const isRetirementAccount = retirementAccountType !== '';
   const validationErrorItems: FormErrorSummaryItem[] = [
-    hasNameError ? { fieldId: 'account-name', label: getFormCopy('accountNameLabel'), message: errors.name! } : null,
+    hasNameError
+      ? { fieldId: 'account-name', label: getFormCopy('accountNameLabel'), message: errors.name! }
+      : null,
     hasBalanceError
-      ? { fieldId: 'account-balance', label: getFormCopy('accountInitialBalanceLabel'), message: errors.balance! }
+      ? {
+          fieldId: 'account-balance',
+          label: getFormCopy('accountInitialBalanceLabel'),
+          message: errors.balance!,
+        }
       : null,
   ].filter((item): item is FormErrorSummaryItem => item !== null);
 

@@ -57,7 +57,12 @@ function strongestBudgetSummary(budgets: readonly DigestBudgetSummary[]): string
   const sorted = [...budgets].sort((left, right) => right.percentUsed - left.percentUsed);
   const budget = sorted[0];
   if (budget === undefined) return null;
-  const pace = budget.paceLabel === 'over' ? 'ahead of pace' : budget.paceLabel === 'under' ? 'under pace' : 'on track';
+  const pace =
+    budget.paceLabel === 'over'
+      ? 'ahead of pace'
+      : budget.paceLabel === 'under'
+        ? 'under pace'
+        : 'on track';
   return `${budget.budgetName} is ${pace} at ${budget.percentUsed}% (${formatCentsForAlert(
     budget.spentCents,
   )} of ${formatCentsForAlert(budget.budgetAmountCents)}).`;
@@ -66,7 +71,9 @@ function strongestBudgetSummary(budgets: readonly DigestBudgetSummary[]): string
 function largestCategoryChange(changes: readonly DigestCategoryChange[]): string | null {
   if (changes.length === 0) return null;
   const sorted = [...changes].sort(
-    (left, right) => Math.abs(right.currentCents - right.previousCents) - Math.abs(left.currentCents - left.previousCents),
+    (left, right) =>
+      Math.abs(right.currentCents - right.previousCents) -
+      Math.abs(left.currentCents - left.previousCents),
   );
   const change = sorted[0];
   if (change === undefined) return null;
@@ -79,7 +86,10 @@ function upcomingBillSummary(bills: readonly DigestUpcomingBill[]): string | nul
   if (bills.length === 0) return null;
   const next = [...bills].sort((left, right) => left.dueDate.localeCompare(right.dueDate))[0];
   if (next === undefined) return null;
-  const amount = next.amountCents === null || next.amountCents === undefined ? 'amount not available' : formatCentsForAlert(next.amountCents);
+  const amount =
+    next.amountCents === null || next.amountCents === undefined
+      ? 'amount not available'
+      : formatCentsForAlert(next.amountCents);
   return `Next bill: ${next.billName} on ${next.dueDate} (${amount}).`;
 }
 
@@ -115,14 +125,17 @@ export function buildSpendingDigestNotification(input: SpendingDigestInput): App
     criticalAlertSummary(notifications),
   ].filter((section): section is string => section !== null);
 
-  const quietMessage = sections.length === 0
-    ? 'Low-activity period: no budget, bill, goal, or critical-alert changes need attention.'
-    : sections.join(' ');
+  const quietMessage =
+    sections.length === 0
+      ? 'Low-activity period: no budget, bill, goal, or critical-alert changes need attention.'
+      : sections.join(' ');
 
   return {
     id: `spending-digest-${input.cadence}-${input.periodStart}-${input.periodEnd}`,
     type: 'spending_digest',
-    severity: notifications.some((notification) => notification.status !== 'dismissed' && notification.severity === 'critical')
+    severity: notifications.some(
+      (notification) => notification.status !== 'dismissed' && notification.severity === 'critical',
+    )
       ? 'warning'
       : 'info',
     title: `${cadenceLabel(input.cadence)} spending digest`,

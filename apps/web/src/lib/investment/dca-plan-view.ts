@@ -82,9 +82,11 @@ export function validateDCAPlanDraft(draft: DCAPlanDraft): DCAPlanValidationResu
     errors.push('Target amount must be above zero.');
   }
   if (!isIsoDate(draft.startDate)) errors.push('Start date must be an ISO date.');
-  if (draft.pausedDate && !isIsoDate(draft.pausedDate)) errors.push('Pause date must be an ISO date.');
+  if (draft.pausedDate && !isIsoDate(draft.pausedDate))
+    errors.push('Pause date must be an ISO date.');
   for (const override of draft.amountOverrides ?? []) {
-    if (!isIsoDate(override.effectiveDate)) errors.push('Amount override date must be an ISO date.');
+    if (!isIsoDate(override.effectiveDate))
+      errors.push('Amount override date must be an ISO date.');
     if (!Number.isFinite(override.targetAmountCents) || override.targetAmountCents <= 0) {
       errors.push('Amount override target must be above zero.');
     }
@@ -157,7 +159,9 @@ export function mapInvestmentLotsToDCAPurchases(
   investments: readonly Investment[],
   lotsByInvestmentId: ReadonlyMap<string, readonly InvestmentLot[]>,
 ): readonly DCAPurchaseLot[] {
-  const symbolByInvestmentId = new Map(investments.map((investment) => [investment.id, investment.symbol]));
+  const symbolByInvestmentId = new Map(
+    investments.map((investment) => [investment.id, investment.symbol]),
+  );
   return [...lotsByInvestmentId.entries()].flatMap(([investmentId, lots]) => {
     const symbol = symbolByInvestmentId.get(investmentId);
     if (!symbol) return [];
@@ -210,7 +214,9 @@ export function buildDCADashboardViewModel(
       analysis.periods
         .filter(
           (period) =>
-            period.status === 'UPCOMING' || period.status === 'MISSED' || period.status === 'PARTIAL',
+            period.status === 'UPCOMING' ||
+            period.status === 'MISSED' ||
+            period.status === 'PARTIAL',
         )
         .map((period) => ({
           planId: analysis.planId,

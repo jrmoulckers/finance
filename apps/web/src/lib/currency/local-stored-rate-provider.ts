@@ -24,7 +24,10 @@ function readLocalRateTable(): LocalRateTable | null {
   }
 }
 
-function deriveRates(baseCurrency: string, usdRates: Record<string, number>): Record<string, number> {
+function deriveRates(
+  baseCurrency: string,
+  usdRates: Record<string, number>,
+): Record<string, number> {
   const baseRate = usdRates[baseCurrency];
   if (baseRate === undefined) {
     throw new Error(`Unsupported currency: ${baseCurrency}`);

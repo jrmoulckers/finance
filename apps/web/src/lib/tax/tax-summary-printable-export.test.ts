@@ -46,11 +46,15 @@ describe('tax-summary-printable-export', () => {
   it('builds CSV, printable HTML, and drill-down links from report sections and flags', () => {
     const output = buildTaxSummaryPrintableExport(report);
 
-    expect(output.csv.split('\n')[0]).toBe('sectionKey,sectionLabel,amountCents,sourceCount,sourceIds');
+    expect(output.csv.split('\n')[0]).toBe(
+      'sectionKey,sectionLabel,amountCents,sourceCount,sourceIds',
+    );
     expect(output.csv).toContain('ordinary-income,Ordinary income,10000,1,transaction:txn-1');
     expect(output.printableHtml).toContain('Tax Center summary 2025');
     expect(output.printableHtml).toContain('not tax advice');
     expect(output.sourceLinks.map((link) => link.id)).toEqual(['pay-q1', 'txn-1', 'txn-2']);
-    expect(output.sourceLinks.find((link) => link.id === 'txn-2')?.href).toBe('#transaction%3Atxn-2');
+    expect(output.sourceLinks.find((link) => link.id === 'txn-2')?.href).toBe(
+      '#transaction%3Atxn-2',
+    );
   });
 });

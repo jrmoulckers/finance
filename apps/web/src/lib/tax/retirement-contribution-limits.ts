@@ -225,7 +225,10 @@ function getLimitDefinition(
   group: ContributionLimitGroup,
   taxYear: number,
 ): ContributionLimitDefinition | null {
-  return IRS_RETIREMENT_LIMITS.find((limit) => limit.group === group && limit.taxYear === taxYear) ?? null;
+  return (
+    IRS_RETIREMENT_LIMITS.find((limit) => limit.group === group && limit.taxYear === taxYear) ??
+    null
+  );
 }
 
 function catchUpForAge(limit: ContributionLimitDefinition, age: number | null): number {
@@ -264,7 +267,11 @@ function groupForAccount(
     case 'SEP_IRA':
       return ['EMPLOYER_PLAN_TOTAL_ANNUAL_ADDITIONS'];
     case 'HSA':
-      return [(account.hsaCoverageLevel ?? profile.hsaCoverageLevel) === 'FAMILY' ? 'HSA_FAMILY' : 'HSA_SELF_ONLY'];
+      return [
+        (account.hsaCoverageLevel ?? profile.hsaCoverageLevel) === 'FAMILY'
+          ? 'HSA_FAMILY'
+          : 'HSA_SELF_ONLY',
+      ];
     case 'FSA':
       return ['HEALTH_FSA'];
   }
@@ -323,7 +330,10 @@ export function summarizeRetirementContributionLimits(input: {
       continue;
     }
 
-    if (contribution.designation === 'EMPLOYER' && !supportsEmployerContribution(account.accountType)) {
+    if (
+      contribution.designation === 'EMPLOYER' &&
+      !supportsEmployerContribution(account.accountType)
+    ) {
       unsupportedAccountIds.add(contribution.accountId);
       validationWarnings.push(
         `Contribution ${contribution.id} is marked employer-funded, but ${account.accountType} does not support employer contributions in this tracker.`,

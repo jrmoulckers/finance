@@ -142,7 +142,8 @@ function parseStmtTrn(block: string, recordNumber: number): StmtTrnResult {
   }
 
   const parsedAmountCents = parseOfxAmount(trnAmt);
-  const amountCents = parsedAmountCents === null ? null : normalizeAmountSign(parsedAmountCents, trnType);
+  const amountCents =
+    parsedAmountCents === null ? null : normalizeAmountSign(parsedAmountCents, trnType);
   if (amountCents === null) {
     return {
       transaction: null,
@@ -156,7 +157,16 @@ function parseStmtTrn(block: string, recordNumber: number): StmtTrnResult {
   }
 
   const rawFields: Record<string, string> = {};
-  for (const tag of ['DTPOSTED', 'TRNAMT', 'FITID', 'NAME', 'MEMO', 'TRNTYPE', 'CHECKNUM', 'REFNUM']) {
+  for (const tag of [
+    'DTPOSTED',
+    'TRNAMT',
+    'FITID',
+    'NAME',
+    'MEMO',
+    'TRNTYPE',
+    'CHECKNUM',
+    'REFNUM',
+  ]) {
     const val = extractTagValue(block, tag);
     if (val) rawFields[tag] = val;
   }

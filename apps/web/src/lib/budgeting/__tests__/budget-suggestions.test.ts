@@ -46,10 +46,26 @@ describe('suggestCategoryBudgetAmount', () => {
       asOfMonth: '2025-06',
       rule: 'average',
       transactions: [
-        tx({ id: 'jan-grocery', date: '2025-01-05', categoryId: 'groceries', amountCents: -40_000 }),
+        tx({
+          id: 'jan-grocery',
+          date: '2025-01-05',
+          categoryId: 'groceries',
+          amountCents: -40_000,
+        }),
         tx({ id: 'jan-dining', date: '2025-01-10', categoryId: 'dining', amountCents: -10_000 }),
-        tx({ id: 'feb-grocery', date: '2025-02-05', categoryId: 'groceries', amountCents: -30_000 }),
-        tx({ id: 'income', date: '2025-02-10', categoryId: 'salary', amountCents: 300_000, kind: 'income' }),
+        tx({
+          id: 'feb-grocery',
+          date: '2025-02-05',
+          categoryId: 'groceries',
+          amountCents: -30_000,
+        }),
+        tx({
+          id: 'income',
+          date: '2025-02-10',
+          categoryId: 'salary',
+          amountCents: 300_000,
+          kind: 'income',
+        }),
       ],
     });
 

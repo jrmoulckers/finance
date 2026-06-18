@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { createCatalogTranslator, type MessageCatalog as CatalogMessageMap } from './i18n/catalog-loader';
+import {
+  createCatalogTranslator,
+  type MessageCatalog as CatalogMessageMap,
+} from './i18n/catalog-loader';
 import { getActiveCatalogs } from './i18n/locale-packs';
 import { getTextDirectionForLocale } from './i18n/rtl';
 
@@ -17,7 +20,12 @@ export interface SupportedLocale {
 }
 
 export const SUPPORTED_LOCALES: readonly SupportedLocale[] = [
-  { code: 'en-US', label: 'English (United States)', nativeLabel: 'English (US)', textDirection: 'ltr' },
+  {
+    code: 'en-US',
+    label: 'English (United States)',
+    nativeLabel: 'English (US)',
+    textDirection: 'ltr',
+  },
   { code: 'es-ES', label: 'Spanish (Spain)', nativeLabel: 'Español', textDirection: 'ltr' },
   { code: 'de-DE', label: 'German (Germany)', nativeLabel: 'Deutsch', textDirection: 'ltr' },
   { code: 'ja-JP', label: 'Japanese (Japan)', nativeLabel: '日本語', textDirection: 'ltr' },
@@ -41,7 +49,8 @@ export const TIME_ZONE_OPTIONS: readonly string[] = [
 
 export type { MessageCatalog } from './i18n/catalog-loader';
 
-export const TRANSLATION_CATALOGS: Readonly<Record<string, CatalogMessageMap>> = getActiveCatalogs();
+export const TRANSLATION_CATALOGS: Readonly<Record<string, CatalogMessageMap>> =
+  getActiveCatalogs();
 
 const catalogTranslator = createCatalogTranslator({
   defaultLocale: DEFAULT_LOCALE,
@@ -75,11 +84,18 @@ export function normalizeLocale(locale: string | null | undefined): string | nul
   if (supportedByCode.has(canonical)) return canonical;
 
   const language = canonical.split('-')[0]?.toLowerCase();
-  return SUPPORTED_LOCALES.find((candidate) => candidate.code.toLowerCase().startsWith(`${language}-`) || candidate.code.toLowerCase() === language)?.code ?? null;
+  return (
+    SUPPORTED_LOCALES.find(
+      (candidate) =>
+        candidate.code.toLowerCase().startsWith(`${language}-`) ||
+        candidate.code.toLowerCase() === language,
+    )?.code ?? null
+  );
 }
 
 export function detectBrowserLocale(languages?: readonly string[]): string {
-  const candidates = languages ?? globalThis.navigator?.languages ?? [globalThis.navigator?.language ?? DEFAULT_LOCALE];
+  const candidates = languages ??
+    globalThis.navigator?.languages ?? [globalThis.navigator?.language ?? DEFAULT_LOCALE];
   for (const candidate of candidates) {
     const normalized = normalizeLocale(candidate);
     if (normalized) return normalized;

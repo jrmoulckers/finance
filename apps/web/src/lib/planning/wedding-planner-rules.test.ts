@@ -7,9 +7,28 @@ describe('wedding planner shared rules', () => {
   it('calculates remaining balance, guest-sensitive estimates, and upcoming dues for a $35k scenario', () => {
     const summary = buildWeddingPlanSummary(
       [
-        { id: 'venue', name: 'Venue', contractedCents: 18000_00, paidCents: 5000_00, nextDueDate: '2026-06-01' },
-        { id: 'catering', name: 'Catering', contractedCents: 4000_00, paidCents: 1000_00, nextDueDate: '2026-05-20', perGuestCents: 75_00 },
-        { id: 'photo', name: 'Photo', contractedCents: 6000_00, paidCents: 6000_00, nextDueDate: null },
+        {
+          id: 'venue',
+          name: 'Venue',
+          contractedCents: 18000_00,
+          paidCents: 5000_00,
+          nextDueDate: '2026-06-01',
+        },
+        {
+          id: 'catering',
+          name: 'Catering',
+          contractedCents: 4000_00,
+          paidCents: 1000_00,
+          nextDueDate: '2026-05-20',
+          perGuestCents: 75_00,
+        },
+        {
+          id: 'photo',
+          name: 'Photo',
+          contractedCents: 6000_00,
+          paidCents: 6000_00,
+          nextDueDate: null,
+        },
       ],
       80,
       35000_00,

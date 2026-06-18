@@ -339,7 +339,6 @@ describe('shared expense settlement helpers', () => {
   });
 });
 
-
 describe('household beta helpers and persistence', () => {
   it('creates recurring bill reminders and marks a cycle paid into shared expenses', () => {
     const { result } = renderHook(() => useHousehold());
@@ -483,7 +482,12 @@ describe('household beta helpers and persistence', () => {
           },
         ],
         contributions: [
-          { memberId: alex!, amount: 250, label: 'Groceries aggregate', visibility: 'AGGREGATE_ONLY' },
+          {
+            memberId: alex!,
+            amount: 250,
+            label: 'Groceries aggregate',
+            visibility: 'AGGREGATE_ONLY',
+          },
           { memberId: sam!, amount: 50, label: 'Shared card', visibility: 'DETAILS_REVEALED' },
         ],
       });
@@ -491,7 +495,9 @@ describe('household beta helpers and persistence', () => {
     });
 
     const summary = calculateReconciliationSummary(result.current.reconciliationPlans[0]!);
-    expect(summary.trueUpSuggestions).toEqual([{ fromMemberId: sam, toMemberId: alex, amount: 100 }]);
+    expect(summary.trueUpSuggestions).toEqual([
+      { fromMemberId: sam, toMemberId: alex, amount: 100 },
+    ]);
     expect(summary.memberSummaries[0]?.privacyLabel).toMatch(/aggregate totals only/i);
 
     act(() => {

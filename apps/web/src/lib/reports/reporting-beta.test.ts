@@ -21,7 +21,9 @@ const metadata = {
   isSynced: true,
 };
 
-function tx(overrides: Partial<Transaction> & Pick<Transaction, 'id' | 'date' | 'type' | 'amount'>): Transaction {
+function tx(
+  overrides: Partial<Transaction> & Pick<Transaction, 'id' | 'date' | 'type' | 'amount'>,
+): Transaction {
   return {
     ...metadata,
     id: overrides.id,
@@ -97,7 +99,13 @@ describe('reporting beta aggregations', () => {
   it('filters transactions by report filters', () => {
     const transactions = [
       tx({ id: 'jan', date: '2025-01-10', type: 'EXPENSE', amount: { amount: -1000 } }),
-      tx({ id: 'feb', date: '2025-02-10', type: 'EXPENSE', amount: { amount: -2000 }, categoryId: 'cat-travel' }),
+      tx({
+        id: 'feb',
+        date: '2025-02-10',
+        type: 'EXPENSE',
+        amount: { amount: -2000 },
+        categoryId: 'cat-travel',
+      }),
     ];
 
     expect(
@@ -111,8 +119,20 @@ describe('reporting beta aggregations', () => {
 
   it('builds category drill-down stats and transaction rows', () => {
     const transactions = [
-      tx({ id: 'small', date: '2025-01-10', type: 'EXPENSE', amount: { amount: -1000 }, payee: 'Cafe' }),
-      tx({ id: 'large', date: '2025-01-11', type: 'EXPENSE', amount: { amount: -5000 }, payee: 'Market' }),
+      tx({
+        id: 'small',
+        date: '2025-01-10',
+        type: 'EXPENSE',
+        amount: { amount: -1000 },
+        payee: 'Cafe',
+      }),
+      tx({
+        id: 'large',
+        date: '2025-01-11',
+        type: 'EXPENSE',
+        amount: { amount: -5000 },
+        payee: 'Market',
+      }),
     ];
 
     const drillDown = buildCategoryDrillDown(transactions, categories, accounts, {
@@ -132,14 +152,49 @@ describe('reporting beta aggregations', () => {
 
   it('detects spending seasonality and current-month pacing', () => {
     const transactions = [
-      tx({ id: 'dec-1', date: '2023-12-10', type: 'EXPENSE', amount: { amount: -80000 }, categoryId: 'cat-travel' }),
-      tx({ id: 'dec-2', date: '2024-12-10', type: 'EXPENSE', amount: { amount: -90000 }, categoryId: 'cat-travel' }),
-      tx({ id: 'jan-1', date: '2025-01-03', type: 'EXPENSE', amount: { amount: -20000 }, categoryId: 'cat-food' }),
-      tx({ id: 'feb-1', date: '2025-02-03', type: 'EXPENSE', amount: { amount: -10000 }, categoryId: 'cat-food' }),
-      tx({ id: 'mar-1', date: '2025-03-03', type: 'EXPENSE', amount: { amount: -10000 }, categoryId: 'cat-food' }),
+      tx({
+        id: 'dec-1',
+        date: '2023-12-10',
+        type: 'EXPENSE',
+        amount: { amount: -80000 },
+        categoryId: 'cat-travel',
+      }),
+      tx({
+        id: 'dec-2',
+        date: '2024-12-10',
+        type: 'EXPENSE',
+        amount: { amount: -90000 },
+        categoryId: 'cat-travel',
+      }),
+      tx({
+        id: 'jan-1',
+        date: '2025-01-03',
+        type: 'EXPENSE',
+        amount: { amount: -20000 },
+        categoryId: 'cat-food',
+      }),
+      tx({
+        id: 'feb-1',
+        date: '2025-02-03',
+        type: 'EXPENSE',
+        amount: { amount: -10000 },
+        categoryId: 'cat-food',
+      }),
+      tx({
+        id: 'mar-1',
+        date: '2025-03-03',
+        type: 'EXPENSE',
+        amount: { amount: -10000 },
+        categoryId: 'cat-food',
+      }),
     ];
 
-    const trend = buildSpendingTrendInsight(transactions, categories, 24, new Date('2025-03-15T12:00:00Z'));
+    const trend = buildSpendingTrendInsight(
+      transactions,
+      categories,
+      24,
+      new Date('2025-03-15T12:00:00Z'),
+    );
 
     expect(trend.insufficientData).toBe(false);
     expect(trend.seasonality.some((signal) => signal.categoryName === 'Travel')).toBe(true);
@@ -148,7 +203,13 @@ describe('reporting beta aggregations', () => {
 
   it('builds year-in-review summaries with top categories and changes', () => {
     const transactions = [
-      tx({ id: 'income', date: '2025-01-05', type: 'INCOME', amount: { amount: 200000 }, categoryId: null }),
+      tx({
+        id: 'income',
+        date: '2025-01-05',
+        type: 'INCOME',
+        amount: { amount: 200000 },
+        categoryId: null,
+      }),
       tx({ id: 'food', date: '2025-01-06', type: 'EXPENSE', amount: { amount: -50000 } }),
       tx({ id: 'prev-food', date: '2024-01-06', type: 'EXPENSE', amount: { amount: -20000 } }),
     ];
@@ -164,12 +225,48 @@ describe('reporting beta aggregations', () => {
 
   it('detects reusable report anomalies', () => {
     const transactions = [
-      tx({ id: 'prior-1', date: '2025-01-10', type: 'EXPENSE', amount: { amount: -10000 }, payee: 'Grocery' }),
-      tx({ id: 'prior-2', date: '2025-02-10', type: 'EXPENSE', amount: { amount: -10000 }, payee: 'Grocery' }),
-      tx({ id: 'prior-3', date: '2025-03-10', type: 'EXPENSE', amount: { amount: -10000 }, payee: 'Grocery' }),
-      tx({ id: 'spike', date: '2025-04-10', type: 'EXPENSE', amount: { amount: -30000 }, payee: 'Grocery' }),
-      tx({ id: 'dup-a', date: '2025-04-11', type: 'EXPENSE', amount: { amount: -1200 }, payee: 'Cafe' }),
-      tx({ id: 'dup-b', date: '2025-04-11', type: 'EXPENSE', amount: { amount: -1200 }, payee: 'Cafe' }),
+      tx({
+        id: 'prior-1',
+        date: '2025-01-10',
+        type: 'EXPENSE',
+        amount: { amount: -10000 },
+        payee: 'Grocery',
+      }),
+      tx({
+        id: 'prior-2',
+        date: '2025-02-10',
+        type: 'EXPENSE',
+        amount: { amount: -10000 },
+        payee: 'Grocery',
+      }),
+      tx({
+        id: 'prior-3',
+        date: '2025-03-10',
+        type: 'EXPENSE',
+        amount: { amount: -10000 },
+        payee: 'Grocery',
+      }),
+      tx({
+        id: 'spike',
+        date: '2025-04-10',
+        type: 'EXPENSE',
+        amount: { amount: -30000 },
+        payee: 'Grocery',
+      }),
+      tx({
+        id: 'dup-a',
+        date: '2025-04-11',
+        type: 'EXPENSE',
+        amount: { amount: -1200 },
+        payee: 'Cafe',
+      }),
+      tx({
+        id: 'dup-b',
+        date: '2025-04-11',
+        type: 'EXPENSE',
+        amount: { amount: -1200 },
+        payee: 'Cafe',
+      }),
     ];
 
     const anomalies = detectReportAnomalies(

@@ -5,7 +5,11 @@ import { describe, expect, it } from 'vitest';
 import { buildSpendingDigestNotification } from './spending-digests';
 import { buildSpendingDigestDetailView } from './spending-digest-detail';
 
-const digest = buildSpendingDigestNotification({ cadence: 'weekly', periodStart: '2025-05-01', periodEnd: '2025-05-07' });
+const digest = buildSpendingDigestNotification({
+  cadence: 'weekly',
+  periodStart: '2025-05-01',
+  periodEnd: '2025-05-07',
+});
 
 describe('spending digest detail view', () => {
   it('builds detail sections for every digest category and excludes dismissed critical alerts', () => {
@@ -13,7 +17,15 @@ describe('spending digest detail view', () => {
       cadence: 'weekly',
       periodStart: '2025-05-01',
       periodEnd: '2025-05-07',
-      budgets: [{ budgetName: 'Food', spentCents: 11000, budgetAmountCents: 10000, percentUsed: 110, paceLabel: 'over' }],
+      budgets: [
+        {
+          budgetName: 'Food',
+          spentCents: 11000,
+          budgetAmountCents: 10000,
+          percentUsed: 110,
+          paceLabel: 'over',
+        },
+      ],
       categoryChanges: [{ categoryName: 'Travel', currentCents: 5000, previousCents: 9000 }],
       upcomingBills: [{ billName: 'Rent', dueDate: '2025-05-10', amountCents: 120000 }],
       goals: [{ goalName: 'Vacation', percentComplete: 85, remainingCents: 30000 }],

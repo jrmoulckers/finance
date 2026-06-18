@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { buildNetWorthHistory, calculateCurrentNetWorthCents, projectNetWorth } from './net-worth-projection';
+import {
+  buildNetWorthHistory,
+  calculateCurrentNetWorthCents,
+  projectNetWorth,
+} from './net-worth-projection';
 
 describe('net worth projection shared logic', () => {
   it('aggregates asset and liability balances as current net worth', () => {

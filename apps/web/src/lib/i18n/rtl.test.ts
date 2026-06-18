@@ -2,7 +2,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { applyDocumentDirection, bidiIsolate, getTextDirectionForLocale, joinBidiIsolated } from './rtl';
+import {
+  applyDocumentDirection,
+  bidiIsolate,
+  getTextDirectionForLocale,
+  joinBidiIsolated,
+} from './rtl';
 
 describe('rtl utilities', () => {
   it('detects locale direction from language subtags', () => {

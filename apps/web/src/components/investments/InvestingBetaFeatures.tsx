@@ -178,7 +178,8 @@ export function useInvestingBetaFeatures({
   );
 
   const applyPreset = useCallback(
-    (presetName: BetaPresetName) => setTargetBands(normalizeTargetBands(TARGET_PRESETS[presetName])),
+    (presetName: BetaPresetName) =>
+      setTargetBands(normalizeTargetBands(TARGET_PRESETS[presetName])),
     [setTargetBands],
   );
 
@@ -273,7 +274,8 @@ export const InvestingBetaFeaturesPanel: React.FC<{
           Investing Beta Toolkit
         </h3>
         <p style={{ color: 'var(--semantic-text-secondary)' }}>
-          Educational estimates only. Verify taxes, transaction costs, dividend data, and fund fees before trading.
+          Educational estimates only. Verify taxes, transaction costs, dividend data, and fund fees
+          before trading.
         </p>
 
         <AllocationSection features={features} targetTotal={targetTotal} />
@@ -364,10 +366,7 @@ const AllocationSection: React.FC<{
     <AllocationTables features={features} />
     <SignalList
       title="Diversification and drift signals"
-      signals={[
-        ...features.allocation.diversificationSignals,
-        ...features.allocation.driftSignals,
-      ]}
+      signals={[...features.allocation.diversificationSignals, ...features.allocation.driftSignals]}
     />
   </section>
 );
@@ -389,7 +388,9 @@ const RebalancingSection: React.FC<{
 }> = ({ features, targetTotal }) => (
   <section aria-labelledby="rebalancing-heading" style={{ marginTop: 'var(--spacing-6)' }}>
     <h4 id="rebalancing-heading">Rebalancing suggestions</h4>
-    <div style={{ display: 'flex', gap: 'var(--spacing-4)', flexWrap: 'wrap', alignItems: 'center' }}>
+    <div
+      style={{ display: 'flex', gap: 'var(--spacing-4)', flexWrap: 'wrap', alignItems: 'center' }}
+    >
       <label>
         New cash available
         <input
@@ -413,7 +414,8 @@ const RebalancingSection: React.FC<{
       </label>
     </div>
     <p style={{ color: 'var(--semantic-text-secondary)' }}>
-      Buy-only mode allocates new cash toward underweight classes. Sell suggestions are hidden unless explicitly enabled.
+      Buy-only mode allocates new cash toward underweight classes. Sell suggestions are hidden
+      unless explicitly enabled.
     </p>
     {targetTotal !== 100 ? (
       <p role="alert">Set target allocations to exactly 100% to generate suggestions.</p>
@@ -467,7 +469,10 @@ const DividendSection: React.FC<{
         label="Forward 12-month forecast"
         value={<MoneyDisplay amount={features.dividendAnalysis.forwardTwelveMonthIncomeCents} />}
       />
-      <Metric label="Monthly average" value={<MoneyDisplay amount={features.dividendAnalysis.monthlyAverageCents} />} />
+      <Metric
+        label="Monthly average"
+        value={<MoneyDisplay amount={features.dividendAnalysis.monthlyAverageCents} />}
+      />
       <Metric label="Current yield" value={`${features.dividendAnalysis.currentYieldPercent}%`} />
     </SummaryGrid>
     <div style={{ overflowX: 'auto' }}>
@@ -530,7 +535,9 @@ const DividendSection: React.FC<{
                     type="date"
                     value={assumption.lastExDate}
                     onChange={(event) =>
-                      features.updateDividendAssumption(investment.id, { lastExDate: event.target.value })
+                      features.updateDividendAssumption(investment.id, {
+                        lastExDate: event.target.value,
+                      })
                     }
                   />
                 </TableCell>
@@ -652,7 +659,9 @@ const CostBasisSection: React.FC<{
         <tbody>
           {features.costBasisAnalysis.lotRows.length === 0 ? (
             <tr>
-              <TableCell colSpan={7}>No lots are available yet; add lots to see lot-level basis.</TableCell>
+              <TableCell colSpan={7}>
+                No lots are available yet; add lots to see lot-level basis.
+              </TableCell>
             </tr>
           ) : (
             features.costBasisAnalysis.lotRows.map((row) => (
@@ -660,10 +669,18 @@ const CostBasisSection: React.FC<{
                 <TableCell>{row.symbol}</TableCell>
                 <TableCell>{row.acquisitionDate}</TableCell>
                 <TableCell align="right">{row.shares}</TableCell>
-                <TableCell align="right"><MoneyDisplay amount={row.costBasisCents} /></TableCell>
-                <TableCell align="right"><MoneyDisplay amount={row.currentValueCents} /></TableCell>
-                <TableCell align="right">{formatSignedMoney(row.unrealizedGainLossCents)}</TableCell>
-                <TableCell>{row.holdingPeriod === 'LONG_TERM' ? 'Long term' : 'Short term'}</TableCell>
+                <TableCell align="right">
+                  <MoneyDisplay amount={row.costBasisCents} />
+                </TableCell>
+                <TableCell align="right">
+                  <MoneyDisplay amount={row.currentValueCents} />
+                </TableCell>
+                <TableCell align="right">
+                  {formatSignedMoney(row.unrealizedGainLossCents)}
+                </TableCell>
+                <TableCell>
+                  {row.holdingPeriod === 'LONG_TERM' ? 'Long term' : 'Short term'}
+                </TableCell>
               </tr>
             ))
           )}
@@ -688,10 +705,16 @@ const FeeSection: React.FC<{
   readonly features: InvestingBetaFeaturesState;
 }> = ({ investments, features }) => {
   const sortedInvestments = [...investments].sort((left, right) => {
-    const leftFee = features.feeAnalysis.summary.fundFees.find((item) => item.investmentId === left.id);
-    const rightFee = features.feeAnalysis.summary.fundFees.find((item) => item.investmentId === right.id);
+    const leftFee = features.feeAnalysis.summary.fundFees.find(
+      (item) => item.investmentId === left.id,
+    );
+    const rightFee = features.feeAnalysis.summary.fundFees.find(
+      (item) => item.investmentId === right.id,
+    );
     const leftSetting = features.expenseRatioSettings.find((item) => item.investmentId === left.id);
-    const rightSetting = features.expenseRatioSettings.find((item) => item.investmentId === right.id);
+    const rightSetting = features.expenseRatioSettings.find(
+      (item) => item.investmentId === right.id,
+    );
     return (
       (rightFee?.annualFee ?? 0) - (leftFee?.annualFee ?? 0) ||
       (rightSetting?.expenseRatioBps ?? 0) - (leftSetting?.expenseRatioBps ?? 0)
@@ -702,11 +725,24 @@ const FeeSection: React.FC<{
     <section aria-labelledby="fee-heading" style={{ marginTop: 'var(--spacing-6)' }}>
       <h4 id="fee-heading">Expense-ratio and fee analysis</h4>
       <SummaryGrid>
-        <Metric label="Annual fee drag" value={<MoneyDisplay amount={features.feeAnalysis.summary.totalAnnualFees} />} />
-        <Metric label="Weighted expense ratio" value={`${features.feeAnalysis.summary.weightedExpenseRatioBps / 100}%`} />
+        <Metric
+          label="Annual fee drag"
+          value={<MoneyDisplay amount={features.feeAnalysis.summary.totalAnnualFees} />}
+        />
+        <Metric
+          label="Weighted expense ratio"
+          value={`${features.feeAnalysis.summary.weightedExpenseRatioBps / 100}%`}
+        />
         <Metric
           label="30-year projected fees"
-          value={<MoneyDisplay amount={features.feeAnalysis.projections.find((item) => item.years === 30)?.totalFeesPaid ?? 0} />}
+          value={
+            <MoneyDisplay
+              amount={
+                features.feeAnalysis.projections.find((item) => item.years === 30)?.totalFeesPaid ??
+                0
+              }
+            />
+          }
         />
       </SummaryGrid>
       <div style={{ overflowX: 'auto' }}>
@@ -759,7 +795,9 @@ const FeeSection: React.FC<{
                     />
                     %
                   </TableCell>
-                  <TableCell align="right"><MoneyDisplay amount={fee?.annualFee ?? 0} /></TableCell>
+                  <TableCell align="right">
+                    <MoneyDisplay amount={fee?.annualFee ?? 0} />
+                  </TableCell>
                 </tr>
               );
             })}
@@ -780,9 +818,15 @@ const FeeSection: React.FC<{
             {features.feeAnalysis.projections.map((projection) => (
               <tr key={projection.years}>
                 <TableCell>{projection.years} years</TableCell>
-                <TableCell align="right"><MoneyDisplay amount={projection.valueWithoutFees} /></TableCell>
-                <TableCell align="right"><MoneyDisplay amount={projection.valueWithFees} /></TableCell>
-                <TableCell align="right"><MoneyDisplay amount={projection.totalFeesPaid} /></TableCell>
+                <TableCell align="right">
+                  <MoneyDisplay amount={projection.valueWithoutFees} />
+                </TableCell>
+                <TableCell align="right">
+                  <MoneyDisplay amount={projection.valueWithFees} />
+                </TableCell>
+                <TableCell align="right">
+                  <MoneyDisplay amount={projection.totalFeesPaid} />
+                </TableCell>
               </tr>
             ))}
           </tbody>
@@ -833,7 +877,9 @@ const CompactAllocationTable: React.FC<{
         {rows.map((row) => (
           <tr key={row.key}>
             <TableCell>{row.label}</TableCell>
-            <TableCell align="right"><MoneyDisplay amount={row.valueCents} /></TableCell>
+            <TableCell align="right">
+              <MoneyDisplay amount={row.valueCents} />
+            </TableCell>
             <TableCell align="right">{row.percent}%</TableCell>
           </tr>
         ))}
@@ -842,7 +888,9 @@ const CompactAllocationTable: React.FC<{
   </div>
 );
 
-const CompactCalendar: React.FC<{ readonly features: InvestingBetaFeaturesState }> = ({ features }) => (
+const CompactCalendar: React.FC<{ readonly features: InvestingBetaFeaturesState }> = ({
+  features,
+}) => (
   <div style={{ overflowX: 'auto', marginTop: 'var(--spacing-3)' }}>
     <table aria-label="Monthly dividend income calendar" style={tableStyle}>
       <thead>
@@ -855,7 +903,9 @@ const CompactCalendar: React.FC<{ readonly features: InvestingBetaFeaturesState 
         {features.dividendAnalysis.monthlyCalendar.map((row) => (
           <tr key={row.month}>
             <TableCell>{row.month}</TableCell>
-            <TableCell align="right"><MoneyDisplay amount={row.amountCents} /></TableCell>
+            <TableCell align="right">
+              <MoneyDisplay amount={row.amountCents} />
+            </TableCell>
           </tr>
         ))}
       </tbody>
@@ -863,7 +913,9 @@ const CompactCalendar: React.FC<{ readonly features: InvestingBetaFeaturesState 
   </div>
 );
 
-const RealizedGainsTable: React.FC<{ readonly features: InvestingBetaFeaturesState }> = ({ features }) => (
+const RealizedGainsTable: React.FC<{ readonly features: InvestingBetaFeaturesState }> = ({
+  features,
+}) => (
   <div style={{ overflowX: 'auto', marginTop: 'var(--spacing-3)' }}>
     <table aria-label="Realized gains by year" style={tableStyle}>
       <thead>
@@ -929,7 +981,13 @@ const Metric: React.FC<{ readonly label: string; readonly value: React.ReactNode
   label,
   value,
 }) => (
-  <div style={{ border: '1px solid var(--semantic-border, #e5e7eb)', borderRadius: 8, padding: 'var(--spacing-3)' }}>
+  <div
+    style={{
+      border: '1px solid var(--semantic-border, #e5e7eb)',
+      borderRadius: 8,
+      padding: 'var(--spacing-3)',
+    }}
+  >
     <div style={{ color: 'var(--semantic-text-secondary)' }}>{label}</div>
     <strong>{value}</strong>
   </div>
@@ -939,7 +997,10 @@ const TableHeader: React.FC<{ readonly text: string; readonly align?: 'left' | '
   text,
   align = 'left',
 }) => (
-  <th scope="col" style={{ textAlign: align, padding: 'var(--spacing-2)', borderBottom: tableBorder }}>
+  <th
+    scope="col"
+    style={{ textAlign: align, padding: 'var(--spacing-2)', borderBottom: tableBorder }}
+  >
     {text}
   </th>
 );
@@ -949,7 +1010,10 @@ const TableCell: React.FC<{
   readonly align?: 'left' | 'right';
   readonly colSpan?: number;
 }> = ({ children, align = 'left', colSpan }) => (
-  <td colSpan={colSpan} style={{ textAlign: align, padding: 'var(--spacing-2)', borderBottom: tableBorder }}>
+  <td
+    colSpan={colSpan}
+    style={{ textAlign: align, padding: 'var(--spacing-2)', borderBottom: tableBorder }}
+  >
     {children}
   </td>
 );
@@ -963,7 +1027,10 @@ const responsiveGridStyle = {
   margin: 'var(--spacing-3) 0',
 } as const;
 
-function useStoredState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+function useStoredState<T>(
+  key: string,
+  defaultValue: T,
+): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [value, setValue] = useState<T>(() => readStoredValue(key, defaultValue));
   const setStoredValue = useCallback<React.Dispatch<React.SetStateAction<T>>>(
     (nextValue) => {
@@ -998,7 +1065,11 @@ function upsert<T extends { readonly investmentId: string }>(
   fallback: T,
   updates: Partial<T>,
 ): T[] {
-  const next = { ...fallback, ...items.find((item) => item.investmentId === investmentId), ...updates } as T;
+  const next = {
+    ...fallback,
+    ...items.find((item) => item.investmentId === investmentId),
+    ...updates,
+  } as T;
   const without = items.filter((item) => item.investmentId !== investmentId);
   return [...without, next];
 }

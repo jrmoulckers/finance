@@ -22,7 +22,8 @@ export function validateBnplObligationDraft(draft: BnplObligationDraft): BnplEnt
   if ((draft.paidInstallments ?? 0) > draft.totalInstallments) {
     errors.push('Paid installments cannot exceed total installments.');
   }
-  if (draft.installmentAmountCents <= 0) errors.push('Installment amount must be greater than zero.');
+  if (draft.installmentAmountCents <= 0)
+    errors.push('Installment amount must be greater than zero.');
   if (draft.originalAmountCents < (draft.paidInstallments ?? 0) * draft.installmentAmountCents) {
     errors.push('Paid schedule cannot exceed the original purchase amount.');
   }

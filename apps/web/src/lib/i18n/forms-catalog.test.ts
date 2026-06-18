@@ -11,8 +11,12 @@ describe('forms-catalog', () => {
   });
 
   it('supports localized validation and pluralized counts', () => {
-    expect(getFormCopy('accountInitialBalanceInvalid', 'es-ES')).toBe('El saldo inicial debe ser un número válido.');
-    expect(getFormCopy('validationErrorCount', 'en-US', { count: 2 })).toBe('2 fields need attention');
+    expect(getFormCopy('accountInitialBalanceInvalid', 'es-ES')).toBe(
+      'El saldo inicial debe ser un número válido.',
+    );
+    expect(getFormCopy('validationErrorCount', 'en-US', { count: 2 })).toBe(
+      '2 fields need attention',
+    );
   });
 
   it('builds localized toast aria labels', () => {

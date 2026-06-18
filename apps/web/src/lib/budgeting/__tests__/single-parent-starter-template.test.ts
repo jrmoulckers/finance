@@ -20,6 +20,8 @@ describe('SINGLE_PARENT_FAMILY_TEMPLATE', () => {
       'Kids’ Clothing',
       'Family Emergency Buffer',
     ]);
-    expect(SINGLE_PARENT_FAMILY_TEMPLATE.categories.every((category) => category.createBudget !== false)).toBe(true);
+    expect(
+      SINGLE_PARENT_FAMILY_TEMPLATE.categories.every((category) => category.createBudget !== false),
+    ).toBe(true);
   });
 });

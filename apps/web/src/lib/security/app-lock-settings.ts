@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 export type AppLockEvent = 'manual_lock' | 'unlock_success' | 'activity' | 'idle_check' | 'resume';
-export type AppLockAuditEvent = 'app_lock_enabled' | 'app_locked' | 'app_unlocked' | 'app_lock_bypassed';
+export type AppLockAuditEvent =
+  | 'app_lock_enabled'
+  | 'app_locked'
+  | 'app_unlocked'
+  | 'app_lock_bypassed';
 export type AppLockReason = 'disabled' | 'manual' | 'idle_timeout' | 'resume' | 'unlock_success';
 
 export interface AppLockSettings {
@@ -55,7 +59,10 @@ export const APP_LOCK_SETTINGS_CHANGED_EVENT = 'finance-app-lock-settings-change
 export function normalizeAppLockSettings(settings: Partial<AppLockSettings>): AppLockSettings {
   return {
     enabled: settings.enabled ?? DEFAULT_APP_LOCK_SETTINGS.enabled,
-    idleTimeoutMs: Math.max(settings.idleTimeoutMs ?? DEFAULT_APP_LOCK_SETTINGS.idleTimeoutMs, 30_000),
+    idleTimeoutMs: Math.max(
+      settings.idleTimeoutMs ?? DEFAULT_APP_LOCK_SETTINGS.idleTimeoutMs,
+      30_000,
+    ),
     lockOnResume: settings.lockOnResume ?? DEFAULT_APP_LOCK_SETTINGS.lockOnResume,
     requirePasskey: settings.requirePasskey ?? DEFAULT_APP_LOCK_SETTINGS.requirePasskey,
   };
@@ -100,13 +107,24 @@ export function reduceAppLockEvent(
     return {
       state: unlocked,
       shell: buildPrivacySafeShell(unlocked, settings),
-      audit: event === 'manual_lock' ? audit('app_lock_bypassed', { reason: 'disabled' }, 'warning') : undefined,
+      audit:
+        event === 'manual_lock'
+          ? audit('app_lock_bypassed', { reason: 'disabled' }, 'warning')
+          : undefined,
     };
   }
 
   if (event === 'manual_lock') {
-    const locked = { locked: true, reason: 'manual', lastUnlockedAtMs: state.lastUnlockedAtMs } as const;
-    return { state: locked, shell: buildPrivacySafeShell(locked, settings), audit: audit('app_locked', { reason: 'manual' }) };
+    const locked = {
+      locked: true,
+      reason: 'manual',
+      lastUnlockedAtMs: state.lastUnlockedAtMs,
+    } as const;
+    return {
+      state: locked,
+      shell: buildPrivacySafeShell(locked, settings),
+      audit: audit('app_locked', { reason: 'manual' }),
+    };
   }
 
   if (event === 'unlock_success' || event === 'activity') {
@@ -114,17 +132,32 @@ export function reduceAppLockEvent(
     return {
       state: unlocked,
       shell: buildPrivacySafeShell(unlocked, settings),
-      audit: event === 'unlock_success' ? audit('app_unlocked', { method: settings.requirePasskey ? 'passkey' : 'local' }) : undefined,
+      audit:
+        event === 'unlock_success'
+          ? audit('app_unlocked', { method: settings.requirePasskey ? 'passkey' : 'local' })
+          : undefined,
     };
   }
 
   if (event === 'resume' && settings.lockOnResume) {
-    const locked = { locked: true, reason: 'resume', lastUnlockedAtMs: state.lastUnlockedAtMs } as const;
-    return { state: locked, shell: buildPrivacySafeShell(locked, settings), audit: audit('app_locked', { reason: 'resume' }) };
+    const locked = {
+      locked: true,
+      reason: 'resume',
+      lastUnlockedAtMs: state.lastUnlockedAtMs,
+    } as const;
+    return {
+      state: locked,
+      shell: buildPrivacySafeShell(locked, settings),
+      audit: audit('app_locked', { reason: 'resume' }),
+    };
   }
 
   if (state.lastUnlockedAtMs === null || nowMs - state.lastUnlockedAtMs >= settings.idleTimeoutMs) {
-    const locked = { locked: true, reason: 'idle_timeout', lastUnlockedAtMs: state.lastUnlockedAtMs } as const;
+    const locked = {
+      locked: true,
+      reason: 'idle_timeout',
+      lastUnlockedAtMs: state.lastUnlockedAtMs,
+    } as const;
     return {
       state: locked,
       shell: buildPrivacySafeShell(locked, settings),
@@ -135,7 +168,10 @@ export function reduceAppLockEvent(
   return { state, shell: buildPrivacySafeShell(state, settings) };
 }
 
-export function buildPrivacySafeShell(state: AppLockRuntimeState, settings: AppLockSettings): PrivacySafeShell {
+export function buildPrivacySafeShell(
+  state: AppLockRuntimeState,
+  settings: AppLockSettings,
+): PrivacySafeShell {
   if (!settings.enabled) {
     return {
       hideSensitiveValues: false,

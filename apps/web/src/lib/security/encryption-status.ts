@@ -62,7 +62,9 @@ export function buildEncryptionStatusDashboard(
 ): EncryptionStatusDashboard {
   const webCryptoAvailable = isWebCryptoEncryptionSupported(environment.crypto);
   const storageAvailable = environment.indexedDbAvailable || environment.persistentStorageAvailable;
-  const rows = snapshots.map((snapshot) => buildEncryptionStatusRow(snapshot, webCryptoAvailable, storageAvailable));
+  const rows = snapshots.map((snapshot) =>
+    buildEncryptionStatusRow(snapshot, webCryptoAvailable, storageAvailable),
+  );
 
   return {
     webCryptoAvailable,
@@ -78,7 +80,12 @@ export function buildEncryptionStatusRow(
   storageAvailable: boolean,
 ): EncryptionStatusRow {
   if (!snapshot.applicable || snapshot.totalRecords === 0) {
-    return row(snapshot, 'not_applicable', 'No local sensitive records are stored for this category.', 'none');
+    return row(
+      snapshot,
+      'not_applicable',
+      'No local sensitive records are stored for this category.',
+      'none',
+    );
   }
   if (!webCryptoAvailable || !storageAvailable || snapshot.keyState === 'unavailable') {
     return row(
@@ -89,16 +96,36 @@ export function buildEncryptionStatusRow(
     );
   }
   if (snapshot.keyState === 'not_configured') {
-    return row(snapshot, 'not_encrypted', 'Encryption has not been set up for this category.', 'set_up');
+    return row(
+      snapshot,
+      'not_encrypted',
+      'Encryption has not been set up for this category.',
+      'set_up',
+    );
   }
   if (snapshot.keyState === 'locked') {
-    return row(snapshot, 'locked', 'Encrypted data is present but locked until the recovery secret is provided.', 'unlock');
+    return row(
+      snapshot,
+      'locked',
+      'Encrypted data is present but locked until the recovery secret is provided.',
+      'unlock',
+    );
   }
   if (snapshot.encryptedRecords >= snapshot.totalRecords) {
-    return row(snapshot, 'encrypted', 'All local records in this category are encrypted at rest.', 'none');
+    return row(
+      snapshot,
+      'encrypted',
+      'All local records in this category are encrypted at rest.',
+      'none',
+    );
   }
   if (snapshot.encryptedRecords === 0) {
-    return row(snapshot, 'not_encrypted', 'Local records in this category are not encrypted yet.', 'set_up');
+    return row(
+      snapshot,
+      'not_encrypted',
+      'Local records in this category are not encrypted yet.',
+      'set_up',
+    );
   }
   return row(
     snapshot,
@@ -109,8 +136,10 @@ export function buildEncryptionStatusRow(
 }
 
 export function summarizeEncryptionRecovery(status: EncryptionStatus): string {
-  if (status === 'not_applicable') return 'No recovery action is required for categories with no local sensitive data.';
-  if (status === 'unavailable') return 'Recovery is unavailable until Web Crypto and persistent browser storage are available.';
+  if (status === 'not_applicable')
+    return 'No recovery action is required for categories with no local sensitive data.';
+  if (status === 'unavailable')
+    return 'Recovery is unavailable until Web Crypto and persistent browser storage are available.';
   return RECOVERY_COPY;
 }
 

@@ -59,11 +59,15 @@ export function serializeTaxTagCustomFields(tag: TaxTag): Readonly<Record<string
     'tax.receiptStatus': tag.receiptStatus,
     'tax.reimbursable': String(tag.reimbursable),
     'tax.capitalized': String(tag.capitalized),
-    ...(tag.businessPurposeNote !== undefined ? { 'tax.businessPurposeNote': tag.businessPurposeNote } : {}),
+    ...(tag.businessPurposeNote !== undefined
+      ? { 'tax.businessPurposeNote': tag.businessPurposeNote }
+      : {}),
   };
 }
 
-export function buildTaxCategoryEditModel(transaction: TaxTaggableTransaction): TaxCategoryEditModel {
+export function buildTaxCategoryEditModel(
+  transaction: TaxTaggableTransaction,
+): TaxCategoryEditModel {
   const tag = buildTaxTag(transaction);
   return {
     transactionId: transaction.id,
@@ -76,13 +80,21 @@ export function buildTaxCategoryEditModel(transaction: TaxTaggableTransaction): 
   };
 }
 
-export function buildTaxCategoryCustomFieldPatch(edit: TaxCategoryBulkEdit): Readonly<Record<string, string>> {
+export function buildTaxCategoryCustomFieldPatch(
+  edit: TaxCategoryBulkEdit,
+): Readonly<Record<string, string>> {
   return {
     ...(edit.category !== undefined ? { 'tax.category': edit.category } : {}),
-    ...(edit.deductibleStatus !== undefined ? { 'tax.deductibleStatus': edit.deductibleStatus } : {}),
-    ...(edit.deductionPercent !== undefined ? { 'tax.deductionPercent': String(clampPercent(edit.deductionPercent)) } : {}),
+    ...(edit.deductibleStatus !== undefined
+      ? { 'tax.deductibleStatus': edit.deductibleStatus }
+      : {}),
+    ...(edit.deductionPercent !== undefined
+      ? { 'tax.deductionPercent': String(clampPercent(edit.deductionPercent)) }
+      : {}),
     ...(edit.receiptStatus !== undefined ? { 'tax.receiptStatus': edit.receiptStatus } : {}),
-    ...(edit.businessPurposeNote !== undefined ? { 'tax.businessPurposeNote': edit.businessPurposeNote } : {}),
+    ...(edit.businessPurposeNote !== undefined
+      ? { 'tax.businessPurposeNote': edit.businessPurposeNote }
+      : {}),
   };
 }
 

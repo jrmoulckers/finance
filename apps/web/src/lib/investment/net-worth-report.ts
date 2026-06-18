@@ -81,7 +81,9 @@ function selectSnapshotsForRange(
   return sorted.filter((snapshot) => monthIndex(toMonth(snapshot.date)) >= minMonthIndex);
 }
 
-function latestMonthlyPoints(snapshots: readonly NetWorthSnapshot[]): readonly NetWorthTimelinePoint[] {
+function latestMonthlyPoints(
+  snapshots: readonly NetWorthSnapshot[],
+): readonly NetWorthTimelinePoint[] {
   const latestByMonth = new Map<string, NetWorthSnapshot>();
   for (const snapshot of snapshots) {
     const month = toMonth(snapshot.date);
@@ -145,7 +147,9 @@ function computeContributionChanges(
 export function exportNetWorthTimelineCsv(points: readonly NetWorthTimelinePoint[]): string {
   const rows = ['month,assetsCents,liabilitiesCents,netWorthCents'];
   for (const point of points) {
-    rows.push(`${point.month},${point.assetsCents},${point.liabilitiesCents},${point.netWorthCents}`);
+    rows.push(
+      `${point.month},${point.assetsCents},${point.liabilitiesCents},${point.netWorthCents}`,
+    );
   }
   return rows.join('\n');
 }

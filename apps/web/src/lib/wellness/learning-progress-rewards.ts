@@ -36,12 +36,19 @@ function calculateStreak(dates: readonly string[]): number {
   return streak;
 }
 
-export function generateLearningRewardEvents(state: LearningProgressState): readonly LearningRewardEvent[] {
-  const events: LearningRewardEvent[] = state.completedModuleIds.map((moduleId) => ({ type: 'module-complete', refId: moduleId, points: 50 }));
+export function generateLearningRewardEvents(
+  state: LearningProgressState,
+): readonly LearningRewardEvent[] {
+  const events: LearningRewardEvent[] = state.completedModuleIds.map((moduleId) => ({
+    type: 'module-complete',
+    refId: moduleId,
+    points: 50,
+  }));
   for (const [quizId, score] of Object.entries(state.quizScores)) {
     if (score >= 0.9) events.push({ type: 'quiz-mastery', refId: quizId, points: 100 });
   }
   const streak = calculateStreak(state.sessionDates);
-  if (streak >= 3) events.push({ type: 'return-streak', refId: `${streak}-day`, points: streak * 10 });
+  if (streak >= 3)
+    events.push({ type: 'return-streak', refId: `${streak}-day`, points: streak * 10 });
   return events;
 }

@@ -58,7 +58,12 @@ export class ManualCryptoConnectionProvider implements CryptoConnectionProvider 
   private readonly balances: readonly CryptoBalance[];
   private readonly transactions: readonly CryptoTransaction[];
 
-  constructor(input: { readonly accounts: readonly CryptoAccount[]; readonly balances?: readonly CryptoBalance[]; readonly transactions?: readonly CryptoTransaction[]; readonly supportedChains?: readonly string[] }) {
+  constructor(input: {
+    readonly accounts: readonly CryptoAccount[];
+    readonly balances?: readonly CryptoBalance[];
+    readonly transactions?: readonly CryptoTransaction[];
+    readonly supportedChains?: readonly string[];
+  }) {
     this.accounts = input.accounts;
     this.balances = input.balances ?? [];
     this.transactions = input.transactions ?? [];
@@ -78,12 +83,22 @@ export class ManualCryptoConnectionProvider implements CryptoConnectionProvider 
   }
 }
 
-export function summarizeConnectionHealth(accounts: readonly CryptoAccount[], staleAfterMs: number, now: string): CryptoConnectionHealth {
+export function summarizeConnectionHealth(
+  accounts: readonly CryptoAccount[],
+  staleAfterMs: number,
+  now: string,
+): CryptoConnectionHealth {
   if (accounts.length === 0) return 'needs-attention';
   if (accounts.some((account) => account.health === 'failed')) return 'failed';
   if (accounts.some((account) => account.health === 'needs-attention')) return 'needs-attention';
   const nowMs = new Date(now).getTime();
-  if (accounts.some((account) => account.lastSyncAt && nowMs - new Date(account.lastSyncAt).getTime() > staleAfterMs)) return 'stale';
+  if (
+    accounts.some(
+      (account) =>
+        account.lastSyncAt && nowMs - new Date(account.lastSyncAt).getTime() > staleAfterMs,
+    )
+  )
+    return 'stale';
   if (accounts.every((account) => account.health === 'manual')) return 'manual';
   return 'healthy';
 }

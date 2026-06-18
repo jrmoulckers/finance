@@ -36,9 +36,8 @@ const NOTIFICATIONS_STORAGE_KEY = 'finance-notifications';
 
 type CurrencyPreference = string;
 
-const currencyOptions: Array<{ value: CurrencyPreference; label: string }> = SUPPORTED_CURRENCY_METADATA.map(
-  ({ code, label }) => ({ value: code, label }),
-);
+const currencyOptions: Array<{ value: CurrencyPreference; label: string }> =
+  SUPPORTED_CURRENCY_METADATA.map(({ code, label }) => ({ value: code, label }));
 
 /** Labels for theme select options. */
 const THEME_LABELS: Record<ThemeValue, string> = {
@@ -172,11 +171,14 @@ export const SettingsPreferencesPage: React.FC = () => {
     setNotificationsEnabled(nextNotificationsEnabled);
   }, []);
 
-  const handleSingleKeyShortcutsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const enabled = event.target.checked;
-    setSingleKeyShortcutsPreference(enabled);
-    setSingleKeyShortcutsEnabled(enabled);
-  }, []);
+  const handleSingleKeyShortcutsChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const enabled = event.target.checked;
+      setSingleKeyShortcutsPreference(enabled);
+      setSingleKeyShortcutsEnabled(enabled);
+    },
+    [],
+  );
 
   const handleBnplThresholdChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const dollars = event.target.value;
@@ -766,6 +768,3 @@ export const SettingsPreferencesPage: React.FC = () => {
 };
 
 export default SettingsPreferencesPage;
-
-
-

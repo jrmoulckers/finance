@@ -30,9 +30,21 @@ export function projectGoalMilestones(input: GoalProjectionInput): GoalProjectio
   const weeksRemaining = Math.max(1, Math.ceil(days(input.today, input.dueDate) / 7));
   const totalDays = Math.max(1, days(input.startDate, input.dueDate));
   const elapsedDays = days(input.startDate, input.today);
-  const expectedCents = input.startCents + Math.round((Math.max(0, input.targetCents - input.startCents) * elapsedDays) / totalDays);
-  const milestonePercent = input.targetCents === 0 ? 100 : Math.min(100, Math.round((input.currentCents / input.targetCents) * 100));
-  const state: GoalProjectionState = remainingCents === 0 ? 'complete' : input.currentCents + 500_00 < expectedCents ? 'behind' : input.currentCents > expectedCents + 500_00 ? 'ahead' : 'on-track';
+  const expectedCents =
+    input.startCents +
+    Math.round((Math.max(0, input.targetCents - input.startCents) * elapsedDays) / totalDays);
+  const milestonePercent =
+    input.targetCents === 0
+      ? 100
+      : Math.min(100, Math.round((input.currentCents / input.targetCents) * 100));
+  const state: GoalProjectionState =
+    remainingCents === 0
+      ? 'complete'
+      : input.currentCents + 500_00 < expectedCents
+        ? 'behind'
+        : input.currentCents > expectedCents + 500_00
+          ? 'ahead'
+          : 'on-track';
   return {
     remainingCents,
     weeklyTargetCents: Math.ceil(remainingCents / weeksRemaining),

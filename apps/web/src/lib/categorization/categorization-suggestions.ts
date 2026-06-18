@@ -27,7 +27,11 @@ export interface CategorizationSuggestion {
 }
 
 function normalize(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9 ]+/g, '').replace(/\s+/g, ' ');
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, '')
+    .replace(/\s+/g, ' ');
 }
 
 export function learnCategoryCorrection(merchant: string, categoryId: string): CategoryCorrection {
@@ -39,19 +43,43 @@ export function suggestCategory(input: CategorizationSuggestionInput): Categoriz
   const searchable = normalize(`${input.merchant} ${input.description}`);
   const correction = input.corrections.find((item) => item.normalizedMerchant === merchant);
   if (correction) {
-    return { categoryId: correction.categoryId, confidence: 0.95, strategy: 'correction', matchedOn: merchant, needsReview: false };
+    return {
+      categoryId: correction.categoryId,
+      confidence: 0.95,
+      strategy: 'correction',
+      matchedOn: merchant,
+      needsReview: false,
+    };
   }
 
   for (const rule of input.rules) {
     const keyword = rule.keywords.find((candidate) => searchable.includes(normalize(candidate)));
     if (keyword) {
-      return { categoryId: rule.categoryId, confidence: 0.72, strategy: 'keyword', matchedOn: normalize(keyword), needsReview: false };
+      return {
+        categoryId: rule.categoryId,
+        confidence: 0.72,
+        strategy: 'keyword',
+        matchedOn: normalize(keyword),
+        needsReview: false,
+      };
     }
   }
 
   if (input.amountCents > 0) {
-    return { categoryId: 'uncategorized-expense', confidence: 0.25, strategy: 'amount-fallback', matchedOn: null, needsReview: true };
+    return {
+      categoryId: 'uncategorized-expense',
+      confidence: 0.25,
+      strategy: 'amount-fallback',
+      matchedOn: null,
+      needsReview: true,
+    };
   }
 
-  return { categoryId: null, confidence: 0, strategy: 'unknown', matchedOn: null, needsReview: true };
+  return {
+    categoryId: null,
+    confidence: 0,
+    strategy: 'unknown',
+    matchedOn: null,
+    needsReview: true,
+  };
 }

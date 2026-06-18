@@ -29,7 +29,11 @@ describe('scheduled report schedule management', () => {
 
   it('supports pause resume delete and failure banners locally', () => {
     const paused = setLocalReportSchedulePaused(schedule, true, '2026-01-02T00:00:00Z');
-    const failed = recordLocalReportScheduleFailure(paused, 'Mailbox unavailable', '2026-01-03T00:00:00Z');
+    const failed = recordLocalReportScheduleFailure(
+      paused,
+      'Mailbox unavailable',
+      '2026-01-03T00:00:00Z',
+    );
     const deleted = markLocalReportScheduleDeleted(schedule, '2026-01-04T00:00:00Z');
     const state = buildScheduleManagementState([failed, deleted], '2026-01-05');
 

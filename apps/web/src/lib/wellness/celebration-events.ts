@@ -33,13 +33,17 @@ export function isNearWin(input: HealthyHabitInput): boolean {
   return !input.completed && input.percentComplete >= 80 && input.percentComplete < 100;
 }
 
-export function emitCelebrationEvents(inputs: readonly HealthyHabitInput[]): readonly CelebrationEvent[] {
+export function emitCelebrationEvents(
+  inputs: readonly HealthyHabitInput[],
+): readonly CelebrationEvent[] {
   const events: CelebrationEvent[] = [];
   const streak = deriveHabitStreak(inputs.map((input) => input.date));
-  if (streak >= 3) events.push({ type: 'streak', domain: inputs[0]?.domain ?? 'goals', ref: `${streak}-day` });
+  if (streak >= 3)
+    events.push({ type: 'streak', domain: inputs[0]?.domain ?? 'goals', ref: `${streak}-day` });
   for (const input of inputs) {
     if (input.completed) events.push({ type: 'completion', domain: input.domain, ref: input.date });
-    else if (isNearWin(input)) events.push({ type: 'near-win', domain: input.domain, ref: `${input.percentComplete}%` });
+    else if (isNearWin(input))
+      events.push({ type: 'near-win', domain: input.domain, ref: `${input.percentComplete}%` });
   }
   return events;
 }

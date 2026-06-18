@@ -96,11 +96,21 @@ export function evaluatePoaAccess(
   const watermark = 'Read-only caregiver/POA view';
 
   if (status !== 'ACTIVE') {
-    return { allowed: false, status, watermark, reason: `Grant is ${status.toLowerCase().replaceAll('_', ' ')}.` };
+    return {
+      allowed: false,
+      status,
+      watermark,
+      reason: `Grant is ${status.toLowerCase().replaceAll('_', ' ')}.`,
+    };
   }
 
   if (!grant.scopes.includes(scope)) {
-    return { allowed: false, status, watermark, reason: 'This view is outside the caregiver scope.' };
+    return {
+      allowed: false,
+      status,
+      watermark,
+      reason: 'This view is outside the caregiver scope.',
+    };
   }
 
   if (capability === 'VIEW') {
@@ -108,10 +118,20 @@ export function evaluatePoaAccess(
   }
 
   if (capability === 'EXPORT' && grant.allowSummaryExport) {
-    return { allowed: true, status, watermark, reason: 'Summary export was explicitly allowed by the owner.' };
+    return {
+      allowed: true,
+      status,
+      watermark,
+      reason: 'Summary export was explicitly allowed by the owner.',
+    };
   }
 
-  return { allowed: false, status, watermark, reason: 'POA-scoped access blocks edits, sharing changes, and unapproved exports.' };
+  return {
+    allowed: false,
+    status,
+    watermark,
+    reason: 'POA-scoped access blocks edits, sharing changes, and unapproved exports.',
+  };
 }
 
 export function buildPoaAuditEvent(

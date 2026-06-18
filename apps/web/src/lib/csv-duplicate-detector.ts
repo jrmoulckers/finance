@@ -112,7 +112,11 @@ function computeMatch(
   const reasons: string[] = [];
 
   const importSourceId = getString(row.data, 'externalReferenceId');
-  if (importSourceId && existing.externalReferenceId && importSourceId === existing.externalReferenceId) {
+  if (
+    importSourceId &&
+    existing.externalReferenceId &&
+    importSourceId === existing.externalReferenceId
+  ) {
     return { score: SOURCE_ID_SCORE, reasons: ['same source transaction id'] };
   }
 

@@ -152,7 +152,8 @@ export function analyzeDCAPlan(
     periods,
     totalContributedCents,
     totalShares,
-    averagePurchasePriceCents: totalShares > 0 ? bankersRound(totalContributedCents / totalShares) : 0,
+    averagePurchasePriceCents:
+      totalShares > 0 ? bankersRound(totalContributedCents / totalShares) : 0,
     currentValueCents,
     gainLossCents: currentValueCents === null ? null : currentValueCents - totalContributedCents,
     completedPeriods: periods.filter((period) => period.status === 'COMPLETED').length,

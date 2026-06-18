@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import type { DetectedSubscription, SubscriptionCadence as AnalyticsSubscriptionCadence, SubscriptionStatus } from '../analytics/subscriptions';
+import type {
+  DetectedSubscription,
+  SubscriptionCadence as AnalyticsSubscriptionCadence,
+  SubscriptionStatus,
+} from '../analytics/subscriptions';
 import type { AppNotification } from './types';
 import {
   subscriptionPriceChangesToNotifications,
@@ -44,11 +48,16 @@ export function subscriptionsToPriceChangeCharges(
   subscriptions: readonly DetectedSubscription[],
   capturedAt?: string,
 ): SubscriptionCharge[] {
-  return subscriptions.map((subscription) => subscriptionToPriceChangeCharge(subscription, capturedAt));
+  return subscriptions.map((subscription) =>
+    subscriptionToPriceChangeCharge(subscription, capturedAt),
+  );
 }
 
 export function routeSubscriptionPriceChange(alert: SubscriptionPriceChangeAlert): string {
-  const params = new URLSearchParams({ subscriptionId: alert.subscriptionKey, alert: 'price_change' });
+  const params = new URLSearchParams({
+    subscriptionId: alert.subscriptionKey,
+    alert: 'price_change',
+  });
   return `/subscriptions?${params.toString()}`;
 }
 
@@ -64,11 +73,18 @@ export function buildSubscriptionPriceChangeDispatchPlans(
   }));
 }
 
-export function buildSubscriptionPriceChangeCommands(subscriptionId: string): readonly SubscriptionPriceChangeCommand[] {
+export function buildSubscriptionPriceChangeCommands(
+  subscriptionId: string,
+): readonly SubscriptionPriceChangeCommand[] {
   return [
     { action: 'review', subscriptionId, label: 'Review details' },
     { action: 'update_budget', subscriptionId, label: 'Update budget' },
-    { action: 'cancel_subscription', subscriptionId, label: 'Mark cancelled', nextStatus: 'cancelled' },
+    {
+      action: 'cancel_subscription',
+      subscriptionId,
+      label: 'Mark cancelled',
+      nextStatus: 'cancelled',
+    },
   ];
 }
 

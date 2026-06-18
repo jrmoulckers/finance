@@ -92,7 +92,9 @@ describe('budget scenario local storage', () => {
 
     deleteBudgetScenarioRecord(storage, 'scenario-copy');
 
-    expect(loadBudgetScenarioRecords(storage).map((item) => item.scenario.id)).toEqual(['scenario-1']);
+    expect(loadBudgetScenarioRecords(storage).map((item) => item.scenario.id)).toEqual([
+      'scenario-1',
+    ]);
     expect(source.scenario.id).toBe('scenario-1');
   });
 

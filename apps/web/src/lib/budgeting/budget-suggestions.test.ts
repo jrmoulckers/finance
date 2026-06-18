@@ -12,7 +12,12 @@ const categories: BudgetSuggestionCategory[] = [
   { id: 'paycheck', name: 'Paycheck', type: 'income' },
 ];
 
-function expense(id: string, categoryId: string, date: string, amountCents: number): BudgetSuggestionTransaction {
+function expense(
+  id: string,
+  categoryId: string,
+  date: string,
+  amountCents: number,
+): BudgetSuggestionTransaction {
   return { id, categoryId, amountCents, date, kind: 'expense', deleted: false };
 }
 
@@ -86,7 +91,13 @@ describe('suggestCategoryBudgetAmount', () => {
         expense('food-1', 'food', '2025-03-01', 20_000),
         expense('child-1', 'groceries', '2025-03-02', 30_000),
         { ...expense('deleted', 'food', '2025-03-03', 90_000), deleted: true },
-        { id: 'income', categoryId: 'paycheck', amountCents: 500_000, date: '2025-03-04', kind: 'income' },
+        {
+          id: 'income',
+          categoryId: 'paycheck',
+          amountCents: 500_000,
+          date: '2025-03-04',
+          kind: 'income',
+        },
       ],
       asOfMonth: '2025-03',
       lookbackMonths: 1,

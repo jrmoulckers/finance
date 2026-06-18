@@ -63,7 +63,9 @@ describe('dashboard perceived performance planning', () => {
 
   it('keeps non-primary widgets blocked until the primary summary is ready', () => {
     expect(getDashboardWidgetPriority('balance-summary')).toBe('primary');
-    expect(shouldHydrateDashboardWidget('budget-progress', { hasPrimarySummary: false })).toBe(false);
+    expect(shouldHydrateDashboardWidget('budget-progress', { hasPrimarySummary: false })).toBe(
+      false,
+    );
     expect(shouldHydrateDashboardWidget('budget-progress', { hasPrimarySummary: true })).toBe(true);
   });
 });

@@ -646,12 +646,20 @@ describe('InsightsPage', () => {
     );
 
     const peerSection = screen.getByLabelText('Peer comparisons');
-    expect(within(peerSection).getByText('Current benchmark cards stay available without peer comparison opt-in.')).toBeInTheDocument();
+    expect(
+      within(peerSection).getByText(
+        'Current benchmark cards stay available without peer comparison opt-in.',
+      ),
+    ).toBeInTheDocument();
 
-    fireEvent.click(within(peerSection).getByRole('button', { name: 'Opt in to peer comparisons' }));
+    fireEvent.click(
+      within(peerSection).getByRole('button', { name: 'Opt in to peer comparisons' }),
+    );
 
     expect(within(peerSection).getByText('Clear peer profile')).toBeInTheDocument();
-    expect(within(peerSection).getByLabelText(/Housing: 15% of income, peer range/i)).toBeInTheDocument();
+    expect(
+      within(peerSection).getByLabelText(/Housing: 15% of income, peer range/i),
+    ).toBeInTheDocument();
   });
 
   it('renders recommendations', () => {

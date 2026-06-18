@@ -70,17 +70,33 @@ function buildDeletionDomainResults(
     results.set(domain, deletionResult(domain, 'deleted'));
   }
   for (const domain of endpointReceipt.failedDomains) {
-    results.set(domain, deletionResult(domain, 'failed', 'Server deletion endpoint reported this domain as incomplete.'));
+    results.set(
+      domain,
+      deletionResult(
+        domain,
+        'failed',
+        'Server deletion endpoint reported this domain as incomplete.',
+      ),
+    );
   }
   for (const area of localWipeReceipt.deleted) {
-    results.set(LOCAL_WIPE_DOMAIN_BY_AREA[area], deletionResult(LOCAL_WIPE_DOMAIN_BY_AREA[area], 'deleted'));
+    results.set(
+      LOCAL_WIPE_DOMAIN_BY_AREA[area],
+      deletionResult(LOCAL_WIPE_DOMAIN_BY_AREA[area], 'deleted'),
+    );
   }
   for (const area of localWipeReceipt.notApplicable) {
-    results.set(LOCAL_WIPE_DOMAIN_BY_AREA[area], deletionResult(LOCAL_WIPE_DOMAIN_BY_AREA[area], 'not_applicable'));
+    results.set(
+      LOCAL_WIPE_DOMAIN_BY_AREA[area],
+      deletionResult(LOCAL_WIPE_DOMAIN_BY_AREA[area], 'not_applicable'),
+    );
   }
   for (const failure of localWipeReceipt.failed) {
     const domain = LOCAL_WIPE_DOMAIN_BY_AREA[failure.area];
-    results.set(domain, deletionResult(domain, 'failed', failure.detail ?? 'Local wipe verification failed.'));
+    results.set(
+      domain,
+      deletionResult(domain, 'failed', failure.detail ?? 'Local wipe verification failed.'),
+    );
   }
 
   return [...results.values()];
@@ -119,7 +135,9 @@ export function useAccountDeletion(): {
   const [confirmationText, setConfirmationText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [completionReceipt, setCompletionReceipt] = useState<AccountDeletionReceiptState | null>(null);
+  const [completionReceipt, setCompletionReceipt] = useState<AccountDeletionReceiptState | null>(
+    null,
+  );
   const [householdImpact, setHouseholdImpact] = useState<HouseholdDeletionImpact>({
     soloOwnedHouseholds: 0,
     memberHouseholds: 0,
@@ -279,14 +297,17 @@ export function useAccountDeletion(): {
                 <li key={domain}>{domain}</li>
               ))}
             </ul>
-            {(completionReceipt.receipt.failures.length > 0 || completionReceipt.receipt.retained.length > 0) && (
+            {(completionReceipt.receipt.failures.length > 0 ||
+              completionReceipt.receipt.retained.length > 0) && (
               <p role="alert" style={{ color: 'var(--semantic-warning, #b45309)' }}>
                 Some deletion domains need follow-up; view or download the receipt for details.
               </p>
             )}
             <details className="settings-item__description">
               <summary>View verification receipt</summary>
-              <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{completionReceipt.serialized}</pre>
+              <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                {completionReceipt.serialized}
+              </pre>
             </details>
             <div
               style={{
@@ -332,120 +353,120 @@ export function useAccountDeletion(): {
           </>
         ) : (
           <>
-        <h3 id="delete-account-title" className="settings-group__title">
-          Delete account and all data
-        </h3>
-        <p id="delete-account-description" className="settings-item__description">
-          This permanently deletes your account, personal finance data, passkeys, connected bank
-          links, audit entries, and authentication record. This cannot be undone.
-        </p>
-        {/*
+            <h3 id="delete-account-title" className="settings-group__title">
+              Delete account and all data
+            </h3>
+            <p id="delete-account-description" className="settings-item__description">
+              This permanently deletes your account, personal finance data, passkeys, connected bank
+              links, audit entries, and authentication record. This cannot be undone.
+            </p>
+            {/*
           Household + shared-data consequences (issue #1962).
           The wording is mirrored by the server-side policy in
           services/api/supabase/functions/account-delete/index.ts —
           update both together.
         */}
-        <ul aria-label="What will be deleted" className="settings-item__description">
-          <li>
-            All your personal accounts, transactions, budgets, goals, categories, settings, and
-            audit records will be permanently deleted.
-          </li>
-          {householdImpact.soloOwnedHouseholds > 0 && (
-            <li>
-              {householdImpact.soloOwnedHouseholds} household
-              {householdImpact.soloOwnedHouseholds === 1 ? '' : 's'} you solely own will be deleted
-              entirely — any other invited members lose access.
-            </li>
-          )}
-          {householdImpact.memberHouseholds > 0 && (
-            <li>
-              You will be removed from {householdImpact.memberHouseholds} shared household
-              {householdImpact.memberHouseholds === 1 ? '' : 's'}. The household itself stays, but
-              every transaction, budget, goal, account, and category you contributed there is
-              deleted. Data owned by other members is untouched.
-            </li>
-          )}
-          {householdImpact.pendingInvites > 0 && (
-            <li>
-              {householdImpact.pendingInvites} pending invitation
-              {householdImpact.pendingInvites === 1 ? '' : 's'} you sent will be revoked.
-            </li>
-          )}
-          <li>
-            Your sign-in identity (Google / Apple / email / passkey) is unlinked. Signing in again
-            creates a brand-new empty account.
-          </li>
-          <li>This action cannot be undone.</li>
-        </ul>
-        <label className="settings-item__label" htmlFor="delete-account-confirmation">
-          Type DELETE to confirm
-        </label>
-        <input
-          id="delete-account-confirmation"
-          className="form-input settings-item__input"
-          value={confirmationText}
-          onChange={(event) => setConfirmationText(event.target.value)}
-          disabled={isDeleting}
-          autoComplete="off"
-          aria-describedby="delete-account-confirmation-help"
-        />
-        <p
-          id="delete-account-confirmation-help"
-          className="settings-item__description"
-          style={{ marginTop: 'var(--spacing-1, 0.25rem)' }}
-        >
-          The deletion button stays disabled until you type the word DELETE exactly.
-        </p>
-        {error && (
-          <p role="alert" style={{ color: 'var(--semantic-danger, #dc2626)' }}>
-            {error}
-          </p>
-        )}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: 'var(--spacing-3, 0.75rem)',
-            marginTop: 'var(--spacing-5, 1.25rem)',
-          }}
-        >
-          <button
-            type="button"
-            className="settings-account-delete__cancel-button settings-account-delete__cancel-button--secondary"
-            onClick={closeDeleteModal}
-            disabled={isDeleting}
-            style={{
-              border: '1px solid var(--semantic-border-primary, #d1d5db)',
-              background: 'transparent',
-              color: 'var(--semantic-text-secondary, #475569)',
-              padding: '0.625rem 1rem',
-              borderRadius: 'var(--radius-md, 0.5rem)',
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="settings-account-delete__confirm-button settings-account-delete__confirm-button--danger"
-            onClick={() => {
-              void handleAccountDelete();
-            }}
-            disabled={confirmationText !== 'DELETE' || isDeleting}
-            aria-disabled={confirmationText !== 'DELETE' || isDeleting}
-            style={{
-              border: '1px solid var(--semantic-danger, #dc2626)',
-              background: 'var(--semantic-danger, #dc2626)',
-              color: '#fff',
-              fontWeight: 700,
-              padding: '0.625rem 1rem',
-              borderRadius: 'var(--radius-md, 0.5rem)',
-              opacity: confirmationText !== 'DELETE' || isDeleting ? 0.55 : 1,
-              cursor: confirmationText !== 'DELETE' || isDeleting ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {isDeleting ? 'Deleting…' : 'Yes, Delete Everything'}
-          </button>
-        </div>
+            <ul aria-label="What will be deleted" className="settings-item__description">
+              <li>
+                All your personal accounts, transactions, budgets, goals, categories, settings, and
+                audit records will be permanently deleted.
+              </li>
+              {householdImpact.soloOwnedHouseholds > 0 && (
+                <li>
+                  {householdImpact.soloOwnedHouseholds} household
+                  {householdImpact.soloOwnedHouseholds === 1 ? '' : 's'} you solely own will be
+                  deleted entirely — any other invited members lose access.
+                </li>
+              )}
+              {householdImpact.memberHouseholds > 0 && (
+                <li>
+                  You will be removed from {householdImpact.memberHouseholds} shared household
+                  {householdImpact.memberHouseholds === 1 ? '' : 's'}. The household itself stays,
+                  but every transaction, budget, goal, account, and category you contributed there
+                  is deleted. Data owned by other members is untouched.
+                </li>
+              )}
+              {householdImpact.pendingInvites > 0 && (
+                <li>
+                  {householdImpact.pendingInvites} pending invitation
+                  {householdImpact.pendingInvites === 1 ? '' : 's'} you sent will be revoked.
+                </li>
+              )}
+              <li>
+                Your sign-in identity (Google / Apple / email / passkey) is unlinked. Signing in
+                again creates a brand-new empty account.
+              </li>
+              <li>This action cannot be undone.</li>
+            </ul>
+            <label className="settings-item__label" htmlFor="delete-account-confirmation">
+              Type DELETE to confirm
+            </label>
+            <input
+              id="delete-account-confirmation"
+              className="form-input settings-item__input"
+              value={confirmationText}
+              onChange={(event) => setConfirmationText(event.target.value)}
+              disabled={isDeleting}
+              autoComplete="off"
+              aria-describedby="delete-account-confirmation-help"
+            />
+            <p
+              id="delete-account-confirmation-help"
+              className="settings-item__description"
+              style={{ marginTop: 'var(--spacing-1, 0.25rem)' }}
+            >
+              The deletion button stays disabled until you type the word DELETE exactly.
+            </p>
+            {error && (
+              <p role="alert" style={{ color: 'var(--semantic-danger, #dc2626)' }}>
+                {error}
+              </p>
+            )}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 'var(--spacing-3, 0.75rem)',
+                marginTop: 'var(--spacing-5, 1.25rem)',
+              }}
+            >
+              <button
+                type="button"
+                className="settings-account-delete__cancel-button settings-account-delete__cancel-button--secondary"
+                onClick={closeDeleteModal}
+                disabled={isDeleting}
+                style={{
+                  border: '1px solid var(--semantic-border-primary, #d1d5db)',
+                  background: 'transparent',
+                  color: 'var(--semantic-text-secondary, #475569)',
+                  padding: '0.625rem 1rem',
+                  borderRadius: 'var(--radius-md, 0.5rem)',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="settings-account-delete__confirm-button settings-account-delete__confirm-button--danger"
+                onClick={() => {
+                  void handleAccountDelete();
+                }}
+                disabled={confirmationText !== 'DELETE' || isDeleting}
+                aria-disabled={confirmationText !== 'DELETE' || isDeleting}
+                style={{
+                  border: '1px solid var(--semantic-danger, #dc2626)',
+                  background: 'var(--semantic-danger, #dc2626)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  padding: '0.625rem 1rem',
+                  borderRadius: 'var(--radius-md, 0.5rem)',
+                  opacity: confirmationText !== 'DELETE' || isDeleting ? 0.55 : 1,
+                  cursor: confirmationText !== 'DELETE' || isDeleting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isDeleting ? 'Deleting…' : 'Yes, Delete Everything'}
+              </button>
+            </div>
           </>
         )}
       </div>

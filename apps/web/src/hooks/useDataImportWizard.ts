@@ -480,7 +480,9 @@ function applyRememberedMapping(
   });
   if (!match) return { mapping: [...fallback], match: null };
 
-  const byColumnName = new Map(match.entry.mapping.map((mapping) => [normalizeHeader(mapping.columnName), mapping]));
+  const byColumnName = new Map(
+    match.entry.mapping.map((mapping) => [normalizeHeader(mapping.columnName), mapping]),
+  );
   const mapping = fallback.map((item) => {
     const remembered = byColumnName.get(normalizeHeader(item.columnName));
     return remembered ? { ...item, mappedField: remembered.mappedField } : item;
@@ -671,7 +673,11 @@ export function useDataImportWizard(): UseDataImportWizardResult {
         }
 
         const { headers, rows } = normaliseTransactionsForWizard(parsed.transactions);
-        const remembered = applyRememberedMapping(headers, detected, autoMapColumns(headers, detected));
+        const remembered = applyRememberedMapping(
+          headers,
+          detected,
+          autoMapColumns(headers, detected),
+        );
         setCsvColumns(buildColumns(headers, rows));
         setCsvRows(rows);
         setDetectedFormat(detected);
@@ -696,7 +702,11 @@ export function useDataImportWizard(): UseDataImportWizardResult {
       }
 
       const csvFormat = detectFileFormat(file.name, text, headers);
-      const remembered = applyRememberedMapping(headers, csvFormat, autoMapColumns(headers, csvFormat));
+      const remembered = applyRememberedMapping(
+        headers,
+        csvFormat,
+        autoMapColumns(headers, csvFormat),
+      );
       setCsvColumns(buildColumns(headers, rows));
       setCsvRows(rows);
       setDetectedFormat(csvFormat);
@@ -741,7 +751,12 @@ export function useDataImportWizard(): UseDataImportWizardResult {
       detectedSource: detectedFormat,
     });
     setMappingMemoryMatch(null);
-    setColumnMappings(autoMapColumns(csvColumns.map((column) => column.name), detectedFormat));
+    setColumnMappings(
+      autoMapColumns(
+        csvColumns.map((column) => column.name),
+        detectedFormat,
+      ),
+    );
   }, [csvColumns, detectedFormat]);
 
   const goToPreview = useCallback(() => {

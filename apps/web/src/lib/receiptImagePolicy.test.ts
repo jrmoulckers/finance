@@ -22,7 +22,9 @@ describe('receipt image policy', () => {
     );
 
     expect(hasSensitiveReceiptToken(url)).toBe(true);
-    expect(sanitizeReceiptCacheUrl(url)).toBe('https://finance.example/receipts/r-1/thumb.jpg?w=160');
+    expect(sanitizeReceiptCacheUrl(url)).toBe(
+      'https://finance.example/receipts/r-1/thumb.jpg?w=160',
+    );
   });
 
   it('extracts lazy receipt metadata from transaction custom fields', () => {

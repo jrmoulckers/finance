@@ -26,9 +26,7 @@ function formatParts(date: Date, timeZone: string): Record<string, string> {
     hourCycle: 'h23',
   });
 
-  return Object.fromEntries(
-    formatter.formatToParts(date).map((part) => [part.type, part.value]),
-  );
+  return Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
 }
 
 export function getMerchantLocalDate(occurredAt: string | Date, timeZone: string): string {
@@ -54,7 +52,8 @@ export function getTimeZoneOffsetMinutes(occurredAt: string | Date, timeZone: st
 export function createTransactionTimestampContext(
   input: TransactionTimestampContextInput,
 ): TransactionTimestampContext {
-  const timeZone = input.occurredTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const timeZone =
+    input.occurredTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
   if (!input.occurredAt) {
     return {

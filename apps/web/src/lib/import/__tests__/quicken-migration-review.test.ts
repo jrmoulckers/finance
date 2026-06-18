@@ -59,7 +59,10 @@ describe('buildQuickenMigrationReview', () => {
       existingCategories: [],
     });
 
-    expect(review.accountSuggestions[0]).toMatchObject({ existingId: 'acct-1', shouldCreate: false });
+    expect(review.accountSuggestions[0]).toMatchObject({
+      existingId: 'acct-1',
+      shouldCreate: false,
+    });
     expect(review.categorySuggestions[0]).toMatchObject({ name: 'Dining', shouldCreate: true });
     expect(review.duplicateSourceIds).toEqual([{ sourceTransactionId: 'dup', rowNumbers: [1, 2] }]);
   });
@@ -85,7 +88,7 @@ describe('buildQuickenMigrationReview', () => {
             type: null,
             memo: null,
             balanceCents: null,
-            rawFields: { ACCOUNT: 'Checking', S1: 'Groceries', '$1': '-30.00' },
+            rawFields: { ACCOUNT: 'Checking', S1: 'Groceries', $1: '-30.00' },
           },
         ],
         errors: [],

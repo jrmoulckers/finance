@@ -20,7 +20,9 @@ describe('repaired import gating', () => {
     expect(buildRepairedImportGate({ rows: [broken, warning] }).canCommit).toBe(false);
     const warningGate = buildRepairedImportGate({ rows: [warning] });
     expect(warningGate.requiresWarningConfirmation).toBe(true);
-    expect(buildRepairedImportGate({ rows: [warning], warningsConfirmed: true }).canCommit).toBe(true);
+    expect(buildRepairedImportGate({ rows: [warning], warningsConfirmed: true }).canCommit).toBe(
+      true,
+    );
   });
 
   it('applies high-confidence OCR suggestions to repair rows', () => {
@@ -34,7 +36,12 @@ describe('repaired import gating', () => {
       account: 'Checking',
     });
 
-    expect(repaired.parsed).toMatchObject({ date: '2024-01-15', amountCents: -525, payee: 'Cafe', account: 'Checking' });
+    expect(repaired.parsed).toMatchObject({
+      date: '2024-01-15',
+      amountCents: -525,
+      payee: 'Cafe',
+      account: 'Checking',
+    });
     expect(repaired.issues).toHaveLength(0);
   });
 });

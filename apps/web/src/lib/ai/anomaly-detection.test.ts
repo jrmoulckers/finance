@@ -12,7 +12,9 @@ const sync = {
   isSynced: true,
 };
 
-function tx(overrides: Partial<Transaction> & { id: string; date: string; amount: { amount: number } }): Transaction {
+function tx(
+  overrides: Partial<Transaction> & { id: string; date: string; amount: { amount: number } },
+): Transaction {
   return {
     ...sync,
     householdId: 'h1',
@@ -46,7 +48,11 @@ function tx(overrides: Partial<Transaction> & { id: string; date: string; amount
 describe('detectFinancialAnomalies', () => {
   it('detects category outliers with severity and examples', () => {
     const transactions = Array.from({ length: 6 }, (_, index) =>
-      tx({ id: `base-${index}`, date: `2025-01-${String(index + 1).padStart(2, '0')}`, amount: { amount: 2_000 } }),
+      tx({
+        id: `base-${index}`,
+        date: `2025-01-${String(index + 1).padStart(2, '0')}`,
+        amount: { amount: 2_000 },
+      }),
     );
     transactions.push(tx({ id: 'outlier', date: '2025-01-10', amount: { amount: 30_000 } }));
 
@@ -80,7 +86,11 @@ describe('detectFinancialAnomalies', () => {
 
   it('uses feedback to suppress expected or dismissed findings', () => {
     const transactions = Array.from({ length: 6 }, (_, index) =>
-      tx({ id: `base-${index}`, date: `2025-01-${String(index + 1).padStart(2, '0')}`, amount: { amount: 2_000 } }),
+      tx({
+        id: `base-${index}`,
+        date: `2025-01-${String(index + 1).padStart(2, '0')}`,
+        amount: { amount: 2_000 },
+      }),
     );
     transactions.push(tx({ id: 'outlier', date: '2025-01-10', amount: { amount: 30_000 } }));
 

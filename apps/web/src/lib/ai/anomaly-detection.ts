@@ -57,7 +57,11 @@ function normalizeMerchant(transaction: Transaction): { key: string; label: stri
     transaction.note ??
     'Unknown merchant';
   const label = raw.trim() || 'Unknown merchant';
-  const key = label.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() || 'unknown merchant';
+  const key =
+    label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim() || 'unknown merchant';
   return { key, label };
 }
 
@@ -174,7 +178,9 @@ export function detectFinancialAnomalies(
   const expenses = transactions
     .filter(
       (transaction) =>
-        transaction.status !== 'VOID' && transaction.type === 'EXPENSE' && transaction.amount.amount !== 0,
+        transaction.status !== 'VOID' &&
+        transaction.type === 'EXPENSE' &&
+        transaction.amount.amount !== 0,
     )
     .map((transaction): ExpenseRecord => {
       const merchant = normalizeMerchant(transaction);
@@ -197,7 +203,12 @@ export function detectFinancialAnomalies(
     if (categoryAmounts.length >= minimumCategoryHistory) {
       const zScore = robustZScore(record.amountCents, categoryAmounts);
       if (zScore >= 3.2 && !shouldSuppress('category-outlier', record, feedback)) {
-        const confidence = adjustedConfidence(Math.min(0.95, 0.45 + zScore / 8), 'category-outlier', record, feedback);
+        const confidence = adjustedConfidence(
+          Math.min(0.95, 0.45 + zScore / 8),
+          'category-outlier',
+          record,
+          feedback,
+        );
         pushAnomaly(
           anomalies,
           seen,
@@ -241,7 +252,12 @@ export function detectFinancialAnomalies(
     } else if (merchantAmounts.length >= minimumMerchantHistory) {
       const zScore = robustZScore(record.amountCents, merchantAmounts);
       if (zScore >= 2.8 && !shouldSuppress('merchant-drift', record, feedback)) {
-        const confidence = adjustedConfidence(Math.min(0.92, 0.4 + zScore / 7), 'merchant-drift', record, feedback);
+        const confidence = adjustedConfidence(
+          Math.min(0.92, 0.4 + zScore / 7),
+          'merchant-drift',
+          record,
+          feedback,
+        );
         pushAnomaly(
           anomalies,
           seen,
@@ -288,8 +304,17 @@ export function detectFinancialAnomalies(
       if (prior.length >= 2) {
         const medianAmount = median(prior);
         const delta = Math.abs(record.amountCents - medianAmount);
-        if (medianAmount > 0 && delta / medianAmount >= 0.25 && !shouldSuppress('recurring-deviation', record, feedback)) {
-          const confidence = adjustedConfidence(Math.min(0.9, 0.5 + delta / medianAmount / 2), 'recurring-deviation', record, feedback);
+        if (
+          medianAmount > 0 &&
+          delta / medianAmount >= 0.25 &&
+          !shouldSuppress('recurring-deviation', record, feedback)
+        ) {
+          const confidence = adjustedConfidence(
+            Math.min(0.9, 0.5 + delta / medianAmount / 2),
+            'recurring-deviation',
+            record,
+            feedback,
+          );
           pushAnomaly(
             anomalies,
             seen,

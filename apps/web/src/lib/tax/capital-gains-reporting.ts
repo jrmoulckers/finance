@@ -106,7 +106,10 @@ function decrementRemainingLots(lots: MutableLot[], closedLots: readonly ClosedT
   }
 }
 
-function buildReportLots(sale: PersistedTaxSale, closedLots: readonly ClosedTaxLot[]): ReportClosedTaxLot[] {
+function buildReportLots(
+  sale: PersistedTaxSale,
+  closedLots: readonly ClosedTaxLot[],
+): ReportClosedTaxLot[] {
   const feeAllocations = allocateFees(closedLots, sale.feesCents ?? 0);
   return closedLots.map((lot, index) => {
     const saleFeesAllocated = feeAllocations[index] ?? 0;
@@ -166,8 +169,7 @@ function summarizeBySymbol(closedLots: readonly ReportClosedTaxLot[]): CapitalGa
       salesCount: current.salesCount + 1,
       proceeds: current.proceeds + lot.proceeds,
       costBasis: current.costBasis + lot.costBasis,
-      shortTermGainLoss:
-        current.shortTermGainLoss + (lot.term === 'SHORT_TERM' ? lot.gainLoss : 0),
+      shortTermGainLoss: current.shortTermGainLoss + (lot.term === 'SHORT_TERM' ? lot.gainLoss : 0),
       longTermGainLoss: current.longTermGainLoss + (lot.term === 'LONG_TERM' ? lot.gainLoss : 0),
       netGainLoss: current.netGainLoss + lot.gainLoss,
       washSaleDisallowedLoss: current.washSaleDisallowedLoss + lot.washSaleDisallowedLoss,
@@ -244,7 +246,9 @@ function csvEscape(value: string | number): string {
 }
 
 /** Export report lots in a tax-prep-review friendly CSV shape. */
-export function exportCapitalGainsLotsCsv(report: Pick<CapitalGainsTaxReport, 'closedLots'>): string {
+export function exportCapitalGainsLotsCsv(
+  report: Pick<CapitalGainsTaxReport, 'closedLots'>,
+): string {
   const header = [
     'saleId',
     'symbol',

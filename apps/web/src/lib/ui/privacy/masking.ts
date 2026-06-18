@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-import { getCurrencyFractionDigits, getSafeCurrencyCode, minorUnitFactor } from '../../currency-metadata';
+import {
+  getCurrencyFractionDigits,
+  getSafeCurrencyCode,
+  minorUnitFactor,
+} from '../../currency-metadata';
 import { getCurrentLocale } from '../../i18n';
 
 /** Canonical privacy masking modes for every money-rendering surface. */
@@ -48,8 +52,10 @@ function currencyFormatter(
     currency,
     currencyDisplay: options.currencyDisplay ?? 'symbol',
     notation: options.compact ? 'compact' : 'standard',
-    minimumFractionDigits: options.minimumFractionDigits ?? (options.compact ? 0 : defaultFractionDigits),
-    maximumFractionDigits: options.maximumFractionDigits ?? (options.compact ? 0 : defaultFractionDigits),
+    minimumFractionDigits:
+      options.minimumFractionDigits ?? (options.compact ? 0 : defaultFractionDigits),
+    maximumFractionDigits:
+      options.maximumFractionDigits ?? (options.compact ? 0 : defaultFractionDigits),
     signDisplay: options.signDisplay ?? 'auto',
   });
 }

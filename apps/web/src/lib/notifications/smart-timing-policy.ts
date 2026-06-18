@@ -39,11 +39,18 @@ export function chooseNotificationTime(input: NotificationTimingInput): Notifica
   const hour = now.getUTCHours();
   if (input.priority === 'critical') return { scheduledAt: now.toISOString(), reason: 'send-now' };
   if (inQuietHours(hour, input.quietHours)) {
-    return { scheduledAt: nextAtHour(now, input.quietHours.endHour).toISOString(), reason: 'after-quiet-hours' };
+    return {
+      scheduledAt: nextAtHour(now, input.quietHours.endHour).toISOString(),
+      reason: 'after-quiet-hours',
+    };
   }
-  if (input.preferredHours.includes(hour)) return { scheduledAt: now.toISOString(), reason: 'send-now' };
+  if (input.preferredHours.includes(hour))
+    return { scheduledAt: now.toISOString(), reason: 'send-now' };
   if (input.preferredHours.length > 0 && input.priority !== 'high') {
-    return { scheduledAt: nextAtHour(now, input.preferredHours[0]).toISOString(), reason: 'preferred-window' };
+    return {
+      scheduledAt: nextAtHour(now, input.preferredHours[0]).toISOString(),
+      reason: 'preferred-window',
+    };
   }
   const fallback = new Date(now.getTime() + input.fallbackDelayMinutes * 60_000);
   return { scheduledAt: fallback.toISOString(), reason: 'fallback-delay' };

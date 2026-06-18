@@ -110,7 +110,11 @@ describe('buildSpendingVisibilityPreview', () => {
     ];
     const preview = buildSpendingVisibilityPreview(
       rules,
-      [tx, { ...tx, id: 'txn-2', accountId: 'acct-2', amountCents: 500 }, { ...tx, id: 'txn-3', accountId: 'acct-3' }],
+      [
+        tx,
+        { ...tx, id: 'txn-2', accountId: 'acct-2', amountCents: 500 },
+        { ...tx, id: 'txn-3', accountId: 'acct-3' },
+      ],
       'member-partner',
     );
 

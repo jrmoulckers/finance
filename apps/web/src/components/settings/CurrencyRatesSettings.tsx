@@ -142,7 +142,9 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
         <div className="settings-group">
           <h3 className="settings-group__title">{copy.text('currencyRatesTitle')}</h3>
           <div className="settings-item settings-item--static" role="alert">
-            <span className="settings-item__label">{copy.text('currencyRatesError', { error })}</span>
+            <span className="settings-item__label">
+              {copy.text('currencyRatesError', { error })}
+            </span>
           </div>
           <button
             type="button"
@@ -189,8 +191,12 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
         {/* Rate list */}
         <details className="currency-rates-disclosure">
           <summary className="currency-rates-disclosure__summary">
-            <span className="currency-rates-disclosure__title">{copy.text('currencyRatesExchangeRates')}</span>
-            <span className="currency-rates-disclosure__hint">{copy.text('currencyRatesExpandHint')}</span>
+            <span className="currency-rates-disclosure__title">
+              {copy.text('currencyRatesExchangeRates')}
+            </span>
+            <span className="currency-rates-disclosure__hint">
+              {copy.text('currencyRatesExpandHint')}
+            </span>
           </summary>
           <div
             role="table"
@@ -232,7 +238,10 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, code)}
-                        aria-label={copy.text('currencyRatesOverrideRateAria', { fromCurrency: baseCurrency, toCurrency: code })}
+                        aria-label={copy.text('currencyRatesOverrideRateAria', {
+                          fromCurrency: baseCurrency,
+                          toCurrency: code,
+                        })}
                         autoFocus
                       />
                     ) : (
@@ -253,7 +262,9 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
                           type="button"
                           className="currency-rates-table__action"
                           onClick={() => handleSaveEdit(code)}
-                          aria-label={copy.text('currencyRatesSaveOverrideAria', { currency: code })}
+                          aria-label={copy.text('currencyRatesSaveOverrideAria', {
+                            currency: code,
+                          })}
                         >
                           {copy.text('currencyRatesSave')}
                         </button>
@@ -272,19 +283,23 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
                           type="button"
                           className="currency-rates-table__action"
                           onClick={() => handleStartEdit(code, rate?.rate ?? 0)}
-                          aria-label={copy.text('currencyRatesOverrideRateShortAria', { currency: code })}
+                          aria-label={copy.text('currencyRatesOverrideRateShortAria', {
+                            currency: code,
+                          })}
                         >
-                            {copy.text('currencyRatesOverride')}
-                          </button>
+                          {copy.text('currencyRatesOverride')}
+                        </button>
                         {hasOverride && (
                           <button
                             type="button"
                             className="currency-rates-table__action currency-rates-table__action--reset"
                             onClick={() => handleResetOverride(code)}
-                            aria-label={copy.text('currencyRatesResetOverrideAria', { currency: code })}
+                            aria-label={copy.text('currencyRatesResetOverrideAria', {
+                              currency: code,
+                            })}
                           >
-                              {copy.text('currencyRatesReset')}
-                            </button>
+                            {copy.text('currencyRatesReset')}
+                          </button>
                         )}
                       </>
                     )}
@@ -307,6 +322,3 @@ export const CurrencyRatesSettings: React.FC<CurrencyRatesSettingsProps> = ({
 };
 
 export default CurrencyRatesSettings;
-
-
-

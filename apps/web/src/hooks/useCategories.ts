@@ -296,7 +296,9 @@ export function useCategories(): UseCategoriesResult {
         parentCategory?.householdId ?? nextCategories[0]?.householdId ?? getFirstHouseholdId(db);
 
       if (!householdId) {
-        setMutationError('No household found. Create a household before adding Food & Meals categories.');
+        setMutationError(
+          'No household found. Create a household before adding Food & Meals categories.',
+        );
         return null;
       }
 
@@ -345,7 +347,9 @@ export function useCategories(): UseCategoriesResult {
 
       return buildFoodMealTemplateState(nextCategories);
     } catch (err) {
-      setMutationError(err instanceof Error ? err.message : 'Failed to add Food & Meals categories.');
+      setMutationError(
+        err instanceof Error ? err.message : 'Failed to add Food & Meals categories.',
+      );
       return null;
     }
   }, [categories, db, foodMealTemplate.parentCategory, refresh]);

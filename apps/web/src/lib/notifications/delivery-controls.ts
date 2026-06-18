@@ -89,7 +89,11 @@ function disabledReason(
   if (channelPreference !== undefined && !channelPreference.channels.includes(channel)) {
     return 'channel_disabled';
   }
-  if (preferences.quietHours.enabled && notification.severity !== 'critical' && isInQuietHours(preferences, nowDate)) {
+  if (
+    preferences.quietHours.enabled &&
+    notification.severity !== 'critical' &&
+    isInQuietHours(preferences, nowDate)
+  ) {
     return 'quiet_hours';
   }
   return 'allowed';

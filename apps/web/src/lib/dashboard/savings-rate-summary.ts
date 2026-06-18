@@ -29,7 +29,8 @@ function summarize(month: string, rows: readonly MonthlyCashFlow[]): SavingsRate
     incomeCents,
     expenseCents,
     savingsCents,
-    savingsRatePercent: incomeCents === 0 ? 0 : Math.round((savingsCents / incomeCents) * 10000) / 100,
+    savingsRatePercent:
+      incomeCents === 0 ? 0 : Math.round((savingsCents / incomeCents) * 10000) / 100,
   };
 }
 
@@ -40,12 +41,16 @@ export function buildSavingsRateDashboardSummary(
   const sorted = [...rows].sort((a, b) => a.month.localeCompare(b.month));
   const currentIndex = sorted.findIndex((row) => row.month === currentMonth);
   const currentRows = sorted.filter((row) => row.month === currentMonth);
-  const priorRows = currentIndex <= 0 ? [] : sorted.filter((row) => row.month === sorted[currentIndex - 1].month);
+  const priorRows =
+    currentIndex <= 0 ? [] : sorted.filter((row) => row.month === sorted[currentIndex - 1].month);
   const trailingRows = sorted.filter((row) => row.month <= currentMonth).slice(-3);
 
   return {
     current: currentRows.length === 0 ? null : summarize(currentMonth, currentRows),
     prior: priorRows.length === 0 ? null : summarize(priorRows[0].month, priorRows),
-    trailingThreeMonth: trailingRows.length === 0 ? null : summarize(`${trailingRows[0].month}..${currentMonth}`, trailingRows),
+    trailingThreeMonth:
+      trailingRows.length === 0
+        ? null
+        : summarize(`${trailingRows[0].month}..${currentMonth}`, trailingRows),
   };
 }

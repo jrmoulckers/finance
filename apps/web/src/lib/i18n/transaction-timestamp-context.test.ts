@@ -18,7 +18,9 @@ describe('transaction-timestamp-context', () => {
   });
 
   it('keeps legacy date-only transactions from shifting', () => {
-    expect(createTransactionTimestampContext({ occurredAt: null, legacyDate: '2026-02-01' })).toEqual({
+    expect(
+      createTransactionTimestampContext({ occurredAt: null, legacyDate: '2026-02-01' }),
+    ).toEqual({
       occurredAt: null,
       occurredTimeZone: null,
       occurredOffsetMinutes: null,

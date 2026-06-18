@@ -65,14 +65,22 @@ export function buildTaxSummaryCsvRows(report: TaxYearSummaryReport): TaxSummary
 }
 
 export function taxSummaryRowsToCsv(rows: readonly TaxSummaryCsvRow[]): string {
-  const headers = ['sectionKey', 'sectionLabel', 'amountCents', 'sourceCount', 'sourceIds'] as const;
+  const headers = [
+    'sectionKey',
+    'sectionLabel',
+    'amountCents',
+    'sourceCount',
+    'sourceIds',
+  ] as const;
   return [
     headers.join(','),
     ...rows.map((row) => headers.map((header) => csvEscape(row[header])).join(',')),
   ].join('\n');
 }
 
-export function buildTaxSummarySourceLinks(report: TaxYearSummaryReport): TaxSummaryDrillDownLink[] {
+export function buildTaxSummarySourceLinks(
+  report: TaxYearSummaryReport,
+): TaxSummaryDrillDownLink[] {
   const links = new Map<string, TaxSummaryDrillDownLink>();
   for (const section of report.sections) {
     for (const source of section.sourceLinks) {
@@ -115,7 +123,9 @@ export function buildTaxSummaryPrintableHtml(report: TaxYearSummaryReport): stri
   ].join('');
 }
 
-export function buildTaxSummaryPrintableExport(report: TaxYearSummaryReport): TaxSummaryPrintableExport {
+export function buildTaxSummaryPrintableExport(
+  report: TaxYearSummaryReport,
+): TaxSummaryPrintableExport {
   const rows = buildTaxSummaryCsvRows(report);
   return {
     taxYear: report.taxYear,

@@ -49,7 +49,9 @@ export const manualBrokerageCsvAdapter: BrokerageImportAdapter = {
   id: 'manual-brokerage-csv',
   detect(headers) {
     const normalized = headers.map(normalizeHeader);
-    return hasAny(normalized, ['symbol', 'ticker']) && hasAny(normalized, ['activity', 'action', 'type']);
+    return (
+      hasAny(normalized, ['symbol', 'ticker']) && hasAny(normalized, ['activity', 'action', 'type'])
+    );
   },
   parse(content, metadata) {
     const { headers, rows } = parseCsv(content);
@@ -60,7 +62,8 @@ export const manualBrokerageCsvAdapter: BrokerageImportAdapter = {
       const rawFields = toRawFields(headers, row);
       const date = parseDate(read(rawFields, ['date', 'trade date', 'transaction date']));
       const action = read(rawFields, ['action', 'activity', 'type']);
-      const amountCents = parseCurrencyToCents(read(rawFields, ['amount', 'net amount', 'total'])) ?? 0;
+      const amountCents =
+        parseCurrencyToCents(read(rawFields, ['amount', 'net amount', 'total'])) ?? 0;
       if (!date) {
         errors.push(`Row ${index + 1}: missing or invalid trade date`);
         return;
@@ -130,7 +133,9 @@ function toRawFields(headers: readonly string[], row: readonly string[]): Record
 
 function read(fields: Readonly<Record<string, string>>, names: readonly string[]): string {
   for (const name of names) {
-    const entry = Object.entries(fields).find(([key]) => normalizeHeader(key) === normalizeHeader(name));
+    const entry = Object.entries(fields).find(
+      ([key]) => normalizeHeader(key) === normalizeHeader(name),
+    );
     if (entry && entry[1].trim()) return entry[1].trim();
   }
   return '';
@@ -141,7 +146,11 @@ function hasAny(headers: readonly string[], names: readonly string[]): boolean {
 }
 
 function normalizeHeader(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function parseOptionalNumber(value: string): number | null {

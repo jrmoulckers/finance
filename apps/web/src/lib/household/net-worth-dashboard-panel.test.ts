@@ -6,13 +6,41 @@ import { buildPrivacyAwareNetWorthRollup } from './net-worth-rollup';
 import type { NetWorthAccountInput, NetWorthSnapshot } from './net-worth-rollup';
 
 const accounts: NetWorthAccountInput[] = [
-  { accountId: 'joint', ownerMemberId: 'a', name: 'Joint savings', kind: 'ASSET', balanceCents: 500_000, visibility: 'DETAILED' },
-  { accountId: 'redacted', ownerMemberId: 'b', name: 'Brokerage', kind: 'ASSET', balanceCents: 300_000, visibility: 'AGGREGATE_ONLY' },
+  {
+    accountId: 'joint',
+    ownerMemberId: 'a',
+    name: 'Joint savings',
+    kind: 'ASSET',
+    balanceCents: 500_000,
+    visibility: 'DETAILED',
+  },
+  {
+    accountId: 'redacted',
+    ownerMemberId: 'b',
+    name: 'Brokerage',
+    kind: 'ASSET',
+    balanceCents: 300_000,
+    visibility: 'AGGREGATE_ONLY',
+  },
 ];
 
 const snapshots: NetWorthSnapshot[] = [
-  { householdId: 'hh', month: '2025-04', assetCents: 700_000, liabilityCents: 0, netWorthCents: 700_000, createdAt: '2025-04-30T00:00:00Z' },
-  { householdId: 'hh', month: '2025-05', assetCents: 800_000, liabilityCents: 0, netWorthCents: 800_000, createdAt: '2025-05-31T00:00:00Z' },
+  {
+    householdId: 'hh',
+    month: '2025-04',
+    assetCents: 700_000,
+    liabilityCents: 0,
+    netWorthCents: 700_000,
+    createdAt: '2025-04-30T00:00:00Z',
+  },
+  {
+    householdId: 'hh',
+    month: '2025-05',
+    assetCents: 800_000,
+    liabilityCents: 0,
+    netWorthCents: 800_000,
+    createdAt: '2025-05-31T00:00:00Z',
+  },
 ];
 
 describe('buildNetWorthDashboardPanelModel', () => {

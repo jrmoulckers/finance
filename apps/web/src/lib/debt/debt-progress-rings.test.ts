@@ -5,7 +5,11 @@ import {
   buildDebtPayoffProgressRingCard,
   buildStudentLoanProgressRingCard,
 } from './debt-progress-rings';
-import type { DebtMilestoneSummary, StrategyResult, StudentLoanDashboardSummary } from '../debt-types';
+import type {
+  DebtMilestoneSummary,
+  StrategyResult,
+  StudentLoanDashboardSummary,
+} from '../debt-types';
 
 const strategyResult: StrategyResult = {
   strategy: 'avalanche',

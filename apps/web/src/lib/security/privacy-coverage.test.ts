@@ -2,7 +2,11 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { REQUIRED_PRIVACY_SURFACE_AREAS, auditPrivacySurfaceCoverage, privacySurface } from './privacy-coverage';
+import {
+  REQUIRED_PRIVACY_SURFACE_AREAS,
+  auditPrivacySurfaceCoverage,
+  privacySurface,
+} from './privacy-coverage';
 
 describe('privacy surface coverage audit', () => {
   it('passes when all sensitive surface areas are masked and exports are explicitly redacted', () => {
@@ -29,6 +33,12 @@ describe('privacy surface coverage audit', () => {
     expect(audit.complete).toBe(false);
     expect(audit.missingMaskingIds).toEqual(['dashboard-balance']);
     expect(audit.missingExportRedactionIds).toEqual(['csv-export']);
-    expect(audit.uncoveredAreas).toEqual(['chart', 'detail', 'notification', 'search', 'navigation']);
+    expect(audit.uncoveredAreas).toEqual([
+      'chart',
+      'detail',
+      'notification',
+      'search',
+      'navigation',
+    ]);
   });
 });

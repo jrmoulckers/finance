@@ -58,7 +58,10 @@ function groupSmallLines(
   const small = lines.filter((line) => line.amountCents < thresholdCents);
   const otherTotal = small.reduce((sum, line) => sum + line.amountCents, 0);
   return otherTotal > 0
-    ? [...large, { id: `${kind.toLowerCase()}-other`, label: 'Other', amountCents: otherTotal, kind }]
+    ? [
+        ...large,
+        { id: `${kind.toLowerCase()}-other`, label: 'Other', amountCents: otherTotal, kind },
+      ]
     : large;
 }
 
@@ -117,7 +120,11 @@ export function buildCashFlowSankey(input: CashFlowSankeyInput): CashFlowSankeyR
       amountCents: Math.abs(netCashFlowCents),
     };
     balancingNodes.push(deficitNode);
-    links.push({ source: deficitNode.id, target: CENTER_NODE.id, amountCents: Math.abs(netCashFlowCents) });
+    links.push({
+      source: deficitNode.id,
+      target: CENTER_NODE.id,
+      amountCents: Math.abs(netCashFlowCents),
+    });
   }
 
   const nodes = [

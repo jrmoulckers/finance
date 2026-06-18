@@ -78,7 +78,8 @@ export const REGIONAL_CONVENTIONS: Readonly<Record<RegionCode, RegionalConventio
       retirementAccount: 'plan de pensiones',
       taxReserve: 'reserva para impuestos',
     },
-    guidanceDisclaimer: 'Solo información educativa; no es asesoramiento fiscal, legal ni de inversión.',
+    guidanceDisclaimer:
+      'Solo información educativa; no es asesoramiento fiscal, legal ni de inversión.',
   },
   EU: {
     region: 'EU',
@@ -95,7 +96,8 @@ export const REGIONAL_CONVENTIONS: Readonly<Record<RegionCode, RegionalConventio
       retirementAccount: 'retirement account',
       taxReserve: 'tax reserve',
     },
-    guidanceDisclaimer: 'Educational only; local rules vary and this is not tax, legal, or investment advice.',
+    guidanceDisclaimer:
+      'Educational only; local rules vary and this is not tax, legal, or investment advice.',
   },
   CA: {
     region: 'CA',

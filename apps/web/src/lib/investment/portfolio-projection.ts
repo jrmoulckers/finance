@@ -42,13 +42,20 @@ export function projectCompoundPortfolio(
     cumulativeGrowthCents += growth;
     cumulativeContributionCents += monthlyContributionCents;
     value = roundCents(value + growth + monthlyContributionCents);
-    points.push({ month, endingValueCents: value, cumulativeContributionCents, cumulativeGrowthCents });
+    points.push({
+      month,
+      endingValueCents: value,
+      cumulativeContributionCents,
+      cumulativeGrowthCents,
+    });
   }
 
   return points;
 }
 
-export function summarizeEtfRollups(holdings: readonly PortfolioHolding[]): readonly EtfRollupSummary[] {
+export function summarizeEtfRollups(
+  holdings: readonly PortfolioHolding[],
+): readonly EtfRollupSummary[] {
   const total = holdings.reduce((sum, holding) => sum + holding.marketValueCents, 0);
   return holdings.map((holding) => {
     const contributionCents = holding.contributionCents ?? holding.marketValueCents;
@@ -57,7 +64,8 @@ export function summarizeEtfRollups(holdings: readonly PortfolioHolding[]): read
       marketValueCents: holding.marketValueCents,
       contributionCents,
       gainCents: holding.marketValueCents - contributionCents,
-      allocationPercent: total === 0 ? 0 : Math.round((holding.marketValueCents / total) * 10000) / 100,
+      allocationPercent:
+        total === 0 ? 0 : Math.round((holding.marketValueCents / total) * 10000) / 100,
     };
   });
 }

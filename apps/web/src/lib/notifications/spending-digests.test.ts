@@ -11,7 +11,13 @@ describe('buildSpendingDigestNotification', () => {
       periodStart: '2025-03-03',
       periodEnd: '2025-03-09',
       budgets: [
-        { budgetName: 'Groceries', spentCents: 42000, budgetAmountCents: 50000, percentUsed: 84, paceLabel: 'over' },
+        {
+          budgetName: 'Groceries',
+          spentCents: 42000,
+          budgetAmountCents: 50000,
+          percentUsed: 84,
+          paceLabel: 'over',
+        },
       ],
       categoryChanges: [{ categoryName: 'Dining', currentCents: 9000, previousCents: 5000 }],
       upcomingBills: [{ billName: 'Internet', dueDate: '2025-03-11', amountCents: 7000 }],
@@ -50,13 +56,10 @@ describe('buildSpendingDigestNotification', () => {
   });
 
   it('schedules delivery outside quiet hours', () => {
-    const delivery = scheduleDigestDelivery(
-      new Date('2025-03-01T23:00:00'),
-      {
-        ...DEFAULT_NOTIFICATION_PREFERENCES,
-        quietHours: { enabled: true, startTime: '22:00', endTime: '07:00' },
-      },
-    );
+    const delivery = scheduleDigestDelivery(new Date('2025-03-01T23:00:00'), {
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+      quietHours: { enabled: true, startTime: '22:00', endTime: '07:00' },
+    });
 
     expect(delivery.getHours()).toBe(7);
     expect(delivery.getMinutes()).toBe(0);

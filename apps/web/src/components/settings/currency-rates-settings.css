@@ -45,7 +45,8 @@
 }
 
 .currency-rates-disclosure {
-  border-block-end: 1px solid var(--semantic-border-default, var(--semantic-border-primary, #e0e0e0));
+  border-block-end: 1px solid
+    var(--semantic-border-default, var(--semantic-border-primary, #e0e0e0));
 }
 
 .currency-rates-disclosure__summary {
@@ -93,7 +94,8 @@
 }
 
 .currency-rates-disclosure[open] .currency-rates-disclosure__summary {
-  border-block-end: 1px solid var(--semantic-border-default, var(--semantic-border-primary, #e0e0e0));
+  border-block-end: 1px solid
+    var(--semantic-border-default, var(--semantic-border-primary, #e0e0e0));
 }
 
 .currency-rates-disclosure .currency-rates-table {

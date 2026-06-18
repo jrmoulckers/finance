@@ -5,7 +5,10 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { markStepUpAuthenticated } from '../../lib/session-security';
-import { saveThirdPartyConnections, type ThirdPartyConnection } from '../../lib/third-party-permissions';
+import {
+  saveThirdPartyConnections,
+  type ThirdPartyConnection,
+} from '../../lib/third-party-permissions';
 import { ThirdPartyPermissionReview } from './ThirdPartyPermissionReview';
 
 const connection: ThirdPartyConnection = {

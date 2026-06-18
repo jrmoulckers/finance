@@ -150,27 +150,27 @@ export class ExchangeRateService {
     // 2. Check cache (if not stale)
     const cached = getCachedRate(from, to);
     if (!isCacheStale(this.cacheTtlMs) && cached) {
-     return cached;
+      return cached;
     }
 
     // 3. Fetch from provider, falling back to stale cache on failure.
     try {
-     const rate = await this.provider.fetchRate(from, to);
-     const exchangeRate: ExchangeRate = {
-       from,
-       to,
-       rate,
-       timestamp: new Date().toISOString(),
-       source: this.providerSource,
-     };
+      const rate = await this.provider.fetchRate(from, to);
+      const exchangeRate: ExchangeRate = {
+        from,
+        to,
+        rate,
+        timestamp: new Date().toISOString(),
+        source: this.providerSource,
+      };
 
-     // Cache for future lookups
-     setCachedRate(exchangeRate);
+      // Cache for future lookups
+      setCachedRate(exchangeRate);
 
-     return exchangeRate;
+      return exchangeRate;
     } catch (err) {
-     if (cached) return cached;
-     throw err;
+      if (cached) return cached;
+      throw err;
     }
   }
 

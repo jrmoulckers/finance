@@ -115,11 +115,15 @@ export function planReimportRun(input: {
   const newTransactionCount = Math.max(input.parsedTransactionCount - input.duplicateCount, 0);
   const diagnostics: string[] = [];
 
-  if (input.duplicateCount > 0) diagnostics.push(`${input.duplicateCount} duplicate transaction(s) detected`);
-  if (input.parserErrorCount > 0) diagnostics.push(`${input.parserErrorCount} parser error(s) need review`);
-  if (newTransactionCount > 0) diagnostics.push(`${newTransactionCount} new transaction(s) require confirmation`);
+  if (input.duplicateCount > 0)
+    diagnostics.push(`${input.duplicateCount} duplicate transaction(s) detected`);
+  if (input.parserErrorCount > 0)
+    diagnostics.push(`${input.parserErrorCount} parser error(s) need review`);
+  if (newTransactionCount > 0)
+    diagnostics.push(`${newTransactionCount} new transaction(s) require confirmation`);
 
-  const status: ImportRunStatus = input.parserErrorCount > 0 ? 'failed' : newTransactionCount > 0 ? 'needs_review' : 'completed';
+  const status: ImportRunStatus =
+    input.parserErrorCount > 0 ? 'failed' : newTransactionCount > 0 ? 'needs_review' : 'completed';
 
   return {
     profileId: input.profile.id,
@@ -168,11 +172,18 @@ export function summarizeImportHistory(
     importedCount: entries.reduce((total, entry) => total + entry.importedCount, 0),
     skippedDuplicateCount: entries.reduce((total, entry) => total + entry.skippedDuplicateCount, 0),
     errorCount: entries.reduce((total, entry) => total + entry.errorCount, 0),
-    lastRunAt: entries.map((entry) => entry.completedAt).filter((value): value is string => !!value).sort().at(-1) ?? null,
+    lastRunAt:
+      entries
+        .map((entry) => entry.completedAt)
+        .filter((value): value is string => !!value)
+        .sort()
+        .at(-1) ?? null,
   };
 }
 
-function normalizeCadence(cadence: Partial<ImportProfileCadence> | undefined): ImportProfileCadence {
+function normalizeCadence(
+  cadence: Partial<ImportProfileCadence> | undefined,
+): ImportProfileCadence {
   const kind = cadence?.kind ?? 'manual';
   const interval = Math.max(1, cadence?.interval ?? 1);
   return {
@@ -230,5 +241,9 @@ function buildStableFingerprint(values: readonly string[]): string {
 }
 
 function normalizeFingerprintPart(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

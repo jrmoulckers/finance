@@ -83,7 +83,8 @@ export interface DemoDataOptions {
   readonly sessionId?: string;
 }
 
-const DEMO_WARNING = 'Demo mode uses fictional sample data. It is not your real financial information.';
+const DEMO_WARNING =
+  'Demo mode uses fictional sample data. It is not your real financial information.';
 
 export function createSampleDemoData(options: DemoDataOptions = {}): SampleDemoDataSet {
   const now = options.now ?? new Date();
@@ -124,14 +125,94 @@ export function createSampleDemoData(options: DemoDataOptions = {}): SampleDemoD
   ];
 
   const transactions: DemoTransaction[] = [
-    buildTransaction(sessionId, accounts[0].id, now, -19, 'Demo paycheck', 'income', 180_000, 'income', metadata),
-    buildTransaction(sessionId, accounts[0].id, now, -16, 'Demo rent payment', 'rent', -125_000, 'expense', metadata),
-    buildTransaction(sessionId, accounts[0].id, now, -12, 'Demo grocery market', 'groceries', -8_640, 'expense', metadata),
-    buildTransaction(sessionId, accounts[2].id, now, -9, 'Demo bus pass', 'utilities', -8_000, 'expense', metadata),
-    buildTransaction(sessionId, accounts[0].id, now, -5, 'Demo paycheck', 'income', 180_000, 'income', metadata),
-    buildTransaction(sessionId, accounts[0].id, now, -3, 'Demo transfer to savings', 'buffer', -35_000, 'transfer', metadata),
-    buildTransaction(sessionId, accounts[1].id, now, -3, 'Demo transfer from checking', 'buffer', 35_000, 'transfer', metadata),
-    buildTransaction(sessionId, accounts[2].id, now, -1, 'Demo movie night', 'fun', -4_200, 'expense', metadata),
+    buildTransaction(
+      sessionId,
+      accounts[0].id,
+      now,
+      -19,
+      'Demo paycheck',
+      'income',
+      180_000,
+      'income',
+      metadata,
+    ),
+    buildTransaction(
+      sessionId,
+      accounts[0].id,
+      now,
+      -16,
+      'Demo rent payment',
+      'rent',
+      -125_000,
+      'expense',
+      metadata,
+    ),
+    buildTransaction(
+      sessionId,
+      accounts[0].id,
+      now,
+      -12,
+      'Demo grocery market',
+      'groceries',
+      -8_640,
+      'expense',
+      metadata,
+    ),
+    buildTransaction(
+      sessionId,
+      accounts[2].id,
+      now,
+      -9,
+      'Demo bus pass',
+      'utilities',
+      -8_000,
+      'expense',
+      metadata,
+    ),
+    buildTransaction(
+      sessionId,
+      accounts[0].id,
+      now,
+      -5,
+      'Demo paycheck',
+      'income',
+      180_000,
+      'income',
+      metadata,
+    ),
+    buildTransaction(
+      sessionId,
+      accounts[0].id,
+      now,
+      -3,
+      'Demo transfer to savings',
+      'buffer',
+      -35_000,
+      'transfer',
+      metadata,
+    ),
+    buildTransaction(
+      sessionId,
+      accounts[1].id,
+      now,
+      -3,
+      'Demo transfer from checking',
+      'buffer',
+      35_000,
+      'transfer',
+      metadata,
+    ),
+    buildTransaction(
+      sessionId,
+      accounts[2].id,
+      now,
+      -1,
+      'Demo movie night',
+      'fun',
+      -4_200,
+      'expense',
+      metadata,
+    ),
   ];
 
   const goals: DemoGoal[] = [
@@ -186,7 +267,10 @@ export function filterDemoRecordsForExport<T>(records: readonly T[]): T[] {
 
 export function getDemoResetSummary(dataSet: SampleDemoDataSet): string {
   const recordCount =
-    dataSet.accounts.length + dataSet.budgets.length + dataSet.transactions.length + dataSet.goals.length;
+    dataSet.accounts.length +
+    dataSet.budgets.length +
+    dataSet.transactions.length +
+    dataSet.goals.length;
 
   return `Resetting demo mode will delete ${recordCount} fictional records before real setup begins.`;
 }
@@ -246,7 +330,10 @@ function buildTransaction(
 }
 
 function sanitizeSessionId(value: string): string {
-  const cleaned = value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+  const cleaned = value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-');
   return cleaned.replace(/^-|-$/g, '') || 'demo-session';
 }
 

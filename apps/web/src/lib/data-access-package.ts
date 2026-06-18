@@ -139,35 +139,49 @@ export function buildDataAccessPackage(
   options: DataAccessPackageOptions,
 ): DataAccessPackageResult {
   const generatedAt = options.generatedAt ?? new Date();
-  const expiresAt = new Date(generatedAt.getTime() + DATA_ACCESS_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(
+    generatedAt.getTime() + DATA_ACCESS_EXPIRATION_DAYS * 24 * 60 * 60 * 1000,
+  );
   const locale = options.locale ?? navigator.language ?? 'en';
   const redactionProfile = options.redactionProfile ?? 'redacted';
-  const includeProtectedCategories = options.includeProtectedCategories ?? redactionProfile === 'full';
+  const includeProtectedCategories =
+    options.includeProtectedCategories ?? redactionProfile === 'full';
   const includeMoodTags = options.includeMoodTags ?? false;
   const includeNotes = options.includeNotes ?? redactionProfile === 'full';
-  const includeAttachmentBinaries = options.includeAttachmentBinaries ?? redactionProfile === 'full';
+  const includeAttachmentBinaries =
+    options.includeAttachmentBinaries ?? redactionProfile === 'full';
   const selectedDomains = normalizeSelectedDomains(options.selectedDomains, includeMoodTags);
   if (selectedDomains.length === 0) {
     throw new Error('Select at least one data category before generating a GDPR export.');
   }
 
-  const domains = buildDomainRecords(input, { includeMoodTags, includeNotes, includeProtectedCategories, includeAttachmentBinaries });
+  const domains = buildDomainRecords(input, {
+    includeMoodTags,
+    includeNotes,
+    includeProtectedCategories,
+    includeAttachmentBinaries,
+  });
   const selectedSet = new Set<DataAccessDomain>(selectedDomains);
   const dataFiles = Object.entries(domains)
     .filter(([domain]) => selectedSet.has(domain as DataAccessDomain))
     .map(([domain, records]) => makeJsonFile(domain, records));
-  const attachmentFiles = selectedSet.has('attachments') && includeAttachmentBinaries
-    ? (input.attachments ?? [])
-        .filter((attachment) => attachment.bytes)
-        .map((attachment) => ({
-          path: 'attachments/' + sanitizePathSegment(attachment.id) + '-' + sanitizePathSegment(attachment.fileName),
-          bytes: attachment.bytes ?? new Uint8Array(),
-          contentType: attachment.contentType,
-          recordCount: 1,
-          domain: 'attachment_binary',
-          description: 'Local attachment binary copied into the package',
-        }))
-    : [];
+  const attachmentFiles =
+    selectedSet.has('attachments') && includeAttachmentBinaries
+      ? (input.attachments ?? [])
+          .filter((attachment) => attachment.bytes)
+          .map((attachment) => ({
+            path:
+              'attachments/' +
+              sanitizePathSegment(attachment.id) +
+              '-' +
+              sanitizePathSegment(attachment.fileName),
+            bytes: attachment.bytes ?? new Uint8Array(),
+            contentType: attachment.contentType,
+            recordCount: 1,
+            domain: 'attachment_binary',
+            description: 'Local attachment binary copied into the package',
+          }))
+      : [];
   const manifest = buildManifest({
     appVersion: options.appVersion,
     locale,
@@ -185,17 +199,42 @@ export function buildDataAccessPackage(
   });
   const readme = renderReadme(manifest, locale);
   const zipBytes = buildZip([
-    { path: 'manifest.json', bytes: encodeJson(manifest), contentType: 'application/json', recordCount: 1, domain: 'manifest', description: 'Package manifest' },
+    {
+      path: 'manifest.json',
+      bytes: encodeJson(manifest),
+      contentType: 'application/json',
+      recordCount: 1,
+      domain: 'manifest',
+      description: 'Package manifest',
+    },
     ...dataFiles,
     ...attachmentFiles,
-    { path: 'README.md', bytes: encoder.encode(readme), contentType: 'text/markdown; charset=utf-8', recordCount: 1, domain: 'readme', description: 'Localized package guide' },
+    {
+      path: 'README.md',
+      bytes: encoder.encode(readme),
+      contentType: 'text/markdown; charset=utf-8',
+      recordCount: 1,
+      domain: 'readme',
+      description: 'Localized package guide',
+    },
   ]);
 
-  return { fileName: 'finance-export-' + generatedAt.toISOString().slice(0, 10) + '.zip', zipBytes, manifest };
+  return {
+    fileName: 'finance-export-' + generatedAt.toISOString().slice(0, 10) + '.zip',
+    zipBytes,
+    manifest,
+  };
 }
 
-export function summarizeDataAccessDomains(input: DataAccessPackageInput): DataAccessDomainSummary[] {
-  const domains = buildDomainRecords(input, { includeMoodTags: true, includeNotes: true, includeProtectedCategories: true, includeAttachmentBinaries: true });
+export function summarizeDataAccessDomains(
+  input: DataAccessPackageInput,
+): DataAccessDomainSummary[] {
+  const domains = buildDomainRecords(input, {
+    includeMoodTags: true,
+    includeNotes: true,
+    includeProtectedCategories: true,
+    includeAttachmentBinaries: true,
+  });
   return ALL_DOMAINS.map((domain) => ({
     domain,
     label: labelDomain(domain),
@@ -211,10 +250,16 @@ export function shouldAutoDeletePackage(now: Date, expiresAtIso: string): boolea
 
 export function shouldWarnPackageExpiresSoon(now: Date, expiresAtIso: string): boolean {
   const expiresAt = new Date(expiresAtIso).getTime();
-  return now.getTime() >= expiresAt - DATA_ACCESS_WARNING_HOURS * 60 * 60 * 1000 && now.getTime() < expiresAt;
+  return (
+    now.getTime() >= expiresAt - DATA_ACCESS_WARNING_HOURS * 60 * 60 * 1000 &&
+    now.getTime() < expiresAt
+  );
 }
 
-function normalizeSelectedDomains(selectedDomains: readonly DataAccessDomain[] | undefined, includeMoodTags: boolean): DataAccessDomain[] {
+function normalizeSelectedDomains(
+  selectedDomains: readonly DataAccessDomain[] | undefined,
+  includeMoodTags: boolean,
+): DataAccessDomain[] {
   const source = selectedDomains ?? DEFAULT_DATA_ACCESS_DOMAINS;
   const deduped = Array.from(new Set(source.filter((domain) => ALL_DOMAINS.includes(domain))));
   if (includeMoodTags && !deduped.includes('mood_tags')) deduped.push('mood_tags');
@@ -223,10 +268,17 @@ function normalizeSelectedDomains(selectedDomains: readonly DataAccessDomain[] |
 
 function buildDomainRecords(
   input: DataAccessPackageInput,
-  options: { includeMoodTags: boolean; includeNotes: boolean; includeProtectedCategories: boolean; includeAttachmentBinaries: boolean },
+  options: {
+    includeMoodTags: boolean;
+    includeNotes: boolean;
+    includeProtectedCategories: boolean;
+    includeAttachmentBinaries: boolean;
+  },
 ): Record<DataAccessDomain, readonly JsonRecord[]> {
   const transactions = stripSyncFields(input.transactions).map((transaction) =>
-    options.includeNotes ? transaction : redactKeys(transaction, ['note', 'notes', 'memo', 'description']),
+    options.includeNotes
+      ? transaction
+      : redactKeys(transaction, ['note', 'notes', 'memo', 'description']),
   );
   const categories = options.includeProtectedCategories
     ? stripSyncFields(input.categories)
@@ -238,16 +290,24 @@ function buildDomainRecords(
     goals: stripSyncFields(input.goals),
     recurring_rules: stripSyncFields(input.recurringRules ?? []),
     categories,
-    tags: Array.from(new Set(input.transactions.flatMap((txn) => normalizeTags(txn.tags)))).map((name) => ({ name })),
+    tags: Array.from(new Set(input.transactions.flatMap((txn) => normalizeTags(txn.tags)))).map(
+      (name) => ({ name }),
+    ),
     attachments: (input.attachments ?? []).map((attachment) => ({
       id: attachment.id,
       file_name: attachment.fileName,
       content_type: attachment.contentType,
-      package_path: options.includeAttachmentBinaries && attachment.bytes
-        ? 'attachments/' + sanitizePathSegment(attachment.id) + '-' + sanitizePathSegment(attachment.fileName)
-        : null,
-      signed_url: options.includeAttachmentBinaries ? attachment.signedUrl ?? null : null,
-      delivery: options.includeAttachmentBinaries ? 'embedded_binary_if_available' : 'metadata_only_redacted_default',
+      package_path:
+        options.includeAttachmentBinaries && attachment.bytes
+          ? 'attachments/' +
+            sanitizePathSegment(attachment.id) +
+            '-' +
+            sanitizePathSegment(attachment.fileName)
+          : null,
+      signed_url: options.includeAttachmentBinaries ? (attachment.signedUrl ?? null) : null,
+      delivery: options.includeAttachmentBinaries
+        ? 'embedded_binary_if_available'
+        : 'metadata_only_redacted_default',
     })),
     preferences: stripSyncFields(input.preferences ?? []),
     settings: stripSyncFields(input.settings ?? []),
@@ -263,7 +323,9 @@ function normalizeTags(value: unknown): string[] {
 }
 
 function stripSyncFields(records: readonly JsonRecord[]): JsonRecord[] {
-  return records.map((record) => redactKeys(record, ['syncVersion', 'sync_version', 'isSynced', 'is_synced']));
+  return records.map((record) =>
+    redactKeys(record, ['syncVersion', 'sync_version', 'isSynced', 'is_synced']),
+  );
 }
 
 function redactKeys(record: JsonRecord, keysToOmit: readonly string[]): JsonRecord {
@@ -277,13 +339,22 @@ function redactKeys(record: JsonRecord, keysToOmit: readonly string[]): JsonReco
 }
 
 function isProtectedCategory(category: JsonRecord): boolean {
-  return category.isProtected === true || category.protected === true || category.sensitive === true || category.protectedCategory === true;
+  return (
+    category.isProtected === true ||
+    category.protected === true ||
+    category.sensitive === true ||
+    category.protectedCategory === true
+  );
 }
 
 function makeJsonFile(domain: string, records: readonly JsonRecord[]): PackageFile {
   return {
     path: 'data/' + domain + '.json',
-    bytes: encodeJson({ schema_version: DATA_ACCESS_SCHEMA_VERSION, record_count: records.length, records }),
+    bytes: encodeJson({
+      schema_version: DATA_ACCESS_SCHEMA_VERSION,
+      record_count: records.length,
+      records,
+    }),
     contentType: 'application/json',
     recordCount: records.length,
     domain,
@@ -309,7 +380,8 @@ function buildManifest(input: {
   const selected = [...input.selectedDomains];
   const omitted = ALL_DOMAINS.filter((domain) => !selected.includes(domain));
   const availableOnRequest = omitted.map(labelDomain);
-  if (!input.includeMoodTags && !availableOnRequest.includes('Mood tags')) availableOnRequest.push('Mood tags');
+  if (!input.includeMoodTags && !availableOnRequest.includes('Mood tags'))
+    availableOnRequest.push('Mood tags');
   if (!input.includeNotes) availableOnRequest.push('Transaction notes');
   if (!input.includeAttachmentBinaries) availableOnRequest.push('Attachment binaries');
   if (!input.includeProtectedCategories) availableOnRequest.push('Protected categories');
@@ -319,7 +391,14 @@ function buildManifest(input: {
     expires_at: input.expiresAt.toISOString(),
     app_version: input.appVersion,
     locale: input.locale,
-    contents: input.files.map((file) => ({ domain: file.domain, path: file.path, content_type: file.contentType, record_count: file.recordCount, schema_version: DATA_ACCESS_SCHEMA_VERSION, description: file.description })),
+    contents: input.files.map((file) => ({
+      domain: file.domain,
+      path: file.path,
+      content_type: file.contentType,
+      record_count: file.recordCount,
+      schema_version: DATA_ACCESS_SCHEMA_VERSION,
+      description: file.description,
+    })),
     privacy: {
       protected_categories_included: input.includeProtectedCategories,
       mood_tags_included: input.includeMoodTags,
@@ -329,64 +408,103 @@ function buildManifest(input: {
       selected_domains: selected,
       omitted_domains: omitted,
       available_on_request: Array.from(new Set(availableOnRequest)),
-      household_scope: "Only the requesting user's own contributions are included; other household members' data is excluded.",
+      household_scope:
+        "Only the requesting user's own contributions are included; other household members' data is excluded.",
       recipient: input.recipient,
       share_method: input.shareMethod,
     },
     coordination_notes: input.includeProtectedCategories
       ? ['Protected categories were explicitly included for this export.']
-      : ['Protected categories, notes, mood tags, and attachment binaries are redacted by default unless explicitly selected.'],
+      : [
+          'Protected categories, notes, mood tags, and attachment binaries are redacted by default unless explicitly selected.',
+        ],
   };
 }
 
 function describeDomain(domain: string): string {
   switch (domain) {
-    case 'transactions': return 'Transactions owned by the requesting user; notes are present only for full exports';
-    case 'accounts': return 'Accounts and balances owned by the requesting user';
-    case 'budgets': return 'Budgets and rollover configuration';
-    case 'goals': return 'Savings goals and progress';
-    case 'recurring_rules': return 'Recurring transaction rules';
-    case 'categories': return 'Categories, excluding protected categories unless explicitly opted in';
-    case 'tags': return 'Transaction tags derived from exported transactions';
-    case 'attachments': return 'Receipt and attachment metadata; binaries require explicit opt-in';
-    case 'preferences': return 'User-facing preferences';
-    case 'settings': return 'Application settings';
-    case 'consent_records': return 'GDPR consent state and consent-history records';
-    case 'audit_log': return "Tamper-evident audit events for the requesting user's own actions";
-    case 'sync_metadata': return 'Device and last-sync metadata';
-    case 'mood_tags': return 'Mood tag records included only when explicitly requested';
-    default: return 'Data access package file';
+    case 'transactions':
+      return 'Transactions owned by the requesting user; notes are present only for full exports';
+    case 'accounts':
+      return 'Accounts and balances owned by the requesting user';
+    case 'budgets':
+      return 'Budgets and rollover configuration';
+    case 'goals':
+      return 'Savings goals and progress';
+    case 'recurring_rules':
+      return 'Recurring transaction rules';
+    case 'categories':
+      return 'Categories, excluding protected categories unless explicitly opted in';
+    case 'tags':
+      return 'Transaction tags derived from exported transactions';
+    case 'attachments':
+      return 'Receipt and attachment metadata; binaries require explicit opt-in';
+    case 'preferences':
+      return 'User-facing preferences';
+    case 'settings':
+      return 'Application settings';
+    case 'consent_records':
+      return 'GDPR consent state and consent-history records';
+    case 'audit_log':
+      return "Tamper-evident audit events for the requesting user's own actions";
+    case 'sync_metadata':
+      return 'Device and last-sync metadata';
+    case 'mood_tags':
+      return 'Mood tag records included only when explicitly requested';
+    default:
+      return 'Data access package file';
   }
 }
 
 function labelDomain(domain: DataAccessDomain): string {
   switch (domain) {
-    case 'accounts': return 'Accounts';
-    case 'transactions': return 'Transactions';
-    case 'budgets': return 'Budgets';
-    case 'goals': return 'Goals';
-    case 'recurring_rules': return 'Recurring rules';
-    case 'categories': return 'Categories/tags';
-    case 'tags': return 'Tags';
-    case 'settings': return 'Settings/preferences';
-    case 'preferences': return 'Preferences';
-    case 'consent_records': return 'Consent records';
-    case 'attachments': return 'Attachments';
-    case 'audit_log': return 'Audit log';
-    case 'sync_metadata': return 'Sync metadata';
-    case 'mood_tags': return 'Mood tags';
+    case 'accounts':
+      return 'Accounts';
+    case 'transactions':
+      return 'Transactions';
+    case 'budgets':
+      return 'Budgets';
+    case 'goals':
+      return 'Goals';
+    case 'recurring_rules':
+      return 'Recurring rules';
+    case 'categories':
+      return 'Categories/tags';
+    case 'tags':
+      return 'Tags';
+    case 'settings':
+      return 'Settings/preferences';
+    case 'preferences':
+      return 'Preferences';
+    case 'consent_records':
+      return 'Consent records';
+    case 'attachments':
+      return 'Attachments';
+    case 'audit_log':
+      return 'Audit log';
+    case 'sync_metadata':
+      return 'Sync metadata';
+    case 'mood_tags':
+      return 'Mood tags';
   }
 }
 
 function sensitivityWarning(domain: DataAccessDomain): string {
   switch (domain) {
-    case 'accounts': return 'Includes account names and balances.';
-    case 'transactions': return 'Includes spending patterns and merchant names.';
-    case 'attachments': return 'Attachment metadata is included; binaries require explicit opt-in.';
-    case 'audit_log': return 'Shows sensitive security actions and timestamps.';
-    case 'sync_metadata': return 'May include device and offline status metadata.';
-    case 'mood_tags': return 'Can reveal wellbeing patterns; off by default.';
-    default: return 'Review before sharing outside Finance.';
+    case 'accounts':
+      return 'Includes account names and balances.';
+    case 'transactions':
+      return 'Includes spending patterns and merchant names.';
+    case 'attachments':
+      return 'Attachment metadata is included; binaries require explicit opt-in.';
+    case 'audit_log':
+      return 'Shows sensitive security actions and timestamps.';
+    case 'sync_metadata':
+      return 'May include device and offline status metadata.';
+    case 'mood_tags':
+      return 'Can reveal wellbeing patterns; off by default.';
+    default:
+      return 'Review before sharing outside Finance.';
   }
 }
 

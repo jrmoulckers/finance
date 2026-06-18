@@ -78,11 +78,17 @@ export function summarizeReconciliationWithVisibility(
   transactions: readonly SpendingVisibilityTransaction[],
   viewerMemberId: string,
 ): ReconciliationVisibilitySummary {
-  const budgetSummary = summarizeSharedBudgetSpendingWithVisibility(rules, transactions, viewerMemberId);
+  const budgetSummary = summarizeSharedBudgetSpendingWithVisibility(
+    rules,
+    transactions,
+    viewerMemberId,
+  );
   return {
     clearedCents: budgetSummary.totalCents,
     detailRows: budgetSummary.detailedTransactions,
-    redactedRowCount: transactions.length - budgetSummary.detailedTransactions.length -
+    redactedRowCount:
+      transactions.length -
+      budgetSummary.detailedTransactions.length -
       budgetSummary.hiddenTransactionIds.length,
   };
 }

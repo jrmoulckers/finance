@@ -30,9 +30,9 @@ describe('sample demo data generator', () => {
     expect(dataSet.goals).toHaveLength(2);
     expect(dataSet.trends.map((trend) => trend.month)).toEqual(['2026-02', '2026-03', '2026-04']);
     expect(dataSet.accounts.every(isDemoRecord)).toBe(true);
-    expect(dataSet.transactions.every((transaction) => transaction.description.startsWith('Demo'))).toBe(
-      true,
-    );
+    expect(
+      dataSet.transactions.every((transaction) => transaction.description.startsWith('Demo')),
+    ).toBe(true);
   });
 
   it('keeps demo records out of export lists by default', () => {

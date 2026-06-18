@@ -154,7 +154,9 @@ describe('InvestmentsPage', () => {
     expect(screen.getByRole('table', { name: 'Rebalancing suggestions' })).toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Manual dividend assumptions' })).toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Lot-level cost basis' })).toBeInTheDocument();
-    expect(screen.getByRole('table', { name: 'Expense ratio inputs and comparison' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('table', { name: 'Expense ratio inputs and comparison' }),
+    ).toBeInTheDocument();
   });
 
   it('hydrates investing beta inputs from local storage', () => {

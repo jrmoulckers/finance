@@ -2,12 +2,12 @@
 
 ## Provider options
 
-| Source | Feasibility | Notes |
-| --- | --- | --- |
-| Plaid/aggregators | Medium for bank-side transfers, low for full P2P app context. | Can see linked bank transactions but often misses request/payment metadata. |
-| Venmo exports | Medium manual fallback. | User exports are credential-free but not reliably automated. |
-| Cash App statements | Medium manual fallback. | Statement imports can support reimbursement matching without live credentials. |
-| Official consumer APIs | Low. | Consumer-grade APIs are limited or unavailable for many P2P apps. |
+| Source                 | Feasibility                                                   | Notes                                                                          |
+| ---------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Plaid/aggregators      | Medium for bank-side transfers, low for full P2P app context. | Can see linked bank transactions but often misses request/payment metadata.    |
+| Venmo exports          | Medium manual fallback.                                       | User exports are credential-free but not reliably automated.                   |
+| Cash App statements    | Medium manual fallback.                                       | Statement imports can support reimbursement matching without live credentials. |
+| Official consumer APIs | Low.                                                          | Consumer-grade APIs are limited or unavailable for many P2P apps.              |
 
 ## Consent and retention
 

@@ -38,7 +38,9 @@ export interface CapitalGainsAnnualExport {
   readonly disclaimer: string;
 }
 
-export function normalizeImportedClosedSales(rows: readonly ImportedClosedSaleRow[]): PersistedTaxSale[] {
+export function normalizeImportedClosedSales(
+  rows: readonly ImportedClosedSaleRow[],
+): PersistedTaxSale[] {
   return rows.map((row) => ({
     id: row.saleId,
     symbol: row.symbol.trim().toUpperCase(),
@@ -57,7 +59,10 @@ export function saveCapitalGainsSales(
 ): CapitalGainsReportState {
   const byId = new Map(state.savedSales.map((sale) => [sale.id, sale]));
   for (const sale of sales) byId.set(sale.id, sale);
-  return { ...state, savedSales: [...byId.values()].sort((a, b) => a.soldDate.localeCompare(b.soldDate)) };
+  return {
+    ...state,
+    savedSales: [...byId.values()].sort((a, b) => a.soldDate.localeCompare(b.soldDate)),
+  };
 }
 
 export function buildSavedCapitalGainsReport(input: {
@@ -80,7 +85,9 @@ export function buildSavedCapitalGainsReport(input: {
   };
 }
 
-export function buildCapitalGainsAnnualExport(report: CapitalGainsTaxReport): CapitalGainsAnnualExport {
+export function buildCapitalGainsAnnualExport(
+  report: CapitalGainsTaxReport,
+): CapitalGainsAnnualExport {
   return {
     taxYear: report.taxYear,
     bySymbol: report.bySymbol,

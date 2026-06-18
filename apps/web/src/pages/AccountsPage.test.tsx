@@ -205,7 +205,9 @@ describe('AccountsPage', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0),
+    );
   });
 
   it('does not show multi-currency indicator when all accounts use the same currency', () => {
@@ -289,7 +291,9 @@ describe('AccountsPage', () => {
       ['dashboard', 'detail'],
     );
 
-    await waitFor(() => expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0),
+    );
 
     expect(screenCoverage.safe).toBe(true);
     expect(manifestCoverage.complete).toBe(true);
@@ -300,7 +304,9 @@ describe('AccountsPage', () => {
     window.localStorage.clear();
 
     renderAccounts(false);
-    await waitFor(() => expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(screen.getAllByText(/multiple currencies/i).length).toBeGreaterThan(0),
+    );
     expect(document.body).toHaveTextContent('$1,500.00');
     expect(document.body).toHaveTextContent('€1,200.00');
   });

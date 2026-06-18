@@ -3,7 +3,14 @@
 import { getRegionForLocale, type RegionCode } from './regional-conventions';
 
 export const REGIONAL_PROFILE_STORAGE_KEY = 'finance-regional-profile';
-export const SUPPORTED_REGIONAL_PROFILES: readonly RegionCode[] = ['US', 'GB', 'ES', 'EU', 'CA', 'AU'];
+export const SUPPORTED_REGIONAL_PROFILES: readonly RegionCode[] = [
+  'US',
+  'GB',
+  'ES',
+  'EU',
+  'CA',
+  'AU',
+];
 
 function isSupportedRegionalProfile(value: string | null | undefined): value is RegionCode {
   return SUPPORTED_REGIONAL_PROFILES.includes(value as RegionCode);
@@ -40,7 +47,8 @@ export function getRegionalProfilePreference(locale: string): RegionCode {
 }
 
 export function setRegionalProfilePreference(region: RegionCode): RegionCode {
-  if (!isSupportedRegionalProfile(region)) throw new Error(`Unsupported regional profile: ${region}`);
+  if (!isSupportedRegionalProfile(region))
+    throw new Error(`Unsupported regional profile: ${region}`);
   writeStorage(region);
   return region;
 }

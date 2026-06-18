@@ -74,8 +74,11 @@ export function compareNetWorthToSharedGoals(
     targetCents: goal.targetNetWorthCents,
     gapCents: goal.targetNetWorthCents - snapshot.netWorthCents,
     percentComplete:
-      goal.targetNetWorthCents > 0 ? roundPercent((snapshot.netWorthCents / goal.targetNetWorthCents) * 100) : 0,
-    privacyCopy: 'Uses household-level monthly totals only; account names and owner attribution are not included.',
+      goal.targetNetWorthCents > 0
+        ? roundPercent((snapshot.netWorthCents / goal.targetNetWorthCents) * 100)
+        : 0,
+    privacyCopy:
+      'Uses household-level monthly totals only; account names and owner attribution are not included.',
   }));
 }
 
@@ -110,7 +113,8 @@ export function buildNetWorthSnapshotTrendCopy(
   if (!previous) {
     return {
       headline: `Household net worth snapshot saved for ${current.month}`,
-      detail: 'Trend copy uses monthly totals only and does not expose aggregate-only account names.',
+      detail:
+        'Trend copy uses monthly totals only and does not expose aggregate-only account names.',
     };
   }
   const changeCents = current.netWorthCents - previous.netWorthCents;

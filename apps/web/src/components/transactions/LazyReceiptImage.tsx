@@ -24,7 +24,11 @@ export const LazyReceiptImage: React.FC<LazyReceiptImageProps> = ({ transaction,
   const [loadFailed, setLoadFailed] = useState(false);
 
   const metadata = useMemo(
-    () => getReceiptImageMetadata(transaction.customFields, `Receipt for ${transaction.payee ?? 'transaction'}`),
+    () =>
+      getReceiptImageMetadata(
+        transaction.customFields,
+        `Receipt for ${transaction.payee ?? 'transaction'}`,
+      ),
     [transaction.customFields, transaction.payee],
   );
 
@@ -81,9 +85,15 @@ export const LazyReceiptImage: React.FC<LazyReceiptImageProps> = ({ transaction,
   };
 
   return (
-    <div ref={wrapperRef} className={className ?? 'receipt-thumb'} data-retry-attempt={retryAttempt}>
+    <div
+      ref={wrapperRef}
+      className={className ?? 'receipt-thumb'}
+      data-retry-attempt={retryAttempt}
+    >
       {showOfflinePlaceholder || !canLoadImage ? (
-        <ReceiptPlaceholder label={showOfflinePlaceholder ? 'Receipt unavailable offline' : 'Receipt deferred'} />
+        <ReceiptPlaceholder
+          label={showOfflinePlaceholder ? 'Receipt unavailable offline' : 'Receipt deferred'}
+        />
       ) : loadFailed ? (
         <ReceiptPlaceholder label="Receipt retrying" />
       ) : (

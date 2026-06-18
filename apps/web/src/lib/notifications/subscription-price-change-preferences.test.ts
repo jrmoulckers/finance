@@ -11,7 +11,9 @@ import {
   validateSubscriptionPriceChangePreferences,
 } from './subscription-price-change-preferences';
 
-function alert(overrides: Partial<SubscriptionPriceChangeAlert> = {}): SubscriptionPriceChangeAlert {
+function alert(
+  overrides: Partial<SubscriptionPriceChangeAlert> = {},
+): SubscriptionPriceChangeAlert {
   return {
     subscriptionKey: 'sub-streamco',
     merchantName: 'StreamCo',
@@ -45,11 +47,13 @@ describe('subscription price change preferences', () => {
   });
 
   it('validates unusable threshold settings', () => {
-    expect(validateSubscriptionPriceChangePreferences({
-      ...normalizeSubscriptionPriceChangePreferences(),
-      minimumIncreaseCents: 0,
-      minimumIncreasePercent: 0,
-    }).valid).toBe(false);
+    expect(
+      validateSubscriptionPriceChangePreferences({
+        ...normalizeSubscriptionPriceChangePreferences(),
+        minimumIncreaseCents: 0,
+        minimumIncreasePercent: 0,
+      }).valid,
+    ).toBe(false);
   });
 
   it('dedupes until a materially new amount appears', () => {
@@ -57,7 +61,19 @@ describe('subscription price change preferences', () => {
     const history = [recordSubscriptionPriceChangeAlert(alert(), '2025-06-01T00:00:00Z')];
 
     expect(shouldRealertSubscriptionPriceChange(alert(), history, preferences)).toBe(false);
-    expect(shouldRealertSubscriptionPriceChange(alert({ newAmountCents: 1350, deduplicationKey: 'new-small' }), history, preferences)).toBe(false);
-    expect(shouldRealertSubscriptionPriceChange(alert({ newAmountCents: 1600, deduplicationKey: 'new-large' }), history, preferences)).toBe(true);
+    expect(
+      shouldRealertSubscriptionPriceChange(
+        alert({ newAmountCents: 1350, deduplicationKey: 'new-small' }),
+        history,
+        preferences,
+      ),
+    ).toBe(false);
+    expect(
+      shouldRealertSubscriptionPriceChange(
+        alert({ newAmountCents: 1600, deduplicationKey: 'new-large' }),
+        history,
+        preferences,
+      ),
+    ).toBe(true);
   });
 });

@@ -31,8 +31,17 @@ describe('brokerage trade import', () => {
 2024-01-18,Stock Split,TSLA,0,,0.00,,,corp-1
 2024-01-19,Buy Crypto,BTC,0.1,40000.00,-4000.00,,,crypto-1`;
 
-    const kinds = parseManualBrokerageCsv(csv, metadata).activities.map((activity) => activity.kind);
+    const kinds = parseManualBrokerageCsv(csv, metadata).activities.map(
+      (activity) => activity.kind,
+    );
 
-    expect(kinds).toEqual(['option_event', 'option_event', 'transfer', 'dividend', 'corporate_action', 'crypto_trade']);
+    expect(kinds).toEqual([
+      'option_event',
+      'option_event',
+      'transfer',
+      'dividend',
+      'corporate_action',
+      'crypto_trade',
+    ]);
   });
 });

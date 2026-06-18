@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-type JsonValue = string | number | boolean | null | JsonValue[] | { readonly [key: string]: JsonValue };
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { readonly [key: string]: JsonValue };
 export type AuditActionType =
   | 'data_export_generated'
   | 'account_deletion_attempted'
@@ -82,7 +88,9 @@ export function loadSecurityAuditLog(): SecurityAuditEvent[] {
   }
 }
 
-export async function appendSecurityAuditEvent(input: SecurityAuditInput): Promise<SecurityAuditEvent> {
+export async function appendSecurityAuditEvent(
+  input: SecurityAuditInput,
+): Promise<SecurityAuditEvent> {
   const history = loadSecurityAuditLog();
   const previous = history.at(-1);
   const eventWithoutHash = {
@@ -153,7 +161,10 @@ export function sanitizeMetadata(metadata: Record<string, unknown>): Record<stri
 async function hashEvent(event: Omit<SecurityAuditEvent, 'hash'>): Promise<string> {
   const canonical = stableStringify(event);
   if (globalThis.crypto?.subtle) {
-    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
+    const digest = await globalThis.crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(canonical),
+    );
     return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
   }
   return fallbackHash(canonical);
@@ -166,14 +177,22 @@ function stableStringify(value: unknown): string {
     '{' +
     Object.keys(value as Record<string, unknown>)
       .sort()
-      .map((key) => JSON.stringify(key) + ':' + stableStringify((value as Record<string, unknown>)[key]))
+      .map(
+        (key) =>
+          JSON.stringify(key) + ':' + stableStringify((value as Record<string, unknown>)[key]),
+      )
       .join(',') +
     '}'
   );
 }
 
 function sanitizeValue(value: unknown): JsonValue {
-  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     return value;
   }
   if (Array.isArray(value)) return value.map(sanitizeValue);

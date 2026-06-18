@@ -60,10 +60,9 @@ function normalCdf(value: number): number {
   const t = 1 / (1 + 0.3275911 * x);
   const erf =
     1 -
-    (((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t +
-      0.254829592) *
+    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
       t *
-      Math.exp(-x * x));
+      Math.exp(-x * x);
   return 0.5 * (1 + sign * erf);
 }
 
@@ -72,7 +71,10 @@ function monthlyNetHistory(transactions: readonly Transaction[]): readonly numbe
   for (const transaction of transactions) {
     if (transaction.status === 'VOID' || transaction.type === 'TRANSFER') continue;
     const signed = transaction.type === 'INCOME' ? amount(transaction) : -amount(transaction);
-    byMonth.set(monthKey(transaction.date), (byMonth.get(monthKey(transaction.date)) ?? 0) + signed);
+    byMonth.set(
+      monthKey(transaction.date),
+      (byMonth.get(monthKey(transaction.date)) ?? 0) + signed,
+    );
   }
   return Array.from(byMonth.values());
 }
@@ -80,15 +82,23 @@ function monthlyNetHistory(transactions: readonly Transaction[]): readonly numbe
 function detectedGoalContributions(goal: Goal, transactions: readonly Transaction[]): number {
   const matches = transactions.filter((transaction) => {
     if (transaction.status === 'VOID') return false;
-    if (goal.accountId !== null && transaction.accountId === goal.accountId && transaction.type !== 'EXPENSE') {
+    if (
+      goal.accountId !== null &&
+      transaction.accountId === goal.accountId &&
+      transaction.type !== 'EXPENSE'
+    ) {
       return true;
     }
-    const text = `${transaction.note ?? ''} ${transaction.payee ?? ''} ${transaction.counterpartyName ?? ''}`.toLowerCase();
+    const text =
+      `${transaction.note ?? ''} ${transaction.payee ?? ''} ${transaction.counterpartyName ?? ''}`.toLowerCase();
     return text.includes(goal.name.toLowerCase()) && transaction.type !== 'EXPENSE';
   });
   const byMonth = new Map<string, number>();
   for (const transaction of matches) {
-    byMonth.set(monthKey(transaction.date), (byMonth.get(monthKey(transaction.date)) ?? 0) + amount(transaction));
+    byMonth.set(
+      monthKey(transaction.date),
+      (byMonth.get(monthKey(transaction.date)) ?? 0) + amount(transaction),
+    );
   }
   const values = Array.from(byMonth.values());
   if (values.length === 0) return 0;
@@ -106,7 +116,9 @@ export function estimateGoalAchievementProbability(
   const minimumProbability = input.minimumProbability ?? 0.7;
   const netHistory = monthlyNetHistory(input.transactions);
   const averageNet =
-    netHistory.length > 0 ? netHistory.reduce((sum, value) => sum + value, 0) / netHistory.length : 0;
+    netHistory.length > 0
+      ? netHistory.reduce((sum, value) => sum + value, 0) / netHistory.length
+      : 0;
   const monthlyVariance = standardDeviation(netHistory);
 
   return input.goals.map((goal): GoalAchievementEstimate => {
@@ -163,7 +175,10 @@ export function estimateGoalAchievementProbability(
       };
     }
 
-    if (netHistory.length < 2 && (input.plannedContributions ?? []).every((item) => item.goalId !== goal.id)) {
+    if (
+      netHistory.length < 2 &&
+      (input.plannedContributions ?? []).every((item) => item.goalId !== goal.id)
+    ) {
       return {
         goalId: goal.id,
         goalName: goal.name,
@@ -180,12 +195,17 @@ export function estimateGoalAchievementProbability(
       };
     }
 
-    const planned = input.plannedContributions?.find((item) => item.goalId === goal.id)?.monthlyAmountCents;
+    const planned = input.plannedContributions?.find(
+      (item) => item.goalId === goal.id,
+    )?.monthlyAmountCents;
     const detected = detectedGoalContributions(goal, input.transactions);
     const surplusContribution = Math.max(0, Math.round(averageNet * 0.2));
     const expectedMonthlyContributionCents = planned ?? Math.max(detected, surplusContribution);
     const requiredMonthlyContributionCents = Math.ceil(remainingCents / months);
-    const monthlyGapCents = Math.max(0, requiredMonthlyContributionCents - expectedMonthlyContributionCents);
+    const monthlyGapCents = Math.max(
+      0,
+      requiredMonthlyContributionCents - expectedMonthlyContributionCents,
+    );
     const expectedOutcomeCents = Math.round(
       goal.currentAmount.amount + expectedMonthlyContributionCents * months,
     );

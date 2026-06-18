@@ -76,7 +76,10 @@ function calculatePeriodsRemaining(
   return Math.max(1, Math.ceil(remainingDays / CADENCE_DAYS[cadence]));
 }
 
-function buildGuidance(status: SinkingFundStatus, plan: Pick<SinkingFundPlan, 'name' | 'contributionPerPeriodCents' | 'fundingGapAtDueCents'>): string {
+function buildGuidance(
+  status: SinkingFundStatus,
+  plan: Pick<SinkingFundPlan, 'name' | 'contributionPerPeriodCents' | 'fundingGapAtDueCents'>,
+): string {
   switch (status) {
     case 'funded':
       return `${plan.name} is fully funded.`;
@@ -105,11 +108,16 @@ export function calculateSinkingFundPlan(
   const remainingCents = Math.max(0, targetCents - savedToDateCents);
   const daysUntilDue = daysBetween(today, fund.dueDate);
   const periodsRemaining = calculatePeriodsRemaining(today, fund.dueDate, cadence);
-  const monthsRemaining = daysUntilDue > 0 ? Math.max(1, Math.ceil(daysUntilDue / CADENCE_DAYS.MONTHLY)) : 0;
+  const monthsRemaining =
+    daysUntilDue > 0 ? Math.max(1, Math.ceil(daysUntilDue / CADENCE_DAYS.MONTHLY)) : 0;
   const contributionPerPeriodCents =
-    remainingCents > 0 && periodsRemaining > 0 ? bankersRound(remainingCents / periodsRemaining) : remainingCents;
+    remainingCents > 0 && periodsRemaining > 0
+      ? bankersRound(remainingCents / periodsRemaining)
+      : remainingCents;
   const plannedContributionCents =
-    fund.plannedContributionCents === undefined ? null : positiveCents(fund.plannedContributionCents);
+    fund.plannedContributionCents === undefined
+      ? null
+      : positiveCents(fund.plannedContributionCents);
   const projectedSavedByDueCents = Math.min(
     targetCents,
     savedToDateCents + (plannedContributionCents ?? contributionPerPeriodCents) * periodsRemaining,
@@ -168,7 +176,8 @@ export function summarizeSinkingFundPortfolio(
     plans,
     totalContributionCents: plans.reduce((sum, plan) => sum + plan.contributionPerPeriodCents, 0),
     totalRemainingCents: plans.reduce((sum, plan) => sum + plan.remainingCents, 0),
-    catchUpCount: plans.filter((plan) => plan.status === 'catch-up' || plan.status === 'overdue').length,
+    catchUpCount: plans.filter((plan) => plan.status === 'catch-up' || plan.status === 'overdue')
+      .length,
     fundedCount: plans.filter((plan) => plan.status === 'funded').length,
   };
 }

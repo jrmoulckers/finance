@@ -114,10 +114,13 @@ export function buildPeerBenchmarkProfileControlsModel(
         helperText: 'Optional context such as student, family, or retired.',
       },
     ],
-    primaryActionLabel: sanitized.optedIn ? 'Update peer benchmark profile' : 'Opt in to peer benchmarks',
+    primaryActionLabel: sanitized.optedIn
+      ? 'Update peer benchmark profile'
+      : 'Opt in to peer benchmarks',
     clearActionLabel: 'Clear peer benchmark profile',
     dataUseCopy:
       'Peer comparisons appear only after you opt in. Cohort inputs stay local and can be cleared at any time.',
-    fallbackCopy: 'When peer benchmarks are off, insights continue to use the default 50/30/20 baseline.',
+    fallbackCopy:
+      'When peer benchmarks are off, insights continue to use the default 50/30/20 baseline.',
   };
 }

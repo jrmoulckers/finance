@@ -62,14 +62,24 @@ describe('generateCashFlowForecast', () => {
       currentBalanceCents: 100_000,
       asOfDate: '2025-04-20',
       recurringTransactions: [
-        { id: 'rent', description: 'Rent', amountCents: 50_000, type: 'expense', nextDate: '2025-05-01' },
+        {
+          id: 'rent',
+          description: 'Rent',
+          amountCents: 50_000,
+          type: 'expense',
+          nextDate: '2025-05-01',
+        },
       ],
     });
 
     expect(result.status).toBe('ready');
     expect(result.forecasts.map((forecast) => forecast.horizonDays)).toEqual([7, 30, 90]);
-    expect(result.forecasts[0].lowBalanceCents).toBeLessThan(result.forecasts[0].expectedBalanceCents);
-    expect(result.forecasts[0].highBalanceCents).toBeGreaterThan(result.forecasts[0].expectedBalanceCents);
+    expect(result.forecasts[0].lowBalanceCents).toBeLessThan(
+      result.forecasts[0].expectedBalanceCents,
+    );
+    expect(result.forecasts[0].highBalanceCents).toBeGreaterThan(
+      result.forecasts[0].expectedBalanceCents,
+    );
     expect(result.forecasts[0].topFactors.join(' ')).toContain('history');
   });
 
@@ -81,7 +91,13 @@ describe('generateCashFlowForecast', () => {
       safetyBufferCents: 5_000,
       horizons: [30],
       recurringTransactions: [
-        { id: 'bill', description: 'Bill', amountCents: 250_000, type: 'expense', nextDate: '2025-04-25' },
+        {
+          id: 'bill',
+          description: 'Bill',
+          amountCents: 250_000,
+          type: 'expense',
+          nextDate: '2025-04-25',
+        },
       ],
     });
 

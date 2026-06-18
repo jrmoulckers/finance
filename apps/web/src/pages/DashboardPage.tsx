@@ -6,7 +6,13 @@ import { QueryEngine } from '../components/ai/QueryEngine';
 import type { TimePeriod, ViewType } from '../components/charts';
 import { CoachCard, CoachPanel } from '../components/coaching';
 import { AccountPurposeFilterControl } from '../components/accounts';
-import { CurrencyDisplay, EmptyState, ErrorBanner, LoadingSpinner, SyncIndicator } from '../components/common';
+import {
+  CurrencyDisplay,
+  EmptyState,
+  ErrorBanner,
+  LoadingSpinner,
+  SyncIndicator,
+} from '../components/common';
 import { CustomizePanel } from '../components/dashboard/CustomizePanel';
 import { SafeToSpendCard } from '../components/dashboard/SafeToSpendCard';
 import {
@@ -903,261 +909,264 @@ export const DashboardPage: React.FC = () => {
       ) : (
         <>
           {isDashboardEmpty ? (
-        <EmptyState
-          title={
-            selectedPurposeFilter === 'all'
-              ? 'No dashboard data yet'
-              : 'No matching account activity'
-          }
-          description={
-            selectedPurposeFilter === 'all'
-              ? 'Add accounts, budgets, or transactions to see your financial summary here.'
-              : 'Try a different purpose filter or tag more accounts for this view.'
-          }
-        />
+            <EmptyState
+              title={
+                selectedPurposeFilter === 'all'
+                  ? 'No dashboard data yet'
+                  : 'No matching account activity'
+              }
+              description={
+                selectedPurposeFilter === 'all'
+                  ? 'Add accounts, budgets, or transactions to see your financial summary here.'
+                  : 'Try a different purpose filter or tag more accounts for this view.'
+              }
+            />
           ) : (
             <>
               <section
-            className="page-section safe-to-spend-section"
-            aria-label="Monthly spending answer"
-          >
-            <SafeToSpendCard breakdown={safeToSpendBreakdown} currency={safeToSpendCurrency} />
-          </section>
-          <section className="page-section" aria-label="Financial summary">
-            <div className="card-grid card-grid--4">
-              {visibleWidgetIds.has('net-worth') ? (
-                <article className="card" aria-label="Net worth">
-                  <div className="card__header">
-                    <h3 className="card__title">Net Worth</h3>
-                  </div>
-                  <div className="card__value" aria-live="polite">
-                    <CurrencyDisplay amount={netWorth} colorize context="net worth" />
-                  </div>
+                className="page-section safe-to-spend-section"
+                aria-label="Monthly spending answer"
+              >
+                <SafeToSpendCard breakdown={safeToSpendBreakdown} currency={safeToSpendCurrency} />
+              </section>
+              <section className="page-section" aria-label="Financial summary">
+                <div className="card-grid card-grid--4">
+                  {visibleWidgetIds.has('net-worth') ? (
+                    <article className="card" aria-label="Net worth">
+                      <div className="card__header">
+                        <h3 className="card__title">Net Worth</h3>
+                      </div>
+                      <div className="card__value" aria-live="polite">
+                        <CurrencyDisplay amount={netWorth} colorize context="net worth" />
+                      </div>
+                    </article>
+                  ) : null}
+                  {visibleWidgetIds.has('monthly-spending') ? (
+                    <article className="card" aria-label="Monthly spending">
+                      <div className="card__header">
+                        <h3 className="card__title">Spent This Month</h3>
+                      </div>
+                      <div className="card__value" aria-live="polite">
+                        <CurrencyDisplay amount={spentThisMonth} context="spent this month" />
+                      </div>
+                    </article>
+                  ) : null}
+                  {visibleWidgetIds.has('budget-health') ? (
+                    <article className="card" aria-label="Budget health">
+                      <div className="card__header">
+                        <h3 className="card__title">Budget Health</h3>
+                      </div>
+                      <div className="card__value" aria-live="polite">
+                        <span aria-hidden="true">{dashboardBudgetStatus.icon} </span>
+                        {budgetPercentage}% used
+                        <span className="sr-only">, {dashboardBudgetStatus.label}</span>
+                      </div>
+                      <div
+                        className="progress-bar"
+                        role="progressbar"
+                        aria-valuenow={budgetPercentage}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`Budget ${budgetPercentage} percent used, ${dashboardBudgetStatus.label}`}
+                      >
+                        <div
+                          className={`progress-bar__fill progress-bar__fill--${budgetStatusTone}`}
+                          style={{ width: `${Math.min(budgetPercentage, 100)}%` }}
+                        />
+                      </div>
+                    </article>
+                  ) : null}
+                  <article className="card" aria-label="Debt status">
+                    <div className="card__header">
+                      <h3 className="card__title">Debt Payoff</h3>
+                    </div>
+                    <div className="card__value" aria-live="polite">
+                      {debtSummary.balance > 0 ? (
+                        <CurrencyDisplay
+                          amount={debtSummary.balance}
+                          context="tracked debt balance"
+                        />
+                      ) : (
+                        'Plan payoff'
+                      )}
+                    </div>
+                    <p className="list-item__secondary">
+                      {debtSummary.count > 0
+                        ? `${debtSummary.count} debt account${debtSummary.count === 1 ? '' : 's'} tracked.`
+                        : 'Compare avalanche and snowball strategies.'}
+                    </p>
+                    <Link to="/debt" className="auth-footer__link" aria-label="Open Debt workspace">
+                      Open Debt workspace
+                    </Link>
+                  </article>
+                </div>
+              </section>
+              <section className="page-section" aria-label="Things to check">
+                <h3 className="page-section__title">Things to check</h3>
+                <article className="card">
+                  {scamAlerts.length === 0 ? (
+                    <p className="list-item__secondary">Everything looks normal.</p>
+                  ) : (
+                    <ul
+                      className="list-group"
+                      role="list"
+                      aria-label="Scam-focused unusual spending alerts"
+                    >
+                      {scamAlerts.slice(0, 5).map((alert) => (
+                        <li key={alert.id} className="list-item" role="listitem">
+                          <div className="list-item__content">
+                            <p className="list-item__primary">{alert.title}</p>
+                            <p className="list-item__secondary">{alert.message}</p>
+                            <p className="list-item__secondary">
+                              <strong>NEXT STEP:</strong> {alert.nextStep}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </article>
-              ) : null}
-              {visibleWidgetIds.has('monthly-spending') ? (
-                <article className="card" aria-label="Monthly spending">
+              </section>
+              <section className="page-section" aria-label="Tax reserve guidance">
+                <article className="card">
                   <div className="card__header">
-                    <h3 className="card__title">Spent This Month</h3>
+                    <h3 className="card__title">Tax Reserve</h3>
+                    <Link
+                      to="/goals"
+                      className="auth-footer__link"
+                      aria-label="Manage tax reserve bucket"
+                    >
+                      Manage bucket
+                    </Link>
                   </div>
-                  <div className="card__value" aria-live="polite">
-                    <CurrencyDisplay amount={spentThisMonth} context="spent this month" />
-                  </div>
-                </article>
-              ) : null}
-              {visibleWidgetIds.has('budget-health') ? (
-                <article className="card" aria-label="Budget health">
-                  <div className="card__header">
-                    <h3 className="card__title">Budget Health</h3>
-                  </div>
-                  <div className="card__value" aria-live="polite">
-                    <span aria-hidden="true">{dashboardBudgetStatus.icon} </span>
-                    {budgetPercentage}% used
-                    <span className="sr-only">, {dashboardBudgetStatus.label}</span>
+                  <div className="card-grid card-grid--3">
+                    <div>
+                      <p className="list-item__secondary">Bucket balance</p>
+                      <p className="card__value">
+                        <CurrencyDisplay
+                          amount={taxReserve.summary.bucketBalanceCents}
+                          currency={taxReserveCurrency}
+                          context="tax reserve bucket balance"
+                        />
+                      </p>
+                    </div>
+                    <div>
+                      <p className="list-item__secondary">Recommended for this quarter</p>
+                      <p className="card__value">
+                        <CurrencyDisplay
+                          amount={taxReserve.summary.quarterRecommendedCents}
+                          currency={taxReserveCurrency}
+                          context="recommended quarterly tax reserve"
+                        />
+                      </p>
+                    </div>
+                    <div>
+                      <p className="list-item__secondary">Recommended payment</p>
+                      <p className="card__value">
+                        <CurrencyDisplay
+                          amount={taxReserve.summary.recommendedPaymentCents}
+                          currency={taxReserveCurrency}
+                          context="recommended estimated tax payment"
+                        />
+                      </p>
+                    </div>
                   </div>
                   <div
                     className="progress-bar"
                     role="progressbar"
-                    aria-valuenow={budgetPercentage}
+                    aria-valuenow={taxReserveProgress}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-label={`Budget ${budgetPercentage} percent used, ${dashboardBudgetStatus.label}`}
+                    aria-label={`Tax reserve bucket is ${taxReserveProgress} percent funded`}
+                    style={{ marginTop: 'var(--spacing-4)' }}
                   >
                     <div
-                      className={`progress-bar__fill progress-bar__fill--${budgetStatusTone}`}
-                      style={{ width: `${Math.min(budgetPercentage, 100)}%` }}
+                      className={`progress-bar__fill progress-bar__fill--${
+                        taxReserveProgress >= 100
+                          ? 'positive'
+                          : taxReserveProgress >= 50
+                            ? 'warning'
+                            : 'negative'
+                      }`}
+                      style={{ width: `${taxReserveProgress}%` }}
                     />
                   </div>
-                </article>
-              ) : null}
-              <article className="card" aria-label="Debt status">
-                <div className="card__header">
-                  <h3 className="card__title">Debt Payoff</h3>
-                </div>
-                <div className="card__value" aria-live="polite">
-                  {debtSummary.balance > 0 ? (
-                    <CurrencyDisplay amount={debtSummary.balance} context="tracked debt balance" />
-                  ) : (
-                    'Plan payoff'
-                  )}
-                </div>
-                <p className="list-item__secondary">
-                  {debtSummary.count > 0
-                    ? `${debtSummary.count} debt account${debtSummary.count === 1 ? '' : 's'} tracked.`
-                    : 'Compare avalanche and snowball strategies.'}
-                </p>
-                <Link to="/debt" className="auth-footer__link" aria-label="Open Debt workspace">
-                  Open Debt workspace
-                </Link>
-              </article>
-            </div>
-          </section>
-          <section className="page-section" aria-label="Things to check">
-            <h3 className="page-section__title">Things to check</h3>
-            <article className="card">
-              {scamAlerts.length === 0 ? (
-                <p className="list-item__secondary">Everything looks normal.</p>
-              ) : (
-                <ul
-                  className="list-group"
-                  role="list"
-                  aria-label="Scam-focused unusual spending alerts"
-                >
-                  {scamAlerts.slice(0, 5).map((alert) => (
-                    <li key={alert.id} className="list-item" role="listitem">
-                      <div className="list-item__content">
-                        <p className="list-item__primary">{alert.title}</p>
-                        <p className="list-item__secondary">{alert.message}</p>
-                        <p className="list-item__secondary">
-                          <strong>NEXT STEP:</strong> {alert.nextStep}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </article>
-          </section>
-          <section className="page-section" aria-label="Tax reserve guidance">
-            <article className="card">
-              <div className="card__header">
-                <h3 className="card__title">Tax Reserve</h3>
-                <Link
-                  to="/goals"
-                  className="auth-footer__link"
-                  aria-label="Manage tax reserve bucket"
-                >
-                  Manage bucket
-                </Link>
-              </div>
-              <div className="card-grid card-grid--3">
-                <div>
-                  <p className="list-item__secondary">Bucket balance</p>
-                  <p className="card__value">
+                  <p style={{ marginTop: 'var(--spacing-3)' }}>
+                    You earned{' '}
                     <CurrencyDisplay
-                      amount={taxReserve.summary.bucketBalanceCents}
+                      amount={taxReserve.summary.currentMonthNetIncomeCents}
                       currency={taxReserveCurrency}
-                      context="tax reserve bucket balance"
-                    />
+                      context="current month taxable income"
+                    />{' '}
+                    this month — set aside{' '}
+                    <CurrencyDisplay
+                      amount={taxReserve.summary.currentMonthRecommendedCents}
+                      currency={taxReserveCurrency}
+                      context="current month recommended tax reserve"
+                    />{' '}
+                    ({taxReserveRatePercent}%).
                   </p>
-                </div>
-                <div>
-                  <p className="list-item__secondary">Recommended for this quarter</p>
-                  <p className="card__value">
+                  <p className="list-item__secondary">
+                    Quarterly estimate due {formatDueCountdown(taxReserve.summary.daysUntilDue)} on{' '}
+                    {formatDueDate(taxReserve.summary.nextDueDate.dueDate)}. Based on income so far,
+                    set aside ~
                     <CurrencyDisplay
                       amount={taxReserve.summary.quarterRecommendedCents}
                       currency={taxReserveCurrency}
-                      context="recommended quarterly tax reserve"
+                      context="quarterly tax reserve"
                     />
+                    .
                   </p>
-                </div>
-                <div>
-                  <p className="list-item__secondary">Recommended payment</p>
-                  <p className="card__value">
-                    <CurrencyDisplay
-                      amount={taxReserve.summary.recommendedPaymentCents}
-                      currency={taxReserveCurrency}
-                      context="recommended estimated tax payment"
-                    />
-                  </p>
-                </div>
-              </div>
-              <div
-                className="progress-bar"
-                role="progressbar"
-                aria-valuenow={taxReserveProgress}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`Tax reserve bucket is ${taxReserveProgress} percent funded`}
-                style={{ marginTop: 'var(--spacing-4)' }}
-              >
-                <div
-                  className={`progress-bar__fill progress-bar__fill--${
-                    taxReserveProgress >= 100
-                      ? 'positive'
-                      : taxReserveProgress >= 50
-                        ? 'warning'
-                        : 'negative'
-                  }`}
-                  style={{ width: `${taxReserveProgress}%` }}
-                />
-              </div>
-              <p style={{ marginTop: 'var(--spacing-3)' }}>
-                You earned{' '}
-                <CurrencyDisplay
-                  amount={taxReserve.summary.currentMonthNetIncomeCents}
-                  currency={taxReserveCurrency}
-                  context="current month taxable income"
-                />{' '}
-                this month — set aside{' '}
-                <CurrencyDisplay
-                  amount={taxReserve.summary.currentMonthRecommendedCents}
-                  currency={taxReserveCurrency}
-                  context="current month recommended tax reserve"
-                />{' '}
-                ({taxReserveRatePercent}%).
-              </p>
-              <p className="list-item__secondary">
-                Quarterly estimate due {formatDueCountdown(taxReserve.summary.daysUntilDue)} on{' '}
-                {formatDueDate(taxReserve.summary.nextDueDate.dueDate)}. Based on income so far, set
-                aside ~
-                <CurrencyDisplay
-                  amount={taxReserve.summary.quarterRecommendedCents}
-                  currency={taxReserveCurrency}
-                  context="quarterly tax reserve"
-                />
-                .
-              </p>
-            </article>
-          </section>
-          {hasChartData &&
-          (visibleWidgetIds.has('spending-trend') ||
-            visibleWidgetIds.has('spending-by-category') ||
-            visibleWidgetIds.has('category-pie')) ? (
-            <section className="page-section dashboard-charts" aria-label="Financial charts">
-              {visibleWidgetIds.has('spending-trend') ? (
-                <div className="chart-container" aria-label="Spending trend chart">
-                  <Suspense fallback={<ChartFallback />}>
-                    <SpendingTrendChart
-                      data={trendData}
-                      currency={chartCurrency}
-                      title="Spending Trend"
-                      selectedPeriod={selectedPeriod}
-                      onPeriodChange={handlePeriodChange}
-                      viewType={viewType}
-                      onViewTypeChange={handleViewTypeChange}
-                      averageDailySpending={averageDaily}
-                      comparison={comparison}
-                    />
-                  </Suspense>
-                </div>
+                </article>
+              </section>
+              {hasChartData &&
+              (visibleWidgetIds.has('spending-trend') ||
+                visibleWidgetIds.has('spending-by-category') ||
+                visibleWidgetIds.has('category-pie')) ? (
+                <section className="page-section dashboard-charts" aria-label="Financial charts">
+                  {visibleWidgetIds.has('spending-trend') ? (
+                    <div className="chart-container" aria-label="Spending trend chart">
+                      <Suspense fallback={<ChartFallback />}>
+                        <SpendingTrendChart
+                          data={trendData}
+                          currency={chartCurrency}
+                          title="Spending Trend"
+                          selectedPeriod={selectedPeriod}
+                          onPeriodChange={handlePeriodChange}
+                          viewType={viewType}
+                          onViewTypeChange={handleViewTypeChange}
+                          averageDailySpending={averageDaily}
+                          comparison={comparison}
+                        />
+                      </Suspense>
+                    </div>
+                  ) : null}
+                  {visibleWidgetIds.has('spending-by-category') ? (
+                    <div className="chart-container" aria-label="Category spending bar chart">
+                      <Suspense fallback={<ChartFallback />}>
+                        <SpendingBarChart
+                          data={barData}
+                          currency={chartCurrency}
+                          title="Spending by Category"
+                        />
+                      </Suspense>
+                    </div>
+                  ) : null}
+                  {visibleWidgetIds.has('category-pie') ? (
+                    <div className="chart-container" aria-label="Category share pie chart">
+                      <Suspense fallback={<ChartFallback />}>
+                        <CategoryPieChart
+                          data={categoryData}
+                          currency={chartCurrency}
+                          width={280}
+                          height={280}
+                          title="Category Share"
+                        />
+                      </Suspense>
+                    </div>
+                  ) : null}
+                </section>
               ) : null}
-              {visibleWidgetIds.has('spending-by-category') ? (
-                <div className="chart-container" aria-label="Category spending bar chart">
-                  <Suspense fallback={<ChartFallback />}>
-                    <SpendingBarChart
-                      data={barData}
-                      currency={chartCurrency}
-                      title="Spending by Category"
-                    />
-                  </Suspense>
-                </div>
-              ) : null}
-              {visibleWidgetIds.has('category-pie') ? (
-                <div className="chart-container" aria-label="Category share pie chart">
-                  <Suspense fallback={<ChartFallback />}>
-                    <CategoryPieChart
-                      data={categoryData}
-                      currency={chartCurrency}
-                      width={280}
-                      height={280}
-                      title="Category Share"
-                    />
-                  </Suspense>
-                </div>
-              ) : null}
-            </section>
-          ) : null}
               <section className="page-section" aria-label="Financial coach">
                 <CoachCard alerts={topAlerts} loading={coachLoading} onDismiss={dismissAlert} />
               </section>

@@ -26,7 +26,11 @@ describe('import repair queue', () => {
 
     const queue = buildRepairQueue(rows);
 
-    expect(queue.blocking.map((issue) => issue.code)).toEqual(['missing_date', 'missing_amount', 'missing_account']);
+    expect(queue.blocking.map((issue) => issue.code)).toEqual([
+      'missing_date',
+      'missing_amount',
+      'missing_account',
+    ]);
     expect(queue.duplicates.map((row) => row.rowIndex)).toEqual([0]);
     expect(queue.attachmentNeeded.map((row) => row.rowIndex)).toEqual([1]);
     expect(queue.readyCount).toBe(1);
@@ -71,8 +75,21 @@ describe('import repair queue', () => {
 
   it('builds commit plan with blocked rows and skipped duplicates', () => {
     const rows = [
-      createRepairableRow({ rowIndex: 0, date: '2024-01-15', amountCents: -100, payee: 'A', account: 'Checking' }),
-      createRepairableRow({ rowIndex: 1, date: '2024-01-15', amountCents: -100, payee: 'A', account: 'Checking', duplicate: true }),
+      createRepairableRow({
+        rowIndex: 0,
+        date: '2024-01-15',
+        amountCents: -100,
+        payee: 'A',
+        account: 'Checking',
+      }),
+      createRepairableRow({
+        rowIndex: 1,
+        date: '2024-01-15',
+        amountCents: -100,
+        payee: 'A',
+        account: 'Checking',
+        duplicate: true,
+      }),
       createRepairableRow({ rowIndex: 2, amountCents: -100, payee: 'Broken' }),
     ];
 

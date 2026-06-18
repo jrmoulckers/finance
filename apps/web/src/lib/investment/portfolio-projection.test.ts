@@ -23,8 +23,20 @@ describe('compound portfolio projection shared logic', () => {
         { symbol: 'vxus', marketValueCents: 2500_00, contributionCents: 2600_00 },
       ]),
     ).toEqual([
-      { symbol: 'VTI', marketValueCents: 7500_00, contributionCents: 7000_00, gainCents: 500_00, allocationPercent: 75 },
-      { symbol: 'VXUS', marketValueCents: 2500_00, contributionCents: 2600_00, gainCents: -100_00, allocationPercent: 25 },
+      {
+        symbol: 'VTI',
+        marketValueCents: 7500_00,
+        contributionCents: 7000_00,
+        gainCents: 500_00,
+        allocationPercent: 75,
+      },
+      {
+        symbol: 'VXUS',
+        marketValueCents: 2500_00,
+        contributionCents: 2600_00,
+        gainCents: -100_00,
+        allocationPercent: 25,
+      },
     ]);
   });
 });

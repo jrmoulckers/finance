@@ -31,9 +31,18 @@ describe('regional-conventions', () => {
   });
 
   it('covers Spain/EU, Canada, and Australia profile terminology', () => {
-    expect(getRegionalConventionProfile('ES')).toMatchObject({ indirectTaxTerm: 'VAT', weekStartsOn: 'monday' });
-    expect(getRegionalConventionProfile('CA')).toMatchObject({ indirectTaxTerm: 'GST/HST', retirementAccountTerm: 'RRSP/TFSA' });
-    expect(getRegionalTaxYearPeriod('AU', '2025-06-30')).toMatchObject({ taxYear: 2025, startDate: '2024-07-01' });
+    expect(getRegionalConventionProfile('ES')).toMatchObject({
+      indirectTaxTerm: 'VAT',
+      weekStartsOn: 'monday',
+    });
+    expect(getRegionalConventionProfile('CA')).toMatchObject({
+      indirectTaxTerm: 'GST/HST',
+      retirementAccountTerm: 'RRSP/TFSA',
+    });
+    expect(getRegionalTaxYearPeriod('AU', '2025-06-30')).toMatchObject({
+      taxYear: 2025,
+      startDate: '2024-07-01',
+    });
     expect(getRegionalConventionProfile('AU').retirementAccountTerm).toBe('superannuation');
   });
 });

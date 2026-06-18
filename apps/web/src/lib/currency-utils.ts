@@ -68,7 +68,9 @@ export function groupByCurrency(amounts: ReadonlyArray<CurrencyAmount>): Record<
 export function formatCurrencyGroup(groups: Record<string, number>, locale?: string): string {
   const entries = Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
 
-  return entries.map(([currency, amount]) => formatCurrency(amount, { currency, locale })).join(' · ');
+  return entries
+    .map(([currency, amount]) => formatCurrency(amount, { currency, locale }))
+    .join(' · ');
 }
 
 export interface ConvertedCurrencyTotal {

@@ -2,7 +2,12 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildSetupMilestones, decideReEngagement } from './re-engagement';
-import { buildWelcomeBackSurface, dismissWelcomeBack, getWelcomeBackActionHref, recordLastActive } from './welcome-back-surface';
+import {
+  buildWelcomeBackSurface,
+  dismissWelcomeBack,
+  getWelcomeBackActionHref,
+  recordLastActive,
+} from './welcome-back-surface';
 
 describe('welcome back surface', () => {
   it('maps re-engagement decisions to accessible dashboard state and routes', () => {

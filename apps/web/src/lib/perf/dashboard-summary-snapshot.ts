@@ -47,7 +47,11 @@ export function readDashboardShellSnapshot(
 
   const snapshot = parseDashboardSummarySnapshot(raw);
   const maxAgeMs = input.maxAgeMs ?? DASHBOARD_SUMMARY_MAX_AGE_MS;
-  if (snapshot === null || snapshot.capturedAt > input.now || input.now - snapshot.capturedAt > maxAgeMs) {
+  if (
+    snapshot === null ||
+    snapshot.capturedAt > input.now ||
+    input.now - snapshot.capturedAt > maxAgeMs
+  ) {
     storage.removeItem(DASHBOARD_SUMMARY_STORAGE_KEY);
     return { mode: 'stale-snapshot', snapshot: null };
   }

@@ -52,15 +52,18 @@ describe('fire planning view helpers', () => {
   });
 
   it('builds standard, Coast-FIRE, save-more, and lower-return cards', () => {
-    const { input } = deriveFirePlanningDefaults({ investedAssetsCents: 300_000_00 }, {
-      annualExpensesCents: 40_000_00,
-      annualContributionsCents: 50_000_00,
-      annualIncomeCents: 120_000_00,
-      currentAge: 35,
-      targetRetirementAge: 60,
-      expectedRealReturnPercent: 6,
-      withdrawalRatePercent: 4,
-    });
+    const { input } = deriveFirePlanningDefaults(
+      { investedAssetsCents: 300_000_00 },
+      {
+        annualExpensesCents: 40_000_00,
+        annualContributionsCents: 50_000_00,
+        annualIncomeCents: 120_000_00,
+        currentAge: 35,
+        targetRetirementAge: 60,
+        expectedRealReturnPercent: 6,
+        withdrawalRatePercent: 4,
+      },
+    );
 
     const cards = buildFireScenarioCards(input);
     const standard = cards.find((card) => card.id === 'standard-fire');

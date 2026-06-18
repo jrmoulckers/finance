@@ -19,7 +19,10 @@ describe('locale-packs', () => {
   });
 
   it('defines fallback-only starter packs for additional candidate locales', () => {
-    expect(getLocalePack('fr-CA')).toMatchObject({ status: 'fallback-only', fallbackLocale: 'en-US' });
+    expect(getLocalePack('fr-CA')).toMatchObject({
+      status: 'fallback-only',
+      fallbackLocale: 'en-US',
+    });
     expect(getLocalePack('ar')).toMatchObject({ status: 'fallback-only', fallbackLocale: 'en-US' });
     expect(LOCALE_PACKS['ar']?.translatorNotes.join(' ')).toContain('RTL');
   });

@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { deserializeLearningProgress, generateLearningRewardEvents, serializeLearningProgress } from './learning-progress-rewards';
+import {
+  deserializeLearningProgress,
+  generateLearningRewardEvents,
+  serializeLearningProgress,
+} from './learning-progress-rewards';
 
 describe('learning progress reward rules', () => {
   it('serializes progress and emits completion, mastery, and streak rewards', () => {

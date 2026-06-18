@@ -2,7 +2,15 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { auditWebStorageForRawImportKeys, createEncryptedImportKeyRecord, loadEncryptedImportKey, migrateEncryptedImportKeys, saveEncryptedImportKey, type EncryptedImportKeyRecord, type ImportKeyStorageAdapter } from '../encrypted-import-key-manager';
+import {
+  auditWebStorageForRawImportKeys,
+  createEncryptedImportKeyRecord,
+  loadEncryptedImportKey,
+  migrateEncryptedImportKeys,
+  saveEncryptedImportKey,
+  type EncryptedImportKeyRecord,
+  type ImportKeyStorageAdapter,
+} from '../encrypted-import-key-manager';
 
 class MemoryKeyStore implements ImportKeyStorageAdapter {
   readonly records = new Map<string, EncryptedImportKeyRecord>();
@@ -33,12 +41,22 @@ describe('encrypted import key manager', () => {
     await saveEncryptedImportKey(store, record);
 
     await expect(loadEncryptedImportKey(store, 'import-key-1')).resolves.toEqual(record);
-    expect(() => createEncryptedImportKeyRecord({ keyId: 'raw-key', encryptedKeyMaterial: 'enc:v1:x', storage: 'opfs' })).toThrow();
+    expect(() =>
+      createEncryptedImportKeyRecord({
+        keyId: 'raw-key',
+        encryptedKeyMaterial: 'enc:v1:x',
+        storage: 'opfs',
+      }),
+    ).toThrow();
   });
 
   it('audits web storage for raw key material', () => {
     const violations = auditWebStorageForRawImportKeys([
-      { name: 'localStorage', keys: ['finance.import.profile.safe'], getItem: () => 'enc:v1:ciphertext' },
+      {
+        name: 'localStorage',
+        keys: ['finance.import.profile.safe'],
+        getItem: () => 'enc:v1:ciphertext',
+      },
       { name: 'sessionStorage', keys: ['finance.rawKey'], getItem: () => 'abcdef'.repeat(12) },
     ]);
 
@@ -48,10 +66,19 @@ describe('encrypted import key manager', () => {
   it('creates rollback-safe migration checkpoints and wipes source envelopes', async () => {
     const source = new MemoryKeyStore();
     const target = new MemoryKeyStore();
-    const record = createEncryptedImportKeyRecord({ keyId: 'import-key-2', encryptedKeyMaterial: 'enc:v1:abc', storage: 'opfs' });
+    const record = createEncryptedImportKeyRecord({
+      keyId: 'import-key-2',
+      encryptedKeyMaterial: 'enc:v1:abc',
+      storage: 'opfs',
+    });
     source.put(record);
 
-    const checkpoints = await migrateEncryptedImportKeys({ records: [record], source, target, wipeSource: true });
+    const checkpoints = await migrateEncryptedImportKeys({
+      records: [record],
+      source,
+      target,
+      wipeSource: true,
+    });
 
     expect(checkpoints.map((checkpoint) => checkpoint.status)).toEqual(['success', 'wiped']);
     expect(target.get('import-key-2')).toEqual(record);

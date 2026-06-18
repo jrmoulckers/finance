@@ -31,7 +31,10 @@ describe('security-audit-log', () => {
 
     expect(second.previousHash).toBe(first.hash);
     expect(loadSecurityAuditLog()[0].metadata.accessToken).toBe('[redacted]');
-    await expect(verifySecurityAuditLogIntegrity()).resolves.toMatchObject({ ok: true, checked: 2 });
+    await expect(verifySecurityAuditLogIntegrity()).resolves.toMatchObject({
+      ok: true,
+      checked: 2,
+    });
   });
 
   it('detects tampering in stored events', async () => {

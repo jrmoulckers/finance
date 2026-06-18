@@ -44,7 +44,9 @@ function taxYearFromDate(date: string): number {
   return year;
 }
 
-function fallbackForBusinessAccount(transaction: TaxReserveTaggedTransaction): TaxReserveDeductibleInput | null {
+function fallbackForBusinessAccount(
+  transaction: TaxReserveTaggedTransaction,
+): TaxReserveDeductibleInput | null {
   const taxYear = taxYearFromDate(transaction.date);
   if (transaction.type === 'INCOME' && transaction.accountPurpose !== 'personal') {
     return {
@@ -58,7 +60,10 @@ function fallbackForBusinessAccount(transaction: TaxReserveTaggedTransaction): T
       source: 'business-account-heuristic',
     };
   }
-  if (transaction.type === 'EXPENSE' && (transaction.accountPurpose === 'business' || transaction.accountPurpose === 'both')) {
+  if (
+    transaction.type === 'EXPENSE' &&
+    (transaction.accountPurpose === 'business' || transaction.accountPurpose === 'both')
+  ) {
     return {
       transactionId: transaction.id,
       taxYear,
@@ -73,7 +78,9 @@ function fallbackForBusinessAccount(transaction: TaxReserveTaggedTransaction): T
   return null;
 }
 
-export function classifyTaxReserveTransaction(transaction: TaxReserveTaggedTransaction): TaxReserveDeductibleInput | null {
+export function classifyTaxReserveTransaction(
+  transaction: TaxReserveTaggedTransaction,
+): TaxReserveDeductibleInput | null {
   const explicit = taxTagFromCustomFields(transaction);
   if (explicit !== null) {
     const deductibleAmountCents = calculateDeductibleAmountCents(transaction, explicit);

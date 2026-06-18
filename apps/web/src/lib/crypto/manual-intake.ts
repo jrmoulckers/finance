@@ -28,24 +28,47 @@ const ADDRESS_PATTERNS: Readonly<Record<string, RegExp>> = {
 };
 
 export function fingerprintSource(source: Omit<ManualIntakeSource, 'fingerprint'>): string {
-  if (source.kind === 'watch-wallet') return `wallet:${source.chain?.toLowerCase() ?? 'unknown'}:${source.address?.toLowerCase() ?? ''}`;
-  if (source.kind === 'exchange-csv') return `exchange:${source.exchange ?? 'other'}:${source.label.toLowerCase()}`;
+  if (source.kind === 'watch-wallet')
+    return `wallet:${source.chain?.toLowerCase() ?? 'unknown'}:${source.address?.toLowerCase() ?? ''}`;
+  if (source.kind === 'exchange-csv')
+    return `exchange:${source.exchange ?? 'other'}:${source.label.toLowerCase()}`;
   return `manual:${source.label.toLowerCase()}`;
 }
 
-export function validateManualIntakeSource(source: Omit<ManualIntakeSource, 'fingerprint'>, existing: readonly ManualIntakeSource[] = []): IntakeValidationResult {
+export function validateManualIntakeSource(
+  source: Omit<ManualIntakeSource, 'fingerprint'>,
+  existing: readonly ManualIntakeSource[] = [],
+): IntakeValidationResult {
   const fingerprint = fingerprintSource(source);
-  if (existing.some((item) => item.fingerprint === fingerprint)) return { status: 'duplicate-risk', fingerprint, reason: 'A source with the same exchange/wallet fingerprint already exists.' };
+  if (existing.some((item) => item.fingerprint === fingerprint))
+    return {
+      status: 'duplicate-risk',
+      fingerprint,
+      reason: 'A source with the same exchange/wallet fingerprint already exists.',
+    };
   if (source.kind === 'watch-wallet') {
     const chain = source.chain?.toLowerCase() ?? '';
     const pattern = ADDRESS_PATTERNS[chain];
-    if (!pattern || !source.address || !pattern.test(source.address)) return { status: 'invalid', fingerprint, reason: 'Address does not match supported chain format.' };
+    if (!pattern || !source.address || !pattern.test(source.address))
+      return {
+        status: 'invalid',
+        fingerprint,
+        reason: 'Address does not match supported chain format.',
+      };
   }
-  if (source.kind === 'exchange-csv' && !source.exchange) return { status: 'invalid', fingerprint, reason: 'Exchange CSV intake requires an exchange label.' };
+  if (source.kind === 'exchange-csv' && !source.exchange)
+    return {
+      status: 'invalid',
+      fingerprint,
+      reason: 'Exchange CSV intake requires an exchange label.',
+    };
   return { status: 'valid', fingerprint, reason: 'Source can be added without live credentials.' };
 }
 
-export function createManualIntakeSource(source: Omit<ManualIntakeSource, 'fingerprint'>, existing: readonly ManualIntakeSource[] = []): ManualIntakeSource {
+export function createManualIntakeSource(
+  source: Omit<ManualIntakeSource, 'fingerprint'>,
+  existing: readonly ManualIntakeSource[] = [],
+): ManualIntakeSource {
   const validation = validateManualIntakeSource(source, existing);
   if (validation.status === 'invalid') throw new Error(validation.reason);
   return { ...source, fingerprint: validation.fingerprint };

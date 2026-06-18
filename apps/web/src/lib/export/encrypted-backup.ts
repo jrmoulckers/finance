@@ -68,8 +68,14 @@ export async function buildEncryptedBackup(
   const iv = options.iv ?? randomBytes(12);
   const iterations = options.iterations ?? DEFAULT_ITERATIONS;
   const key = await deriveAesKey(passphrase, salt, iterations);
-  const plaintext = toArrayBufferView(encoder.encode(JSON.stringify({ manifest, payload: exportData })));
-  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: toArrayBufferView(iv) }, key, plaintext);
+  const plaintext = toArrayBufferView(
+    encoder.encode(JSON.stringify({ manifest, payload: exportData })),
+  );
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: toArrayBufferView(iv) },
+    key,
+    plaintext,
+  );
   const envelope: EncryptedBackupEnvelope = {
     manifest,
     crypto: {
@@ -102,7 +108,11 @@ export async function decryptBackupPreview(
   const key = await deriveAesKey(passphrase, salt, envelope.crypto.iterations);
   let plaintext: ArrayBuffer;
   try {
-    plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: toArrayBufferView(iv) }, key, toArrayBufferView(ciphertext));
+    plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: toArrayBufferView(iv) },
+      key,
+      toArrayBufferView(ciphertext),
+    );
   } catch (error) {
     throw new Error('Unable to decrypt backup. Check the passphrase or backup integrity.', {
       cause: error,
@@ -138,7 +148,10 @@ export function buildBackupManifest(
 }
 
 export function validateManifest(manifest: EncryptedBackupManifest): void {
-  if (manifest.format !== ENCRYPTED_BACKUP_FORMAT || manifest.version !== ENCRYPTED_BACKUP_VERSION) {
+  if (
+    manifest.format !== ENCRYPTED_BACKUP_FORMAT ||
+    manifest.version !== ENCRYPTED_BACKUP_VERSION
+  ) {
     throw new Error('Unsupported backup format.');
   }
   if (manifest.schemaVersion > BACKUP_SCHEMA_VERSION) {
@@ -217,10 +230,16 @@ function isEnvelope(value: unknown): value is EncryptedBackupEnvelope {
   );
 }
 
-function isBackupPayload(value: unknown): value is { manifest: EncryptedBackupManifest; payload: FullJsonExport } {
+function isBackupPayload(
+  value: unknown,
+): value is { manifest: EncryptedBackupManifest; payload: FullJsonExport } {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as { manifest?: unknown; payload?: unknown };
-  return isManifest(candidate.manifest) && typeof candidate.payload === 'object' && candidate.payload !== null;
+  return (
+    isManifest(candidate.manifest) &&
+    typeof candidate.payload === 'object' &&
+    candidate.payload !== null
+  );
 }
 
 function isManifest(value: unknown): value is EncryptedBackupManifest {

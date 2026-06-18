@@ -18,9 +18,17 @@ describe('buildBenchmarkComparisonPresentation', () => {
     });
 
     expect(presentation.title).toBe('Portfolio vs S&P 500 Total Return');
-    expect(presentation.chart).toEqual(expect.arrayContaining([expect.objectContaining({ label: 'Delta', percent: 2 })]));
+    expect(presentation.chart).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: 'Delta', percent: 2 })]),
+    );
     expect(presentation.tableRows.map((row) => row.id)).toEqual(
-      expect.arrayContaining(['portfolio-return', 'benchmark-return', 'delta', 'portfolio-annualized', 'benchmark-annualized']),
+      expect.arrayContaining([
+        'portfolio-return',
+        'benchmark-return',
+        'delta',
+        'portfolio-annualized',
+        'benchmark-annualized',
+      ]),
     );
     expect(presentation.returnMethodLabel).toContain('Modified Dietz');
     expect(presentation.limitationCopy).toContain('not a full time-weighted return');

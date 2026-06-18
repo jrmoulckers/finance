@@ -29,19 +29,91 @@ export interface MerchantNormalizationResult {
 }
 
 const COMMON_SEEDS: readonly MerchantSeed[] = [
-  { canonicalName: 'Amazon', patterns: ['amazon', 'amzn mktp'], categoryHint: 'Shopping', logoColor: '#ff9900' },
-  { canonicalName: 'Starbucks', patterns: ['starbucks', 'sbux'], categoryHint: 'Dining', logoColor: '#006241' },
-  { canonicalName: 'Costco', patterns: ['costco'], categoryHint: 'Groceries', logoColor: '#005dab' },
-  { canonicalName: 'Uber', patterns: ['uber trip', 'uber eats', 'uber'], categoryHint: 'Transportation', logoColor: '#111111' },
-  { canonicalName: 'Walmart', patterns: ['walmart', 'wal-mart'], categoryHint: 'Groceries', logoColor: '#0071ce' },
+  {
+    canonicalName: 'Amazon',
+    patterns: ['amazon', 'amzn mktp'],
+    categoryHint: 'Shopping',
+    logoColor: '#ff9900',
+  },
+  {
+    canonicalName: 'Starbucks',
+    patterns: ['starbucks', 'sbux'],
+    categoryHint: 'Dining',
+    logoColor: '#006241',
+  },
+  {
+    canonicalName: 'Costco',
+    patterns: ['costco'],
+    categoryHint: 'Groceries',
+    logoColor: '#005dab',
+  },
+  {
+    canonicalName: 'Uber',
+    patterns: ['uber trip', 'uber eats', 'uber'],
+    categoryHint: 'Transportation',
+    logoColor: '#111111',
+  },
+  {
+    canonicalName: 'Walmart',
+    patterns: ['walmart', 'wal-mart'],
+    categoryHint: 'Groceries',
+    logoColor: '#0071ce',
+  },
   { canonicalName: 'Target', patterns: ['target'], categoryHint: 'Shopping', logoColor: '#cc0000' },
 ];
 
 const STATE_CODES = new Set([
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'IA', 'ID', 'IL', 'IN', 'KS',
-  'KY', 'LA', 'MA', 'MD', 'ME', 'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM',
-  'NV', 'NY', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VA', 'VT', 'WA', 'WI',
-  'WV', 'WY', 'DC',
+  'AL',
+  'AK',
+  'AZ',
+  'AR',
+  'CA',
+  'CO',
+  'CT',
+  'DE',
+  'FL',
+  'GA',
+  'HI',
+  'IA',
+  'ID',
+  'IL',
+  'IN',
+  'KS',
+  'KY',
+  'LA',
+  'MA',
+  'MD',
+  'ME',
+  'MI',
+  'MN',
+  'MO',
+  'MS',
+  'MT',
+  'NC',
+  'ND',
+  'NE',
+  'NH',
+  'NJ',
+  'NM',
+  'NV',
+  'NY',
+  'OH',
+  'OK',
+  'OR',
+  'PA',
+  'RI',
+  'SC',
+  'SD',
+  'TN',
+  'TX',
+  'UT',
+  'VA',
+  'VT',
+  'WA',
+  'WI',
+  'WV',
+  'WY',
+  'DC',
 ]);
 
 export function normalizeMerchantName(
@@ -55,7 +127,9 @@ export function normalizeMerchantName(
   const alias = aliases
     .map((mapping) => ({ mapping, score: aliasScore(cleaned, mapping.rawAlias) }))
     .filter((entry) => entry.score >= 0.82)
-    .sort((a, b) => b.score - a.score || (b.mapping.matchCount ?? 0) - (a.mapping.matchCount ?? 0))[0];
+    .sort(
+      (a, b) => b.score - a.score || (b.mapping.matchCount ?? 0) - (a.mapping.matchCount ?? 0),
+    )[0];
   if (alias) {
     return {
       canonicalName: alias.mapping.canonicalName,
@@ -70,7 +144,11 @@ export function normalizeMerchantName(
 
   const seed = seeds
     .flatMap((candidate) =>
-      candidate.patterns.map((pattern) => ({ candidate, pattern, score: aliasScore(cleaned, pattern) })),
+      candidate.patterns.map((pattern) => ({
+        candidate,
+        pattern,
+        score: aliasScore(cleaned, pattern),
+      })),
     )
     .filter((entry) => entry.score >= 0.74 || cleaned.includes(normalizeComparable(entry.pattern)))
     .sort((a, b) => b.score - a.score || b.pattern.length - a.pattern.length)[0];
@@ -106,7 +184,8 @@ export function learnMerchantAlias(
   const rawAlias = stripMerchantNoise(rawDescription);
   if (!rawAlias || !canonicalName.trim()) return [...existing];
   const index = existing.findIndex(
-    (mapping) => normalizeComparable(mapping.rawAlias) === rawAlias && mapping.canonicalName === canonicalName,
+    (mapping) =>
+      normalizeComparable(mapping.rawAlias) === rawAlias && mapping.canonicalName === canonicalName,
   );
   const next: MerchantAliasMapping = {
     rawAlias,
@@ -134,7 +213,10 @@ export function stripMerchantNoise(rawDescription: string): string {
 }
 
 function removeTrailingLocation(value: string): string {
-  const tokens = value.replace(/[^A-Z0-9\s-]/g, ' ').split(/\s+/).filter(Boolean);
+  const tokens = value
+    .replace(/[^A-Z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
   if (tokens.length >= 2 && STATE_CODES.has(tokens[tokens.length - 1])) {
     tokens.pop();
     while (tokens.length > 1 && /^[A-Z]{3,}$/.test(tokens[tokens.length - 1])) {

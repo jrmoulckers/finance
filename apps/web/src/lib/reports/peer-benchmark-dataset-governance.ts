@@ -54,22 +54,32 @@ export function buildPeerBenchmarkDatasetGovernanceReport(params: {
 }): PeerBenchmarkDatasetGovernanceReport {
   const nextReviewDueDate = addDays(params.dataset.reviewedAt, params.dataset.reviewCadenceDays);
   const isStale = nextReviewDueDate < params.asOfDate;
-  const sourceRows = [...params.dataset.definitions, ...params.dataset.fallbackDefinitions].map((definition) => ({
-    key: definition.key,
-    label: definition.label,
-    source: definition.source,
-    confidence: definition.confidence,
-    cohortLabel: cohortLabel(definition),
-  }));
+  const sourceRows = [...params.dataset.definitions, ...params.dataset.fallbackDefinitions].map(
+    (definition) => ({
+      key: definition.key,
+      label: definition.label,
+      source: definition.source,
+      confidence: definition.confidence,
+      cohortLabel: cohortLabel(definition),
+    }),
+  );
   const lowConfidenceKeys = sourceRows
     .filter((row) => row.confidence === 'low')
     .map((row) => row.key)
     .sort();
-  const fallbackDefinitionKeys = params.dataset.fallbackDefinitions.map((definition) => definition.key).sort();
+  const fallbackDefinitionKeys = params.dataset.fallbackDefinitions
+    .map((definition) => definition.key)
+    .sort();
   const warnings = [
-    isStale ? `Benchmark dataset ${params.dataset.version} is past its ${nextReviewDueDate} review date.` : null,
-    lowConfidenceKeys.length > 0 ? `Low-confidence benchmark ranges need review: ${lowConfidenceKeys.join(', ')}.` : null,
-    fallbackDefinitionKeys.length > 0 ? `Fallback defaults available when no cohort matches: ${fallbackDefinitionKeys.join(', ')}.` : null,
+    isStale
+      ? `Benchmark dataset ${params.dataset.version} is past its ${nextReviewDueDate} review date.`
+      : null,
+    lowConfidenceKeys.length > 0
+      ? `Low-confidence benchmark ranges need review: ${lowConfidenceKeys.join(', ')}.`
+      : null,
+    fallbackDefinitionKeys.length > 0
+      ? `Fallback defaults available when no cohort matches: ${fallbackDefinitionKeys.join(', ')}.`
+      : null,
   ].filter((warning): warning is string => warning !== null);
 
   return {

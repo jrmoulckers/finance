@@ -3,7 +3,11 @@
 import React, { useCallback, useState } from 'react';
 
 import { DataExport } from '../../components/DataExport';
-import { CrashReportingSettings, PrivacySettings, ThirdPartyPermissionReview } from '../../components/gdpr';
+import {
+  CrashReportingSettings,
+  PrivacySettings,
+  ThirdPartyPermissionReview,
+} from '../../components/gdpr';
 import { useAccountDeletion } from '../../components/settings/AccountDeletionModal';
 import { PrivacyPersistenceOption, usePrivacyMode } from '../../contexts/PrivacyModeContext';
 import { useAuth } from '../../auth/auth-context';
@@ -24,8 +28,8 @@ export const SettingsPrivacyPage: React.FC = () => {
   const [monitoringEnabled, setMonitoringEnabled] = useState(
     () => localStorage.getItem(MONITORING_CONSENT_STORAGE_KEY) === 'true',
   );
-  const [idleTimeoutMinutes, setIdleTimeoutMinutes] = useState(
-    () => Math.round(loadIdleSessionPolicy().timeoutMs / 60_000),
+  const [idleTimeoutMinutes, setIdleTimeoutMinutes] = useState(() =>
+    Math.round(loadIdleSessionPolicy().timeoutMs / 60_000),
   );
   const [appLockEnabled, setAppLockEnabled] = useState(() => loadAppLockSettings().enabled);
 
@@ -140,8 +144,9 @@ export const SettingsPrivacyPage: React.FC = () => {
             />
           </div>
           <p className="settings-item__description">
-            When enabled, Finance shows a privacy-safe locked shell on app load and after the idle timeout;
-            users with a registered passkey unlock with WebAuthn, otherwise the current authenticated session is used.
+            When enabled, Finance shows a privacy-safe locked shell on app load and after the idle
+            timeout; users with a registered passkey unlock with WebAuthn, otherwise the current
+            authenticated session is used.
           </p>
           <div className="settings-item settings-item--static">
             <label className="settings-item__label" htmlFor="s-idle-timeout">
@@ -161,7 +166,8 @@ export const SettingsPrivacyPage: React.FC = () => {
             </select>
           </div>
           <p className="settings-item__description">
-            Finance warns one minute before locking or signing out and records idle timeout events in the audit log.
+            Finance warns one minute before locking or signing out and records idle timeout events
+            in the audit log.
           </p>
         </div>
       </section>

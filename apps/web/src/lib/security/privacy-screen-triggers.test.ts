@@ -22,26 +22,64 @@ describe('privacy screen triggers', () => {
     expect(on.state.renderSensitiveValues).toBe(false);
     expect(on.announce).toContain('Sensitive values are hidden');
 
-    const off = reducePrivacyScreenTrigger(DEFAULT_PRIVACY_SCREEN_TRIGGER_SETTINGS, on.state, 'keyboard_shortcut');
+    const off = reducePrivacyScreenTrigger(
+      DEFAULT_PRIVACY_SCREEN_TRIGGER_SETTINGS,
+      on.state,
+      'keyboard_shortcut',
+    );
     expect(off.state.masked).toBe(false);
     expect(off.state.renderSensitiveValues).toBe(true);
   });
 
   it('masks on background, resume, and screen-share heuristics by default', () => {
-    let result = reducePrivacyScreenTrigger(DEFAULT_PRIVACY_SCREEN_TRIGGER_SETTINGS, DEFAULT_PRIVACY_SCREEN_TRIGGER_STATE, 'background');
+    let result = reducePrivacyScreenTrigger(
+      DEFAULT_PRIVACY_SCREEN_TRIGGER_SETTINGS,
+      DEFAULT_PRIVACY_SCREEN_TRIGGER_STATE,
+      'background',
+    );
     expect(result.state.masked).toBe(true);
 
-    result = reducePrivacyScreenTrigger(DEFAULT_PRIVACY_SCREEN_TRIGGER_SETTINGS, DEFAULT_PRIVACY_SCREEN_TRIGGER_STATE, 'resume');
+    result = reducePrivacyScreenTrigger(
+      DEFAULT_PRIVACY_SCREEN_TRIGGER_SETTINGS,
+      DEFAULT_PRIVACY_SCREEN_TRIGGER_STATE,
+      'resume',
+    );
     expect(result.state.renderSensitiveValues).toBe(false);
 
-    result = reducePrivacyScreenTrigger(DEFAULT_PRIVACY_SCREEN_TRIGGER_SETTINGS, DEFAULT_PRIVACY_SCREEN_TRIGGER_STATE, 'screen_share_start');
+    result = reducePrivacyScreenTrigger(
+      DEFAULT_PRIVACY_SCREEN_TRIGGER_SETTINGS,
+      DEFAULT_PRIVACY_SCREEN_TRIGGER_STATE,
+      'screen_share_start',
+    );
     expect(result.state.masked).toBe(true);
-    expect(reducePrivacyScreenTrigger(DEFAULT_PRIVACY_SCREEN_TRIGGER_SETTINGS, result.state, 'screen_share_stop').state.masked).toBe(false);
+    expect(
+      reducePrivacyScreenTrigger(
+        DEFAULT_PRIVACY_SCREEN_TRIGGER_SETTINGS,
+        result.state,
+        'screen_share_stop',
+      ).state.masked,
+    ).toBe(false);
   });
 
   it('recognizes accessible shortcut and display-surface signals', () => {
-    expect(matchesPrivacyScreenShortcut({ altKey: true, shiftKey: true, ctrlKey: false, metaKey: false, key: 'P' })).toBe(true);
-    expect(matchesPrivacyScreenShortcut({ altKey: false, shiftKey: true, ctrlKey: false, metaKey: false, key: 'P' })).toBe(false);
+    expect(
+      matchesPrivacyScreenShortcut({
+        altKey: true,
+        shiftKey: true,
+        ctrlKey: false,
+        metaKey: false,
+        key: 'P',
+      }),
+    ).toBe(true);
+    expect(
+      matchesPrivacyScreenShortcut({
+        altKey: false,
+        shiftKey: true,
+        ctrlKey: false,
+        metaKey: false,
+        key: 'P',
+      }),
+    ).toBe(false);
     expect(inferScreenShareActive({ displaySurface: 'monitor' })).toBe(true);
     expect(inferScreenShareActive(undefined)).toBe(false);
   });

@@ -73,8 +73,16 @@ export interface AnnualSummary {
   readonly savingsRate: number;
   readonly netCashFlow: number;
   readonly netWorthChange: number;
-  readonly topCategories: readonly { categoryName: string; amount: number; transactionCount: number }[];
-  readonly biggestChanges: readonly { categoryName: string; amountChange: number; percentChange: number }[];
+  readonly topCategories: readonly {
+    categoryName: string;
+    amount: number;
+    transactionCount: number;
+  }[];
+  readonly biggestChanges: readonly {
+    categoryName: string;
+    amountChange: number;
+    percentChange: number;
+  }[];
   readonly highlights: readonly string[];
   readonly cautions: readonly string[];
   readonly csvRows: readonly Record<string, string | number>[];
@@ -124,10 +132,15 @@ function endOfMonth(month: string): LocalDate {
 
 export function generateMonthKeys(periodMonths: number, referenceDate = new Date()): string[] {
   const end = `${referenceDate.getFullYear()}-${String(referenceDate.getMonth() + 1).padStart(2, '0')}`;
-  return Array.from({ length: periodMonths }, (_, index) => addMonths(end, index - periodMonths + 1));
+  return Array.from({ length: periodMonths }, (_, index) =>
+    addMonths(end, index - periodMonths + 1),
+  );
 }
 
-function categoryNameFor(categoriesById: ReadonlyMap<string, Category>, categoryId: string | null): string {
+function categoryNameFor(
+  categoriesById: ReadonlyMap<string, Category>,
+  categoryId: string | null,
+): string {
   return categoryId ? (categoriesById.get(categoryId)?.name ?? 'Unknown') : 'Uncategorized';
 }
 
@@ -165,15 +178,17 @@ export function buildCategoryDrillDown(
   });
 
   const rows = filtered
-    .map((tx): DrillDownTransactionRow => ({
-      id: tx.id,
-      date: tx.date,
-      payee: tx.payee ?? tx.counterpartyName ?? 'Unknown payee',
-      accountName: accountNameFor(accountsById, tx.accountId),
-      amount: tx.type === 'EXPENSE' ? Math.abs(tx.amount.amount) : tx.amount.amount,
-      tags: tx.tags,
-      note: tx.note ?? tx.extraNotes ?? '',
-    }))
+    .map(
+      (tx): DrillDownTransactionRow => ({
+        id: tx.id,
+        date: tx.date,
+        payee: tx.payee ?? tx.counterpartyName ?? 'Unknown payee',
+        accountName: accountNameFor(accountsById, tx.accountId),
+        amount: tx.type === 'EXPENSE' ? Math.abs(tx.amount.amount) : tx.amount.amount,
+        tags: tx.tags,
+        note: tx.note ?? tx.extraNotes ?? '',
+      }),
+    )
     .sort((a, b) => b.date.localeCompare(a.date));
 
   const total = rows.reduce((sum, row) => sum + row.amount, 0);
@@ -196,11 +211,15 @@ export function buildCategoryDrillDown(
 function spendingByMonthAndCategory(
   transactions: readonly Transaction[],
 ): Map<string, Map<string | null, { amount: number; transactionIds: string[] }>> {
-  const result = new Map<string, Map<string | null, { amount: number; transactionIds: string[] }>>();
+  const result = new Map<
+    string,
+    Map<string | null, { amount: number; transactionIds: string[] }>
+  >();
   for (const tx of transactions) {
     if (tx.type !== 'EXPENSE') continue;
     const month = monthKey(tx.date);
-    const byCategory = result.get(month) ?? new Map<string | null, { amount: number; transactionIds: string[] }>();
+    const byCategory =
+      result.get(month) ?? new Map<string | null, { amount: number; transactionIds: string[] }>();
     const current = byCategory.get(tx.categoryId) ?? { amount: 0, transactionIds: [] };
     current.amount += Math.abs(tx.amount.amount);
     current.transactionIds.push(tx.id);
@@ -227,7 +246,9 @@ export function buildSpendingTrendInsight(
   ).length;
 
   const monthlyTotals = months.map((month): MonthlySpendingPoint => {
-    const byCategory = byMonthCategory.get(month) ?? new Map<string | null, { amount: number; transactionIds: string[] }>();
+    const byCategory =
+      byMonthCategory.get(month) ??
+      new Map<string | null, { amount: number; transactionIds: string[] }>();
     const entries = Array.from(byCategory.entries()).sort((a, b) => b[1].amount - a[1].amount);
     return {
       month,
@@ -243,8 +264,12 @@ export function buildSpendingTrendInsight(
   for (const [month, byCategory] of byMonthCategory.entries()) {
     const calendarMonth = Number(month.slice(5, 7));
     for (const [categoryId, entry] of byCategory.entries()) {
-      const byCalendarMonth = categoryTotalsByCalendarMonth.get(categoryId) ?? new Map<number, number[]>();
-      byCalendarMonth.set(calendarMonth, [...(byCalendarMonth.get(calendarMonth) ?? []), entry.amount]);
+      const byCalendarMonth =
+        categoryTotalsByCalendarMonth.get(categoryId) ?? new Map<number, number[]>();
+      byCalendarMonth.set(calendarMonth, [
+        ...(byCalendarMonth.get(calendarMonth) ?? []),
+        entry.amount,
+      ]);
       categoryTotalsByCalendarMonth.set(categoryId, byCalendarMonth);
     }
   }
@@ -252,12 +277,18 @@ export function buildSpendingTrendInsight(
   const currentMonthNumber = referenceDate.getMonth() + 1;
   const seasonality: SeasonalitySignal[] = [];
   for (const [categoryId, byCalendarMonth] of categoryTotalsByCalendarMonth.entries()) {
-    const allAmounts = months.map((month) => byMonthCategory.get(month)?.get(categoryId)?.amount ?? 0);
+    const allAmounts = months.map(
+      (month) => byMonthCategory.get(month)?.get(categoryId)?.amount ?? 0,
+    );
     if (allAmounts.filter((amount) => amount > 0).length < 2) continue;
-    const normalMonthlyAverage = Math.round(allAmounts.reduce((sum, amount) => sum + amount, 0) / allAmounts.length);
+    const normalMonthlyAverage = Math.round(
+      allAmounts.reduce((sum, amount) => sum + amount, 0) / allAmounts.length,
+    );
     for (const [calendarMonth, amounts] of byCalendarMonth.entries()) {
       if (amounts.length < 2) continue;
-      const averageAmount = Math.round(amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length);
+      const averageAmount = Math.round(
+        amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length,
+      );
       if (normalMonthlyAverage > 0 && averageAmount >= normalMonthlyAverage * 1.4) {
         const monthsUntil = (calendarMonth - currentMonthNumber + 12) % 12;
         seasonality.push({
@@ -265,23 +296,38 @@ export function buildSpendingTrendInsight(
           monthName: monthName(calendarMonth),
           averageAmount,
           normalMonthlyAverage,
-          upcomingWindow: monthsUntil === 0 ? 'this month' : `in ${monthsUntil} month${monthsUntil === 1 ? '' : 's'}`,
+          upcomingWindow:
+            monthsUntil === 0
+              ? 'this month'
+              : `in ${monthsUntil} month${monthsUntil === 1 ? '' : 's'}`,
           summary: `${categoryNameFor(categoriesById, categoryId)} usually spikes in ${monthName(calendarMonth)} (${monthsUntil === 0 ? 'this month' : `about ${monthsUntil} month${monthsUntil === 1 ? '' : 's'} away`}).`,
         });
       }
     }
   }
 
-  const currentMonth = monthKey(`${referenceDate.getFullYear()}-${String(referenceDate.getMonth() + 1).padStart(2, '0')}-01`);
+  const currentMonth = monthKey(
+    `${referenceDate.getFullYear()}-${String(referenceDate.getMonth() + 1).padStart(2, '0')}-01`,
+  );
   const sameMonthHistorical = transactions.filter(
-    (tx) => tx.type === 'EXPENSE' && tx.date.slice(5, 7) === currentMonth.slice(5, 7) && monthKey(tx.date) !== currentMonth,
+    (tx) =>
+      tx.type === 'EXPENSE' &&
+      tx.date.slice(5, 7) === currentMonth.slice(5, 7) &&
+      monthKey(tx.date) !== currentMonth,
   );
   const historicalYears = new Set(sameMonthHistorical.map((tx) => tx.date.slice(0, 4)));
-  const historicalTotal = sameMonthHistorical.reduce((sum, tx) => sum + Math.abs(tx.amount.amount), 0);
-  const historicalAverage = historicalYears.size > 0 ? Math.round(historicalTotal / historicalYears.size) : 0;
+  const historicalTotal = sameMonthHistorical.reduce(
+    (sum, tx) => sum + Math.abs(tx.amount.amount),
+    0,
+  );
+  const historicalAverage =
+    historicalYears.size > 0 ? Math.round(historicalTotal / historicalYears.size) : 0;
   const currentSpent = monthlyTotals.find((point) => point.month === currentMonth)?.total ?? 0;
   const daysElapsed = Math.max(1, referenceDate.getDate());
-  const projectedSpend = Math.round((currentSpent / daysElapsed) * new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0).getDate());
+  const projectedSpend = Math.round(
+    (currentSpent / daysElapsed) *
+      new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0).getDate(),
+  );
   const pacingDirection: SpendingPacingInsight['direction'] =
     historicalAverage === 0
       ? 'insufficient-data'
@@ -306,7 +352,9 @@ export function buildSpendingTrendInsight(
   const actionableCopy = [
     ...seasonality.slice(0, 3).map((signal) => `Plan ahead: ${signal.summary}`),
     ...(pacing.direction === 'above-normal'
-      ? ['Review discretionary categories now; projected spending is above your same-month average.']
+      ? [
+          'Review discretionary categories now; projected spending is above your same-month average.',
+        ]
       : []),
   ];
 
@@ -358,7 +406,10 @@ export function buildYearInReview(
   const previousCategoryTotals = new Map<string | null, number>();
   for (const tx of previous) {
     if (tx.type !== 'EXPENSE') continue;
-    previousCategoryTotals.set(tx.categoryId, (previousCategoryTotals.get(tx.categoryId) ?? 0) + Math.abs(tx.amount.amount));
+    previousCategoryTotals.set(
+      tx.categoryId,
+      (previousCategoryTotals.get(tx.categoryId) ?? 0) + Math.abs(tx.amount.amount),
+    );
   }
 
   const topCategories = Array.from(categoryTotals.entries())
@@ -398,7 +449,10 @@ export function buildYearInReview(
     { Metric: 'Total expenses', Amount: totals.expenses },
     { Metric: 'Net cash flow', Amount: netCashFlow },
     { Metric: 'Savings rate', Amount: `${savingsRate}%` },
-    ...topCategories.map((category) => ({ Metric: `Top category: ${category.categoryName}`, Amount: category.amount })),
+    ...topCategories.map((category) => ({
+      Metric: `Top category: ${category.categoryName}`,
+      Amount: category.amount,
+    })),
   ];
 
   return {
@@ -421,7 +475,9 @@ export function buildYearInReview(
 }
 
 function average(values: readonly number[]): number {
-  return values.length === 0 ? 0 : Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+  return values.length === 0
+    ? 0
+    : Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 function anomalyId(module: AnomalyModule, key: string): string {
@@ -439,17 +495,28 @@ export function detectReportAnomalies(
   const enabled = new Set(modules);
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
   const currentMonth = `${referenceDate.getFullYear()}-${String(referenceDate.getMonth() + 1).padStart(2, '0')}`;
-  const priorMonths = [addMonths(currentMonth, -1), addMonths(currentMonth, -2), addMonths(currentMonth, -3)];
+  const priorMonths = [
+    addMonths(currentMonth, -1),
+    addMonths(currentMonth, -2),
+    addMonths(currentMonth, -3),
+  ];
   const anomalies: ReportAnomaly[] = [];
   const accountIds = accounts.map((account) => account.id);
 
   if (enabled.has('category-spend')) {
     const byMonth = spendingByMonthAndCategory(transactions);
-    const current = byMonth.get(currentMonth) ?? new Map<string | null, { amount: number; transactionIds: string[] }>();
+    const current =
+      byMonth.get(currentMonth) ??
+      new Map<string | null, { amount: number; transactionIds: string[] }>();
     for (const [categoryId, entry] of current.entries()) {
-      const baseline = average(priorMonths.map((month) => byMonth.get(month)?.get(categoryId)?.amount ?? 0));
+      const baseline = average(
+        priorMonths.map((month) => byMonth.get(month)?.get(categoryId)?.amount ?? 0),
+      );
       if (baseline > 0 && entry.amount > baseline * 1.5 && entry.amount - baseline >= 5_000) {
-        const id = anomalyId('category-spend', `${currentMonth}-${categoryNameFor(categoriesById, categoryId)}`);
+        const id = anomalyId(
+          'category-spend',
+          `${currentMonth}-${categoryNameFor(categoriesById, categoryId)}`,
+        );
         anomalies.push({
           id,
           module: 'category-spend',
@@ -471,7 +538,8 @@ export function detectReportAnomalies(
     for (const tx of transactions) {
       if (tx.type !== 'EXPENSE') continue;
       const merchant = tx.payee ?? tx.counterpartyName ?? 'Unknown payee';
-      const byMonth = byMerchantMonth.get(merchant) ?? new Map<string, { amount: number; ids: string[] }>();
+      const byMonth =
+        byMerchantMonth.get(merchant) ?? new Map<string, { amount: number; ids: string[] }>();
       const current = byMonth.get(monthKey(tx.date)) ?? { amount: 0, ids: [] };
       current.amount += Math.abs(tx.amount.amount);
       current.ids.push(tx.id);
@@ -555,7 +623,12 @@ export function detectReportAnomalies(
   if (enabled.has('net-worth')) {
     const monthlyNet = new Map<string, number>();
     for (const tx of transactions) {
-      const signed = tx.type === 'INCOME' ? tx.amount.amount : tx.type === 'EXPENSE' ? -Math.abs(tx.amount.amount) : 0;
+      const signed =
+        tx.type === 'INCOME'
+          ? tx.amount.amount
+          : tx.type === 'EXPENSE'
+            ? -Math.abs(tx.amount.amount)
+            : 0;
       monthlyNet.set(monthKey(tx.date), (monthlyNet.get(monthKey(tx.date)) ?? 0) + signed);
     }
     const observed = monthlyNet.get(currentMonth) ?? 0;
@@ -570,7 +643,9 @@ export function detectReportAnomalies(
         observed,
         variance: observed - baseline,
         explanation: 'This month cash-flow movement differs materially from the recent baseline.',
-        transactionIds: transactions.filter((tx) => monthKey(tx.date) === currentMonth).map((tx) => tx.id),
+        transactionIds: transactions
+          .filter((tx) => monthKey(tx.date) === currentMonth)
+          .map((tx) => tx.id),
         accountIds,
         status: statusById[id] ?? 'needs-review',
       });

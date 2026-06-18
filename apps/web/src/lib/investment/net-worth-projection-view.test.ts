@@ -68,7 +68,9 @@ describe('net-worth projection view helpers', () => {
 
     expect(rows).toHaveLength(12);
     expect(rows.at(-1)?.liabilitiesCents).toBe(0);
-    expect(milestoneRows.find((row) => row.milestoneId === 'debt-free')?.reachedLabel).toBe('2025-03');
+    expect(milestoneRows.find((row) => row.milestoneId === 'debt-free')?.reachedLabel).toBe(
+      '2025-03',
+    );
     expect(milestoneRows.find((row) => row.milestoneId === 'first-10k')?.reachable).toBe(false);
     expect(milestoneRows.find((row) => row.milestoneId === 'first-10k')?.message).toContain(
       'not reached',

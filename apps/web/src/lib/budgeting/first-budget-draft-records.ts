@@ -106,7 +106,9 @@ export function previewFirstBudgetRecords(
   };
 }
 
-export function buildFirstBudgetRollbackPlan(preview: FirstBudgetRecordPreview): FirstBudgetRollbackPlan {
+export function buildFirstBudgetRollbackPlan(
+  preview: FirstBudgetRecordPreview,
+): FirstBudgetRollbackPlan {
   return {
     budgetClientIds: preview.budgets.map((budget) => budget.clientId).reverse(),
     categoryClientIds: preview.categories.map((category) => category.clientId).reverse(),

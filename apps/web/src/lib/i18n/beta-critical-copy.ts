@@ -4,11 +4,19 @@ import type { MessageCatalog } from './catalog-loader';
 
 export const BETA_CRITICAL_MESSAGE_IDS = {
   navigation: ['nav.dashboard', 'nav.accounts', 'nav.transactions', 'nav.budgets', 'nav.settings'],
-  onboarding: ['onboarding.welcome.title', 'onboarding.welcome.body', 'onboarding.action.getStarted'],
+  onboarding: [
+    'onboarding.welcome.title',
+    'onboarding.welcome.body',
+    'onboarding.action.getStarted',
+  ],
   accounts: ['accounts.empty.title', 'accounts.empty.body', 'accounts.action.add'],
   transactions: ['transactions.empty.title', 'transactions.empty.body', 'transactions.action.add'],
   budgets: ['budgets.empty.title', 'budgets.empty.body', 'budgets.action.create'],
-  settings: ['settings.preferences.title', 'settings.preferences.currency.label', 'settings.preferences.theme.label'],
+  settings: [
+    'settings.preferences.title',
+    'settings.preferences.currency.label',
+    'settings.preferences.theme.label',
+  ],
   commonErrors: ['errors.offline', 'errors.unexpected', 'errors.validation'],
 } as const;
 

@@ -102,7 +102,9 @@ function sanitizeSettings(settings: TaxReserveSettings): TaxReserveSettings {
       : DEFAULT_TAX_RESERVE_RATE,
     bucketBalanceCents: Math.max(0, Math.round(settings.bucketBalanceCents)),
     federalRate:
-      settings.federalRate === undefined ? undefined : Math.min(Math.max(settings.federalRate, 0), 1),
+      settings.federalRate === undefined
+        ? undefined
+        : Math.min(Math.max(settings.federalRate, 0), 1),
     stateRate:
       settings.stateRate === undefined ? undefined : Math.min(Math.max(settings.stateRate, 0), 1),
     selfEmploymentRate:

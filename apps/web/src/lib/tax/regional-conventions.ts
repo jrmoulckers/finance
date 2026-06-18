@@ -73,7 +73,8 @@ export const REGIONAL_CONVENTION_PROFILES: readonly RegionalConventionProfile[] 
     indirectTaxTerm: 'VAT',
     retirementAccountTerm: 'pension/ISA',
     fiscalYearTerm: 'tax year',
-    educationalDisclaimer: 'For education only; this does not guarantee tax treatment or replace HMRC guidance.',
+    educationalDisclaimer:
+      'For education only; this does not guarantee tax treatment or replace HMRC guidance.',
   },
   {
     id: 'ES',
@@ -89,7 +90,8 @@ export const REGIONAL_CONVENTION_PROFILES: readonly RegionalConventionProfile[] 
     indirectTaxTerm: 'VAT',
     retirementAccountTerm: 'pension plan',
     fiscalYearTerm: 'fiscal year',
-    educationalDisclaimer: 'Educational planning only; consult local tax guidance before relying on this output.',
+    educationalDisclaimer:
+      'Educational planning only; consult local tax guidance before relying on this output.',
   },
   {
     id: 'CA',
@@ -121,7 +123,8 @@ export const REGIONAL_CONVENTION_PROFILES: readonly RegionalConventionProfile[] 
     indirectTaxTerm: 'GST',
     retirementAccountTerm: 'superannuation',
     fiscalYearTerm: 'income year',
-    educationalDisclaimer: 'Educational estimates only; not ATO advice or a tax lodgment guarantee.',
+    educationalDisclaimer:
+      'Educational estimates only; not ATO advice or a tax lodgment guarantee.',
   },
 ];
 
@@ -145,7 +148,11 @@ function addDays(date: string, days: number): string {
   return parsed.toISOString().slice(0, 10);
 }
 
-function startsOnOrBefore(date: string, year: number, convention: RegionalTaxYearConvention): boolean {
+function startsOnOrBefore(
+  date: string,
+  year: number,
+  convention: RegionalTaxYearConvention,
+): boolean {
   return date >= isoDate(year, convention.startMonth, convention.startDay);
 }
 
@@ -156,15 +163,24 @@ export function getRegionalConventionProfile(id: RegionalProfileId): RegionalCon
 }
 
 /** Resolve the tax-year period containing an ISO date for a regional profile. */
-export function getRegionalTaxYearPeriod(profileId: RegionalProfileId, date: string): RegionalTaxYearPeriod {
+export function getRegionalTaxYearPeriod(
+  profileId: RegionalProfileId,
+  date: string,
+): RegionalTaxYearPeriod {
   const profile = getRegionalConventionProfile(profileId);
   const parts = dateToParts(date);
-  const startYear = startsOnOrBefore(date, parts.year, profile.taxYear) ? parts.year : parts.year - 1;
+  const startYear = startsOnOrBefore(date, parts.year, profile.taxYear)
+    ? parts.year
+    : parts.year - 1;
   const endYear = startYear + 1;
   const startDate = isoDate(startYear, profile.taxYear.startMonth, profile.taxYear.startDay);
-  const endDate = addDays(isoDate(endYear, profile.taxYear.startMonth, profile.taxYear.startDay), -1);
+  const endDate = addDays(
+    isoDate(endYear, profile.taxYear.startMonth, profile.taxYear.startDay),
+    -1,
+  );
 
-  const taxYear = profile.taxYear.startMonth === 1 && profile.taxYear.startDay === 1 ? startYear : endYear;
+  const taxYear =
+    profile.taxYear.startMonth === 1 && profile.taxYear.startDay === 1 ? startYear : endYear;
 
   return {
     profileId,

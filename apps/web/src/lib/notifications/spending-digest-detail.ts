@@ -2,7 +2,13 @@
 
 import { formatCentsForAlert } from './alert-engine';
 import type { AppNotification } from './types';
-import type { DigestBudgetSummary, DigestCategoryChange, DigestGoalProgress, DigestUpcomingBill, SpendingDigestInput } from './spending-digests';
+import type {
+  DigestBudgetSummary,
+  DigestCategoryChange,
+  DigestGoalProgress,
+  DigestUpcomingBill,
+  SpendingDigestInput,
+} from './spending-digests';
 
 export type SpendingDigestDetailSectionKind =
   | 'budget_pace'
@@ -52,7 +58,12 @@ function budgetSections(budgets: readonly DigestBudgetSummary[]): SpendingDigest
     kind: 'budget_pace',
     title: `${budget.budgetName} budget pace`,
     body: `${formatCentsForAlert(budget.spentCents)} of ${formatCentsForAlert(budget.budgetAmountCents)} used (${budget.percentUsed}%).`,
-    severity: budget.paceLabel === 'over' || budget.percentUsed >= 100 ? 'attention' : budget.paceLabel === 'under' ? 'positive' : 'neutral',
+    severity:
+      budget.paceLabel === 'over' || budget.percentUsed >= 100
+        ? 'attention'
+        : budget.paceLabel === 'under'
+          ? 'positive'
+          : 'neutral',
   }));
 }
 
@@ -74,9 +85,10 @@ function billSections(bills: readonly DigestUpcomingBill[]): SpendingDigestDetai
     .map((bill) => ({
       kind: 'upcoming_bill',
       title: `${bill.billName} due ${bill.dueDate}`,
-      body: bill.amountCents === null || bill.amountCents === undefined
-        ? 'Amount not available.'
-        : `${formatCentsForAlert(bill.amountCents)} upcoming.`,
+      body:
+        bill.amountCents === null || bill.amountCents === undefined
+          ? 'Amount not available.'
+          : `${formatCentsForAlert(bill.amountCents)} upcoming.`,
       severity: 'neutral',
     }));
 }
@@ -90,9 +102,13 @@ function goalSections(goals: readonly DigestGoalProgress[]): SpendingDigestDetai
   }));
 }
 
-function criticalAlertSections(notifications: readonly AppNotification[]): SpendingDigestDetailSection[] {
+function criticalAlertSections(
+  notifications: readonly AppNotification[],
+): SpendingDigestDetailSection[] {
   return notifications
-    .filter((notification) => notification.severity === 'critical' && notification.status !== 'dismissed')
+    .filter(
+      (notification) => notification.severity === 'critical' && notification.status !== 'dismissed',
+    )
     .map((notification) => ({
       kind: 'critical_alert',
       title: notification.title,

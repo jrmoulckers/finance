@@ -35,10 +35,7 @@ describe('large text reflow helpers', () => {
 
   it('provides a 200 to 400 percent audit matrix', () => {
     expect(buildLargeTextAuditMatrix().map((item) => item.browserZoomPercent)).toEqual([
-      200,
-      300,
-      400,
-      200,
+      200, 300, 400, 200,
     ]);
   });
 });

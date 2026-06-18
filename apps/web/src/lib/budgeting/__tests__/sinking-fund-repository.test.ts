@@ -2,7 +2,10 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { createSinkingFundRepository, type SinkingFundKeyValueStorage } from '../sinking-fund-repository';
+import {
+  createSinkingFundRepository,
+  type SinkingFundKeyValueStorage,
+} from '../sinking-fund-repository';
 
 function memoryStorage(): SinkingFundKeyValueStorage {
   const data = new Map<string, string>();
@@ -38,6 +41,8 @@ describe('sinking fund repository', () => {
     expect(repo.listByHousehold('household-1').map((fund) => fund.id)).toEqual(['fund-car']);
     expect(repo.archive('fund-car')?.isArchived).toBe(true);
     expect(repo.listByHousehold('household-1')).toEqual([]);
-    expect(repo.listByHousehold('household-1', { includeArchived: true }).map((fund) => fund.id)).toEqual(['fund-car']);
+    expect(
+      repo.listByHousehold('household-1', { includeArchived: true }).map((fund) => fund.id),
+    ).toEqual(['fund-car']);
   });
 });

@@ -38,7 +38,10 @@ describe('i18n locale preferences', () => {
   });
 
   it('translates Spanish locale keys and reports fallback', () => {
-    expect(translate('settings.language', {}, 'es-ES')).toEqual({ text: 'Idioma', translated: true });
+    expect(translate('settings.language', {}, 'es-ES')).toEqual({
+      text: 'Idioma',
+      translated: true,
+    });
     expect(translate('tips.account-create-first.title', {}, 'de-DE')).toEqual({
       text: 'Add your first account',
       translated: false,

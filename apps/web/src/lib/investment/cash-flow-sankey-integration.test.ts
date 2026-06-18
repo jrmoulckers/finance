@@ -1,13 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 import { describe, expect, it } from 'vitest';
-import { buildCashFlowSankeyRangeReport, resolveCashFlowSankeyDateRange } from './cash-flow-sankey-integration';
+import {
+  buildCashFlowSankeyRangeReport,
+  resolveCashFlowSankeyDateRange,
+} from './cash-flow-sankey-integration';
 import type { CashFlowSankeyTransaction } from './cash-flow-sankey-integration';
 
 const transactions: CashFlowSankeyTransaction[] = [
   { id: 'pay-1', date: '2025-04-01', label: 'Salary', amountCents: 5_000_00, kind: 'INCOME' },
   { id: 'rent', date: '2025-04-03', label: 'Rent', amountCents: -2_000_00, kind: 'EXPENSE' },
-  { id: 'brokerage', date: '2025-04-08', label: 'Brokerage', amountCents: -1_000_00, kind: 'SAVINGS' },
+  {
+    id: 'brokerage',
+    date: '2025-04-08',
+    label: 'Brokerage',
+    amountCents: -1_000_00,
+    kind: 'SAVINGS',
+  },
   { id: 'coffee', date: '2025-04-10', label: 'Coffee', amountCents: -10_00, kind: 'EXPENSE' },
   { id: 'old', date: '2025-03-10', label: 'Old rent', amountCents: -1_900_00, kind: 'EXPENSE' },
 ];
@@ -32,7 +41,11 @@ describe('resolveCashFlowSankeyDateRange', () => {
 describe('buildCashFlowSankeyRangeReport', () => {
   it('filters by range, preserves outflow kinds, exposes Other children, and exports CSV', () => {
     const range = resolveCashFlowSankeyDateRange({ preset: 'MONTH', month: '2025-04' });
-    const result = buildCashFlowSankeyRangeReport({ transactions, range, otherThresholdPercent: 1 });
+    const result = buildCashFlowSankeyRangeReport({
+      transactions,
+      range,
+      otherThresholdPercent: 1,
+    });
 
     expect(result.report.totalIncomeCents).toBe(5_000_00);
     expect(result.report.totalOutflowCents).toBe(3_010_00);

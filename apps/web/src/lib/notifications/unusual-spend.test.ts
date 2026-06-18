@@ -3,7 +3,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Transaction } from '../../kmp/bridge';
 import { detectScamAlerts } from './scam-alerts';
-import { buildUnusualSpendNotifications, recordUnusualSpendReview, summarizeUnusualSpendReviews } from './unusual-spend';
+import {
+  buildUnusualSpendNotifications,
+  recordUnusualSpendReview,
+  summarizeUnusualSpendReviews,
+} from './unusual-spend';
 
 const syncMetadata = {
   createdAt: '2025-03-01T10:00:00Z',
@@ -63,11 +67,16 @@ describe('buildUnusualSpendNotifications', () => {
       makeTransaction({ id: 'history-1', payee: 'Known Store', createdAt: '2025-03-01T10:00:00Z' }),
       makeTransaction({ id: 'new-1', payee: 'New Merchant', createdAt: '2025-03-02T10:00:00Z' }),
     ];
-    const alert = detectScamAlerts(transactions).find((candidate) => candidate.rule === 'new-merchant');
+    const alert = detectScamAlerts(transactions).find(
+      (candidate) => candidate.rule === 'new-merchant',
+    );
     expect(alert).toBeDefined();
 
     const notifications = buildUnusualSpendNotifications(transactions, {
-      reviews: alert === undefined ? [] : [recordUnusualSpendReview(alert, 'recognized', '2025-03-02T11:00:00Z')],
+      reviews:
+        alert === undefined
+          ? []
+          : [recordUnusualSpendReview(alert, 'recognized', '2025-03-02T11:00:00Z')],
     });
 
     expect(notifications.some((notification) => notification.id === alert?.id)).toBe(false);

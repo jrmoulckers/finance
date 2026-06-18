@@ -187,7 +187,8 @@ function suggestionFromPriorRule(
   const rule = rules.find(
     (candidate) =>
       (candidate.payee !== undefined && normalizeText(candidate.payee) === payee) ||
-      (candidate.categoryName !== undefined && normalizeText(candidate.categoryName) === categoryName),
+      (candidate.categoryName !== undefined &&
+        normalizeText(candidate.categoryName) === categoryName),
   );
 
   if (rule === undefined) return null;
@@ -435,12 +436,14 @@ export function summarizeTaxCategories(
     const reviewNeededCount = item.needsReview ? 1 : 0;
     if (missingReceiptCount > 0) missingReceiptTransactionIds.push(item.transaction.id);
     if (reviewNeededCount > 0) reviewTransactionIds.push(item.transaction.id);
-    if (item.tag.category === 'REVIEW_NEEDED') uncategorizedTransactionIds.push(item.transaction.id);
+    if (item.tag.category === 'REVIEW_NEEDED')
+      uncategorizedTransactionIds.push(item.transaction.id);
 
     rowMap.set(item.tag.category, {
       ...current,
       transactionCount: current.transactionCount + 1,
-      grossAmountCents: current.grossAmountCents + Math.abs(Math.round(item.transaction.amountCents)),
+      grossAmountCents:
+        current.grossAmountCents + Math.abs(Math.round(item.transaction.amountCents)),
       deductibleAmountCents: current.deductibleAmountCents + item.deductibleAmountCents,
       missingReceiptCount: current.missingReceiptCount + missingReceiptCount,
       reviewNeededCount: current.reviewNeededCount + reviewNeededCount,

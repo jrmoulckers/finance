@@ -55,7 +55,8 @@ function isSuppressed(id: string, input: CoachingNudgeInput): boolean {
   const asOfDate = input.asOfDate ?? new Date().toISOString().slice(0, 10);
   if (input.quietUntil && input.quietUntil >= asOfDate) return true;
   return (input.dismissedNudges ?? []).some(
-    (dismissed) => dismissed.id === id && (dismissed.until === undefined || dismissed.until >= asOfDate),
+    (dismissed) =>
+      dismissed.id === id && (dismissed.until === undefined || dismissed.until >= asOfDate),
   );
 }
 
@@ -65,11 +66,7 @@ function sensitivityMultiplier(sensitivity: NudgeSensitivity | undefined): numbe
   return 1;
 }
 
-function addNudge(
-  nudges: CoachingNudge[],
-  input: CoachingNudgeInput,
-  nudge: CoachingNudge,
-): void {
+function addNudge(nudges: CoachingNudge[], input: CoachingNudgeInput, nudge: CoachingNudge): void {
   if (isSuppressed(nudge.id, input)) return;
   if (nudges.some((existing) => existing.id === nudge.id)) return;
   nudges.push(nudge);
@@ -87,7 +84,8 @@ export function generateCoachingNudges(input: CoachingNudgeInput): readonly Coac
       title: 'Protect this month’s cash flow',
       rationale: `Your projected cash flow is negative by ${formatDollars(projectedCashFlow)}.`,
       expectedImpact: `Finding ${formatDollars(Math.min(Math.abs(projectedCashFlow), 20_000))} of flexibility can reduce overdraft risk.`,
-      suggestedAction: 'Review the next three discretionary transactions before making new purchases.',
+      suggestedAction:
+        'Review the next three discretionary transactions before making new purchases.',
       priority: Math.round((95 + Math.min(30, Math.abs(projectedCashFlow) / 10_000)) * multiplier),
       tone: 'protective',
       linkTarget: 'dashboard',
@@ -118,9 +116,12 @@ export function generateCoachingNudges(input: CoachingNudgeInput): readonly Coac
     });
   }
 
-  const categories = [...(input.categories ?? [])].sort((left, right) => right.amountCents - left.amountCents);
+  const categories = [...(input.categories ?? [])].sort(
+    (left, right) => right.amountCents - left.amountCents,
+  );
   const overBudget = categories.find(
-    (category) => category.budgetCents !== undefined && category.amountCents > category.budgetCents * 1.1,
+    (category) =>
+      category.budgetCents !== undefined && category.amountCents > category.budgetCents * 1.1,
   );
   if (overBudget) {
     addNudge(nudges, input, {
@@ -163,7 +164,8 @@ export function generateCoachingNudges(input: CoachingNudgeInput): readonly Coac
       title: `Give ${goalAtRisk.name} a small boost`,
       rationale: `${goalAtRisk.name} is tracking below your preferred confidence level.`,
       expectedImpact: `Adding ${formatDollars(goalAtRisk.monthlyGapCents ?? 2_500)} this month can improve the path.`,
-      suggestedAction: 'Choose one smaller recurring contribution rather than a large one-time move.',
+      suggestedAction:
+        'Choose one smaller recurring contribution rather than a large one-time move.',
       priority: Math.round(76 * multiplier),
       tone: 'supportive',
       linkTarget: 'goals',

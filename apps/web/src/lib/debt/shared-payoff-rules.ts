@@ -27,7 +27,11 @@ export function orderDebts(
 ): readonly string[] {
   if (strategy === 'custom') return customOrder;
   return [...debts]
-    .sort((a, b) => (strategy === 'avalanche' ? b.annualRateBps - a.annualRateBps || a.balanceCents - b.balanceCents : a.balanceCents - b.balanceCents || b.annualRateBps - a.annualRateBps))
+    .sort((a, b) =>
+      strategy === 'avalanche'
+        ? b.annualRateBps - a.annualRateBps || a.balanceCents - b.balanceCents
+        : a.balanceCents - b.balanceCents || b.annualRateBps - a.annualRateBps,
+    )
     .map((debt) => debt.id);
 }
 
@@ -59,6 +63,7 @@ export function calculateSharedPayoff(
     order,
     monthsToPayoff,
     totalInterestCents,
-    goalCashFlowFreedCents: debts.reduce((sum, debt) => sum + debt.minimumPaymentCents, 0) + extraPaymentCents,
+    goalCashFlowFreedCents:
+      debts.reduce((sum, debt) => sum + debt.minimumPaymentCents, 0) + extraPaymentCents,
   };
 }

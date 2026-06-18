@@ -99,10 +99,18 @@ export async function migrateEncryptedImportKeys(input: {
   for (const record of input.records) {
     try {
       await input.target.put(record);
-      checkpoints.push({ keyId: record.metadata.keyId, status: 'success', message: 'Migrated encrypted key envelope.' });
+      checkpoints.push({
+        keyId: record.metadata.keyId,
+        status: 'success',
+        message: 'Migrated encrypted key envelope.',
+      });
       if (input.wipeSource && input.source) {
         await input.source.delete(record.metadata.keyId);
-        checkpoints.push({ keyId: record.metadata.keyId, status: 'wiped', message: 'Removed source key envelope after migration.' });
+        checkpoints.push({
+          keyId: record.metadata.keyId,
+          status: 'wiped',
+          message: 'Removed source key envelope after migration.',
+        });
       }
     } catch (error) {
       checkpoints.push({

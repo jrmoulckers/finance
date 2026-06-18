@@ -26,7 +26,9 @@ export interface BillCandidate {
 export interface BillUserDecision {
   readonly candidateId: string;
   readonly action: 'confirm' | 'edit' | 'ignore' | 'merge';
-  readonly changes?: Partial<Pick<BillCandidate, 'merchant' | 'nextDueDate' | 'expectedAmountRangeCents' | 'cadence'>>;
+  readonly changes?: Partial<
+    Pick<BillCandidate, 'merchant' | 'nextDueDate' | 'expectedAmountRangeCents' | 'cadence'>
+  >;
   readonly mergeIntoId?: string;
 }
 
@@ -60,25 +62,37 @@ export function detectBillCandidates(transactions: readonly BillTransaction[]): 
 
   return [...groups.entries()]
     .flatMap(([key, values]) => buildCandidate(key, values))
-    .sort((left, right) => right.confidence - left.confidence || left.nextDueDate.localeCompare(right.nextDueDate));
+    .sort(
+      (left, right) =>
+        right.confidence - left.confidence || left.nextDueDate.localeCompare(right.nextDueDate),
+    );
 }
 
 function buildCandidate(key: string, transactions: readonly BillTransaction[]): BillCandidate[] {
   const sorted = [...transactions].sort((left, right) => left.date.localeCompare(right.date));
   if (sorted.length < 2) return [];
   const amounts = sorted.map((transaction) => Math.abs(transaction.amountCents));
-  const intervals = sorted.slice(1).map((transaction, index) => daysBetween(sorted[index].date, transaction.date));
+  const intervals = sorted
+    .slice(1)
+    .map((transaction, index) => daysBetween(sorted[index].date, transaction.date));
   const cadence = classifyCadence(intervals);
   if (!cadence) return [];
   const interval = cadenceDays(cadence, median(intervals));
   const last = sorted[sorted.length - 1];
   const amountSpread = Math.max(...amounts) - Math.min(...amounts);
   const average = Math.round(mean(amounts));
-  const range: readonly [number, number] = [Math.max(0, Math.min(...amounts) - Math.round(amountSpread * 0.1)), Math.max(...amounts) + Math.round(amountSpread * 0.1)];
+  const range: readonly [number, number] = [
+    Math.max(0, Math.min(...amounts) - Math.round(amountSpread * 0.1)),
+    Math.max(...amounts) + Math.round(amountSpread * 0.1),
+  ];
   const cadenceScore = cadence === 'irregular' ? 0.35 : 0.6;
   const amountScore = Math.max(0, 0.25 - amountSpread / Math.max(average, 1) / 2);
   const countScore = Math.min(0.15, sorted.length * 0.03);
-  const categoryScore = /bill|utilities|rent|insurance|loan|subscription/iu.test(sorted.map((item) => item.category ?? '').join(' ')) ? 0.1 : 0;
+  const categoryScore = /bill|utilities|rent|insurance|loan|subscription/iu.test(
+    sorted.map((item) => item.category ?? '').join(' '),
+  )
+    ? 0.1
+    : 0;
   return [
     {
       id: `bill-${key}`,
@@ -96,7 +110,9 @@ function buildCandidate(key: string, transactions: readonly BillTransaction[]): 
 export function classifyCadence(intervals: readonly number[]): BillCadence | undefined {
   if (intervals.length === 0) return undefined;
   const typical = median(intervals);
-  const tolerance = intervals.filter((interval) => Math.abs(interval - typical) <= Math.max(3, typical * 0.15)).length / intervals.length;
+  const tolerance =
+    intervals.filter((interval) => Math.abs(interval - typical) <= Math.max(3, typical * 0.15))
+      .length / intervals.length;
   if (near(typical, 7, 2) && tolerance >= 0.6) return 'weekly';
   if (near(typical, 14, 3) && tolerance >= 0.6) return 'biweekly';
   if (near(typical, 30, 5) && tolerance >= 0.55) return 'monthly';
@@ -105,7 +121,10 @@ export function classifyCadence(intervals: readonly number[]): BillCadence | und
   return undefined;
 }
 
-export function applyBillCandidateDecision(candidates: readonly BillCandidate[], decision: BillUserDecision): BillCandidate[] {
+export function applyBillCandidateDecision(
+  candidates: readonly BillCandidate[],
+  decision: BillUserDecision,
+): BillCandidate[] {
   if (decision.action === 'merge' && decision.mergeIntoId) {
     const source = candidates.find((candidate) => candidate.id === decision.candidateId);
     return candidates
@@ -114,7 +133,9 @@ export function applyBillCandidateDecision(candidates: readonly BillCandidate[],
         if (candidate.id !== decision.mergeIntoId || !source) return candidate;
         return {
           ...candidate,
-          sourceTransactionIds: [...new Set([...candidate.sourceTransactionIds, ...source.sourceTransactionIds])],
+          sourceTransactionIds: [
+            ...new Set([...candidate.sourceTransactionIds, ...source.sourceTransactionIds]),
+          ],
           confidence: Math.max(candidate.confidence, source.confidence),
         };
       });
@@ -128,34 +149,58 @@ export function applyBillCandidateDecision(candidates: readonly BillCandidate[],
   });
 }
 
-export function generateBillNotifications(candidates: readonly BillCandidate[], options: BillNotificationOptions): BillNotification[] {
+export function generateBillNotifications(
+  candidates: readonly BillCandidate[],
+  options: BillNotificationOptions,
+): BillNotification[] {
   const seen = new Set(options.existingDeduplicationKeys ?? []);
   const threshold = options.lowBalanceThresholdCents ?? 0;
   return candidates.flatMap((candidate) => {
-    if (candidate.status === 'ignored' || candidate.confidence < options.confidenceThreshold) return [];
+    if (candidate.status === 'ignored' || candidate.confidence < options.confidenceThreshold)
+      return [];
     const daysUntilDue = daysBetween(options.today, candidate.nextDueDate);
     if (daysUntilDue < 0 || daysUntilDue > options.leadDays) return [];
     const dueKey = `${candidate.id}:${candidate.nextDueDate}:bill_due`;
     const averageAmount = Math.round(mean([...candidate.expectedAmountRangeCents]));
     const notifications: BillNotification[] = [];
     if (!seen.has(dueKey)) {
-      notifications.push({ candidateId: candidate.id, type: 'bill_due', deduplicationKey: dueKey, dueDate: candidate.nextDueDate, message: `${candidate.merchant} is expected in ${daysUntilDue} day(s).` });
+      notifications.push({
+        candidateId: candidate.id,
+        type: 'bill_due',
+        deduplicationKey: dueKey,
+        dueDate: candidate.nextDueDate,
+        message: `${candidate.merchant} is expected in ${daysUntilDue} day(s).`,
+      });
     }
     const projected = (options.projectedBalanceCents ?? Number.POSITIVE_INFINITY) - averageAmount;
     const balanceKey = `${candidate.id}:${candidate.nextDueDate}:projected_low_balance`;
     if (projected < threshold && !seen.has(balanceKey)) {
-      notifications.push({ candidateId: candidate.id, type: 'projected_low_balance', deduplicationKey: balanceKey, dueDate: candidate.nextDueDate, message: `${candidate.merchant} may leave the account below the configured threshold.` });
+      notifications.push({
+        candidateId: candidate.id,
+        type: 'projected_low_balance',
+        deduplicationKey: balanceKey,
+        dueDate: candidate.nextDueDate,
+        message: `${candidate.merchant} may leave the account below the configured threshold.`,
+      });
     }
     return notifications;
   });
 }
 
 function normalizeMerchant(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/gu, ' ').replace(/\b(inc|llc|co|autopay|payment)\b/gu, '').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, ' ')
+    .replace(/\b(inc|llc|co|autopay|payment)\b/gu, '')
+    .trim();
 }
 
 function titleCase(value: string): string {
-  return value.split(' ').filter(Boolean).map((word) => `${word[0].toUpperCase()}${word.slice(1)}`).join(' ');
+  return value
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => `${word[0].toUpperCase()}${word.slice(1)}`)
+    .join(' ');
 }
 
 function addDays(value: string, days: number): string {
@@ -178,7 +223,9 @@ function mean(values: readonly number[]): number {
 
 function median(values: readonly number[]): number {
   const sorted = [...values].sort((left, right) => left - right);
-  return sorted.length % 2 === 0 ? mean([sorted[sorted.length / 2 - 1], sorted[sorted.length / 2]]) : sorted[Math.floor(sorted.length / 2)];
+  return sorted.length % 2 === 0
+    ? mean([sorted[sorted.length / 2 - 1], sorted[sorted.length / 2]])
+    : sorted[Math.floor(sorted.length / 2)];
 }
 
 function cadenceDays(cadence: BillCadence, fallback: number): number {

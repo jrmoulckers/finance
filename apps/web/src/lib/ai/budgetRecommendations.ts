@@ -59,7 +59,12 @@ export function recommendBudgetsFromHistory(
   budgets: readonly ExistingBudget[],
   options: BudgetRecommendationOptions,
 ): BudgetRecommendation[] {
-  const expenses = transactions.filter((transaction) => transaction.type === 'expense' && transaction.date >= options.startDate && transaction.date <= options.endDate);
+  const expenses = transactions.filter(
+    (transaction) =>
+      transaction.type === 'expense' &&
+      transaction.date >= options.startDate &&
+      transaction.date <= options.endDate,
+  );
   const months = monthsCovered(options.startDate, options.endDate);
   if (months < (options.minimumMonths ?? 2)) return [];
 
@@ -69,62 +74,99 @@ export function recommendBudgetsFromHistory(
     byCategory.set(category, [...(byCategory.get(category) ?? []), transaction]);
   }
 
-  return [...byCategory.entries()].flatMap(([category, categoryTransactions]) => {
-    const monthlyTotals = monthlyTotalsFor(categoryTransactions);
-    const trimmed = trimOutliers(monthlyTotals);
-    const average = Math.round(mean(trimmed));
-    const variance = Math.round(stddev(trimmed));
-    const budget = budgets.find((item) => normalize(item.category) === normalize(category));
-    const suggested = roundToNearest(Math.max(0, average + variance * 0.25), 500);
-    const action = chooseAction(category, suggested, budget, options.uncategorizedThresholdCents ?? 5_000);
-    if (action === 'keep') return [];
-    const confidence = confidenceFor(trimmed.length, average, variance);
-    if (confidence < 0.35) return [];
-    const recommendation: BudgetRecommendation = {
-      id: `budget-rec-${normalize(category).replaceAll(' ', '-')}`,
-      category,
-      action,
-      suggestedAmountCents: suggested,
-      currentAmountCents: budget?.amountCents,
-      averageSpendCents: average,
-      varianceCents: variance,
-      confidence,
-      explanation: explain(category, action, options, average, variance, budget?.amountCents),
-      sourcePeriod: { start: options.startDate, end: options.endDate },
-      sourceTransactionIds: categoryTransactions.map((transaction) => transaction.id),
-      status: 'suggested',
-    };
-    return [recommendation];
-  }).sort((left, right) => right.confidence - left.confidence || left.category.localeCompare(right.category));
+  return [...byCategory.entries()]
+    .flatMap(([category, categoryTransactions]) => {
+      const monthlyTotals = monthlyTotalsFor(categoryTransactions);
+      const trimmed = trimOutliers(monthlyTotals);
+      const average = Math.round(mean(trimmed));
+      const variance = Math.round(stddev(trimmed));
+      const budget = budgets.find((item) => normalize(item.category) === normalize(category));
+      const suggested = roundToNearest(Math.max(0, average + variance * 0.25), 500);
+      const action = chooseAction(
+        category,
+        suggested,
+        budget,
+        options.uncategorizedThresholdCents ?? 5_000,
+      );
+      if (action === 'keep') return [];
+      const confidence = confidenceFor(trimmed.length, average, variance);
+      if (confidence < 0.35) return [];
+      const recommendation: BudgetRecommendation = {
+        id: `budget-rec-${normalize(category).replaceAll(' ', '-')}`,
+        category,
+        action,
+        suggestedAmountCents: suggested,
+        currentAmountCents: budget?.amountCents,
+        averageSpendCents: average,
+        varianceCents: variance,
+        confidence,
+        explanation: explain(category, action, options, average, variance, budget?.amountCents),
+        sourcePeriod: { start: options.startDate, end: options.endDate },
+        sourceTransactionIds: categoryTransactions.map((transaction) => transaction.id),
+        status: 'suggested',
+      };
+      return [recommendation];
+    })
+    .sort(
+      (left, right) =>
+        right.confidence - left.confidence || left.category.localeCompare(right.category),
+    );
 }
 
 export function getBudgetDataNeededMessage(options: BudgetRecommendationOptions): string {
   return `At least ${options.minimumMonths ?? 2} months of local spending history are needed before recommending budget changes.`;
 }
 
-export function applyBudgetRecommendationDecision(recommendations: readonly BudgetRecommendation[], decision: BudgetRecommendationDecision): { readonly recommendations: readonly BudgetRecommendation[]; readonly change?: AppliedBudgetChange } {
+export function applyBudgetRecommendationDecision(
+  recommendations: readonly BudgetRecommendation[],
+  decision: BudgetRecommendationDecision,
+): {
+  readonly recommendations: readonly BudgetRecommendation[];
+  readonly change?: AppliedBudgetChange;
+} {
   let change: AppliedBudgetChange | undefined;
   const updated = recommendations.map((recommendation) => {
     if (recommendation.id !== decision.recommendationId) return recommendation;
     if (decision.action === 'ignore') return { ...recommendation, status: 'ignored' as const };
     if (decision.action === 'snooze') return { ...recommendation, status: 'snoozed' as const };
     const amountCents = decision.amountCents ?? recommendation.suggestedAmountCents;
-    change = { category: recommendation.category, amountCents, status: 'applied', snoozeUntil: decision.snoozeUntil };
+    change = {
+      category: recommendation.category,
+      amountCents,
+      status: 'applied',
+      snoozeUntil: decision.snoozeUntil,
+    };
     return { ...recommendation, suggestedAmountCents: amountCents, status: 'applied' as const };
   });
   return { recommendations: updated, change };
 }
 
-function chooseAction(category: string, suggested: number, budget: ExistingBudget | undefined, uncategorizedThreshold: number): BudgetRecommendationAction {
-  if (!budget) return suggested >= uncategorizedThreshold || normalize(category) !== 'uncategorized' ? 'create' : 'keep';
+function chooseAction(
+  category: string,
+  suggested: number,
+  budget: ExistingBudget | undefined,
+  uncategorizedThreshold: number,
+): BudgetRecommendationAction {
+  if (!budget)
+    return suggested >= uncategorizedThreshold || normalize(category) !== 'uncategorized'
+      ? 'create'
+      : 'keep';
   const delta = suggested - budget.amountCents;
   if (delta > Math.max(1_000, budget.amountCents * 0.1)) return 'increase';
   if (delta < -Math.max(1_000, budget.amountCents * 0.1)) return 'decrease';
   return 'keep';
 }
 
-function explain(category: string, action: BudgetRecommendationAction, options: BudgetRecommendationOptions, average: number, variance: number, current?: number): string {
-  const currentText = current === undefined ? 'no current budget' : `current budget ${money(current)}`;
+function explain(
+  category: string,
+  action: BudgetRecommendationAction,
+  options: BudgetRecommendationOptions,
+  average: number,
+  variance: number,
+  current?: number,
+): string {
+  const currentText =
+    current === undefined ? 'no current budget' : `current budget ${money(current)}`;
   return `${category} has average monthly spend ${money(average)} with variance ${money(variance)} from ${options.startDate} through ${options.endDate}; ${action} is suggested against ${currentText}.`;
 }
 
@@ -146,7 +188,12 @@ function trimOutliers(values: readonly number[]): readonly number[] {
 function monthsCovered(start: string, end: string): number {
   const startDate = new Date(`${start}T00:00:00.000Z`);
   const endDate = new Date(`${end}T00:00:00.000Z`);
-  return (endDate.getUTCFullYear() - startDate.getUTCFullYear()) * 12 + endDate.getUTCMonth() - startDate.getUTCMonth() + 1;
+  return (
+    (endDate.getUTCFullYear() - startDate.getUTCFullYear()) * 12 +
+    endDate.getUTCMonth() -
+    startDate.getUTCMonth() +
+    1
+  );
 }
 
 function mean(values: readonly number[]): number {
@@ -169,7 +216,10 @@ function roundToNearest(value: number, nearest: number): number {
 }
 
 function normalize(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/gu, ' ').trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, ' ')
+    .trim();
 }
 
 function money(cents: number): string {

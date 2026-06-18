@@ -66,7 +66,11 @@ function frequencyStepDays(frequency: ScenarioFrequency): number | null {
   return 30;
 }
 
-function changeImpactThrough(change: ScenarioChange, asOfDate: string, horizonDays: number): number {
+function changeImpactThrough(
+  change: ScenarioChange,
+  asOfDate: string,
+  horizonDays: number,
+): number {
   const startMs = parseDate(asOfDate);
   const endMs = parseDate(addDays(asOfDate, horizonDays));
   const changeStart = Math.max(parseDate(change.startDate), startMs + DAY_MS);
@@ -125,8 +129,12 @@ export function predictWhatIfScenario(input: WhatIfScenarioInput): WhatIfScenari
   );
   const riskFlags: string[] = [];
   if (scenario.lowBalanceCents < 0) riskFlags.push('overdraft-risk');
-  if (safetyBuffer > 0 && scenario.lowBalanceCents < safetyBuffer) riskFlags.push('safety-buffer-breach');
-  if (input.changes.some((change) => change.type === 'goal-contribution') && scenario.lowBalanceCents < safetyBuffer) {
+  if (safetyBuffer > 0 && scenario.lowBalanceCents < safetyBuffer)
+    riskFlags.push('safety-buffer-breach');
+  if (
+    input.changes.some((change) => change.type === 'goal-contribution') &&
+    scenario.lowBalanceCents < safetyBuffer
+  ) {
     riskFlags.push('goal-contribution-at-risk');
   }
 

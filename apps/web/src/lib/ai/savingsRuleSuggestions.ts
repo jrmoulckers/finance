@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-export type SavingsRuleType = 'payday_percentage' | 'monthly_surplus' | 'round_up' | 'spending_reduction';
+export type SavingsRuleType =
+  | 'payday_percentage'
+  | 'monthly_surplus'
+  | 'round_up'
+  | 'spending_reduction';
 export type SavingsRisk = 'low' | 'medium' | 'high';
 export type SavingsSuggestionStatus = 'suggested' | 'approved' | 'dismissed';
 
@@ -56,18 +60,29 @@ export interface SavingsSuggestionDecision {
   readonly targetGoalId?: string;
 }
 
-export function suggestSavingsRules(transactions: readonly SavingsTransaction[], goals: readonly SavingsGoal[], options: SavingsSuggestionOptions): SavingsRuleSuggestion[] {
+export function suggestSavingsRules(
+  transactions: readonly SavingsTransaction[],
+  goals: readonly SavingsGoal[],
+  options: SavingsSuggestionOptions,
+): SavingsRuleSuggestion[] {
   if (isCashFlowRiskHigh(options)) return [];
-  const scoped = transactions.filter((transaction) => transaction.date >= options.startDate && transaction.date <= options.endDate);
+  const scoped = transactions.filter(
+    (transaction) => transaction.date >= options.startDate && transaction.date <= options.endDate,
+  );
   const income = scoped.filter((transaction) => transaction.type === 'income');
   const expenses = scoped.filter((transaction) => transaction.type === 'expense');
-  const surplus = income.reduce((sum, transaction) => sum + Math.abs(transaction.amountCents), 0) - expenses.reduce((sum, transaction) => sum + Math.abs(transaction.amountCents), 0);
+  const surplus =
+    income.reduce((sum, transaction) => sum + Math.abs(transaction.amountCents), 0) -
+    expenses.reduce((sum, transaction) => sum + Math.abs(transaction.amountCents), 0);
   const target = chooseGoal(goals);
   const suggestions: SavingsRuleSuggestion[] = [];
 
   const paydayCadence = detectPaydayCadence(income);
   if (paydayCadence && income.length >= 2) {
-    const averagePaycheck = Math.round(income.reduce((sum, transaction) => sum + Math.abs(transaction.amountCents), 0) / income.length);
+    const averagePaycheck = Math.round(
+      income.reduce((sum, transaction) => sum + Math.abs(transaction.amountCents), 0) /
+        income.length,
+    );
     const monthlyImpact = Math.round(averagePaycheck * 0.05 * paychecksPerMonth(paydayCadence));
     if (monthlyImpact > 0) {
       suggestions.push({
@@ -86,7 +101,9 @@ export function suggestSavingsRules(transactions: readonly SavingsTransaction[],
   }
 
   if (surplus > 0) {
-    const monthlySurplus = Math.round(surplus / Math.max(1, monthsCovered(options.startDate, options.endDate)));
+    const monthlySurplus = Math.round(
+      surplus / Math.max(1, monthsCovered(options.startDate, options.endDate)),
+    );
     const amount = Math.round(monthlySurplus * 0.25);
     if (amount >= 500) {
       suggestions.push({
@@ -123,13 +140,24 @@ export function suggestSavingsRules(transactions: readonly SavingsTransaction[],
   const reduction = suggestSpendingReduction(expenses, target?.id);
   if (reduction) suggestions.push(reduction);
 
-  return suggestions.filter((suggestion) => suggestion.cashFlowRisk !== 'high').sort((left, right) => riskRank(left.cashFlowRisk) - riskRank(right.cashFlowRisk) || right.monthlyImpactCents - left.monthlyImpactCents).slice(0, options.maxSuggestions ?? 4);
+  return suggestions
+    .filter((suggestion) => suggestion.cashFlowRisk !== 'high')
+    .sort(
+      (left, right) =>
+        riskRank(left.cashFlowRisk) - riskRank(right.cashFlowRisk) ||
+        right.monthlyImpactCents - left.monthlyImpactCents,
+    )
+    .slice(0, options.maxSuggestions ?? 4);
 }
 
-export function detectPaydayCadence(income: readonly SavingsTransaction[]): 'weekly' | 'biweekly' | 'monthly' | undefined {
+export function detectPaydayCadence(
+  income: readonly SavingsTransaction[],
+): 'weekly' | 'biweekly' | 'monthly' | undefined {
   const sorted = [...income].sort((left, right) => left.date.localeCompare(right.date));
   if (sorted.length < 2) return undefined;
-  const intervals = sorted.slice(1).map((transaction, index) => daysBetween(sorted[index].date, transaction.date));
+  const intervals = sorted
+    .slice(1)
+    .map((transaction, index) => daysBetween(sorted[index].date, transaction.date));
   const medianInterval = median(intervals);
   if (Math.abs(medianInterval - 7) <= 2) return 'weekly';
   if (Math.abs(medianInterval - 14) <= 3) return 'biweekly';
@@ -137,34 +165,61 @@ export function detectPaydayCadence(income: readonly SavingsTransaction[]): 'wee
   return undefined;
 }
 
-export function estimateRoundUpSavings(expenses: readonly SavingsTransaction[]): { readonly monthlyImpactCents: number; readonly transactionCount: number; readonly sourceTransactionIds: readonly string[] } {
-  const candidates = expenses.filter((transaction) => Math.abs(transaction.amountCents) % 100 !== 0);
-  const total = candidates.reduce((sum, transaction) => sum + (100 - (Math.abs(transaction.amountCents) % 100)), 0);
-  return { monthlyImpactCents: total, transactionCount: candidates.length, sourceTransactionIds: candidates.map((transaction) => transaction.id) };
+export function estimateRoundUpSavings(expenses: readonly SavingsTransaction[]): {
+  readonly monthlyImpactCents: number;
+  readonly transactionCount: number;
+  readonly sourceTransactionIds: readonly string[];
+} {
+  const candidates = expenses.filter(
+    (transaction) => Math.abs(transaction.amountCents) % 100 !== 0,
+  );
+  const total = candidates.reduce(
+    (sum, transaction) => sum + (100 - (Math.abs(transaction.amountCents) % 100)),
+    0,
+  );
+  return {
+    monthlyImpactCents: total,
+    transactionCount: candidates.length,
+    sourceTransactionIds: candidates.map((transaction) => transaction.id),
+  };
 }
 
-export function applySavingsSuggestionDecision(suggestions: readonly SavingsRuleSuggestion[], decision: SavingsSuggestionDecision): SavingsRuleSuggestion[] {
+export function applySavingsSuggestionDecision(
+  suggestions: readonly SavingsRuleSuggestion[],
+  decision: SavingsSuggestionDecision,
+): SavingsRuleSuggestion[] {
   return suggestions.map((suggestion) => {
     if (suggestion.id !== decision.suggestionId) return suggestion;
     if (decision.action === 'dismiss') return { ...suggestion, status: 'dismissed' };
-    return { ...suggestion, status: 'approved', targetGoalId: decision.targetGoalId ?? suggestion.targetGoalId };
+    return {
+      ...suggestion,
+      status: 'approved',
+      targetGoalId: decision.targetGoalId ?? suggestion.targetGoalId,
+    };
   });
 }
 
 function isCashFlowRiskHigh(options: SavingsSuggestionOptions): boolean {
-  const upcomingTotal = (options.upcomingBills ?? []).filter((bill) => bill.dueDate >= options.startDate && bill.dueDate <= options.endDate).reduce((sum, bill) => sum + bill.amountCents, 0);
+  const upcomingTotal = (options.upcomingBills ?? [])
+    .filter((bill) => bill.dueDate >= options.startDate && bill.dueDate <= options.endDate)
+    .reduce((sum, bill) => sum + bill.amountCents, 0);
   return options.currentBalanceCents - upcomingTotal < (options.minimumSafeBalanceCents ?? 0);
 }
 
 function chooseGoal(goals: readonly SavingsGoal[]): SavingsGoal | undefined {
-  return [...goals].filter((goal) => goal.currentCents < goal.targetCents).sort((left, right) => urgency(left) - urgency(right))[0];
+  return [...goals]
+    .filter((goal) => goal.currentCents < goal.targetCents)
+    .sort((left, right) => urgency(left) - urgency(right))[0];
 }
 
 function urgency(goal: SavingsGoal): number {
   return goal.targetDate ? Date.parse(goal.targetDate) : Number.POSITIVE_INFINITY;
 }
 
-function suggestSpendingReduction(expenses: readonly SavingsTransaction[], targetGoalId?: string): SavingsRuleSuggestion | undefined {
+function suggestSpendingReduction(
+  expenses: readonly SavingsTransaction[],
+  targetGoalId?: string,
+): SavingsRuleSuggestion | undefined {
   const categoryTotals = new Map<string, { total: number; ids: string[] }>();
   for (const transaction of expenses) {
     const category = transaction.category ?? 'Uncategorized';
@@ -173,7 +228,8 @@ function suggestSpendingReduction(expenses: readonly SavingsTransaction[], targe
     value.ids.push(transaction.id);
     categoryTotals.set(category, value);
   }
-  const [category, value] = [...categoryTotals.entries()].sort((left, right) => right[1].total - left[1].total)[0] ?? [];
+  const [category, value] =
+    [...categoryTotals.entries()].sort((left, right) => right[1].total - left[1].total)[0] ?? [];
   if (!category || !value || value.total < 20_000) return undefined;
   const monthlyImpact = Math.round(value.total * 0.05);
   return {
@@ -205,7 +261,13 @@ function paychecksPerMonth(cadence: 'weekly' | 'biweekly' | 'monthly'): number {
 function monthsCovered(start: string, end: string): number {
   const startDate = new Date(`${start}T00:00:00.000Z`);
   const endDate = new Date(`${end}T00:00:00.000Z`);
-  return Math.max(1, (endDate.getUTCFullYear() - startDate.getUTCFullYear()) * 12 + endDate.getUTCMonth() - startDate.getUTCMonth() + 1);
+  return Math.max(
+    1,
+    (endDate.getUTCFullYear() - startDate.getUTCFullYear()) * 12 +
+      endDate.getUTCMonth() -
+      startDate.getUTCMonth() +
+      1,
+  );
 }
 
 function daysBetween(start: string, end: string): number {
@@ -214,7 +276,9 @@ function daysBetween(start: string, end: string): number {
 
 function median(values: readonly number[]): number {
   const sorted = [...values].sort((left, right) => left - right);
-  return sorted.length % 2 === 0 ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 : sorted[Math.floor(sorted.length / 2)];
+  return sorted.length % 2 === 0
+    ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+    : sorted[Math.floor(sorted.length / 2)];
 }
 
 function riskRank(value: SavingsRisk): number {

@@ -319,7 +319,8 @@ export function buildTaxReserveSummary(input: {
   const reserveShortfallCents = Math.max(0, quarterRecommendedCents - bucketBalanceCents);
   const quarterPaidCents = (input.estimatedPayments ?? [])
     .filter(
-      (payment) => payment.taxYear === nextDueDate.taxYear && payment.quarter === nextDueDate.quarter,
+      (payment) =>
+        payment.taxYear === nextDueDate.taxYear && payment.quarter === nextDueDate.quarter,
     )
     .reduce((sum, payment) => sum + Math.max(0, Math.round(payment.amountCents)), 0);
   const remainingRecommendedPaymentCents = Math.max(0, reserveShortfallCents - quarterPaidCents);

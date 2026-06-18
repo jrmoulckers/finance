@@ -44,7 +44,11 @@ describe('capital-gains-reporting', () => {
       },
     ];
 
-    const report = generateCapitalGainsTaxReport({ purchaseLots: PURCHASE_LOTS, sales, taxYear: 2024 });
+    const report = generateCapitalGainsTaxReport({
+      purchaseLots: PURCHASE_LOTS,
+      sales,
+      taxYear: 2024,
+    });
 
     expect(report.closedLots).toHaveLength(1);
     expect(report.closedLots[0].gainLoss).toBe(-300_00);

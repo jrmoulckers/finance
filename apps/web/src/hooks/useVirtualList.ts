@@ -150,7 +150,10 @@ export function useVirtualList<T>(options: UseVirtualListOptions<T>): UseVirtual
       } else if (align === 'end') {
         nextScrollTop -= containerHeight - itemHeight;
       }
-      nextScrollTop = Math.min(Math.max(0, nextScrollTop), Math.max(0, totalHeight - containerHeight));
+      nextScrollTop = Math.min(
+        Math.max(0, nextScrollTop),
+        Math.max(0, totalHeight - containerHeight),
+      );
       setScrollTop(nextScrollTop);
       if (containerRef.current) {
         containerRef.current.scrollTop = nextScrollTop;

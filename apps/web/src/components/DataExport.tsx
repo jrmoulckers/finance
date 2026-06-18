@@ -345,7 +345,10 @@ export const DataExport: React.FC<DataExportProps> = ({
 
   const manifest = packageResult?.manifest;
   const dbUnavailable = db === null;
-  const previewInput = useMemo(() => (db ? buildPackageInput(db, includeMoodTags) : null), [db, includeMoodTags]);
+  const previewInput = useMemo(
+    () => (db ? buildPackageInput(db, includeMoodTags) : null),
+    [db, includeMoodTags],
+  );
   const domainSummaries = useMemo(
     () => (previewInput ? summarizeDataAccessDomains(previewInput) : []),
     [previewInput],
@@ -360,7 +363,9 @@ export const DataExport: React.FC<DataExportProps> = ({
 
   const toggleDomain = useCallback((domain: DataAccessDomain, checked: boolean) => {
     setSelectedDomains((current) =>
-      checked ? Array.from(new Set([...current, domain])) : current.filter((item) => item !== domain),
+      checked
+        ? Array.from(new Set([...current, domain]))
+        : current.filter((item) => item !== domain),
     );
   }, []);
 
@@ -413,14 +418,25 @@ export const DataExport: React.FC<DataExportProps> = ({
             includeMoodTags,
             includeNotes,
             includeAttachmentBinaries,
-            redactionProfile: includeProtectedCategories || includeMoodTags || includeNotes || includeAttachmentBinaries ? 'full' : 'redacted',
+            redactionProfile:
+              includeProtectedCategories ||
+              includeMoodTags ||
+              includeNotes ||
+              includeAttachmentBinaries
+                ? 'full'
+                : 'redacted',
             recipient: shareRecipient.trim() || null,
           },
         });
         if (shareRecipient.trim()) {
           const now = new Date().toISOString();
           await recordThirdPartyConnectionGrant({
-            id: 'export-recipient-' + shareRecipient.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            id:
+              'export-recipient-' +
+              shareRecipient
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-'),
             displayName: shareRecipient.trim(),
             type: 'export_recipient',
             scopes: selectedDomains,
@@ -443,7 +459,13 @@ export const DataExport: React.FC<DataExportProps> = ({
             includeNotes,
             includeAttachmentBinaries,
             selectedDomains,
-            redactionProfile: includeProtectedCategories || includeMoodTags || includeNotes || includeAttachmentBinaries ? 'full' : 'redacted',
+            redactionProfile:
+              includeProtectedCategories ||
+              includeMoodTags ||
+              includeNotes ||
+              includeAttachmentBinaries
+                ? 'full'
+                : 'redacted',
             recipient: shareRecipient.trim() || undefined,
             shareMethod: 'unknown',
           },
@@ -826,7 +848,8 @@ export const DataExport: React.FC<DataExportProps> = ({
             Request your data package
           </h4>
           <p id="data-export-confirm-body" className="data-export__dialog-body">
-            Choose exactly which data categories to export. The ZIP is generated on this device, defaults to a redacted sharing profile, and is available in-app for 7 days.
+            Choose exactly which data categories to export. The ZIP is generated on this device,
+            defaults to a redacted sharing profile, and is available in-app for 7 days.
           </p>
 
           <fieldset className="data-export__fieldset">
@@ -841,7 +864,8 @@ export const DataExport: React.FC<DataExportProps> = ({
                 />
                 <span className="data-export__option-text">
                   <span className="data-export__option-label">
-                    {summary.label} ({summary.recordCount} record{summary.recordCount === 1 ? '' : 's'})
+                    {summary.label} ({summary.recordCount} record
+                    {summary.recordCount === 1 ? '' : 's'})
                   </span>
                   <span className="data-export__option-help">{summary.warning}</span>
                 </span>
@@ -891,7 +915,9 @@ export const DataExport: React.FC<DataExportProps> = ({
               />
               <span className="data-export__option-text">
                 <span className="data-export__option-label">Include transaction notes</span>
-                <span className="data-export__option-help">Notes may contain names, health details, or private context. Off by default.</span>
+                <span className="data-export__option-help">
+                  Notes may contain names, health details, or private context. Off by default.
+                </span>
               </span>
             </label>
 
@@ -904,13 +930,18 @@ export const DataExport: React.FC<DataExportProps> = ({
               />
               <span className="data-export__option-text">
                 <span className="data-export__option-label">Include attachment binaries</span>
-                <span className="data-export__option-help">Receipts and files can reveal addresses, card digits, or account numbers. Metadata only by default.</span>
+                <span className="data-export__option-help">
+                  Receipts and files can reveal addresses, card digits, or account numbers. Metadata
+                  only by default.
+                </span>
               </span>
             </label>
 
             <label className="data-export__option">
               <span className="data-export__option-text">
-                <span className="data-export__option-label">Recipient or share destination (optional)</span>
+                <span className="data-export__option-label">
+                  Recipient or share destination (optional)
+                </span>
                 <input
                   type="text"
                   className="form-input"
@@ -918,15 +949,25 @@ export const DataExport: React.FC<DataExportProps> = ({
                   onChange={(event) => setShareRecipient(event.target.value)}
                   placeholder="Accountant, support case, partner email"
                 />
-                <span className="data-export__option-help">Known recipients are recorded in Third-party connections for later review.</span>
+                <span className="data-export__option-help">
+                  Known recipients are recorded in Third-party connections for later review.
+                </span>
               </span>
             </label>
           </fieldset>
 
-          {stepUpMessage && <p role="status" className="data-export__dialog-body">{stepUpMessage}</p>}
+          {stepUpMessage && (
+            <p role="status" className="data-export__dialog-body">
+              {stepUpMessage}
+            </p>
+          )}
 
           <div className="data-export__dialog-actions">
-            <button type="button" className="data-export__button" onClick={() => void verifyStepUpForExport()}>
+            <button
+              type="button"
+              className="data-export__button"
+              onClick={() => void verifyStepUpForExport()}
+            >
               Verify identity for export
             </button>
             <button

@@ -70,25 +70,68 @@ describe('broker-1099b-reconciliation', () => {
       },
     );
 
-    expect(rows[0]).toMatchObject({ symbol: 'AAPL', proceedsCents: 300_00, feesCents: 5_00, covered: true, washSaleAdjustmentCents: 10_00 });
+    expect(rows[0]).toMatchObject({
+      symbol: 'AAPL',
+      proceedsCents: 300_00,
+      feesCents: 5_00,
+      covered: true,
+      washSaleAdjustmentCents: 10_00,
+    });
   });
 
   it('reconciles matching lots and highlights variances', () => {
     const brokerLots = mapBroker1099BRows(
       [
-        { SaleId: 'sale-1', Symbol: 'AAPL', LotId: 'lot-1', Acquired: '2024-01-01', Sold: '2025-02-01', Shares: '2', Proceeds: '30000', Basis: '21000', Fees: '500', Wash: '1000' },
-        { SaleId: 'sale-3', Symbol: 'TSLA', LotId: 'lot-3', Acquired: '2024-01-01', Sold: '2025-03-01', Shares: '1', Proceeds: '9000', Basis: '8000', Fees: '0', Wash: '0' },
+        {
+          SaleId: 'sale-1',
+          Symbol: 'AAPL',
+          LotId: 'lot-1',
+          Acquired: '2024-01-01',
+          Sold: '2025-02-01',
+          Shares: '2',
+          Proceeds: '30000',
+          Basis: '21000',
+          Fees: '500',
+          Wash: '1000',
+        },
+        {
+          SaleId: 'sale-3',
+          Symbol: 'TSLA',
+          LotId: 'lot-3',
+          Acquired: '2024-01-01',
+          Sold: '2025-03-01',
+          Shares: '1',
+          Proceeds: '9000',
+          Basis: '8000',
+          Fees: '0',
+          Wash: '0',
+        },
       ],
-      { saleId: 'SaleId', symbol: 'Symbol', lotId: 'LotId', acquiredDate: 'Acquired', soldDate: 'Sold', shares: 'Shares', proceedsCents: 'Proceeds', costBasisCents: 'Basis', feesCents: 'Fees', washSaleAdjustmentCents: 'Wash' },
+      {
+        saleId: 'SaleId',
+        symbol: 'Symbol',
+        lotId: 'LotId',
+        acquiredDate: 'Acquired',
+        soldDate: 'Sold',
+        shares: 'Shares',
+        proceedsCents: 'Proceeds',
+        costBasisCents: 'Basis',
+        feesCents: 'Fees',
+        washSaleAdjustmentCents: 'Wash',
+      },
     );
 
     const reconciliation = reconcileBroker1099B({ appLots, brokerLots });
 
     expect(reconciliation.find((row) => row.key === 'sale-1:lot-1')).toMatchObject({
       status: 'variance',
-      differences: [{ field: 'costBasisCents', appValue: 200_00, brokerValue: 210_00, variance: 10_00 }],
+      differences: [
+        { field: 'costBasisCents', appValue: 200_00, brokerValue: 210_00, variance: 10_00 },
+      ],
     });
-    expect(reconciliation.find((row) => row.key === 'sale-2:lot-2')?.status).toBe('missing-in-broker');
+    expect(reconciliation.find((row) => row.key === 'sale-2:lot-2')?.status).toBe(
+      'missing-in-broker',
+    );
     expect(reconciliation.find((row) => row.key === 'sale-3:lot-3')?.status).toBe('missing-in-app');
   });
 });
