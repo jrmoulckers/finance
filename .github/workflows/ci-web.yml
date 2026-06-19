@@ -89,10 +89,16 @@ jobs:
             packages/design-tokens/build/
 
   unit-tests:
-    name: Unit Tests
+    name: Unit Tests (shard ${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
 
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -109,7 +115,8 @@ jobs:
         with:
           name: web-build
 
-      - run: npm test -w apps/web
+      - name: Unit tests (shard ${{ matrix.shard }}/4)
+        run: npm test -w apps/web -- --shard=${{ matrix.shard }}/4
 
   e2e-pr-smoke:
     name: E2E PR Smoke (Chromium)

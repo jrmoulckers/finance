@@ -188,7 +188,11 @@
   .ai-query-engine__fab {
     left: var(--spacing-4);
     right: var(--spacing-4);
-    bottom: calc(var(--spacing-4) + env(safe-area-inset-bottom, 0px));
+    /* Sit above the fixed bottom navigation bar so the FAB never overlaps or
+       intercepts taps on the bottom-nav destinations. */
+    bottom: calc(
+      var(--layout-bottom-nav-height, 56px) + var(--spacing-4) + env(safe-area-inset-bottom, 0px)
+    );
   }
 
   .ai-query-engine__header,

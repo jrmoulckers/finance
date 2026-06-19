@@ -93,42 +93,43 @@ test.describe('Transactions page', () => {
     await expect(dialog).toBeVisible();
 
     // Amount input (required)
-    const amountInput = page.getByLabel(/^amount$/i);
+    const amountInput = dialog.getByLabel(/^amount$/i);
     await expect(amountInput).toBeVisible();
     await expect(amountInput).toHaveAttribute('aria-required', 'true');
 
     // Description input (required) — now labeled "Payee"
-    const descriptionInput = page.getByLabel(/payee/i);
+    const descriptionInput = dialog.getByLabel(/payee/i);
     await expect(descriptionInput).toBeVisible();
     await expect(descriptionInput).toHaveAttribute('aria-required', 'true');
 
     // Transaction type radio group
-    const typeFieldset = page.getByRole('radiogroup');
+    const typeFieldset = dialog.getByRole('radiogroup');
     await expect(typeFieldset).toBeVisible();
 
     // Expense radio should be checked by default
-    const expenseRadio = page.getByRole('radio', { name: /expense/i });
+    const expenseRadio = dialog.getByRole('radio', { name: /expense/i });
     await expect(expenseRadio).toBeChecked();
 
     // Income and Transfer radios
-    await expect(page.getByRole('radio', { name: /income/i })).toBeVisible();
-    await expect(page.getByRole('radio', { name: /transfer/i })).toBeVisible();
+    await expect(dialog.getByRole('radio', { name: /income/i })).toBeVisible();
+    await expect(dialog.getByRole('radio', { name: /transfer/i })).toBeVisible();
 
     // Account select (required)
-    const accountSelect = page.getByLabel(/^account$/i);
+    const accountSelect = dialog.getByLabel(/^account$/i);
     await expect(accountSelect).toBeVisible();
     await expect(accountSelect).toHaveAttribute('aria-required', 'true');
 
     // Category select (optional)
-    const categorySelect = page.getByLabel(/category/i).first();
+    const categorySelect = dialog.getByLabel('Category', { exact: true });
     await expect(categorySelect).toBeVisible();
 
-    // Date input
-    const dateInput = page.getByLabel(/date/i);
+    // Date input (scope to the dialog: the list behind it also has date
+    // filter inputs, and an exact label avoids matching them).
+    const dateInput = dialog.getByLabel('Date', { exact: true });
     await expect(dateInput).toBeVisible();
 
     // Notes textarea
-    const notesInput = page.getByLabel(/notes/i);
+    const notesInput = dialog.getByLabel(/notes/i);
     await expect(notesInput).toBeVisible();
 
     // Submit and cancel buttons (scoped to dialog to avoid matching the dropdown trigger)
@@ -193,7 +194,11 @@ test.describe('Transaction detail page', () => {
 
     const count = await transactionLinks.count();
     if (count > 0) {
-      await transactionLinks.first().click();
+      // Open the transaction detail page via its href. (Click-to-navigate URL
+      // behavior is covered by the dedicated navigation test above; this test
+      // verifies detail page content, which is also the direct-link path.)
+      const href = await transactionLinks.first().getAttribute('href');
+      await page.goto(href ?? '/transactions');
       await expect(page).toHaveURL(/\/transactions\/.+/);
 
       // Should show breadcrumb navigation back to Transactions.

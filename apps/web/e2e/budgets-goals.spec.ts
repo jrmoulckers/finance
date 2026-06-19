@@ -45,8 +45,10 @@ test.describe('Budgets page', () => {
     // Dialog title
     await expect(dialog.getByRole('heading', { name: /create budget/i })).toBeVisible();
 
-    // Category select (required)
-    const categorySelect = dialog.getByLabel(/category/i);
+    // Category select (required). Use an exact match: the form now has a
+    // "Create one category" radio option whose label also contains
+    // "category", so a loose /category/i would match two controls.
+    const categorySelect = dialog.getByLabel('Category', { exact: true });
     await expect(categorySelect).toBeVisible();
     await expect(categorySelect).toHaveAttribute('aria-required', 'true');
 
@@ -55,8 +57,9 @@ test.describe('Budgets page', () => {
     await expect(amountInput).toBeVisible();
     await expect(amountInput).toHaveAttribute('aria-required', 'true');
 
-    // Period select
-    const periodSelect = dialog.getByLabel(/period/i);
+    // Period select. Exact match avoids colliding with the rollover
+    // checkbox whose help text mentions "next budget period".
+    const periodSelect = dialog.getByLabel('Period', { exact: true });
     await expect(periodSelect).toBeVisible();
 
     // Start date input

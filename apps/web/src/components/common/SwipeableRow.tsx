@@ -95,6 +95,7 @@ export function SwipeableRow({
   const dragRef = useRef<GestureState | null>(null);
   const offsetRef = useRef(0);
   const suppressClickRef = useRef(false);
+  const pointerCapturedRef = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hintId = useId();
 
@@ -355,15 +356,14 @@ export function SwipeableRow({
         return;
       }
 
+      // NOTE: We intentionally do NOT call setPointerCapture here. Capturing
+      // the pointer on pointerdown redirects the synthesized `click` event to
+      // this root element, which prevents inner interactive children (e.g. a
+      // React Router <Link> or a button) from receiving their click — breaking
+      // click-to-navigate on desktop. The pointer is captured later, in
+      // handlePointerMove, only once an actual drag has begun.
+      pointerCapturedRef.current = false;
       beginGesture(event.clientX, event.clientY, 'pointer');
-
-      if (typeof event.currentTarget.setPointerCapture === 'function') {
-        try {
-          event.currentTarget.setPointerCapture(event.pointerId);
-        } catch {
-          // Ignore environments that do not fully implement pointer capture.
-        }
-      }
     },
     [beginGesture, disabled],
   );
@@ -375,6 +375,20 @@ export function SwipeableRow({
       }
 
       updateGesture(event.clientX, event.clientY);
+
+      // Capture the pointer only once a real drag is underway so that plain
+      // clicks pass through to inner links/buttons. After a drag starts we
+      // need capture to keep receiving move/up events outside the row bounds.
+      if (dragRef.current?.dragging && !pointerCapturedRef.current) {
+        pointerCapturedRef.current = true;
+        if (typeof event.currentTarget.setPointerCapture === 'function') {
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          } catch {
+            // Ignore environments that do not fully implement pointer capture.
+          }
+        }
+      }
     },
     [updateGesture],
   );
@@ -385,13 +399,17 @@ export function SwipeableRow({
         return;
       }
 
-      if (typeof event.currentTarget.releasePointerCapture === 'function') {
+      if (
+        pointerCapturedRef.current &&
+        typeof event.currentTarget.releasePointerCapture === 'function'
+      ) {
         try {
           event.currentTarget.releasePointerCapture(event.pointerId);
         } catch {
           // Ignore environments that do not fully implement pointer capture.
         }
       }
+      pointerCapturedRef.current = false;
 
       endGesture();
     },
@@ -403,6 +421,7 @@ export function SwipeableRow({
       return;
     }
 
+    pointerCapturedRef.current = false;
     closeRow();
     clearLongPressTimer();
     dragRef.current = null;

@@ -141,4 +141,55 @@ describe('useLiveQuery', () => {
       expect(result.current.data).toEqual([{ id: 'transaction-1', amount: 2500 }]);
     });
   });
+
+  it('settles loading and does not re-query on every render when callers pass fresh literals', async () => {
+    // Regression: useRealtimeTable (and many callers) pass a new `initialData`
+    // array and a new params array on every render. The query must run once on
+    // mount and NOT re-run for each subsequent render — otherwise `loading`
+    // never settles (hanging detail pages opened from a list).
+    const rowsRef = { current: [{ id: 'account-1', name: 'Checking' }] };
+    const selectAll = vi.fn(() => rowsRef.current);
+    const db: SqliteDb = {
+      exec: vi.fn(),
+      selectAll,
+      selectOne: vi.fn(() => rowsRef.current[0] ?? null),
+      close: vi.fn(async () => undefined),
+    };
+    const wrapper = ({ children }: React.PropsWithChildren) => (
+      <DatabaseContext.Provider
+        value={{ db, diagnostics: {} as DatabaseContextValue['diagnostics'] }}
+      >
+        {children}
+      </DatabaseContext.Provider>
+    );
+
+    const { result, rerender } = renderHook(
+      () =>
+        // Fresh `[]` params and `{ initialData: [] }` options on every render.
+        useLiveQuery<{ id: string; name: string }[]>(
+          'SELECT * FROM account WHERE deleted_at IS NULL',
+          [],
+          { initialData: [] },
+        ),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const callsAfterInitialLoad = selectAll.mock.calls.length;
+
+    for (let i = 0; i < 5; i++) {
+      act(() => {
+        rerender();
+      });
+    }
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(selectAll.mock.calls.length).toBe(callsAfterInitialLoad);
+  });
 });

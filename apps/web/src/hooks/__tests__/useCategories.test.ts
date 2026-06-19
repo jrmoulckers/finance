@@ -3,39 +3,30 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Row, SqliteDb } from '../../db/sqlite-wasm';
 import type { Category } from '../../kmp/bridge';
 import { useCategories } from '../useCategories';
 
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-const mockDb = {} as ReturnType<typeof import('../../db/DatabaseProvider').useDatabase>;
+const testState = vi.hoisted(() => ({
+  db: null as unknown,
+  createCategory: vi.fn<(...args: unknown[]) => unknown>(),
+  updateCategory: vi.fn<(...args: unknown[]) => unknown>(),
+  deleteCategory: vi.fn<(...args: unknown[]) => unknown>(),
+}));
 
 vi.mock('../../db/DatabaseProvider', () => ({
-  useDatabase: () => mockDb,
+  useDatabase: () => testState.db,
 }));
 
-const mockQueryOne = vi.fn<(...args: unknown[]) => { id: string } | null>();
-vi.mock('../../db/sqlite-wasm', () => ({
-  queryOne: (...args: unknown[]) => mockQueryOne(...args),
-}));
-
-const mockGetAllCategories = vi.fn<(...args: unknown[]) => Category[]>();
-const mockCreateCategory = vi.fn<(...args: unknown[]) => Category>();
-const mockUpdateCategory = vi.fn<(...args: unknown[]) => Category | null>();
-const mockDeleteCategory = vi.fn<(...args: unknown[]) => boolean>();
-
-vi.mock('../../db/repositories/categories', () => ({
-  getAllCategories: (...args: unknown[]) => mockGetAllCategories(...args),
-  createCategory: (...args: unknown[]) => mockCreateCategory(...args),
-  updateCategory: (...args: unknown[]) => mockUpdateCategory(...args),
-  deleteCategory: (...args: unknown[]) => mockDeleteCategory(...args),
-}));
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
+vi.mock('../../db/repositories/categories', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../db/repositories/categories')>();
+  return {
+    ...actual,
+    createCategory: (...args: unknown[]) => testState.createCategory(...args),
+    updateCategory: (...args: unknown[]) => testState.updateCategory(...args),
+    deleteCategory: (...args: unknown[]) => testState.deleteCategory(...args),
+  };
+});
 
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
@@ -43,6 +34,14 @@ const syncMetadata = {
   deletedAt: null,
   syncVersion: 1,
   isSynced: true,
+};
+
+const syncRowMetadata = {
+  created_at: '2025-01-01T00:00:00Z',
+  updated_at: '2025-01-01T00:00:00Z',
+  deleted_at: null,
+  sync_version: 1,
+  is_synced: 1,
 };
 
 function makeCategory(overrides: Partial<Category> = {}): Category {
@@ -56,25 +55,48 @@ function makeCategory(overrides: Partial<Category> = {}): Category {
     isIncome: false,
     isSystem: false,
     sortOrder: 1,
+    isBiometricProtected: false,
     ...syncMetadata,
     ...overrides,
   };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+function makeCategoryRow(overrides: Partial<Row> = {}): Row {
+  return {
+    id: 'cat-1',
+    household_id: 'hh-1',
+    name: 'Food & Drink',
+    icon: 'utensils',
+    color: '#16A34A',
+    parent_id: null,
+    is_income: 0,
+    is_system: 0,
+    sort_order: 1,
+    is_biometric_protected: 0,
+    ...syncRowMetadata,
+    ...overrides,
+  };
+}
+
+function createDatabase(rowsRef: { current: Row[] }): SqliteDb {
+  return {
+    exec: vi.fn(),
+    selectAll: vi.fn(() => rowsRef.current),
+    selectOne: vi.fn(() => ({ id: 'hh-1' })),
+    close: vi.fn(async () => undefined),
+  };
+}
 
 describe('useCategories', () => {
+  let rowsRef: { current: Row[] };
+  let mockDb: SqliteDb;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAllCategories.mockReturnValue([]);
-    mockQueryOne.mockReturnValue({ id: 'hh-1' });
+    rowsRef = { current: [] };
+    mockDb = createDatabase(rowsRef);
+    testState.db = mockDb;
   });
-
-  // -----------------------------------------------------------------------
-  // Loading / success state
-  // -----------------------------------------------------------------------
 
   it('returns loading false and empty list when no categories exist', () => {
     const { result } = renderHook(() => useCategories());
@@ -85,11 +107,10 @@ describe('useCategories', () => {
   });
 
   it('returns categories from the database', () => {
-    const categories = [
-      makeCategory(),
-      makeCategory({ id: 'cat-income', name: 'Salary', isIncome: true }),
+    rowsRef.current = [
+      makeCategoryRow(),
+      makeCategoryRow({ id: 'cat-income', name: 'Salary', is_income: 1 }),
     ];
-    mockGetAllCategories.mockReturnValue(categories);
 
     const { result } = renderHook(() => useCategories());
 
@@ -99,12 +120,11 @@ describe('useCategories', () => {
   });
 
   it('includes both income and expense categories', () => {
-    const categories = [
-      makeCategory({ id: 'cat-expense', isIncome: false }),
-      makeCategory({ id: 'cat-income', name: 'Salary', isIncome: true }),
-      makeCategory({ id: 'cat-expense-2', name: 'Transport', isIncome: false }),
+    rowsRef.current = [
+      makeCategoryRow({ id: 'cat-expense', is_income: 0 }),
+      makeCategoryRow({ id: 'cat-income', name: 'Salary', is_income: 1 }),
+      makeCategoryRow({ id: 'cat-expense-2', name: 'Transport', is_income: 0 }),
     ];
-    mockGetAllCategories.mockReturnValue(categories);
 
     const { result } = renderHook(() => useCategories());
 
@@ -116,11 +136,16 @@ describe('useCategories', () => {
   });
 
   it('builds the Food & Meals template state from existing child categories', () => {
-    mockGetAllCategories.mockReturnValue([
-      makeCategory({ id: 'cat-food', name: 'Food', parentId: null }),
-      makeCategory({ id: 'cat-groceries', name: 'Groceries', parentId: 'cat-food', icon: '🛒' }),
-      makeCategory({ id: 'cat-dining', name: 'Dining Out', parentId: 'cat-food', icon: '🍽️' }),
-    ]);
+    rowsRef.current = [
+      makeCategoryRow({ id: 'cat-food', name: 'Food', parent_id: null }),
+      makeCategoryRow({
+        id: 'cat-groceries',
+        name: 'Groceries',
+        parent_id: 'cat-food',
+        icon: '🛒',
+      }),
+      makeCategoryRow({ id: 'cat-dining', name: 'Dining Out', parent_id: 'cat-food', icon: '🍽️' }),
+    ];
 
     const { result } = renderHook(() => useCategories());
 
@@ -141,8 +166,17 @@ describe('useCategories', () => {
       icon: '🛒',
       sortOrder: 2,
     });
-    mockGetAllCategories.mockReturnValue([existingFood, existingGroceries]);
-    mockCreateCategory
+    rowsRef.current = [
+      makeCategoryRow({ id: 'cat-food', name: 'Food', parent_id: null }),
+      makeCategoryRow({
+        id: 'cat-groceries',
+        name: 'Groceries',
+        parent_id: 'cat-food',
+        icon: '🛒',
+        sort_order: 2,
+      }),
+    ];
+    testState.createCategory
       .mockReturnValueOnce(
         makeCategory({
           id: 'cat-dining',
@@ -187,10 +221,14 @@ describe('useCategories', () => {
       templateState = result.current.ensureFoodMealCategories();
     });
 
-    expect(mockCreateCategory).toHaveBeenCalledTimes(4);
+    expect(testState.createCategory).toHaveBeenCalledTimes(4);
+    expect(testState.createCategory).toHaveBeenCalledWith(
+      mockDb,
+      expect.objectContaining({ householdId: existingFood.householdId, parentId: existingFood.id }),
+    );
     expect(templateState).not.toBeNull();
     expect(templateState!.subcategories.map((category: Category) => category.name)).toEqual([
-      'Groceries',
+      existingGroceries.name,
       'Dining Out',
       'Delivery & Takeout',
       'Coffee & Snacks',
@@ -198,12 +236,8 @@ describe('useCategories', () => {
     ]);
   });
 
-  // -----------------------------------------------------------------------
-  // Error state
-  // -----------------------------------------------------------------------
-
   it('captures errors and sets error state', () => {
-    mockGetAllCategories.mockImplementation(() => {
+    vi.mocked(mockDb.selectAll).mockImplementation(() => {
       throw new Error('DB read failed');
     });
 
@@ -215,7 +249,7 @@ describe('useCategories', () => {
   });
 
   it('sets a generic error message for non-Error throws', () => {
-    mockGetAllCategories.mockImplementation(() => {
+    vi.mocked(mockDb.selectAll).mockImplementation(() => {
       throw 'string error';
     });
 
@@ -224,32 +258,23 @@ describe('useCategories', () => {
     expect(result.current.error).toBe('Failed to load categories.');
   });
 
-  // -----------------------------------------------------------------------
-  // CRUD — createCategory
-  // -----------------------------------------------------------------------
-
   it('creates a category and triggers refresh', () => {
-    mockGetAllCategories.mockReturnValue([]);
     const created = makeCategory({ id: 'cat-new', name: 'Entertainment' });
-    mockCreateCategory.mockReturnValue(created);
+    testState.createCategory.mockReturnValue(created);
 
     const { result } = renderHook(() => useCategories());
 
     let returned: Category | null = null;
     act(() => {
-      returned = result.current.createCategory({
-        householdId: 'hh-1',
-        name: 'Entertainment',
-      });
+      returned = result.current.createCategory({ householdId: 'hh-1', name: 'Entertainment' });
     });
 
     expect(returned).toEqual(created);
-    expect(mockCreateCategory).toHaveBeenCalledOnce();
+    expect(testState.createCategory).toHaveBeenCalledOnce();
   });
 
   it('returns null and sets error when createCategory throws', () => {
-    mockGetAllCategories.mockReturnValue([]);
-    mockCreateCategory.mockImplementation(() => {
+    testState.createCategory.mockImplementation(() => {
       throw new Error('Insert failed');
     });
 
@@ -257,24 +282,17 @@ describe('useCategories', () => {
 
     let returned: Category | null = null;
     act(() => {
-      returned = result.current.createCategory({
-        householdId: 'hh-1',
-        name: 'Entertainment',
-      });
+      returned = result.current.createCategory({ householdId: 'hh-1', name: 'Entertainment' });
     });
 
     expect(returned).toBeNull();
     expect(result.current.error).toBe('Insert failed');
   });
 
-  // -----------------------------------------------------------------------
-  // CRUD — updateCategory
-  // -----------------------------------------------------------------------
-
   it('updates a category and triggers refresh', () => {
-    mockGetAllCategories.mockReturnValue([makeCategory()]);
+    rowsRef.current = [makeCategoryRow()];
     const updated = makeCategory({ name: 'Groceries' });
-    mockUpdateCategory.mockReturnValue(updated);
+    testState.updateCategory.mockReturnValue(updated);
 
     const { result } = renderHook(() => useCategories());
 
@@ -284,29 +302,24 @@ describe('useCategories', () => {
     });
 
     expect(returned).toEqual(updated);
-    expect(mockUpdateCategory).toHaveBeenCalledWith(mockDb, 'cat-1', {
-      name: 'Groceries',
-    });
+    expect(testState.updateCategory).toHaveBeenCalledWith(mockDb, 'cat-1', { name: 'Groceries' });
   });
 
   it('does not refresh when updateCategory returns null', () => {
-    mockGetAllCategories.mockReturnValue([]);
-    mockUpdateCategory.mockReturnValue(null);
+    testState.updateCategory.mockReturnValue(null);
 
     const { result } = renderHook(() => useCategories());
-
-    const callCountAfterMount = mockGetAllCategories.mock.calls.length;
+    const callCountAfterMount = vi.mocked(mockDb.selectAll).mock.calls.length;
 
     act(() => {
       result.current.updateCategory('nonexistent', { name: 'Nope' });
     });
 
-    expect(mockGetAllCategories.mock.calls.length).toBe(callCountAfterMount);
+    expect(vi.mocked(mockDb.selectAll).mock.calls.length).toBe(callCountAfterMount);
   });
 
   it('returns null and sets error when updateCategory throws', () => {
-    mockGetAllCategories.mockReturnValue([]);
-    mockUpdateCategory.mockImplementation(() => {
+    testState.updateCategory.mockImplementation(() => {
       throw new Error('Update failed');
     });
 
@@ -321,13 +334,9 @@ describe('useCategories', () => {
     expect(result.current.error).toBe('Update failed');
   });
 
-  // -----------------------------------------------------------------------
-  // CRUD — deleteCategory
-  // -----------------------------------------------------------------------
-
   it('deletes a category and triggers refresh', () => {
-    mockGetAllCategories.mockReturnValue([makeCategory()]);
-    mockDeleteCategory.mockReturnValue(true);
+    rowsRef.current = [makeCategoryRow()];
+    testState.deleteCategory.mockReturnValue(true);
 
     const { result } = renderHook(() => useCategories());
 
@@ -337,12 +346,11 @@ describe('useCategories', () => {
     });
 
     expect(deleted).toBe(true);
-    expect(mockDeleteCategory).toHaveBeenCalledWith(mockDb, 'cat-1');
+    expect(testState.deleteCategory).toHaveBeenCalledWith(mockDb, 'cat-1');
   });
 
   it('returns false when deletion target is not found', () => {
-    mockGetAllCategories.mockReturnValue([]);
-    mockDeleteCategory.mockReturnValue(false);
+    testState.deleteCategory.mockReturnValue(false);
 
     const { result } = renderHook(() => useCategories());
 
@@ -355,8 +363,7 @@ describe('useCategories', () => {
   });
 
   it('returns false and sets error when deleteCategory throws', () => {
-    mockGetAllCategories.mockReturnValue([]);
-    mockDeleteCategory.mockImplementation(() => {
+    testState.deleteCategory.mockImplementation(() => {
       throw new Error('Delete failed');
     });
 
@@ -371,21 +378,15 @@ describe('useCategories', () => {
     expect(result.current.error).toBe('Delete failed');
   });
 
-  // -----------------------------------------------------------------------
-  // Refresh
-  // -----------------------------------------------------------------------
-
-  it('re-fetches data when refresh is called', () => {
-    mockGetAllCategories.mockReturnValue([]);
-
+  it('re-fetches data when refresh is called', async () => {
     const { result } = renderHook(() => useCategories());
+    const callCountAfterMount = vi.mocked(mockDb.selectAll).mock.calls.length;
 
-    const callCountAfterMount = mockGetAllCategories.mock.calls.length;
-
-    act(() => {
+    await act(async () => {
       result.current.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 25));
     });
 
-    expect(mockGetAllCategories.mock.calls.length).toBeGreaterThan(callCountAfterMount);
+    expect(vi.mocked(mockDb.selectAll).mock.calls.length).toBeGreaterThan(callCountAfterMount);
   });
 });

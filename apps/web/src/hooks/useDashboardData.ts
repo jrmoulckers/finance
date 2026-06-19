@@ -135,6 +135,7 @@ export function useDashboardData(): UseDashboardDataResult {
       initialData: null,
       tables: ['account', 'transaction', 'budget'],
       queryFn: runDashboardQuery,
+      errorFallback: 'Failed to load dashboard data.',
     },
   );
 

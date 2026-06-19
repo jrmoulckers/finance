@@ -245,6 +245,12 @@ export const test = base.extend<{ authenticatedPage: Page }>({
       };
       localStorage.setItem('finance-gdpr-consent', JSON.stringify(consentRecord));
 
+      // Mark onboarding as complete so the post-auth router lands the user on
+      // /dashboard instead of auto-launching the first-run onboarding wizard
+      // (App.tsx -> shouldAutoLaunchOnboarding reads this key via
+      // lib/local-only-mode.isOnboardingComplete).
+      localStorage.setItem('finance-onboarding-complete', 'true');
+
       // Local dev runs without Supabase configured, which activates demo auth
       // instead of the mocked refresh endpoint. Seed a demo session so the
       // authenticated fixture stays authenticated after page.goto() calls.

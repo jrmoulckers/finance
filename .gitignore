@@ -116,3 +116,4 @@ kotlin-js-store/
 worktrees/
 .worktrees/
 lighthouse-report.json
+blob-report/

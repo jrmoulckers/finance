@@ -61,6 +61,7 @@ export function useAccounts(filters: UseAccountsFilters = {}): UseAccountsResult
   } = useRealtimeTable<Row>('account', {
     where: 'deleted_at IS NULL',
     orderBy: 'sort_order ASC, name ASC',
+    errorFallback: 'Failed to load accounts.',
   });
 
   const accounts = useMemo(() => rows.map((row) => mapAccount(row)), [rows]);
