@@ -117,7 +117,7 @@ jobs:
       previous_release_tag: ${{ steps.previous.outputs.tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
@@ -254,7 +254,7 @@ jobs:
     if: needs.prepare.outputs.rollback != 'true'
     steps:
       - name: Wait for CI workflows
-        uses: lewagon/wait-on-check-action@0dceb95e7c4cad8cc7422aee3885998f5cab9c79 # v1.4.0
+        uses: lewagon/wait-on-check-action@96d9100b431964d10e0136aff8b9ccb92470505e # v1.8.0
         with:
           ref: ${{ needs.prepare.outputs.sha }}
           running-workflow-name: 'Verify CI green on SHA'
@@ -271,7 +271,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout at deploy version
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
@@ -326,7 +326,7 @@ jobs:
       url: ${{ steps.deploy.outputs.url }}
     steps:
       - name: Checkout at deploy version
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
@@ -401,7 +401,7 @@ jobs:
       name: production
     steps:
       - name: Checkout at deploy version
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ needs.prepare.outputs.sha }}
 
@@ -553,7 +553,7 @@ jobs:
       name: production
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
@@ -730,7 +730,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout deployed commit
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           ref: ${{ needs.prepare.outputs.sha }}
