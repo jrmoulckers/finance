@@ -16,15 +16,16 @@ async function waitForStableLogin(page: import('@playwright/test').Page): Promis
 }
 
 test.describe('Visual regression', () => {
-  // The login brand snapshot is maintained on Chromium only. Cross-browser
-  // pixel baselines (Firefox/WebKit/Edge) drift on font/AA rendering and add
-  // little signal for a single brand screenshot, so we skip them here.
-  test.skip(
-    ({ browserName }) => browserName !== 'chromium',
-    'Visual baseline is maintained on Chromium only.',
-  );
+  test('login page matches the baseline', async ({ page }, testInfo) => {
+    // The login brand snapshot is maintained on the Chromium project only.
+    // NOTE: use the PROJECT name, not browserName — the `chromium-edge`
+    // project also reports browserName 'chromium', so a browserName check
+    // would wrongly run it there and fail on a missing edge baseline.
+    test.skip(
+      testInfo.project.name !== 'chromium',
+      'Visual baseline is maintained on the Chromium project only.',
+    );
 
-  test('login page matches the baseline', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await waitForStableLogin(page);
 
