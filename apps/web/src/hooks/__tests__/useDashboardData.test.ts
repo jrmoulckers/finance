@@ -3,129 +3,170 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Row, SqliteDb } from '../../db/sqlite-wasm';
 import { useDashboardData } from '../useDashboardData';
 
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-const mockDb = {} as ReturnType<typeof import('../../db/DatabaseProvider').useDatabase>;
+const testState = vi.hoisted(() => ({
+  db: null as unknown,
+}));
 
 vi.mock('../../db/DatabaseProvider', () => ({
-  useDatabase: () => mockDb,
+  useDatabase: () => testState.db,
 }));
 
-const mockGetAllAccounts = vi.fn();
-const mockGetTransactionsByDateRange = vi.fn();
-const mockGetRecentTransactions = vi.fn();
-
-vi.mock('../../db/repositories/accounts', () => ({
-  getAllAccounts: (...args: unknown[]) => mockGetAllAccounts(...args),
-}));
-
-const mockGetBudgetsByPeriod = vi.fn();
-const mockGetBudgetWithSpending = vi.fn();
-
-vi.mock('../../db/repositories/budgets', () => ({
-  getBudgetsByPeriod: (...args: unknown[]) => mockGetBudgetsByPeriod(...args),
-  getBudgetWithSpending: (...args: unknown[]) => mockGetBudgetWithSpending(...args),
-}));
-
-vi.mock('../../db/repositories/transactions', () => ({
-  getRecentTransactions: (...args: unknown[]) => mockGetRecentTransactions(...args),
-  getTransactionsByDateRange: (...args: unknown[]) => mockGetTransactionsByDateRange(...args),
-}));
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
-
-const syncMetadata = {
-  createdAt: '2025-01-01T00:00:00Z',
-  updatedAt: '2025-01-01T00:00:00Z',
-  deletedAt: null,
-  syncVersion: 1,
-  isSynced: true,
+const syncRowMetadata = {
+  created_at: '2025-01-01T00:00:00Z',
+  updated_at: '2025-01-01T00:00:00Z',
+  deleted_at: null,
+  sync_version: 1,
+  is_synced: 1,
 };
 
-function makeAccount(overrides: Record<string, unknown> = {}) {
+interface TableRows {
+  accounts: Row[];
+  transactions: Row[];
+  budgets: Row[];
+  budgetSpending: Map<string, Row>;
+}
+
+function makeAccountRow(overrides: Partial<Row> = {}): Row {
   return {
     id: 'acct-1',
-    householdId: 'hh-1',
+    household_id: 'hh-1',
     name: 'Checking',
     type: 'CHECKING',
-    currency: { code: 'USD', decimalPlaces: 2 },
-    currentBalance: { amount: 100000 },
-    isArchived: false,
-    sortOrder: 1,
+    purpose: 'personal',
+    retirement_account_type: null,
+    retirement_tax_treatment: null,
+    hsa_coverage_level: null,
+    currency: 'USD',
+    current_balance: 100000,
+    is_archived: 0,
+    sort_order: 1,
     icon: 'bank',
     color: '#2563EB',
-    ...syncMetadata,
+    ...syncRowMetadata,
     ...overrides,
   };
 }
 
-function makeTransaction(overrides: Record<string, unknown> = {}) {
+function makeTransactionRow(overrides: Partial<Row> = {}): Row {
   return {
     id: 'txn-1',
-    householdId: 'hh-1',
-    accountId: 'acct-1',
-    categoryId: null,
+    household_id: 'hh-1',
+    account_id: 'acct-1',
+    category_id: null,
     type: 'EXPENSE',
     status: 'CLEARED',
-    amount: { amount: -5000 },
-    currency: { code: 'USD', decimalPlaces: 2 },
+    amount: -5000,
+    currency: 'USD',
     payee: 'Store',
     note: null,
     date: '2025-01-15',
-    transferAccountId: null,
-    transferTransactionId: null,
-    isRecurring: false,
-    recurringRuleId: null,
-    tags: [],
-    ...syncMetadata,
+    transfer_account_id: null,
+    transfer_transaction_id: null,
+    is_recurring: 0,
+    recurring_rule_id: null,
+    tags: '[]',
+    retirement_contribution_year: null,
+    retirement_contribution_designation: null,
+    splits: null,
+    mood_tag: null,
+    merchant_address: null,
+    merchant_city: null,
+    merchant_state: null,
+    merchant_zip: null,
+    merchant_country: null,
+    external_reference_id: null,
+    statement_description: null,
+    custom_fields: null,
+    extra_notes: null,
+    counterparty_name: null,
+    counterparty_account_id: null,
+    ...syncRowMetadata,
     ...overrides,
   };
 }
 
-function makeBudget(overrides: Record<string, unknown> = {}) {
+function makeBudgetRow(overrides: Partial<Row> = {}): Row {
   return {
     id: 'budget-1',
-    householdId: 'hh-1',
-    categoryId: 'cat-1',
+    household_id: 'hh-1',
+    category_id: 'cat-1',
     name: 'Groceries',
-    amount: { amount: 50000 },
-    currency: { code: 'USD', decimalPlaces: 2 },
+    amount: 50000,
+    currency: 'USD',
     period: 'MONTHLY',
-    startDate: '2025-01-01',
-    endDate: null,
-    isRollover: false,
-    ...syncMetadata,
+    start_date: '2025-01-01',
+    end_date: null,
+    is_rollover: 0,
+    sort_order: 1,
+    ...syncRowMetadata,
     ...overrides,
   };
 }
 
-// ---------------------------------------------------------------------------
-// Setup
-// ---------------------------------------------------------------------------
+function currentMonthDate(day = 15): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockGetAllAccounts.mockReturnValue([]);
-  mockGetTransactionsByDateRange.mockReturnValue([]);
-  mockGetRecentTransactions.mockReturnValue([]);
-  mockGetBudgetsByPeriod.mockReturnValue([]);
-  mockGetBudgetWithSpending.mockReturnValue(null);
-});
+function createDatabase(tableRows: TableRows): SqliteDb {
+  const selectAll = vi.fn((sql: string, params?: unknown[]) => {
+    if (/FROM\s+account\b/i.test(sql)) {
+      return tableRows.accounts;
+    }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+    if (/FROM\s+"transaction"/i.test(sql)) {
+      let rows = tableRows.transactions;
+      if (/date\s+>=\s+\?/i.test(sql) && /date\s+<=\s+\?/i.test(sql)) {
+        const [startDate, endDate] = params ?? [];
+        rows = rows.filter(
+          (row) => String(row.date) >= String(startDate) && String(row.date) <= String(endDate),
+        );
+      }
+      if (/LIMIT\s+\?/i.test(sql)) {
+        const limit = Number(params?.[params.length - 1] ?? rows.length);
+        rows = rows.slice(0, limit);
+      }
+      return rows;
+    }
+
+    if (/FROM\s+budget\b/i.test(sql)) {
+      let rows = tableRows.budgets;
+      if (/period\s+=\s+\?/i.test(sql)) {
+        rows = rows.filter((row) => row.period === params?.[0]);
+      }
+      return rows;
+    }
+
+    return [];
+  });
+
+  return {
+    exec: vi.fn(),
+    selectAll,
+    selectOne: vi.fn((sql: string, params?: unknown[]) => {
+      if (/FROM\s+budget\s+b/i.test(sql)) {
+        const budgetId = String(params?.[0] ?? '');
+        return tableRows.budgetSpending.get(budgetId) ?? null;
+      }
+      return selectAll(sql, params)[0] ?? null;
+    }),
+    close: vi.fn(async () => undefined),
+  };
+}
 
 describe('useDashboardData', () => {
-  // -----------------------------------------------------------------------
-  // Loading / success state
-  // -----------------------------------------------------------------------
+  let tableRows: TableRows;
+  let mockDb: SqliteDb;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tableRows = { accounts: [], transactions: [], budgets: [], budgetSpending: new Map() };
+    mockDb = createDatabase(tableRows);
+    testState.db = mockDb;
+  });
 
   it('returns loading false after initial fetch', () => {
     const { result } = renderHook(() => useDashboardData());
@@ -147,31 +188,23 @@ describe('useDashboardData', () => {
     expect(result.current.error).toBeNull();
   });
 
-  // -----------------------------------------------------------------------
-  // Net worth aggregation
-  // -----------------------------------------------------------------------
-
   it('computes net worth from all account balances', () => {
-    mockGetAllAccounts.mockReturnValue([
-      makeAccount({ id: 'acct-1', currentBalance: { amount: 100000 } }),
-      makeAccount({ id: 'acct-2', type: 'SAVINGS', currentBalance: { amount: 50000 } }),
-    ]);
+    tableRows.accounts = [
+      makeAccountRow({ id: 'acct-1', current_balance: 100000 }),
+      makeAccountRow({ id: 'acct-2', type: 'SAVINGS', current_balance: 50000 }),
+    ];
 
     const { result } = renderHook(() => useDashboardData());
 
     expect(result.current.data?.netWorth).toBe(150000);
   });
 
-  // -----------------------------------------------------------------------
-  // Account summary
-  // -----------------------------------------------------------------------
-
   it('groups account totals by type', () => {
-    mockGetAllAccounts.mockReturnValue([
-      makeAccount({ id: 'acct-1', type: 'CHECKING', currentBalance: { amount: 100000 } }),
-      makeAccount({ id: 'acct-2', type: 'SAVINGS', currentBalance: { amount: 50000 } }),
-      makeAccount({ id: 'acct-3', type: 'CHECKING', currentBalance: { amount: 25000 } }),
-    ]);
+    tableRows.accounts = [
+      makeAccountRow({ id: 'acct-1', type: 'CHECKING', current_balance: 100000 }),
+      makeAccountRow({ id: 'acct-2', type: 'SAVINGS', current_balance: 50000 }),
+      makeAccountRow({ id: 'acct-3', type: 'CHECKING', current_balance: 25000 }),
+    ];
 
     const { result } = renderHook(() => useDashboardData());
 
@@ -183,16 +216,22 @@ describe('useDashboardData', () => {
     expect(savings?.total).toBe(50000);
   });
 
-  // -----------------------------------------------------------------------
-  // Monthly income / expense
-  // -----------------------------------------------------------------------
-
   it('computes monthly expense and income totals', () => {
-    mockGetTransactionsByDateRange.mockReturnValue([
-      makeTransaction({ type: 'EXPENSE', amount: { amount: -5000 } }),
-      makeTransaction({ id: 'txn-2', type: 'EXPENSE', amount: { amount: -3000 } }),
-      makeTransaction({ id: 'txn-3', type: 'INCOME', amount: { amount: 200000 } }),
-    ]);
+    tableRows.transactions = [
+      makeTransactionRow({ type: 'EXPENSE', amount: -5000, date: currentMonthDate(5) }),
+      makeTransactionRow({
+        id: 'txn-2',
+        type: 'EXPENSE',
+        amount: -3000,
+        date: currentMonthDate(10),
+      }),
+      makeTransactionRow({
+        id: 'txn-3',
+        type: 'INCOME',
+        amount: 200000,
+        date: currentMonthDate(15),
+      }),
+    ];
 
     const { result } = renderHook(() => useDashboardData());
 
@@ -200,17 +239,10 @@ describe('useDashboardData', () => {
     expect(result.current.data?.incomeThisMonth).toBe(200000);
   });
 
-  // -----------------------------------------------------------------------
-  // Budget aggregation
-  // -----------------------------------------------------------------------
-
   it('computes monthly budget totals and spending', () => {
-    const budget = makeBudget();
-    mockGetBudgetsByPeriod.mockReturnValue([budget]);
-    mockGetBudgetWithSpending.mockReturnValue({
-      ...budget,
-      spentAmount: { amount: 25000 },
-    });
+    const budget = makeBudgetRow();
+    tableRows.budgets = [budget];
+    tableRows.budgetSpending.set('budget-1', { ...budget, spent_amount: 25000 });
 
     const { result } = renderHook(() => useDashboardData());
 
@@ -219,42 +251,34 @@ describe('useDashboardData', () => {
   });
 
   it('filters out budgets not active in current month', () => {
-    // Budget that ended in the past
-    const pastBudget = makeBudget({
-      id: 'budget-old',
-      startDate: '2020-01-01',
-      endDate: '2020-12-31',
-    });
-    mockGetBudgetsByPeriod.mockReturnValue([pastBudget]);
+    tableRows.budgets = [
+      makeBudgetRow({ id: 'budget-old', start_date: '2020-01-01', end_date: '2020-12-31' }),
+    ];
 
     const { result } = renderHook(() => useDashboardData());
 
     expect(result.current.data?.monthlyBudget).toBe(0);
     expect(result.current.data?.budgetSpent).toBe(0);
-    // getBudgetWithSpending should not have been called for inactive budgets
-    expect(mockGetBudgetWithSpending).not.toHaveBeenCalled();
+    expect(mockDb.selectOne).not.toHaveBeenCalled();
   });
 
-  // -----------------------------------------------------------------------
-  // Recent transactions
-  // -----------------------------------------------------------------------
-
   it('returns recent transactions from the repository', () => {
-    const recentTxns = [makeTransaction({ id: 'txn-1' }), makeTransaction({ id: 'txn-2' })];
-    mockGetRecentTransactions.mockReturnValue(recentTxns);
+    tableRows.transactions = [
+      makeTransactionRow({ id: 'txn-1' }),
+      makeTransactionRow({ id: 'txn-2' }),
+    ];
 
     const { result } = renderHook(() => useDashboardData());
 
     expect(result.current.data?.recentTransactions).toHaveLength(2);
-    expect(mockGetRecentTransactions).toHaveBeenCalledWith(mockDb, 10);
+    expect(vi.mocked(mockDb.selectAll).mock.calls).toContainEqual([
+      expect.stringMatching(/FROM\s+"transaction"[\s\S]*LIMIT\s+\?/i),
+      [10],
+    ]);
   });
 
-  // -----------------------------------------------------------------------
-  // Error state
-  // -----------------------------------------------------------------------
-
   it('captures errors and sets error state', () => {
-    mockGetAllAccounts.mockImplementation(() => {
+    vi.mocked(mockDb.selectAll).mockImplementation(() => {
       throw new Error('DB read failed');
     });
 
@@ -266,7 +290,7 @@ describe('useDashboardData', () => {
   });
 
   it('sets a generic error message for non-Error throws', () => {
-    mockGetAllAccounts.mockImplementation(() => {
+    vi.mocked(mockDb.selectAll).mockImplementation(() => {
       throw 'something went wrong';
     });
 
@@ -275,37 +299,28 @@ describe('useDashboardData', () => {
     expect(result.current.error).toBe('Failed to load dashboard data.');
   });
 
-  // -----------------------------------------------------------------------
-  // Refresh
-  // -----------------------------------------------------------------------
-
-  it('re-fetches data when refresh is called', () => {
-    mockGetAllAccounts.mockReturnValue([]);
-
+  it('re-fetches data when refresh is called', async () => {
     const { result } = renderHook(() => useDashboardData());
+    const callCountAfterMount = vi.mocked(mockDb.selectAll).mock.calls.length;
 
-    const callCountAfterMount = mockGetAllAccounts.mock.calls.length;
-
-    act(() => {
+    await act(async () => {
       result.current.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 25));
     });
 
-    expect(mockGetAllAccounts.mock.calls.length).toBeGreaterThan(callCountAfterMount);
+    expect(vi.mocked(mockDb.selectAll).mock.calls.length).toBeGreaterThan(callCountAfterMount);
   });
 
-  it('sets loading to true then false during refresh', () => {
+  it('sets loading to true then false during refresh', async () => {
     const { result } = renderHook(() => useDashboardData());
 
-    // After initial load, loading should be false
     expect(result.current.loading).toBe(false);
 
-    // refresh() is synchronous in this hook, so loading transitions happen
-    // within the same act call
-    act(() => {
+    await act(async () => {
       result.current.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 25));
     });
 
-    // After refresh completes, loading should be false again
     expect(result.current.loading).toBe(false);
     expect(result.current.data).not.toBeNull();
   });

@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
 
+import { seedFirstRunState } from './first-run-state';
+
+test.beforeEach(async ({ page }) => {
+  // Bypass the GDPR consent gate so the login/signup chrome renders.
+  await seedFirstRunState(page);
+});
+
 test('login page renders', async ({ page }) => {
   await page.goto('/login');
   // The login page heading is the app brand name "Finance"

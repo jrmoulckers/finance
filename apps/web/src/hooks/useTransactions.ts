@@ -142,6 +142,7 @@ export function useTransactions(filters: TransactionFilters = {}): UseTransactio
     initialData: [],
     tables: ['transaction', 'account', 'category'],
     queryFn: runTransactionQuery,
+    errorFallback: 'Failed to load transactions.',
   });
 
   const error = mutationError ?? liveError;

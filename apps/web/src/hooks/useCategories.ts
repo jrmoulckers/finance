@@ -236,6 +236,7 @@ export function useCategories(): UseCategoriesResult {
   } = useRealtimeTable<Row>('category', {
     where: 'deleted_at IS NULL',
     orderBy: 'sort_order ASC, name ASC',
+    errorFallback: 'Failed to load categories.',
   });
 
   const categories = useMemo(() => rows.map((row) => mapCategory(row)), [rows]);

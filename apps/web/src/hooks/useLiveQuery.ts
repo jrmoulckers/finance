@@ -13,6 +13,7 @@ export interface UseLiveQueryOptions<TData> {
   readonly tables?: readonly string[];
   readonly enabled?: boolean;
   readonly debounceMs?: number;
+  readonly errorFallback?: string;
 }
 
 export interface UseLiveQueryResult<TData> {
@@ -61,6 +62,7 @@ export function useLiveQuery<TData = Row[]>(
   const {
     debounceMs = DEFAULT_DEBOUNCE_MS,
     enabled = true,
+    errorFallback = 'Failed to run live query.',
     initialData,
     queryFn,
     select,
@@ -76,6 +78,36 @@ export function useLiveQuery<TData = Row[]>(
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Keep the latest callbacks/values in refs so they do NOT destabilize
+  // `runQuery`'s identity. Previously `runQuery` depended on `params`,
+  // `initialData`, `select` and `queryFn` directly; callers commonly pass
+  // fresh array/object/function literals every render (e.g. `useRealtimeTable`
+  // passes `initialData: []` and a new params array), which recreated
+  // `runQuery` on every render. The load effect (keyed on `runQuery`) then
+  // re-ran every render and the hook never settled out of its loading state —
+  // most visibly hanging detail pages opened from a list. We now read these
+  // from refs and key re-runs on the param VALUES instead.
+  const queryFnRef = useRef(queryFn);
+  const selectRef = useRef(select);
+  const initialDataRef = useRef(initialData);
+  const paramsRef = useRef(params);
+  useEffect(() => {
+    queryFnRef.current = queryFn;
+    selectRef.current = select;
+    initialDataRef.current = initialData;
+    paramsRef.current = params;
+  });
+
+  // Stable key derived from the param VALUES (not the array identity) so the
+  // query re-runs when the bound values actually change, not on every render.
+  const paramsKey = useMemo(() => {
+    try {
+      return JSON.stringify(params);
+    } catch {
+      return `len:${params.length}`;
+    }
+  }, [params]);
+
   const runQuery = useCallback(
     (showLoading: boolean) => {
       if (!enabled) {
@@ -89,26 +121,26 @@ export function useLiveQuery<TData = Row[]>(
 
       try {
         const nextData = (() => {
-          if (queryFn) {
-            return queryFn(db);
+          if (queryFnRef.current) {
+            return queryFnRef.current(db);
           }
 
-          const rows = query<Row>(db, sql, [...params]).rows;
-          return select ? select(rows, db) : (rows as TData);
+          const rows = query<Row>(db, sql, [...paramsRef.current]).rows;
+          return selectRef.current ? selectRef.current(rows, db) : (rows as TData);
         })();
 
         setData(nextData);
         setError(null);
       } catch (queryError) {
-        setError(queryError instanceof Error ? queryError.message : 'Failed to run live query.');
-        if (initialData !== undefined) {
-          setData(initialData);
+        setError(queryError instanceof Error ? queryError.message : errorFallback);
+        if (initialDataRef.current !== undefined) {
+          setData(initialDataRef.current);
         }
       } finally {
         setLoading(false);
       }
     },
-    [db, enabled, initialData, params, queryFn, select, sql],
+    [db, enabled, errorFallback, sql],
   );
 
   const scheduleQuery = useCallback(
@@ -131,7 +163,9 @@ export function useLiveQuery<TData = Row[]>(
 
   useEffect(() => {
     runQuery(true);
-  }, [runQuery]);
+    // Re-run when the query (sql/db/enabled via runQuery) or the bound param
+    // values (paramsKey) change.
+  }, [runQuery, paramsKey]);
 
   useEffect(() => {
     if (!enabled) {

@@ -14,6 +14,7 @@ export interface UseRealtimeTableOptions {
   readonly tables?: readonly string[];
   readonly enabled?: boolean;
   readonly debounceMs?: number;
+  readonly errorFallback?: string;
 }
 
 export interface UseRealtimeTableResult<TRow extends Row> {
@@ -35,6 +36,7 @@ export function useRealtimeTable<TRow extends Row = Row>(
     columns = '*',
     debounceMs,
     enabled,
+    errorFallback,
     includeDeleted = false,
     limit,
     orderBy,
@@ -79,6 +81,7 @@ export function useRealtimeTable<TRow extends Row = Row>(
     tables: [table, ...tables],
     enabled,
     debounceMs,
+    errorFallback,
   });
 
   return {

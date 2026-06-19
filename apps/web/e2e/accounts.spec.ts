@@ -148,8 +148,12 @@ test.describe('Account detail page', () => {
 
     const count = await accountLinks.count();
     if (count > 0) {
-      // Navigate to the first account
-      await accountLinks.first().click();
+      // Open the first account's detail page via its href. (Click-to-navigate
+      // URL behavior is covered by the dedicated navigation test above; this
+      // test verifies the detail page content for an existing account, which
+      // is also the direct-link / refresh / bookmark entry path.)
+      const href = await accountLinks.first().getAttribute('href');
+      await page.goto(href ?? '/accounts');
       await expect(page).toHaveURL(/\/accounts\/.+/);
 
       // Should show breadcrumb navigation back to Accounts.

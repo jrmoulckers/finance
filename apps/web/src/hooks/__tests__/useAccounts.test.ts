@@ -3,34 +3,30 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Row, SqliteDb } from '../../db/sqlite-wasm';
 import type { Account } from '../../kmp/bridge';
 import { useAccounts } from '../useAccounts';
 
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-const mockDb = {} as ReturnType<typeof import('../../db/DatabaseProvider').useDatabase>;
+const testState = vi.hoisted(() => ({
+  db: null as unknown,
+  createAccount: vi.fn<(...args: unknown[]) => unknown>(),
+  updateAccount: vi.fn<(...args: unknown[]) => unknown>(),
+  deleteAccount: vi.fn<(...args: unknown[]) => unknown>(),
+}));
 
 vi.mock('../../db/DatabaseProvider', () => ({
-  useDatabase: () => mockDb,
+  useDatabase: () => testState.db,
 }));
 
-const mockGetAllAccounts = vi.fn<(...args: unknown[]) => Account[]>();
-const mockCreateAccount = vi.fn<(...args: unknown[]) => Account>();
-const mockUpdateAccount = vi.fn<(...args: unknown[]) => Account | null>();
-const mockDeleteAccount = vi.fn<(...args: unknown[]) => boolean>();
-
-vi.mock('../../db/repositories/accounts', () => ({
-  getAllAccounts: (...args: unknown[]) => mockGetAllAccounts(...args),
-  createAccount: (...args: unknown[]) => mockCreateAccount(...args),
-  updateAccount: (...args: unknown[]) => mockUpdateAccount(...args),
-  deleteAccount: (...args: unknown[]) => mockDeleteAccount(...args),
-}));
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
+vi.mock('../../db/repositories/accounts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../db/repositories/accounts')>();
+  return {
+    ...actual,
+    createAccount: (...args: unknown[]) => testState.createAccount(...args),
+    updateAccount: (...args: unknown[]) => testState.updateAccount(...args),
+    deleteAccount: (...args: unknown[]) => testState.deleteAccount(...args),
+  };
+});
 
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
@@ -38,6 +34,14 @@ const syncMetadata = {
   deletedAt: null,
   syncVersion: 1,
   isSynced: true,
+};
+
+const syncRowMetadata = {
+  created_at: '2025-01-01T00:00:00Z',
+  updated_at: '2025-01-01T00:00:00Z',
+  deleted_at: null,
+  sync_version: 1,
+  is_synced: 1,
 };
 
 function makeAccount(overrides: Partial<Account> = {}): Account {
@@ -49,6 +53,9 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
     currency: { code: 'USD', decimalPlaces: 2 },
     currentBalance: { amount: 100000 },
     purpose: 'personal',
+    retirementAccountType: null,
+    retirementTaxTreatment: null,
+    hsaCoverageLevel: null,
     isArchived: false,
     sortOrder: 1,
     icon: 'bank',
@@ -58,19 +65,46 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+function makeAccountRow(overrides: Partial<Row> = {}): Row {
+  return {
+    id: 'acct-1',
+    household_id: 'hh-1',
+    name: 'Checking',
+    type: 'CHECKING',
+    purpose: 'personal',
+    retirement_account_type: null,
+    retirement_tax_treatment: null,
+    hsa_coverage_level: null,
+    currency: 'USD',
+    current_balance: 100000,
+    is_archived: 0,
+    sort_order: 1,
+    icon: 'bank',
+    color: '#2563EB',
+    ...syncRowMetadata,
+    ...overrides,
+  };
+}
+
+function createDatabase(rowsRef: { current: Row[] }): SqliteDb {
+  return {
+    exec: vi.fn(),
+    selectAll: vi.fn(() => rowsRef.current),
+    selectOne: vi.fn(() => rowsRef.current[0] ?? null),
+    close: vi.fn(async () => undefined),
+  };
+}
 
 describe('useAccounts', () => {
+  let rowsRef: { current: Row[] };
+  let mockDb: SqliteDb;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAllAccounts.mockReturnValue([]);
+    rowsRef = { current: [] };
+    mockDb = createDatabase(rowsRef);
+    testState.db = mockDb;
   });
-
-  // -----------------------------------------------------------------------
-  // Loading / success state
-  // -----------------------------------------------------------------------
 
   it('returns loading false and empty list when no accounts exist', () => {
     const { result } = renderHook(() => useAccounts());
@@ -81,11 +115,10 @@ describe('useAccounts', () => {
   });
 
   it('returns accounts from the database', () => {
-    const accounts = [
-      makeAccount(),
-      makeAccount({ id: 'acct-2', name: 'Savings', type: 'SAVINGS' }),
+    rowsRef.current = [
+      makeAccountRow(),
+      makeAccountRow({ id: 'acct-2', name: 'Savings', type: 'SAVINGS' }),
     ];
-    mockGetAllAccounts.mockReturnValue(accounts);
 
     const { result } = renderHook(() => useAccounts());
 
@@ -95,11 +128,11 @@ describe('useAccounts', () => {
   });
 
   it('filters accounts by purpose and includes shared accounts in scoped views', () => {
-    mockGetAllAccounts.mockReturnValue([
-      makeAccount({ id: 'acct-personal', purpose: 'personal' }),
-      makeAccount({ id: 'acct-business', name: 'Business Checking', purpose: 'business' }),
-      makeAccount({ id: 'acct-both', name: 'Shared Reserve', purpose: 'both' }),
-    ]);
+    rowsRef.current = [
+      makeAccountRow({ id: 'acct-personal', purpose: 'personal' }),
+      makeAccountRow({ id: 'acct-business', name: 'Business Checking', purpose: 'business' }),
+      makeAccountRow({ id: 'acct-both', name: 'Shared Reserve', purpose: 'both' }),
+    ];
 
     const { result } = renderHook(() => useAccounts({ purpose: 'business' }));
 
@@ -109,12 +142,8 @@ describe('useAccounts', () => {
     ]);
   });
 
-  // -----------------------------------------------------------------------
-  // Error state
-  // -----------------------------------------------------------------------
-
   it('captures errors and sets error state', () => {
-    mockGetAllAccounts.mockImplementation(() => {
+    vi.mocked(mockDb.selectAll).mockImplementation(() => {
       throw new Error('DB read failed');
     });
 
@@ -126,7 +155,7 @@ describe('useAccounts', () => {
   });
 
   it('sets a generic error message for non-Error throws', () => {
-    mockGetAllAccounts.mockImplementation(() => {
+    vi.mocked(mockDb.selectAll).mockImplementation(() => {
       throw 42;
     });
 
@@ -135,14 +164,9 @@ describe('useAccounts', () => {
     expect(result.current.error).toBe('Failed to load accounts.');
   });
 
-  // -----------------------------------------------------------------------
-  // CRUD — createAccount
-  // -----------------------------------------------------------------------
-
   it('creates an account and triggers refresh', () => {
-    mockGetAllAccounts.mockReturnValue([]);
     const created = makeAccount({ id: 'acct-new', name: 'New Account' });
-    mockCreateAccount.mockReturnValue(created);
+    testState.createAccount.mockReturnValue(created);
 
     const { result } = renderHook(() => useAccounts());
 
@@ -157,12 +181,11 @@ describe('useAccounts', () => {
     });
 
     expect(returned).toEqual(created);
-    expect(mockCreateAccount).toHaveBeenCalledOnce();
+    expect(testState.createAccount).toHaveBeenCalledOnce();
   });
 
   it('returns null and sets error when createAccount throws', () => {
-    mockGetAllAccounts.mockReturnValue([]);
-    mockCreateAccount.mockImplementation(() => {
+    testState.createAccount.mockImplementation(() => {
       throw new Error('Insert failed');
     });
 
@@ -182,15 +205,10 @@ describe('useAccounts', () => {
     expect(result.current.error).toBe('Insert failed');
   });
 
-  // -----------------------------------------------------------------------
-  // CRUD — updateAccount
-  // -----------------------------------------------------------------------
-
   it('updates an account and triggers refresh', () => {
-    const original = makeAccount();
-    mockGetAllAccounts.mockReturnValue([original]);
+    rowsRef.current = [makeAccountRow()];
     const updated = makeAccount({ name: 'Updated Checking' });
-    mockUpdateAccount.mockReturnValue(updated);
+    testState.updateAccount.mockReturnValue(updated);
 
     const { result } = renderHook(() => useAccounts());
 
@@ -200,29 +218,26 @@ describe('useAccounts', () => {
     });
 
     expect(returned).toEqual(updated);
-    expect(mockUpdateAccount).toHaveBeenCalledWith(mockDb, 'acct-1', {
+    expect(testState.updateAccount).toHaveBeenCalledWith(mockDb, 'acct-1', {
       name: 'Updated Checking',
     });
   });
 
   it('does not refresh when updateAccount returns null', () => {
-    mockGetAllAccounts.mockReturnValue([]);
-    mockUpdateAccount.mockReturnValue(null);
+    testState.updateAccount.mockReturnValue(null);
 
     const { result } = renderHook(() => useAccounts());
-
-    const callCountAfterMount = mockGetAllAccounts.mock.calls.length;
+    const callCountAfterMount = vi.mocked(mockDb.selectAll).mock.calls.length;
 
     act(() => {
       result.current.updateAccount('nonexistent', { name: 'Nope' });
     });
 
-    expect(mockGetAllAccounts.mock.calls.length).toBe(callCountAfterMount);
+    expect(vi.mocked(mockDb.selectAll).mock.calls.length).toBe(callCountAfterMount);
   });
 
   it('returns null and sets error when updateAccount throws', () => {
-    mockGetAllAccounts.mockReturnValue([]);
-    mockUpdateAccount.mockImplementation(() => {
+    testState.updateAccount.mockImplementation(() => {
       throw new Error('Update failed');
     });
 
@@ -237,14 +252,9 @@ describe('useAccounts', () => {
     expect(result.current.error).toBe('Update failed');
   });
 
-  // -----------------------------------------------------------------------
-  // CRUD — deleteAccount
-  // -----------------------------------------------------------------------
-
   it('deletes an account and triggers refresh', () => {
-    const acct = makeAccount();
-    mockGetAllAccounts.mockReturnValue([acct]);
-    mockDeleteAccount.mockReturnValue(true);
+    rowsRef.current = [makeAccountRow()];
+    testState.deleteAccount.mockReturnValue(true);
 
     const { result } = renderHook(() => useAccounts());
 
@@ -254,12 +264,11 @@ describe('useAccounts', () => {
     });
 
     expect(deleted).toBe(true);
-    expect(mockDeleteAccount).toHaveBeenCalledWith(mockDb, 'acct-1');
+    expect(testState.deleteAccount).toHaveBeenCalledWith(mockDb, 'acct-1');
   });
 
   it('returns false when deletion target is not found', () => {
-    mockGetAllAccounts.mockReturnValue([]);
-    mockDeleteAccount.mockReturnValue(false);
+    testState.deleteAccount.mockReturnValue(false);
 
     const { result } = renderHook(() => useAccounts());
 
@@ -272,8 +281,7 @@ describe('useAccounts', () => {
   });
 
   it('returns false and sets error when deleteAccount throws', () => {
-    mockGetAllAccounts.mockReturnValue([]);
-    mockDeleteAccount.mockImplementation(() => {
+    testState.deleteAccount.mockImplementation(() => {
       throw new Error('Delete failed');
     });
 
@@ -288,21 +296,15 @@ describe('useAccounts', () => {
     expect(result.current.error).toBe('Delete failed');
   });
 
-  // -----------------------------------------------------------------------
-  // Refresh
-  // -----------------------------------------------------------------------
-
-  it('re-fetches data when refresh is called', () => {
-    mockGetAllAccounts.mockReturnValue([]);
-
+  it('re-fetches data when refresh is called', async () => {
     const { result } = renderHook(() => useAccounts());
+    const callCountAfterMount = vi.mocked(mockDb.selectAll).mock.calls.length;
 
-    const callCountAfterMount = mockGetAllAccounts.mock.calls.length;
-
-    act(() => {
+    await act(async () => {
       result.current.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 25));
     });
 
-    expect(mockGetAllAccounts.mock.calls.length).toBeGreaterThan(callCountAfterMount);
+    expect(vi.mocked(mockDb.selectAll).mock.calls.length).toBeGreaterThan(callCountAfterMount);
   });
 });

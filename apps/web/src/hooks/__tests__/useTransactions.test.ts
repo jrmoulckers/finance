@@ -3,40 +3,30 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Row, SqliteDb } from '../../db/sqlite-wasm';
 import type { Transaction } from '../../kmp/bridge';
 import { useTransactions } from '../useTransactions';
 
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-const mockDb = {} as ReturnType<typeof import('../../db/DatabaseProvider').useDatabase>;
+const testState = vi.hoisted(() => ({
+  db: null as unknown,
+  createTransaction: vi.fn<(...args: unknown[]) => unknown>(),
+  updateTransaction: vi.fn<(...args: unknown[]) => unknown>(),
+  deleteTransaction: vi.fn<(...args: unknown[]) => unknown>(),
+}));
 
 vi.mock('../../db/DatabaseProvider', () => ({
-  useDatabase: () => mockDb,
+  useDatabase: () => testState.db,
 }));
 
-const mockGetAllTransactions = vi.fn<(...args: unknown[]) => Transaction[]>();
-const mockGetTransactionsByAccount = vi.fn<(...args: unknown[]) => Transaction[]>();
-const mockGetTransactionsByCategory = vi.fn<(...args: unknown[]) => Transaction[]>();
-const mockGetTransactionsByDateRange = vi.fn<(...args: unknown[]) => Transaction[]>();
-const mockCreateTransaction = vi.fn<(...args: unknown[]) => Transaction>();
-const mockUpdateTransaction = vi.fn<(...args: unknown[]) => Transaction | null>();
-const mockDeleteTransaction = vi.fn<(...args: unknown[]) => boolean>();
-
-vi.mock('../../db/repositories/transactions', () => ({
-  getAllTransactions: (...args: unknown[]) => mockGetAllTransactions(...args),
-  getTransactionsByAccount: (...args: unknown[]) => mockGetTransactionsByAccount(...args),
-  getTransactionsByCategory: (...args: unknown[]) => mockGetTransactionsByCategory(...args),
-  getTransactionsByDateRange: (...args: unknown[]) => mockGetTransactionsByDateRange(...args),
-  createTransaction: (...args: unknown[]) => mockCreateTransaction(...args),
-  updateTransaction: (...args: unknown[]) => mockUpdateTransaction(...args),
-  deleteTransaction: (...args: unknown[]) => mockDeleteTransaction(...args),
-}));
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
+vi.mock('../../db/repositories/transactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../db/repositories/transactions')>();
+  return {
+    ...actual,
+    createTransaction: (...args: unknown[]) => testState.createTransaction(...args),
+    updateTransaction: (...args: unknown[]) => testState.updateTransaction(...args),
+    deleteTransaction: (...args: unknown[]) => testState.deleteTransaction(...args),
+  };
+});
 
 const syncMetadata = {
   createdAt: '2025-01-01T00:00:00Z',
@@ -44,6 +34,14 @@ const syncMetadata = {
   deletedAt: null,
   syncVersion: 1,
   isSynced: true,
+};
+
+const syncRowMetadata = {
+  created_at: '2025-01-01T00:00:00Z',
+  updated_at: '2025-01-01T00:00:00Z',
+  deleted_at: null,
+  sync_version: 1,
+  is_synced: 1,
 };
 
 function makeTransaction(overrides: Partial<Transaction> = {}): Transaction {
@@ -64,6 +62,10 @@ function makeTransaction(overrides: Partial<Transaction> = {}): Transaction {
     isRecurring: false,
     recurringRuleId: null,
     tags: [],
+    retirementContributionYear: null,
+    retirementContributionDesignation: null,
+    splits: [],
+    moodTag: null,
     merchantAddress: null,
     merchantCity: null,
     merchantState: null,
@@ -73,29 +75,70 @@ function makeTransaction(overrides: Partial<Transaction> = {}): Transaction {
     statementDescription: null,
     customFields: null,
     extraNotes: null,
+    counterpartyName: null,
+    counterpartyAccountId: null,
     ...syncMetadata,
     ...overrides,
-    counterpartyName: overrides.counterpartyName ?? null,
-    counterpartyAccountId: overrides.counterpartyAccountId ?? null,
   };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+function makeTransactionRow(overrides: Partial<Row> = {}): Row {
+  return {
+    id: 'txn-1',
+    household_id: 'hh-1',
+    account_id: 'acct-1',
+    category_id: 'cat-1',
+    type: 'EXPENSE',
+    status: 'CLEARED',
+    amount: 5000,
+    currency: 'USD',
+    payee: 'Grocery Store',
+    note: null,
+    date: '2025-03-06',
+    transfer_account_id: null,
+    transfer_transaction_id: null,
+    is_recurring: 0,
+    recurring_rule_id: null,
+    tags: '[]',
+    retirement_contribution_year: null,
+    retirement_contribution_designation: null,
+    splits: null,
+    mood_tag: null,
+    merchant_address: null,
+    merchant_city: null,
+    merchant_state: null,
+    merchant_zip: null,
+    merchant_country: null,
+    external_reference_id: null,
+    statement_description: null,
+    custom_fields: null,
+    extra_notes: null,
+    counterparty_name: null,
+    counterparty_account_id: null,
+    ...syncRowMetadata,
+    ...overrides,
+  };
+}
+
+function createDatabase(rowsRef: { current: Row[] }): SqliteDb {
+  return {
+    exec: vi.fn(),
+    selectAll: vi.fn(() => rowsRef.current),
+    selectOne: vi.fn(() => rowsRef.current[0] ?? null),
+    close: vi.fn(async () => undefined),
+  };
+}
 
 describe('useTransactions', () => {
+  let rowsRef: { current: Row[] };
+  let mockDb: SqliteDb;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAllTransactions.mockReturnValue([]);
-    mockGetTransactionsByAccount.mockReturnValue([]);
-    mockGetTransactionsByCategory.mockReturnValue([]);
-    mockGetTransactionsByDateRange.mockReturnValue([]);
+    rowsRef = { current: [] };
+    mockDb = createDatabase(rowsRef);
+    testState.db = mockDb;
   });
-
-  // -----------------------------------------------------------------------
-  // Loading / success state
-  // -----------------------------------------------------------------------
 
   it('returns loading false and empty list when no transactions exist', () => {
     const { result } = renderHook(() => useTransactions());
@@ -106,8 +149,10 @@ describe('useTransactions', () => {
   });
 
   it('returns transactions from the database', () => {
-    const txns = [makeTransaction(), makeTransaction({ id: 'txn-2', payee: 'Coffee Shop' })];
-    mockGetAllTransactions.mockReturnValue(txns);
+    rowsRef.current = [
+      makeTransactionRow(),
+      makeTransactionRow({ id: 'txn-2', payee: 'Coffee Shop' }),
+    ];
 
     const { result } = renderHook(() => useTransactions());
 
@@ -117,12 +162,8 @@ describe('useTransactions', () => {
     expect(result.current.loading).toBe(false);
   });
 
-  // -----------------------------------------------------------------------
-  // Error state
-  // -----------------------------------------------------------------------
-
   it('captures errors and sets error state', () => {
-    mockGetAllTransactions.mockImplementation(() => {
+    vi.mocked(mockDb.selectAll).mockImplementation(() => {
       throw new Error('DB read failed');
     });
 
@@ -134,7 +175,7 @@ describe('useTransactions', () => {
   });
 
   it('sets a generic error message for non-Error throws', () => {
-    mockGetAllTransactions.mockImplementation(() => {
+    vi.mocked(mockDb.selectAll).mockImplementation(() => {
       throw 'unknown failure';
     });
 
@@ -143,69 +184,49 @@ describe('useTransactions', () => {
     expect(result.current.error).toBe('Failed to load transactions.');
   });
 
-  // -----------------------------------------------------------------------
-  // Filtering — accountId primary query
-  // -----------------------------------------------------------------------
-
   it('uses getTransactionsByAccount when accountId filter is provided', () => {
-    const txn = makeTransaction({ accountId: 'acct-1' });
-    mockGetTransactionsByAccount.mockReturnValue([txn]);
+    rowsRef.current = [makeTransactionRow({ account_id: 'acct-1' })];
 
     const { result } = renderHook(() => useTransactions({ accountId: 'acct-1' }));
 
-    expect(mockGetTransactionsByAccount).toHaveBeenCalledWith(mockDb, 'acct-1', expect.any(Object));
+    expect(mockDb.selectAll).toHaveBeenCalledWith(expect.stringMatching(/account_id\s+=\s+\?/i), [
+      'acct-1',
+    ]);
     expect(result.current.transactions).toHaveLength(1);
   });
 
-  // -----------------------------------------------------------------------
-  // Filtering — categoryId primary query
-  // -----------------------------------------------------------------------
-
   it('uses getTransactionsByCategory when categoryId filter is provided', () => {
-    const txn = makeTransaction({ categoryId: 'cat-food' });
-    mockGetTransactionsByCategory.mockReturnValue([txn]);
+    rowsRef.current = [makeTransactionRow({ category_id: 'cat-food' })];
 
     const { result } = renderHook(() => useTransactions({ categoryId: 'cat-food' }));
 
-    expect(mockGetTransactionsByCategory).toHaveBeenCalledWith(
-      mockDb,
+    expect(mockDb.selectAll).toHaveBeenCalledWith(expect.stringMatching(/category_id\s+=\s+\?/i), [
       'cat-food',
-      expect.any(Object),
-    );
+      'cat-food',
+    ]);
     expect(result.current.transactions).toHaveLength(1);
   });
 
-  // -----------------------------------------------------------------------
-  // Filtering — date range
-  // -----------------------------------------------------------------------
-
   it('uses getTransactionsByDateRange when both dates are provided', () => {
-    const txn = makeTransaction({ date: '2025-03-05' });
-    mockGetTransactionsByDateRange.mockReturnValue([txn]);
+    rowsRef.current = [makeTransactionRow({ date: '2025-03-05' })];
 
     const { result } = renderHook(() =>
       useTransactions({ startDate: '2025-03-01', endDate: '2025-03-31' }),
     );
 
-    expect(mockGetTransactionsByDateRange).toHaveBeenCalledWith(
-      mockDb,
-      '2025-03-01',
-      '2025-03-31',
-      expect.any(Object),
+    expect(mockDb.selectAll).toHaveBeenCalledWith(
+      expect.stringMatching(/date\s+>=\s+\?[\s\S]*date\s+<=\s+\?/i),
+      ['2025-03-01', '2025-03-31'],
     );
     expect(result.current.transactions).toHaveLength(1);
   });
 
-  // -----------------------------------------------------------------------
-  // Filtering — startDate only (post-filter)
-  // -----------------------------------------------------------------------
-
   it('post-filters by startDate when only startDate is provided', () => {
-    mockGetAllTransactions.mockReturnValue([
-      makeTransaction({ id: 'txn-1', date: '2025-02-28' }),
-      makeTransaction({ id: 'txn-2', date: '2025-03-01' }),
-      makeTransaction({ id: 'txn-3', date: '2025-03-15' }),
-    ]);
+    rowsRef.current = [
+      makeTransactionRow({ id: 'txn-1', date: '2025-02-28' }),
+      makeTransactionRow({ id: 'txn-2', date: '2025-03-01' }),
+      makeTransactionRow({ id: 'txn-3', date: '2025-03-15' }),
+    ];
 
     const { result } = renderHook(() => useTransactions({ startDate: '2025-03-01' }));
 
@@ -213,16 +234,12 @@ describe('useTransactions', () => {
     expect(result.current.transactions.map((t) => t.id)).toEqual(['txn-2', 'txn-3']);
   });
 
-  // -----------------------------------------------------------------------
-  // Filtering — endDate only (post-filter)
-  // -----------------------------------------------------------------------
-
   it('post-filters by endDate when only endDate is provided', () => {
-    mockGetAllTransactions.mockReturnValue([
-      makeTransaction({ id: 'txn-1', date: '2025-02-28' }),
-      makeTransaction({ id: 'txn-2', date: '2025-03-01' }),
-      makeTransaction({ id: 'txn-3', date: '2025-03-15' }),
-    ]);
+    rowsRef.current = [
+      makeTransactionRow({ id: 'txn-1', date: '2025-02-28' }),
+      makeTransactionRow({ id: 'txn-2', date: '2025-03-01' }),
+      makeTransactionRow({ id: 'txn-3', date: '2025-03-15' }),
+    ];
 
     const { result } = renderHook(() => useTransactions({ endDate: '2025-03-01' }));
 
@@ -230,15 +247,11 @@ describe('useTransactions', () => {
     expect(result.current.transactions.map((t) => t.id)).toEqual(['txn-1', 'txn-2']);
   });
 
-  // -----------------------------------------------------------------------
-  // Filtering — accountId + categoryId (local post-filter)
-  // -----------------------------------------------------------------------
-
   it('post-filters by categoryId when both accountId and categoryId are provided', () => {
-    mockGetTransactionsByAccount.mockReturnValue([
-      makeTransaction({ id: 'txn-1', categoryId: 'cat-food' }),
-      makeTransaction({ id: 'txn-2', categoryId: 'cat-transport' }),
-    ]);
+    rowsRef.current = [
+      makeTransactionRow({ id: 'txn-1', category_id: 'cat-food' }),
+      makeTransactionRow({ id: 'txn-2', category_id: 'cat-transport' }),
+    ];
 
     const { result } = renderHook(() =>
       useTransactions({ accountId: 'acct-1', categoryId: 'cat-food' }),
@@ -248,16 +261,12 @@ describe('useTransactions', () => {
     expect(result.current.transactions[0]?.categoryId).toBe('cat-food');
   });
 
-  // -----------------------------------------------------------------------
-  // Filtering — limit
-  // -----------------------------------------------------------------------
-
   it('applies limit via local slice when local post-filtering is needed', () => {
-    mockGetTransactionsByAccount.mockReturnValue([
-      makeTransaction({ id: 'txn-1', categoryId: 'cat-food' }),
-      makeTransaction({ id: 'txn-2', categoryId: 'cat-food' }),
-      makeTransaction({ id: 'txn-3', categoryId: 'cat-food' }),
-    ]);
+    rowsRef.current = [
+      makeTransactionRow({ id: 'txn-1', category_id: 'cat-food' }),
+      makeTransactionRow({ id: 'txn-2', category_id: 'cat-food' }),
+      makeTransactionRow({ id: 'txn-3', category_id: 'cat-food' }),
+    ];
 
     const { result } = renderHook(() =>
       useTransactions({ accountId: 'acct-1', categoryId: 'cat-food', limit: 2 }),
@@ -266,29 +275,18 @@ describe('useTransactions', () => {
     expect(result.current.transactions).toHaveLength(2);
   });
 
-  // -----------------------------------------------------------------------
-  // Filtering — searchTerm and type passed to repository
-  // -----------------------------------------------------------------------
-
   it('passes searchTerm and type filters to the repository', () => {
-    mockGetAllTransactions.mockReturnValue([]);
-
     renderHook(() => useTransactions({ searchTerm: 'coffee', type: 'EXPENSE' }));
 
-    expect(mockGetAllTransactions).toHaveBeenCalledWith(
-      mockDb,
-      expect.objectContaining({ searchTerm: 'coffee', type: 'EXPENSE' }),
+    expect(mockDb.selectAll).toHaveBeenCalledWith(
+      expect.stringMatching(/COALESCE\(payee, ''\) LIKE \?[\s\S]*type\s+=\s+\?/i),
+      expect.arrayContaining(['%coffee%', 'EXPENSE']),
     );
   });
 
-  // -----------------------------------------------------------------------
-  // CRUD — createTransaction
-  // -----------------------------------------------------------------------
-
   it('creates a transaction and triggers refresh', () => {
-    mockGetAllTransactions.mockReturnValue([]);
     const created = makeTransaction({ id: 'txn-new' });
-    mockCreateTransaction.mockReturnValue(created);
+    testState.createTransaction.mockReturnValue(created);
 
     const { result } = renderHook(() => useTransactions());
 
@@ -304,12 +302,11 @@ describe('useTransactions', () => {
     });
 
     expect(returned).toEqual(created);
-    expect(mockCreateTransaction).toHaveBeenCalledOnce();
+    expect(testState.createTransaction).toHaveBeenCalledOnce();
   });
 
   it('returns null and sets error when createTransaction throws', () => {
-    mockGetAllTransactions.mockReturnValue([]);
-    mockCreateTransaction.mockImplementation(() => {
+    testState.createTransaction.mockImplementation(() => {
       throw new Error('Insert failed');
     });
 
@@ -330,15 +327,10 @@ describe('useTransactions', () => {
     expect(result.current.error).toBe('Insert failed');
   });
 
-  // -----------------------------------------------------------------------
-  // CRUD — updateTransaction
-  // -----------------------------------------------------------------------
-
   it('updates a transaction and triggers refresh', () => {
-    const original = makeTransaction();
-    mockGetAllTransactions.mockReturnValue([original]);
+    rowsRef.current = [makeTransactionRow()];
     const updated = makeTransaction({ payee: 'Updated Store' });
-    mockUpdateTransaction.mockReturnValue(updated);
+    testState.updateTransaction.mockReturnValue(updated);
 
     const { result } = renderHook(() => useTransactions());
 
@@ -348,35 +340,27 @@ describe('useTransactions', () => {
     });
 
     expect(returned).toEqual(updated);
-    expect(mockUpdateTransaction).toHaveBeenCalledWith(mockDb, 'txn-1', {
+    expect(testState.updateTransaction).toHaveBeenCalledWith(mockDb, 'txn-1', {
       payee: 'Updated Store',
     });
   });
 
   it('does not refresh when updateTransaction returns null (not found)', () => {
-    mockGetAllTransactions.mockReturnValue([]);
-    mockUpdateTransaction.mockReturnValue(null);
+    testState.updateTransaction.mockReturnValue(null);
 
     const { result } = renderHook(() => useTransactions());
-
-    const initialCallCount = mockGetAllTransactions.mock.calls.length;
+    const initialCallCount = vi.mocked(mockDb.selectAll).mock.calls.length;
 
     act(() => {
       result.current.updateTransaction('nonexistent', { payee: 'Nope' });
     });
 
-    // getAllTransactions should not have been called again after the update
-    // returned null (no refresh triggered). The only calls are from the
-    // initial mount + re-render, not from a refresh.
-    expect(mockUpdateTransaction).toHaveBeenCalledOnce();
-    // Since update returned null, refresh should NOT have been triggered,
-    // so callCount should stay at initialCallCount (no extra call).
-    expect(mockGetAllTransactions.mock.calls.length).toBe(initialCallCount);
+    expect(testState.updateTransaction).toHaveBeenCalledOnce();
+    expect(vi.mocked(mockDb.selectAll).mock.calls.length).toBe(initialCallCount);
   });
 
   it('returns null and sets error when updateTransaction throws', () => {
-    mockGetAllTransactions.mockReturnValue([]);
-    mockUpdateTransaction.mockImplementation(() => {
+    testState.updateTransaction.mockImplementation(() => {
       throw new Error('Update failed');
     });
 
@@ -391,14 +375,9 @@ describe('useTransactions', () => {
     expect(result.current.error).toBe('Update failed');
   });
 
-  // -----------------------------------------------------------------------
-  // CRUD — deleteTransaction
-  // -----------------------------------------------------------------------
-
   it('deletes a transaction and triggers refresh', () => {
-    const txn = makeTransaction();
-    mockGetAllTransactions.mockReturnValue([txn]);
-    mockDeleteTransaction.mockReturnValue(true);
+    rowsRef.current = [makeTransactionRow()];
+    testState.deleteTransaction.mockReturnValue(true);
 
     const { result } = renderHook(() => useTransactions());
 
@@ -408,12 +387,11 @@ describe('useTransactions', () => {
     });
 
     expect(deleted).toBe(true);
-    expect(mockDeleteTransaction).toHaveBeenCalledWith(mockDb, 'txn-1');
+    expect(testState.deleteTransaction).toHaveBeenCalledWith(mockDb, 'txn-1');
   });
 
   it('returns false when deletion fails (not found)', () => {
-    mockGetAllTransactions.mockReturnValue([]);
-    mockDeleteTransaction.mockReturnValue(false);
+    testState.deleteTransaction.mockReturnValue(false);
 
     const { result } = renderHook(() => useTransactions());
 
@@ -426,8 +404,7 @@ describe('useTransactions', () => {
   });
 
   it('returns false and sets error when deleteTransaction throws', () => {
-    mockGetAllTransactions.mockReturnValue([]);
-    mockDeleteTransaction.mockImplementation(() => {
+    testState.deleteTransaction.mockImplementation(() => {
       throw new Error('Delete failed');
     });
 
@@ -442,21 +419,15 @@ describe('useTransactions', () => {
     expect(result.current.error).toBe('Delete failed');
   });
 
-  // -----------------------------------------------------------------------
-  // Refresh
-  // -----------------------------------------------------------------------
-
-  it('re-fetches data when refresh is called', () => {
-    mockGetAllTransactions.mockReturnValue([]);
-
+  it('re-fetches data when refresh is called', async () => {
     const { result } = renderHook(() => useTransactions());
+    const callCountAfterMount = vi.mocked(mockDb.selectAll).mock.calls.length;
 
-    const callCountAfterMount = mockGetAllTransactions.mock.calls.length;
-
-    act(() => {
+    await act(async () => {
       result.current.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 25));
     });
 
-    expect(mockGetAllTransactions.mock.calls.length).toBeGreaterThan(callCountAfterMount);
+    expect(vi.mocked(mockDb.selectAll).mock.calls.length).toBeGreaterThan(callCountAfterMount);
   });
 });

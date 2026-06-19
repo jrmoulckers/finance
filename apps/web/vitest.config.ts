@@ -19,5 +19,19 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['src/test-setup.ts'],
     exclude: [...configDefaults.exclude, 'e2e/**'],
+    // Cap concurrent worker processes. The merged suite is large and each
+    // jsdom worker can grow to the Node heap limit (NODE_OPTIONS
+    // --max-old-space-size in CI). Without a cap, a high-core machine/runner
+    // spawns enough forks that their combined heap exceeds available RAM and
+    // workers are OOM-killed ("Worker exited unexpectedly"). Two forks keeps
+    // total memory bounded while still parallelising; CI further parallelises
+    // via the 4-way shard matrix.
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        maxForks: 2,
+        minForks: 1,
+      },
+    },
   },
 });
