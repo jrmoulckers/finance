@@ -20,7 +20,7 @@ name: Deploy — Staging
 
 on:
   workflow_run:
-    workflows: ['Lint & Format', 'Web CI']
+    workflows: ['CI — Lint', 'Web CI']
     types: [completed]
     branches: [main]
 
@@ -124,7 +124,7 @@ jobs:
             const targetSha = process.env.TARGET_SHA;
             const requiresWebCi = process.env.REQUIRES_WEB_CI === 'true';
             const workflowConclusion = process.env.WORKFLOW_CONCLUSION;
-            const required = ['Lint & Format'];
+            const required = ['CI — Lint'];
 
             if (requiresWebCi) {
               required.push('Web CI');
