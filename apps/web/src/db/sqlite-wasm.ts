@@ -15,9 +15,14 @@
  * References: issues #57, #95
  */
 
-import { getAccessTokenSync } from '../auth/token-storage';
 import { extractTablesFromSql, isMutationSql, notifyDataChange } from '../lib/sync/crossTab';
-import { getOrCreateSessionStoragePassphrase, isEncryptionSupported } from './encryption';
+import {
+  hasEncryptedSqliteSnapshot,
+  isSqliteAtRestEncryptionEnabled,
+  isSqliteAtRestEncryptionSupported,
+  loadEncryptedSqliteSnapshot,
+  persistEncryptedSqliteSnapshot,
+} from './sqlite-at-rest-encryption';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -127,87 +132,12 @@ export interface Migration {
 const DB_NAME = 'finance.db';
 const MIGRATIONS_TABLE = '_migrations';
 
-/**
- * Module-level encryption secret.
- *
- * When set, IndexedDB-backed databases are encrypted at rest using
- * AES-256-GCM via the Web Crypto API.  Set via `setEncryptionSecret()`
- * before calling `initDatabase()`. When unset, the storage layer derives a
- * secret from sessionStorage or the current Supabase access token.
- */
-let _encryptionSecret: string | null = null;
-let _resolvedEncryptionSecret: string | null | undefined;
-
-/**
- * Configure the encryption secret used to encrypt/decrypt the database
- * when using the IndexedDB fallback backend.
- *
- * Call this before `initDatabase()` — typically after the user authenticates.
- * Pass `null` to disable encryption (e.g. on logout).
- *
- * OPFS-backed databases use the browser's built-in OPFS security model
- * (origin-scoped, not readable by other origins).  For an additional
- * layer of defence, the encryption module can be used to encrypt OPFS
- * snapshots during export/backup operations.
- */
-export function setEncryptionSecret(secret: string | null): void {
-  _encryptionSecret = secret;
-  _resolvedEncryptionSecret = undefined;
-}
-
-/** Check whether an encryption secret has been configured. */
-export function hasEncryptionSecret(): boolean {
-  return _encryptionSecret !== null;
-}
-
-function isDevUnencryptedFallbackEnabled(): boolean {
-  return import.meta.env.DEV === true;
-}
-
 function encryptionUnavailableError(): StorageError {
   return new StorageError(
     'INDEXEDDB_FAILED',
-    'Encrypted database storage requires Web Crypto and session storage.',
+    'Encrypted SQLite storage requires IndexedDB and Web Crypto support.',
     { backend: 'indexeddb' },
   );
-}
-
-/**
- * Resolve the secret used for IndexedDB SQLite encryption.
- *
- * Prefer an explicitly configured secret, then a per-tab sessionStorage
- * passphrase, then the in-memory Supabase access token. If none is available,
- * plaintext IndexedDB is allowed only in Vite dev/test mode.
- */
-export function resolveDatabaseEncryptionSecret(): string | null {
-  if (_resolvedEncryptionSecret !== undefined) {
-    return _resolvedEncryptionSecret;
-  }
-
-  const configuredSecret = _encryptionSecret?.trim();
-  if (configuredSecret) {
-    _resolvedEncryptionSecret = configuredSecret;
-    return _resolvedEncryptionSecret;
-  }
-
-  const sessionSecret = getOrCreateSessionStoragePassphrase();
-  if (sessionSecret) {
-    _resolvedEncryptionSecret = sessionSecret;
-    return _resolvedEncryptionSecret;
-  }
-
-  const accessToken = getAccessTokenSync()?.trim();
-  if (accessToken) {
-    _resolvedEncryptionSecret = accessToken;
-    return _resolvedEncryptionSecret;
-  }
-
-  if (isDevUnencryptedFallbackEnabled()) {
-    _resolvedEncryptionSecret = null;
-    return null;
-  }
-
-  throw encryptionUnavailableError();
 }
 
 function toExactArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -1397,28 +1327,34 @@ function openIDB(): Promise<IDBDatabase> {
 }
 
 async function loadFromIndexedDB(key: string): Promise<ArrayBuffer | null> {
-  if (!isEncryptionSupported()) {
-    if (isDevUnencryptedFallbackEnabled()) {
-      return loadPlaintextFromIndexedDB(key);
+  if (!isSqliteAtRestEncryptionEnabled()) {
+    if (isSqliteAtRestEncryptionSupported()) {
+      try {
+        const decrypted = await loadEncryptedSqliteSnapshot(key);
+        if (decrypted) {
+          return toExactArrayBuffer(decrypted);
+        }
+      } catch (error) {
+        const plaintext = await loadPlaintextFromIndexedDB(key);
+        if (plaintext) {
+          return plaintext;
+        }
+        throw error;
+      }
+    } else if (await hasEncryptedSqliteSnapshot()) {
+      throw encryptionUnavailableError();
     }
-    throw encryptionUnavailableError();
-  }
 
-  const encryptionSecret = resolveDatabaseEncryptionSecret();
-  if (!encryptionSecret) {
     return loadPlaintextFromIndexedDB(key);
   }
 
-  try {
-    const { loadEncryptedDatabase } = await import('./encryption');
-    const decrypted = await loadEncryptedDatabase(encryptionSecret);
-    if (decrypted) {
-      return toExactArrayBuffer(decrypted);
-    }
-  } catch (error) {
-    if (!isDevUnencryptedFallbackEnabled()) {
-      throw error;
-    }
+  if (!isSqliteAtRestEncryptionSupported()) {
+    throw encryptionUnavailableError();
+  }
+
+  const decrypted = await loadEncryptedSqliteSnapshot(key);
+  if (decrypted) {
+    return toExactArrayBuffer(decrypted);
   }
 
   return loadPlaintextFromIndexedDB(key);
@@ -1442,29 +1378,16 @@ async function loadPlaintextFromIndexedDB(key: string): Promise<ArrayBuffer | nu
 }
 
 async function persistToIndexedDB(key: string, data: Uint8Array): Promise<void> {
-  if (!isEncryptionSupported()) {
-    if (isDevUnencryptedFallbackEnabled()) {
-      return persistPlaintextToIndexedDB(key, data);
-    }
+  if (!isSqliteAtRestEncryptionEnabled()) {
+    return persistPlaintextToIndexedDB(key, data);
+  }
+
+  if (!isSqliteAtRestEncryptionSupported()) {
     throw encryptionUnavailableError();
   }
 
-  const encryptionSecret = resolveDatabaseEncryptionSecret();
-  if (!encryptionSecret) {
-    return persistPlaintextToIndexedDB(key, data);
-  }
-
-  try {
-    const { saveEncryptedDatabase } = await import('./encryption');
-    await saveEncryptedDatabase(data, encryptionSecret);
-    await deletePlaintextFromIndexedDB(key);
-    return;
-  } catch (error) {
-    if (!isDevUnencryptedFallbackEnabled()) {
-      throw error;
-    }
-    return persistPlaintextToIndexedDB(key, data);
-  }
+  await persistEncryptedSqliteSnapshot(key, data);
+  await deletePlaintextFromIndexedDB(key);
 }
 
 async function persistPlaintextToIndexedDB(key: string, data: Uint8Array): Promise<void> {
@@ -1499,6 +1422,14 @@ async function deletePlaintextFromIndexedDB(key: string): Promise<void> {
     };
   });
 }
+
+export const __sqliteIndexedDbPersistenceForTesting = {
+  loadFromIndexedDB,
+  loadPlaintextFromIndexedDB,
+  persistToIndexedDB,
+  persistPlaintextToIndexedDB,
+  deletePlaintextFromIndexedDB,
+};
 
 // ---------------------------------------------------------------------------
 // Db wrapper factory
