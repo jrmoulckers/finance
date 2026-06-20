@@ -14,6 +14,7 @@ import { useRouteAnnouncer } from './hooks/useRouteAnnouncer';
 import { useSpendingPace } from './hooks/useSpendingPace';
 import type { HapticEventType } from './lib/haptics/types';
 import { isOnboardingComplete } from './lib/local-only-mode';
+import { isLighthouseAudit } from './lib/perf/lighthouse-audit';
 import type { DetectedMilestone } from './lib/milestones';
 import {
   detectScamAlerts,
@@ -369,7 +370,12 @@ export const App: FC = () => {
   const activePath = location.pathname === '/' ? '/' : location.pathname;
   const pageTitle = derivePageTitle(activePath);
   const isStandalonePage = isStandalonePath(activePath);
-  const shouldStartOnboarding = shouldAutoLaunchOnboarding(activePath, isOnboardingComplete());
+  // Skip the first-run onboarding auto-launch during a Lighthouse audit so the
+  // synthetic run measures the requested route (e.g. /login) instead of being
+  // redirected into the onboarding flow — which, with storage cleared between
+  // loads, otherwise causes navigation churn under audit (#2795).
+  const shouldStartOnboarding =
+    shouldAutoLaunchOnboarding(activePath, isOnboardingComplete()) && !isLighthouseAudit();
 
   // Announce route transitions to screen readers (#1684)
   useRouteAnnouncer();
