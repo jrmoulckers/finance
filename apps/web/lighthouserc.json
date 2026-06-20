@@ -1,10 +1,9 @@
 {
   "ci": {
     "collect": {
-      "url": ["http://localhost:5173/login?lhci=1"],
-      "startServerCommand": "npm run -w apps/web preview -- --host 127.0.0.1 --port 5173 --strictPort",
-      "startServerReadyPattern": "http://127.0.0.1:5173/",
-      "startServerReadyTimeout": 15000,
+      "url": ["http://localhost/login?lhci=1"],
+      "staticDistDir": "apps/web/dist",
+      "isSinglePageApplication": true,
       "settings": {
         "chromeFlags": "--headless=new --no-sandbox --disable-gpu",
         "blockedUrlPatterns": ["*/api/auth/refresh", "*/sw.js"],
